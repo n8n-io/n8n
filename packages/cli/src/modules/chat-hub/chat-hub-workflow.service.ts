@@ -3,6 +3,7 @@ import {
 	ChatSessionId,
 	type ChatHubBaseLLMModel,
 	type ChatHubInputModality,
+	type ChatHubLLMProvider,
 	type ChatModelMetadataDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -21,6 +22,7 @@ import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
+	DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE,
 	IConnections,
 	IExecuteData,
 	INode,
@@ -33,6 +35,8 @@ import {
 	MERGE_NODE_TYPE,
 	NodeConnectionTypes,
 	OperationalError,
+	VECTOR_STORE_PGVECTOR_NODE_TYPE,
+	VECTOR_STORE_TOOL_NODE_TYPE,
 	type IBinaryData,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
@@ -41,6 +45,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import {
+	EMBEDDINGS_NODE_TYPE_MAP,
 	EXECUTION_FINISHED_STATUSES,
 	EXECUTION_POLL_INTERVAL,
 	getModelMetadata,
@@ -314,14 +319,17 @@ export class ChatHubWorkflowService {
 		const pdfFiles = contextFiles.filter((c) => c.mimeType === 'application/pdf');
 
 		// Find vector store tool in tools array
-		const vectorStoreTool = tools.find(
-			(tool) => tool.type === '@n8n/n8n-nodes-langchain.vectorStorePGVector',
-		);
+		const vectorStoreTool = tools.find((tool) => tool.type === VECTOR_STORE_PGVECTOR_NODE_TYPE);
 		const shouldIncludeVectorStoreTool = pdfFiles.length > 0;
 
 		if (pdfFiles.length > 0 && !vectorStoreTool) {
 			throw new BadRequestError('To process PDF files, vector store must be configured.');
 		}
+
+		const vectorStoreNodes =
+			shouldIncludeVectorStoreTool && vectorStoreTool
+				? this.buildVectorStoreNodes(vectorStoreTool, pdfFiles, model, credentials)
+				: [];
 
 		const nodes: INode[] = [
 			chatTriggerNode,
@@ -331,55 +339,12 @@ export class ChatHubWorkflowService {
 			restoreMemoryNode,
 			clearMemoryNode,
 			mergeNode,
-			...(shouldIncludeVectorStoreTool && vectorStoreTool
-				? ([
-						{
-							parameters: {
-								options: {},
-							},
-							type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-							typeVersion: 1.2,
-							position: [800, 720],
-							id: uuidv4(),
-							name: NODE_NAMES.EMBEDDINGS_MODEL,
-							credentials: {
-								openAiApi: {
-									id: 'aZCclrndUB6H1A7E',
-									name: 'OpenAi account',
-								},
-							},
-						},
-						{
-							...vectorStoreTool,
-							parameters: {
-								...vectorStoreTool.parameters,
-								mode: 'retrieve',
-							},
-							position: [720, 288],
-							id: uuidv4(),
-							name: NODE_NAMES.VECTOR_STORE,
-						},
-						{
-							parameters: {
-								description: `Use this tool to query following documents that the user has provided for context:
-${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
-`,
-							},
-							type: '@n8n/n8n-nodes-langchain.toolVectorStore',
-							typeVersion: 1.1,
-							position: [800, 496],
-							id: uuidv4(),
-							name: NODE_NAMES.VECTOR_STORE_QUESTION_TOOL,
-						},
-					] satisfies INode[])
-				: []),
+			...vectorStoreNodes,
 		];
 
 		const nodeNames = new Set(nodes.map((node) => node.name));
 		// Filter out vector store tools from regular tools (they're handled specially above)
-		const regularTools = tools.filter(
-			(tool) => tool.type !== '@n8n/n8n-nodes-langchain.vectorStorePGVector',
-		);
+		const regularTools = tools.filter((tool) => tool.type !== VECTOR_STORE_PGVECTOR_NODE_TYPE);
 		const distinctTools = regularTools.map((tool, i) => {
 			// Spread out the tool nodes so that they don't overlap on the canvas
 			const position = [
@@ -1106,26 +1071,113 @@ Respond the title only:`,
 		return 'file';
 	}
 
+	private buildVectorStoreNodes(
+		vectorStoreTool: INode,
+		pdfFiles: IBinaryData[],
+		model: ChatHubBaseLLMModel,
+		credentials: INodeCredentials,
+	): INode[] {
+		const embeddingsModelNode = this.buildEmbeddingsModelNode(model, credentials);
+		const vectorStoreNode = this.buildVectorStoreNode(vectorStoreTool);
+		const vectorStoreQuestionToolNode = this.buildVectorStoreQuestionToolNode(pdfFiles);
+
+		return [embeddingsModelNode, vectorStoreNode, vectorStoreQuestionToolNode];
+	}
+
+	private buildEmbeddingsModelNode(
+		model: ChatHubBaseLLMModel,
+		credentials: INodeCredentials,
+	): INode {
+		const embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[model.provider];
+		if (!embeddingsNodeType) {
+			throw new BadRequestError(
+				`Embeddings are not supported for provider '${model.provider}'. Please select a different model provider that supports embeddings.`,
+			);
+		}
+
+		return {
+			parameters: {
+				options: {},
+			},
+			type: embeddingsNodeType.name,
+			typeVersion: embeddingsNodeType.version,
+			position: [800, 720],
+			id: uuidv4(),
+			name: NODE_NAMES.EMBEDDINGS_MODEL,
+			credentials,
+		};
+	}
+
+	private buildVectorStoreNode(vectorStoreTool: INode): INode {
+		return {
+			...vectorStoreTool,
+			parameters: {
+				...vectorStoreTool.parameters,
+				mode: 'retrieve',
+			},
+			position: [800, 496],
+			id: uuidv4(),
+			name: NODE_NAMES.VECTOR_STORE,
+		};
+	}
+
+	private buildVectorStoreQuestionToolNode(pdfFiles: IBinaryData[]): INode {
+		return {
+			parameters: {
+				description: `Use this tool to query following documents that the user has provided for context:
+${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
+`,
+			},
+			type: VECTOR_STORE_TOOL_NODE_TYPE,
+			typeVersion: 1.1,
+			position: [720, 288],
+			id: uuidv4(),
+			name: NODE_NAMES.VECTOR_STORE_QUESTION_TOOL,
+		};
+	}
+
 	async createDocumentsInsertionWorkflow(
 		userId: string,
 		projectId: string,
 		attachments: IBinaryData[],
 		vectorStoreTool: INode,
+		provider: ChatHubLLMProvider,
+		credentials: INodeCredentials,
 		trx: EntityManager,
 	) {
+		const embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[provider];
+		if (!embeddingsNodeType) {
+			throw new BadRequestError(
+				`Embeddings are not supported for provider '${provider}'. Please select a different model provider that supports embeddings.`,
+			);
+		}
+
 		const triggerNode: INode = {
 			parameters: {
 				options: {
 					allowFileUploads: true,
 				},
 			},
-			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			type: CHAT_TRIGGER_NODE_TYPE,
 			typeVersion: 1.4,
 			position: [-48, 0],
 			id: uuidv4(),
 			name: 'When chat message received',
-			webhookId: '643c5bec-7b34-4874-b812-e7a023d59995',
+			webhookId: uuidv4(),
 		};
+
+		const embeddingsNode: INode = {
+			parameters: {
+				options: {},
+			},
+			type: embeddingsNodeType.name,
+			typeVersion: embeddingsNodeType.version,
+			position: [128, 464],
+			id: uuidv4(),
+			name: 'Embeddings Model',
+			credentials,
+		};
+
 		const nodes: INode[] = [
 			{
 				...vectorStoreTool,
@@ -1138,28 +1190,13 @@ Respond the title only:`,
 				name: 'PGVector Store',
 			},
 			triggerNode,
-			{
-				parameters: {
-					options: {},
-				},
-				type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-				typeVersion: 1.2,
-				position: [128, 464],
-				id: uuidv4(),
-				name: 'Embeddings OpenAI',
-				credentials: {
-					openAiApi: {
-						id: 'aZCclrndUB6H1A7E',
-						name: 'OpenAi account',
-					},
-				},
-			},
+			embeddingsNode,
 			{
 				parameters: {
 					dataType: 'binary',
 					options: {},
 				},
-				type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+				type: DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE,
 				typeVersion: 1.1,
 				position: [320, 192],
 				id: uuidv4(),

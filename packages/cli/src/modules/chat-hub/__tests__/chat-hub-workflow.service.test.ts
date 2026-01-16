@@ -1,7 +1,7 @@
-import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository, SharedWorkflowRepository, ExecutionRepository } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
-import type { BinaryDataService } from 'n8n-core';
+import type { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { IBinaryData } from 'n8n-workflow';
 
 import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
@@ -9,6 +9,9 @@ import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
+import type { PdfExtractorService } from '../pdf-extractor.service';
+import type { ActiveExecutions } from '@/active-executions';
+import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
@@ -16,6 +19,7 @@ describe('ChatHubWorkflowService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const binaryDataService = mock<BinaryDataService>();
 	const messageRepository = mock<ChatHubMessageRepository>();
+	const agentRepository = mock<ChatHubAgentRepository>();
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
@@ -24,13 +28,26 @@ describe('ChatHubWorkflowService', () => {
 		jest.resetAllMocks();
 
 		// Create real ChatHubAttachmentService with mocked dependencies
-		chatHubAttachmentService = new ChatHubAttachmentService(binaryDataService, messageRepository);
+		chatHubAttachmentService = new ChatHubAttachmentService(
+			binaryDataService,
+			messageRepository,
+			agentRepository,
+		);
+
+		const pdfService = mock<PdfExtractorService>();
+		const activeExecutions = mock<ActiveExecutions>();
+		const instanceSettings = mock<InstanceSettings>();
+		const executionRepository = mock<ExecutionRepository>();
 
 		service = new ChatHubWorkflowService(
 			logger,
 			workflowRepository,
 			sharedWorkflowRepository,
 			chatHubAttachmentService,
+			pdfService,
+			activeExecutions,
+			instanceSettings,
+			executionRepository,
 		);
 
 		// Mock repository methods
@@ -62,6 +79,7 @@ describe('ChatHubWorkflowService', () => {
 					'project-789',
 					mockHistory,
 					'Hello',
+					[],
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
@@ -115,6 +133,7 @@ describe('ChatHubWorkflowService', () => {
 					'project-789',
 					mockHistory,
 					'Hello',
+					[],
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
@@ -180,6 +199,7 @@ describe('ChatHubWorkflowService', () => {
 					mockHistory,
 					'Hello',
 					[],
+					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
@@ -224,6 +244,7 @@ describe('ChatHubWorkflowService', () => {
 					'project-789',
 					mockHistory,
 					'Hello',
+					[],
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
@@ -278,6 +299,7 @@ describe('ChatHubWorkflowService', () => {
 					'project-789',
 					mockHistory,
 					'Hello',
+					[],
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
@@ -336,6 +358,7 @@ describe('ChatHubWorkflowService', () => {
 					'project-789',
 					mockHistory,
 					'Hello',
+					[],
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
@@ -418,6 +441,7 @@ describe('ChatHubWorkflowService', () => {
 					mockHistory,
 					'Hello',
 					[],
+					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
@@ -494,6 +518,7 @@ describe('ChatHubWorkflowService', () => {
 					mockHistory,
 					'Hello',
 					[],
+					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
@@ -551,6 +576,7 @@ describe('ChatHubWorkflowService', () => {
 					mockHistory,
 					'Hello',
 					[],
+					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
@@ -596,6 +622,7 @@ describe('ChatHubWorkflowService', () => {
 					'project-789',
 					mockHistory,
 					'Hello',
+					[],
 					[],
 					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4' },

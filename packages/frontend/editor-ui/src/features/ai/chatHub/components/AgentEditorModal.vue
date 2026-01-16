@@ -655,7 +655,7 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 									v-if="vectorStoreCredentialId"
 									type="tertiary"
 									icon="x"
-									size="small"
+									size="medium"
 									:title="'Clear credential'"
 									@click="onVectorStoreCredentialDeselected"
 								/>

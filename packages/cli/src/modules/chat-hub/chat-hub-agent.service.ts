@@ -3,6 +3,7 @@ import type {
 	ChatHubCreateAgentRequest,
 	ChatModelDto,
 } from '@n8n/api-types';
+import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -15,7 +16,11 @@ import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { getModelMetadata } from './chat-hub.constants';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import type { IBinaryData } from 'n8n-workflow';
+import {
+	VECTOR_STORE_PGVECTOR_NODE_TYPE,
+	type IBinaryData,
+	type INodeCredentials,
+} from 'n8n-workflow';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -191,7 +196,7 @@ export class ChatHubAgentService {
 
 		// Find vector store tool in tools array
 		const vectorStoreTool = agent.tools.find(
-			(tool) => tool.type === '@n8n/n8n-nodes-langchain.vectorStorePGVector',
+			(tool) => tool.type === VECTOR_STORE_PGVECTOR_NODE_TYPE,
 		);
 
 		if (!vectorStoreTool) {
@@ -199,6 +204,19 @@ export class ChatHubAgentService {
 				'To insert documents for RAG, vector store tool has to be configured',
 			);
 		}
+
+		if (!agent.credentialId) {
+			throw new BadRequestError(
+				'Agent must have credentials configured to insert documents for RAG',
+			);
+		}
+
+		const credentials: INodeCredentials = {
+			[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
+				id: agent.credentialId,
+				name: '',
+			},
+		};
 
 		const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
 			async (trx) => {
@@ -208,6 +226,8 @@ export class ChatHubAgentService {
 					project.id,
 					files,
 					vectorStoreTool,
+					agent.provider,
+					credentials,
 					trx,
 				);
 			},
