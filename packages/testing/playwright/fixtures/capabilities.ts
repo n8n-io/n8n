@@ -23,6 +23,13 @@ export type Capability = keyof typeof CAPABILITIES;
  */
 export const INFRASTRUCTURE_MODES = ['postgres', 'queue', 'multi-main'] as const;
 
+/**
+ * Tests requiring enterprise license features (`@licensed` tag).
+ * These tests only run in container mode where a license file is available.
+ * Use for tests that interact with enterprise-only API endpoints (log streaming, SSO, etc.)
+ */
+export const LICENSED_TAG = 'licensed';
+
 // Used by playwright-projects.ts to filter container-only tests in local mode
 export const CONTAINER_ONLY_CAPABILITIES = Object.keys(CAPABILITIES) as Capability[];
 export const CONTAINER_ONLY_MODES = INFRASTRUCTURE_MODES;
