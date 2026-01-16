@@ -3124,6 +3124,7 @@
 	"workflowActivator.thisWorkflowHasNoTriggerNodes": "This workflow has no trigger nodes that require activation",
 	"workflowActivator.thisWorkflowIsArchived": "This workflow is archived so it cannot be activated",
 	"workflowActivator.thisWorkflowHasOnlyOneExecuteWorkflowTriggerNode": "'Execute Workflow Trigger' doesn't require activation as it is triggered by another workflow",
+	"workflowActivator.conflictingWebhook.unknownWorkflow": "Unknown workflow (ID: {id})",
 	"workflowDetails.share": "Share",
 	"workflowDetails.addTag": "Add tag",
 	"workflowDetails.chooseOrCreateATag": "Choose or create a tag",

@@ -30,7 +30,7 @@ const webhookUrl = computed(() => {
 });
 
 const webhookTypeUi = computed((): { title: string; callout: string; suggestion: string } => {
-	const suggestionBase = 'and activate this one, or ';
+	const suggestionBase = ' and activate this one, or ';
 
 	if (data.triggerType === FORM_TRIGGER_NODE_TYPE)
 		return {
