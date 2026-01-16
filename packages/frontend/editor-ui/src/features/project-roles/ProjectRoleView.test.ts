@@ -341,6 +341,172 @@ describe('ProjectRoleView', () => {
 			await userEvent.click(checkbox);
 			expect(checkbox).not.toBeChecked();
 		});
+
+		describe('Credential scope dependencies', () => {
+			it('should automatically check credential:read when credential:use is checked', async () => {
+				const { getByTestId } = renderComponent();
+
+				await waitFor(() =>
+					expect(getByTestId('scope-checkbox-credential:use')).toBeInTheDocument(),
+				);
+
+				const useCheckbox = getByTestId('scope-checkbox-credential:use');
+				const readCheckbox = getByTestId('scope-checkbox-credential:read');
+
+				// credential:read is in defaultScopes, so it's checked by default
+				// Uncheck it first to test the dependency
+				await userEvent.click(readCheckbox);
+				await waitFor(() => {
+					expect(readCheckbox).not.toBeChecked();
+					expect(useCheckbox).not.toBeChecked();
+				});
+
+				// Check credential:use
+				await userEvent.click(useCheckbox);
+
+				// Both should now be checked
+				await waitFor(() => {
+					expect(useCheckbox).toBeChecked();
+					expect(readCheckbox).toBeChecked();
+				});
+			});
+
+			it('should automatically uncheck credential:use when credential:read is unchecked', async () => {
+				const { getByTestId } = renderComponent();
+
+				await waitFor(() =>
+					expect(getByTestId('scope-checkbox-credential:use')).toBeInTheDocument(),
+				);
+
+				const useCheckbox = getByTestId('scope-checkbox-credential:use');
+				const readCheckbox = getByTestId('scope-checkbox-credential:read');
+
+				// First check credential:use (which will also check credential:read)
+				await userEvent.click(useCheckbox);
+				await waitFor(() => {
+					expect(useCheckbox).toBeChecked();
+					expect(readCheckbox).toBeChecked();
+				});
+
+				// Uncheck credential:read
+				await userEvent.click(readCheckbox);
+
+				// Both should now be unchecked
+				await waitFor(() => {
+					expect(readCheckbox).not.toBeChecked();
+					expect(useCheckbox).not.toBeChecked();
+				});
+			});
+
+			it('should allow credential:read to be checked without credential:use', async () => {
+				const { getByTestId } = renderComponent();
+
+				await waitFor(() =>
+					expect(getByTestId('scope-checkbox-credential:read')).toBeInTheDocument(),
+				);
+
+				const useCheckbox = getByTestId('scope-checkbox-credential:use');
+				const readCheckbox = getByTestId('scope-checkbox-credential:read');
+
+				// credential:read is in defaultScopes, so it's already checked
+				// Uncheck both first, then check only credential:read
+				await userEvent.click(readCheckbox);
+				await waitFor(() => {
+					expect(readCheckbox).not.toBeChecked();
+					expect(useCheckbox).not.toBeChecked();
+				});
+
+				// Check credential:read only
+				await userEvent.click(readCheckbox);
+
+				// Only credential:read should be checked
+				await waitFor(() => {
+					expect(readCheckbox).toBeChecked();
+					expect(useCheckbox).not.toBeChecked();
+				});
+			});
+
+			it('should include credential:read in normalized scopes when creating role with credential:use', async () => {
+				const mockCreatedRole = { ...mockExistingRole, slug: 'new-role-slug' };
+				rolesStore.createProjectRole.mockResolvedValueOnce(mockCreatedRole);
+
+				const { getByTestId, getByText } = renderComponent();
+
+				await waitFor(() =>
+					expect(getByTestId('scope-checkbox-credential:use')).toBeInTheDocument(),
+				);
+
+				// Check credential:use (which should also check credential:read)
+				await userEvent.click(getByTestId('scope-checkbox-credential:use'));
+
+				await waitFor(() => {
+					expect(getByTestId('scope-checkbox-credential:use')).toBeChecked();
+					expect(getByTestId('scope-checkbox-credential:read')).toBeChecked();
+				});
+
+				await userEvent.click(getByText('Create', { selector: 'button' }));
+
+				await waitFor(() => {
+					expect(rolesStore.createProjectRole).toHaveBeenCalled();
+					const callArgs = rolesStore.createProjectRole.mock.calls[0][0];
+					expect(callArgs.scopes).toContain('credential:use');
+					expect(callArgs.scopes).toContain('credential:read');
+				});
+			});
+
+			it('should include credential:read in normalized scopes when updating role with credential:use', async () => {
+				const roleWithUse = {
+					...mockExistingRole,
+					scopes: ['workflow:read', 'credential:use', 'credential:read'],
+				};
+				rolesStore.fetchRoleBySlug.mockResolvedValueOnce(roleWithUse);
+				rolesStore.roles.project = [roleWithUse];
+				rolesStore.updateProjectRole.mockResolvedValueOnce(roleWithUse);
+
+				const { container, getByTestId, getByText } = renderComponent({
+					props: { roleSlug: 'test-role' },
+				});
+				await waitFor(() => expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled());
+				await waitForFormPopulation(container, 'Test Role');
+
+				// The role already has credential:use, so both should be checked
+				await waitFor(() => {
+					expect(getByTestId('scope-checkbox-credential:use')).toBeChecked();
+					expect(getByTestId('scope-checkbox-credential:read')).toBeChecked();
+				});
+
+				// Make a change to enable the save button
+				await fillForm(container, 'Updated Role');
+				await userEvent.click(getByText('Save', { selector: 'button' }));
+
+				await waitFor(() => {
+					expect(rolesStore.updateProjectRole).toHaveBeenCalled();
+					const callArgs = rolesStore.updateProjectRole.mock.calls[0][1];
+					expect(callArgs.scopes).toContain('credential:use');
+					expect(callArgs.scopes).toContain('credential:read');
+				});
+			});
+
+			it('should handle role loaded with credential:use but without credential:read', async () => {
+				const roleWithUseOnly = {
+					...mockExistingRole,
+					scopes: ['workflow:read', 'credential:use'], // Missing credential:read
+				};
+				rolesStore.fetchRoleBySlug.mockResolvedValueOnce(roleWithUseOnly);
+				rolesStore.roles.project = [roleWithUseOnly];
+
+				const { getByTestId } = renderComponent({ props: { roleSlug: 'test-role' } });
+				await waitFor(() => expect(rolesStore.fetchRoleBySlug).toHaveBeenCalled());
+
+				// Both checkboxes should appear checked due to normalization
+				await waitFor(() => {
+					const useCheckbox = getByTestId('scope-checkbox-credential:use');
+					const readCheckbox = getByTestId('scope-checkbox-credential:read');
+					expect(useCheckbox).toBeChecked();
+					expect(readCheckbox).toBeChecked();
+				});
+			});
+		});
 	});
 
 	describe('Form Validation', () => {
@@ -411,7 +577,8 @@ describe('ProjectRoleView', () => {
 					expect(rolesStore.updateProjectRole).toHaveBeenCalledWith('test-role', {
 						displayName: 'Updated Role',
 						description: 'A test role for testing',
-						scopes: ['workflow:read', 'workflow:create', 'credential:read'],
+						// normalizedScopes ensures credential:read is included when credential:use is present
+						scopes: expect.arrayContaining(['workflow:read', 'workflow:create', 'credential:read']),
 					});
 				});
 			});

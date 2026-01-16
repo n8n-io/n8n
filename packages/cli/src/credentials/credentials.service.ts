@@ -394,7 +394,7 @@ export class CredentialsService {
 
 	async findAllCredentialIdsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
 		// If the workflow is owned by a personal project and the owner of the
-		// project has global read permissions it can use all personal credentials.
+		// project has global use permissions it can use all personal credentials.
 		const user = await this.userRepository.findPersonalOwnerForWorkflow(workflowId);
 		if (user && hasGlobalScope(user, 'credential:use')) {
 			return await this.credentialsRepository.findAllPersonalCredentials();
