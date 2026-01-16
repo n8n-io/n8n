@@ -81,7 +81,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
-import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
+import { GRID_SIZE, PUSH_NODES_OFFSET, DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -5255,6 +5255,67 @@ describe('useCanvasOperations', () => {
 
 			expect(nodesToMove).toHaveLength(2);
 			expect(nodesToMove.find((n) => n.name === 'Start')).toBeUndefined();
+		});
+
+		it('should detect overlap and shift node when a node is directly above the insertion position (edge-to-edge)', () => {
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [1600, 736] });
+			const insertX = sourceNode.position[0] + PUSH_NODES_OFFSET;
+			const nodeAbove = createTestNode({
+				id: 'above',
+				name: 'Node Above',
+				// Place nodeAbove such that its bottom edge (640+96=736) meets the intended insert position Y=736
+				position: [insertX, 640],
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, nodeAbove],
+							connections: {},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+
+			const insertPosition: [number, number] = [insertX, sourceNode.position[1]];
+
+			const { nodesToMove } = getNodesToShift(insertPosition, 'Source');
+
+			expect(nodesToMove.find((n) => n.id === 'above')).toBeDefined();
+		});
+
+		it('should not shift any nodes when there is enough space for insertion', () => {
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [1600, 736] });
+			const nodeFarAway = createTestNode({
+				id: 'far',
+				name: 'Node Far Away',
+				position: [2000, 1000],
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, nodeFarAway],
+							connections: {},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+
+			const insertX = sourceNode.position[0] + PUSH_NODES_OFFSET;
+			const insertPosition: [number, number] = [insertX, sourceNode.position[1]];
+
+			const { nodesToMove } = getNodesToShift(insertPosition, 'Source');
+
+			expect(nodesToMove).toHaveLength(0);
 		});
 	});
 });

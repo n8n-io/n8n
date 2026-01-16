@@ -1407,9 +1407,9 @@ export function useCanvasOperations() {
 		const margin = GRID_SIZE;
 		const insertRect = {
 			x: insertPosition[0],
-			y: insertPosition[1],
+			y: insertPosition[1] - margin,
 			width: nodeSize[0] + margin,
-			height: nodeSize[1],
+			height: nodeSize[1] + 2 * margin,
 		};
 
 		for (const node of nodesToCheck) {
@@ -1540,9 +1540,9 @@ export function useCanvasOperations() {
 		const margin = GRID_SIZE;
 		const insertRect = {
 			x: insertPosition[0],
-			y: insertPosition[1],
+			y: insertPosition[1] - margin,
 			width: nodeSize[0] + margin,
-			height: nodeSize[1],
+			height: nodeSize[1] + 2 * margin,
 		};
 
 		// First check if there are any regular nodes blocking the insertion position
@@ -1627,7 +1627,6 @@ export function useCanvasOperations() {
 		const nodesToCheck = Object.values(workflowsStore.nodesByName).filter(
 			(n) => n.name !== sourceNodeName && n.type !== STICKY_NODE_TYPE,
 		);
-
 		// Check if there's enough space - if so, don't move anything
 		if (hasSpaceForInsertion(insertPosition, nodeSize, nodesToCheck)) {
 			return;
