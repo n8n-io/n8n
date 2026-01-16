@@ -22,7 +22,6 @@ describe('NodeExecutionContext', () => {
 	const instanceSettings = mock<InstanceSettings>({
 		instanceId: 'abc123',
 		encryptionKey: 'testEncryptionKey',
-		hmacSignatureSecret: 'testHmacSignatureSecret',
 	});
 	Container.set(InstanceSettings, instanceSettings);
 
@@ -440,26 +439,38 @@ describe('NodeExecutionContext', () => {
 				}),
 				mode,
 				createRunExecutionData({
-					validateSignature: true,
 					resultData: { runData: {} },
 				}),
 			);
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		});
-		it('should return a signed resume URL with no query parameters', () => {
+		it('should return a resume URL with a generated waitingToken', () => {
 			const result = testContext.getSignedResumeUrl();
 
-			expect(result).toBe(
-				'http://localhost/waiting-webhook/123/node456?signature=8e48dfd1107c1a736f70e7399493ffc50a2e8edd44f389c5f9c058da961682e7',
+			// URL should contain base path and a signature (64-char hex token)
+			expect(result).toMatch(
+				/^http:\/\/localhost\/waiting-webhook\/123\/node456\?signature=[a-f0-9]{64}$/,
 			);
 		});
 
-		it('should return a signed resume URL with query parameters', () => {
+		it('should return a resume URL with query parameters and waitingToken', () => {
 			const result = testContext.getSignedResumeUrl({ approved: 'true' });
 
-			expect(result).toBe(
-				'http://localhost/waiting-webhook/123/node456?approved=true&signature=11c5efc97a0d6f2ea9045dba6e397596cba29dc24adb44a9ebd3d1272c991e9b',
+			// URL should contain base path, approved param, and a signature (64-char hex token)
+			expect(result).toMatch(
+				/^http:\/\/localhost\/waiting-webhook\/123\/node456\?approved=true&signature=[a-f0-9]{64}$/,
 			);
+		});
+
+		it('should reuse the same waitingToken for subsequent calls', () => {
+			const result1 = testContext.getSignedResumeUrl();
+			const result2 = testContext.getSignedResumeUrl({ approved: 'true' });
+
+			// Extract tokens from both URLs
+			const token1 = new URL(result1).searchParams.get('signature');
+			const token2 = new URL(result2).searchParams.get('signature');
+
+			expect(token1).toBe(token2);
 		});
 	});
 

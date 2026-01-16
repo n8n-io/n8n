@@ -6,9 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 
-import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
-import type { InstanceSettings } from '@/instance-settings/instance-settings';
-import { signUrl } from '@/utils/signature-helpers';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 
 import {
 	setWorkflowExecutionMetadata,
@@ -23,17 +21,17 @@ export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	runExecutionData: IRunExecutionData | null,
-	options?: { secretsEnabled?: boolean; instanceSettings?: InstanceSettings },
+	options?: { secretsEnabled?: boolean },
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
 
-	// Sign resumeUrl and resumeFormUrl if instanceSettings available
+	// Add waitingToken to resumeUrl and resumeFormUrl if available
 	let resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
 	let resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
-	if (options?.instanceSettings?.hmacSignatureSecret) {
-		const secret = options.instanceSettings.hmacSignatureSecret;
-		resumeUrl = signUrl(resumeUrl, secret);
-		resumeFormUrl = signUrl(resumeFormUrl, secret);
+	if (runExecutionData?.waitingToken) {
+		const token = runExecutionData.waitingToken;
+		resumeUrl = `${resumeUrl}?${WAITING_TOKEN_QUERY_PARAM}=${token}`;
+		resumeFormUrl = `${resumeFormUrl}?${WAITING_TOKEN_QUERY_PARAM}=${token}`;
 	}
 	return {
 		$execution: {

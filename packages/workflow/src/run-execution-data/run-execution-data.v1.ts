@@ -44,10 +44,10 @@ export interface IRunExecutionDataV1 {
 	};
 	parentExecution?: RelatedExecution;
 	/**
-	 * This is used to prevent breaking change
-	 * for waiting executions started before signature validation was added
+	 * Random token used to validate waiting webhook requests.
+	 * Stored when the waiting URL is generated, validated when the webhook is called.
 	 */
-	validateSignature?: boolean;
+	waitingToken?: string;
 	waitTill?: Date;
 	pushRef?: string;
 

@@ -93,7 +93,7 @@ describe('getAdditionalKeys', () => {
 		}).toThrow();
 	});
 
-	it('should correctly set resume URLs without instanceSettings', () => {
+	it('should correctly set resume URLs without waitingToken', () => {
 		const result = getAdditionalKeys(additionalData, 'manual', null);
 
 		expect(result.$execution?.resumeUrl).toBe('https://webhook.test/123');
@@ -101,22 +101,28 @@ describe('getAdditionalKeys', () => {
 		expect(result.$resumeWebhookUrl).toBe('https://webhook.test/123'); // Test deprecated property
 	});
 
-	it('should sign resume URLs when instanceSettings with hmacSignatureSecret is provided', () => {
-		const mockInstanceSettings = {
-			hmacSignatureSecret: 'test-secret-key-12345',
-		};
-
-		const result = getAdditionalKeys(additionalData, 'manual', null, {
-			instanceSettings: mockInstanceSettings as never,
+	it('should add waitingToken to resume URLs when runExecutionData has waitingToken', () => {
+		const runDataWithToken = mock<IRunExecutionData>({
+			resultData: {
+				runData: {},
+				metadata: {},
+			},
+			waitingToken: 'test-waiting-token-12345',
 		});
 
-		// URLs should contain signature parameter
-		expect(result.$execution?.resumeUrl).toContain('https://webhook.test/123?');
-		expect(result.$execution?.resumeUrl).toContain('signature=');
-		expect(result.$execution?.resumeFormUrl).toContain('https://form.test/123?');
-		expect(result.$execution?.resumeFormUrl).toContain('signature=');
-		// Deprecated property should also be signed
-		expect(result.$resumeWebhookUrl).toContain('signature=');
+		const result = getAdditionalKeys(additionalData, 'manual', runDataWithToken);
+
+		// URLs should contain signature parameter with the waitingToken
+		expect(result.$execution?.resumeUrl).toBe(
+			'https://webhook.test/123?signature=test-waiting-token-12345',
+		);
+		expect(result.$execution?.resumeFormUrl).toBe(
+			'https://form.test/123?signature=test-waiting-token-12345',
+		);
+		// Deprecated property should also have the token
+		expect(result.$resumeWebhookUrl).toBe(
+			'https://webhook.test/123?signature=test-waiting-token-12345',
+		);
 	});
 
 	it('should return test mode when manual', () => {

@@ -105,9 +105,13 @@ async function getFormUrlFromSlack(proxyServer: ProxyServer) {
 }
 
 async function clickApprovalLink(page: Page, url: string) {
+	console.log('Clicking approval URL:', url);
 	const response = await page.request.get(url, {
 		headers: { 'User-Agent': NOT_A_BOT_USER_AGENT },
 	});
+	console.log('Response status:', response.status());
+	const body = await response.text();
+	console.log('Response body preview:', body.substring(0, 500));
 	expect(response.ok()).toBe(true);
 }
 

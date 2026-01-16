@@ -40,7 +40,7 @@ export interface CreateFullRunExecutionDataOptions {
 		runtimeData?: IExecutionContext;
 	} | null;
 	parentExecution?: RelatedExecution;
-	validateSignature?: boolean;
+	waitingToken?: string;
 	waitTill?: Date;
 	manualData?: IRunExecutionData['manualData'];
 	pushRef?: IRunExecutionData['pushRef'];
@@ -78,7 +78,7 @@ export function createRunExecutionData(
 						runtimeData: options.executionData?.runtimeData,
 					},
 		parentExecution: options.parentExecution,
-		validateSignature: options.validateSignature,
+		waitingToken: options.waitingToken,
 		waitTill: options.waitTill,
 		manualData: options.manualData,
 		pushRef: options.pushRef,

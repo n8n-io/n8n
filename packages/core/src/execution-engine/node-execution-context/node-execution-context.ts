@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { randomBytes } from 'crypto';
 import get from 'lodash/get';
 import type {
 	FunctionsBase,
@@ -47,7 +48,6 @@ import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
-import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -239,8 +239,12 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.instanceSettings.instanceId;
 	}
 
+	/**
+	 * @deprecated This method is now a no-op. Token validation is handled automatically
+	 * via waitingToken when getSignedResumeUrl() is called.
+	 */
 	setSignatureValidationRequired() {
-		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
+		// No-op: waitingToken is now set in getSignedResumeUrl() and validated in waiting-webhooks.ts
 	}
 
 	getSignedResumeUrl(parameters: Record<string, string> = {}) {
@@ -250,17 +254,20 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			throw new UnexpectedError('Execution id is missing');
 		}
 
+		// Generate a random token on first call, reuse for subsequent calls within the same execution
+		if (this.runExecutionData && !this.runExecutionData.waitingToken) {
+			this.runExecutionData.waitingToken = randomBytes(32).toString('hex');
+		}
+
 		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
 
 		for (const [key, value] of Object.entries(parameters)) {
 			baseURL.searchParams.set(key, value);
 		}
 
-		const urlForSigning = prepareUrlForSigning(baseURL);
-
-		const token = generateUrlSignature(urlForSigning, this.instanceSettings.hmacSignatureSecret);
-
-		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+		if (this.runExecutionData?.waitingToken) {
+			baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, this.runExecutionData.waitingToken);
+		}
 
 		return baseURL.toString();
 	}
@@ -409,9 +416,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	@Memoized
 	protected get additionalKeys() {
-		return getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData, {
-			instanceSettings: this.instanceSettings,
-		});
+		return getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData);
 	}
 
 	/** Returns the requested resolved (all expressions replaced) node parameters. */

@@ -2,7 +2,7 @@ import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { generateUrlSignature, prepareUrlForSigning, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type { IWorkflowBase, Workflow } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
@@ -15,14 +15,15 @@ class TestWaitingWebhooks extends WaitingWebhooks {
 	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {
 		return this.createWorkflow(workflowData);
 	}
+
+	exposeValidateToken(req: express.Request, execution: IExecutionResponse): boolean {
+		return this.validateToken(req, execution);
+	}
 }
 
 describe('WaitingWebhooks', () => {
-	const SIGNING_SECRET = 'test-secret';
 	const executionRepository = mock<ExecutionRepository>();
-	const mockInstanceSettings = mock<InstanceSettings>({
-		hmacSignatureSecret: SIGNING_SECRET,
-	});
+	const mockInstanceSettings = mock<InstanceSettings>();
 	const waitingWebhooks = new TestWaitingWebhooks(
 		mock(),
 		mock(),
@@ -99,153 +100,100 @@ describe('WaitingWebhooks', () => {
 		await expect(promise).rejects.toThrowError(ConflictError);
 	});
 
-	describe('validateSignatureInRequest', () => {
+	describe('validateToken', () => {
 		const EXAMPLE_HOST = 'example.com';
-		const generateValidSignature = (host = EXAMPLE_HOST) =>
-			generateUrlSignature(
-				prepareUrlForSigning(new URL('/webhook/test', `http://${host}`)),
-				SIGNING_SECRET,
-			);
+		const VALID_TOKEN = 'a'.repeat(64); // 32 bytes hex = 64 chars
 
-		const createMockRequest = (opts: { host?: string; signature: string }) =>
+		const createMockRequest = (opts: { host?: string; token?: string }) =>
 			mock<express.Request>({
-				url: `/webhook/test?${WAITING_TOKEN_QUERY_PARAM}=` + opts.signature,
-				host: opts.host ?? EXAMPLE_HOST,
-				query: { [WAITING_TOKEN_QUERY_PARAM]: opts.signature },
+				url: `/webhook/test${opts.token ? `?${WAITING_TOKEN_QUERY_PARAM}=${opts.token}` : ''}`,
 				headers: { host: opts.host ?? EXAMPLE_HOST },
 			});
 
-		it('should validate signature correctly', () => {
+		const createMockExecution = (token?: string) =>
+			mock<IExecutionResponse>({
+				data: { waitingToken: token },
+			});
+
+		it('should validate token correctly when tokens match', () => {
 			/* Arrange */
-			const signature = generateValidSignature();
-			const mockReq = createMockRequest({ signature });
+			const mockReq = createMockRequest({ token: VALID_TOKEN });
+			const mockExecution = createMockExecution(VALID_TOKEN);
 
 			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
 
 			/* Assert */
 			expect(result).toBe(true);
 		});
 
-		it('should validate signature correctly when host contains a port', () => {
+		it('should return false when provided token is missing', () => {
 			/* Arrange */
-			const signature = generateValidSignature('example.com:8080');
-			const mockReq = createMockRequest({
-				signature,
-				host: 'example.com:8080',
-			});
+			const mockReq = createMockRequest({});
+			const mockExecution = createMockExecution(VALID_TOKEN);
 
 			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
+			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
+
+			/* Assert */
+			expect(result).toBe(false);
+		});
+
+		it('should return false when stored token is missing', () => {
+			/* Arrange */
+			const mockReq = createMockRequest({ token: VALID_TOKEN });
+			const mockExecution = createMockExecution(undefined);
+
+			/* Act */
+			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
+
+			/* Assert */
+			expect(result).toBe(false);
+		});
+
+		it('should return false when tokens do not match', () => {
+			/* Arrange */
+			const wrongToken = 'b'.repeat(64);
+			const mockReq = createMockRequest({ token: wrongToken });
+			const mockExecution = createMockExecution(VALID_TOKEN);
+
+			/* Act */
+			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
+
+			/* Assert */
+			expect(result).toBe(false);
+		});
+
+		it('should return false when token lengths differ', () => {
+			/* Arrange */
+			const shortToken = 'abc123';
+			const mockReq = createMockRequest({ token: shortToken });
+			const mockExecution = createMockExecution(VALID_TOKEN);
+
+			/* Act */
+			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
+
+			/* Assert */
+			expect(result).toBe(false);
+		});
+
+		it('should work regardless of host or URL path', () => {
+			/* Arrange - different hosts and paths should not affect validation */
+			const mockReq = createMockRequest({ host: 'different.host.com:8080', token: VALID_TOKEN });
+			const mockExecution = createMockExecution(VALID_TOKEN);
+
+			/* Act */
+			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
 
 			/* Assert */
 			expect(result).toBe(true);
-		});
-
-		it('should validate signature correctly when n8n is behind a reverse proxy', () => {
-			/* Arrange */
-			const signature = generateValidSignature('proxy.example.com');
-			const mockReq = mock<express.Request>({
-				url: `/webhook/test?${WAITING_TOKEN_QUERY_PARAM}=` + signature,
-				host: 'proxy.example.com',
-				query: { [WAITING_TOKEN_QUERY_PARAM]: signature },
-				headers: {
-					host: 'localhost',
-					// eslint-disable-next-line @typescript-eslint/naming-convention
-					'x-forwarded-host': 'proxy.example.com',
-				},
-			});
-
-			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
-
-			/* Assert */
-			expect(result).toBe(true);
-		});
-
-		it('should return false when signature is missing', () => {
-			/* Arrange */
-			const mockReq = mock<express.Request>({
-				url: '/webhook/test',
-				host: EXAMPLE_HOST,
-				query: {},
-			});
-
-			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
-
-			/* Assert */
-			expect(result).toBe(false);
-		});
-
-		it('should return false when signature is empty', () => {
-			/* Arrange */
-			const mockReq = mock<express.Request>({
-				url: `/webhook/test?${WAITING_TOKEN_QUERY_PARAM}=`,
-				host: EXAMPLE_HOST,
-				query: { [WAITING_TOKEN_QUERY_PARAM]: '' },
-			});
-
-			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
-
-			/* Assert */
-			expect(result).toBe(false);
-		});
-
-		it('should return false when signatures do not match', () => {
-			/* Arrange */
-			const wrongSignature = 'wrong-signature';
-			const mockReq = createMockRequest({ signature: wrongSignature });
-
-			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
-
-			/* Assert */
-			expect(result).toBe(false);
-		});
-
-		it('should validate signature correctly when webhookSuffix is present', () => {
-			/* Arrange */
-			// Signature is generated for base URL without suffix
-			const signature = generateValidSignature();
-			// But the request URL includes the suffix
-			const mockReq = mock<express.Request>({
-				url: `/webhook/test/my-custom-suffix?${WAITING_TOKEN_QUERY_PARAM}=` + signature,
-				host: EXAMPLE_HOST,
-				query: { [WAITING_TOKEN_QUERY_PARAM]: signature },
-				headers: { host: EXAMPLE_HOST },
-			});
-
-			/* Act */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq, 'my-custom-suffix');
-
-			/* Assert */
-			expect(result).toBe(true);
-		});
-
-		it('should fail validation when suffix is not stripped', () => {
-			/* Arrange */
-			// Signature is generated for base URL without suffix
-			const signature = generateValidSignature();
-			// Request URL includes the suffix, but we don't pass suffix parameter
-			const mockReq = mock<express.Request>({
-				url: `/webhook/test/my-custom-suffix?${WAITING_TOKEN_QUERY_PARAM}=` + signature,
-				host: EXAMPLE_HOST,
-				query: { [WAITING_TOKEN_QUERY_PARAM]: signature },
-				headers: { host: EXAMPLE_HOST },
-			});
-
-			/* Act - not passing suffix parameter */
-			const result = waitingWebhooks.validateSignatureInRequest(mockReq);
-
-			/* Assert - should fail because suffix is not stripped */
-			expect(result).toBe(false);
 		});
 	});
 
-	describe('executeWebhook - signature validation', () => {
-		it('should return 401 with HTML for send-and-wait requests with invalid signature', async () => {
+	describe('executeWebhook - token validation', () => {
+		const STORED_TOKEN = 'a'.repeat(64);
+
+		it('should return 401 with HTML for send-and-wait requests with invalid token', async () => {
 			/* Arrange */
 			const nodeId = 'send-and-wait-node-id';
 			const execution = mock<IExecutionResponse>({
@@ -257,7 +205,7 @@ describe('WaitingWebhooks', () => {
 						runData: {},
 						error: undefined,
 					},
-					validateSignature: true,
+					waitingToken: STORED_TOKEN,
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -288,12 +236,12 @@ describe('WaitingWebhooks', () => {
 				render: mockRender,
 				json: mockJson,
 			});
+			// Request has wrong token
 			const req = mock<WaitingWebhookRequest>({
 				params: { path: 'execution-id', suffix: nodeId },
 				method: 'GET',
-				url: '/webhook/execution-id/' + nodeId,
-				host: 'example.com',
-				query: {},
+				url: `/webhook/execution-id/${nodeId}?${WAITING_TOKEN_QUERY_PARAM}=wrong-token`,
+				headers: { host: 'example.com' },
 			});
 
 			/* Act */
@@ -306,7 +254,7 @@ describe('WaitingWebhooks', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('should return 401 with JSON for non-send-and-wait requests with invalid signature', async () => {
+		it('should return 401 with JSON for non-send-and-wait requests with invalid token', async () => {
 			/* Arrange */
 			const execution = mock<IExecutionResponse>({
 				finished: false,
@@ -317,7 +265,7 @@ describe('WaitingWebhooks', () => {
 						runData: {},
 						error: undefined,
 					},
-					validateSignature: true,
+					waitingToken: STORED_TOKEN,
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -348,12 +296,12 @@ describe('WaitingWebhooks', () => {
 				render: mockRender,
 				json: mockJson,
 			});
+			// Request has wrong token
 			const req = mock<WaitingWebhookRequest>({
 				params: { path: 'execution-id', suffix: 'wait-node-id' },
 				method: 'GET',
-				url: '/webhook/execution-id/wait-node-id',
-				host: 'example.com',
-				query: {},
+				url: `/webhook/execution-id/wait-node-id?${WAITING_TOKEN_QUERY_PARAM}=wrong-token`,
+				headers: { host: 'example.com' },
 			});
 
 			/* Act */

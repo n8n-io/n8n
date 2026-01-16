@@ -19,7 +19,7 @@ describe('RunExecutionDataFactory', () => {
 				manualData: undefined,
 				parentExecution: undefined,
 				pushRef: undefined,
-				validateSignature: undefined,
+				waitingToken: undefined,
 				waitTill: undefined,
 				resultData: {
 					error: undefined,
@@ -61,7 +61,7 @@ describe('RunExecutionDataFactory', () => {
 					executionId: 'parent-123',
 					workflowId: 'workflow-456',
 				},
-				validateSignature: true,
+				waitingToken: 'test-token-123',
 				waitTill: new Date('2023-01-01'),
 			} satisfies CreateFullRunExecutionDataOptions;
 
@@ -75,7 +75,7 @@ describe('RunExecutionDataFactory', () => {
 			);
 			expect(result.executionData?.runtimeData).toEqual(options.executionData.runtimeData);
 			expect(result.parentExecution).toEqual(options.parentExecution);
-			expect(result.validateSignature).toBe(true);
+			expect(result.waitingToken).toBe('test-token-123');
 			expect(result.waitTill).toEqual(options.waitTill);
 		});
 

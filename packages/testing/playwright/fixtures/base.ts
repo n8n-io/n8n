@@ -65,9 +65,13 @@ export const test = base.extend<
 					? CAPABILITIES[capability]
 					: capability;
 
+			// Merge services arrays instead of replacing, so capabilities add to base services
+			const mergedServices = [...(base.services ?? []), ...(override.services ?? [])];
+
 			const config: N8NConfig = {
 				...base,
 				...override,
+				services: mergedServices.length > 0 ? mergedServices : undefined,
 				env: { ...base.env, ...override.env, E2E_TESTS: 'true', N8N_RESTRICT_FILE_ACCESS_TO: '' },
 			};
 

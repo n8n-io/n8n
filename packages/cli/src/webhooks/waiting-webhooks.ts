@@ -1,9 +1,10 @@
+import { timingSafeEqual } from 'crypto';
 import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
-import { InstanceSettings, validateUrlSignature } from 'n8n-core';
+import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import { type INodes, type IWorkflowBase, SEND_AND_WAIT_OPERATION, Workflow } from 'n8n-workflow';
 
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
@@ -80,17 +81,25 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 	}
 
-	validateSignatureInRequest(req: express.Request, suffix?: string) {
-		// req.host is set correctly even when n8n is behind a reverse proxy
-		// as long as N8N_PROXY_HOPS is set correctly
-		const parsedUrl = new URL(req.url, `http://${req.host}`);
+	/**
+	 * Validates the token in the request against the stored token in execution data.
+	 * Uses timing-safe comparison to prevent timing attacks.
+	 */
+	protected validateToken(req: express.Request, execution: IExecutionResponse): boolean {
+		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+		const providedToken = url.searchParams.get(WAITING_TOKEN_QUERY_PARAM);
+		const storedToken = execution.data.waitingToken;
 
-		// Strip the suffix - signature is for base URL (without webhookSuffix)
-		if (suffix) {
-			parsedUrl.pathname = parsedUrl.pathname.replace(`/${suffix}`, '');
+		if (!providedToken || !storedToken) {
+			return false;
 		}
 
-		return validateUrlSignature(parsedUrl, req.host, this.instanceSettings.hmacSignatureSecret);
+		// Use timing-safe comparison to prevent timing attacks
+		if (providedToken.length !== storedToken.length) {
+			return false;
+		}
+
+		return timingSafeEqual(Buffer.from(providedToken), Buffer.from(storedToken));
 	}
 
 	async executeWebhook(
@@ -108,8 +117,8 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const execution = await this.getExecution(executionId);
 
-		if (execution?.data.validateSignature) {
-			if (!this.validateSignatureInRequest(req, suffix)) {
+		if (execution?.data.waitingToken) {
+			if (!this.validateToken(req, execution)) {
 				const { workflowData } = execution;
 				const { nodes } = this.createWorkflow(workflowData);
 				if (this.isSendAndWaitRequest(nodes, suffix)) {
