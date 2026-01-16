@@ -542,9 +542,20 @@ const successNotificationMessage = () => {
 		messages.push(i18n.baseText('generic.projects'));
 	}
 
+	const totalCount =
+		selectedWorkflows.size +
+		selectedCredentials.size +
+		changes.value.variables.length +
+		selectedDataTables.size +
+		changes.value.folders.length +
+		changes.value.tags.length +
+		changes.value.projects.length;
+
 	return [
 		concatenateWithAnd(messages),
-		i18n.baseText('settings.sourceControl.modals.push.success.description'),
+		i18n.baseText('settings.sourceControl.modals.push.success.description', {
+			adjustToNumber: totalCount,
+		}),
 	].join(' ');
 };
 
@@ -676,7 +687,7 @@ const activeEntityLocale = computed(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.credential) {
 		return 'generic.credentials';
 	}
-	return 'generic.datatables';
+	return 'generic.datatable';
 });
 
 const activeSelection = computed(() => {
@@ -723,7 +734,7 @@ const filtersNoResultText = computed(() => {
 		return i18n.baseText('credentials.noResults');
 	}
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
-		return i18n.baseText('datatables.noResults');
+		return i18n.baseText('dataTables.noResults');
 	}
 	return i18n.baseText('workflows.noResults');
 });

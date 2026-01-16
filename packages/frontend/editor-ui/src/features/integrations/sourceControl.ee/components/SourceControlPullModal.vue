@@ -180,7 +180,7 @@ const filtersNoResultText = computed(() => {
 		return i18n.baseText('credentials.noResults');
 	}
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.datatable) {
-		return i18n.baseText('datatables.noResults');
+		return i18n.baseText('dataTables.noResults');
 	}
 	return i18n.baseText('workflows.noResults');
 });

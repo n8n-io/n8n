@@ -146,9 +146,20 @@ const pullMessage = ({
 		messages.push(i18n.baseText('generic.projects'));
 	}
 
+	const totalCount =
+		(workflow?.length ?? 0) +
+		(credential?.length ?? 0) +
+		(variables?.length ?? 0) +
+		(datatable?.length ?? 0) +
+		(tags?.length ?? 0) +
+		(folders?.length ?? 0) +
+		(project?.length ?? 0);
+
 	return [
 		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
-		'were pulled',
+		i18n.baseText('settings.sourceControl.pull.success.description', {
+			adjustToNumber: totalCount,
+		}),
 	].join(' ');
 };
 

@@ -32,6 +32,7 @@ registerAgGridModulesOnce();
 type Props = {
 	dataTable: DataTable;
 	search?: string;
+	readOnly?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -47,11 +48,16 @@ const { debounce } = useDebounce();
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
+const defaultColDef = computed(() => ({
+	...GRID_FILTER_CONFIG.defaultColDef,
+	editable: !props.readOnly,
+}));
+
 const agGrid = useAgGrid<DataTableRow>({
 	gridContainerRef,
 	defaultSortColumn: DEFAULT_ID_COLUMN_NAME,
 	pinnedBottomRowId: ADD_ROW_ROW_ID,
-	defaultColDef: GRID_FILTER_CONFIG.defaultColDef,
+	defaultColDef: defaultColDef.value,
 });
 
 const dataTableColumns = useDataTableColumns({
@@ -60,6 +66,7 @@ const dataTableColumns = useDataTableColumns({
 	onAddRowClick: onAddRowClickFunction,
 	onAddColumn: onAddColumnFunction,
 	isTextEditorOpen: agGrid.isTextEditorOpen,
+	readOnly: computed(() => props.readOnly ?? false),
 });
 
 const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({
@@ -180,7 +187,7 @@ defineExpose({
 				:theme="n8nTheme"
 				:suppress-drag-leave-hides-columns="true"
 				:loading="dataTableOperations.contentLoading.value"
-				:row-selection="selection.rowSelection"
+				:row-selection="props.readOnly ? undefined : selection.rowSelection"
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
