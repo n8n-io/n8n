@@ -39,9 +39,11 @@ import type {
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
 import { useThrottleFn } from '@vueuse/core';
-import { ElCheckbox, ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
+import { ElOption, ElSelect, ElSkeletonItem } from 'element-plus';
 import get from 'lodash/get';
 import { computed, h, ref, shallowRef, useSlots, watch } from 'vue';
+
+import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
 
 import N8nPagination from '../N8nPagination';
 
@@ -261,30 +263,20 @@ const selectColumn: ColumnDef<T> = {
 	size: 38,
 	enablePinning: true,
 	header: ({ table }) => {
-		const checkboxRef = ref<typeof ElCheckbox>();
-		return h(ElCheckbox, {
-			ref: checkboxRef,
+		return h(N8nCheckbox, {
 			modelValue: table.getIsAllRowsSelected(),
 			indeterminate: table.getIsSomeRowsSelected(),
-			onChange: () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const input = checkboxRef.value?.$el.getElementsByTagName('input')[0];
-				if (!input) return;
-				table.getToggleAllRowsSelectedHandler()?.({ target: input });
+			'onUpdate:modelValue': (value: boolean) => {
+				table.toggleAllRowsSelected(value);
 			},
 		});
 	},
 	cell: ({ row }) => {
-		const checkboxRef = ref<typeof ElCheckbox>();
-		return h(ElCheckbox, {
-			ref: checkboxRef,
+		return h(N8nCheckbox, {
 			modelValue: row.getIsSelected(),
 			disabled: !row.getCanSelect(),
-			onChange: () => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				const input = checkboxRef.value?.$el.getElementsByTagName('input')[0];
-				if (!input) return;
-				row.getToggleSelectedHandler()?.({ target: input });
+			'onUpdate:modelValue': (value: boolean) => {
+				row.toggleSelected(value);
 			},
 		});
 	},
