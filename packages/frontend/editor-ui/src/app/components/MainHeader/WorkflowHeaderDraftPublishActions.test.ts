@@ -511,4 +511,71 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
 		});
 	});
+
+	describe('Publish dropdown menu', () => {
+		it('should render dropdown button next to publish button', () => {
+			setupEnabledPublishButton();
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-publish-dropdown-button')).toBeInTheDocument();
+		});
+
+		it('should not render dropdown button when read-only', () => {
+			setupEnabledPublishButton();
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					readOnly: true,
+				},
+			});
+
+			// In read-only mode, the entire publish button wrapper is hidden
+			expect(queryByTestId('workflow-publish-dropdown-button')).not.toBeInTheDocument();
+		});
+
+		it('should not render dropdown button when workflow is archived', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					isArchived: true,
+				},
+			});
+
+			expect(queryByTestId('workflow-publish-dropdown-button')).not.toBeInTheDocument();
+		});
+
+		it('should not render dropdown button when user lacks both update and publish permissions', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: false,
+						publish: false,
+					},
+				},
+			});
+
+			expect(queryByTestId('workflow-publish-dropdown-button')).not.toBeInTheDocument();
+		});
+
+		it('should render dropdown button when user has update permission but not publish', () => {
+			setupEnabledPublishButton();
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: true,
+						publish: false,
+					},
+				},
+			});
+
+			expect(getByTestId('workflow-publish-dropdown-button')).toBeInTheDocument();
+		});
+	});
 });
