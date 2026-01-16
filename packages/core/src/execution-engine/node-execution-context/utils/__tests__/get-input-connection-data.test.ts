@@ -15,13 +15,20 @@ import type {
 	IRunData,
 	ITaskData,
 	EngineRequest,
+	WorkflowExecuteMode,
+	CloseFunction,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { ExecuteContext } from '../../execute-context';
+import { SupplyDataContext } from '../../supply-data-context';
 import { StructuredToolkit } from '../ai-tool-types';
-import { createHitlToolkit, makeHandleToolInvocation } from '../get-input-connection-data';
+import {
+	createHitlToolkit,
+	createHitlToolSupplyData,
+	makeHandleToolInvocation,
+} from '../get-input-connection-data';
 
 // Mock getSchema
 jest.mock('../create-node-as-tool', () => ({
@@ -1455,5 +1462,83 @@ describe('createHitlToolkit', () => {
 		// The wrapped tool should have a no-op func that returns empty string
 		const funcResult = await wrappedTool.func({ input: 'test' });
 		expect(funcResult).toBe('');
+	});
+});
+
+describe('createHitlToolSupplyData', () => {
+	const { getSchema } = require('../create-node-as-tool');
+	const hitlNode = mock<INode>({
+		name: 'HITL Node',
+		type: 'test.HitlTool',
+	});
+	const parentNode = mock<INode>({
+		name: 'Parent Agent',
+		type: 'test.agent',
+	});
+	const workflow = mock<Workflow>({
+		id: 'test-workflow',
+		active: false,
+		nodeTypes: mock<INodeTypes>(),
+	});
+	const runExecutionData = mock<IRunExecutionData>({
+		resultData: { runData: {} },
+	});
+	const connectionInputData = [] as INodeExecutionData[];
+	const parentInputData = {} as ITaskDataConnections;
+	const executeData = {} as IExecuteData;
+	const hooks = mock<Required<IWorkflowExecuteAdditionalData['hooks']>>();
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+	const mode: WorkflowExecuteMode = 'internal';
+	const closeFunctions: CloseFunction[] = [];
+	const itemIndex = 0;
+	const parentRunIndex = 0;
+	const abortSignal = mock<AbortSignal>();
+
+	const mockHitlSchema = z.object({
+		approvalRequired: z.boolean(),
+		message: z.string(),
+	});
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		getSchema.mockReturnValue(mockHitlSchema);
+		jest.spyOn(SupplyDataContext.prototype, 'getInputConnectionData');
+	});
+
+	it('should create supply data with single tool wrapped in toolkit', async () => {
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool description',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Original Tool Node' },
+		});
+
+		(SupplyDataContext.prototype.getInputConnectionData as jest.Mock).mockResolvedValue(
+			originalTool,
+		);
+		const result = await createHitlToolSupplyData(
+			hitlNode,
+			workflow,
+			runExecutionData,
+			parentRunIndex,
+			connectionInputData,
+			parentInputData,
+			additionalData,
+			executeData,
+			mode,
+			closeFunctions,
+			itemIndex,
+			abortSignal,
+			parentNode,
+		);
+
+		expect(result).toHaveProperty('response');
+		const toolkit = result.response as StructuredToolkit;
+		expect(toolkit).toBeInstanceOf(StructuredToolkit);
+		expect(toolkit.tools).toHaveLength(1);
+		expect(toolkit.tools[0].name).toBe('test_tool');
+		expect(toolkit.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(toolkit.tools[0].metadata?.gatedToolNodeName).toBe('Original Tool Node');
 	});
 });

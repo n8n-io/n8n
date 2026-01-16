@@ -99,7 +99,7 @@ export function createHitlToolkit(
  * 4. If approved: new EngineRequest executes gated tool → result to Agent
  * 5. If denied: denial message → Agent knows not to retry
  */
-async function createHitlToolSupplyData(
+export async function createHitlToolSupplyData(
 	hitlNode: INode,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
