@@ -59,6 +59,11 @@ export async function processEventStream(
 
 					// Check if this LLM response contains tool calls
 					if (output?.tool_calls && output.tool_calls.length > 0) {
+						// DEBUG: Log captured additional_kwargs for Gemini thought_signature tracing
+						console.log(
+							'[DEBUG processEventStream] Captured additional_kwargs:',
+							JSON.stringify(output.additional_kwargs, null, 2),
+						);
 						// Collect tool calls for request building
 						for (const toolCall of output.tool_calls) {
 							toolCalls.push({

@@ -49,6 +49,11 @@ export async function createEngineRequests(
 
 			// First check additionalKwargs on the toolCall itself (Gemini thought signatures via LangChain)
 			if (toolCall.additionalKwargs) {
+				// DEBUG: Log additionalKwargs from toolCall
+				console.log(
+					'[DEBUG createEngineRequests] toolCall.additionalKwargs:',
+					JSON.stringify(toolCall.additionalKwargs, null, 2),
+				);
 				const geminiSignatures = toolCall.additionalKwargs[
 					'__gemini_function_call_thought_signatures__'
 				] as Record<string, string> | undefined;
@@ -86,17 +91,41 @@ export async function createEngineRequests(
 						}
 
 						// Also check additional_kwargs on the message for Gemini thought signatures
-						// LangChain stores them in __gemini_function_call_thought_signatures__
 						if (!thoughtSignature && 'additional_kwargs' in message) {
 							const msgAdditionalKwargs = message.additional_kwargs as
 								| Record<string, unknown>
 								| undefined;
 							if (msgAdditionalKwargs) {
+								// First check the old format: __gemini_function_call_thought_signatures__
 								const geminiSignatures = msgAdditionalKwargs[
 									'__gemini_function_call_thought_signatures__'
 								] as Record<string, string> | undefined;
 								if (geminiSignatures && typeof geminiSignatures === 'object') {
 									thoughtSignature = geminiSignatures[toolCall.toolCallId];
+								}
+
+								// If not found, check the new format: signatures array
+								// LangChain Google returns signatures as an array that corresponds to tool_calls array
+								if (!thoughtSignature) {
+									const signatures = msgAdditionalKwargs.signatures as string[] | undefined;
+									const msgToolCalls = msgAdditionalKwargs.tool_calls as
+										| Array<{ id?: string }>
+										| undefined;
+
+									if (
+										signatures &&
+										Array.isArray(signatures) &&
+										msgToolCalls &&
+										Array.isArray(msgToolCalls)
+									) {
+										// Find the index of this tool call by ID
+										const toolCallIndex = msgToolCalls.findIndex(
+											(tc) => tc.id === toolCall.toolCallId,
+										);
+										if (toolCallIndex !== -1 && toolCallIndex < signatures.length) {
+											thoughtSignature = signatures[toolCallIndex];
+										}
+									}
 								}
 							}
 						}
@@ -105,6 +134,14 @@ export async function createEngineRequests(
 					}
 				}
 			}
+
+			// DEBUG: Log extracted thoughtSignature
+			console.log(
+				'[DEBUG createEngineRequests] Extracted thoughtSignature:',
+				thoughtSignature,
+				'for toolCallId:',
+				toolCall.toolCallId,
+			);
 
 			return {
 				actionType: 'ExecutionNodeAction' as const,

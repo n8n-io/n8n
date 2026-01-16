@@ -43,6 +43,22 @@ export async function runAgent(
 ): Promise<RunAgentResult> {
 	const { itemIndex, input, steps, tools, options } = itemContext;
 
+	// DEBUG: Log steps being passed to executor
+	if (steps.length > 0) {
+		console.log(
+			'[DEBUG runAgent] Steps passed to executor:',
+			JSON.stringify(
+				steps.map((s) => ({
+					tool: s.action.tool,
+					toolCallId: s.action.toolCallId,
+					messageLogAdditionalKwargs: s.action.messageLog?.[0]?.additional_kwargs,
+				})),
+				null,
+				2,
+			),
+		);
+	}
+
 	const invokeParams = {
 		steps,
 		input,
@@ -116,6 +132,29 @@ export async function runAgent(
 				result.intermediateSteps = steps;
 			}
 			return result;
+		}
+
+		// DEBUG: Log modelResponse structure in non-streaming path
+		console.log('[DEBUG runAgent non-streaming] modelResponse type:', typeof modelResponse);
+		console.log(
+			'[DEBUG runAgent non-streaming] modelResponse isArray:',
+			Array.isArray(modelResponse),
+		);
+		if (Array.isArray(modelResponse) && modelResponse.length > 0) {
+			const firstItem = modelResponse[0];
+			console.log('[DEBUG runAgent non-streaming] firstItem keys:', Object.keys(firstItem));
+			console.log(
+				'[DEBUG runAgent non-streaming] firstItem.messageLog exists:',
+				!!firstItem.messageLog,
+			);
+			if (firstItem.messageLog && firstItem.messageLog[0]) {
+				const msg = firstItem.messageLog[0];
+				console.log(
+					'[DEBUG runAgent non-streaming] messageLog[0].additional_kwargs:',
+					JSON.stringify(msg.additional_kwargs, null, 2),
+				);
+				console.log('[DEBUG runAgent non-streaming] messageLog[0] keys:', Object.keys(msg));
+			}
 		}
 
 		// If response contains tool calls, we need to return this in the right format

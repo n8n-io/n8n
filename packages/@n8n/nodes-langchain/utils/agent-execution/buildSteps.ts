@@ -229,11 +229,17 @@ export function buildSteps(
 				// When content is an array (thinking mode), tool_use blocks are in the content array
 				...(typeof messageContent === 'string' && { tool_calls: [toolCall] }),
 				// Include additional_kwargs with Gemini thought signatures for LangChain to pass back
+				// Multiple formats for compatibility:
+				// 1. __gemini_function_call_thought_signatures__: map for lookup by tool call ID
+				// 2. signatures: positional array matching tool_calls order
+				// 3. tool_calls: to correlate with signatures array
 				...(providerMetadata.thoughtSignature && {
 					additional_kwargs: {
 						__gemini_function_call_thought_signatures__: {
 							[toolId]: providerMetadata.thoughtSignature,
 						},
+						signatures: ['', providerMetadata.thoughtSignature],
+						tool_calls: [{ id: toolId, name: toolName, args: toolInput }],
 					},
 				}),
 			});
