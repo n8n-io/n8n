@@ -296,7 +296,7 @@ onUnmounted(() => {
 							type="text"
 						/>
 						<div
-							v-if="isLoading || true"
+							v-if="isLoading"
 							:class="$style.inputSpinner"
 							data-test-id="command-bar-input-spinner"
 							aria-hidden="true"
