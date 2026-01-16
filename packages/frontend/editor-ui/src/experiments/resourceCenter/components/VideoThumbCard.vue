@@ -27,9 +27,6 @@ const openVideo = () => {
 	<div :class="$style.card" @click="openVideo">
 		<div :class="$style.thumbnailContainer">
 			<img :src="video.thumbnailUrl" :alt="video.title" :class="$style.thumbnail" loading="lazy" />
-			<div :class="$style.playButton">
-				<div :class="$style.playIcon" />
-			</div>
 		</div>
 		<div :class="$style.content">
 			<div :class="$style.titleRow">
@@ -68,10 +65,6 @@ const openVideo = () => {
 			transform: translateY(-2px);
 			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 		}
-
-		.playButton {
-			transform: translate(-50%, -50%) scale(1.1);
-		}
 	}
 }
 
@@ -107,15 +100,6 @@ const openVideo = () => {
 	justify-content: center;
 	transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.playIcon {
-	width: 0;
-	height: 0;
-	border-style: solid;
-	border-width: 10px 0 10px 18px;
-	border-color: transparent transparent transparent #f00;
-	margin-left: 4px;
 }
 
 .content {
