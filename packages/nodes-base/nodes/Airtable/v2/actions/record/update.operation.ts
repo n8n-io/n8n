@@ -108,13 +108,13 @@ export async function execute(
 			}
 
 			if (dataMode === 'defineBelow') {
-				const getNodeParameterOptions = typecast ? { skipValidation: true } : undefined;
+				// Get fields without skipValidation first to ensure binary data is processed
+				// The resource mapper needs to process binary data into attachment format
 				if (columnsToMatchOn.includes('id')) {
 					const { id, ...fields } = this.getNodeParameter(
 						'columns.value',
 						i,
 						[],
-						getNodeParameterOptions,
 					) as IDataObject;
 					records.push({ id: id as string, fields });
 				} else {
@@ -122,7 +122,6 @@ export async function execute(
 						'columns.value',
 						i,
 						[],
-						getNodeParameterOptions,
 					) as IDataObject;
 
 					const matches = findMatches(

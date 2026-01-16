@@ -48,7 +48,7 @@ describe('Test AirtableV2, update operation', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should skip validation if typecast option is true', async () => {
+	it('should process binary data even when typecast option is true', async () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.helpers.constructExecutionMetaData = jest.fn(() => []);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
@@ -75,9 +75,8 @@ describe('Test AirtableV2, update operation', () => {
 
 		await update.execute.call(mockExecuteFunctions, [{ json: {} }], 'base', 'table');
 
-		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('columns.value', 0, [], {
-			skipValidation: true,
-		});
+		// Verify that skipValidation is NOT passed, so binary data can be processed
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('columns.value', 0, []);
 	});
 
 	it('should update a record by id, autoMapInputData', async () => {
