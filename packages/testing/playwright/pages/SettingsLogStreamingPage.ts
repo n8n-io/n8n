@@ -1,4 +1,5 @@
 import type { Locator } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
@@ -122,7 +123,14 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	async saveDestination(): Promise<void> {
-		await this.getDestinationSaveButton().click();
+		const saveButton = this.getDestinationSaveButton();
+		// Wait for save button to be enabled (means debounced input values have been applied)
+		await expect(saveButton).toBeEnabled({ timeout: 5000 });
+		await saveButton.click();
+		// Wait for save to complete - test button becomes enabled when form is saved and unchanged
+		const testButton = this.getSendTestEventButton();
+		await testButton.waitFor({ state: 'visible', timeout: 10000 });
+		await expect(testButton).toBeEnabled({ timeout: 10000 });
 	}
 
 	async deleteDestination(): Promise<void> {
