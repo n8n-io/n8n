@@ -77,7 +77,7 @@ async function onClickTemplatesLink() {
 			placement="top"
 			:visible="isTooltipVisible"
 			:disabled="nodeCreatorStore.showScrim"
-				:show-after="700"
+			:show-after="700"
 		>
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click.stop="onClick">
 				<N8nIcon icon="plus" color="foreground-xdark" :size="40" />
