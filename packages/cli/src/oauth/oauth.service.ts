@@ -150,12 +150,14 @@ export class OauthService {
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
 	) {
+		const canUseExternalSecrets =
+			await this.credentialsHelper.credentialCanUseExternalSecrets(credential);
 		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedData,
-			credential,
 			credential.type,
 			'internal',
+			canUseExternalSecrets,
 			undefined,
 			undefined,
 		)) as unknown as T;
@@ -187,33 +189,48 @@ export class OauthService {
 		const state: CsrfState = {
 			token: token.create(csrfSecret),
 			createdAt: Date.now(),
-			...data,
+			data: this.cipher.encrypt(JSON.stringify(data)),
 		};
-		const encryptedState = this.cipher.encrypt(JSON.stringify(state));
-		return [csrfSecret, encryptedState];
+
+		const base64State = Buffer.from(JSON.stringify(state)).toString('base64');
+		return [csrfSecret, base64State];
 	}
 
-	protected decodeCsrfState(encodedState: string, req: AuthenticatedRequest): CsrfState {
+	protected decodeCsrfState(
+		encodedState: string,
+		req: AuthenticatedRequest,
+	): CsrfState & CreateCsrfStateData {
 		const errorMessage = 'Invalid state format';
-		const decryptedState = this.cipher.decrypt(encodedState);
-		const decoded = jsonParse<CsrfState>(decryptedState, {
+		const decodedState = Buffer.from(encodedState, 'base64').toString();
+		const decoded = jsonParse<CsrfState>(decodedState, {
 			errorMessage,
 		});
 
-		if (typeof decoded.cid !== 'string' || typeof decoded.token !== 'string') {
+		const decryptedState = jsonParse<CreateCsrfStateData>(this.cipher.decrypt(decoded.data), {
+			errorMessage,
+		});
+
+		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
 		}
 
 		// user validation not required for dynamic credentials
-		if (decoded.origin === 'dynamic-credential') {
-			return decoded;
+		if (decryptedState.origin === 'dynamic-credential') {
+			return {
+				...decoded,
+				...decryptedState,
+			};
 		}
 
-		if (decoded.userId !== req.user?.id) {
+		// if we skip auth on oauth callback, we cannot validate user id
+		if (!skipAuthOnOAuthCallback && decryptedState.userId !== req.user?.id) {
 			throw new AuthError('Unauthorized');
 		}
 
-		return decoded;
+		return {
+			...decoded,
+			...decryptedState,
+		};
 	}
 
 	protected verifyCsrfState(
@@ -231,7 +248,9 @@ export class OauthService {
 
 	async resolveCredential<T>(
 		req: OAuthRequest.OAuth1Credential.Callback | OAuthRequest.OAuth2Credential.Callback,
-	): Promise<[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState]> {
+	): Promise<
+		[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState & CreateCsrfStateData]
+	> {
 		const { state: encodedState } = req.query;
 		const state = this.decodeCsrfState(encodedState, req);
 		const credential = await this.getCredentialWithoutUser(state.cid);

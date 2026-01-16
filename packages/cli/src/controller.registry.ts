@@ -20,6 +20,7 @@ import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.e
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { send } from '@/response-helper';
+import { CorsService } from './services/cors-service';
 
 @Service()
 export class ControllerRegistry {
@@ -76,6 +77,12 @@ export class ControllerRegistry {
 			) as unknown[];
 
 			const handler = async (req: Request, res: Response) => {
+				if (route.cors) {
+					const corsService = Container.get(CorsService);
+					const corsOptions = route.cors === true ? {} : route.cors;
+					corsService.applyCorsHeaders(req, res, corsOptions);
+				}
+
 				const args: unknown[] = [req, res];
 				for (let index = 0; index < route.args.length; index++) {
 					const arg = route.args[index];

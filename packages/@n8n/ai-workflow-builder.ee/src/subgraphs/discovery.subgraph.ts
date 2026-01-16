@@ -1,5 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
+import type { BaseMessage, AIMessage } from '@langchain/core/messages';
 import { isAIMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
@@ -15,20 +15,25 @@ import {
 	formatTechniqueList,
 	formatExampleCategorizations,
 } from '@/prompts/agents/discovery.prompt';
+import {
+	extractResourceOperations,
+	createResourceCacheKey,
+	type ResourceOperationInfo,
+} from '@/utils/resource-operation-extractor';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
-import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
+import { createGetDocumentationTool } from '../tools/get-documentation.tool';
 import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata } from '../types/coordination';
-import type { NodeConfigurationsMap } from '../types/tools';
+import type { WorkflowMetadata } from '../types/tools';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
-import { appendArrayReducer, nodeConfigurationsReducer } from '../utils/state-reducers';
+import { appendArrayReducer, cachedTemplatesReducer } from '../utils/state-reducers';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
@@ -79,7 +84,7 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Output: Found nodes with version, reasoning and connection-changing parameters
+	// Output: Found nodes with version, reasoning, connection-changing parameters, and available resources
 	nodesFound: Annotation<
 		Array<{
 			nodeName: string;
@@ -88,6 +93,14 @@ export const DiscoverySubgraphState = Annotation.Root({
 			connectionChangingParameters: Array<{
 				name: string;
 				possibleValues: Array<string | boolean | number>;
+			}>;
+			availableResources?: Array<{
+				value: string;
+				displayName: string;
+				operations: Array<{
+					value: string;
+					displayName: string;
+				}>;
 			}>;
 		}>
 	>({
@@ -106,10 +119,16 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Output: Node configurations collected from workflow examples
-	// Used to provide example parameter configurations when get_node_details is called
-	nodeConfigurations: Annotation<NodeConfigurationsMap>({
-		reducer: nodeConfigurationsReducer,
+	// Cached workflow templates (passed from parent, updated by tools)
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
+		default: () => [],
+	}),
+
+	// Cache for resource/operation info to avoid duplicate extraction
+	// Key: "nodeName:version", Value: ResourceOperationInfo or null
+	resourceOperationCache: Annotation<Record<string, ResourceOperationInfo | null>>({
+		reducer: (x, y) => ({ ...x, ...y }),
 		default: () => ({}),
 	}),
 });
@@ -132,18 +151,20 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private agent!: Runnable;
 	private toolMap!: Map<string, StructuredTool>;
 	private logger?: Logger;
+	private parsedNodeTypes!: INodeTypeDescription[];
 
 	create(config: DiscoverySubgraphConfig) {
 		this.logger = config.logger;
+		this.parsedNodeTypes = config.parsedNodeTypes;
 
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
 
 		// Create base tools
 		const baseTools = [
-			createGetBestPracticesTool(),
+			createGetDocumentationTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
-			createNodeDetailsTool(config.parsedNodeTypes),
+			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
 		];
 
 		// Conditionally add workflow examples tool if feature flag is enabled
@@ -230,7 +251,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 	/**
 	 * Format the output from the submit tool call
-	 * No hydration - just return raw node names. Subgraphs will hydrate if needed.
+	 * Hydrates availableResources for each node using node type definitions.
 	 */
 	private formatOutput(state: typeof DiscoverySubgraphState.State) {
 		const lastMessage = state.messages.at(-1);
@@ -241,28 +262,101 @@ export class DiscoverySubgraph extends BaseSubgraph<
 				(tc) => tc.name === 'submit_discovery_results',
 			);
 			if (submitCall) {
-				output = submitCall.args as z.infer<typeof discoveryOutputSchema>;
+				// Use Zod safeParse for type-safe validation instead of casting
+				const parseResult = discoveryOutputSchema.safeParse(submitCall.args);
+				if (!parseResult.success) {
+					this.logger?.error(
+						'[Discovery] Invalid discovery output schema - returning empty results',
+						{
+							errors: parseResult.error.errors,
+							lastMessageContent:
+								typeof lastMessage?.content === 'string'
+									? lastMessage.content.substring(0, 200)
+									: JSON.stringify(lastMessage?.content)?.substring(0, 200),
+						},
+					);
+					return {
+						nodesFound: [],
+						templateIds: [],
+					};
+				}
+				output = parseResult.data;
 			}
 		}
 
 		if (!output) {
-			this.logger?.error('[Discovery] No submit tool call found in last message');
+			this.logger?.error(
+				'[Discovery] No submit_discovery_results tool call found - agent may have stopped early',
+				{
+					messageCount: state.messages.length,
+					lastMessageType: lastMessage?.getType(),
+				},
+			);
 			return {
 				nodesFound: [],
 				templateIds: [],
 			};
 		}
 
-		const bestPracticesTool = state.messages.find(
-			(m): m is ToolMessage => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
-		);
+		// Build lookup map for resource hydration
+		const nodeTypeMap = new Map<string, INodeTypeDescription>();
+		for (const nt of this.parsedNodeTypes) {
+			const versions = Array.isArray(nt.version) ? nt.version : [nt.version];
+			for (const v of versions) {
+				nodeTypeMap.set(`${nt.name}:${v}`, nt);
+			}
+		}
 
-		// Return raw output without hydration, including templateIds and nodeConfigurations from workflow examples
+		// Get the resource operation cache from state
+		const existingCache = state.resourceOperationCache ?? {};
+
+		// Hydrate nodesFound with availableResources from node type definitions or cache
+		const hydratedNodesFound = output.nodesFound.map((node) => {
+			const cacheKey = createResourceCacheKey(node.nodeName, node.version);
+
+			// Check cache first (populated by node_details tool during discovery)
+			if (cacheKey in existingCache) {
+				const cached = existingCache[cacheKey];
+				if (cached) {
+					return {
+						...node,
+						availableResources: cached.resources,
+					};
+				}
+				// Cached as null means no resources for this node
+				return node;
+			}
+
+			// Cache miss - extract fresh (O(1) lookup using pre-built map)
+			const nodeType = nodeTypeMap.get(cacheKey);
+
+			if (!nodeType) {
+				this.logger?.warn('[Discovery] Node type not found during resource hydration', {
+					nodeName: node.nodeName,
+					nodeVersion: node.version,
+				});
+				return node;
+			}
+
+			// Extract resource/operation info
+			const resourceOpInfo = extractResourceOperations(nodeType, node.version, this.logger);
+
+			if (!resourceOpInfo) {
+				return node;
+			}
+
+			// Add availableResources to the node
+			return {
+				...node,
+				availableResources: resourceOpInfo.resources,
+			};
+		});
+
+		// Return hydrated output with best practices from state (updated by get_documentation tool)
 		return {
-			nodesFound: output.nodesFound,
-			bestPractices: bestPracticesTool?.text,
+			nodesFound: hydratedNodesFound,
+			bestPractices: state.bestPractices,
 			templateIds: state.templateIds ?? [],
-			nodeConfigurations: state.nodeConfigurations ?? {},
 		};
 	}
 
@@ -291,7 +385,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// No tool calls = agent is done (or failed to call tool)
 		// In this pattern, we expect a tool call. If none, we might want to force it or just end.
 		// For now, let's treat it as an end, but ideally we'd reprompt.
-		this.logger?.warn('[Discovery Subgraph] Agent stopped without submitting results');
+		this.logger?.warn(
+			'[Discovery] Agent stopped without calling submit_discovery_results - check if LLM is producing valid tool calls',
+		);
 		return 'end';
 	}
 
@@ -320,6 +416,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		return {
 			userRequest,
 			messages: [contextMessage], // Context already in messages
+			cachedTemplates: parentState.cachedTemplates,
 		};
 	}
 
@@ -329,11 +426,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	) {
 		const nodesFound = subgraphOutput.nodesFound || [];
 		const templateIds = subgraphOutput.templateIds || [];
-		const nodeConfigurations = subgraphOutput.nodeConfigurations || {};
 		const discoveryContext = {
 			nodesFound,
 			bestPractices: subgraphOutput.bestPractices,
-			nodeConfigurations,
 		};
 
 		// Create coordination log entry (not a message)
@@ -354,8 +449,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			coordinationLog: [logEntry],
 			// Pass template IDs for telemetry
 			templateIds,
-			// Pass node configurations for example parameters in node details
-			nodeConfigurations,
+			// Propagate cached templates back to parent
+			cachedTemplates: subgraphOutput.cachedTemplates,
 		};
 	}
 }

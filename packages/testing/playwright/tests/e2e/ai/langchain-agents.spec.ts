@@ -2,7 +2,7 @@ import {
 	AGENT_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-	AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
+	AI_MEMORY_REDIS_CHAT_NODE_NAME,
 	AI_TOOL_CALCULATOR_NODE_NAME,
 	AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME,
 	AI_TOOL_CODE_NODE_NAME,
@@ -74,11 +74,7 @@ async function setupBasicAgentWorkflow(n8n: n8nPage, additionalNodes: string[] =
 	await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
 }
 
-test.use({
-	addContainerCapability: {
-		proxyServerEnabled: true,
-	},
-});
+test.use({ capability: 'proxy' });
 test.describe('Langchain Integration @capability:proxy', () => {
 	test.beforeEach(async ({ n8n, proxyServer }) => {
 		await proxyServer.clearAllExpectations();
@@ -126,7 +122,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		test('should add nodes to all Agent node input types', async ({ n8n }) => {
 			const agentSubNodes = [
 				AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-				AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
+				AI_MEMORY_REDIS_CHAT_NODE_NAME,
 				AI_TOOL_CALCULATOR_NODE_NAME,
 				AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME,
 			];
@@ -142,7 +138,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 			);
 
 			await n8n.canvas.addSupplementalNodeToParent(
-				AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
+				AI_MEMORY_REDIS_CHAT_NODE_NAME,
 				'ai_memory',
 				AGENT_NODE_NAME,
 				{ closeNDV: true },
@@ -238,7 +234,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		await expect(n8n.canvas.getManualChatLatestBotMessage()).toContainText('this_my_field');
 
 		// Refresh session
-		await n8n.page.getByTestId('refresh-session-button').click();
-		await expect(n8n.canvas.getManualChatMessages()).not.toBeAttached();
+		await n8n.canvas.logsPanel.refreshSession();
+		await expect(n8n.canvas.logsPanel.getManualChatMessages()).not.toBeAttached();
 	});
 });

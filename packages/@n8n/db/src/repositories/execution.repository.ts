@@ -37,6 +37,7 @@ import {
 	migrateRunExecutionData,
 	UnexpectedError,
 } from 'n8n-workflow';
+import * as a from 'node:assert/strict';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
@@ -240,7 +241,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			new UnexpectedError('Found executions without executionData', {
 				extra: {
 					executionIds: executions.map(({ id }) => id),
-					isLegacySqlite: this.globalConfig.database.isLegacySqlite,
 				},
 			}),
 		);
@@ -361,29 +361,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
 		const data = stringify(dataObj);
 
-		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
-		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
-			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
-			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
-			const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
-			const { id: executionId } = inserted[0] as { id: string };
-			await this.executionDataRepository.insert({ executionId, workflowData, data });
-			return String(executionId);
-		} else {
-			// All other database drivers should create executions and execution-data atomically
-			return await this.manager.transaction(async (transactionManager) => {
-				const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
-					...rest,
-					createdAt: new Date(),
-				});
-				const { id: executionId } = inserted[0] as { id: string };
-				await this.executionDataRepository.createExecutionDataForExecution(
-					{ executionId, workflowData, data },
-					transactionManager,
-				);
-				return String(executionId);
+		return await this.manager.transaction(async (transactionManager) => {
+			const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
+				...rest,
+				createdAt: new Date(),
 			});
-		}
+			const { id: executionId } = inserted[0] as { id: string };
+			await this.executionDataRepository.createExecutionDataForExecution(
+				{ executionId, workflowData, data, workflowVersionId: currentWorkflow.versionId },
+				transactionManager,
+			);
+			return String(executionId);
+		});
 	}
 
 	async markAsCrashed(executionIds: string | string[]) {
@@ -418,9 +407,28 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
 
-		await this.update({ id: executionId }, { status: 'running', startedAt });
+		return await this.manager.transaction(async (manager) => {
+			// Update status, set startedAt only if not already set (preserves original for resumed executions)
+			await manager
+				.createQueryBuilder()
+				.update(ExecutionEntity)
+				.set({
+					status: 'running',
+					startedAt: () => 'COALESCE(startedAt, :startedAt)',
+				})
+				.setParameter('startedAt', DateUtils.mixedDateToUtcDatetimeString(startedAt))
+				.where('id = :id', { id: executionId })
+				.execute();
 
-		return startedAt;
+			// Fetch the actual startedAt
+			const { startedAt: actualStartedAt } = await manager.findOneOrFail(ExecutionEntity, {
+				select: ['startedAt'],
+				where: { id: executionId },
+			});
+
+			a.ok(actualStartedAt);
+			return actualStartedAt;
+		});
 	}
 
 	/**
@@ -452,44 +460,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (workflowData) executionData.workflowData = workflowData;
 		if (data) executionData.data = stringify(data);
 
-		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
-
-		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
-			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
-			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
-
-			let executionTableAffectedRows = 0;
-
-			if (Object.keys(executionInformation).length > 0) {
-				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
-				if (requireStatus) whereCondition.status = requireStatus;
-
-				const result = await this.update(whereCondition, executionInformation);
-				executionTableAffectedRows = result.affected ?? 0;
-
-				// If requireStatus was set and the update failed, don't update executionData
-				if (requireStatus && executionTableAffectedRows === 0) {
-					return false;
-				}
-			}
-
-			if (Object.keys(executionData).length > 0) {
-				await this.executionDataRepository.update({ executionId }, executionData);
-			}
-
-			return true;
-		}
-
-		// All other database drivers should update executions and execution-data atomically
-
-		let executionTableAffectedRows = 0;
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
 				if (requireStatus) whereCondition.status = requireStatus;
 
 				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
-				executionTableAffectedRows = result.affected ?? 0;
+				const executionTableAffectedRows = result.affected ?? 0;
 
 				// If requireStatus was set and the update failed, abort the
 				// transaction early and return false.
@@ -1217,5 +1194,37 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 		// Just return the string data as-is.
 		return data;
+	}
+
+	async findByStopExecutionsFilter(
+		query: ExecutionSummaries.StopExecutionFilterQuery,
+	): Promise<Array<{ id: string }>> {
+		if (!query.status || query.status.length === 0) return [];
+
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			status: In(query.status),
+		};
+
+		if (query.workflowId !== 'all') {
+			where.workflowId = query.workflowId;
+		}
+
+		const startedAtConditions = [];
+
+		if (query.startedAfter)
+			startedAtConditions.push(
+				MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedAfter))),
+			);
+
+		if (query.startedBefore)
+			startedAtConditions.push(
+				LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(query.startedBefore))),
+			);
+
+		if (startedAtConditions.length > 0) {
+			where.startedAt = And(...startedAtConditions);
+		}
+
+		return await this.find({ select: ['id'], where });
 	}
 }

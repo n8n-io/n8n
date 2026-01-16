@@ -1,3 +1,5 @@
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import FormData from 'form-data';
 import type { Agent as HttpsAgent } from 'https';
 import { mock, mockDeep } from 'jest-mock-extended';
@@ -231,6 +233,22 @@ describe('Request Helper Functions', () => {
 				},
 				{ sendImmediately: false },
 			);
+
+			expect(response.status).toBe(200);
+			expect(response.data).toEqual({ success: true });
+		});
+
+		it('should include vendor headers in requests to OpenAi', async () => {
+			const { openAiDefaultHeaders } = Container.get(AiConfig);
+			nock('https://api.openai.com', {
+				reqheaders: openAiDefaultHeaders,
+			})
+				.get('/chat')
+				.reply(200, { success: true });
+
+			const response = await invokeAxios({
+				url: 'https://api.openai.com/chat',
+			});
 
 			expect(response.status).toBe(200);
 			expect(response.data).toEqual({ success: true });
@@ -864,6 +882,23 @@ describe('Request Helper Functions', () => {
 				headers: { 'X-Custom-Header': 'custom-value' },
 			});
 
+			expect(response).toEqual({ success: true });
+			scope.done();
+		});
+
+		it('should include vendor headers in requests to OpenAi', async () => {
+			const { openAiDefaultHeaders } = Container.get(AiConfig);
+			const scope = nock('https://api.openai.com', {
+				reqheaders: openAiDefaultHeaders,
+			})
+				.get('/chat')
+				.reply(200, { success: true });
+
+			const response = await httpRequest({
+				method: 'GET',
+				url: 'https://api.openai.com/chat',
+				headers: { 'X-Custom-Header': 'custom-value' },
+			});
 			expect(response).toEqual({ success: true });
 			scope.done();
 		});
