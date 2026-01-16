@@ -277,16 +277,20 @@ export function normalizeAndValidateSourceControlledFilePath(
 }
 
 export function hasOwnerChanged(
-	owner1?: StatusResourceOwner,
-	owner2?: StatusResourceOwner,
+	owner1?: StatusResourceOwner | null,
+	owner2?: StatusResourceOwner | null,
 ): boolean {
 	// We only compare owners when there is at least one team owner
 	// because personal owners projects are not synced with source control
-	if (owner1?.type !== 'team' && owner2?.type !== 'team') {
+	if (!owner1 || !owner2) {
 		return false;
 	}
 
-	return owner1?.projectId !== owner2?.projectId;
+	if (owner1.type !== 'team' && owner2.type !== 'team') {
+		return false;
+	}
+
+	return owner1.projectId !== owner2.projectId;
 }
 
 /**
@@ -342,7 +346,8 @@ export function isDataTableModified(
 		return true;
 	}
 
-	if (localDt.projectId !== remoteDt.projectId) {
+	const ownerChanged = hasOwnerChanged(remoteDt.ownedBy, localDt.ownedBy);
+	if (ownerChanged) {
 		return true;
 	}
 

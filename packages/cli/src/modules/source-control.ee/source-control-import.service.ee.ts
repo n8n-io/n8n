@@ -68,7 +68,7 @@ import type {
 	ExportableCredential,
 	StatusExportableCredential,
 } from './types/exportable-credential';
-import type { ExportableDataTable } from './types/exportable-data-table';
+import type { ExportableDataTable, StatusExportableDataTable } from './types/exportable-data-table';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProject, ExportableProjectWithFileName } from './types/exportable-project';
 import type { ExportableTags } from './types/exportable-tags';
@@ -491,26 +491,48 @@ export class SourceControlImportService {
 		return remoteTables.filter((table): table is ExportableDataTable => table !== undefined);
 	}
 
-	async getLocalDataTablesFromDb(): Promise<ExportableDataTable[]> {
+	async getLocalDataTablesFromDb(): Promise<StatusExportableDataTable[]> {
 		try {
 			const dataTables = await this.dataTableRepository.find({
-				relations: ['columns'],
+				relations: ['columns', 'project'],
 			});
-			return dataTables.map((table) => ({
-				id: table.id,
-				name: table.name,
-				projectId: table.projectId,
-				columns: (table.columns || [])
-					.sort((a, b) => a.index - b.index)
-					.map((col) => ({
-						id: col.id,
-						name: col.name,
-						type: col.type,
-						index: col.index,
-					})),
-				createdAt: table.createdAt.toISOString(),
-				updatedAt: table.updatedAt.toISOString(),
-			}));
+			return dataTables.map((table) => {
+				let ownedBy: StatusResourceOwner | undefined = undefined;
+				if (table.project?.type === 'personal') {
+					const ownerRelation = table.project.projectRelations?.find(
+						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
+					);
+					if (ownerRelation) {
+						ownedBy = {
+							type: 'personal',
+							projectId: table.project.id,
+							projectName: table.project.name,
+						};
+					}
+				} else if (table.project?.type === 'team') {
+					ownedBy = {
+						type: 'team',
+						projectId: table.project.id,
+						projectName: table.project.name,
+					};
+				}
+
+				return {
+					id: table.id,
+					name: table.name,
+					columns: (table.columns || [])
+						.sort((a, b) => a.index - b.index)
+						.map((col) => ({
+							id: col.id,
+							name: col.name,
+							type: col.type,
+							index: col.index,
+						})),
+					ownedBy: ownedBy,
+					createdAt: table.createdAt.toISOString(),
+					updatedAt: table.updatedAt.toISOString(),
+				};
+			}) as StatusExportableDataTable[];
 		} catch (error) {
 			// Return empty array if DataTable entity is not registered (e.g., in test environments)
 			if (error instanceof Error && error.message.includes('No metadata for "DataTable"')) {
@@ -1163,9 +1185,6 @@ export class SourceControlImportService {
 			return;
 		}
 
-		const projects = await this.projectRepository.find({ select: ['id'] });
-		const existingProjectIds = new Set(projects.map((p) => p.id));
-
 		// Get database type from the repository's connection
 		const dbType = this.dataTableRepository.manager.connection.options.type;
 
@@ -1184,15 +1203,25 @@ export class SourceControlImportService {
 					continue;
 				}
 
-				// Preserve the original projectId from remote, even if project doesn't exist locally
-				// This prevents false "modified" status on subsequent pulls
-				const targetProjectId = dataTable.projectId;
+				// Find the target project based on owner information
+				const targetProjectId = dataTable.ownedBy?.projectId;
 
-				if (!existingProjectIds.has(targetProjectId)) {
+				if (!targetProjectId) {
+					this.logger.warn(`No project owner found for data table ${dataTable.name}. Skipping.`);
+					continue;
+				}
+
+				// Check if project exists locally
+				const targetProject = await this.projectRepository.findOne({
+					where: { id: targetProjectId },
+				});
+
+				if (!targetProject) {
 					this.logger.warn(
 						`Project ${targetProjectId} not found for data table ${dataTable.name}. ` +
-							"The data table will be associated with this project once it's synced.",
+							'The data table will be associated once the project is synced.',
 					);
+					// Use the projectId anyway - the project should be synced before data tables
 				}
 
 				// Check if data table already exists

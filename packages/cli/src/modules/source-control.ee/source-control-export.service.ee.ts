@@ -46,9 +46,10 @@ import { SourceControlScopedService } from './source-control-scoped.service';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
+import type { ExportableDataTable } from './types/exportable-data-table';
 import { ExportableProject } from './types/exportable-project';
 import type { ExportableWorkflow } from './types/exportable-workflow';
-import type { RemoteResourceOwner } from './types/resource-owner';
+import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import { ExportableVariable } from './types/exportable-variable';
 
@@ -285,6 +286,17 @@ export class SourceControlExportService {
 					},
 					project: {
 						id: true,
+						name: true,
+						type: true,
+						projectRelations: {
+							userId: true,
+							role: {
+								slug: true,
+							},
+							user: {
+								email: true,
+							},
+						},
 					},
 				},
 			});
@@ -293,10 +305,18 @@ export class SourceControlExportService {
 
 			// Write each data table to its own file
 			for (const table of dataTables) {
-				const exportableDataTable = {
+				let owner: StatusResourceOwner | null = null;
+				if (table.project) {
+					owner = {
+						type: table.project.type,
+						projectId: table.project.id,
+						projectName: table.project.name,
+					};
+				}
+
+				const exportableDataTable: ExportableDataTable = {
 					id: table.id,
 					name: table.name,
-					projectId: table.projectId,
 					columns: table.columns
 						.sort((a, b) => a.index - b.index)
 						.map((col) => ({
@@ -305,6 +325,7 @@ export class SourceControlExportService {
 							type: col.type,
 							index: col.index,
 						})),
+					ownedBy: owner,
 					createdAt: table.createdAt.toISOString(),
 					updatedAt: table.updatedAt.toISOString(),
 				};
