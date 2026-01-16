@@ -96,7 +96,6 @@ describe('GlobalConfig', () => {
 			},
 			sqlite: {
 				database: 'database.sqlite',
-				enableWAL: true,
 				executeVacuumOnStartup: false,
 				poolSize: 3,
 			},
@@ -139,6 +138,7 @@ describe('GlobalConfig', () => {
 					'user-invited': '',
 					'password-reset-requested': '',
 					'workflow-deactivated': '',
+					'workflow-failure': '',
 					'workflow-shared': '',
 					'project-shared': '',
 				},
@@ -410,6 +410,7 @@ describe('GlobalConfig', () => {
 		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
+			timeout: 3600000,
 		},
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,
