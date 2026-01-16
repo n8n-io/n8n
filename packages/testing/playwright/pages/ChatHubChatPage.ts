@@ -81,7 +81,9 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getToolsButton(): Locator {
-		return this.page.locator('[class*="toolsButton"]');
+		return this.page
+			.getByRole('button')
+			.filter({ has: this.page.locator('[class*="toolsButton"]') });
 	}
 
 	getOpenWorkflowButton(): Locator {
