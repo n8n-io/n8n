@@ -302,7 +302,6 @@ overrides:
   tmp: 0.2.4
   nodemailer: 7.0.11
   validator: 13.15.26
-  jws@^4.0.0: ^4.0.1
   zod: 3.25.67
   js-yaml: 4.1.1
   node-forge: 1.3.2
