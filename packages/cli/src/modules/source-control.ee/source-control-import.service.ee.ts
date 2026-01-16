@@ -477,8 +477,13 @@ export class SourceControlImportService {
 
 		const remoteTables = await Promise.all(
 			dataTableFiles.map(async (file) => {
-				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
-				return jsonParse<ExportableDataTable>(fileContent, { fallbackValue: undefined });
+				try {
+					const fileContent = await fsReadFile(file, { encoding: 'utf8' });
+					return jsonParse<ExportableDataTable>(fileContent);
+				} catch (error) {
+					this.logger.debug(`Failed to parse data table from file ${file}: ${error.message}`);
+					return undefined;
+				}
 			}),
 		);
 
@@ -1171,10 +1176,9 @@ export class SourceControlImportService {
 				this.logger.debug(`Importing data table from file ${candidate.file}`);
 				const dataTable = jsonParse<ExportableDataTable>(
 					await fsReadFile(candidate.file, { encoding: 'utf8' }),
-					{ fallbackValue: undefined },
 				);
 
-				if (!dataTable) {
+				if (!dataTable || typeof dataTable !== 'object' || !dataTable.id || !dataTable.name) {
 					this.logger.warn(`Failed to parse data table from file ${candidate.file}`);
 					continue;
 				}
