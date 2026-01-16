@@ -32,20 +32,20 @@ describe('ConcurrencyCapacityReservation', () => {
 			await reservation.reserve(capacityTarget);
 			reservation.release();
 
-			expect(concurrencyControlService.remove).toHaveBeenCalledWith(capacityTarget);
+			expect(concurrencyControlService.release).toHaveBeenCalledWith({ mode: capacityTarget.mode });
 		});
 	});
 
 	describe('release', () => {
-		it('should call remove on the concurrency control service if reservation was acquired', async () => {
+		it('should call release on the concurrency control service if reservation was acquired', async () => {
 			const reservation = new ConcurrencyCapacityReservation(concurrencyControlService);
 			const capacityTarget: CapacityTarget = { executionId: '789', mode: 'chat' };
 			await reservation.reserve(capacityTarget);
 
 			reservation.release();
 
-			expect(concurrencyControlService.remove).toHaveBeenCalledWith(capacityTarget);
-			expect(concurrencyControlService.remove).toHaveBeenCalledTimes(1);
+			expect(concurrencyControlService.release).toHaveBeenCalledWith({ mode: capacityTarget.mode });
+			expect(concurrencyControlService.release).toHaveBeenCalledTimes(1);
 		});
 
 		it('should do nothing if no reservation was acquired', () => {
@@ -53,7 +53,7 @@ describe('ConcurrencyCapacityReservation', () => {
 
 			reservation.release();
 
-			expect(concurrencyControlService.remove).not.toHaveBeenCalled();
+			expect(concurrencyControlService.release).not.toHaveBeenCalled();
 		});
 
 		it('should be idempotent when called multiple times', async () => {
@@ -65,8 +65,8 @@ describe('ConcurrencyCapacityReservation', () => {
 			reservation.release();
 			reservation.release();
 
-			expect(concurrencyControlService.remove).toHaveBeenCalledTimes(1);
-			expect(concurrencyControlService.remove).toHaveBeenCalledWith(capacityTarget);
+			expect(concurrencyControlService.release).toHaveBeenCalledTimes(1);
+			expect(concurrencyControlService.release).toHaveBeenCalledWith({ mode: capacityTarget.mode });
 		});
 	});
 });

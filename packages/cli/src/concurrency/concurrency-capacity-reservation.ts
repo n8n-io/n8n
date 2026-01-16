@@ -1,3 +1,5 @@
+import assert from 'node:assert';
+
 import type {
 	CapacityTarget,
 	ConcurrencyControlService,
@@ -19,6 +21,8 @@ export class ConcurrencyCapacityReservation {
 	constructor(private readonly concurrencyControlService: ConcurrencyControlService) {}
 
 	async reserve(capacityFor: CapacityTarget) {
+		assert(!this.acquiredReservation, 'Capacity already reserved');
+
 		await this.concurrencyControlService.throttle(capacityFor);
 		this.acquiredReservation = capacityFor;
 	}
@@ -26,7 +30,7 @@ export class ConcurrencyCapacityReservation {
 	release() {
 		if (!this.acquiredReservation) return;
 
-		this.concurrencyControlService.remove(this.acquiredReservation);
+		this.concurrencyControlService.release({ mode: this.acquiredReservation.mode });
 
 		this.acquiredReservation = undefined;
 	}
