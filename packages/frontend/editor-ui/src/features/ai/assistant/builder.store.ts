@@ -16,7 +16,6 @@ import {
 	chatWithBuilder,
 	getAiSessions,
 	getBuilderCredits,
-	getSessionsMetadata,
 	truncateBuilderMessages,
 } from '@/features/ai/assistant/assistant.api';
 import {
@@ -106,7 +105,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const initialGeneration = ref<boolean>(false);
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
-	const hasMessages = ref<boolean>(false);
 	const manualExecStatsInBetweenMessages = ref<{ success: number; error: number }>({
 		success: 0,
 		error: 0,
@@ -119,6 +117,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Track the last user message ID for telemetry
 	const lastUserMessageId = ref<string | undefined>();
+
+	// Track whether loadSessions is in progress to prevent duplicate calls
+	const isLoadingSessions = ref(false);
+
+	// Track the workflowId for which sessions have been loaded (or attempted)
+	// to prevent redundant API calls when no session exists
+	const loadedSessionsForWorkflowId = ref<string | undefined>();
 
 	const documentTitle = useDocumentTitle();
 
@@ -191,6 +196,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
 
+	const hasMessages = computed(() => chatMessages.value.length > 0);
+
 	// Chat management functions
 	/**
 	 * Resets the entire chat session to initial state.
@@ -202,6 +209,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		builderThinkingMessage.value = undefined;
 		initialGeneration.value = false;
 		lastUserMessageId.value = undefined;
+		loadedSessionsForWorkflowId.value = undefined;
 	}
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
@@ -648,8 +656,25 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return [];
 		}
 
+		// Guard: Don't load if workflow is not saved
+		if (!workflowsStore.isWorkflowSaved[workflowId]) {
+			return [];
+		}
+
+		// Guard: Don't load if already loaded for this workflow (even if empty)
+		if (loadedSessionsForWorkflowId.value === workflowId) {
+			return [];
+		}
+
+		// Guard: Prevent duplicate concurrent calls
+		if (isLoadingSessions.value) {
+			return [];
+		}
+
+		isLoadingSessions.value = true;
 		try {
 			const response = await getAiSessions(rootStore.restApiContext, workflowId);
+			loadedSessionsForWorkflowId.value = workflowId;
 			const sessions = response.sessions || [];
 
 			// Load the most recent session if available
@@ -693,6 +718,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		} catch (error) {
 			console.error('Failed to load AI sessions:', error);
 			return [];
+		} finally {
+			isLoadingSessions.value = false;
 		}
 	}
 
@@ -747,36 +774,30 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
-	async function fetchSessionsMetadata() {
-		const workflowId = workflowsStore.workflowId;
-		if (!workflowId) {
-			hasMessages.value = false;
-			return;
-		}
-
-		try {
-			const response = await getSessionsMetadata(rootStore.restApiContext, workflowId);
-			hasMessages.value = response.hasMessages;
-		} catch (error) {
-			console.error('Failed to fetch sessions metadata:', error);
-			hasMessages.value = false;
-		}
-	}
-
-	// Watch workflowId changes to fetch sessions metadata when a valid workflow is loaded
+	// Watch workflowId changes to reset chat and load sessions when workflow changes
 	watch(
 		() => workflowsStore.workflowId,
-		(newWorkflowId) => {
-			// Only fetch if we have a valid workflow ID, AI builder is enabled, and we're in a builder-enabled view
+		(newWorkflowId, oldWorkflowId) => {
+			if (newWorkflowId === oldWorkflowId) {
+				return;
+			}
+
+			if (streaming.value) {
+				abortStreaming();
+			}
+
+			resetBuilderChat();
+
+			// Load sessions if AI builder is enabled and we're in a builder-enabled view
+			// loadSessions has its own guards for workflow saved state and deduplication
 			if (
 				newWorkflowId &&
-				workflowsStore.isWorkflowSaved[workflowsStore.workflowId] &&
+				route?.name &&
 				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
 				isAIBuilderEnabled.value
 			) {
-				void fetchSessionsMetadata();
-			} else {
-				hasMessages.value = false;
+				void fetchBuilderCredits();
+				void loadSessions();
 			}
 		},
 	);
@@ -894,7 +915,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
-		hasMessages: computed(() => hasMessages.value),
+		hasMessages,
 		workflowTodos,
 		lastUserMessageId,
 
@@ -907,7 +928,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		fetchBuilderCredits,
 		updateBuilderCredits,
 		getRunningTools,
-		fetchSessionsMetadata,
 		trackWorkflowBuilderJourney,
 		getAiBuilderMadeEdits,
 		resetAiBuilderMadeEdits,
