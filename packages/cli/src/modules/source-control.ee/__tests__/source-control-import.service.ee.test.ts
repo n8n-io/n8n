@@ -1616,6 +1616,8 @@ describe('SourceControlImportService', () => {
 						id: 'dt1',
 						name: 'Test Table',
 						project: { id: 'project1' },
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-02T00:00:00.000Z',
 					},
 					['id'],
 				);
@@ -1654,6 +1656,8 @@ describe('SourceControlImportService', () => {
 						id: 'dt1',
 						name: 'Test Table',
 						project: { id: 'personal-project-1' },
+						createdAt: '2024-01-01T00:00:00.000Z',
+						updatedAt: '2024-01-02T00:00:00.000Z',
 					},
 					['id'],
 				);

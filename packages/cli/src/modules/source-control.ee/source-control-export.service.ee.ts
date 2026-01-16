@@ -297,12 +297,14 @@ export class SourceControlExportService {
 					id: table.id,
 					name: table.name,
 					projectId: table.projectId,
-					columns: table.columns.map((col) => ({
-						id: col.id,
-						name: col.name,
-						type: col.type,
-						index: col.index,
-					})),
+					columns: table.columns
+						.sort((a, b) => a.index - b.index)
+						.map((col) => ({
+							id: col.id,
+							name: col.name,
+							type: col.type,
+							index: col.index,
+						})),
 					createdAt: table.createdAt.toISOString(),
 					updatedAt: table.updatedAt.toISOString(),
 				};

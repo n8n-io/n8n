@@ -500,12 +500,14 @@ export class SourceControlImportService {
 				id: table.id,
 				name: table.name,
 				projectId: table.projectId,
-				columns: (table.columns || []).map((col) => ({
-					id: col.id,
-					name: col.name,
-					type: col.type,
-					index: col.index,
-				})),
+				columns: (table.columns || [])
+					.sort((a, b) => a.index - b.index)
+					.map((col) => ({
+						id: col.id,
+						name: col.name,
+						type: col.type,
+						index: col.index,
+					})),
 				createdAt: table.createdAt.toISOString(),
 				updatedAt: table.updatedAt.toISOString(),
 			}));
@@ -1202,12 +1204,14 @@ export class SourceControlImportService {
 
 				const isNewTable = !existingDataTable;
 
-				// Upsert data table
+				// Upsert data table - preserve timestamps from file to avoid false "modified" detections
 				await this.dataTableRepository.upsert(
 					{
 						id: dataTable.id,
 						name: dataTable.name,
 						project: { id: targetProjectId },
+						createdAt: dataTable.createdAt,
+						updatedAt: dataTable.updatedAt,
 					},
 					['id'],
 				);
