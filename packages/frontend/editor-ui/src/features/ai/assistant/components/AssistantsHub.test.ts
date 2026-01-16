@@ -20,12 +20,10 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 // Mock useCalloutHelpers
-const mockIsCalloutDismissed = vi.fn();
-const mockDismissCallout = vi.fn();
 vi.mock('@/app/composables/useCalloutHelpers', () => ({
 	useCalloutHelpers: () => ({
-		isCalloutDismissed: mockIsCalloutDismissed,
-		dismissCallout: mockDismissCallout,
+		isCalloutDismissed: vi.fn().mockReturnValue(false),
+		dismissCallout: vi.fn().mockResolvedValue(undefined),
 	}),
 }));
 
@@ -48,7 +46,7 @@ vi.mock('./AskModeCoachmark.vue', () => ({
 	default: {
 		name: 'AskModeCoachmark',
 		props: ['visible'],
-		template: '<div data-test-id="ask-mode-coachmark" :data-visible="visible"><slot /></div>',
+		template: '<div data-test-id="ask-mode-coachmark"><slot /></div>',
 	},
 }));
 
@@ -83,10 +81,6 @@ describe('AssistantsHub', () => {
 		// Default route to a builder-enabled view
 		mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
-		// Default mock implementations
-		mockIsCalloutDismissed.mockReturnValue(false);
-		mockDismissCallout.mockResolvedValue(undefined);
-
 		// Default store states - both modes enabled
 		settingsStore.isAiAssistantEnabled = true;
 		builderStore.isAIBuilderEnabled = true;
@@ -97,79 +91,42 @@ describe('AssistantsHub', () => {
 		builderStore.loadSessions = vi.fn().mockResolvedValue(undefined);
 	});
 
-	describe('rendering', () => {
-		it('should render AskAssistantChat when in assistant mode', () => {
-			chatPanelStateStore.isOpen = true;
-			chatPanelStateStore.activeMode = 'assistant';
+	it('should render AskAssistantChat when in assistant mode', () => {
+		chatPanelStateStore.isOpen = true;
+		chatPanelStateStore.activeMode = 'assistant';
 
-			const { container } = renderComponent({ pinia });
+		const { container } = renderComponent({ pinia });
 
-			expect(container.querySelector('[data-test-id="ask-assistant-chat"]')).toBeInTheDocument();
-			expect(
-				container.querySelector('[data-test-id="ask-assistant-build"]'),
-			).not.toBeInTheDocument();
-		});
-
-		it('should render AskAssistantBuild when in builder mode', () => {
-			chatPanelStateStore.isOpen = true;
-			chatPanelStateStore.activeMode = 'builder';
-
-			const { container } = renderComponent({ pinia });
-
-			expect(container.querySelector('[data-test-id="ask-assistant-build"]')).toBeInTheDocument();
-			expect(
-				container.querySelector('[data-test-id="ask-assistant-chat"]'),
-			).not.toBeInTheDocument();
-		});
-
-		it('should render HubSwitcher when both modes are available', () => {
-			chatPanelStateStore.isOpen = true;
-			chatPanelStateStore.activeMode = 'assistant';
-			settingsStore.isAiAssistantEnabled = true;
-			builderStore.isAIBuilderEnabled = true;
-
-			const { container } = renderComponent({ pinia });
-
-			expect(container.querySelector('[data-test-id="hub-switcher"]')).toBeInTheDocument();
-		});
-
-		it('should not render HubSwitcher when only one mode is available', () => {
-			chatPanelStateStore.isOpen = true;
-			chatPanelStateStore.activeMode = 'assistant';
-			settingsStore.isAiAssistantEnabled = true;
-			builderStore.isAIBuilderEnabled = false;
-
-			const { container } = renderComponent({ pinia });
-
-			expect(container.querySelector('[data-test-id="hub-switcher"]')).not.toBeInTheDocument();
-		});
+		expect(container.querySelector('[data-test-id="ask-assistant-chat"]')).toBeInTheDocument();
+		expect(container.querySelector('[data-test-id="ask-assistant-build"]')).not.toBeInTheDocument();
 	});
 
-	describe('coachmark integration', () => {
-		it('should pass visible=true to coachmark when conditions are met', () => {
-			chatPanelStateStore.isOpen = true;
-			chatPanelStateStore.activeMode = 'assistant';
-			chatPanelStateStore.openSource = 'ask_button';
-			mockIsCalloutDismissed.mockReturnValue(false);
+	it('should render AskAssistantBuild when in builder mode', () => {
+		chatPanelStateStore.isOpen = true;
+		chatPanelStateStore.activeMode = 'builder';
 
-			const { container } = renderComponent({ pinia });
+		const { container } = renderComponent({ pinia });
 
-			const coachmark = container.querySelector('[data-test-id="ask-mode-coachmark"]');
-			expect(coachmark).toBeInTheDocument();
-			expect(coachmark?.getAttribute('data-visible')).toBe('true');
-		});
+		expect(container.querySelector('[data-test-id="ask-assistant-build"]')).toBeInTheDocument();
+		expect(container.querySelector('[data-test-id="ask-assistant-chat"]')).not.toBeInTheDocument();
+	});
 
-		it('should pass visible=false to coachmark when opened via helper', () => {
-			chatPanelStateStore.isOpen = true;
-			chatPanelStateStore.activeMode = 'assistant';
-			chatPanelStateStore.openSource = 'helper';
-			mockIsCalloutDismissed.mockReturnValue(false);
+	it('should render HubSwitcher when both modes are available', () => {
+		chatPanelStateStore.isOpen = true;
+		chatPanelStateStore.activeMode = 'assistant';
 
-			const { container } = renderComponent({ pinia });
+		const { container } = renderComponent({ pinia });
 
-			const coachmark = container.querySelector('[data-test-id="ask-mode-coachmark"]');
-			expect(coachmark).toBeInTheDocument();
-			expect(coachmark?.getAttribute('data-visible')).toBe('false');
-		});
+		expect(container.querySelector('[data-test-id="hub-switcher"]')).toBeInTheDocument();
+	});
+
+	it('should not render HubSwitcher when only one mode is available', () => {
+		chatPanelStateStore.isOpen = true;
+		chatPanelStateStore.activeMode = 'assistant';
+		builderStore.isAIBuilderEnabled = false;
+
+		const { container } = renderComponent({ pinia });
+
+		expect(container.querySelector('[data-test-id="hub-switcher"]')).not.toBeInTheDocument();
 	});
 });

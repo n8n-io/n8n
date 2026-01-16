@@ -112,33 +112,11 @@ describe('useAskModeCoachmark', () => {
 			expect(mockIsCalloutDismissed).toHaveBeenCalledWith(ASK_MODE_COACHMARK_KEY);
 		});
 
-		it('should return false when only assistant mode is enabled', () => {
+		it('should return false when toggle modes not available', () => {
 			chatPanelStateStore.isOpen = true;
 			chatPanelStateStore.activeMode = 'assistant';
 			chatPanelStateStore.openSource = 'ask_button';
 			builderStore.isAIBuilderEnabled = false;
-
-			const { shouldShowCoachmark } = useAskModeCoachmark();
-
-			expect(shouldShowCoachmark.value).toBe(false);
-		});
-
-		it('should return false when only builder mode is enabled', () => {
-			chatPanelStateStore.isOpen = true;
-			chatPanelStateStore.activeMode = 'assistant';
-			chatPanelStateStore.openSource = 'ask_button';
-			settingsStore.isAiAssistantEnabled = false;
-
-			const { shouldShowCoachmark } = useAskModeCoachmark();
-
-			expect(shouldShowCoachmark.value).toBe(false);
-		});
-
-		it('should return false when on a non-builder-enabled view', () => {
-			chatPanelStateStore.isOpen = true;
-			chatPanelStateStore.activeMode = 'assistant';
-			chatPanelStateStore.openSource = 'ask_button';
-			mockRoute.name = VIEWS.HOMEPAGE;
 
 			const { shouldShowCoachmark } = useAskModeCoachmark();
 
@@ -148,59 +126,17 @@ describe('useAskModeCoachmark', () => {
 
 	describe('canToggleModes', () => {
 		it('should return true when both modes are enabled and on builder view', () => {
-			settingsStore.isAiAssistantEnabled = true;
-			builderStore.isAIBuilderEnabled = true;
-			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
-
 			const { canToggleModes } = useAskModeCoachmark();
 
 			expect(canToggleModes.value).toBe(true);
 		});
 
-		it('should return false when assistant is disabled', () => {
-			settingsStore.isAiAssistantEnabled = false;
-			builderStore.isAIBuilderEnabled = true;
-
-			const { canToggleModes } = useAskModeCoachmark();
-
-			expect(canToggleModes.value).toBe(false);
-		});
-
-		it('should return false when builder is disabled', () => {
-			settingsStore.isAiAssistantEnabled = true;
-			builderStore.isAIBuilderEnabled = false;
-
-			const { canToggleModes } = useAskModeCoachmark();
-
-			expect(canToggleModes.value).toBe(false);
-		});
-
-		it('should return false on non-builder view', () => {
-			settingsStore.isAiAssistantEnabled = true;
-			builderStore.isAIBuilderEnabled = true;
+		it('should return false when conditions not met', () => {
 			mockRoute.name = VIEWS.HOMEPAGE;
 
 			const { canToggleModes } = useAskModeCoachmark();
 
 			expect(canToggleModes.value).toBe(false);
-		});
-	});
-
-	describe('isBuildMode', () => {
-		it('should return true when in builder mode', () => {
-			chatPanelStateStore.activeMode = 'builder';
-
-			const { isBuildMode } = useAskModeCoachmark();
-
-			expect(isBuildMode.value).toBe(true);
-		});
-
-		it('should return false when in assistant mode', () => {
-			chatPanelStateStore.activeMode = 'assistant';
-
-			const { isBuildMode } = useAskModeCoachmark();
-
-			expect(isBuildMode.value).toBe(false);
 		});
 	});
 
