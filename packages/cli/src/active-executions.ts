@@ -63,8 +63,6 @@ export class ActiveExecutions {
 
 		try {
 			if (maybeExecutionId === undefined) {
-				// Is a new execution so save in DB
-
 				const fullExecutionData: CreateExecutionPayload = {
 					data: executionData.executionData!,
 					mode,
@@ -72,9 +70,8 @@ export class ActiveExecutions {
 					workflowData: executionData.workflowData,
 					status: executionStatus,
 					workflowId: executionData.workflowData.id,
+					retryOf: executionData.retryOf ?? undefined,
 				};
-
-				fullExecutionData.retryOf = executionData.retryOf ?? undefined;
 
 				const workflowId = executionData.workflowData.id;
 				if (workflowId !== undefined && isWorkflowIdValid(workflowId)) {
