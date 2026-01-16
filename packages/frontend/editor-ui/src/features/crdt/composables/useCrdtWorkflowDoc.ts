@@ -284,6 +284,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		doc.transact(() => {
 			const nodesMap = doc!.getMap('nodes');
 			const crdtNode = doc!.createMap();
+			crdtNode.set('id', node.id);
 			crdtNode.set('position', node.position);
 			crdtNode.set('name', node.name);
 			crdtNode.set('type', node.type);
@@ -302,6 +303,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			const nodesMap = doc!.getMap('nodes');
 			for (const node of nodes) {
 				const crdtNode = doc!.createMap();
+				crdtNode.set('id', node.id);
 				crdtNode.set('position', node.position);
 				crdtNode.set('name', node.name);
 				crdtNode.set('type', node.type);
@@ -309,6 +311,41 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 				// Deep seed parameters for fine-grained conflict resolution
 				crdtNode.set('parameters', seedValueDeep(doc!, node.parameters));
 				nodesMap.set(node.id, crdtNode);
+			}
+		});
+	}
+
+	function addNodesAndEdges(nodes: WorkflowNode[], edges: WorkflowEdge[]): void {
+		if (!doc) return;
+		if (nodes.length === 0 && edges.length === 0) return;
+
+		doc.transact(() => {
+			// Add nodes
+			if (nodes.length > 0) {
+				const nodesMap = doc!.getMap('nodes');
+				for (const node of nodes) {
+					const crdtNode = doc!.createMap();
+					crdtNode.set('id', node.id);
+					crdtNode.set('position', node.position);
+					crdtNode.set('name', node.name);
+					crdtNode.set('type', node.type);
+					crdtNode.set('typeVersion', node.typeVersion);
+					crdtNode.set('parameters', seedValueDeep(doc!, node.parameters));
+					nodesMap.set(node.id, crdtNode);
+				}
+			}
+
+			// Add edges
+			if (edges.length > 0) {
+				const edgesMap = doc!.getMap('edges');
+				for (const edge of edges) {
+					const crdtEdge = doc!.createMap();
+					crdtEdge.set('source', edge.source);
+					crdtEdge.set('target', edge.target);
+					crdtEdge.set('sourceHandle', edge.sourceHandle);
+					crdtEdge.set('targetHandle', edge.targetHandle);
+					edgesMap.set(edge.id, crdtEdge);
+				}
 			}
 		});
 	}
@@ -457,6 +494,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		getEdges,
 		addNode,
 		addNodes,
+		addNodesAndEdges,
 		removeNode,
 		updateNodePositions,
 		updateNodeParams,

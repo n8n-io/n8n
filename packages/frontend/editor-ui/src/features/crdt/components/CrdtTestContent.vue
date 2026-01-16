@@ -3,12 +3,13 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import NodeCreation from '@/features/shared/nodeCreator/views/NodeCreation.vue';
 import type { AddedNodesAndConnections, INodeUi, ToggleNodeCreatorOptions } from '@/Interface';
 import { useVueFlow } from '@vue-flow/core';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { provide, ref } from 'vue';
 import { useWorkflowAwareness } from '../composables/useWorkflowAwareness';
 import { useWorkflowDoc } from '../composables/useWorkflowSync';
 import { WorkflowAwarenessKey } from '../types/awareness.types';
-import type { WorkflowNode } from '../types/workflowDocument.types';
+import type { WorkflowEdge, WorkflowNode } from '../types/workflowDocument.types';
 import CrdtParameterTestPanel from './CrdtParameterTestPanel.vue';
 import WorkflowCanvas from './WorkflowCanvas.vue';
 
@@ -80,7 +81,8 @@ const onAddNodesAndConnections = (payload: AddedNodesAndConnections) => {
 				? nodeTypeDescription.defaults.name
 				: nodeTypeDescription.displayName);
 
-		return {
+		// Create a temporary node object to pass to getNodeParameters
+		const tempNode = {
 			id: crypto.randomUUID(),
 			name,
 			type: node.type,
@@ -88,15 +90,64 @@ const onAddNodesAndConnections = (payload: AddedNodesAndConnections) => {
 			position,
 			parameters: {},
 		};
+
+		// Resolve parameters with defaults (like the main editor does)
+		// This ensures dynamic inputs/outputs get the correct default parameter values
+		const resolvedParameters =
+			NodeHelpers.getNodeParameters(
+				nodeTypeDescription.properties,
+				tempNode.parameters,
+				true, // returnDefaults
+				false, // returnNoneDisplayed
+				tempNode,
+				nodeTypeDescription,
+			) ?? {};
+
+		return {
+			...tempNode,
+			parameters: resolvedParameters,
+		};
 	});
 
 	const { off } = instance.onNodesInitialized(() => {
 		instance.addSelectedNodes(nodesToAdd.map((node) => instance.findNode(node.id)!));
 		instance.nodesSelectionActive.value = true;
-		// here
 		off();
 	});
-	doc.addNodes(nodesToAdd);
+
+	// Convert connections to edges
+	const edgesToAdd: WorkflowEdge[] = [];
+	if (payload.connections && payload.connections.length > 0) {
+		for (const conn of payload.connections) {
+			const sourceNode = nodesToAdd[conn.from.nodeIndex];
+			const targetNode = nodesToAdd[conn.to.nodeIndex];
+
+			if (!sourceNode || !targetNode) {
+				console.warn('Invalid connection: node index out of bounds', conn);
+				continue;
+			}
+
+			const sourceType: NodeConnectionType = conn.from.type ?? 'main';
+			const targetType: NodeConnectionType = conn.to.type ?? 'main';
+			const sourceIndex = conn.from.outputIndex ?? 0;
+			const targetIndex = conn.to.inputIndex ?? 0;
+
+			const sourceHandle = `outputs/${sourceType}/${sourceIndex}`;
+			const targetHandle = `inputs/${targetType}/${targetIndex}`;
+			const edgeId = `[${sourceNode.id}/${sourceHandle}][${targetNode.id}/${targetHandle}]`;
+
+			edgesToAdd.push({
+				id: edgeId,
+				source: sourceNode.id,
+				target: targetNode.id,
+				sourceHandle,
+				targetHandle,
+			});
+		}
+	}
+
+	// Add nodes and edges in a single atomic transaction
+	doc.addNodesAndEdges(nodesToAdd, edgesToAdd);
 
 	createNodeActive.value = false;
 };

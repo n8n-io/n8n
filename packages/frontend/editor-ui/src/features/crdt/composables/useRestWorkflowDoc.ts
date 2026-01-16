@@ -130,6 +130,11 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		nodesCache.value = [...nodesCache.value, ...nodes];
 	}
 
+	function addNodesAndEdges(nodes: WorkflowNode[], edges: WorkflowEdge[]): void {
+		nodesCache.value = [...nodesCache.value, ...nodes];
+		edgesCache.value = [...edgesCache.value, ...edges];
+	}
+
 	function removeNode(nodeId: string): void {
 		nodesCache.value = nodesCache.value.filter((n) => n.id !== nodeId);
 	}
@@ -195,6 +200,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		getEdges,
 		addNode,
 		addNodes,
+		addNodesAndEdges,
 		removeNode,
 		updateNodePositions,
 		updateNodeParams,

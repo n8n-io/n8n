@@ -145,6 +145,9 @@ export interface WorkflowDocument {
 	/** Add multiple nodes in a single transaction */
 	addNodes(nodes: WorkflowNode[]): void;
 
+	/** Add multiple nodes and edges in a single atomic transaction */
+	addNodesAndEdges(nodes: WorkflowNode[], edges: WorkflowEdge[]): void;
+
 	/** Remove a node by ID */
 	removeNode(nodeId: string): void;
 

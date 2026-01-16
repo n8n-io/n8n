@@ -4,6 +4,7 @@ import {
 	MESSAGE_AWARENESS,
 	encodeMessage,
 	decodeMessage,
+	isMapChange,
 	type CRDTDoc,
 	type CRDTMap,
 	type Unsubscribe,
@@ -317,21 +318,33 @@ export class CRDTWebSocketService {
 	}
 
 	/**
-	 * Set up handle recomputation when node parameters change.
-	 * This is necessary because handles can be dynamic based on parameter values
-	 * (e.g., Merge node's numberInputs parameter controls input count).
+	 * Set up handle recomputation when nodes are added or parameters change.
+	 * This is necessary because:
+	 * - Newly added nodes need their handles computed server-side
+	 * - Handles can be dynamic based on parameter values (e.g., Merge node's numberInputs)
 	 */
 	private setupHandleRecomputation(doc: CRDTDoc, workflow: Workflow): Unsubscribe {
 		const nodesMap = doc.getMap<unknown>('nodes');
 
-		return nodesMap.onDeepChange((changes) => {
-			// Check if any parameter changes occurred
+		const nodesUnsub = nodesMap.onDeepChange((changes) => {
+			// Track nodes that need handle computation
 			const affectedNodeIds = new Set<string>();
 
 			for (const change of changes) {
-				// path format: [nodeId, 'parameters', ...paramPath]
-				if (change.path.length >= 2 && change.path[1] === 'parameters') {
-					affectedNodeIds.add(change.path[0] as string);
+				// Only process map changes (not array changes)
+				if (!isMapChange(change)) continue;
+
+				const nodeId = change.path[0] as string;
+				if (!nodeId) continue;
+
+				// Case 1: New node added (path length 1, action 'add')
+				// When a node is added, path is [nodeId] and action is 'add'
+				if (change.path.length === 1 && change.action === 'add') {
+					affectedNodeIds.add(nodeId);
+				}
+				// Case 2: Parameter changed (path format: [nodeId, 'parameters', ...paramPath])
+				else if (change.path.length >= 2 && change.path[1] === 'parameters') {
+					affectedNodeIds.add(nodeId);
 				}
 			}
 
@@ -346,7 +359,7 @@ export class CRDTWebSocketService {
 					// Read node data directly from CRDT (not from Workflow instance)
 					// This ensures we have the latest parameters, since multiple onDeepChange
 					// handlers may fire in undefined order
-					const node = this.crdtNodeMapToINode(nodeMap);
+					const node = this.crdtNodeMapToINode(nodeMap, nodeId);
 					if (!node) continue;
 
 					const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -369,14 +382,19 @@ export class CRDTWebSocketService {
 				}
 			});
 		});
+
+		return nodesUnsub;
 	}
 
 	/**
 	 * Convert a CRDT node map to an INode object.
 	 * Reads directly from CRDT to get the latest data.
+	 *
+	 * @param nodeMap The CRDT map containing node data
+	 * @param nodeIdFallback Optional node ID to use if 'id' is not stored in the map
 	 */
-	private crdtNodeMapToINode(nodeMap: CRDTMap<unknown>): INode | null {
-		const id = nodeMap.get('id') as string | undefined;
+	private crdtNodeMapToINode(nodeMap: CRDTMap<unknown>, nodeIdFallback?: string): INode | null {
+		const id = (nodeMap.get('id') as string | undefined) ?? nodeIdFallback;
 		const name = nodeMap.get('name') as string | undefined;
 		const type = nodeMap.get('type') as string | undefined;
 		const typeVersion = nodeMap.get('typeVersion') as number | undefined;
