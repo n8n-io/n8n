@@ -2,6 +2,7 @@ import { mock } from 'jest-mock-extended';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const nock = require('nock');
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { WebSocket } from 'ws';
 import { GraphQL } from '../GraphQL.node';
 
@@ -91,11 +92,28 @@ async function executeGraphQLNode(
 		const url = new URL(options.uri);
 		const method = options.method || 'POST';
 
+		// Handle query parameters from options.qs
+		let queryString = url.search;
+		if (options.qs && typeof options.qs === 'object') {
+			const qsParams = new URLSearchParams();
+			// Add existing query params from URL
+			url.searchParams.forEach((value, key) => {
+				qsParams.append(key, value);
+			});
+			// Add query params from options.qs
+			for (const [key, value] of Object.entries(options.qs)) {
+				if (value !== null && value !== undefined) {
+					qsParams.set(key, String(value));
+				}
+			}
+			queryString = qsParams.toString() ? `?${qsParams.toString()}` : '';
+		}
+
 		return await new Promise((resolve, reject) => {
 			const requestOptions = {
 				hostname: url.hostname,
 				port: url.port || (url.protocol === 'https:' ? 443 : 80),
-				path: url.pathname + url.search,
+				path: url.pathname + queryString,
 				method,
 				headers: options.headers || {},
 			};
@@ -914,6 +932,723 @@ describe('GraphQL Node', () => {
 
 			expect(result).toBeDefined();
 			expect(result[0]).toBeDefined();
+		});
+
+		it('should handle next message type', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'next',
+									payload: { messageAdded: { id: '1', content: 'test' } },
+								}),
+							);
+						}, 20);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'complete',
+								}),
+							);
+						}, 30);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			const result = await executeGraphQLNode(testData.parameters);
+
+			expect(result).toBeDefined();
+			expect(result[0][0].json).toHaveProperty('messageAdded');
+		});
+
+		it('should handle done message type', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'data',
+									payload: { messageAdded: { id: '1', content: 'test' } },
+								}),
+							);
+						}, 20);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'done',
+								}),
+							);
+						}, 30);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			const result = await executeGraphQLNode(testData.parameters);
+
+			expect(result).toBeDefined();
+			expect(result[0][0].json).toHaveProperty('messageAdded');
+		});
+
+		it('should handle message with data field instead of payload', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'data',
+									data: { messageAdded: { id: '1', content: 'test' } },
+								}),
+							);
+						}, 20);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'complete',
+								}),
+							);
+						}, 30);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			const result = await executeGraphQLNode(testData.parameters);
+
+			expect(result).toBeDefined();
+			expect(result[0][0].json).toHaveProperty('messageAdded');
+		});
+
+		it('should handle unknown message types by collecting them', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'unknown_type',
+									customField: 'customValue',
+								}),
+							);
+						}, 20);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'complete',
+								}),
+							);
+						}, 30);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			const result = await executeGraphQLNode(testData.parameters);
+
+			expect(result).toBeDefined();
+			expect(result[0][0].json).toHaveProperty('type', 'unknown_type');
+			expect(result[0][0].json).toHaveProperty('customField', 'customValue');
+		});
+
+		it('should handle subscription timeout when no messages received', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					// No message handler - timeout should occur
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 1, // Very short timeout
+				},
+			};
+
+			await expect(executeGraphQLNode(testData.parameters)).rejects.toThrow(
+				'WebSocket subscription timeout',
+			);
+		});
+
+		it('should handle connection failure when close event fires before connection established', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'close') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			await expect(executeGraphQLNode(testData.parameters)).rejects.toThrow(
+				'WebSocket connection failed to establish',
+			);
+		});
+
+		it('should handle error messages with array payload format', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'error',
+									payload: [{ message: 'Error 1' }, { message: 'Error 2' }],
+								}),
+							);
+						}, 20);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			await expect(executeGraphQLNode(testData.parameters)).rejects.toThrow('Error 1, Error 2');
+		});
+
+		it('should handle error messages with string payload format', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'error',
+									payload: 'Simple error message',
+								}),
+							);
+						}, 20);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			await expect(executeGraphQLNode(testData.parameters)).rejects.toThrow('Simple error message');
+		});
+
+		it('should handle connection_error message type', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'connection_error',
+									payload: { message: 'Connection failed' },
+								}),
+							);
+						}, 20);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			await expect(executeGraphQLNode(testData.parameters)).rejects.toThrow('Connection failed');
+		});
+
+		it('should handle empty variables object', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'data',
+									payload: { messageAdded: { id: '1', content: 'test' } },
+								}),
+							);
+						}, 20);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'complete',
+								}),
+							);
+						}, 30);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: {},
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			const result = await executeGraphQLNode(testData.parameters);
+
+			expect(result).toBeDefined();
+			expect(result[0][0].json).toHaveProperty('messageAdded');
+		});
+
+		it('should handle variables as object (not string)', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						// For graphql-transport-ws, need to send connection_ack first
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'connection_ack',
+								}),
+							);
+						}, 20);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'data',
+									payload: { messageAdded: { id: '1', content: 'test' } },
+								}),
+							);
+						}, 30);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'complete',
+								}),
+							);
+						}, 40);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: { channel: 'general', userId: 123 },
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			const result = await executeGraphQLNode(testData.parameters);
+
+			expect(result).toBeDefined();
+			// Verify variables were sent in subscription message
+			const sendCalls = mockWebSocket.send.mock.calls;
+			const subscribeCall = sendCalls.find((call) => call[0].includes('subscribe'));
+			expect(subscribeCall).toBeDefined();
+			const subscribeMessage = jsonParse(subscribeCall![0]) as {
+				payload: { variables: Record<string, unknown> };
+			};
+			expect(subscribeMessage.payload.variables).toEqual({ channel: 'general', userId: 123 });
+		});
+
+		it('should handle operationName parameter', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'connection_ack',
+								}),
+							);
+						}, 20);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'data',
+									payload: { messageAdded: { id: '1', content: 'test' } },
+								}),
+							);
+						}, 30);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'complete',
+								}),
+							);
+						}, 40);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					operationName: 'MessageSubscription',
+					websocketSubprotocol: 'graphql-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			const result = await executeGraphQLNode(testData.parameters);
+
+			expect(result).toBeDefined();
+			// Verify operationName was sent in subscription message
+			const sendCalls = mockWebSocket.send.mock.calls;
+			const startCall = sendCalls.find((call) => call[0].includes('start'));
+			expect(startCall).toBeDefined();
+			const startMessage = jsonParse(startCall![0]) as {
+				payload: { operationName: string };
+			};
+			expect(startMessage.payload.operationName).toBe('MessageSubscription');
+		});
+
+		it('should reset subscription timeout on each message', async () => {
+			let messageCount = 0;
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						// Send multiple messages with delays to test timeout reset
+						setTimeout(() => {
+							messageCount++;
+							handler(
+								JSON.stringify({
+									type: 'data',
+									payload: { messageAdded: { id: '1', content: 'first' } },
+								}),
+							);
+						}, 20);
+						setTimeout(() => {
+							messageCount++;
+							handler(
+								JSON.stringify({
+									type: 'data',
+									payload: { messageAdded: { id: '2', content: 'second' } },
+								}),
+							);
+						}, 250); // After 250ms, should reset timeout
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'complete',
+								}),
+							);
+						}, 350);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 1, // Short timeout, but should reset on messages
+				},
+			};
+
+			const result = await executeGraphQLNode(testData.parameters);
+
+			expect(result).toBeDefined();
+			expect(messageCount).toBe(2);
+		});
+
+		it('should verify connection_init is sent for graphql-transport-ws', async () => {
+			const mockWebSocket = {
+				readyState: 0,
+				on: jest.fn((event, handler) => {
+					if (event === 'open') {
+						setTimeout(() => {
+							handler();
+						}, 10);
+					}
+					if (event === 'message') {
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'connection_ack',
+								}),
+							);
+						}, 20);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'data',
+									payload: { messageAdded: { id: '1', content: 'test' } },
+								}),
+							);
+						}, 30);
+						setTimeout(() => {
+							handler(
+								JSON.stringify({
+									type: 'complete',
+								}),
+							);
+						}, 40);
+					}
+				}),
+				send: jest.fn(),
+				close: jest.fn(),
+				removeAllListeners: jest.fn(),
+			};
+
+			(WebSocket as unknown as jest.Mock).mockImplementation(() => mockWebSocket);
+
+			const testData = {
+				parameters: {
+					connectionMode: 'websocket',
+					url: 'wss://example.com/graphql',
+					query: 'subscription { messageAdded { id content } }',
+					variables: '{}',
+					websocketSubprotocol: 'graphql-transport-ws',
+					connectionTimeout: 30,
+					subscriptionTimeout: 300,
+				},
+			};
+
+			await executeGraphQLNode(testData.parameters);
+
+			// Verify connection_init was sent
+			const sendCalls = mockWebSocket.send.mock.calls;
+			const initCall = sendCalls.find((call) => call[0].includes('connection_init'));
+			expect(initCall).toBeDefined();
+			const initMessage = jsonParse(initCall![0]) as { type: string };
+			expect(initMessage.type).toBe('connection_init');
 		});
 	});
 

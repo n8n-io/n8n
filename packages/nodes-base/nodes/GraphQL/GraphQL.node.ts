@@ -171,24 +171,73 @@ async function executeWebSocket(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const url = this.getNodeParameter('url', itemIndex, '') as string;
-	const query = this.getNodeParameter('query', itemIndex, '') as string;
-	const allowUnauthorizedCerts = this.getNodeParameter(
+	const urlParam = this.getNodeParameter('url', itemIndex, '');
+	if (typeof urlParam !== 'string') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid URL parameter: expected string, got ${typeof urlParam}`,
+			{ itemIndex },
+		);
+	}
+	const url: string = urlParam;
+
+	const queryParam = this.getNodeParameter('query', itemIndex, '');
+	if (typeof queryParam !== 'string') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid query parameter: expected string, got ${typeof queryParam}`,
+			{ itemIndex },
+		);
+	}
+	const query: string = queryParam;
+
+	const allowUnauthorizedCertsParam = this.getNodeParameter(
 		'allowUnauthorizedCerts',
 		itemIndex,
 		false,
-	) as boolean;
-	const subprotocol = this.getNodeParameter(
+	);
+	if (typeof allowUnauthorizedCertsParam !== 'boolean') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid allowUnauthorizedCerts parameter: expected boolean, got ${typeof allowUnauthorizedCertsParam}`,
+			{ itemIndex },
+		);
+	}
+	const allowUnauthorizedCerts: boolean = allowUnauthorizedCertsParam;
+
+	const subprotocolParam = this.getNodeParameter(
 		'websocketSubprotocol',
 		itemIndex,
 		'graphql-transport-ws',
-	) as string;
-	const connectionTimeout = this.getNodeParameter('connectionTimeout', itemIndex, 30) as number;
-	const subscriptionTimeout = this.getNodeParameter(
-		'subscriptionTimeout',
-		itemIndex,
-		300,
-	) as number;
+	);
+	if (typeof subprotocolParam !== 'string') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid websocketSubprotocol parameter: expected string, got ${typeof subprotocolParam}`,
+			{ itemIndex },
+		);
+	}
+	const subprotocol: string = subprotocolParam;
+
+	const connectionTimeoutParam = this.getNodeParameter('connectionTimeout', itemIndex, 30);
+	if (typeof connectionTimeoutParam !== 'number') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid connectionTimeout parameter: expected number, got ${typeof connectionTimeoutParam}`,
+			{ itemIndex },
+		);
+	}
+	const connectionTimeout: number = connectionTimeoutParam;
+
+	const subscriptionTimeoutParam = this.getNodeParameter('subscriptionTimeout', itemIndex, 300);
+	if (typeof subscriptionTimeoutParam !== 'number') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid subscriptionTimeout parameter: expected number, got ${typeof subscriptionTimeoutParam}`,
+			{ itemIndex },
+		);
+	}
+	const subscriptionTimeout: number = subscriptionTimeoutParam;
 
 	// Validate URL
 	validateURL(this.getNode(), url, 'websocket', itemIndex);
@@ -196,13 +245,13 @@ async function executeWebSocket(
 	// Validate and enforce timeout limits
 	validateTimeouts(this.getNode(), connectionTimeout, subscriptionTimeout, itemIndex);
 
-	const variablesParam = this.getNodeParameter('variables', itemIndex, {}) as IDataObject;
+	const variablesParam = this.getNodeParameter('variables', itemIndex, {});
 
 	// Parse variables if they're a string, otherwise use as object
 	let variables: IDataObject;
 	if (typeof variablesParam === 'string') {
 		try {
-			variables = JSON.parse(variablesParam as string);
+			variables = JSON.parse(variablesParam);
 		} catch (error) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -210,11 +259,21 @@ async function executeWebSocket(
 				{ itemIndex },
 			);
 		}
+	} else if (variablesParam && typeof variablesParam === 'object') {
+		variables = variablesParam as IDataObject;
 	} else {
-		variables = variablesParam;
+		variables = {};
 	}
 
-	const operationName = this.getNodeParameter('operationName', itemIndex, '') as string;
+	const operationNameParam = this.getNodeParameter('operationName', itemIndex, '');
+	if (typeof operationNameParam !== 'string') {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Invalid operationName parameter: expected string, got ${typeof operationNameParam}`,
+			{ itemIndex },
+		);
+	}
+	const operationName: string = operationNameParam;
 
 	const { parameter: headerParameters }: { parameter?: Array<{ name: string; value: string }> } =
 		this.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
