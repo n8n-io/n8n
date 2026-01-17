@@ -5,6 +5,7 @@ import { keycloak, createKeycloakHelper } from './keycloak';
 import { loadBalancer } from './load-balancer';
 import { mailpit, createMailpitHelper } from './mailpit';
 import { ngrok } from './ngrok';
+import { mysqlService } from './mysql';
 import { createObservabilityHelper } from './observability';
 import { postgres } from './postgres';
 import { proxy } from './proxy';
@@ -33,6 +34,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	cloudflared,
 	ngrok,
 	kafka,
+	mysql: mysqlService,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
