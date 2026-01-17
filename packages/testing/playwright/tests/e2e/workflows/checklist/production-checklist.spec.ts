@@ -98,8 +98,7 @@ test.describe('Workflow Production Checklist', () => {
 		await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
 	});
 
-	// Flaky in multi-main mode
-	test.fixme('should show completed state for configured actions @fixme', async ({ n8n, api }) => {
+	test('should show completed state for configured actions', async ({ n8n, api }) => {
 		const errorWorkflow = await api.workflows.createWorkflow({
 			name: 'Error Handler',
 			nodes: [

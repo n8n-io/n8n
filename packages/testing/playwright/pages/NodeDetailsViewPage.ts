@@ -217,8 +217,43 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('credentials-label');
 	}
 
-	async makeWebhookRequest(path: string) {
-		return await this.page.request.get(path);
+	/**
+	 * Make a webhook request with retry logic for multi-main mode compatibility.
+	 * In multi-main mode, webhook registration may take time to propagate across instances.
+	 * @param path - The webhook path to request
+	 * @param options - Configuration options
+	 * @param options.maxRetries - Maximum number of retry attempts (default: 5)
+	 * @param options.retryDelay - Delay between retries in ms (default: 1000)
+	 * @returns Response from the webhook request
+	 */
+	async makeWebhookRequest(
+		path: string,
+		options: { maxRetries?: number; retryDelay?: number } = {},
+	) {
+		const { maxRetries = 5, retryDelay = 1000 } = options;
+		let lastError: Error | null = null;
+
+		for (let attempt = 0; attempt <= maxRetries; attempt++) {
+			try {
+				const response = await this.page.request.get(path);
+				// If we get a 404, the webhook might not be registered yet - retry
+				if (response.status() === 404 && attempt < maxRetries) {
+					lastError = new Error(`Webhook not found (404) at ${path}`);
+					await this.page.waitForTimeout(retryDelay);
+					continue;
+				}
+				return response;
+			} catch (error) {
+				lastError = error as Error;
+				if (attempt < maxRetries) {
+					await this.page.waitForTimeout(retryDelay);
+				}
+			}
+		}
+
+		throw new Error(
+			`Failed to make webhook request after ${maxRetries + 1} attempts: ${lastError?.message}`,
+		);
 	}
 
 	getWebhookUrl() {
