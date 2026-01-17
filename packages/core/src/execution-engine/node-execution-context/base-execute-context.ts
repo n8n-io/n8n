@@ -1,3 +1,5 @@
+import { SecurityConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import get from 'lodash/get';
 import type {
 	Workflow,
@@ -246,6 +248,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		settings: unknown,
 		itemIndex: number,
 	): Promise<Result<T, E>> {
+		const { blockEnvAccessInNode } = Container.get(SecurityConfig);
 		return await this.additionalData.startRunnerTask<T, E>(
 			this.additionalData,
 			jobType,
@@ -261,7 +264,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.connectionInputData,
 			{},
 			this.mode,
-			createEnvProviderState(),
+			createEnvProviderState(blockEnvAccessInNode),
 			this.executeData,
 		);
 	}

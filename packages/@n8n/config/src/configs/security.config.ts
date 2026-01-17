@@ -76,4 +76,11 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_GIT_NODE_ENABLE_ALL_CONFIG_KEYS')
 	enableGitNodeAllConfigKeys: boolean = false;
+
+	/**
+	 * Whether to block access to environment variables from Code nodes and expressions.
+	 * When enabled, accessing process.env in Code nodes or expressions will throw an error.
+	 */
+	@Env('N8N_BLOCK_ENV_ACCESS_IN_NODE')
+	blockEnvAccessInNode: boolean = true;
 }
