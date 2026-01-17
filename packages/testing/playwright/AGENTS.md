@@ -31,9 +31,36 @@ All tests should start with `n8n.start.*` methods. See `composables/TestEntryCom
 | `withUser(user)` | Isolated browser context per user |
 | `withProjectFeatures()` | Enable sharing/folders/permissions |
 
-## Multi-User Testing
+## Test Isolation
 
-For tests requiring multiple users with isolated browser sessions:
+Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.
+
+### Unique Identifiers
+
+Use `nanoid` for unique test data:
+
+```typescript
+const credentialName = `Test Credential ${nanoid()}`;
+const workflow = await api.workflows.createWorkflow({
+  name: `Test Workflow ${nanoid()}`,
+});
+```
+
+### Dynamic User Creation
+
+Create users dynamically via the public API:
+
+```typescript
+const member = await api.publicApi.createUser({
+  email: `member-${nanoid()}@test.com`,
+  firstName: 'Test',
+  lastName: 'Member',
+});
+```
+
+### Isolated Browser Contexts
+
+For UI tests requiring multiple users, create isolated browser contexts:
 
 ```typescript
 // 1. Create users via public API
@@ -51,6 +78,27 @@ await member2Page.navigate.toCredentials();
 
 **Reference:** `tests/e2e/building-blocks/user-service.spec.ts`
 
+### Isolated API Contexts
+
+For API-only operations as another user, create isolated API contexts (no browser needed):
+
+```typescript
+const member = await api.publicApi.createUser({...});
+const memberApi = await api.createApiForUser(member);
+
+const memberProject = await memberApi.projects.getMyPersonalProject();
+await memberApi.credentials.createCredential({...});
+```
+
+### Identity-Based Assertions
+
+Assert by identity (name) rather than count for parallel-safe tests:
+
+```typescript
+await expect(credentialDropdown.getByText(testCredName)).toBeVisible();
+await expect(credentialDropdown.getByText(devCredName)).toBeHidden();
+```
+
 ## Worker Isolation (Fresh Database)
 
 Use `test.use()` at file top-level with unique capability config:
@@ -67,17 +115,38 @@ test('test with clean state', async ({ n8n }) => {
 });
 ```
 
-## Anti-Patterns
+## Data Setup
 
-| Pattern | Why | Use Instead |
-|---------|-----|-------------|
-| `test.describe.serial` | Creates test dependencies | Parallel tests with isolated setup |
-| `@db:reset` tag | Deprecated - CI issues | `test.use()` with unique capability |
-| `n8n.api.signin()` | Session bleeding | `n8n.start.withUser()` |
-| `Date.now()` for IDs | Race conditions | `nanoid()` |
-| `waitForTimeout()` | Flaky | `waitForResponse()`, `toBeVisible()` |
-| `.toHaveCount(N)` | Brittle | Named element assertions |
-| Raw `page.goto()` | Bypasses setup | `n8n.navigate.*` methods |
+Use API helpers for fast, reliable test data setup. Reserve UI interactions for testing UI behavior:
+
+```typescript
+// API for data setup
+const credential = await api.credentials.createCredential({
+  name: `Test Credential ${nanoid()}`,
+  type: 'notionApi',
+  data: { apiKey: 'test' },
+});
+
+const workflow = await api.workflows.createWorkflow({
+  name: `Test Workflow ${nanoid()}`,
+  nodes: [...],
+});
+
+// UI for verification
+await n8n.navigate.toCredentials();
+await expect(n8n.credentials.cards.getCredential(credential.name)).toBeVisible();
+```
+
+## Feature Enablement
+
+The `n8n` fixture automatically enables project features. For API-only tests (no `n8n` fixture), enable features explicitly:
+
+```typescript
+test('API-only test', async ({ api }) => {
+  await api.enableProjectFeatures();
+  // ...
+});
+```
 
 ## Code Style
 
@@ -115,3 +184,7 @@ See [README.md#debugging](./README.md#debugging) for detailed instructions on:
 | Composable example | `composables/WorkflowComposer.ts` |
 | API helpers | `services/api-helper.ts` |
 | Capabilities | `fixtures/capabilities.ts` |
+
+## Shard Rebalancing
+
+When refactoring, adding, or moving significant numbers of tests, consider rebalancing test shards to maintain even CI distribution. See `docs/ORCHESTRATION.md` for details.
