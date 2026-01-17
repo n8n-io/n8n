@@ -172,6 +172,7 @@ export class CommunityPackagesService {
 				APPDATA: process.env.APPDATA,
 				NODE_ENV: 'production',
 			},
+			shell: true,
 		};
 
 		try {
@@ -526,7 +527,7 @@ export class CommunityPackagesService {
 		const { stdout: tarOutput } = await asyncExecFile(
 			'npm',
 			['pack', `${packageName}@${packageVersion}`, `--registry=${registry}`, '--quiet'],
-			{ cwd: this.downloadFolder },
+			{ cwd: this.downloadFolder, shell: true },
 		);
 
 		const tarballName = tarOutput?.trim();
@@ -557,6 +558,7 @@ export class CommunityPackagesService {
 
 			await asyncExecFile('npm', ['install', ...this.getNpmInstallArgs()], {
 				cwd: packageDirectory,
+				shell: true,
 			});
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
