@@ -3,7 +3,7 @@ import { generateNanoId, AuthIdentity, User, UserRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import * as helpers from '@/ldap.ee/helpers.ee';
+import * as helpers from '../helpers.ee';
 
 const userRepository = mockInstance(UserRepository);
 
