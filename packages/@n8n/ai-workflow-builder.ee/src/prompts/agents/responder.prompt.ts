@@ -39,6 +39,13 @@ const RESPONSE_STYLE = `- Keep responses focused and not overly long
 - Be conversational and helpful
 - Do not use emojis in your response`;
 
+const LIMITATIONS = `You cannot:
+- Search the web or access external websites
+- Look up real-time information or documentation
+- Verify external API details or current service features
+
+If a user asks you to search for information or look something up online, explain that you cannot access the web, but you can help build workflows based on your existing knowledge of n8n nodes and integrations.`;
+
 /**
  * Error guidance prompts for different error scenarios (AI-1812)
  */
@@ -74,6 +81,7 @@ export function buildGeneralErrorGuidance(): string {
 export function buildResponderPrompt(): string {
 	return prompt()
 		.section('role', RESPONDER_ROLE)
+		.section('limitations', LIMITATIONS)
 		.section('workflow_completion_responses', WORKFLOW_COMPLETION)
 		.section('conversational_responses', CONVERSATIONAL_RESPONSES)
 		.section('response_style', RESPONSE_STYLE)
