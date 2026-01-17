@@ -1673,17 +1673,18 @@ export const getRequestHelperFunctions = (
 						hash = crypto.createHash('md5').update(contentBody).digest('base64');
 					}
 
+					const maxIdenticalResponses = paginationOptions.maxIdenticalResponses ?? 3;
+
 					if (hashData.previousHash === hash) {
 						hashData.identicalCount += 1;
-						if (hashData.identicalCount > 2) {
-							// Length was identical 5x and hash 3x
+						if (hashData.identicalCount >= maxIdenticalResponses) {
 							throw new NodeOperationError(
 								node,
-								'The returned response was identical 5x, so requests got stopped',
+								`The returned response was identical ${hashData.identicalCount + 1}x, so requests got stopped`,
 								{
 									itemIndex,
 									description:
-										'Check if "Pagination Completed When" has been configured correctly.',
+										'Check if "Pagination Completed When" has been configured correctly. You can increase "Max Identical Responses" if your API returns identical responses.',
 								},
 							);
 						}
