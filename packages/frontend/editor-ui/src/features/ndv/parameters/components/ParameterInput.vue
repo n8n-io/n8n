@@ -1054,9 +1054,10 @@ function onResourceLocatorDrop(data: string) {
 	emit('drop', data);
 }
 
-function onUpdateTextInput(value: string) {
-	valueChanged(value);
-	onTextInputChange(value);
+function onUpdateTextInput(value: string | number | null) {
+	const stringValue = String(value ?? '');
+	valueChanged(stringValue);
+	onTextInputChange(stringValue);
 }
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
@@ -1935,11 +1936,11 @@ onUpdated(async () => {
 }
 
 .droppable {
-	--input--border-color: transparent;
-	--input--border-right-color: transparent;
+	--input--border-color: var(--ndv--droppable-parameter--color);
+	--input--border-right-color: var(--ndv--droppable-parameter--color);
+	--input--border-style: dashed;
+	--input--border-width: 1.5px;
 
-	textarea,
-	input,
 	.cm-editor {
 		border-color: transparent;
 		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
@@ -1953,15 +1954,12 @@ onUpdated(async () => {
 	--input--border-right-color: var(--color--success);
 	--input--color--background: var(--color--foreground--tint-2);
 	--input--border-style: solid;
+	--input--border-width: 1px;
 
 	textarea,
 	input,
 	.cm-editor {
 		cursor: grabbing !important;
-		border-color: var(--color--success);
-		border-width: 1px;
-		outline: none;
-		transition: none;
 	}
 }
 

@@ -33,8 +33,8 @@ onMounted(() => {
 	});
 });
 
-function onInput(value: string): void {
-	curlCommand.value = value;
+function onInput(value: string | number | null): void {
+	curlCommand.value = String(value ?? '');
 }
 
 function closeDialog(): void {
@@ -105,7 +105,7 @@ async function onImport() {
 						data-test-id="import-curl-modal-input"
 						:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
 						@update:model-value="onInput"
-						@focus="$event.target.select()"
+						@focus="($event.target as HTMLTextAreaElement)?.select()"
 					/>
 				</N8nInputLabel>
 			</div>

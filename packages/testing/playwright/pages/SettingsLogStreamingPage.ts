@@ -215,7 +215,8 @@ export class SettingsLogStreamingPage extends BasePage {
 		await portInput.clear();
 		await portInput.fill(config.port.toString());
 
-		await this.page.waitForTimeout(150);
+		// Wait for debounced input update (200ms debounce in ParameterInput.vue)
+		await this.page.waitForTimeout(300);
 		await this.saveDestination();
 	}
 
@@ -231,6 +232,8 @@ export class SettingsLogStreamingPage extends BasePage {
 	 * Must be called while the destination modal is open and the destination has been saved.
 	 */
 	async sendTestEvent(): Promise<void> {
-		await this.getSendTestEventButton().click();
+		const testButton = this.getSendTestEventButton();
+		await testButton.waitFor({ state: 'visible' });
+		await testButton.click();
 	}
 }
