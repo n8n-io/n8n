@@ -151,12 +151,12 @@ describe('List query middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should cap take at 50', async () => {
-			mockReq.query = { take: '51' };
+		test('should cap take at 100', async () => {
+			mockReq.query = { take: '101' };
 
 			await paginationListQueryMiddleware(...args);
 
-			expect(mockReq.listQueryOptions).toEqual({ skip: 0, take: 50 });
+			expect(mockReq.listQueryOptions).toEqual({ skip: 0, take: 100 });
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
