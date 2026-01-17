@@ -138,6 +138,41 @@ export class WorkflowHistoryService {
 		await this.workflowHistoryRepository.update({ versionId, workflowId }, { ...updateData });
 	}
 
+	async updateVersionWithUser(
+		user: User,
+		workflowId: string,
+		versionId: string,
+		updateData: Pick<WorkflowHistoryUpdate, 'name' | 'description'>,
+	) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
+		]);
+
+		if (!workflow) {
+			throw new SharedWorkflowNotFoundError('');
+		}
+
+		// Use a transaction to ensure atomicity
+		return await this.workflowHistoryRepository.manager.transaction(async (transactionManager) => {
+			const version = await transactionManager.findOne(WorkflowHistory, {
+				where: {
+					workflowId: workflow.id,
+					versionId,
+				},
+			});
+
+			if (!version) {
+				throw new WorkflowHistoryVersionNotFoundError('');
+			}
+
+			// Update the version
+			Object.assign(version, updateData);
+
+			// Save and return the updated entity
+			return await transactionManager.save(WorkflowHistory, version);
+		});
+	}
+
 	/**
 	 * Get multiple versions by their IDs
 	 * Returns only versions that exist, skipping non-existent ones

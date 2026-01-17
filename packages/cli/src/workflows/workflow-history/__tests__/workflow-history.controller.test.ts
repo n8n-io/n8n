@@ -5,6 +5,7 @@ import { mock } from 'jest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import type { WorkflowHistoryRequest } from '@/requests';
 
 import { WorkflowHistoryController } from '../workflow-history.controller';
@@ -112,6 +113,116 @@ describe('WorkflowHistoryController', () => {
 			// Assert
 			expect(historyService.getVersionsByIds).toHaveBeenCalledWith(mockUser, 'workflow123', []);
 			expect(result).toEqual({ versions: [] });
+		});
+	});
+
+	describe('updateVersion', () => {
+		it('should call historyService.updateVersionWithUser with correct parameters', async () => {
+			// Arrange
+			const req = mock<WorkflowHistoryRequest.GetVersion>({
+				user: mockUser,
+				params: { workflowId: 'workflow123', versionId: 'version456' },
+			});
+			const body = { name: 'New Version Name', description: 'New description' };
+			const mockUpdatedVersion = {
+				versionId: 'version456',
+				workflowId: 'workflow123',
+				name: 'New Version Name',
+				description: 'New description',
+			};
+
+			historyService.updateVersionWithUser.mockResolvedValue(mockUpdatedVersion as any);
+
+			// Act
+			const result = await controller.updateVersion(req, mock(), body);
+
+			// Assert
+			expect(historyService.updateVersionWithUser).toHaveBeenCalledWith(
+				mockUser,
+				'workflow123',
+				'version456',
+				{ name: 'New Version Name', description: 'New description' },
+			);
+			expect(result).toEqual(mockUpdatedVersion);
+		});
+
+		it('should call historyService.updateVersionWithUser with only name', async () => {
+			// Arrange
+			const req = mock<WorkflowHistoryRequest.GetVersion>({
+				user: mockUser,
+				params: { workflowId: 'workflow123', versionId: 'version456' },
+			});
+			const body = { name: 'New Version Name' };
+			const mockUpdatedVersion = {
+				versionId: 'version456',
+				workflowId: 'workflow123',
+				name: 'New Version Name',
+			};
+
+			historyService.updateVersionWithUser.mockResolvedValue(mockUpdatedVersion as any);
+
+			// Act
+			const result = await controller.updateVersion(req, mock(), body);
+
+			// Assert
+			expect(historyService.updateVersionWithUser).toHaveBeenCalledWith(
+				mockUser,
+				'workflow123',
+				'version456',
+				{ name: 'New Version Name' },
+			);
+			expect(result).toEqual(mockUpdatedVersion);
+		});
+
+		it('should throw NotFoundError when SharedWorkflowNotFoundError is caught', async () => {
+			// Arrange
+			const req = mock<WorkflowHistoryRequest.GetVersion>({
+				user: mockUser,
+				params: { workflowId: 'workflow123', versionId: 'version456' },
+			});
+			const body = { name: 'New Version Name' };
+
+			historyService.updateVersionWithUser.mockRejectedValue(new SharedWorkflowNotFoundError(''));
+
+			// Act & Assert
+			await expect(controller.updateVersion(req, mock(), body)).rejects.toThrow(NotFoundError);
+			await expect(controller.updateVersion(req, mock(), body)).rejects.toThrow(
+				'Could not find workflow',
+			);
+		});
+
+		it('should throw NotFoundError when WorkflowHistoryVersionNotFoundError is caught', async () => {
+			// Arrange
+			const req = mock<WorkflowHistoryRequest.GetVersion>({
+				user: mockUser,
+				params: { workflowId: 'workflow123', versionId: 'version456' },
+			});
+			const body = { name: 'New Version Name' };
+
+			historyService.updateVersionWithUser.mockRejectedValue(
+				new WorkflowHistoryVersionNotFoundError(''),
+			);
+
+			// Act & Assert
+			await expect(controller.updateVersion(req, mock(), body)).rejects.toThrow(NotFoundError);
+			await expect(controller.updateVersion(req, mock(), body)).rejects.toThrow(
+				'Could not find version',
+			);
+		});
+
+		it('should re-throw other errors', async () => {
+			// Arrange
+			const req = mock<WorkflowHistoryRequest.GetVersion>({
+				user: mockUser,
+				params: { workflowId: 'workflow123', versionId: 'version456' },
+			});
+			const body = { name: 'New Version Name' };
+			const customError = new Error('Database connection failed');
+
+			historyService.updateVersionWithUser.mockRejectedValue(customError);
+
+			// Act & Assert
+			await expect(controller.updateVersion(req, mock(), body)).rejects.toThrow(customError);
 		});
 	});
 });

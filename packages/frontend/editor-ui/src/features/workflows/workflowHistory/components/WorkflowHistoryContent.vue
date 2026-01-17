@@ -93,6 +93,14 @@ const actions = computed(() => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
 	}
 
+	// Autosave versions (no name) can't be renamed, but can be saved as named
+	// Named versions already have a name, so saveAsNamed doesn't apply
+	if (props.workflowVersion?.name) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'saveAsNamed');
+	} else {
+		filteredActions = filteredActions.filter((action) => action.value !== 'rename');
+	}
+
 	return filteredActions;
 });
 

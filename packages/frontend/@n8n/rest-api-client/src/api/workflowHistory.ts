@@ -1,7 +1,7 @@
 import type { IConnections, INode } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
-import { get, post } from '../utils';
+import { get, post, patch } from '../utils';
 
 export type WorkflowHistory = {
 	versionId: string;
@@ -31,7 +31,7 @@ export type WorkflowVersion = WorkflowHistory & {
 };
 
 export type WorkflowHistoryActionTypes = Array<
-	'restore' | 'publish' | 'unpublish' | 'clone' | 'open' | 'download'
+	'restore' | 'publish' | 'unpublish' | 'clone' | 'open' | 'download' | 'saveAsNamed' | 'rename'
 >;
 
 export type WorkflowHistoryRequestParams = { take: number; skip?: number };
@@ -70,6 +70,20 @@ export const getWorkflowVersionsByIds = async (
 		context.baseUrl,
 		`/workflow-history/workflow/${workflowId}/versions`,
 		{ versionIds },
+	);
+	return data;
+};
+
+export const updateWorkflowVersion = async (
+	context: IRestApiContext,
+	workflowId: string,
+	versionId: string,
+	body: { name?: string; description?: string },
+): Promise<WorkflowHistory> => {
+	const { data } = await patch(
+		context.baseUrl,
+		`/workflow-history/workflow/${workflowId}/version/${versionId}`,
+		body,
 	);
 	return data;
 };

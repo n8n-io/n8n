@@ -37,6 +37,13 @@ const publishing = ref(false);
 
 const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('publishForm');
 
+const props = defineProps<{
+	modalName: string;
+	data: {
+		initialVersionName?: string;
+	};
+}>();
+
 const description = ref('');
 const versionName = ref('');
 
@@ -88,7 +95,10 @@ function onModalOpened() {
 
 onMounted(() => {
 	if (!versionName.value && !inputsDisabled.value) {
-		versionName.value = generateVersionName(workflowsStore.workflow.versionId);
+		// Use the initial version name from props if provided (e.g., when publishing a named draft)
+		// Otherwise, generate a new version name
+		versionName.value =
+			props.data?.initialVersionName ?? generateVersionName(workflowsStore.workflow.versionId);
 	}
 	modalBus.on('opened', onModalOpened);
 });

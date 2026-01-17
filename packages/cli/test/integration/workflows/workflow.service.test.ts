@@ -308,3 +308,141 @@ describe('deactivateWorkflow()', () => {
 		expect(workflowAfter?.activeVersionId).toBe(workflow.activeVersionId);
 	});
 });
+
+describe('saveNamedVersion()', () => {
+	test('should save a named version using current versionId', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+		const updateVersionSpy = jest.spyOn(workflowHistoryService, 'updateVersion');
+
+		const updatedWorkflow = await workflowService.saveNamedVersion(owner, workflow.id, {
+			name: 'My Named Version',
+			description: 'A test description',
+		});
+
+		// Verify saveVersion was called with autosaved = false
+		expect(saveVersionSpy).toHaveBeenCalledTimes(1);
+		expect(saveVersionSpy).toHaveBeenCalledWith(
+			owner,
+			expect.objectContaining({ versionId: workflow.versionId }),
+			workflow.id,
+			false,
+		);
+
+		// Verify updateVersion was called with name and description
+		expect(updateVersionSpy).toHaveBeenCalledTimes(1);
+		expect(updateVersionSpy).toHaveBeenCalledWith(workflow.versionId, workflow.id, {
+			name: 'My Named Version',
+			description: 'A test description',
+		});
+
+		// Verify workflow versionId is unchanged (uses existing version)
+		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
+
+		// Verify activeVersionId is NOT changed
+		expect(updatedWorkflow.activeVersionId).toBe(workflow.activeVersionId);
+
+		// Verify workflow is NOT activated
+		expect(updatedWorkflow.active).toBe(false);
+	});
+
+	test('should save a named version using provided versionId', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// Create another version in history
+		const specificVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: specificVersionId });
+
+		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+		const updateVersionSpy = jest.spyOn(workflowHistoryService, 'updateVersion');
+
+		const updatedWorkflow = await workflowService.saveNamedVersion(owner, workflow.id, {
+			name: 'Specific Version',
+			versionId: specificVersionId,
+		});
+
+		// Verify saveVersion was called with the specific versionId
+		expect(saveVersionSpy).toHaveBeenCalledWith(
+			owner,
+			expect.objectContaining({ versionId: specificVersionId }),
+			workflow.id,
+			false,
+		);
+
+		// Verify updateVersion was called with the specific versionId
+		expect(updateVersionSpy).toHaveBeenCalledWith(specificVersionId, workflow.id, {
+			name: 'Specific Version',
+		});
+
+		// Verify workflow versionId is updated to specific version
+		expect(updatedWorkflow.versionId).toBe(specificVersionId);
+	});
+
+	test('should save a named version with only name (no description)', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const updateVersionSpy = jest.spyOn(workflowHistoryService, 'updateVersion');
+
+		await workflowService.saveNamedVersion(owner, workflow.id, {
+			name: 'Version Without Description',
+		});
+
+		// Verify updateVersion was called with only name (no description field)
+		expect(updateVersionSpy).toHaveBeenCalledWith(workflow.versionId, workflow.id, {
+			name: 'Version Without Description',
+		});
+	});
+
+	test('should not save named version without workflow:update permission', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		// custom role with workflow:read but not workflow:update
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Reader',
+			description: 'Can read workflows but not update them',
+		});
+
+		const project = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, project, customRole.slug);
+
+		const workflow = await createWorkflowWithHistory({}, project);
+
+		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+
+		await expect(
+			workflowService.saveNamedVersion(member, workflow.id, {
+				name: 'Unauthorized Version',
+			}),
+		).rejects.toThrow('Workflow not found');
+
+		// Verify no version was saved
+		expect(saveVersionSpy).not.toHaveBeenCalled();
+
+		// Verify workflow is unchanged
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.versionId).toBe(workflow.versionId);
+	});
+
+	test('should not change activeVersionId when saving a named version', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+
+		const originalActiveVersionId = workflow.activeVersionId;
+
+		const updatedWorkflow = await workflowService.saveNamedVersion(owner, workflow.id, {
+			name: 'Named Version on Active Workflow',
+		});
+
+		// Verify activeVersionId is unchanged
+		expect(updatedWorkflow.activeVersionId).toBe(originalActiveVersionId);
+
+		// Verify workflow remains active
+		expect(updatedWorkflow.active).toBe(true);
+	});
+});

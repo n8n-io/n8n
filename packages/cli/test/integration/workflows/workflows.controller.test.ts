@@ -4361,3 +4361,175 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 		expect(response.body.data).toBeNull();
 	});
 });
+
+describe('POST /workflows/:workflowId/version', () => {
+	test('should save a named version with name and description', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/version`).send({
+			name: 'My Named Version',
+			description: 'A test description',
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const { data } = response.body;
+		expect(data.id).toBe(workflow.id);
+		expect(data.versionId).toBe(workflow.versionId);
+
+		// Verify version was updated in history
+		const historyVersion = await workflowHistoryRepository.findOne({
+			where: { workflowId: workflow.id, versionId: workflow.versionId },
+		});
+		expect(historyVersion?.name).toBe('My Named Version');
+		expect(historyVersion?.description).toBe('A test description');
+	});
+
+	test('should save a named version with only name', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/version`).send({
+			name: 'Version Without Description',
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const historyVersion = await workflowHistoryRepository.findOne({
+			where: { workflowId: workflow.id, versionId: workflow.versionId },
+		});
+		expect(historyVersion?.name).toBe('Version Without Description');
+	});
+
+	test('should save a named version using provided versionId', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const specificVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: specificVersionId });
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/version`).send({
+			name: 'Specific Version',
+			versionId: specificVersionId,
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const { data } = response.body;
+		expect(data.versionId).toBe(specificVersionId);
+
+		const historyVersion = await workflowHistoryRepository.findOne({
+			where: { workflowId: workflow.id, versionId: specificVersionId },
+		});
+		expect(historyVersion?.name).toBe('Specific Version');
+	});
+
+	test('should broadcast workflow update to collaborators', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		await authOwnerAgent.post(`/workflows/${workflow.id}/version`).send({
+			name: 'Test Version',
+		});
+
+		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			workflow.id,
+			owner.id,
+		);
+	});
+
+	test('should return 400 when name is missing', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/version`).send({});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 when name exceeds max length', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const longName = 'a'.repeat(129); // Max is 128
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/version`).send({
+			name: longName,
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 when description exceeds max length', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const longDescription = 'a'.repeat(2049); // Max is 2048
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/version`).send({
+			name: 'Test Version',
+			description: longDescription,
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 404 when workflow does not exist', async () => {
+		const response = await authOwnerAgent.post('/workflows/non-existent-id/version').send({
+			name: 'Test Version',
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when user does not have update permission', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/version`).send({
+			name: 'Test Version',
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 403 when user lacks workflow:update permission', async () => {
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Reader',
+			description: 'Can read workflows but not update them',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithHistory({}, teamProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/version`).send({
+			name: 'Test Version',
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should not change activeVersionId when saving a named version', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		const originalActiveVersionId = workflow.activeVersionId;
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/version`).send({
+			name: 'Named Version on Active Workflow',
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const { data } = response.body;
+		expect(data.activeVersionId).toBe(originalActiveVersionId);
+		expect(data.active).toBe(true);
+	});
+
+	test('should return workflow with scopes and checksum', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/version`).send({
+			name: 'Test Version',
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const { data } = response.body;
+		expect(data).toHaveProperty('scopes');
+		expect(data).toHaveProperty('checksum');
+		expect(typeof data.checksum).toBe('string');
+	});
+});

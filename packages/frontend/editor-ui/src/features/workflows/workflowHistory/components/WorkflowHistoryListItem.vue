@@ -9,7 +9,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nActionToggle, N8nTooltip, N8nText } from '@n8n/design-system';
+import { N8nTooltip, N8nText, N8nActionToggle } from '@n8n/design-system';
 import {
 	getLastPublishedVersion,
 	formatTimestamp,
@@ -97,6 +97,14 @@ const versionPublishInfo = computed(() => {
 	return publishInfo;
 });
 
+const isNeverActivated = computed(() => {
+	// A version is never activated if it has a name but no publish history
+	return (
+		props.item.name &&
+		(!props.item.workflowPublishHistory || props.item.workflowPublishHistory.length === 0)
+	);
+});
+
 const getPublishedUserName = (userId: string | undefined | null) => {
 	if (!userId) {
 		return null;
@@ -116,6 +124,10 @@ const mainTooltipContent = computed(() => {
 
 	if (props.index === 0 && !props.isVersionActive) {
 		return i18n.baseText('workflowHistory.item.currentChanges');
+	}
+
+	if (isNeverActivated.value) {
+		return i18n.baseText('workflowHistory.item.neverPublished');
 	}
 
 	if (versionPublishInfo.value) {
@@ -201,6 +213,9 @@ onMounted(() => {
 			<div v-if="props.index === 0 && !props.isVersionActive">
 				{{ mainTooltipContent }}
 			</div>
+			<div v-else-if="isNeverActivated">
+				{{ mainTooltipContent }}
+			</div>
 			<div v-else>
 				{{ mainTooltipContent }}
 				<template v-if="mainTooltipUser">
@@ -231,6 +246,10 @@ onMounted(() => {
 					<span
 						v-else-if="props.index === 0 && !props.isVersionActive"
 						:class="[$style.timelineDot, $style.timelineDotLatest]"
+					/>
+					<span
+						v-else-if="isNeverActivated"
+						:class="[$style.timelineDot, $style.timelineDotDraft]"
 					/>
 					<span v-else :class="[$style.timelineDot, $style.timelineDotDefault]" />
 				</template>
@@ -381,7 +400,13 @@ $hoverBackground: var(--color--background--light-1);
 
 .timelineDotDefault {
 	border: var(--border);
-	border-color: var(--color--text--tint-2);
+	border-color: var(--color--mint-600);
+}
+
+.timelineDotDraft {
+	background-color: var(--color--foreground--tint-1);
+	border: var(--border);
+	border-color: var(--color--foreground--tint-1);
 }
 
 .timelineLine {

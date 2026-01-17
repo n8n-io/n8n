@@ -298,3 +298,99 @@ describe('GET /workflow-history/workflow/:workflowId/version/:versionId', () => 
 		expect(resp.body.data.workflowPublishHistory).toHaveLength(2);
 	});
 });
+
+describe('PATCH /workflow-history/workflow/:workflowId/version/:versionId', () => {
+	test('should update version name', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+
+		const resp = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`)
+			.send({ name: 'Updated Version Name' });
+
+		expect(resp.status).toBe(200);
+		expect(resp.body.data.name).toBe('Updated Version Name');
+	});
+
+	test('should update version description', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+
+		const resp = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`)
+			.send({ description: 'Updated description' });
+
+		expect(resp.status).toBe(200);
+		expect(resp.body.data.description).toBe('Updated description');
+	});
+
+	test('should update both name and description', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+
+		const resp = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`)
+			.send({ name: 'New Name', description: 'New description' });
+
+		expect(resp.status).toBe(200);
+		expect(resp.body.data.name).toBe('New Name');
+		expect(resp.body.data.description).toBe('New description');
+	});
+
+	test('should return 404 on invalid workflow ID', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+
+		const resp = await authOwnerAgent
+			.patch(`/workflow-history/workflow/badid/version/${version.versionId}`)
+			.send({ name: 'Updated Name' });
+
+		expect(resp.status).toBe(404);
+	});
+
+	test('should return 404 on invalid version ID', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		await createWorkflowHistoryItem(workflow.id);
+
+		const resp = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/version/badid`)
+			.send({ name: 'Updated Name' });
+
+		expect(resp.status).toBe(404);
+	});
+
+	test('should return 404 if workflow not shared with user', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+
+		const resp = await authMemberAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`)
+			.send({ name: 'Updated Name' });
+
+		expect(resp.status).toBe(404);
+	});
+
+	test('should return 400 when name exceeds max length', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+		const longName = 'a'.repeat(129); // Max is 128
+
+		const resp = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`)
+			.send({ name: longName });
+
+		expect(resp.status).toBe(400);
+	});
+
+	test('should return 400 when description exceeds max length', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+		const longDescription = 'a'.repeat(2049); // Max is 2048
+
+		const resp = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`)
+			.send({ description: longDescription });
+
+		expect(resp.status).toBe(400);
+	});
+});
