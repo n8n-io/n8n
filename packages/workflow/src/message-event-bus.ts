@@ -195,10 +195,12 @@ export const MessageEventBusDestinationSyslogOptionsSchema =
 // Event Destination Types (Inferred from Zod Schemas)
 // ===============================
 
-export type MessageEventBusDestinationOptions = z.infer<
-	typeof MessageEventBusDestinationOptionsSchema
+// Base destination options type - __type is optional
+export type MessageEventBusDestinationOptions = Omit<
+	z.infer<typeof MessageEventBusDestinationOptionsSchema>,
+	'__type' | 'credentials'
 > & {
-	// Override credentials type to be more specific than z.record(z.unknown())
+	__type?: MessageEventBusDestinationTypeNames;
 	credentials?: INodeCredentials;
 };
 
@@ -210,24 +212,28 @@ export type MessageEventBusDestinationWebhookParameterOptions = z.infer<
 	typeof webhookParameterOptionsSchema
 >;
 
-export type MessageEventBusDestinationWebhookOptions = z.infer<
-	typeof MessageEventBusDestinationWebhookOptionsSchema
+// Specific destination types - use full enum type for compatibility with classes
+export type MessageEventBusDestinationWebhookOptions = Omit<
+	z.infer<typeof MessageEventBusDestinationWebhookOptionsSchema>,
+	'__type' | 'credentials'
 > & {
-	// Override credentials type to be more specific than z.record(z.unknown())
+	__type?: MessageEventBusDestinationTypeNames;
 	credentials?: INodeCredentials;
 };
 
-export type MessageEventBusDestinationSyslogOptions = z.infer<
-	typeof MessageEventBusDestinationSyslogOptionsSchema
+export type MessageEventBusDestinationSyslogOptions = Omit<
+	z.infer<typeof MessageEventBusDestinationSyslogOptionsSchema>,
+	'__type' | 'credentials'
 > & {
-	// Override credentials type to be more specific than z.record(z.unknown())
+	__type?: MessageEventBusDestinationTypeNames;
 	credentials?: INodeCredentials;
 };
 
-export type MessageEventBusDestinationSentryOptions = z.infer<
-	typeof MessageEventBusDestinationSentryOptionsSchema
+export type MessageEventBusDestinationSentryOptions = Omit<
+	z.infer<typeof MessageEventBusDestinationSentryOptionsSchema>,
+	'__type' | 'credentials'
 > & {
-	// Override credentials type to be more specific than z.record(z.unknown())
+	__type?: MessageEventBusDestinationTypeNames;
 	credentials?: INodeCredentials;
 };
 
