@@ -374,7 +374,7 @@ export class SlackV2 implements INodeType {
 		const instanceId = this.getInstanceId();
 
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
-			await slackApiRequest.call(
+			const { message: slackMessage } = await slackApiRequest.call(
 				this,
 				'POST',
 				'/chat.postMessage',
@@ -384,7 +384,10 @@ export class SlackV2 implements INodeType {
 			const waitTill = configureWaitTillDate(this);
 
 			await this.putExecutionToWait(waitTill);
-			return [this.getInputData()];
+			return [this.getInputData().map(item => ({
+				...item,
+				json: { ...item.json, slackMessage }
+			}))];
 		}
 
 		for (let i = 0; i < length; i++) {
