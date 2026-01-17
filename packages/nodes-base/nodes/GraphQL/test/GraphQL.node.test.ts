@@ -524,6 +524,33 @@ describe('GraphQL Node', () => {
 			);
 		});
 
+		it('should reject invalid variable types in WebSocket mode', async () => {
+			const testCases = [
+				{ variables: 123, description: 'number' },
+				{ variables: true, description: 'boolean' },
+				{ variables: null, description: 'null' },
+			];
+
+			for (const testCase of testCases) {
+				const testData = {
+					parameters: {
+						connectionMode: 'websocket',
+						url: 'wss://example.com/graphql',
+						query: 'subscription { messageAdded { id content } }',
+						variables: testCase.variables,
+						websocketSubprotocol: 'graphql-transport-ws',
+						connectionTimeout: 30,
+						subscriptionTimeout: 300,
+					},
+				};
+
+				// This should throw an error due to invalid variable type
+				await expect(executeGraphQLNode(testData.parameters)).rejects.toThrow(
+					'GraphQL variables should be either an object or a string',
+				);
+			}
+		});
+
 		it('should validate WebSocket URL scheme', async () => {
 			const testData = {
 				parameters: {

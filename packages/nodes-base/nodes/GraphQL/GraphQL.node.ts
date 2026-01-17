@@ -259,10 +259,14 @@ async function executeWebSocket(
 				{ itemIndex },
 			);
 		}
-	} else if (variablesParam && typeof variablesParam === 'object') {
+	} else if (variablesParam && typeof variablesParam === 'object' && variablesParam !== null) {
 		variables = variablesParam as IDataObject;
 	} else {
-		variables = {};
+		throw new NodeOperationError(
+			this.getNode(),
+			`Using variables failed:\n${variablesParam}\n\nGraphQL variables should be either an object or a string.`,
+			{ itemIndex },
+		);
 	}
 
 	const operationNameParam = this.getNodeParameter('operationName', itemIndex, '');
