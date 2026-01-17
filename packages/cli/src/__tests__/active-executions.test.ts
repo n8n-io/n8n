@@ -21,7 +21,7 @@ import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { ChatTokenService } from '@/chat/chat-token.service';
+import type { ChatTokenService } from '@/chat/chat-token.service';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 
 jest.mock('n8n-workflow', () => ({
