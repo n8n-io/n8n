@@ -1,7 +1,13 @@
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 
-import type { IConnections, INode, IWorkflowBase } from '.';
+import type {
+	IConnections,
+	INode,
+	INodeParameters,
+	IWorkflowBase,
+	NodeParameterValueType,
+} from '.';
 import { compareConnections, type ConnectionsDiff } from './connections-diff';
 
 export type WorkflowDiffBase = Omit<
@@ -14,7 +20,7 @@ export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
 	nodes: N[];
 	connections: IConnections;
 	createdAt: Date;
-	user?: unknown;
+	authors?: string;
 };
 
 export const enum NodeDiffStatus {
@@ -79,61 +85,21 @@ export function compareWorkflowsNodes<T extends DiffableNode>(
 	return diff;
 }
 
-function mergeNodeDiff(
-	prev: NodeDiffStatus,
-	next: NodeDiffStatus,
-): NodeDiffStatus | 'undone' | 'invariant broken' {
-	switch (prev) {
-		case NodeDiffStatus.Added:
-			switch (next) {
-				case NodeDiffStatus.Added:
-					return 'invariant broken';
-				case NodeDiffStatus.Deleted:
-					return 'undone';
-				default:
-					return NodeDiffStatus.Added;
-			}
-		case NodeDiffStatus.Deleted:
-			switch (next) {
-				case NodeDiffStatus.Added:
-					return NodeDiffStatus.Modified;
-				default:
-					return 'invariant broken';
-			}
-		case NodeDiffStatus.Eq:
-			switch (next) {
-				case NodeDiffStatus.Added:
-					return 'invariant broken';
-				default:
-					return next;
-			}
-		case NodeDiffStatus.Modified:
-			switch (next) {
-				case NodeDiffStatus.Added:
-					return 'invariant broken';
-				case NodeDiffStatus.Deleted:
-					return NodeDiffStatus.Deleted;
-				default:
-					return NodeDiffStatus.Modified;
-			}
-	}
-}
-
 export class WorkflowChangeSet<T extends DiffableNode> {
 	readonly nodes: WorkflowDiff<T>;
 	readonly connections: ConnectionsDiff;
-	constructor(from: DiffableWorkflow<T>, to: DiffableWorkflow<T>) {
-		this.nodes = compareWorkflowsNodes(from.nodes, to.nodes);
-		this.connections = compareConnections(from.connections, to.connections);
-	}
 
-	hasChanges() {
-		for (const nodeDiff of this.nodes.values()) {
-			if (nodeDiff.status !== NodeDiffStatus.Eq) return true;
+	constructor(from: DiffableWorkflow<T>, to: DiffableWorkflow<T>) {
+		if (from === to) {
+			// avoid expensive deep comparison
+			this.nodes = new Map(
+				from.nodes.map((node) => [node.id, { node, status: NodeDiffStatus.Eq }]),
+			);
+			this.connections = { added: {}, removed: {} };
+		} else {
+			this.nodes = compareWorkflowsNodes(from.nodes, to.nodes);
+			this.connections = compareConnections(from.connections, to.connections);
 		}
-		if (Object.keys(this.connections.added).length || Object.keys(this.connections.removed).length)
-			return true;
-		return false;
 	}
 }
 /**
@@ -173,15 +139,15 @@ function nodeIsSuperset<T extends DiffableNode>(prevNode: T, nextNode: T) {
 }
 
 function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
-	_prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
-	next: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+	_prev: DiffableWorkflow<N>,
+	next: DiffableWorkflow<N>,
 	diff: WorkflowChangeSet<N>,
 ) {
 	for (const d of diff.nodes.values()) {
 		if (d.status === NodeDiffStatus.Deleted) return false;
 		if (d.status === NodeDiffStatus.Added) continue;
-		const nextNode = next.from.nodes.find((x) => x.id === d.node.id);
-		if (!nextNode) throw new Error('invariant broken');
+		const nextNode = next.nodes.find((x) => x.id === d.node.id);
+		if (!nextNode) throw new Error('invariant broken - no next node');
 		if (d.status === NodeDiffStatus.Modified && !nodeIsSuperset(d.node, nextNode)) return false;
 	}
 
@@ -194,24 +160,60 @@ function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
 //
 const makeSkipTimeDifference = (timeDiffMs: number) => {
 	return <N extends DiffableNode = DiffableNode>(
-		prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
-		next: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+		prev: DiffableWorkflow<N>,
+		next: DiffableWorkflow<N>,
 	) => {
-		const timeDifference = next.to.createdAt.getTime() - prev.from.createdAt.getTime();
+		const timeDifference = next.createdAt.getTime() - prev.createdAt.getTime();
 
 		return Math.abs(timeDifference) > timeDiffMs;
 	};
 };
 
+const makeMergeShortTimeSpan = (timeDiffMs: number) => {
+	return <N extends DiffableNode = DiffableNode>(
+		prev: DiffableWorkflow<N>,
+		next: DiffableWorkflow<N>,
+	) => {
+		const timeDifference = next.createdAt.getTime() - prev.createdAt.getTime();
+
+		return Math.abs(timeDifference) < timeDiffMs;
+	};
+};
+
+// Takes a mapping from minimumSize to the minimum time between versions and
+// applies the largest one applicable to the given workflow
+function makeMergeDependingOnSizeRule<W extends DiffableWorkflow>(mapping: Map<number, number>) {
+	const pairs = [...mapping.entries()]
+		.sort((a, b) => b[0] - a[0])
+		.map(([count, time]) => [count, makeMergeShortTimeSpan(time)] as const);
+
+	return <N extends DiffableNode = DiffableNode>(
+		prev: DiffableWorkflow<N>,
+		next: DiffableWorkflow<N>,
+		_wcs: WorkflowChangeSet<N>,
+		metaData: DiffMetaData,
+	) => {
+		if (metaData.workflowSizeScore === undefined) {
+			console.warn('Called mergeDependingOnSizeRule rule without providing required metaData');
+			return false;
+		}
+		for (const [count, time] of pairs) {
+			if (metaData.workflowSizeScore > count) return time(prev, next);
+		}
+		return false;
+	};
+}
+
 function skipDifferentUsers<N extends DiffableNode = DiffableNode>(
-	prev: GroupedWorkflowHistory<DiffableWorkflow<N>>,
-	next: GroupedWorkflowHistory<DiffableWorkflow<N>>,
+	prev: DiffableWorkflow<N>,
+	next: DiffableWorkflow<N>,
 ) {
-	return next.to.user !== prev.from.user;
+	return next.authors !== prev.authors;
 }
 
 export const RULES = {
 	mergeAdditiveChanges,
+	makeMergeDependingOnSizeRule,
 };
 
 export const SKIP_RULES = {
@@ -219,84 +221,87 @@ export const SKIP_RULES = {
 	skipDifferentUsers,
 };
 
-export type GroupedWorkflowHistory<W extends DiffableWorkflow<DiffableNode>> = {
-	workflowChangeSet: WorkflowChangeSet<W['nodes'][number]>;
-	groupedWorkflows: W[];
-	from: W;
-	to: W;
-};
-
-function compareWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
-	previous: W,
-	next: W,
-): GroupedWorkflowHistory<W> {
-	const workflowChangeSet = new WorkflowChangeSet(previous, next);
-	return {
-		workflowChangeSet,
-		groupedWorkflows: [],
-		from: previous,
-		to: next,
-	};
-}
+// MetaData fields are only included if requested
+export type DiffMetaData = Partial<{
+	workflowSizeScore: number;
+}>;
 
 export type DiffRule<
 	W extends WorkflowDiffBase = WorkflowDiffBase,
 	N extends W['nodes'][number] = W['nodes'][number],
-> = (
-	prev: GroupedWorkflowHistory<W>,
-	next: GroupedWorkflowHistory<W>,
-	diff: WorkflowChangeSet<N>,
-) => boolean;
+> = (prev: W, next: W, diff: WorkflowChangeSet<N>, metaData: Partial<DiffMetaData>) => boolean;
+
+// Rough estimation of a node's size in abstract "character" count
+// Does not care about key names which do technically factor in when stringified
+export function determineNodeSize(parameters: INodeParameters | NodeParameterValueType): number {
+	if (!parameters) return 1;
+
+	if (typeof parameters === 'string') {
+		return parameters.length;
+	} else if (typeof parameters !== 'object' || parameters instanceof Date) {
+		return 1;
+	} else if (Array.isArray(parameters)) {
+		return parameters.reduce<number>((acc, v) => acc + determineNodeSize(v as INodeParameters), 1);
+	} else {
+		// Record case
+		return Object.values(parameters).reduce<number>(
+			(acc, v) => acc + determineNodeSize(v as NodeParameterValueType),
+			1,
+		);
+	}
+}
+
+function determineNodeParametersSize<W extends WorkflowDiffBase>(workflow: W) {
+	return workflow.nodes.reduce((acc, x) => acc + determineNodeSize(x.parameters), 0);
+}
 
 export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 	workflows: W[],
 	rules: Array<DiffRule<W>>,
 	skipRules: Array<DiffRule<W>> = [],
-): Array<GroupedWorkflowHistory<W>> {
-	if (workflows.length === 0) return [];
+	metaDataFields?: Partial<Record<keyof DiffMetaData, boolean>>,
+): { removed: W[]; remaining: W[] } {
+	if (workflows.length === 0) return { removed: [], remaining: [] };
 	if (workflows.length === 1) {
-		return [
-			{
-				workflowChangeSet: new WorkflowChangeSet(workflows[0], workflows[0]),
-				groupedWorkflows: [],
-				from: workflows[0],
-				to: workflows[0],
-			},
-		];
+		return {
+			removed: [],
+			remaining: workflows,
+		};
 	}
 
-	const diffs: Array<GroupedWorkflowHistory<W>> = [];
+	const remaining = [...workflows];
+	const removed: W[] = [];
 
-	for (let i = 0; i < workflows.length - 1; ++i) {
-		diffs.push(compareWorkflows(workflows[i], workflows[i + 1]));
-	}
-	let prevDiffsLength = diffs.length;
-	do {
-		prevDiffsLength = diffs.length;
-		const n = diffs.length;
-		diffLoop: for (let i = n - 1; i > 0; --i) {
-			const wcs = new WorkflowChangeSet(diffs[i - 1].from, diffs[i].to);
-			for (const shouldSkip of skipRules) {
-				if (shouldSkip(diffs[i - 1], diffs[i], wcs)) continue diffLoop;
-			}
-			for (const rule of rules) {
-				const shouldMerge = rule(diffs[i - 1], diffs[i], wcs);
-				if (shouldMerge) {
-					const right = diffs.splice(i, 1)[0];
-					if (!right) throw new Error('invariant broken');
+	const n = remaining.length;
 
-					// merge diffs
-					diffs[i - 1].workflowChangeSet = wcs;
-					diffs[i - 1].groupedWorkflows.push(diffs[i - 1].to);
-					diffs[i - 1].groupedWorkflows.push(...right.groupedWorkflows);
-					diffs[i - 1].to = right.to;
-					break;
-				}
+	const metaData = {
+		// check latest and an "average" workflow to get a somewhat accurate representation
+		// without counting through the entire history
+		workflowSizeScore: metaDataFields?.workflowSizeScore
+			? Math.max(
+					determineNodeParametersSize(workflows[Math.floor(workflows.length / 2)]),
+					determineNodeParametersSize(workflows[workflows.length - 1]),
+				)
+			: undefined,
+	} satisfies DiffMetaData;
+
+	diffLoop: for (let i = n - 1; i > 0; --i) {
+		const wcs = new WorkflowChangeSet(remaining[i - 1], remaining[i]);
+
+		for (const shouldSkip of skipRules) {
+			if (shouldSkip(remaining[i - 1], remaining[i], wcs, metaData)) continue diffLoop;
+		}
+		for (const rule of rules) {
+			const shouldMerge = rule(remaining[i - 1], remaining[i], wcs, metaData);
+			if (shouldMerge) {
+				const left = remaining.splice(i - 1, 1)[0];
+				removed.push(left);
+				break;
 			}
 		}
-	} while (prevDiffsLength !== diffs.length);
+	}
 
-	return diffs;
+	return { removed, remaining };
 }
 
 /**
