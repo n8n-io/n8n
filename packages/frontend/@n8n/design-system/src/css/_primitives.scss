@@ -1,10 +1,9 @@
-// Primitive Colors
-// The primitives should not be used directly in components and other UI elements.
-// They can be only mapped to tokens.
-// Tokens should be used instead in components and other UI elements
+/** Primitive Colors
+/** The primitives should not be used directly in components and other UI elements.
+/** They can be only mapped to tokens.
+/** Tokens should be used instead in components and other UI elements **/
 
 @mixin primitives {
-	// White
 	--color--white-alpha-100: hsla(220, 1%, 100%, 0.1);
 	--color--white-alpha-200: hsla(220, 1%, 100%, 0.15);
 	--color--white-alpha-300: hsla(220, 1%, 100%, 0.2);
@@ -15,7 +14,6 @@
 	--color--white-alpha-800: hsla(220, 1%, 100%, 0.7);
 	--color--white-alpha-900: hsla(220, 1%, 100%, 0.9);
 
-	// Black
 	--color--black-alpha-100: hsl(220, 1%, 0%, 0.05);
 	--color--black-alpha-200: hsl(220, 1%, 0%, 0.1);
 	--color--black-alpha-300: hsl(220, 1%, 0%, 0.2);
@@ -26,7 +24,6 @@
 	--color--black-alpha-800: hsl(220, 1%, 0%, 0.9);
 	--color--black-alpha-900: hsl(220, 1%, 0%, 0.95);
 
-	// Gray
 	--color--neutral-white: hsl(0, 0%, 100%);
 	--color--neutral-50: hsl(0, 0%, 99%);
 	--color--neutral-100: hsl(0, 0%, 97.5%);
@@ -49,7 +46,6 @@
 	--color--neutral-300-alpha-100: hsla(0, 0%, 68%, 0.1);
 	--color--neutral-800-alpha-100: hsla(0, 0%, 24%, 0.1);
 
-	// Orange
 	--color--orange-50: hsl(7, 100%, 98%);
 	--color--orange-100: hsl(7, 100%, 95%);
 	--color--orange-150: hsl(7, 100%, 93%);
@@ -63,12 +59,10 @@
 	--color--orange-800: hsl(7, 100%, 20%);
 	--color--orange-900: hsl(7, 100%, 10%);
 	--color--orange-950: hsl(7, 100%, 5%);
-
 	--color--orange-alpha-100: hsla(7, 100%, 68%, 0.1);
 	--color--orange-alpha-300: hsla(7, 100%, 68%, 0.35);
 	--color--orange-alpha-500: hsla(7, 100%, 68%, 0.5);
 
-	// Purple
 	--color--purple-50: hsl(247, 49%, 98%);
 	--color--purple-100: hsl(247, 49%, 95%);
 	--color--purple-200: hsl(247, 49%, 93%);
@@ -80,11 +74,9 @@
 	--color--purple-800: hsl(247, 49%, 37%);
 	--color--purple-900: hsl(247, 49%, 30%);
 	--color--purple-950: hsl(247, 49%, 21%);
-
 	--color--purple-alpha-100: hsla(247, 49%, 53%, 0.1);
 	--color--purple-alpha-200: hsla(247, 49%, 53%, 0.25);
 
-	// Green
 	--color--green-50: hsl(144, 60%, 95%);
 	--color--green-100: hsl(145, 60%, 90%);
 	--color--green-200: hsl(145, 60%, 80%);
@@ -96,11 +88,9 @@
 	--color--green-800: hsl(148, 60%, 25%);
 	--color--green-900: hsl(148, 60%, 20%);
 	--color--green-950: hsl(151, 60%, 10%);
-
 	--color--green-alpha-100: hsl(147, 60%, 36%, 0.15);
 	--color--green-alpha-200: hsl(147, 60%, 36%, 0.25);
 
-	// Mint
 	--color--mint-100: hsl(147, 83%, 90%);
 	--color--mint-200: hsl(147, 83%, 80%);
 	--color--mint-300: hsl(147, 83%, 70%);
@@ -111,7 +101,6 @@
 	--color--mint-800: hsl(147, 83%, 20%);
 	--color--mint-900: hsl(147, 83%, 10%);
 
-	// Red
 	--color--red-50: hsl(356, 83%, 97%);
 	--color--red-100: hsl(354, 83%, 92%);
 	--color--red-200: hsl(355, 83%, 89%);
@@ -124,10 +113,8 @@
 	--color--red-800: hsl(355, 83%, 37%);
 	--color--red-900: hsl(355, 83%, 27%);
 	--color--red-950: hsl(355, 83%, 17%);
-
 	--color--red-alpha-020: hsla(355, 83%, 52%, 0.2);
 
-	// Blue
 	--color--blue-50: hsl(210, 67%, 95%);
 	--color--blue-100: hsl(210, 67%, 92%);
 	--color--blue-200: hsl(210, 67%, 82%);
@@ -139,7 +126,6 @@
 	--color--blue-800: hsl(210, 67%, 22%);
 	--color--blue-900: hsl(210, 67%, 10%);
 
-	// Yellow
 	--color--yellow-100: hsl(46, 100%, 92%);
 	--color--yellow-200: hsl(46, 100%, 77%);
 	--color--yellow-300: hsl(46, 100%, 70%);
@@ -150,7 +136,6 @@
 	--color--yellow-800: hsl(46, 100%, 22%);
 	--color--yellow-900: hsl(46, 100%, 10%);
 
-	// Gold
 	--color--gold-50: hsl(36, 77%, 97%);
 	--color--gold-100: hsl(36, 77%, 87%);
 	--color--gold-200: hsl(36, 77%, 82%);
@@ -161,10 +146,8 @@
 	--color--gold-700: hsl(36, 77%, 32%);
 	--color--gold-800: hsl(36, 77%, 22%);
 	--color--gold-900: hsl(36, 77%, 10%);
-
 	--color--gold-alpha-020: hsla(36, 77%, 57%, 0.2);
 
-	// Slate
 	--color--slate-100: hsl(248, 10%, 90%);
 	--color--slate-200: hsl(248, 10%, 80%);
 	--color--slate-300: hsl(248, 10%, 70%);
@@ -174,30 +157,26 @@
 	--color--slate-700: hsl(248, 10%, 30%);
 	--color--slate-800: hsl(248, 10%, 20%);
 	--color--slate-900: hsl(248, 10%, 10%);
-
 	--color--slate-alpha-700: hsla(247, 10%, 30%, 0.75);
 
-	// Spacing
-	--spacing--5xs: 0.125rem; // 2px
-	--spacing--4xs: 0.25rem; // 4px
-	--spacing--3xs: 0.375rem; // 6px
-	--spacing--2xs: 0.5rem; // 8px
-	--spacing--xs: 0.75rem; // 12px
-	--spacing--sm: 1rem; // 16px
-	--spacing--md: 1.25rem; // 20px
-	--spacing--lg: 1.5rem; // 24px
-	--spacing--xl: 2rem; // 32px
-	--spacing--2xl: 3rem; // 48px
-	--spacing--3xl: 4rem; // 64px
-	--spacing--4xl: 8rem; // 128px
-	--spacing--5xl: 16rem; // 256px
+	--spacing--5xs: 0.125rem; /** 2px **/
+	--spacing--4xs: 0.25rem; /** 4px **/
+	--spacing--3xs: 0.375rem; /** 6px **/
+	--spacing--2xs: 0.5rem; /** 8px **/
+	--spacing--xs: 0.75rem; /** 12px **/
+	--spacing--sm: 1rem; /** 16px **/
+	--spacing--md: 1.25rem; /** 20px **/
+	--spacing--lg: 1.5rem; /** 24px **/
+	--spacing--xl: 2rem; /** 32px **/
+	--spacing--2xl: 3rem; /** 48px **/
+	--spacing--3xl: 4rem; /** 64px **/
+	--spacing--4xl: 8rem; /** 128px **/
+	--spacing--5xl: 16rem; /** 256px **/
 
-	// Font family
 	--font-family: InterVariable, sans-serif;
 	--font-family--monospace:
 		CommitMono, ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 
-	// Font size
 	--font-size--4xs: 0.5rem;
 	--font-size--3xs: 0.625rem;
 	--font-size--2xs: 0.75rem;
@@ -208,17 +187,26 @@
 	--font-size--xl: 1.25rem;
 	--font-size--2xl: 1.75rem;
 
-	// Font weight
 	--font-weight--regular: 400;
 	--font-weight--medium: 500;
 	--font-weight--bold: 600;
 
-	// Line height
 	--line-height--xs: 1;
 	--line-height--sm: 1.25;
 	--line-height--md: 1.3;
 	--line-height--lg: 1.35;
 	--line-height--xl: 1.5;
+
+	--radius--4xs: 0.125rem; /** 2px **/
+	--radius--3xs: 0.25rem; /** 4px **/
+	--radius--2xs: 0.375rem; /** 6px **/
+	--radius--xs: 0.5rem; /** 8px **/
+	--radius--sm: 0.75rem; /** 12px **/
+	--radius--md: 1rem; /** 16px **/
+	--radius--lg: 1.25rem; /** 20px **/
+	--radius--xl: 1.5rem; /** 24px **/
+	--radius--2xl: 2rem; /** 32px **/
+	--radius--full: 9999px;
 }
 
 :root {
