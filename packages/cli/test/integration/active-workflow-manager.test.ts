@@ -140,6 +140,114 @@ describe('init()', () => {
 
 		expect(validateWorkflowHasTriggerLikeNodeSpy).toHaveBeenCalledTimes(2);
 	});
+
+	it('should activate workflow with deprecated Start node during init', async () => {
+		const dbWorkflow = await createActiveWorkflow({
+			nodes: [
+				{
+					id: 'uuid-start',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [250, 300],
+				},
+				{
+					id: 'uuid-trigger',
+					parameters: {},
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		});
+
+		await activeWorkflowManager.init();
+
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(1);
+		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
+	});
+
+	it('should filter out Start nodes and their connections during activation', async () => {
+		const dbWorkflow = await createActiveWorkflow({
+			nodes: [
+				{
+					id: 'uuid-start',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [250, 300],
+				},
+				{
+					id: 'uuid-trigger',
+					parameters: {},
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+			connections: {
+				Start: {
+					main: [[{ node: 'Schedule Trigger', type: 'main', index: 0 }]],
+				},
+			},
+		});
+
+		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
+
+		await activeWorkflowManager.init();
+
+		expect(addSpy).toHaveBeenCalled();
+
+		const [workflowId, activationMode, existingWorkflow] = addSpy.mock.calls[0];
+		expect(workflowId).toBe(dbWorkflow.id);
+		expect(activationMode).toBe('init');
+
+		expect(existingWorkflow).toBeDefined();
+		expect(existingWorkflow!.nodes).toHaveLength(1);
+		expect(existingWorkflow!.nodes[0].type).toBe('n8n-nodes-base.scheduleTrigger');
+		expect(existingWorkflow!.connections.Start).toBeUndefined();
+
+		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
+	});
+
+	it('should not filter disabled Start nodes from nodes array', async () => {
+		await createActiveWorkflow({
+			nodes: [
+				{
+					id: 'uuid-start',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [250, 300],
+					disabled: true,
+				},
+				{
+					id: 'uuid-trigger',
+					parameters: {},
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		});
+
+		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
+
+		await activeWorkflowManager.init();
+
+		const [, , existingWorkflow] = addSpy.mock.calls[0];
+		expect(existingWorkflow).toBeDefined();
+		expect(existingWorkflow!.nodes).toHaveLength(2);
+		const startNode = existingWorkflow!.nodes.find((n) => n.name === 'Start');
+		expect(startNode).toBeDefined();
+		expect(startNode!.disabled).toBe(true);
+	});
 });
 
 describe('add()', () => {
@@ -161,8 +269,8 @@ describe('add()', () => {
 				expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
 				expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
 
-				if (!(argWorkflow instanceof Workflow)) fail();
-				if (!(_argWorkflow instanceof Workflow)) fail();
+				expect(argWorkflow).toBeInstanceOf(Workflow);
+				expect(_argWorkflow).toBeInstanceOf(Workflow);
 
 				expect(argWorkflow.id).toBe(dbWorkflow.id);
 				expect(_argWorkflow.id).toBe(dbWorkflow.id);
