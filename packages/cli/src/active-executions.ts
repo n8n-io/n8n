@@ -27,6 +27,7 @@ import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import { EventService } from './events/event.service';
+import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 
 @Service()
 export class ActiveExecutions {
@@ -52,61 +53,71 @@ export class ActiveExecutions {
 	/**
 	 * Add a new active execution
 	 */
-	async add(executionData: IWorkflowExecutionDataProcess, executionId?: string): Promise<string> {
-		let executionStatus: ExecutionStatus = executionId ? 'running' : 'new';
+	async add(
+		executionData: IWorkflowExecutionDataProcess,
+		maybeExecutionId?: string,
+	): Promise<string> {
+		let executionStatus: ExecutionStatus = maybeExecutionId ? 'running' : 'new';
 		const mode = executionData.executionMode;
-		if (executionId === undefined) {
-			// Is a new execution so save in DB
+		const capacityReservation = new ConcurrencyCapacityReservation(this.concurrencyControl);
 
-			const fullExecutionData: CreateExecutionPayload = {
-				data: executionData.executionData!,
-				mode,
-				finished: false,
-				workflowData: executionData.workflowData,
-				status: executionStatus,
-				workflowId: executionData.workflowData.id,
-			};
+		try {
+			if (maybeExecutionId === undefined) {
+				const fullExecutionData: CreateExecutionPayload = {
+					data: executionData.executionData!,
+					mode,
+					finished: false,
+					workflowData: executionData.workflowData,
+					status: executionStatus,
+					workflowId: executionData.workflowData.id,
+					retryOf: executionData.retryOf ?? undefined,
+				};
 
-			fullExecutionData.retryOf = executionData.retryOf ?? undefined;
+				const workflowId = executionData.workflowData.id;
+				if (workflowId !== undefined && isWorkflowIdValid(workflowId)) {
+					fullExecutionData.workflowId = workflowId;
+				}
 
-			const workflowId = executionData.workflowData.id;
-			if (workflowId !== undefined && isWorkflowIdValid(workflowId)) {
-				fullExecutionData.workflowId = workflowId;
+				maybeExecutionId = await this.executionRepository.createNewExecution(fullExecutionData);
+				assert(maybeExecutionId);
+
+				await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+
+				if (this.executionsConfig.mode === 'regular') {
+					await this.executionRepository.setRunning(maybeExecutionId);
+				}
+				executionStatus = 'running';
+			} else {
+				// Is an existing execution we want to finish so update in DB
+
+				await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+
+				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
+					id: maybeExecutionId,
+					data: executionData.executionData!,
+					waitTill: null,
+					status: executionStatus,
+					// this is resuming, so keep `startedAt` as it was
+				};
+
+				const updateSucceeded = await this.executionRepository.updateExistingExecution(
+					maybeExecutionId,
+					execution,
+					'waiting', // Only update if status is 'waiting'
+				);
+
+				if (!updateSucceeded) {
+					// Another process is already resuming this execution
+					throw new ExecutionAlreadyResumingError(maybeExecutionId);
+				}
 			}
-
-			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
-			assert(executionId);
-
-			if (this.executionsConfig.mode === 'regular') {
-				await this.concurrencyControl.throttle({ mode, executionId });
-				await this.executionRepository.setRunning(executionId);
-			}
-			executionStatus = 'running';
-		} else {
-			// Is an existing execution we want to finish so update in DB
-
-			await this.concurrencyControl.throttle({ mode, executionId });
-
-			const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
-				id: executionId,
-				data: executionData.executionData!,
-				waitTill: null,
-				status: executionStatus,
-				// this is resuming, so keep `startedAt` as it was
-			};
-
-			const updateSucceeded = await this.executionRepository.updateExistingExecution(
-				executionId,
-				execution,
-				'waiting', // Only update if status is 'waiting'
-			);
-
-			if (!updateSucceeded) {
-				// Another process is already resuming this execution
-				throw new ExecutionAlreadyResumingError(executionId);
-			}
+		} catch (error) {
+			capacityReservation.release();
+			throw error;
 		}
 
+		// At this point executionId is guaranteed to be defined - capture it for use in closures
+		const executionId = maybeExecutionId;
 		const resumingExecution = this.activeExecutions[executionId];
 		const postExecutePromise = createDeferredPromise<IRun | undefined>();
 
@@ -127,7 +138,7 @@ export class ActiveExecutions {
 				throw error;
 			})
 			.finally(() => {
-				this.concurrencyControl.release({ mode: executionData.executionMode });
+				capacityReservation.release();
 				if (execution.status === 'waiting') {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
