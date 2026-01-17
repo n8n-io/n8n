@@ -2,14 +2,15 @@
 import { onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useI18n } from '@n8n/i18n';
-import { N8nLink, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nLink, N8nText } from '@n8n/design-system';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
-import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
+import { useRecommendedTemplatesStore, NUMBER_OF_TEMPLATES } from '../recommendedTemplates.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import TemplateCard from './TemplateCard.vue';
+import RecommendedTemplateCard from './RecommendedTemplateCard.vue';
+import SkeletonTemplateCard from './SkeletonTemplateCard.vue';
 
 const locale = useI18n();
-const templatesStore = useTemplatesDataQualityStore();
+const templatesStore = useRecommendedTemplatesStore();
 const { websiteTemplateRepositoryURL } = storeToRefs(useTemplatesStore());
 
 const templates = ref<ITemplatesWorkflowFull[]>([]);
@@ -18,7 +19,7 @@ const isLoadingTemplates = ref(false);
 onMounted(async () => {
 	isLoadingTemplates.value = true;
 	try {
-		templates.value = await templatesStore.loadExperimentTemplates();
+		templates.value = await templatesStore.loadRecommendedTemplates();
 	} finally {
 		isLoadingTemplates.value = false;
 	}
@@ -26,24 +27,21 @@ onMounted(async () => {
 </script>
 
 <template>
-	<section :class="$style.container" data-test-id="templates-data-quality-inline">
+	<section :class="$style.container" data-test-id="recommended-templates-section">
 		<div :class="$style.header">
 			<N8nText tag="h2" size="large" :bold="true">
 				{{ locale.baseText('workflows.empty.startWithTemplate') }}
 			</N8nText>
 			<N8nLink :href="websiteTemplateRepositoryURL" :class="$style.allTemplatesLink">
-				{{ locale.baseText('workflows.templatesDataQuality.seeMoreTemplates') }}
+				{{ locale.baseText('templates.featured.seeMore') }}
 			</N8nLink>
 		</div>
 
-		<div v-if="isLoadingTemplates" :class="$style.loading">
-			<N8nSpinner size="small" />
-			<N8nText size="small">
-				{{ locale.baseText('workflows.templatesDataQuality.loadingTemplates') }}
-			</N8nText>
+		<div v-if="isLoadingTemplates" :class="$style.suggestions">
+			<SkeletonTemplateCard v-for="i in NUMBER_OF_TEMPLATES" :key="i" />
 		</div>
 		<div v-else :class="$style.suggestions">
-			<TemplateCard
+			<RecommendedTemplateCard
 				v-for="(template, index) in templates"
 				:key="template.id"
 				:template="template"
@@ -57,19 +55,9 @@ onMounted(async () => {
 @use '@/app/css/variables' as vars;
 
 .container {
-	max-width: vars.$breakpoint-sm;
 	width: 100%;
-	margin-top: var(--spacing--4xl);
-	padding: var(--spacing--sm);
-	background-color: var(--color--background--light-3);
-	border: var(--border);
-	border-radius: var(--radius--lg);
 	text-align: left;
-
-	@media (max-width: vars.$breakpoint-xs) {
-		margin-top: var(--spacing--xl);
-		padding: var(--spacing--xs);
-	}
+	margin-top: var(--spacing--xl);
 }
 
 .header {
@@ -77,7 +65,7 @@ onMounted(async () => {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--md);
-	margin-bottom: var(--spacing--md);
+	margin-bottom: var(--spacing--xs);
 
 	@media (max-width: vars.$breakpoint-xs) {
 		flex-direction: column;
@@ -94,10 +82,10 @@ onMounted(async () => {
 .suggestions {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: var(--spacing--md);
+	gap: var(--spacing--2xs);
 	min-height: 182px;
 
-	@media (max-width: vars.$breakpoint-sm) {
+	@media (max-width: vars.$breakpoint-md) {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
@@ -105,19 +93,6 @@ onMounted(async () => {
 		grid-template-columns: 1fr;
 		gap: var(--spacing--sm);
 		min-height: auto;
-	}
-}
-
-.loading {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--lg);
-	color: var(--color--text--tint-1);
-
-	@media (max-width: vars.$breakpoint-xs) {
-		padding: var(--spacing--md);
 	}
 }
 </style>

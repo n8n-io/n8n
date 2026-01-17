@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import {
-	NODE_CREATOR_OPEN_SOURCES,
-	VIEWS,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
-} from '@/app/constants';
+import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/app/constants';
 import { nodeViewEventBus } from '@/app/event-bus';
 import {
 	isExtraTemplateLinksExperimentEnabled,
@@ -17,15 +13,11 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink, N8nTooltip } from '@n8n/design-system';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const router = useRouter();
-const uiStore = useUIStore();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
 const isTooltipVisible = ref(false);
 
 const templatesLinkEnabled = computed(() => {
@@ -60,11 +52,6 @@ async function onClickTemplatesLink() {
 	trackTemplatesClick(TemplateClickSource.emptyWorkflowLink);
 	if (templatesStore.hasCustomTemplatesHost) {
 		await router.push({ name: VIEWS.TEMPLATES });
-		return;
-	}
-
-	if (templatesDataQualityStore.isFeatureEnabled()) {
-		uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 		return;
 	}
 
