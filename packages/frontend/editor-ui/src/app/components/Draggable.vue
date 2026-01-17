@@ -124,7 +124,7 @@ const onDragEnd = () => {
 	}
 
 	setTimeout(() => {
-		if (draggingElement.value) emit('dragend', draggingElement.value);
+		if (isDragging.value && draggingElement.value) emit('dragend', draggingElement.value);
 		isDragging.value = false;
 		draggingElement.value = undefined;
 		dragStartPosition.value = null;
@@ -132,7 +132,7 @@ const onDragEnd = () => {
 };
 
 onBeforeUnmount(() => {
-	if (draggingElement.value) {
+	if (isDragging.value && draggingElement.value) {
 		emit('dragend', draggingElement.value);
 	}
 });

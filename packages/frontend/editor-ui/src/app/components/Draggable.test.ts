@@ -152,7 +152,7 @@ describe('Draggable', () => {
 			expect(emitted().dragstart).toBeUndefined();
 		});
 
-		it('should emit dragend even if drag was never started', async () => {
+		it('should not emit dragend if drag was never started (threshold not exceeded)', async () => {
 			const { emitted } = renderComponent({ props: { dragThreshold: 10 } });
 
 			const draggableEl = document.querySelector('[data-target="test"]') as HTMLElement;
@@ -165,8 +165,9 @@ describe('Draggable', () => {
 			// Wait for setTimeout in onDragEnd
 			await new Promise((resolve) => setTimeout(resolve, 10));
 
-			// dragend should be emitted for cleanup
-			expect(emitted().dragend).toHaveLength(1);
+			// dragend should NOT be emitted since dragstart was never emitted
+			// This ensures drag lifecycle events remain paired
+			expect(emitted().dragend).toBeUndefined();
 		});
 	});
 
