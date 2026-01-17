@@ -174,7 +174,7 @@ const repoUrlValidationRules = computed<Array<Rule | RuleGroup>>(() => {
 			name: 'MATCH_REGEX',
 			config: {
 				regex:
-					/^(?:git@|ssh:\/\/git@|[\w-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
+					/^(?:git@|ssh:\/\/git@|[\w.-]+@)(?:[\w.-]+|\[[0-9a-fA-F:]+])(?::\d+)?[:\/][\w\-~.]+(?:\/[\w\-~.]+)*(?:\.git)?(?:\/.*)?$/,
 				message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
 			},
 		});
