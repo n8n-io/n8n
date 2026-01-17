@@ -20,6 +20,52 @@ class HealthConfig {
 }
 
 @Config
+class RedisTlsConfig {
+	/**
+	 * Redis TLS options matches nodejs tls ConnectionOptions.
+	 * https://bun.com/reference/node/tls/ConnectionOptions
+	 */
+
+	/**
+	 * Root CA certificate file path. Must be PEM formatted X.509 certificate.
+	 * @example '/home/node/certs/ca.crt'
+	 */
+	@Env('QUEUE_BULL_REDIS_TLS_CA_FILE')
+	caFile: string = '';
+
+	/**
+	 * Client certificate file path. Can be of type clientServer where both client and server use the same certificates.
+	 * Optional if redis tls_auth_clients is 'no' or 'optional'.
+	 * @example '/home/node/certs/cert.crt'
+	 */
+	@Env('QUEUE_BULL_REDIS_TLS_CERT_FILE')
+	certFile: string = '';
+
+	/**
+	 * The client certificate's private key. File path to certificate's private key file.
+	 * Encryption with passphrase is supported. @see QUEUE_BULL_REDIS_TLS_CERT_KEY_PASS
+	 * @example '/home/node/certs/cert.key'
+	 */
+	@Env('QUEUE_BULL_REDIS_TLS_CERT_KEY_FILE')
+	certKeyFile: string = '';
+
+	/**
+	 * The passphrase to decrypt the client certificate's private key. Optional if the key is not encrypted.
+	 * @example 'MyCertKeyPassphrase'
+	 */
+	@Env('QUEUE_BULL_REDIS_TLS_CERT_KEY_PASS')
+	certKeyFilePassphrase: string = '';
+
+	/** SNI extension servername for TLS handshake. */
+	@Env('QUEUE_BULL_REDIS_TLS_SERVERNAME')
+	serverName: string = '';
+
+	/** If unauthorized SSL connections should be rejected */
+	@Env('QUEUE_BULL_REDIS_TLS_REJECT_UNAUTHORIZED')
+	rejectUnauthorized: boolean = true;
+}
+
+@Config
 class RedisConfig {
 	/** Redis database for Bull queue. */
 	@Env('QUEUE_BULL_REDIS_DB')
@@ -28,6 +74,14 @@ class RedisConfig {
 	/** Redis host for Bull queue. */
 	@Env('QUEUE_BULL_REDIS_HOST')
 	host: string = 'localhost';
+
+	/**
+	 * Enable full ioredis client debug logging. Same effect as setting env 'DEBUG=ioredis:*'.
+	 * Will merge with existing DEBUG env namespaces if any are set.
+	 * @see https://github.com/redis/ioredis?tab=readme-ov-file#debug
+	 */
+	@Env('QUEUE_BULL_REDIS_DEBUG')
+	debug: boolean = false;
 
 	/** Password to authenticate with Redis. */
 	@Env('QUEUE_BULL_REDIS_PASSWORD')
@@ -60,6 +114,17 @@ class RedisConfig {
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
 
+	@Nested
+	tlsConfig: RedisTlsConfig;
+
+	/** Whether to enable dual-stack hostname resolution to support both IPv4 and IPv6 addresses for Redis connections. Default uses IPv4 only. */
+	@Env('QUEUE_BULL_REDIS_DUALSTACK')
+	dualStack: boolean = false;
+
+	/** Whether to use only IPv6 to avoid ENOTFOUND errors when a hostname only resolves to an IPv6 address . Default uses IPv4 only. */
+	@Env('QUEUE_BULL_REDIS_IPV6')
+	ipV6: boolean = false;
+
 	/**
 	 * DNS resolution strategy for Redis hostnames on initial client connection.
 	 * - `LOOKUP` (default): Use system DNS resolver to resolve hostnames to IP addresses.
@@ -73,9 +138,14 @@ class RedisConfig {
 	@Env('QUEUE_BULL_REDIS_DNS_LOOKUP_STRATEGY')
 	dnsResolveStrategy: 'LOOKUP' | 'NONE' = 'LOOKUP';
 
-	/** Whether to enable dual-stack hostname resolution for Redis connections. */
-	@Env('QUEUE_BULL_REDIS_DUALSTACK')
-	dualStack: boolean = false;
+	/**
+	 * In auto pipelining mode, all commands issued during an event loop are enqueued in a pipeline automatically managed by ioredis.
+	 * At the end of the iteration, the pipeline is executed and thus all commands are sent to the server at the same time.
+	 * This feature can dramatically improve throughput and avoids HOL blocking.
+	 * @see https://github.com/redis/ioredis?tab=readme-ov-file#autopipelining
+	 */
+	@Env('QUEUE_BULL_REDIS_ENABLE_AUTO_PIPELINING')
+	enableAutoPipelining: boolean = false;
 }
 
 @Config
