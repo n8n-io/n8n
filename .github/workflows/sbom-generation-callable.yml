@@ -43,17 +43,10 @@ jobs:
         with:
           ref: ${{ inputs.release_tag_ref }}
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - name: Setup Node.js and install dependencies
+        uses: ./.github/actions/setup-nodejs
         with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - name: Install dependencies for SBOM generation
-        run: pnpm install --frozen-lockfile
+          build-command: ''
 
       - name: Generate CycloneDX SBOM for source code
         uses: anchore/sbom-action@f8bdd1d8ac5e901a77a92f111440fdb1b593736b # v0.20.6
