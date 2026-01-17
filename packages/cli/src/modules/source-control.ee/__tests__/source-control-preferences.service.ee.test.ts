@@ -3,7 +3,7 @@ import type { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, Cipher } from 'n8n-core';
-import { readFile, access, mkdir } from 'fs/promises';
+import { readFile, writeFile, access, mkdir } from 'fs/promises';
 import os from 'os';
 import path from 'path';
 
@@ -390,6 +390,50 @@ describe('SourceControlPreferencesService', () => {
 				username: 'decrypted-encryptedUser',
 				password: 'decrypted-encryptedPass',
 			});
+		});
+	});
+
+	describe('resetKnownHosts', () => {
+		let tempDir: string;
+		let sshFolder: string;
+
+		beforeEach(async () => {
+			tempDir = path.join(os.tmpdir(), 'n8n-test-' + Date.now());
+			sshFolder = path.join(tempDir, 'ssh');
+			await mkdir(sshFolder, { recursive: true });
+		});
+
+		it('should delete the known_hosts file when it exists', async () => {
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const testService = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			const knownHostsPath = path.join(sshFolder, 'known_hosts');
+			await writeFile(knownHostsPath, 'github.com ssh-rsa AAAA...\n');
+
+			await expect(access(knownHostsPath)).resolves.toBeUndefined();
+
+			await testService.resetKnownHosts();
+
+			await expect(access(knownHostsPath)).rejects.toThrow();
+		});
+
+		it('should complete successfully when known_hosts file does not exist', async () => {
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const testService = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			await expect(testService.resetKnownHosts()).resolves.toBeUndefined();
 		});
 	});
 });
