@@ -1,0 +1,70 @@
+{
+	"meta": {
+		"instanceId": "lemlist-test-workflow-001"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger-001",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [240, 300]
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 10,
+				"filters": {}
+			},
+			"id": "lemlist-campaigns-001",
+			"name": "Lemlist - Get Campaigns",
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [480, 300],
+			"credentials": {
+				"lemlistApi": {
+					"id": "1",
+					"name": "Lemlist API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Lemlist - Get Campaigns",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Lemlist - Get Campaigns": [
+			{
+				"json": {
+					"_id": "cam_abc123def456",
+					"name": "Test Campaign 1",
+					"labels": ["sales", "outreach"],
+					"createdAt": "2024-01-15T10:30:00.000Z",
+					"updatedAt": "2024-01-20T14:45:00.000Z"
+				}
+			},
+			{
+				"json": {
+					"_id": "cam_xyz789ghi012",
+					"name": "Test Campaign 2",
+					"labels": ["marketing"],
+					"createdAt": "2024-02-01T08:00:00.000Z",
+					"updatedAt": "2024-02-05T16:20:00.000Z"
+				}
+			}
+		]
+	}
+}
