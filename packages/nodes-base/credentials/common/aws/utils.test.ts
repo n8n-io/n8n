@@ -13,8 +13,232 @@ jest.mock('xml2js', () => ({
 
 import { sign } from 'aws4';
 import { parseString } from 'xml2js';
-import { assumeRole } from './utils';
+import { assumeRole, normalizeServiceName, parseAwsUrl } from './utils';
 import * as systemCredentialsUtils from './system-credentials-utils';
+
+describe('normalizeServiceName', () => {
+	describe('explicit mappings', () => {
+		it('should normalize bedrock-runtime to bedrock', () => {
+			expect(normalizeServiceName('bedrock-runtime')).toBe('bedrock');
+		});
+
+		it('should normalize bedrock-agent-runtime to bedrock', () => {
+			expect(normalizeServiceName('bedrock-agent-runtime')).toBe('bedrock');
+		});
+
+		it('should normalize bedrock-data-automation-runtime to bedrock', () => {
+			expect(normalizeServiceName('bedrock-data-automation-runtime')).toBe('bedrock');
+		});
+
+		it('should normalize iot-data to iotdevicegateway', () => {
+			expect(normalizeServiceName('iot-data')).toBe('iotdevicegateway');
+		});
+	});
+
+	describe('pattern matching fallback', () => {
+		it('should normalize bedrock-*-runtime services to bedrock via pattern matching', () => {
+			// Test with a hypothetical future bedrock runtime service not in the explicit mapping
+			expect(normalizeServiceName('bedrock-custom-runtime')).toBe('bedrock');
+			expect(normalizeServiceName('bedrock-newfeature-runtime')).toBe('bedrock');
+		});
+
+		it('should not normalize bedrock services without runtime suffix', () => {
+			// These should return as-is since they don't match the pattern
+			expect(normalizeServiceName('bedrock')).toBe('bedrock');
+			expect(normalizeServiceName('bedrock-agent')).toBe('bedrock-agent');
+		});
+	});
+
+	describe('services without mappings', () => {
+		it('should return s3 unchanged', () => {
+			expect(normalizeServiceName('s3')).toBe('s3');
+		});
+
+		it('should return lambda unchanged', () => {
+			expect(normalizeServiceName('lambda')).toBe('lambda');
+		});
+
+		it('should return dynamodb unchanged', () => {
+			expect(normalizeServiceName('dynamodb')).toBe('dynamodb');
+		});
+
+		it('should return ec2 unchanged', () => {
+			expect(normalizeServiceName('ec2')).toBe('ec2');
+		});
+
+		it('should return sts unchanged', () => {
+			expect(normalizeServiceName('sts')).toBe('sts');
+		});
+
+		it('should return sns unchanged', () => {
+			expect(normalizeServiceName('sns')).toBe('sns');
+		});
+
+		it('should return sqs unchanged', () => {
+			expect(normalizeServiceName('sqs')).toBe('sqs');
+		});
+	});
+});
+
+describe('parseAwsUrl', () => {
+	describe('standard AWS services', () => {
+		it('should parse standard service URL with region', () => {
+			const url = new URL('https://s3.us-east-1.amazonaws.com/bucket/key');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 's3',
+				region: 'us-east-1',
+			});
+		});
+
+		it('should parse Lambda endpoint', () => {
+			const url = new URL('https://lambda.eu-west-1.amazonaws.com');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'lambda',
+				region: 'eu-west-1',
+			});
+		});
+
+		it('should parse DynamoDB endpoint', () => {
+			const url = new URL('https://dynamodb.ap-southeast-1.amazonaws.com');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'dynamodb',
+				region: 'ap-southeast-1',
+			});
+		});
+	});
+
+	describe('Bedrock services with normalization', () => {
+		it('should normalize bedrock-runtime to bedrock and extract region', () => {
+			const url = new URL('https://bedrock-runtime.us-east-1.amazonaws.com');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'bedrock',
+				region: 'us-east-1',
+			});
+		});
+
+		it('should normalize bedrock-agent-runtime to bedrock', () => {
+			const url = new URL('https://bedrock-agent-runtime.us-west-2.amazonaws.com');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'bedrock',
+				region: 'us-west-2',
+			});
+		});
+
+		it('should normalize bedrock-data-automation-runtime to bedrock', () => {
+			const url = new URL('https://bedrock-data-automation-runtime.eu-central-1.amazonaws.com');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'bedrock',
+				region: 'eu-central-1',
+			});
+		});
+
+		it('should handle hypothetical future bedrock runtime services', () => {
+			const url = new URL('https://bedrock-custom-runtime.ap-northeast-1.amazonaws.com');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'bedrock',
+				region: 'ap-northeast-1',
+			});
+		});
+	});
+
+	describe('IoT services with normalization', () => {
+		it('should normalize iot-data to iotdevicegateway', () => {
+			const url = new URL('https://iot-data.us-east-1.amazonaws.com');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'iotdevicegateway',
+				region: 'us-east-1',
+			});
+		});
+	});
+
+	describe('China region endpoints', () => {
+		it('should parse China region endpoint with .cn domain', () => {
+			const url = new URL('https://s3.cn-north-1.amazonaws.com.cn');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 's3',
+				region: 'cn-north-1',
+			});
+		});
+
+		it('should parse bedrock-runtime in China region', () => {
+			const url = new URL('https://bedrock-runtime.cn-northwest-1.amazonaws.com.cn');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'bedrock',
+				region: 'cn-northwest-1',
+			});
+		});
+	});
+
+	describe('global services without region', () => {
+		it('should parse IAM endpoint (global service)', () => {
+			const url = new URL('https://iam.amazonaws.com');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'iam',
+				region: undefined,
+			});
+		});
+
+		it('should parse CloudFront endpoint (global service)', () => {
+			const url = new URL('https://cloudfront.amazonaws.com');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'cloudfront',
+				region: undefined,
+			});
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should handle URLs with paths', () => {
+			const url = new URL('https://bedrock-runtime.us-east-1.amazonaws.com/model/invoke');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 'bedrock',
+				region: 'us-east-1',
+			});
+		});
+
+		it('should handle URLs with query parameters', () => {
+			const url = new URL('https://s3.us-west-2.amazonaws.com/bucket?prefix=test');
+			const result = parseAwsUrl(url);
+			expect(result).toEqual({
+				service: 's3',
+				region: 'us-west-2',
+			});
+		});
+
+		it('should handle various AWS regions', () => {
+			const regions = [
+				'us-east-1',
+				'us-west-2',
+				'eu-west-1',
+				'ap-southeast-1',
+				'sa-east-1',
+				'ca-central-1',
+			];
+
+			for (const region of regions) {
+				const url = new URL(`https://lambda.${region}.amazonaws.com`);
+				const result = parseAwsUrl(url);
+				expect(result).toEqual({
+					service: 'lambda',
+					region,
+				});
+			}
+		});
+	});
+});
 
 describe('assumeRole', () => {
 	let mockFetch: jest.MockedFunction<typeof fetch>;

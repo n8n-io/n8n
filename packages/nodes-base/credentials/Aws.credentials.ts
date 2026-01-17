@@ -72,6 +72,17 @@ export class Aws implements ICredentialType {
 		const path = (requestOptions.qs?.path as string) ?? '';
 		const method = requestOptions.method;
 
+		// Auto-inject JSON headers for Bedrock if not already set
+		if (service?.startsWith('bedrock')) {
+			requestOptions.headers = requestOptions.headers ?? {};
+			if (!requestOptions.headers['Content-Type'] && !requestOptions.headers['content-type']) {
+				requestOptions.headers['Content-Type'] = 'application/json';
+			}
+			if (!requestOptions.headers['Accept'] && !requestOptions.headers['accept']) {
+				requestOptions.headers['Accept'] = 'application/json';
+			}
+		}
+
 		let region = credentials.region;
 		if (requestOptions.qs?._region) {
 			region = requestOptions.qs._region as AWSRegion;
