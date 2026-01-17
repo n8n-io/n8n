@@ -330,7 +330,15 @@ jobs:
   # VEX Attestation - Documents which CVEs affect us (vex.openvex.json)
   vex-attestation:
     name: VEX Attestation
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest, provenance-n8n, provenance-runners, provenance-runners-distroless]
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+        provenance-n8n,
+        provenance-runners,
+        provenance-runners-distroless,
+      ]
     if: |
       always() &&
       needs.create_multi_arch_manifest.result == 'success' &&
