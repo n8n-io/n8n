@@ -741,7 +741,14 @@ export function useCanvasOperations() {
 		}
 
 		for (const [index, nodeAddData] of nodesWithTypeVersion.entries()) {
-			const { isAutoAdd, openDetail: openNDV, actionName, positionOffset, ...node } = nodeAddData;
+			const {
+				isAutoAdd,
+				placeholder,
+				openDetail: openNDV,
+				actionName,
+				positionOffset,
+				...node
+			} = nodeAddData;
 
 			const rawPosition = node.position ?? insertPosition;
 			const position: XYPosition | undefined =
@@ -766,6 +773,9 @@ export function useCanvasOperations() {
 					},
 				);
 				lastAddedNode = newNode;
+				if (nodeAddData.placeholder) {
+					newNode.placeholder = true;
+				}
 				addedNodes.push(newNode);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('error'));
@@ -1057,6 +1067,7 @@ export function useCanvasOperations() {
 			position,
 			disabled,
 			parameters,
+			placeholder: node.placeholder,
 		};
 
 		resolveNodeName(nodeData);
