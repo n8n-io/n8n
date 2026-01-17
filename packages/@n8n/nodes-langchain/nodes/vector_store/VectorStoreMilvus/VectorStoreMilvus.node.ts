@@ -1,6 +1,6 @@
 import { Milvus } from '@langchain/community/vectorstores/milvus';
-import type { MilvusLibArgs } from '@langchain/community/vectorstores/milvus';
-import { MilvusClient } from '@zilliz/milvus2-sdk-node';
+import type { IndexCreateOptions, MilvusLibArgs } from '@langchain/community/vectorstores/milvus';
+import { IndexType, MetricType, MilvusClient } from '@zilliz/milvus2-sdk-node';
 import type { INodeProperties } from 'n8n-workflow';
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
@@ -8,6 +8,25 @@ import { milvusCollectionsSearch } from '../shared/createVectorStoreNode/methods
 import { milvusCollectionRLC } from '../shared/descriptions';
 
 const sharedFields: INodeProperties[] = [milvusCollectionRLC];
+
+const distanceStrategyField: INodeProperties = {
+	displayName: 'Distance Strategy',
+	name: 'distanceStrategy',
+	type: 'options',
+	default: MetricType.L2,
+	description: 'The method to calculate the distance between two vectors',
+	options: Object.values(MetricType).map((m) => ({ name: m, value: m })),
+};
+
+const indexTypeField: INodeProperties = {
+	displayName: 'Index Type',
+	name: 'indexType',
+	type: 'options',
+	default: IndexType.AUTOINDEX,
+	description: 'The type of index used in the Milvus database',
+	options: Object.values(IndexType).map((i) => ({ name: i, value: i })),
+};
+
 const insertFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -24,6 +43,17 @@ const insertFields: INodeProperties[] = [
 				description: 'Whether to clear the collection before inserting new data',
 			},
 		],
+	},
+];
+
+const retrieveFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [distanceStrategyField, indexTypeField],
 	},
 ];
 
@@ -46,6 +76,8 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 	methods: { listSearch: { milvusCollectionsSearch } },
 	sharedFields,
 	insertFields,
+	loadFields: retrieveFields,
+	retrieveFields,
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex): Promise<Milvus> {
 		const collection = context.getNodeParameter('milvusCollection', itemIndex, '', {
 			extractValue: true,
@@ -54,12 +86,22 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			baseUrl: string;
 			username: string;
 			password: string;
+			databaseName: string;
 		}>('milvusApi');
+		const indexCreateOptions: IndexCreateOptions = {
+			index_type: context.getNodeParameter('options.indexType', itemIndex, IndexType.AUTOINDEX),
+			metric_type: context.getNodeParameter('options.distanceStrategy', itemIndex, MetricType.L2),
+		};
 		const config: MilvusLibArgs = {
 			url: credentials.baseUrl,
 			username: credentials.username,
 			password: credentials.password,
 			collectionName: collection,
+			indexCreateOptions: indexCreateOptions,
+			clientConfig: {
+				address: credentials.baseUrl,
+				database: credentials.databaseName ?? 'default',
+			},
 		};
 
 		return await Milvus.fromExistingCollection(embeddings, config);
@@ -75,18 +117,24 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			baseUrl: string;
 			username: string;
 			password: string;
+			databaseName: string;
 		}>('milvusApi');
 		const config: MilvusLibArgs = {
 			url: credentials.baseUrl,
 			username: credentials.username,
 			password: credentials.password,
 			collectionName: collection,
+			clientConfig: {
+				address: credentials.baseUrl,
+				database: credentials.databaseName ?? 'default',
+			},
 		};
 
 		if (options.clearCollection) {
 			const client = new MilvusClient({
 				address: credentials.baseUrl,
 				token: `${credentials.username}:${credentials.password}`,
+				database: credentials.databaseName ?? 'default',
 			});
 			await client.dropCollection({ collection_name: collection });
 		}
