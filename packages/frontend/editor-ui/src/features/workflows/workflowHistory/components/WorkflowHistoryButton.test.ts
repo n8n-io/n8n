@@ -15,9 +15,6 @@ const renderComponent = createComponentRenderer(WorkflowHistoryButton, {
 			RouterLink: {
 				template: '<div><slot /></div>',
 			},
-			N8nTooltip: {
-				template: '<div><slot /><slot name="content" /></div>',
-			},
 			N8nIconButton: true,
 			N8nLink: {
 				template: '<a @click="$emit(\'click\')"><slot /></a>',

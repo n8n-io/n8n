@@ -1,7 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { queryTooltip, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
+import { waitFor } from '@testing-library/vue';
 import CanvasRunWorkflowButton from './CanvasRunWorkflowButton.vue';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent } from '@testing-library/vue';
 import { createTestNode } from '@/__tests__/mocks';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -42,7 +44,7 @@ describe('CanvasRunWorkflowButton', () => {
 			},
 		});
 
-		expect(wrapper.getAllByText('Executing workflow')).toHaveLength(2);
+		expect(wrapper.getByText('Executing workflow')).toBeInTheDocument();
 	});
 
 	it('should render different label when executing and waiting for webhook', () => {
@@ -53,25 +55,27 @@ describe('CanvasRunWorkflowButton', () => {
 			},
 		});
 
-		expect(wrapper.getAllByText('Waiting for trigger event')).toHaveLength(2);
+		expect(wrapper.getByText('Waiting for trigger event')).toBeInTheDocument();
 	});
 
-	it("should only show the tooltip when it's not executing", async () => {
+	it('should show tooltip when not executing', async () => {
 		const wrapper = renderComponent({ props: { executing: false } });
+		const button = wrapper.getByRole('button');
+
+		// Verify tooltip shows execution label and shortcut on hover
+		await hoverTooltipTrigger(button);
+		// Tooltip has showAfter of 500ms, wait for it
+		await new Promise((r) => setTimeout(r, 600));
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('Execute workflow'));
+	});
+
+	it('should not show tooltip when executing', async () => {
+		const wrapper = renderComponent({ props: { executing: true } });
 		await userEvent.hover(wrapper.getByRole('button'));
 
-		function isTooltipVisible(isVisible: boolean) {
-			return wrapper.baseElement.querySelector(
-				`[id^="el-popper-container"] div[aria-hidden="${!isVisible}"]`,
-			);
-		}
-
-		await waitFor(() => expect(isTooltipVisible(true)).toBeTruthy());
-
-		await wrapper.rerender({ executing: true });
-		await userEvent.hover(wrapper.getByRole('button'));
-
-		await waitFor(() => expect(isTooltipVisible(false)).toBeTruthy());
+		// Wait longer than showAfter (500ms) then verify tooltip didn't appear
+		await new Promise((r) => setTimeout(r, 600));
+		expect(queryTooltip()).not.toBeInTheDocument();
 	});
 
 	it('should render split button if multiple triggers are available', () => {
