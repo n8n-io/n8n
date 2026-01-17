@@ -1,24 +1,30 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
+import { useUIStore } from '@/app/stores/ui.store';
 
 import { N8nIcon, N8nPopover } from '@n8n/design-system';
+import CanvasNodeStickyCustomColorPicker from './CanvasNodeStickyCustomColorPicker.vue';
 const emit = defineEmits<{
-	update: [color: number];
+	update: [color: number | string];
 }>();
 
 const i18n = useI18n();
+const uiStore = useUIStore();
 
 const { render, eventBus } = useCanvasNode();
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
+
+const isDarkMode = computed(() => uiStore.appliedTheme === 'dark');
 
 const autoHideTimeout = ref<NodeJS.Timeout | null>(null);
 
 const colors = computed(() => Array.from({ length: 7 }).map((_, index) => index + 1));
 
 const isPopoverVisible = defineModel<boolean>('visible');
+const isCustomColorPickerOpen = ref(false);
 
 function hidePopover() {
 	isPopoverVisible.value = false;
@@ -31,6 +37,18 @@ function showPopover() {
 function changeColor(index: number) {
 	emit('update', index);
 	hidePopover();
+}
+
+function openCustomColorPicker() {
+	hidePopover();
+	nextTick(() => {
+		isCustomColorPickerOpen.value = true;
+	});
+}
+
+function onCustomColorSelected(hexColor: string) {
+	emit('update', hexColor);
+	isCustomColorPickerOpen.value = false;
 }
 
 function onMouseEnter() {
@@ -59,9 +77,10 @@ onBeforeUnmount(() => {
 	<N8nPopover
 		v-model:open="isPopoverVisible"
 		side="top"
-		width="208px"
-		:content-class="$style.popover"
+		width="240px"
+		:content-class="`${$style.popover} ${isDarkMode ? 'sticky-color-popover-dark' : 'sticky-color-popover-light'}`"
 		:enable-scrolling="false"
+		:show-arrow="true"
 		@before-enter="onMouseEnter"
 		@after-leave="onMouseLeave"
 	>
@@ -87,16 +106,37 @@ onBeforeUnmount(() => {
 					]"
 					@click="changeColor(color)"
 				></div>
+
+				<div
+					data-test-id="custom-color"
+					:class="[
+						$style.color,
+						$style.customColorButton,
+						typeof renderOptions.color === 'string' ? $style.selected : '',
+					]"
+					:style="
+						typeof renderOptions.color === 'string' ? { backgroundColor: renderOptions.color } : {}
+					"
+					:title="i18n.baseText('node.customColor')"
+					@click.stop="openCustomColorPicker"
+				>
+					<N8nIcon icon="plus" size="xsmall" :class="$style.plusIcon" />
+				</div>
 			</div>
 		</template>
 	</N8nPopover>
+
+	<CanvasNodeStickyCustomColorPicker
+		v-if="isCustomColorPickerOpen"
+		:current-color="typeof renderOptions.color === 'string' ? renderOptions.color : '#FFD700'"
+		@select="onCustomColorSelected"
+		@close="isCustomColorPickerOpen = false"
+	/>
 </template>
 
 <style lang="scss" module>
 .popover {
-	min-width: 208px;
-	margin-bottom: -8px;
-	margin-left: -2px;
+	padding: var(--spacing--xs);
 }
 
 .content {
@@ -164,5 +204,59 @@ onBeforeUnmount(() => {
 	&:hover {
 		color: var(--color--primary);
 	}
+}
+
+.customColorButton {
+	position: relative;
+	background: conic-gradient(
+		from 0deg,
+		hsl(0, 100%, 50%),
+		hsl(60, 100%, 50%),
+		hsl(120, 100%, 50%),
+		hsl(180, 100%, 50%),
+		hsl(240, 100%, 50%),
+		hsl(300, 100%, 50%),
+		hsl(360, 100%, 50%)
+	);
+
+	&:hover {
+		cursor: pointer;
+	}
+}
+
+.plusIcon {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	color: white;
+	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+</style>
+
+<style lang="scss">
+// Light theme popover
+.sticky-color-popover-light {
+	background: var(--color--background--shade-2);
+}
+
+// Dark theme popover
+.sticky-color-popover-dark {
+	background: var(--color--background--shade-2);
+	color: var(--color--foreground--tint-2);
+}
+
+// Arrow styles - light theme
+[data-reka-popper-content-wrapper]:has(.sticky-color-popover-light) svg path {
+	fill: var(--color--background--shade-2);
+	stroke: var(--color--foreground);
+	stroke-width: 1px;
+}
+
+// Arrow styles - dark theme
+[data-reka-popper-content-wrapper]:has(.sticky-color-popover-dark) svg path {
+	fill: var(--color--background--shade-2);
+	stroke: var(--color--foreground);
+	stroke-width: 1px;
 }
 </style>
