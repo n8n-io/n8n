@@ -13,6 +13,464 @@ import type {
 import { NodeApiError, NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { WebSocket } from 'ws';
 
+// Constants
+const MAX_CONNECTION_TIMEOUT = 300; // 5 minutes
+const MAX_SUBSCRIPTION_TIMEOUT = 3600; // 1 hour
+
+// WebSocket message types
+interface GraphQLWebSocketMessage {
+	type: string;
+	id?: string;
+	payload?: any;
+	data?: any;
+}
+
+// Protocol handler types
+type ProtocolHandler = (
+	ws: WebSocket,
+	query: string,
+	variables: IDataObject,
+	operationName?: string,
+) => void;
+
+// Helper functions for protocol handling
+function createGraphQLTransportWSHandler(
+	ws: WebSocket,
+	_query: string,
+	_variables: IDataObject,
+	_operationName?: string,
+): void {
+	const initMessage: GraphQLWebSocketMessage = {
+		type: 'connection_init',
+		payload: {},
+	};
+	ws.send(JSON.stringify(initMessage));
+}
+
+function createGraphQLWSHandler(
+	ws: WebSocket,
+	query: string,
+	variables: IDataObject,
+	operationName?: string,
+): void {
+	const subscriptionMessage: GraphQLWebSocketMessage = {
+		type: 'start',
+		id: '1',
+		payload: {
+			query,
+			variables,
+			...(operationName && { operationName }),
+		},
+	};
+	ws.send(JSON.stringify(subscriptionMessage));
+}
+
+function createLegacyGraphQLHandler(
+	ws: WebSocket,
+	query: string,
+	variables: IDataObject,
+	operationName?: string,
+): void {
+	const subscriptionMessage: GraphQLWebSocketMessage = {
+		type: 'start',
+		id: '1',
+		payload: {
+			query,
+			variables,
+			...(operationName && { operationName }),
+		},
+	};
+	ws.send(JSON.stringify(subscriptionMessage));
+}
+
+function getProtocolHandler(subprotocol: string): ProtocolHandler {
+	switch (subprotocol) {
+		case 'graphql-transport-ws':
+			return createGraphQLTransportWSHandler;
+		case 'graphql-ws':
+			return createGraphQLWSHandler;
+		case 'graphql':
+			return createLegacyGraphQLHandler;
+		default:
+			return createGraphQLTransportWSHandler;
+	}
+}
+
+function validateURL(node: any, url: string, connectionMode: string, itemIndex?: number): void {
+	if (!url || typeof url !== 'string') {
+		throw new NodeOperationError(
+			node,
+			`Invalid URL: URL must be a non-empty string. Received: ${url}`,
+			itemIndex !== undefined ? { itemIndex } : undefined,
+		);
+	}
+
+	if (connectionMode === 'websocket') {
+		if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
+			throw new NodeOperationError(
+				node,
+				`Invalid WebSocket URL: URL must start with 'ws://' or 'wss://'. Received: ${url}`,
+				itemIndex !== undefined ? { itemIndex } : undefined,
+			);
+		}
+	} else if (connectionMode === 'http') {
+		if (!url.startsWith('http://') && !url.startsWith('https://')) {
+			throw new NodeOperationError(
+				node,
+				`Invalid HTTP URL: URL must start with 'http://' or 'https://'. Received: ${url}`,
+				itemIndex !== undefined ? { itemIndex } : undefined,
+			);
+		}
+	}
+}
+
+function validateTimeouts(
+	node: any,
+	connectionTimeout: number,
+	subscriptionTimeout: number,
+	itemIndex?: number,
+): void {
+	if (connectionTimeout < 1 || connectionTimeout > MAX_CONNECTION_TIMEOUT) {
+		throw new NodeOperationError(
+			node,
+			`Connection timeout must be between 1 and ${MAX_CONNECTION_TIMEOUT} seconds. Received: ${connectionTimeout}`,
+			itemIndex !== undefined ? { itemIndex } : undefined,
+		);
+	}
+
+	if (subscriptionTimeout < 1 || subscriptionTimeout > MAX_SUBSCRIPTION_TIMEOUT) {
+		throw new NodeOperationError(
+			node,
+			`Subscription timeout must be between 1 and ${MAX_SUBSCRIPTION_TIMEOUT} seconds. Received: ${subscriptionTimeout}`,
+			itemIndex !== undefined ? { itemIndex } : undefined,
+		);
+	}
+}
+
+function parseWebSocketMessage(data: string | ArrayBuffer | Buffer): GraphQLWebSocketMessage {
+	try {
+		let dataString: string;
+		if (typeof data === 'string') {
+			dataString = data;
+		} else if (data instanceof ArrayBuffer) {
+			dataString = Buffer.from(data).toString();
+		} else {
+			dataString = data.toString();
+		}
+		const message = JSON.parse(dataString) as GraphQLWebSocketMessage;
+		return message;
+	} catch (error) {
+		throw new NodeOperationError(
+			null as any,
+			`Failed to parse WebSocket message: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+}
+
+async function executeWebSocket(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<INodeExecutionData> {
+	const url = this.getNodeParameter('url', itemIndex, '') as string;
+	const query = this.getNodeParameter('query', itemIndex, '') as string;
+	const allowUnauthorizedCerts = this.getNodeParameter(
+		'allowUnauthorizedCerts',
+		itemIndex,
+		false,
+	) as boolean;
+	const subprotocol = this.getNodeParameter(
+		'websocketSubprotocol',
+		itemIndex,
+		'graphql-transport-ws',
+	) as string;
+	const connectionTimeout = this.getNodeParameter('connectionTimeout', itemIndex, 30) as number;
+	const subscriptionTimeout = this.getNodeParameter(
+		'subscriptionTimeout',
+		itemIndex,
+		300,
+	) as number;
+
+	// Validate URL
+	validateURL(this.getNode(), url, 'websocket', itemIndex);
+
+	// Validate and enforce timeout limits
+	validateTimeouts(this.getNode(), connectionTimeout, subscriptionTimeout, itemIndex);
+
+	const variablesParam = this.getNodeParameter('variables', itemIndex, {}) as IDataObject;
+
+	// Parse variables if they're a string, otherwise use as object
+	let variables: IDataObject;
+	if (typeof variablesParam === 'string') {
+		try {
+			variables = JSON.parse(variablesParam as string);
+		} catch (error) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Failed to parse variables JSON: ${error instanceof Error ? error.message : String(error)}`,
+				{ itemIndex },
+			);
+		}
+	} else {
+		variables = variablesParam;
+	}
+
+	const operationName = this.getNodeParameter('operationName', itemIndex, '') as string;
+
+	const { parameter: headerParameters }: { parameter?: Array<{ name: string; value: string }> } =
+		this.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
+
+	const headers = (headerParameters || []).reduce(
+		(result: any, item: any) => ({
+			...result,
+			[item.name]: item.value,
+		}),
+		{},
+	);
+
+	// Resource tracking for cleanup
+	let ws: WebSocket | null = null;
+	let connectionTimeoutId: ReturnType<typeof setTimeout> | null = null;
+	let subscriptionTimeoutId: ReturnType<typeof setTimeout> | null = null;
+	const messages: IDataObject[] = [];
+
+	try {
+		// Create WebSocket connection
+		ws = new WebSocket(url, [subprotocol], {
+			headers,
+			rejectUnauthorized: !allowUnauthorizedCerts,
+		});
+
+		// Ensure WebSocket was created
+		if (!ws) {
+			throw new NodeOperationError(this.getNode(), 'Failed to create WebSocket connection', {
+				itemIndex,
+			});
+		}
+
+		// Get protocol handler
+		const protocolHandler = getProtocolHandler(subprotocol);
+
+		// Promise-based execution with proper error handling
+		const result = await new Promise<IDataObject[]>(
+			(resolve: (value: IDataObject[]) => void, reject: (error: Error) => void) => {
+				let connectionEstablished = false;
+				let isResolved = false;
+
+				// Helper to safely resolve/reject
+				const safeResolve = (value: IDataObject[]) => {
+					if (!isResolved) {
+						isResolved = true;
+						resolve(value);
+					}
+				};
+
+				const safeReject = (error: Error) => {
+					if (!isResolved) {
+						isResolved = true;
+						reject(error);
+					}
+				};
+
+				// Connection timeout
+				connectionTimeoutId = setTimeout(() => {
+					if (ws && ws.readyState !== WebSocket.CLOSED) {
+						ws.close();
+					}
+					safeReject(
+						new NodeOperationError(
+							this.getNode(),
+							`WebSocket connection timeout after ${connectionTimeout} seconds`,
+							{ itemIndex },
+						),
+					);
+				}, connectionTimeout * 1000);
+
+				// Subscription timeout
+				const resetSubscriptionTimeout = () => {
+					if (subscriptionTimeoutId) {
+						clearTimeout(subscriptionTimeoutId);
+					}
+					subscriptionTimeoutId = setTimeout(() => {
+						if (ws && ws.readyState !== WebSocket.CLOSED) {
+							ws.close();
+						}
+						safeReject(
+							new NodeOperationError(
+								this.getNode(),
+								`WebSocket subscription timeout after ${subscriptionTimeout} seconds`,
+								{ itemIndex },
+							),
+						);
+					}, subscriptionTimeout * 1000);
+				};
+
+				// Initial subscription timeout
+				resetSubscriptionTimeout();
+
+				// Handle connection open - ws is guaranteed to be non-null here
+				ws!.on('open', () => {
+					if (connectionTimeoutId) {
+						clearTimeout(connectionTimeoutId);
+						connectionTimeoutId = null;
+					}
+					connectionEstablished = true;
+
+					// Send connection initialization for graphql-transport-ws
+					if (subprotocol === 'graphql-transport-ws') {
+						const initMessage: GraphQLWebSocketMessage = {
+							type: 'connection_init',
+							payload: {},
+						};
+						ws!.send(JSON.stringify(initMessage));
+					} else {
+						// For other protocols, send subscription directly
+						protocolHandler(ws!, query, variables, operationName || undefined);
+					}
+				});
+
+				// Handle incoming messages - ws is guaranteed to be non-null here
+				ws!.on('message', (data: string | ArrayBuffer | Buffer) => {
+					try {
+						const message = parseWebSocketMessage(data);
+
+						// Handle different GraphQL subscription message types
+						if (message.type === 'data' || message.type === 'next') {
+							// Standard GraphQL subscription data
+							const payload = message.payload || message.data;
+							if (payload) {
+								messages.push(payload);
+							} else {
+								messages.push(message as unknown as IDataObject);
+							}
+
+							// Reset subscription timeout for next message
+							resetSubscriptionTimeout();
+						} else if (message.type === 'error' || message.type === 'connection_error') {
+							let errorMessage = 'GraphQL subscription error';
+							if (message.payload) {
+								if (Array.isArray(message.payload)) {
+									errorMessage = message.payload
+										.map((err: any) => err.message || String(err))
+										.join(', ');
+								} else if (typeof message.payload === 'string') {
+									errorMessage = message.payload;
+								} else if (message.payload.message) {
+									errorMessage = message.payload.message;
+								} else {
+									errorMessage = JSON.stringify(message.payload);
+								}
+							}
+							safeReject(
+								new NodeApiError(this.getNode(), message.payload || {}, {
+									message: errorMessage,
+								}),
+							);
+						} else if (message.type === 'complete' || message.type === 'done') {
+							// Subscription completed, resolve with collected messages
+							safeResolve(messages);
+						} else if (message.type === 'connection_ack') {
+							if (subprotocol === 'graphql-transport-ws') {
+								const subscriptionMessage: GraphQLWebSocketMessage = {
+									type: 'subscribe',
+									id: '1',
+									payload: {
+										query,
+										variables,
+									},
+								};
+								ws!.send(JSON.stringify(subscriptionMessage));
+							}
+						} else if (message.type === 'ping' || message.type === 'ka') {
+							// Handle ping/keepalive messages
+							const pongMessage: GraphQLWebSocketMessage = {
+								type: 'pong',
+								payload: { message: 'keepalive' },
+							};
+							ws!.send(JSON.stringify(pongMessage));
+						} else {
+							// Unknown message type, but still collect it
+							messages.push(message as unknown as IDataObject);
+						}
+					} catch (error) {
+						const errorMessage = error instanceof Error ? error.message : String(error);
+						// If it's already a NodeOperationError, rethrow it
+						if (error instanceof NodeOperationError) {
+							safeReject(error);
+						} else {
+							safeReject(
+								new NodeOperationError(
+									this.getNode(),
+									`Failed to process WebSocket message: ${errorMessage}`,
+									{ itemIndex },
+								),
+							);
+						}
+					}
+				});
+
+				// Handle errors - ws is guaranteed to be non-null here
+				ws!.on('error', (error: Error) => {
+					safeReject(
+						new NodeOperationError(this.getNode(), `WebSocket error: ${error.message}`, {
+							itemIndex,
+						}),
+					);
+				});
+
+				// Handle connection close - ws is guaranteed to be non-null here
+				ws!.on('close', () => {
+					if (!connectionEstablished) {
+						safeReject(
+							new NodeOperationError(this.getNode(), 'WebSocket connection failed to establish', {
+								itemIndex,
+							}),
+						);
+					} else if (!isResolved) {
+						// Connection closed but we haven't resolved yet - resolve with collected messages
+						safeResolve(messages);
+					}
+				});
+
+				// Final timeout to ensure we always resolve
+				setTimeout(() => {
+					if (!isResolved) {
+						safeResolve(messages);
+					}
+				}, subscriptionTimeout * 1000);
+			},
+		);
+
+		// Return collected messages
+		if (result.length > 0) {
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(result),
+				{ itemData: { item: itemIndex } },
+			);
+			return executionData[0];
+		} else {
+			// Return empty result if no messages received
+			return {
+				json: {},
+			};
+		}
+	} finally {
+		// Guaranteed cleanup
+		if (connectionTimeoutId) {
+			clearTimeout(connectionTimeoutId);
+		}
+		if (subscriptionTimeoutId) {
+			clearTimeout(subscriptionTimeoutId);
+		}
+		if (ws) {
+			// Remove all event listeners to prevent memory leaks
+			ws.removeAllListeners();
+			if (ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) {
+				ws.close();
+			}
+		}
+	}
+}
+
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GraphQL',
@@ -301,7 +759,7 @@ export class GraphQL implements INodeType {
 				],
 			},
 			{
-				displayName: 'Ignore SSL Issues (Insecure)',
+				displayName: 'Ignore Ssl Issues (Insecure)',
 				name: 'allowUnauthorizedCerts',
 				type: 'boolean',
 				default: false,
@@ -309,7 +767,7 @@ export class GraphQL implements INodeType {
 				description: 'Whether to connect even if SSL certificate validation is not possible',
 			},
 			{
-				displayName: 'Connection Timeout (seconds)',
+				displayName: 'Connection Timeout (Seconds)',
 				name: 'connectionTimeout',
 				type: 'number',
 				default: 30,
@@ -321,7 +779,7 @@ export class GraphQL implements INodeType {
 				},
 			},
 			{
-				displayName: 'Subscription Timeout (seconds)',
+				displayName: 'Subscription Timeout (Seconds)',
 				name: 'subscriptionTimeout',
 				type: 'number',
 				default: 300,
@@ -333,22 +791,22 @@ export class GraphQL implements INodeType {
 				},
 			},
 			{
-				displayName: 'WebSocket Subprotocol',
+				displayName: 'Websocket Subprotocol',
 				name: 'websocketSubprotocol',
 				type: 'options',
 				options: [
 					{
-						name: 'graphql-transport-ws',
+						name: 'GraphQL Transport WS',
 						value: 'graphql-transport-ws',
 						description: 'Modern GraphQL over WebSocket protocol',
 					},
 					{
-						name: 'graphql-ws',
+						name: 'GraphQL WS',
 						value: 'graphql-ws',
 						description: 'Alternative GraphQL WebSocket protocol',
 					},
 					{
-						name: 'graphql',
+						name: 'GraphQL',
 						value: 'graphql',
 						description: 'Legacy GraphQL WebSocket protocol',
 					},
@@ -459,291 +917,15 @@ export class GraphQL implements INodeType {
 
 			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 				try {
-					const url = this.getNodeParameter('url', itemIndex, '') as string;
-					const query = this.getNodeParameter('query', itemIndex, '') as string;
-					const allowUnauthorizedCerts = this.getNodeParameter(
-						'allowUnauthorizedCerts',
-						itemIndex,
-						false,
-					) as boolean;
-					const subprotocol = this.getNodeParameter(
-						'websocketSubprotocol',
-						itemIndex,
-						'graphql-transport-ws',
-					) as string;
-					const connectionTimeout = this.getNodeParameter(
-						'connectionTimeout',
-						itemIndex,
-						30,
-					) as number;
-					const subscriptionTimeout = this.getNodeParameter(
-						'subscriptionTimeout',
-						itemIndex,
-						300,
-					) as number;
-
-					const variablesParam = this.getNodeParameter('variables', itemIndex, {}) as IDataObject;
-
-					// Parse variables if they're a string, otherwise use as object
-					let variables: IDataObject;
-					if (typeof variablesParam === 'string') {
-						try {
-							variables = JSON.parse(variablesParam as string);
-						} catch (error) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Failed to parse variables JSON: ${error}`,
-								{ itemIndex },
-							);
-						}
-					} else {
-						variables = variablesParam;
-					}
-					const operationName = this.getNodeParameter('operationName', itemIndex, '') as string;
-
-					const {
-						parameter: headerParameters,
-					}: { parameter?: Array<{ name: string; value: string }> } = this.getNodeParameter(
-						'headerParametersUi',
-						itemIndex,
-						{},
-					) as IDataObject;
-
-					const headers = (headerParameters || []).reduce(
-						(result: any, item: any) => ({
-							...result,
-							[item.name]: item.value,
-						}),
-						{},
-					);
-
-					// Create WebSocket connection
-					const ws = new WebSocket(url, [subprotocol], {
-						headers,
-						rejectUnauthorized: !allowUnauthorizedCerts,
-					});
-
-					// Set up connection timeout
-					const connectionTimeoutId = setTimeout(() => {
-						ws.close();
-						throw new NodeOperationError(
-							this.getNode(),
-							`WebSocket connection timeout after ${connectionTimeout} seconds`,
-							{ itemIndex },
-						);
-					}, connectionTimeout * 1000);
-
-					// Set up subscription timeout
-					let subscriptionTimeoutId = setTimeout(() => {
-						ws.close();
-						throw new NodeOperationError(
-							this.getNode(),
-							`WebSocket subscription timeout after ${subscriptionTimeout} seconds`,
-							{ itemIndex },
-						);
-					}, subscriptionTimeout * 1000);
-
-					// Handle WebSocket events
-					const messages: IDataObject[] = [];
-					let connectionEstablished = false;
-
-					ws.on('open', () => {
-						clearTimeout(connectionTimeoutId);
-						connectionEstablished = true;
-
-						// Send connection initialization for graphql-transport-ws
-						if (subprotocol === 'graphql-transport-ws') {
-							const initMessage = {
-								type: 'connection_init',
-								payload: {},
-							};
-							ws.send(JSON.stringify(initMessage));
-						} else {
-							// For other protocols, send subscription directly
-							let subscriptionMessage: any;
-
-							if (subprotocol === 'graphql-ws') {
-								subscriptionMessage = {
-									type: 'start',
-									id: '1',
-									payload: {
-										query,
-										variables,
-										...(operationName && { operationName }),
-									},
-								};
-							} else {
-								// Legacy graphql protocol
-								subscriptionMessage = {
-									type: 'start',
-									id: '1',
-									payload: {
-										query,
-										variables,
-										...(operationName && { operationName }),
-									},
-								};
-							}
-
-							ws.send(JSON.stringify(subscriptionMessage));
-						}
-					});
-
-					ws.on('message', (data: any) => {
-						try {
-							const message = JSON.parse(data.toString());
-
-							// Handle different GraphQL subscription message types
-							if (message.type === 'data' || message.type === 'next') {
-								// Standard GraphQL subscription data
-								const payload = message.payload || message.data;
-								if (payload) {
-									messages.push(payload);
-								} else {
-									messages.push(message);
-								}
-								clearTimeout(subscriptionTimeoutId);
-
-								// Reset subscription timeout for next message
-								const newTimeoutId = setTimeout(() => {
-									ws.close();
-									throw new NodeOperationError(
-										this.getNode(),
-										`WebSocket subscription timeout after ${subscriptionTimeout} seconds`,
-										{ itemIndex },
-									);
-								}, subscriptionTimeout * 1000);
-
-								subscriptionTimeoutId = newTimeoutId;
-							} else if (message.type === 'error' || message.type === 'connection_error') {
-								ws.close();
-								let errorMessage = 'GraphQL subscription error';
-								if (message.payload) {
-									if (Array.isArray(message.payload)) {
-										errorMessage = message.payload.map((err: any) => err.message).join(', ');
-									} else if (typeof message.payload === 'string') {
-										errorMessage = message.payload;
-									} else {
-										errorMessage = JSON.stringify(message.payload);
-									}
-								}
-								throw new NodeApiError(this.getNode(), message.payload || {}, {
-									message: errorMessage,
-								});
-							} else if (message.type === 'complete' || message.type === 'done') {
-								ws.close();
-							} else if (message.type === 'connection_ack') {
-								if (subprotocol === 'graphql-transport-ws') {
-									const subscriptionMessage = {
-										type: 'subscribe',
-										id: '1',
-										payload: {
-											query,
-											variables,
-										},
-									};
-									ws.send(JSON.stringify(subscriptionMessage));
-								}
-							} else if (message.type === 'ping' || message.type === 'ka') {
-								// Handle ping/keepalive messages
-								// Send pong response if needed
-								const pongMessage = {
-									type: 'pong',
-									payload: { message: 'keepalive' },
-								};
-								ws.send(JSON.stringify(pongMessage));
-							} else {
-								// Unknown message type, but still collect it
-								messages.push(message);
-							}
-						} catch (error) {
-							ws.close();
-							throw new NodeOperationError(
-								this.getNode(),
-								`Failed to parse WebSocket message: ${error}`,
-								{ itemIndex },
-							);
-						}
-					});
-
-					ws.on('error', (error: Error) => {
-						clearTimeout(connectionTimeoutId);
-						clearTimeout(subscriptionTimeoutId);
-						ws.close();
-						throw new NodeOperationError(this.getNode(), `WebSocket error: ${error}`, {
-							itemIndex,
-						});
-					});
-
-					ws.on('close', () => {
-						clearTimeout(connectionTimeoutId);
-						clearTimeout(subscriptionTimeoutId);
-
-						if (!connectionEstablished) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'WebSocket connection failed to establish',
-								{ itemIndex },
-							);
-						}
-					});
-
-					// Wait for connection and messages
-					await new Promise<void>((resolve: () => void, reject: (error: Error) => void) => {
-						let messageReceived = false;
-
-						ws.on('open', () => {});
-
-						ws.on('message', (data: any) => {
-							try {
-								const message = JSON.parse(data.toString());
-
-								// If we receive actual data (not just ping), mark as received
-								if (message.type === 'data' || message.type === 'next') {
-									messageReceived = true;
-									resolve();
-								}
-							} catch (error) {
-								// Error parsing message
-							}
-						});
-
-						ws.on('close', () => {
-							if (!messageReceived) {
-								resolve(); // Resolve even if no data received
-							}
-						});
-
-						ws.on('error', (error: Error) => {
-							reject(error);
-						});
-
-						// Set a timeout to resolve if no data received
-						setTimeout(() => {
-							resolve();
-						}, subscriptionTimeout * 1000);
-					});
-
-					// Return collected messages
-					if (messages.length > 0) {
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(messages),
-							{ itemData: { item: itemIndex } },
-						);
-						returnItems.push(...executionData);
-					} else {
-						// Return empty result if no messages received
-						returnItems.push({
-							json: {},
-						});
-					}
+					const result = await executeWebSocket.call(this, itemIndex);
+					returnItems.push(result);
 				} catch (error) {
 					if (!this.continueOnFail()) {
 						throw error;
 					}
 
 					const errorData = this.helpers.returnJsonArray({
-						error: error.message,
+						error: error instanceof Error ? error.message : String(error),
 					});
 					const executionErrorWithMetaData = this.helpers.constructExecutionMetaData(errorData, {
 						itemData: { item: itemIndex },
@@ -811,6 +993,9 @@ export class GraphQL implements INodeType {
 						'POST',
 					) as IHttpRequestMethods;
 					const endpoint = this.getNodeParameter('url', itemIndex, '') as string;
+
+					// Validate URL
+					validateURL(this.getNode(), endpoint, 'http', itemIndex);
 					const requestFormat = this.getNodeParameter('requestFormat', itemIndex, 'json') as string;
 					const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 					const { parameter }: { parameter?: Array<{ name: string; value: string }> } =
