@@ -27,6 +27,7 @@ import { isWorkflowIdValid } from '@/utils';
 
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import { EventService } from './events/event.service';
+import { ChatTokenService } from './chat/chat-token.service';
 
 @Service()
 export class ActiveExecutions {
@@ -43,6 +44,7 @@ export class ActiveExecutions {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly chatTokenService: ChatTokenService,
 	) {}
 
 	has(executionId: string) {
@@ -189,6 +191,7 @@ export class ActiveExecutions {
 			reason: cancellationError.reason,
 		});
 		execution.responsePromise?.reject(cancellationError);
+		this.chatTokenService.removeToken(executionId);
 		if (execution.status === 'waiting') {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise
 			// So we can't rely on the `.finally` on the postExecutePromise for the execution removal
@@ -218,6 +221,7 @@ export class ActiveExecutions {
 			}
 		}
 
+		this.chatTokenService.removeToken(executionId);
 		execution.postExecutePromise.resolve(fullRunData);
 		this.logger.debug('Execution finalized', { executionId });
 	}
@@ -294,6 +298,7 @@ export class ActiveExecutions {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
 			} else if (status === 'waiting' || status === 'new') {
+				this.chatTokenService.removeToken(executionId);
 				// Remove waiting and new executions to not block shutdown
 				delete this.activeExecutions[executionId];
 			}

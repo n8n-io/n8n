@@ -21,6 +21,7 @@ import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ChatTokenService } from '@/chat/chat-token.service';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 
 jest.mock('n8n-workflow', () => ({
@@ -47,6 +48,7 @@ describe('ActiveExecutions', () => {
 	let responsePromise: IDeferredPromise<IExecuteResponsePromiseData>;
 	let workflowExecution: PCancelable<IRun>;
 	let postExecutePromise: Promise<IRun | undefined>;
+	let chatTokenService: jest.Mocked<ChatTokenService>;
 
 	const fullRunData: IRun = {
 		data: createEmptyRunExecutionData(),
@@ -72,12 +74,14 @@ describe('ActiveExecutions', () => {
 	};
 
 	beforeEach(() => {
+		chatTokenService = mock<ChatTokenService>();
 		activeExecutions = new ActiveExecutions(
 			mock(),
 			executionRepository,
 			concurrencyControl,
 			mock(),
 			executionsConfig,
+			chatTokenService,
 		);
 
 		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
@@ -188,6 +192,7 @@ describe('ActiveExecutions', () => {
 
 			await new Promise(setImmediate);
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(executionId);
 		});
 
 		test('Should not try to resolve a post-execute promise for an inactive execution', async () => {
@@ -223,6 +228,7 @@ describe('ActiveExecutions', () => {
 				concurrencyControl,
 				mock(),
 				executionsConfig,
+				chatTokenService,
 			);
 
 			executionData.httpResponse = mock<Response>();
@@ -302,6 +308,7 @@ describe('ActiveExecutions', () => {
 				expect.any(ManualExecutionCancelledError),
 			);
 			expect(workflowExecution.cancel).toHaveBeenCalledTimes(1);
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(executionId);
 			await expect(postExecutePromise).rejects.toThrow(ManualExecutionCancelledError);
 		});
 
@@ -313,6 +320,7 @@ describe('ActiveExecutions', () => {
 				expect.any(ManualExecutionCancelledError),
 			);
 			expect(workflowExecution.cancel).not.toHaveBeenCalled();
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(executionId);
 		});
 	});
 
@@ -369,6 +377,12 @@ describe('ActiveExecutions', () => {
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(newExecutionId2);
 			expect(stopExecutionSpy).not.toHaveBeenCalledWith(waitingExecutionId2);
 
+			// Tokens should be cleaned up for all executions
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(newExecutionId1);
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(newExecutionId2);
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(waitingExecutionId1);
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(waitingExecutionId2);
+
 			await new Promise(setImmediate);
 			// the other two executions aren't cancelled, but still removed from memory
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
@@ -406,6 +420,12 @@ describe('ActiveExecutions', () => {
 				waitingExecutionId2,
 				expect.any(SystemShutdownExecutionCancelledError),
 			);
+
+			// All tokens should be cleaned up via stopExecution
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(newExecutionId1);
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(newExecutionId2);
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(waitingExecutionId1);
+			expect(chatTokenService.removeToken).toHaveBeenCalledWith(waitingExecutionId2);
 		});
 	});
 });
