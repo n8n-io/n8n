@@ -176,6 +176,29 @@ describe('ScalingService', () => {
 			expect(queue.process).toHaveBeenCalledWith(JOB_TYPE_NAME, concurrency, expect.any(Function));
 		});
 
+		it('should trigger shutdown callback after processing configured number of jobs', async () => {
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
+			await scalingService.setupQueue();
+
+			jobProcessor.processJob.mockResolvedValue({ success: true } as never);
+
+			const onMaxJobsReached = jest.fn();
+			scalingService.setupWorker(1, { maxJobs: 1, onMaxJobsReached });
+
+			const processFn = queue.process.mock.calls[0][2];
+
+			const job = {
+				id: '1',
+				data: { executionId: '1', workflowId: 'wf', loadStaticData: false },
+				progress: jest.fn(),
+			} as unknown as Job;
+
+			await processFn(job);
+
+			expect(onMaxJobsReached).toHaveBeenCalledTimes(1);
+		});
+
 		it('should throw if called on a non-worker instance', async () => {
 			await scalingService.setupQueue();
 
