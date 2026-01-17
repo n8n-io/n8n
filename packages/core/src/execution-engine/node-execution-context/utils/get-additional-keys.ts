@@ -7,6 +7,8 @@ import type {
 import { LoggerProxy } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import type { InstanceSettings } from '@/instance-settings/instance-settings';
+import { signUrl } from '@/utils/signature-helpers';
 
 import {
 	setWorkflowExecutionMetadata,
@@ -21,11 +23,18 @@ export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	runExecutionData: IRunExecutionData | null,
-	options?: { secretsEnabled?: boolean },
+	options?: { secretsEnabled?: boolean; instanceSettings?: InstanceSettings },
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
-	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
-	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+
+	// Sign resumeUrl and resumeFormUrl if instanceSettings available
+	let resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
+	let resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+	if (options?.instanceSettings?.hmacSignatureSecret) {
+		const secret = options.instanceSettings.hmacSignatureSecret;
+		resumeUrl = signUrl(resumeUrl, secret);
+		resumeFormUrl = signUrl(resumeFormUrl, secret);
+	}
 	return {
 		$execution: {
 			id: executionId,

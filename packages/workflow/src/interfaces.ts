@@ -2567,6 +2567,12 @@ export interface ITaskMetadata {
 		/** Time saved in minutes */
 		minutes: number;
 	};
+
+	/**
+	 * Signed URL for resuming form-based waiting executions.
+	 * Contains HMAC signature for security validation.
+	 */
+	resumeFormUrl?: string;
 }
 
 /** The data that gets returned when a node execution starts */

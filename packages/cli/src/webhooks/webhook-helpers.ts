@@ -10,7 +10,14 @@ import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	generateUrlSignature,
+	InstanceSettings,
+	prepareUrlForSigning,
+	WAITING_TOKEN_QUERY_PARAM,
+} from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -627,6 +634,10 @@ export async function executeWebhook(
 			didSendResponse = true;
 		}
 
+		if (responseMode === 'formPage' && !didSendResponse) {
+			runExecutionData.validateSignature = true;
+		}
+
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
 			runData,
@@ -644,7 +655,13 @@ export async function executeWebhook(
 		});
 
 		if (responseMode === 'formPage' && !didSendResponse) {
-			res.send({ formWaitingUrl: `${additionalData.formWaitingBaseUrl}/${executionId}` });
+			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
+			const urlForSigning = prepareUrlForSigning(formUrl);
+			const instanceSettings = Container.get(InstanceSettings);
+			const token = generateUrlSignature(urlForSigning, instanceSettings.hmacSignatureSecret);
+			formUrl.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+
+			res.send({ formWaitingUrl: formUrl.toString() });
 			process.nextTick(() => res.end());
 			didSendResponse = true;
 		}

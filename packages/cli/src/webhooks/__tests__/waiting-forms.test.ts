@@ -302,6 +302,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
+					validateSignature: undefined, // Explicitly set to avoid signature validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -445,6 +446,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
 					},
+					validateSignature: undefined, // Explicitly set to avoid signature validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -501,6 +503,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
 					},
+					validateSignature: undefined, // Explicitly set to avoid signature validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -542,6 +545,168 @@ describe('WaitingForms', () => {
 				'Content-Security-Policy',
 				expect.stringContaining('sandbox'),
 			);
+		});
+	});
+
+	describe('executeWebhook - signature validation', () => {
+		it('should return 401 when validateSignature is true and signature is missing', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'FormNode',
+						runData: {},
+						error: undefined,
+					},
+					validateSignature: true, // Signature validation enabled
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: {
+					path: '123',
+					suffix: undefined,
+				},
+				query: {}, // No signature
+				url: '/form-waiting/123',
+				host: 'localhost:5678',
+			});
+
+			const mockRender = jest.fn();
+			const mockStatus = jest.fn().mockReturnValue({ render: mockRender });
+			const res = mock<express.Response>({
+				status: mockStatus,
+			});
+
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(mockStatus).toHaveBeenCalledWith(401);
+			expect(mockRender).toHaveBeenCalledWith('form-invalid-token');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should skip signature validation when validateSignature is false', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: true,
+				status: 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'LastNode',
+						runData: {},
+						error: undefined,
+					},
+					validateSignature: false, // Signature validation disabled (backwards compat)
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'LastNode',
+							type: 'other-node-type',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: {
+					path: '123',
+					suffix: undefined,
+				},
+				query: {}, // No signature, but validation is disabled
+			});
+
+			const res = mock<express.Response>();
+
+			// Should not throw or return 401 - should proceed to render completion page
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should skip signature validation when validateSignature is undefined', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: true,
+				status: 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'LastNode',
+						runData: {},
+						error: undefined,
+					},
+					// validateSignature is undefined (not set)
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'LastNode',
+							type: 'other-node-type',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: {
+					path: '123',
+					suffix: undefined,
+				},
+				query: {}, // No signature, but validation is disabled by default
+			});
+
+			const res = mock<express.Response>();
+
+			// Should not throw or return 401 - should proceed to render completion page
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
 });

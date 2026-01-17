@@ -1,8 +1,14 @@
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
+import crypto from 'crypto';
 import type express from 'express';
 import type { IRunData } from 'n8n-workflow';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import {
+	generateUrlSignature,
+	getWebhookSandboxCSP,
+	prepareUrlForSigning,
+	WAITING_TOKEN_QUERY_PARAM,
+} from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
@@ -47,6 +53,36 @@ export class WaitingForms extends WaitingWebhooks {
 		});
 	}
 
+	/**
+	 * Validates signature for form requests.
+	 * Strips suffixes before validation since the signature
+	 * is generated for the base form URL (without webhookSuffix or status suffix).
+	 */
+	private validateFormSignatureInRequest(req: express.Request, suffix?: string): boolean {
+		try {
+			const actualToken = req.query[WAITING_TOKEN_QUERY_PARAM];
+			if (typeof actualToken !== 'string') return false;
+
+			const parsedUrl = new URL(req.url, `http://${req.host}`);
+			parsedUrl.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
+
+			// Strip the suffix - signature is for base URL (without webhookSuffix or status suffix)
+			if (suffix) {
+				parsedUrl.pathname = parsedUrl.pathname.replace(`/${suffix}`, '');
+			}
+
+			const urlForSigning = prepareUrlForSigning(parsedUrl);
+			const expectedToken = generateUrlSignature(
+				urlForSigning,
+				this.instanceSettings.hmacSignatureSecret,
+			);
+
+			return crypto.timingSafeEqual(Buffer.from(actualToken), Buffer.from(expectedToken));
+		} catch {
+			return false;
+		}
+	}
+
 	findCompletionPage(workflow: Workflow, runData: IRunData, lastNodeExecuted: string) {
 		const parentNodes = workflow.getParentNodes(lastNodeExecuted);
 		const lastNode = workflow.nodes[lastNodeExecuted];
@@ -84,6 +120,14 @@ export class WaitingForms extends WaitingWebhooks {
 		req.params = {} as WaitingWebhookRequest['params'];
 
 		const execution = await this.getExecution(executionId);
+
+		// Validate signature for forms if required
+		if (execution?.data.validateSignature) {
+			if (!this.validateFormSignatureInRequest(req, suffix)) {
+				res.status(401).render('form-invalid-token');
+				return { noWebhookResponse: true };
+			}
+		}
 
 		if (suffix === WAITING_FORMS_EXECUTION_STATUS) {
 			let status: string = execution?.status ?? 'null';
