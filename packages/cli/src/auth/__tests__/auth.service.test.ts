@@ -168,9 +168,7 @@ describe('AuthService', () => {
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			userRepository.findOne.mockResolvedValue(user);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			mfaService.isMFAEnforced.mockImplementation(() => {
-				return true;
-			});
+			mfaService.isMFAEnforced.mockResolvedValue(true);
 
 			const middleware = authService.createAuthMiddleware({ allowSkipMFA: false });
 
@@ -441,7 +439,7 @@ describe('AuthService', () => {
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 				userRepository.findOne.mockResolvedValue(userWithMfa);
-				mfaService.isMFAEnforced.mockReturnValue(true);
+				mfaService.isMFAEnforced.mockResolvedValue(true);
 
 				const middleware = authService.createAuthMiddleware({
 					allowSkipMFA: false,
@@ -463,7 +461,7 @@ describe('AuthService', () => {
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 				userRepository.findOne.mockResolvedValue(user); // user has mfaEnabled: false
-				mfaService.isMFAEnforced.mockReturnValue(true);
+				mfaService.isMFAEnforced.mockResolvedValue(true);
 
 				const middleware = authService.createAuthMiddleware({
 					allowSkipMFA: false,
