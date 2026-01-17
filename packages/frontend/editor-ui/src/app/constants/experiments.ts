@@ -66,6 +66,8 @@ export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 
 export const TAMPER_PROOF_INVITE_LINKS = createExperiment('061_tamper_proof_invite_links');
 
+export const PERSONAL_PROJECT_GOVERNANCE = createExperiment('060_personal_project_governance');
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -78,5 +80,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_SETUP_EXPERIENCE.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
+	PERSONAL_PROJECT_GOVERNANCE.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
 ];

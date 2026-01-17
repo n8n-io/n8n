@@ -1,5 +1,5 @@
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -46,6 +46,7 @@ export class RoleService {
 		private readonly roleRepository: RoleRepository,
 		private readonly scopeRepository: ScopeRepository,
 		private readonly roleCacheService: RoleCacheService,
+		private readonly logger: Logger,
 	) {}
 
 	private dbRoleToRoleDTO(role: Role, usedByUsers?: number): RoleDTO {
@@ -330,5 +331,47 @@ export class RoleService {
 				// TODO: handle custom roles licensing
 				return true;
 		}
+	}
+
+	async addScopeToRole(roleSlug: Role['slug'], scopeSlug: Scope): Promise<void> {
+		const role = await this.roleRepository.findBySlug(roleSlug);
+		if (!role) {
+			this.logger.error(`Role ${roleSlug} not found - unable to add scope ${scopeSlug}`);
+			throw new NotFoundError(`Role ${roleSlug} not found`);
+		}
+
+		const scope = await this.scopeRepository.findOne({ where: { slug: scopeSlug } });
+
+		if (!scope) {
+			this.logger.error(
+				`Scope ${scopeSlug} not found - unable to add this scope to role ${roleSlug}`,
+			);
+			throw new NotFoundError(`Scope ${scopeSlug} not found`);
+		}
+
+		if (role.scopes.find((s) => s.slug === scopeSlug)) {
+			this.logger.debug(`Scope ${scopeSlug} is already assigned on role ${roleSlug}`);
+			return;
+		}
+
+		this.logger.debug(`Adding scope ${scopeSlug} to role ${roleSlug}`);
+		role.scopes.push(scope);
+		await this.roleRepository.save(role);
+		await this.roleCacheService.refreshCache();
+		this.logger.debug(`Added scope ${scopeSlug} to role ${roleSlug}`);
+	}
+
+	async removeScopeFromRole(roleSlug: string, scopeSlug: string): Promise<void> {
+		const role = await this.roleRepository.findBySlug(roleSlug);
+		if (!role) {
+			this.logger.error(`Role ${roleSlug} not found - unable to add scope ${scopeSlug}`);
+			throw new NotFoundError(`Role ${roleSlug} not found`);
+		}
+
+		this.logger.debug(`Removing scope ${scopeSlug} from role ${roleSlug}`);
+		role.scopes = role.scopes.filter((s) => s.slug !== scopeSlug);
+		await this.roleRepository.save(role);
+		await this.roleCacheService.refreshCache();
+		this.logger.debug(`Removed scope ${scopeSlug} from role ${roleSlug}`);
 	}
 }
