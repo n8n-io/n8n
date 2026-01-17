@@ -1,0 +1,64 @@
+{
+	"name": "My workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "161c54a2-a925-4462-a41e-db05a73d32e2",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [520, 160]
+		},
+		{
+			"parameters": {
+				"operation": "createForward",
+				"messageId": {
+					"__rl": true,
+					"value": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEJAABZf4De-LkrSqpPI8eyjUmAAAFXBEVwAAA=",
+					"mode": "list",
+					"cachedResultName": "Hello",
+					"cachedResultUrl": "https://outlook.office365.com/owa/?ItemID=AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De%2FLkrSqpPI8eyjUmAAAAAAAEJAABZf4De%2FLkrSqpPI8eyjUmAAAFXBEVwAAA%3D&exvsurl=1&viewmodel=ReadMessageItem"
+				},
+				"toRecipients": "to@mail.com",
+				"comment": "Test Comment"
+			},
+			"id": "fe7fbd9f-e3c6-445a-96fb-910d82210b64",
+			"name": "Microsoft Outlook",
+			"type": "n8n-nodes-base.microsoftOutlook",
+			"typeVersion": 2,
+			"position": [740, 160],
+			"webhookId": "a3e0930c-6d3d-403e-b270-41f68d153c57",
+			"credentials": {
+				"microsoftOutlookOAuth2Api": {
+					"id": "1T1PrdT4uMw8uNfT",
+					"name": "Microsoft Outlook account"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Outlook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "6741e697-643e-4bf4-ad96-e9e660606cb0",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e527f2a33eb3d1430899ff27ce88c903aae237f007f3a82750d920a5062d76fc"
+	},
+	"id": "znOzc7TFURgatXsC",
+	"tags": []
+}
