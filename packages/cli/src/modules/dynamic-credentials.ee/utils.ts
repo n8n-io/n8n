@@ -1,6 +1,8 @@
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import type { Request } from 'express';
+import { Container } from '@n8n/di';
+import { DynamicCredentialService } from './services/dynamic-credential.service';
 
 const BEARER_TOKEN_REGEX = /^[Bb][Ee][Aa][Rr][Ee][Rr]\s+(.+)$/;
 
@@ -20,3 +22,9 @@ export function getBearerToken(req: Request): string {
 
 	return token;
 }
+
+export const getDynamicCredentialMiddlewares = () => {
+	const dynamicCredentialEndpointsMiddleware =
+		Container.get(DynamicCredentialService).getDynamicCredentialsEndpointsMiddleware();
+	return dynamicCredentialEndpointsMiddleware ? [dynamicCredentialEndpointsMiddleware] : undefined;
+};
