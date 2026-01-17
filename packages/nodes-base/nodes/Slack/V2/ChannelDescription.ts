@@ -722,6 +722,19 @@ export const channelFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
+		displayName: 'Include All Metadata',
+		name: 'includeAllMetadata',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['channel'],
+				operation: ['replies'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all metadata associated with returned messages',
+	},
+	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
