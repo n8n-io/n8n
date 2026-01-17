@@ -18,7 +18,15 @@ import {
 	hasKeys,
 	upperFirst,
 } from './GenericFunctions';
+import {
+	DRIVE,
+	DRIVE_DEFAULT_TEXT,
+	DRIVE_DEFAULT_VALUE,
+	DRIVE_SHARED_WITH_ME_TEXT,
+	DRIVE_SHARED_WITH_ME_VALUE,
+} from './helpers/constants';
 import type { IUpdateBody, IUpdateFields } from './interfaces';
+import { setParentFolder, updateDriveScopes } from './utils/utils';
 
 export class GoogleDocs implements INodeType {
 	description: INodeTypeDescription = {
@@ -124,12 +132,12 @@ export class GoogleDocs implements INodeType {
 			async getDrives(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [
 					{
-						name: 'My Drive',
-						value: 'myDrive',
+						name: DRIVE_DEFAULT_TEXT,
+						value: DRIVE_DEFAULT_VALUE,
 					},
 					{
-						name: 'Shared with Me',
-						value: 'sharedWithMe',
+						name: DRIVE_SHARED_WITH_ME_TEXT,
+						value: DRIVE_SHARED_WITH_ME_VALUE,
 					},
 				];
 				let drives;
@@ -164,14 +172,28 @@ export class GoogleDocs implements INodeType {
 						value: 'default',
 					},
 				];
-				const driveId = this.getNodeParameter('driveId');
+				const driveId = this.getNodeParameter('driveId') as string;
 
-				const qs = {
-					q: `mimeType = \'application/vnd.google-apps.folder\' ${
-						driveId === 'sharedWithMe' ? 'and sharedWithMe = true' : " and 'root' in parents"
-					}`,
-					...(driveId && driveId !== 'myDrive' && driveId !== 'sharedWithMe' ? { driveId } : {}),
+				const query: string[] = [];
+				query.push(`mimeType = '${DRIVE.FOLDER}'`);
+
+				if (driveId === DRIVE_DEFAULT_VALUE) {
+					query.push("'root' in parents");
+				} else if (driveId === DRIVE_SHARED_WITH_ME_VALUE) {
+					query.push('sharedWithMe = true');
+				}
+
+				const qs: IDataObject = {
+					q: query.join(' and '),
+					includeItemsFromAllDrives: true,
+					supportsAllDrives: true,
+					orderBy: 'name_natural',
+					spaces: 'drive',
+					corpora: 'allDrives',
 				};
+
+				updateDriveScopes(qs, driveId);
+
 				let folders;
 
 				try {
@@ -218,19 +240,27 @@ export class GoogleDocs implements INodeType {
 						// https://developers.google.com/docs/api/reference/rest/v1/documents/create
 
 						const folderId = this.getNodeParameter('folderId', i) as string;
+						const driveId = this.getNodeParameter('driveId', i) as string;
 
 						const body: IDataObject = {
 							name: this.getNodeParameter('title', i) as string,
 							mimeType: 'application/vnd.google-apps.document',
-							...(folderId && folderId !== 'default' ? { parents: [folderId] } : {}),
+							parents: [setParentFolder(folderId, driveId)],
 						};
+
+						const qs = {
+							includeItemsFromAllDrives: true,
+							supportsAllDrives: true,
+							spaces: 'drive',
+							corpora: 'allDrives',
+						} as IDataObject;
 
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
 							'',
 							body,
-							{},
+							qs,
 							'https://www.googleapis.com/drive/v3/files',
 						);
 					} else if (operation === 'get') {
