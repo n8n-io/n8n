@@ -28,8 +28,17 @@ export type WorkflowAutoDeactivated = {
 	};
 };
 
+export type WorkflowUpdated = {
+	type: 'workflowUpdated';
+	data: {
+		workflowId: string;
+		userId: string;
+	};
+};
+
 export type WorkflowPushMessage =
 	| WorkflowActivated
 	| WorkflowFailedToActivate
 	| WorkflowDeactivated
-	| WorkflowAutoDeactivated;
+	| WorkflowAutoDeactivated
+	| WorkflowUpdated;

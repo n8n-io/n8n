@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22.21.1
+ARG NODE_VERSION=22.22.0
 
 FROM dhi.io/node:${NODE_VERSION}-alpine3.22-dev
 
@@ -17,7 +17,7 @@ RUN apk add --no-cache busybox-binsh && \
         git \
         openssh \
         openssl \
-        graphicsmagick \
+        graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (AGPL)` \
         tini \
         tzdata \
         ca-certificates \
