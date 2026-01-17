@@ -10,7 +10,7 @@ import {
 	type NodeParameterValue,
 	type FilterOptionsValue,
 } from 'n8n-workflow';
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, watch, onBeforeUnmount } from 'vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	DEFAULT_FILTER_OPTIONS,
@@ -119,7 +119,7 @@ watch(
 
 		if (!isEqual(state.paramValue.options, newOptions)) {
 			state.paramValue.options = newOptions;
-			debouncedEmitChange();
+			scheduleEmitChange();
 		}
 	},
 	{ immediate: true },
@@ -138,17 +138,39 @@ watch(
 watch(
 	() => state.paramValue,
 	() => {
-		debouncedEmitChange();
+		scheduleEmitChange();
 	},
 	{ deep: true },
 );
 
-function emitChange() {
+watch(
+	() => props.node?.name,
+	(_, previousNodeName) => {
+		if (previousNodeName) {
+			debouncedEmitChange.flush();
+		}
+	},
+);
+
+onBeforeUnmount(() => {
+	debouncedEmitChange.flush();
+});
+
+function emitChange(nodeName?: string) {
+	if (!nodeName) return;
 	emit('valueChanged', {
 		name: props.path,
 		value: state.paramValue,
-		node: props.node?.name as string,
+		node: nodeName,
 	});
+}
+
+function scheduleEmitChange() {
+	const nodeName = props.node?.name;
+	if (!nodeName) {
+		return;
+	}
+	debouncedEmitChange(nodeName);
 }
 
 function addCondition(): void {
