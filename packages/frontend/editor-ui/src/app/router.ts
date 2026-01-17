@@ -379,6 +379,23 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/workflow-crdt/:name/:nodeId?',
+		name: VIEWS.WORKFLOW_CRDT,
+		component: async () => await import('@/features/crdt/views/CRDTTestView.vue'),
+		meta: {
+			middleware: ['authenticated'],
+		},
+		props: true,
+		beforeEnter: (to, _from, next) => {
+			const { check } = useEnvFeatureFlag();
+			if (check.value('CRDT')) {
+				next();
+			} else {
+				next({ name: VIEWS.NOT_FOUND });
+			}
+		},
+	},
+	{
 		path: '/workflow',
 		redirect: '/workflow/new',
 	},
