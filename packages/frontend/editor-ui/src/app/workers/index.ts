@@ -1,0 +1,89 @@
+/**
+ * Run Data Workers
+ *
+ * Main entry point for the run-data worker system.
+ *
+ * Architecture (based on Notion's approach):
+ * - Each tab creates a dedicated data worker (for actual DB operations)
+ * - Each tab connects to the SharedWorker coordinator
+ * - The coordinator routes all queries to the "active" tab's dedicated worker
+ * - Only one dedicated worker accesses OPFS at a time (prevents corruption)
+ */
+
+import { coordinator, registerTab, getTabId, getCoordinatorInfo } from './coordinator';
+
+export interface InitializeOptions {
+	baseUrl: string;
+}
+
+/**
+ * Ensure the tab is registered before performing operations
+ */
+async function ensureRegistered(): Promise<void> {
+	await registerTab();
+}
+
+/**
+ * Initialize the database and load data
+ * This will route to the active tab's data worker
+ *
+ * @param options - Initialization options
+ * @param options.baseUrl - The base URL for API requests (required for loading node types)
+ */
+export async function initialize({ baseUrl }: InitializeOptions): Promise<void> {
+	await ensureRegistered();
+	await coordinator.initialize();
+	await coordinator.loadNodeTypes(baseUrl);
+}
+
+/**
+ * Execute a SQL statement (INSERT, UPDATE, DELETE, CREATE, etc.)
+ */
+export async function exec(sql: string): Promise<void> {
+	await ensureRegistered();
+	await coordinator.exec(sql);
+}
+
+/**
+ * Execute a SQL query and return results
+ */
+export async function query(sql: string): Promise<{ columns: string[]; rows: unknown[][] }> {
+	await ensureRegistered();
+	return await coordinator.query(sql);
+}
+
+/**
+ * Execute a SQL query with bound parameters
+ */
+export async function queryWithParams(
+	sql: string,
+	params: unknown[],
+): Promise<{ columns: string[]; rows: unknown[][] }> {
+	await ensureRegistered();
+	return await coordinator.queryWithParams(sql, params);
+}
+
+/**
+ * Check if the database is initialized
+ */
+export async function isInitialized(): Promise<boolean> {
+	return await coordinator.isInitialized();
+}
+
+// Re-export from coordinator
+export { coordinator, registerTab, getTabId, getCoordinatorInfo };
+
+// Re-export types
+export type { CoordinatorApi } from './coordinator';
+
+// Default export for backwards compatibility
+export default {
+	initialize,
+	exec,
+	query,
+	queryWithParams,
+	isInitialized,
+	registerTab,
+	getTabId,
+	getCoordinatorInfo,
+};

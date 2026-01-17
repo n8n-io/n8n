@@ -288,7 +288,11 @@ export class Server extends AbstractServer {
 
 		// Protect type files with authentication regardless of UI availability
 		const authService = Container.get(AuthService);
-		const protectedTypeFiles = ['/types/nodes.json', '/types/credentials.json'];
+		const protectedTypeFiles = [
+			'/types/nodes.json',
+			'/types/credentials.json',
+			'/types/node-versions.json',
+		];
 		protectedTypeFiles.forEach((path) => {
 			this.app.get(
 				path,
