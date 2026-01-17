@@ -511,6 +511,19 @@ describe('GlobalConfig', () => {
 		expect(mockFs.readFileSync).toHaveBeenCalled();
 	});
 
+	it('should trim whitespace from _FILE env variable values', () => {
+		const passwordFile = '/path/to/postgres/password';
+		process.env = {
+			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
+		};
+		mockFs.readFileSync
+			.calledWith(passwordFile, 'utf8')
+			.mockReturnValueOnce('password-from-file\n');
+
+		const config = Container.get(GlobalConfig);
+		expect(config.database.postgresdb.password).toBe('password-from-file');
+	});
+
 	it('should handle invalid numbers', () => {
 		process.env = {
 			DB_LOGGING_MAX_EXECUTION_TIME: 'abcd',

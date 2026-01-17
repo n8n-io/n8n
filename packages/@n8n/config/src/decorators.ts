@@ -21,7 +21,7 @@ const readEnv = (envName: string) => {
 
 	// Read the value from a file, if "_FILE" environment variable is defined
 	const filePath = process.env[`${envName}_FILE`];
-	if (filePath) return readFileSync(filePath, 'utf8');
+	if (filePath) return readFileSync(filePath, 'utf8').trim();
 
 	return undefined;
 };

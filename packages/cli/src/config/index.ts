@@ -41,7 +41,7 @@ if (!inE2ETests && !inTest) {
 			if (key) {
 				let value: string;
 				try {
-					value = readFileSync(fileName, 'utf8');
+					value = readFileSync(fileName, 'utf8').trim();
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					if (error.code === 'ENOENT') {
