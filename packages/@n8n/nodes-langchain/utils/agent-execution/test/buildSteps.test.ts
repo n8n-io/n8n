@@ -1158,4 +1158,92 @@ describe('buildSteps', () => {
 			expect(result[0].action.toolInput).not.toHaveProperty('id');
 		});
 	});
+
+	describe('Gemini thought_signature in additional_kwargs', () => {
+		it('should include thought_signature in AIMessage additional_kwargs', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'gemini_thought_sig_abc123',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Verify additional_kwargs contains the thought signature
+			expect(message.additional_kwargs).toBeDefined();
+			expect(message.additional_kwargs.__gemini_function_call_thought_signatures__).toEqual({
+				call_123: 'gemini_thought_sig_abc123',
+			});
+		});
+
+		it('should not include additional_kwargs when no thought_signature present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Should not have __gemini_function_call_thought_signatures__ when no signature
+			expect(
+				message.additional_kwargs?.__gemini_function_call_thought_signatures__,
+			).toBeUndefined();
+		});
+	});
 });

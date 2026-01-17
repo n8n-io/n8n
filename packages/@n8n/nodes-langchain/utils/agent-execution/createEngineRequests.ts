@@ -47,6 +47,22 @@ export async function createEngineRequests(
 			let thinkingType: 'thinking' | 'redacted_thinking' | undefined;
 			let thinkingSignature: string | undefined;
 
+			// First check additionalKwargs on the toolCall itself (Gemini thought signatures via LangChain)
+			if (toolCall.additionalKwargs) {
+				// DEBUG: Log additionalKwargs from toolCall
+				console.log(
+					'[DEBUG createEngineRequests] toolCall.additionalKwargs:',
+					JSON.stringify(toolCall.additionalKwargs, null, 2),
+				);
+				const geminiSignatures = toolCall.additionalKwargs[
+					'__gemini_function_call_thought_signatures__'
+				] as Record<string, string> | undefined;
+				if (geminiSignatures && typeof geminiSignatures === 'object') {
+					// Get signature for this specific tool call
+					thoughtSignature = geminiSignatures[toolCall.toolCallId];
+				}
+			}
+
 			if (toolCall.messageLog && Array.isArray(toolCall.messageLog)) {
 				for (const message of toolCall.messageLog) {
 					// Check if message has content that could contain thought_signature or thinking blocks
@@ -57,8 +73,8 @@ export async function createEngineRequests(
 							// Look for thought_signature in content blocks (Gemini)
 							// and thinking/redacted_thinking blocks (Anthropic)
 							for (const block of content) {
-								// Gemini thought_signature
-								if (isGeminiThoughtSignatureBlock(block)) {
+								// Gemini thought_signature as content block (only if not already found)
+								if (!thoughtSignature && isGeminiThoughtSignatureBlock(block)) {
 									thoughtSignature = block.thoughtSignature;
 								}
 
@@ -73,10 +89,59 @@ export async function createEngineRequests(
 								}
 							}
 						}
+
+						// Also check additional_kwargs on the message for Gemini thought signatures
+						if (!thoughtSignature && 'additional_kwargs' in message) {
+							const msgAdditionalKwargs = message.additional_kwargs as
+								| Record<string, unknown>
+								| undefined;
+							if (msgAdditionalKwargs) {
+								// First check the old format: __gemini_function_call_thought_signatures__
+								const geminiSignatures = msgAdditionalKwargs[
+									'__gemini_function_call_thought_signatures__'
+								] as Record<string, string> | undefined;
+								if (geminiSignatures && typeof geminiSignatures === 'object') {
+									thoughtSignature = geminiSignatures[toolCall.toolCallId];
+								}
+
+								// If not found, check the new format: signatures array
+								// LangChain Google returns signatures as an array that corresponds to tool_calls array
+								if (!thoughtSignature) {
+									const signatures = msgAdditionalKwargs.signatures as string[] | undefined;
+									const msgToolCalls = msgAdditionalKwargs.tool_calls as
+										| Array<{ id?: string }>
+										| undefined;
+
+									if (
+										signatures &&
+										Array.isArray(signatures) &&
+										msgToolCalls &&
+										Array.isArray(msgToolCalls)
+									) {
+										// Find the index of this tool call by ID
+										const toolCallIndex = msgToolCalls.findIndex(
+											(tc) => tc.id === toolCall.toolCallId,
+										);
+										if (toolCallIndex !== -1 && toolCallIndex < signatures.length) {
+											thoughtSignature = signatures[toolCallIndex];
+										}
+									}
+								}
+							}
+						}
+
 						if (thoughtSignature || thinkingContent) break;
 					}
 				}
 			}
+
+			// DEBUG: Log extracted thoughtSignature
+			console.log(
+				'[DEBUG createEngineRequests] Extracted thoughtSignature:',
+				thoughtSignature,
+				'for toolCallId:',
+				toolCall.toolCallId,
+			);
 
 			return {
 				actionType: 'ExecutionNodeAction' as const,

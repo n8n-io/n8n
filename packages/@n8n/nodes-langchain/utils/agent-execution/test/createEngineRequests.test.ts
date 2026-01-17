@@ -505,4 +505,111 @@ describe('createEngineRequests', () => {
 			expect(result[0].metadata.anthropic?.thinkingSignature).toBe('anthropic_sig_456');
 		});
 	});
+
+	describe('Gemini thought_signature from additionalKwargs', () => {
+		it('should extract thought_signature from additionalKwargs on toolCall', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						__gemini_function_call_thought_signatures__: {
+							call_123: 'gemini_signature_from_kwargs',
+						},
+					},
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.google?.thoughtSignature).toBe('gemini_signature_from_kwargs');
+		});
+
+		it('should extract thought_signature from message additional_kwargs', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_456',
+					messageLog: [
+						{
+							content: 'Some content',
+							additional_kwargs: {
+								__gemini_function_call_thought_signatures__: {
+									call_456: 'gemini_signature_from_message_kwargs',
+								},
+							},
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.google?.thoughtSignature).toBe(
+				'gemini_signature_from_message_kwargs',
+			);
+		});
+
+		it('should prefer additionalKwargs over content block thoughtSignature', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						__gemini_function_call_thought_signatures__: {
+							call_123: 'signature_from_kwargs',
+						},
+					},
+					messageLog: [
+						{
+							content: [
+								{
+									thoughtSignature: 'signature_from_content_block',
+								},
+							],
+						},
+					],
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			// Should prefer additionalKwargs over content block
+			expect(result[0].metadata.google?.thoughtSignature).toBe('signature_from_kwargs');
+		});
+
+		it('should handle missing thought_signature gracefully', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						__gemini_function_call_thought_signatures__: {
+							different_call_id: 'some_signature',
+						},
+					},
+				},
+			];
+
+			const result = await createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.google).toBeUndefined();
+		});
+	});
 });
