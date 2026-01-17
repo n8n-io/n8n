@@ -495,6 +495,35 @@ Team ownership mappings in `CODEOWNERS`:
 
 ## Security
 
+### Why We Do This
+
+Supply chain security ensures artifacts haven't been tampered with. We provide three types of signed attestations:
+
+```
+                    ATTESTATION (signed statement)
+                           │
+         ┌─────────────────┼─────────────────┐
+         │                 │                 │
+         ▼                 ▼                 ▼
+    PROVENANCE           SBOM              VEX
+
+    "Trust the           "Know the         "Understand
+     build"               contents"          the risk"
+```
+
+| Attestation | Question It Answers |
+|-------------|--------------------------------|
+| **Provenance** | "Can we trust this artifact came from n8n's CI and wasn't tampered with?" |
+| **SBOM** | "What dependencies are inside?" (license compliance, vulnerability scanning) |
+| **VEX** | "The scanner found CVE-X - does it actually affect us or is it a false positive?" |
+
+**How they relate:**
+- **SBOM** is the ingredients list - input for both license checks AND security scanning
+- **VEX** is the security triage output - "we investigated CVE-X, here's our assessment"
+- **Provenance** proves the SBOM and VEX came from our CI, not an attacker
+
+---
+
 ### Poutine (Supply Chain)
 
 - **Runs on:** PR changes to `.github/**`
@@ -511,8 +540,75 @@ Team ownership mappings in `CODEOWNERS`:
 
 - **Runs on:** release-publish
 - **Format:** CycloneDX JSON
-- **Signing:** Cosign keyless (GitHub OIDC)
+- **Signing:** GitHub Attestation API
 - **Attached to:** GitHub Release
+
+### SLSA L3 Provenance
+
+SLSA (Supply-chain Levels for Software Artifacts) Level 3 provides cryptographic proof of build integrity.
+
+| Artifact | Generator | Level |
+|----------|-----------|-------|
+| Docker images | `slsa-framework/slsa-github-generator` | L3 |
+| npm packages | `NPM_CONFIG_PROVENANCE=true` | L3 |
+
+**Docker provenance** uses the SLSA GitHub Generator as a reusable workflow (not an action). This is required for L3 because provenance must be generated in an isolated environment the build can't tamper with.
+
+```yaml
+# IMPORTANT: Must use semantic version tags (@vX.Y.Z), NOT commit SHAs.
+# The slsa-verifier requires tagged versions to verify authenticity.
+uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+```
+
+**Verify provenance:**
+```bash
+# Docker
+slsa-verifier verify-image ghcr.io/n8n-io/n8n:VERSION \
+  --source-uri github.com/n8n-io/n8n
+
+# npm
+npm audit signatures n8n@VERSION
+```
+
+### VEX (Vulnerability Exploitability eXchange)
+
+VEX documents which CVEs actually affect n8n vs false positives from scanners.
+
+- **File:** `vex.openvex.json` (repo root)
+- **Format:** OpenVEX (broad scanner compatibility - Trivy, Docker Scout, etc.)
+- **Attached to:** GitHub Release, Docker image attestations
+- **Used by:** Trivy scans (via `.github/trivy.yaml`)
+
+**VEX Status Types:**
+| Status | Meaning |
+|--------|---------|
+| `not_affected` | CVE doesn't impact n8n (code not reachable, etc.) |
+| `affected` | CVE impacts n8n, tracking fix |
+| `fixed` | CVE was present, now fixed |
+| `under_investigation` | Assessing impact |
+
+**Verify VEX attestation:**
+```bash
+cosign verify-attestation --type openvex \
+  --certificate-identity-regexp '.*github.com/n8n-io/n8n.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/n8n-io/n8n:VERSION
+```
+
+**Adding a CVE statement to vex.openvex.json:**
+```json
+{
+  "statements": [
+    {
+      "vulnerability": { "name": "CVE-2024-XXXXX" },
+      "products": [{ "@id": "pkg:github/n8n-io/n8n" }],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "statement": "n8n does not use the affected code path in this dependency"
+    }
+  ]
+}
+```
 
 ---
 

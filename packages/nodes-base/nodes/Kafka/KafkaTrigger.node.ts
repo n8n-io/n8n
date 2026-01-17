@@ -9,7 +9,12 @@ import type {
 	ITriggerResponse,
 	IRun,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	jsonParse,
+	NodeConnectionTypes,
+	NodeOperationError,
+	TriggerCloseError,
+} from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -164,6 +169,13 @@ export class KafkaTrigger implements INodeType {
 						description: 'Whether to return the headers received from Kafka',
 					},
 					{
+						displayName: 'Rebalance Timeout',
+						name: 'rebalanceTimeout',
+						type: 'number',
+						default: 600000,
+						description: 'The maximum time allowed for a consumer to join the group',
+					},
+					{
 						displayName: 'Session Timeout',
 						name: 'sessionTimeout',
 						type: 'number',
@@ -232,66 +244,122 @@ export class KafkaTrigger implements INodeType {
 			maxInFlightRequests,
 			sessionTimeout: this.getNodeParameter('options.sessionTimeout', 30000) as number,
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
+			rebalanceTimeout: this.getNodeParameter('options.rebalanceTimeout', 600000) as number,
 		});
 
-		// The "closeFunction" function gets called by n8n whenever
-		// the workflow gets deactivated and can so clean up.
-		async function closeFunction() {
-			await consumer.disconnect();
-		}
-
 		const startConsumer = async () => {
-			await consumer.connect();
+			try {
+				await consumer.connect();
 
-			await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
-			await consumer.run({
-				autoCommitInterval: (options.autoCommitInterval as number) || null,
-				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
-				eachMessage: async ({ topic: messageTopic, message }) => {
-					let data: IDataObject = {};
-					let value = message.value?.toString() as string;
+				await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
-					if (options.jsonParseMessage) {
-						try {
-							value = JSON.parse(value);
-						} catch (error) {}
-					}
+				await consumer.run({
+					autoCommitInterval: (options.autoCommitInterval as number) || null,
+					autoCommitThreshold: (options.autoCommitThreshold as number) || null,
+					eachMessage: async ({ topic: messageTopic, message }) => {
+						let data: IDataObject = {};
+						let value = message.value?.toString() as string;
 
-					if (useSchemaRegistry) {
-						try {
-							const registry = new SchemaRegistry({ host: schemaRegistryUrl });
-							value = await registry.decode(message.value as Buffer);
-						} catch (error) {}
-					}
+						if (options.jsonParseMessage) {
+							try {
+								value = jsonParse(value);
+							} catch (error) {
+								this.logger.warn('Could not parse message to JSON, returning as string', { error });
+							}
+						}
 
-					if (options.returnHeaders && message.headers) {
-						data.headers = Object.fromEntries(
-							Object.entries(message.headers).map(([headerKey, headerValue]) => [
-								headerKey,
-								headerValue?.toString('utf8') ?? '',
-							]),
-						);
-					}
+						if (useSchemaRegistry) {
+							try {
+								const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+								value = await registry.decode(message.value as Buffer);
+							} catch (error) {
+								this.logger.warn(
+									'Could not decode message with Schema Registry, returning original message',
+									{ error },
+								);
+							}
+						}
 
-					data.message = value;
-					data.topic = messageTopic;
+						if (options.returnHeaders && message.headers) {
+							data.headers = Object.fromEntries(
+								Object.entries(message.headers).map(([headerKey, headerValue]) => [
+									headerKey,
+									headerValue?.toString('utf8') ?? '',
+								]),
+							);
+						}
 
-					if (options.onlyMessage) {
-						//@ts-ignore
-						data = value;
-					}
-					let responsePromise = undefined;
-					if (!parallelProcessing && (options.nodeVersion as number) > 1) {
-						responsePromise = this.helpers.createDeferredPromise<IRun>();
-						this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
-					} else {
-						this.emit([this.helpers.returnJsonArray([data])]);
-					}
-					if (responsePromise) {
-						await responsePromise.promise;
-					}
-				},
-			});
+						data.message = value;
+						data.topic = messageTopic;
+
+						if (options.onlyMessage) {
+							data = value as unknown as IDataObject;
+						}
+
+						if (!parallelProcessing && (options.nodeVersion as number) > 1) {
+							const responsePromise = this.helpers.createDeferredPromise<IRun>();
+							this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
+							await responsePromise.promise;
+						} else {
+							this.emit([this.helpers.returnJsonArray([data])]);
+						}
+					},
+				});
+			} catch (error) {
+				this.logger.error('Failed to start Kafka consumer', { error });
+				throw new NodeOperationError(this.getNode(), error);
+			}
+		};
+
+		const onConnected = consumer.on(consumer.events.CONNECT, () => {
+			this.logger.info('Kafka consumer connected');
+		});
+		const onGroupJoin = consumer.on(consumer.events.GROUP_JOIN, () => {
+			this.logger.info('Consumer has joined the group');
+		});
+		const onRequestTimeout = consumer.on(consumer.events.REQUEST_TIMEOUT, () => {
+			this.logger.error('Consumer request timed out');
+		});
+		const onUnsubscribedtopicsReceived = consumer.on(
+			consumer.events.RECEIVED_UNSUBSCRIBED_TOPICS,
+			() => {
+				this.logger.warn('Consumer received messages for unsubscribed topics');
+			},
+		);
+		const onStop = consumer.on(consumer.events.STOP, async (error) => {
+			this.logger.error('Consumer has stopped', { error });
+		});
+		const onDisconnect = consumer.on(consumer.events.DISCONNECT, async (error) => {
+			this.logger.error('Consumer has disconnected', { error });
+		});
+		const onCommitOffsets = consumer.on(consumer.events.COMMIT_OFFSETS, () => {
+			this.logger.info('Consumer offsets committed!');
+		});
+		const onRebalancing = consumer.on(consumer.events.REBALANCING, (payload) => {
+			this.logger.info('Consumer is rebalancing', { payload });
+		});
+		const onCrash = consumer.on(consumer.events.CRASH, async (error) => {
+			this.logger.error('Consumer has crashed', { error });
+		});
+
+		const closeFunction = async () => {
+			try {
+				// Clean up listeners
+				onConnected();
+				onGroupJoin();
+				onRequestTimeout();
+				onUnsubscribedtopicsReceived();
+				onStop();
+				onDisconnect();
+				onCommitOffsets();
+				onRebalancing();
+				onCrash();
+
+				await consumer.stop();
+				await consumer.disconnect();
+			} catch (error) {
+				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+			}
 		};
 
 		if (this.getMode() !== 'manual') {
