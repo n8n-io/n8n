@@ -18,7 +18,7 @@ import type {
 	GenerateContentGenerationConfig,
 	BuiltInTools,
 } from '../../helpers/interfaces';
-import { apiRequest } from '../../transport';
+import { streamingRequestWithFallback } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
@@ -506,9 +506,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		...(toolConfig && { toolConfig }),
 	};
 
-	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-		body,
-	})) as GenerateContentResponse;
+	let response = await streamingRequestWithFallback.call(this, model, body);
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
@@ -548,9 +546,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-			body,
-		})) as GenerateContentResponse;
+		response = await streamingRequestWithFallback.call(this, model, body);
 		toolCalls = getToolCalls(response);
 		currentIteration++;
 	}
