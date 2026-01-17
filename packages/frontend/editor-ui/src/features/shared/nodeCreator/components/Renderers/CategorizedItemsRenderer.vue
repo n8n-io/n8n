@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, ref } from 'vue';
+import { computed, watch, ref, useCssModule } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -20,6 +20,7 @@ export interface Props {
 	isTriggerCategory?: boolean;
 	mouseOverTooltip?: string;
 	expanded?: boolean;
+	showSeparator?: boolean;
 }
 
 import { useI18n } from '@n8n/i18n';
@@ -57,6 +58,12 @@ function setExpanded(isExpanded: boolean) {
 		});
 	}
 }
+
+const $style = useCssModule();
+const containerClasses = computed(() => ({
+	[$style.categorizedItemsRenderer]: true,
+	[$style.separator]: expanded.value && props.showSeparator,
+}));
 
 function arrowRight() {
 	if (expanded.value) return;
@@ -99,7 +106,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 </script>
 
 <template>
-	<div :class="$style.categorizedItemsRenderer" :data-category-collapsed="!expanded">
+	<div :class="containerClasses" :data-category-collapsed="!expanded">
 		<CategoryItem
 			:class="$style.categoryItem"
 			:name="category"
@@ -169,6 +176,9 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 }
 .categorizedItemsRenderer {
 	padding-bottom: var(--spacing--sm);
+}
+.separator {
+	border-bottom: 1px solid var(--color--foreground);
 }
 .preview {
 	opacity: 0.7;

@@ -10,7 +10,7 @@ import type {
 	FromAIArgument,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { NodeHelpers, traverseNodeParameters } from 'n8n-workflow';
+import { isHitlToolType, NodeHelpers, traverseNodeParameters } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 /**
@@ -88,21 +88,22 @@ export function doesNodeHaveAllCredentialsFilled(
 	return requiredCredentials.every((cred) => hasNodeCredentialFilled(node, cred.name));
 }
 
+export const TOOL_NODE_TYPES_NEED_INPUT = [
+	WIKIPEDIA_TOOL_NODE_TYPE,
+	AI_MCP_TOOL_NODE_TYPE,
+	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
+];
 /**
  * Checks if the given node needs agentInput
  */
 export function needsAgentInput(node: Pick<INodeUi, 'parameters' | 'type'>) {
-	const nodeTypesNeedModal = [
-		WIKIPEDIA_TOOL_NODE_TYPE,
-		AI_MCP_TOOL_NODE_TYPE,
-		AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
-	];
 	const collectedArgs: FromAIArgument[] = [];
 	traverseNodeParameters(node.parameters, collectedArgs);
 	return (
 		collectedArgs.length > 0 ||
-		nodeTypesNeedModal.includes(node.type) ||
-		(node.type.includes('vectorStore') && node.parameters?.mode === 'retrieve-as-tool')
+		TOOL_NODE_TYPES_NEED_INPUT.includes(node.type) ||
+		(node.type.includes('vectorStore') && node.parameters?.mode === 'retrieve-as-tool') ||
+		isHitlToolType(node.type)
 	);
 }
 

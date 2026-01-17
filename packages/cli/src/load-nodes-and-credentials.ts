@@ -20,7 +20,6 @@ import {
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
-	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	LoadedClass,
 	ICredentialType,
@@ -29,11 +28,12 @@ import type {
 	INodeProperties,
 	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { createAiTools, createHitlTools } from '@/tool-generation';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -223,14 +223,6 @@ export class LoadNodesAndCredentials {
 		const filePath = path.resolve(nodeParentPath, schemaPath + '.json');
 
 		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
-	}
-
-	findLastCalloutIndex(properties: INodeProperties[]): number {
-		for (let i = properties.length - 1; i >= 0; i--) {
-			if (properties[i].type === 'callout') return i;
-		}
-
-		return -1;
 	}
 
 	getCustomDirectories(): string[] {
@@ -471,40 +463,6 @@ export class LoadNodesAndCredentials {
 		return loader;
 	}
 
-	/**
-	 * This creates all AI Agent tools by duplicating the node descriptions for
-	 * all nodes that are marked as `usableAsTool`. It basically modifies the
-	 * description. The actual wrapping happens in the langchain code for getting
-	 * the connected tools.
-	 */
-	createAiTools() {
-		const usableNodes: INodeTypeDescription[] = this.types.nodes.filter(
-			(nodeType) => nodeType.usableAsTool,
-		);
-
-		for (const usableNode of usableNodes) {
-			const description =
-				typeof usableNode.usableAsTool === 'object'
-					? {
-							...deepCopy(usableNode),
-							...usableNode.usableAsTool?.replacements,
-						}
-					: deepCopy(usableNode);
-			const wrapped = this.convertNodeToAiTool({ description }).description;
-
-			this.types.nodes.push(wrapped);
-			this.known.nodes[wrapped.name] = { ...this.known.nodes[usableNode.name] };
-
-			const credentialNames = Object.entries(this.known.credentials)
-				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))
-				.map(([credentialName]) => credentialName);
-
-			credentialNames.forEach((name) =>
-				this.known.credentials[name]?.supportedNodes?.push(wrapped.name),
-			);
-		}
-	}
-
 	async postProcessLoaders() {
 		this.known = { nodes: {}, credentials: {} };
 		this.loaded = { nodes: {}, credentials: {} };
@@ -586,7 +544,8 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
-		this.createAiTools();
+		createAiTools(this.types, this.known);
+		createHitlTools(this.types, this.known);
 
 		this.injectCustomApiCallOptions();
 
@@ -636,92 +595,6 @@ export class LoadNodesAndCredentials {
 		}
 
 		throw new UnrecognizedCredentialTypeError(credentialType);
-	}
-
-	/**
-	 * Modifies the description of the passed in object, such that it can be used
-	 * as an AI Agent Tool.
-	 * Returns the modified item (not copied)
-	 */
-	convertNodeToAiTool<
-		T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
-	>(item: T): T {
-		// quick helper function for type-guard down below
-		function isFullDescription(obj: unknown): obj is INodeTypeDescription {
-			return typeof obj === 'object' && obj !== null && 'properties' in obj;
-		}
-
-		if (isFullDescription(item.description)) {
-			item.description.name += 'Tool';
-			item.description.inputs = [];
-			item.description.outputs = [NodeConnectionTypes.AiTool];
-			item.description.displayName += ' Tool';
-			delete item.description.usableAsTool;
-
-			const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
-			const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
-
-			if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
-				const descriptionType: INodeProperties = {
-					displayName: 'Tool Description',
-					name: 'descriptionType',
-					type: 'options',
-					noDataExpression: true,
-					options: [
-						{
-							name: 'Set Automatically',
-							value: 'auto',
-							description: 'Automatically set based on resource and operation',
-						},
-						{
-							name: 'Set Manually',
-							value: 'manual',
-							description: 'Manually set the description',
-						},
-					],
-					default: 'auto',
-				};
-
-				const descProp: INodeProperties = {
-					displayName: 'Description',
-					name: 'toolDescription',
-					type: 'string',
-					default: item.description.description,
-					required: true,
-					typeOptions: { rows: 2 },
-					description:
-						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-				};
-
-				const lastCallout = this.findLastCalloutIndex(item.description.properties);
-
-				item.description.properties.splice(lastCallout + 1, 0, descProp);
-
-				// If node has resource or operation we can determine pre-populate tool description based on it
-				// so we add the descriptionType property as the first property after possible callout param(s).
-				if (hasResource || hasOperation) {
-					item.description.properties.splice(lastCallout + 1, 0, descriptionType);
-
-					descProp.displayOptions = {
-						show: {
-							descriptionType: ['manual'],
-						},
-					};
-				}
-			}
-		}
-
-		const resources = item.description.codex?.resources ?? {};
-
-		item.description.codex = {
-			categories: ['AI'],
-			subcategories: {
-				AI: ['Tools'],
-				Tools: item.description.codex?.subcategories?.Tools ?? ['Other Tools'],
-			},
-			resources,
-		};
-		return item;
 	}
 
 	async setupHotReload() {
