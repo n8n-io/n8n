@@ -216,8 +216,8 @@ export async function prepareMultiPartForm(
 
 	for (const [index, binaryData] of filesData.entries()) {
 		multiPartBody.append(`files[${index}]`, binaryData.data, {
-			contentType: binaryData.name as string,
-			filename: binaryData.mime as string,
+			contentType: binaryData.mime as string,
+			filename: binaryData.name as string,
 		});
 	}
 
