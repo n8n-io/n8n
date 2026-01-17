@@ -14,6 +14,7 @@ export type EmailSendOptions = {
 	ccEmail?: string;
 	bccEmail?: string;
 	replyTo?: string;
+	attachmentDisposition?: 'auto' | 'inline' | 'attachment';
 };
 
 export function configureTransport(credentials: IDataObject, options: EmailSendOptions) {
