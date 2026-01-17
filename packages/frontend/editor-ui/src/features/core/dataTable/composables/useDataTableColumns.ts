@@ -20,7 +20,7 @@ import AddColumnButton from '@/features/core/dataTable/components/dataGrid/AddCo
 import AddRowButton from '@/features/core/dataTable/components/dataGrid/AddRowButton.vue';
 import { reorderItem } from '@/features/core/dataTable/utils';
 import {
-	getCellClass,
+	createCellClass,
 	createValueGetter,
 	createCellRendererSelector,
 	createStringValueSetter,
@@ -31,6 +31,7 @@ import {
 	getDateColumnFilterOptions,
 	getNumberColumnFilterOptions,
 	getBooleanColumnFilterOptions,
+	isOversizedValue,
 } from '@/features/core/dataTable/utils/columnUtils';
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
@@ -59,7 +60,8 @@ export const useDataTableColumns = ({
 			filter: !GRID_FILTER_CONFIG.excludedColumns.includes(col.id),
 			headerName: col.name,
 			sortable: true,
-			editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
+			editable: (params) =>
+				params.data?.id !== ADD_ROW_ROW_ID && !isOversizedValue(params.data?.[col.name]),
 			resizable: true,
 			lockPinned: true,
 			headerComponent: ColumnHeader,
@@ -70,7 +72,7 @@ export const useDataTableColumns = ({
 			},
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),
-			cellClass: getCellClass,
+			cellClass: createCellClass(col),
 			valueGetter: createValueGetter(col),
 			cellRendererSelector: createCellRendererSelector(col),
 			width: DEFAULT_COLUMN_WIDTH,
