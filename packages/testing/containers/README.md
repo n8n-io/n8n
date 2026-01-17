@@ -371,7 +371,7 @@ The `observability` capability shortcut handles this automatically: `test.use({ 
 | `--name <name>` | Custom project name for parallel runs |
 | `--env KEY=VALUE` | Set environment variables |
 | `--observability` | Enable metrics/logs stack |
-| `--tracing` | Enable Jaeger tracing |
+| `--tracing` | Enable tracing stack (Jaeger) |
 | `--tunnel` | Enable Cloudflare Tunnel for public webhook URLs |
 | `--oidc` | Enable Keycloak |
 | `--source-control` | Enable Gitea |
