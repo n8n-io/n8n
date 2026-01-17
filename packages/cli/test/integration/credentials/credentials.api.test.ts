@@ -193,6 +193,7 @@ describe('GET /credentials', () => {
 				[
 					'credential:move',
 					'credential:read',
+					'credential:use',
 					'credential:update',
 					'credential:share',
 					'credential:delete',
@@ -201,7 +202,7 @@ describe('GET /credentials', () => {
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
-			expect(cred2.scopes).toEqual(['credential:read']);
+			expect(cred2.scopes).toEqual(['credential:read', 'credential:use']);
 		}
 
 		{
@@ -218,7 +219,12 @@ describe('GET /credentials', () => {
 
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
-			expect(cred1.scopes).toEqual(['credential:delete', 'credential:read', 'credential:update']);
+			expect(cred1.scopes).toEqual([
+				'credential:delete',
+				'credential:read',
+				'credential:update',
+				'credential:use',
+			]);
 
 			// Shared cred
 			expect(cred2.id).toBe(savedCredential2.id);
@@ -229,6 +235,7 @@ describe('GET /credentials', () => {
 					'credential:read',
 					'credential:share',
 					'credential:update',
+					'credential:use',
 				].sort(),
 			);
 		}
@@ -252,6 +259,7 @@ describe('GET /credentials', () => {
 					'credential:list',
 					'credential:move',
 					'credential:read',
+					'credential:use',
 					'credential:share',
 					'credential:shareGlobally',
 					'credential:update',
@@ -267,6 +275,7 @@ describe('GET /credentials', () => {
 					'credential:list',
 					'credential:move',
 					'credential:read',
+					'credential:use',
 					'credential:share',
 					'credential:shareGlobally',
 					'credential:update',
@@ -331,6 +340,7 @@ describe('GET /credentials', () => {
 			[
 				'credential:move',
 				'credential:read',
+				'credential:use',
 				'credential:update',
 				'credential:share',
 				'credential:delete',
@@ -339,16 +349,16 @@ describe('GET /credentials', () => {
 
 		expect(sharedCred.id).toBe(sharedCredential.id);
 		expect(sharedCred.data).not.toBeDefined();
-		expect(sharedCred.scopes).toEqual(['credential:read'].sort());
+		expect(sharedCred.scopes).toEqual(['credential:read', 'credential:use'].sort());
 
 		expect(teamCredAsViewer.id).toBe(teamCredentialAsViewer.id);
 		expect(teamCredAsViewer.data).not.toBeDefined();
-		expect(teamCredAsViewer.scopes).toEqual(['credential:read'].sort());
+		expect(teamCredAsViewer.scopes).toEqual(['credential:read', 'credential:use'].sort());
 
 		expect(teamCredAsEditor.id).toBe(teamCredentialAsEditor.id);
 		expect(teamCredAsEditor.data).toBeDefined();
 		expect(teamCredAsEditor.scopes).toEqual(
-			['credential:read', 'credential:update', 'credential:delete'].sort(),
+			['credential:read', 'credential:update', 'credential:delete', 'credential:use'].sort(),
 		);
 	});
 
@@ -393,6 +403,7 @@ describe('GET /credentials', () => {
 			[
 				'credential:move',
 				'credential:read',
+				'credential:use',
 				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
@@ -408,6 +419,7 @@ describe('GET /credentials', () => {
 			[
 				'credential:move',
 				'credential:read',
+				'credential:use',
 				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
@@ -426,6 +438,7 @@ describe('GET /credentials', () => {
 			[
 				'credential:move',
 				'credential:read',
+				'credential:use',
 				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
@@ -842,6 +855,7 @@ describe('POST /credentials', () => {
 				'credential:delete',
 				'credential:move',
 				'credential:read',
+				'credential:use',
 				'credential:share',
 				'credential:update',
 			].sort(),
@@ -1230,6 +1244,7 @@ describe('PATCH /credentials/:id', () => {
 				'credential:list',
 				'credential:move',
 				'credential:read',
+				'credential:use',
 				'credential:share',
 				'credential:shareGlobally',
 				'credential:update',
