@@ -19,15 +19,70 @@ describe('Wordpress > GenericFunctions', () => {
 	});
 
 	describe('wordpressApiRequest', () => {
-		it('should make a successful request', async () => {
+		it('should make a successful request with pretty permalinks', async () => {
 			mockFunctions.helpers.requestWithAuthentication.mockResolvedValue({ data: 'testData' });
 			const result = await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
 			expect(result).toEqual({ data: 'testData' });
-			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'wordpressApi',
+				expect.objectContaining({
+					uri: 'http://example.com/wp-json/wp/v2/posts',
+				}),
+			);
 		});
 
-		it('should throw NodeApiError on failure', async () => {
-			mockFunctions.helpers.requestWithAuthentication.mockRejectedValue({ message: 'fail' });
+		it('should retry with non-pretty permalinks on 404 error', async () => {
+			// First call fails with 404
+			mockFunctions.helpers.requestWithAuthentication
+				.mockRejectedValueOnce({ statusCode: 404, message: 'Not Found' })
+				.mockResolvedValueOnce({ data: 'testData' });
+
+			const result = await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+			expect(result).toEqual({ data: 'testData' });
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+
+			// Second call should use non-pretty permalink format
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenNthCalledWith(
+				2,
+				'wordpressApi',
+				expect.objectContaining({
+					uri: 'http://example.com/?rest_route=/wp/v2/posts',
+				}),
+			);
+		});
+
+		it('should handle URL with trailing slash', async () => {
+			mockFunctions.getCredentials.mockResolvedValueOnce({
+				url: 'http://example.com/',
+				allowUnauthorizedCerts: false,
+			});
+			mockFunctions.helpers.requestWithAuthentication.mockResolvedValue({ data: 'testData' });
+
+			await wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {});
+
+			expect(mockFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'wordpressApi',
+				expect.objectContaining({
+					uri: 'http://example.com/wp-json/wp/v2/posts',
+				}),
+			);
+		});
+
+		it('should throw NodeApiError on non-404 failure', async () => {
+			mockFunctions.helpers.requestWithAuthentication.mockRejectedValue({
+				statusCode: 500,
+				message: 'Internal Server Error',
+			});
+			await expect(
+				wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {}),
+			).rejects.toThrow(NodeApiError);
+		});
+
+		it('should throw NodeApiError if both pretty and non-pretty permalinks fail', async () => {
+			mockFunctions.helpers.requestWithAuthentication
+				.mockRejectedValueOnce({ statusCode: 404, message: 'Not Found' })
+				.mockRejectedValueOnce({ statusCode: 404, message: 'Not Found' });
+
 			await expect(
 				wordpressApiRequest.call(mockFunctions, 'GET', '/posts', {}, {}),
 			).rejects.toThrow(NodeApiError);
