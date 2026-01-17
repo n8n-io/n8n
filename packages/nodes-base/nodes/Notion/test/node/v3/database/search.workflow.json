@@ -1,0 +1,18 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"resource": "database",
+				"operation": "search",
+				"text": "database",
+				"returnAll": true,
+				"simple": false
+			},
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [450, 220],
+			"name": "Notion"
+		}
+	],
+	"connections": {}
+}
