@@ -165,10 +165,22 @@ const RESPONSE_FORMAT = `After validation passes, provide a concise summary:
 - Note which nodes were configured and key settings applied
 - Keep it brief - this output is used for coordination with other LLM agents, not displayed directly to users`;
 
+const CREDENTIAL_SECURITY = `SECURITY: Never configure credentials or authentication secrets.
+
+The AI Workflow Builder does NOT have access to credentials - they are configured separately by users in the frontend.
+
+NEVER set these parameters:
+- apiKey, token, password, secret, or any credential fields
+- Placeholder values like "YOUR_API_KEY_HERE" or "sk-..."
+- Authentication headers with actual secrets
+
+Credentials are automatically handled by n8n's credential system when users configure the workflow after generation.`;
+
 const RESTRICTIONS = `- Respond before calling validate_configuration
 - Skip validation even if you think configuration is correct
 - Add commentary between tool calls - execute tools silently
-- Hallucinate or guess resource/operation values - only use values listed in DISCOVERY CONTEXT`;
+- Hallucinate or guess resource/operation values - only use values listed in DISCOVERY CONTEXT
+- Configure credentials, API keys, tokens, or authentication secrets`;
 
 /** Uses {instanceUrl} as a LangChain template variable */
 export const INSTANCE_URL_PROMPT = `
@@ -216,6 +228,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('default_values_guide', DEFAULT_VALUES_GUIDE)
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
 		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
+		.section('credential_security', CREDENTIAL_SECURITY)
 		.section('response_format', RESPONSE_FORMAT)
 		.section('do_not', RESTRICTIONS)
 		.build();

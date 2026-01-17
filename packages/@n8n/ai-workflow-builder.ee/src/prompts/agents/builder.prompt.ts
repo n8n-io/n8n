@@ -110,8 +110,8 @@ AI CAPABILITY CONNECTIONS are REVERSED in direction:
 Sub-nodes (tools, memory, models) connect TO the AI Agent, NOT from it.
 The sub-node is the SOURCE, the AI Agent is the TARGET.
 
-⚠️ WRONG: AI Agent → Calculator Tool (NEVER do this)
-✅ CORRECT: Calculator Tool → AI Agent (tool provides capability to agent)
+WRONG: AI Agent -> Calculator Tool (NEVER do this)
+CORRECT: Calculator Tool -> AI Agent (tool provides capability to agent)
 
 When calling connect_nodes for AI sub-nodes:
 - sourceNodeName: The sub-node (tool, memory, model, parser)
@@ -161,7 +161,43 @@ To merge the data of two branches together in a single run, use a merge node. Th
 
 Examples:
 - Enriching a dataset with another one
-- Matching items between two datasets`;
+- Matching items between two datasets
+
+CRITICAL: Merge vs Aggregate vs Set distinction:
+
+**MERGE node** - When ALL branches execute (Merge WAITS for all inputs):
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> A[API 1]
+    T --> B[API 2]
+    T --> C[API 3]
+    A --> M[Merge<br/>numberInputs: 3]
+    B --> M
+    C --> M
+    M --> Next[Next Step]
+\`\`\`
+Use cases: 3 Slack channels, 3 RSS feeds, multiple API calls that all need to complete.
+
+**AGGREGATE node** - When combining items from a SINGLE branch:
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> G[Gmail<br/>returns 10 emails]
+    G --> A[Aggregate<br/>10 items → 1]
+    A --> Next[Next Step]
+\`\`\`
+Use cases: Gmail returning multiple emails, loop producing items to collect.
+
+**SET node** - When only ONE branch executes (conditional):
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> IFNode{{IF}}
+    IFNode -->|true| A[Action A]
+    IFNode -->|false| B[Action B]
+    A --> S[Set]
+    B --> S
+    S --> Next[Next Step]
+\`\`\`
+Use cases: IF node with true/false paths converging. Merge would wait forever for the branch that didn't execute.`;
 
 const AGENT_NODE_DISTINCTION = `Distinguish between two different agent node types:
 
@@ -175,6 +211,36 @@ const AGENT_NODE_DISTINCTION = `Distinguish between two different agent node typ
 
 When discovery results include "agent", use AI Agent unless explicitly specified as "agent tool" or "sub-agent".
 When discovery results include "AI", use the AI Agent node, instead of a provider-specific node like googleGemini or openAi nodes.`;
+
+const MULTI_TRIGGER_WORKFLOWS = `Some workflows require MULTIPLE triggers for different entry points:
+
+**Examples requiring multiple triggers:**
+- "React to both form submissions AND emails" -> n8n Form Trigger + Gmail Trigger
+- "Handle webhook calls AND scheduled runs" -> Webhook + Schedule Trigger
+- "Process incoming chats AND scheduled tasks" -> Chat Trigger + Schedule Trigger
+
+**How to build:**
+1. Create each trigger node separately
+2. Each trigger starts its own execution path
+3. Paths may converge later using Set (Edit Fields) node if needed (only one trigger fires per execution)
+
+IMPORTANT: If the user prompt mentions TWO different input sources (e.g., "website form OR email"), you need TWO trigger nodes.`;
+
+const SHARED_MEMORY_PATTERN = `When a workflow has BOTH a scheduled AI task AND a chat interface for querying results:
+
+**Pattern: Share memory between AI Agent and Chat Trigger**
+1. Create ONE Window Buffer Memory node
+2. Connect the SAME memory node to BOTH:
+   - The AI Agent that processes data (via ai_memory)
+   - The Chat Trigger's AI Agent that answers queries (via ai_memory)
+
+This allows users to query the AI about previously processed data through chat.
+
+Example structure:
+- Schedule Trigger → AI Agent (data processing) ← Memory Node
+- Telegram Trigger → AI Agent (chat queries) ← Memory Node (same one!)
+
+CRITICAL: Both AI Agents must connect to the SAME memory node for context sharing.`;
 
 const RAG_PATTERN = `For RAG (Retrieval-Augmented Generation) workflows:
 
@@ -276,11 +342,18 @@ ai_languageModel - Language model provides LLM capability:
 - OpenAI Chat Model → AI Agent
 - Anthropic Chat Model → AI Agent
 
-ai_tool - Tool provides action capability:
+ai_tool - Tool provides action capability to AI Agent:
 - Calculator Tool → AI Agent
 - HTTP Request Tool → AI Agent
 - Code Tool → AI Agent
 - AI Agent Tool → AI Agent (multi-agent systems)
+- Google Calendar Tool → AI Agent (for scheduling/calendar management)
+- Gmail Tool → AI Agent (for email operations)
+- Slack Tool → AI Agent (for messaging)
+
+IMPORTANT: When AI Agent needs to perform external actions (create events, send messages, make API calls),
+use TOOL nodes connected via ai_tool, NOT regular nodes in the main flow.
+Tool nodes let the AI Agent DECIDE when to use them. Regular nodes ALWAYS execute.
 
 ai_memory - Memory provides conversation history:
 - Window Buffer Memory → AI Agent
@@ -304,12 +377,12 @@ ai_vectorStore - Vector store provides retrieval (when used as tool):
 - Vector Store (mode: retrieve-as-tool) → AI Agent [ai_tool]
 
 COMMON MISTAKES TO AVOID:
-❌ AI Agent → OpenAI Chat Model (WRONG - model provides TO agent)
-❌ AI Agent → Calculator Tool (WRONG - tool provides TO agent)
-❌ AI Agent → Window Buffer Memory (WRONG - memory provides TO agent)
-✅ OpenAI Chat Model → AI Agent (CORRECT)
-✅ Calculator Tool → AI Agent (CORRECT)
-✅ Window Buffer Memory → AI Agent (CORRECT)
+WRONG: AI Agent -> OpenAI Chat Model (model provides TO agent)
+WRONG: AI Agent -> Calculator Tool (tool provides TO agent)
+WRONG: AI Agent -> Window Buffer Memory (memory provides TO agent)
+CORRECT: OpenAI Chat Model -> AI Agent
+CORRECT: Calculator Tool -> AI Agent
+CORRECT: Window Buffer Memory -> AI Agent
 </connection_type_reference>`;
 
 const RESTRICTIONS = `- Respond before calling validate_structure
@@ -341,6 +414,8 @@ export function buildBuilderPrompt(): string {
 		.section('branching', BRANCHING)
 		.section('merging', MERGING)
 		.section('agent_node_distinction', AGENT_NODE_DISTINCTION)
+		.section('multi_trigger_workflows', MULTI_TRIGGER_WORKFLOWS)
+		.section('shared_memory_pattern', SHARED_MEMORY_PATTERN)
 		.section('rag_workflow_pattern', RAG_PATTERN)
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
 		.section('node_connection_examples', NODE_CONNECTION_EXAMPLES)
