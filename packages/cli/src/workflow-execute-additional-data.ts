@@ -422,9 +422,7 @@ export function setExecutionStatus(status: ExecutionStatus) {
 
 export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) {
 	const { pushRef } = this;
-	if (pushRef === undefined) {
-		return;
-	}
+	if (pushRef === undefined) return;
 
 	// Push data to session which started workflow
 	try {

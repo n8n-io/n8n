@@ -17,15 +17,12 @@ import {
 	removeCircularRefs,
 	NodeConnectionTypes,
 	isDomainAllowed,
+	sanitizeUiMessage,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
-import {
-	getOAuth2AdditionalParameters,
-	replaceNullValues,
-	sanitizeUiMessage,
-} from '../GenericFunctions';
+import { getOAuth2AdditionalParameters, replaceNullValues } from '../GenericFunctions';
 
 interface OptionData {
 	name: string;

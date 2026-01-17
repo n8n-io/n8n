@@ -235,6 +235,8 @@ export async function execute(
 			i,
 		) as AssignmentCollectionValue;
 
+		this.nodeLogger.debug(assignmentCollection, { tag: 'Set Fields' });
+
 		return prepareReturnItem(this, assignmentCollection, i, item, node, options);
 	} catch (error) {
 		if (this.continueOnFail()) {

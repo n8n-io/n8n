@@ -483,6 +483,7 @@ export const INodeSchema: z.ZodType<INode> = z.object({
 	executeOnce: z.boolean().optional(),
 	onError: OnErrorSchema.optional(),
 	continueOnFail: z.boolean().optional(),
+	nodeDebugLogs: z.boolean().optional(),
 	webhookId: z.string().optional(),
 	extendsCredential: z.string().optional(),
 	rewireOutputLogTo: NodeConnectionTypeSchema.optional(),

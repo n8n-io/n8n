@@ -49,6 +49,7 @@ import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
+import { useLogsStore } from '@/app/stores/logs.store';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
@@ -65,6 +66,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const logsStore = useLogsStore();
 	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
 	const nodeHelpers = useNodeHelpers({ workflowState });
 	const workflowSaving = useWorkflowSaving({
@@ -135,6 +137,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		}
 
 		toast.clearAllStickyNotifications();
+
+		logsStore.clearConsoleMessages();
 
 		try {
 			// Get the direct parents of the node
