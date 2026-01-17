@@ -157,9 +157,11 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 				};
 			}
 			if (embedReturnData.image) {
-				embedReturnData.image = {
-					url: embedReturnData.image,
-				};
+				if (typeof embedReturnData.image === 'string') {
+					embedReturnData.image = {
+						url: embedReturnData.image,
+					};
+				}
 			}
 
 			return embedReturnData;
