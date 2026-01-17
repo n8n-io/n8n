@@ -124,10 +124,14 @@ export class HelpScoutTrigger implements INodeType {
 								return false;
 							}
 						}
+						// Found matching webhook, store its ID
+						if (webhook.id === undefined || webhook.id === null) {
+							return false;
+						}
+						const webhookId: string = String(webhook.id);
+						webhookData.webhookId = webhookId;
+						return true;
 					}
-					// Set webhook-id to be sure that it can be deleted
-					webhookData.webhookId = webhook.id as string;
-					return true;
 				}
 				return false;
 			},
@@ -159,7 +163,8 @@ export class HelpScoutTrigger implements INodeType {
 					return false;
 				}
 
-				webhookData.webhookId = responseData.headers['resource-id'] as string;
+				const webhookId: string = String(responseData.headers['resource-id']);
+				webhookData.webhookId = webhookId;
 				webhookData.secret = body.secret;
 				return true;
 			},
