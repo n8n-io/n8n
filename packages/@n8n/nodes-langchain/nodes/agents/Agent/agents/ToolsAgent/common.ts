@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
-import type { BaseMessage } from '@langchain/core/messages';
+import type { BaseMessage, ContentBlock } from '@langchain/core/messages';
 import { ChatPromptTemplate, type BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
 import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import { isChatInstance, getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+import { BinaryDataToContentBlockFnKey, type BinaryDataToContentBlockFn } from './V3/types';
 
 /* -----------------------------------------------------------
    Output Parser Helper
@@ -49,6 +50,10 @@ function isImageFile(mimeType: string): boolean {
 	return mimeType.startsWith('image/');
 }
 
+export function isPdfFile(mimeType: string): boolean {
+	return mimeType === 'application/pdf';
+}
+
 /**
  * Extracts binary messages (images and text files) from the input data.
  * When operating in filesystem mode, the binary stream is first converted to a buffer.
@@ -63,68 +68,77 @@ function isImageFile(mimeType: string): boolean {
 export async function extractBinaryMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
+	model: BaseChatModel,
 ): Promise<HumanMessage> {
 	const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
 			// select only the files we can process
-			.filter((data) => isImageFile(data.mimeType) || isTextFile(data.mimeType))
-			.map(async (data) => {
-				// Handle images
-				if (isImageFile(data.mimeType)) {
-					let binaryUrlString: string;
+			.flatMap<Promise<ContentBlock[]>>(async (data) => {
+				const converter = model[BinaryDataToContentBlockFnKey] ?? defaultBinaryDataToContentBlock;
+				const block = await converter(ctx, data);
 
-					// In filesystem mode we need to get binary stream by id before converting it to buffer
-					if (data.id) {
-						const binaryBuffer = await ctx.helpers.binaryToBuffer(
-							await ctx.helpers.getBinaryStream(data.id),
-						);
-						binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(
-							BINARY_ENCODING,
-						)}`;
-					} else {
-						binaryUrlString = data.data.includes('base64')
-							? data.data
-							: `data:${data.mimeType};base64,${data.data}`;
-					}
-
-					return {
-						type: 'image_url',
-						image_url: {
-							url: binaryUrlString,
-						},
-					};
-				}
-				// Handle text files
-				else {
-					let textContent: string;
-					if (data.id) {
-						const binaryBuffer = await ctx.helpers.binaryToBuffer(
-							await ctx.helpers.getBinaryStream(data.id),
-						);
-						textContent = binaryBuffer.toString('utf-8');
-					} else {
-						// Data might be base64 encoded with or without data URL prefix
-						if (data.data.includes('base64,')) {
-							const base64Data = data.data.split('base64,')[1];
-							textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
-						} else {
-							// Default: binary data is base64-encoded without prefix
-							textContent = Buffer.from(data.data, 'base64').toString('utf-8');
-						}
-					}
-
-					return {
-						type: 'text',
-						text: `File: ${data.fileName ?? 'attachment'}\nContent:\n${textContent}`,
-					};
-				}
+				return block ? [block] : [];
 			}),
 	);
 	return new HumanMessage({
-		content: [...binaryMessages],
+		content: [...binaryMessages.flat()],
 	});
 }
+
+export const defaultBinaryDataToContentBlock: BinaryDataToContentBlockFn = async (ctx, data) => {
+	// Handle images
+	if (isImageFile(data.mimeType)) {
+		let binaryUrlString: string;
+
+		// In filesystem mode we need to get binary stream by id before converting it to buffer
+		if (data.id) {
+			const binaryBuffer = await ctx.helpers.binaryToBuffer(
+				await ctx.helpers.getBinaryStream(data.id),
+			);
+			binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(
+				BINARY_ENCODING,
+			)}`;
+		} else {
+			binaryUrlString = data.data.includes('base64')
+				? data.data
+				: `data:${data.mimeType};base64,${data.data}`;
+		}
+
+		return {
+			type: 'image_url',
+			image_url: {
+				url: binaryUrlString,
+			},
+		};
+	}
+
+	if (isTextFile(data.mimeType)) {
+		let textContent: string;
+		if (data.id) {
+			const binaryBuffer = await ctx.helpers.binaryToBuffer(
+				await ctx.helpers.getBinaryStream(data.id),
+			);
+			textContent = binaryBuffer.toString('utf-8');
+		} else {
+			// Data might be base64 encoded with or without data URL prefix
+			if (data.data.includes('base64,')) {
+				const base64Data = data.data.split('base64,')[1];
+				textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
+			} else {
+				// Default: binary data is base64-encoded without prefix
+				textContent = Buffer.from(data.data, 'base64').toString('utf-8');
+			}
+		}
+
+		return {
+			type: 'text',
+			text: `File: ${data.fileName ?? 'attachment'}\nContent:\n${textContent}`,
+		};
+	}
+
+	return null;
+};
 
 /* -----------------------------------------------------------
    Agent Output Format Helpers
@@ -421,6 +435,7 @@ export async function getTools(
 export async function prepareMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
+	model: BaseChatModel,
 	options: {
 		systemMessage?: string;
 		passthroughBinaryImages?: boolean;
@@ -445,7 +460,7 @@ export async function prepareMessages(
 	// If there is binary data and the node option permits it, add a binary message
 	const hasBinaryData = ctx.getInputData()?.[itemIndex]?.binary !== undefined;
 	if (hasBinaryData && options.passthroughBinaryImages) {
-		const binaryMessage = await extractBinaryMessages(ctx, itemIndex);
+		const binaryMessage = await extractBinaryMessages(ctx, itemIndex, model);
 		if (binaryMessage.content.length !== 0) {
 			messages.push(binaryMessage);
 		} else {
