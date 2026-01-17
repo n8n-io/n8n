@@ -1,25 +1,32 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { isValidEmail, SettingsRepository } from '@n8n/db';
 import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service, Container } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
+import { AuthenticationHandler } from '@/auth/auth-handler.registry';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import {
+	getCurrentAuthenticationMethod,
+	isEmailCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
+
+import { BINARY_AD_ATTRIBUTES } from './constants';
+import {
 	createLdapUserOnLocalDb,
 	getUserByEmail,
 	getAuthIdentityByLdapId,
-	isLdapEnabled,
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
@@ -37,18 +44,10 @@ import {
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
 	getUserByLdapId,
-} from '@/ldap.ee/helpers.ee';
-import {
-	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
-	isLdapCurrentAuthenticationMethod,
-	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers';
-
-import { BINARY_AD_ATTRIBUTES } from './constants';
+} from './helpers.ee';
 
 @Service()
-export class LdapService {
+export class LdapService implements AuthenticationHandler {
 	private client: Client | undefined;
 
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -63,6 +62,7 @@ export class LdapService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly cipher: Cipher,
 		private readonly eventService: EventService,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	async init() {
@@ -497,8 +497,29 @@ export class LdapService {
 		return localLdapIds.filter((user) => !remoteAdUserIds.includes(user));
 	}
 
-	async handleLdapLogin(loginId: string, password: string): Promise<User | undefined> {
-		if (!isLdapEnabled()) return undefined;
+	/**
+	 * Check if this handler can handle LDAP authentication
+	 */
+	canHandle(authenticationMethod: string): boolean {
+		return authenticationMethod === 'ldap';
+	}
+
+	/**
+	 * Get the provider type for LDAP
+	 */
+	getProviderType(): string {
+		return 'ldap';
+	}
+
+	/**
+	 * Check if LDAP login is currently enabled
+	 */
+	isLoginEnabled(): boolean {
+		return this.config?.loginEnabled ?? false;
+	}
+
+	async handleLogin(loginId: string, password: string): Promise<User | undefined> {
+		if (!this.licenseState.isLdapLicensed()) return undefined;
 
 		if (!this.config.loginEnabled) return undefined;
 
