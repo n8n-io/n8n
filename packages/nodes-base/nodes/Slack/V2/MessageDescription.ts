@@ -173,6 +173,12 @@ export const userRLC: INodeProperties = {
 			type: 'string',
 			placeholder: '@username',
 		},
+		{
+			displayName: 'By Email',
+			name: 'email',
+			type: 'string',
+			placeholder: 'user@example.com',
+		},
 	],
 };
 
