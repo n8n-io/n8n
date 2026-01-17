@@ -37,6 +37,12 @@ export declare namespace Zammad {
 
 	export type GroupUpdateFields = UserUpdateFields;
 
+	export type TicketUpdateFields = IDataObject &
+		CustomFieldsUi & {
+			pending_time?: string;
+			merge_to?: string;
+		};
+
 	export type User = {
 		id: number;
 		login: string;
