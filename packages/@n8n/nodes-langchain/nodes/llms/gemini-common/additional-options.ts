@@ -5,7 +5,8 @@ import { harmCategories, harmThresholds } from './safety-options';
 
 export function getAdditionalOptions({
 	supportsThinkingBudget,
-}: { supportsThinkingBudget: boolean }) {
+	supportsGoogleSearchGrounding = false,
+}: { supportsThinkingBudget: boolean; supportsGoogleSearchGrounding?: boolean }) {
 	const baseOptions: INodeProperties = {
 		displayName: 'Options',
 		name: 'options',
@@ -100,6 +101,36 @@ export function getAdditionalOptions({
 			typeOptions: {
 				minValue: -1,
 				numberPrecision: 0,
+			},
+		});
+	}
+	if (supportsGoogleSearchGrounding) {
+		baseOptions.options?.push({
+			displayName: 'Google Search Grounding',
+			name: 'useGoogleSearchGrounding',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to enable Google Search grounding. When enabled, the model can use Google Search to find up-to-date information beyond its knowledge cutoff.',
+		});
+		baseOptions.options?.push({
+			displayName: 'Dynamic Retrieval Threshold',
+			name: 'dynamicRetrievalThreshold',
+			type: 'number',
+			default: 0.3,
+			typeOptions: {
+				minValue: 0,
+				maxValue: 1,
+				numberPrecision: 2,
+			},
+			description:
+				'Threshold for dynamic retrieval (0-1). Higher values make the model less likely to use search.',
+			displayOptions: {
+				show: {
+					useGoogleSearchGrounding: [true],
+					// Only show for Gemini 1.x models (e.g., gemini-1.0-pro, gemini-1.5-flash)
+					'/modelName': [{ _cnd: { regex: 'gemini-1\\.' } }],
+				},
 			},
 		});
 	}
