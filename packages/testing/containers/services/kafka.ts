@@ -2,14 +2,13 @@ import { KafkaContainer, type StartedKafkaContainer } from '@testcontainers/kafk
 import { Kafka, type Producer, type EachMessagePayload } from 'kafkajs';
 import type { StartedNetwork } from 'testcontainers';
 
+import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { HelperContext, Service, ServiceResult } from './types';
 
 const HOSTNAME = 'kafka';
 
 export interface KafkaMeta {
-	/** Broker address for internal container network (e.g., kafka:9093) */
 	internalBroker: string;
-	/** Broker address accessible from host for test helper (e.g., localhost:32789) */
 	externalBroker: string;
 }
 
@@ -21,9 +20,7 @@ export const kafka: Service<KafkaResult> = {
 	description: 'Apache Kafka broker for message queue testing',
 
 	async start(network: StartedNetwork, projectName: string): Promise<KafkaResult> {
-		// Use Confluent Platform with KRaft mode (no Zookeeper) - cleaner and faster startup
-		// Requires CP 7.0.0+ for KRaft support
-		const container = await new KafkaContainer('confluentinc/cp-kafka:7.5.0')
+		const container = await new KafkaContainer(TEST_CONTAINER_IMAGES.kafka)
 			.withNetwork(network)
 			.withNetworkAliases(HOSTNAME)
 			.withLabels({
@@ -35,30 +32,20 @@ export const kafka: Service<KafkaResult> = {
 			.withReuse()
 			.start();
 
-		// Port 9093 is the external listener configured by testcontainers for host access
-		// Port 9094 is the internal listener for container-to-container communication
 		return {
 			container,
 			meta: {
-				// n8n containers connect via internal network on port 9094
-				internalBroker: `${HOSTNAME}:9094`,
-				// Test helper connects from host via mapped port 9093
+				internalBroker: `${HOSTNAME}:9092`,
 				externalBroker: `${container.getHost()}:${container.getMappedPort(9093)}`,
 			},
 		};
 	},
 
-	// Note: Kafka credentials are created by tests, not injected via env
-	// This is because tests need to create specific credentials per workflow
 	env(): Record<string, string> {
 		return {};
 	},
 };
 
-/**
- * Helper for interacting with Kafka from tests.
- * Provides methods to create topics, publish messages, and consume messages.
- */
 export class KafkaHelper {
 	private readonly kafka: Kafka;
 
@@ -71,9 +58,6 @@ export class KafkaHelper {
 		});
 	}
 
-	/**
-	 * Get the admin client for topic management.
-	 */
 	async createTopic(topic: string, numPartitions = 1): Promise<void> {
 		const admin = this.kafka.admin();
 		try {
@@ -86,35 +70,34 @@ export class KafkaHelper {
 		}
 	}
 
-	/**
-	 * Delete a topic.
-	 */
-	async deleteTopic(topic: string): Promise<void> {
+	async waitForConsumerGroup(
+		groupId: string,
+		options: { timeoutMs?: number; pollIntervalMs?: number } = {},
+	): Promise<void> {
+		const { timeoutMs = 10000, pollIntervalMs = 500 } = options;
 		const admin = this.kafka.admin();
+		const deadline = Date.now() + timeoutMs;
+
 		try {
 			await admin.connect();
-			await admin.deleteTopics({ topics: [topic] });
+
+			while (Date.now() < deadline) {
+				const groups = await admin.describeGroups([groupId]);
+				const group = groups.groups[0];
+
+				if (group && group.state === 'Stable' && group.members.length > 0) {
+					return;
+				}
+
+				await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+			}
+
+			throw new Error(`Consumer group '${groupId}' did not become active within ${timeoutMs}ms`);
 		} finally {
 			await admin.disconnect();
 		}
 	}
 
-	/**
-	 * List all topics.
-	 */
-	async listTopics(): Promise<string[]> {
-		const admin = this.kafka.admin();
-		try {
-			await admin.connect();
-			return await admin.listTopics();
-		} finally {
-			await admin.disconnect();
-		}
-	}
-
-	/**
-	 * Publish a message to a topic.
-	 */
 	async publish(topic: string, message: string | object, key?: string): Promise<void> {
 		if (!this.producer) {
 			this.producer = this.kafka.producer();
@@ -129,31 +112,6 @@ export class KafkaHelper {
 		});
 	}
 
-	/**
-	 * Publish multiple messages to a topic.
-	 */
-	async publishBatch(
-		topic: string,
-		messages: Array<{ value: string | object; key?: string }>,
-	): Promise<void> {
-		if (!this.producer) {
-			this.producer = this.kafka.producer();
-			await this.producer.connect();
-		}
-
-		await this.producer.send({
-			topic,
-			messages: messages.map((m) => ({
-				key: m.key,
-				value: typeof m.value === 'string' ? m.value : JSON.stringify(m.value),
-			})),
-		});
-	}
-
-	/**
-	 * Consume messages from a topic (for test assertions).
-	 * Returns collected messages after timeout or maxMessages reached.
-	 */
 	async consume(
 		topic: string,
 		options: {
@@ -186,7 +144,9 @@ export class KafkaHelper {
 				const timeout = setTimeout(() => resolve(), timeoutMs);
 
 				void consumer.run({
-					eachMessage: ({ message, partition }: EachMessagePayload) => {
+					// kafkajs requires async handler signature, but we don't need to await anything
+					// eslint-disable-next-line @typescript-eslint/require-await
+					eachMessage: async ({ message, partition }: EachMessagePayload) => {
 						messages.push({
 							key: message.key?.toString() ?? null,
 							value: message.value?.toString() ?? '',
@@ -206,16 +166,6 @@ export class KafkaHelper {
 		}
 
 		return messages;
-	}
-
-	/**
-	 * Disconnect producer (call in test cleanup).
-	 */
-	async disconnect(): Promise<void> {
-		if (this.producer) {
-			await this.producer.disconnect();
-			this.producer = null;
-		}
 	}
 }
 

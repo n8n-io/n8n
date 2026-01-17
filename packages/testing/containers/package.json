@@ -29,7 +29,7 @@
     "@testcontainers/postgresql": "^11.0.3",
     "@testcontainers/redis": "^11.0.3",
     "get-port": "^7.1.0",
-    "kafkajs": "^2.2.4",
-    "testcontainers": "^11.0.3"
+    "kafkajs": "catalog:",
+    "testcontainers": "^11.11.0"
   }
 }
