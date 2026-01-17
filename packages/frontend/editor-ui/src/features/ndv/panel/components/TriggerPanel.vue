@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
@@ -128,31 +128,46 @@ const isWebhookNode = computed(() => {
 	return Boolean(node.value && node.value.type === WEBHOOK_NODE_TYPE);
 });
 
-const webhookHttpMethod = computed(() => {
-	if (!node.value || !nodeType.value?.webhooks?.length) {
-		return undefined;
-	}
+const webhookHttpMethod = ref<string | undefined>(undefined);
+const webhookTestUrl = ref<string | undefined>(undefined);
+let webhookResolutionGeneration = 0;
 
-	const httpMethod = workflowHelpers.getWebhookExpressionValue(
-		nodeType.value.webhooks[0],
-		'httpMethod',
-		false,
-	);
+watch(
+	[node, nodeType],
+	async () => {
+		const currentGeneration = ++webhookResolutionGeneration;
 
-	if (Array.isArray(httpMethod)) {
-		return httpMethod.join(', ');
-	}
+		if (!node.value || !nodeType.value?.webhooks?.length) {
+			webhookHttpMethod.value = undefined;
+			webhookTestUrl.value = undefined;
+			return;
+		}
 
-	return httpMethod;
-});
+		const httpMethod = await workflowHelpers.getWebhookExpressionValue(
+			nodeType.value.webhooks[0],
+			'httpMethod',
+			false,
+		);
 
-const webhookTestUrl = computed(() => {
-	if (!node.value || !nodeType.value?.webhooks?.length) {
-		return undefined;
-	}
+		const testUrl = await workflowHelpers.getWebhookUrl(
+			nodeType.value.webhooks[0],
+			node.value,
+			'test',
+		);
 
-	return workflowHelpers.getWebhookUrl(nodeType.value.webhooks[0], node.value, 'test');
-});
+		// Only update if this is still the latest resolution request
+		if (currentGeneration === webhookResolutionGeneration) {
+			if (Array.isArray(httpMethod)) {
+				webhookHttpMethod.value = httpMethod.join(', ');
+			} else {
+				webhookHttpMethod.value = httpMethod as string | undefined;
+			}
+
+			webhookTestUrl.value = testUrl;
+		}
+	},
+	{ immediate: true },
+);
 
 const isWebhookBasedNode = computed(() => {
 	return Boolean(nodeType.value?.webhooks?.length);

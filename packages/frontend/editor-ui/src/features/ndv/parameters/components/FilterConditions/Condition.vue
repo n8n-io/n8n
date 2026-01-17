@@ -11,7 +11,7 @@ import type {
 	INodeProperties,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
 import { type FilterOperatorId, DEFAULT_OPERATOR_BY_TYPE } from './constants';
 import {
@@ -22,6 +22,7 @@ import {
 	operatorTypeToNodeProperty,
 	resolveCondition,
 } from './utils';
+import type { ConditionResult } from './types';
 import { useDebounce } from '@/app/composables/useDebounce';
 
 import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -70,8 +71,27 @@ const isEmpty = computed(() => {
 	return isEmptyInput(condition.value.leftValue) && isEmptyInput(condition.value.rightValue);
 });
 
-const conditionResult = computed(() =>
-	resolveCondition({ condition: condition.value, options: props.options }),
+const conditionResult = ref<ConditionResult>({ status: 'resolve_error' });
+let conditionResolutionPromise: Promise<void> = Promise.resolve();
+let conditionResolutionGeneration = 0;
+
+watch(
+	[condition, () => props.options],
+	async () => {
+		const currentGeneration = ++conditionResolutionGeneration;
+		conditionResolutionPromise = (async () => {
+			const result = await resolveCondition({
+				condition: condition.value,
+				options: props.options,
+			});
+			// Only update if this is still the latest resolution request
+			if (currentGeneration === conditionResolutionGeneration) {
+				conditionResult.value = result;
+			}
+		})();
+		await conditionResolutionPromise;
+	},
+	{ immediate: true, deep: true },
 );
 
 const suggestedType = computed(() => {
@@ -161,13 +181,20 @@ const setSuggestedType = (): void => {
 	}
 };
 
-const onLeftValueDrop = (droppedExpression: string): void => {
+const onLeftValueDrop = async (droppedExpression: string): Promise<void> => {
 	condition.value.leftValue = droppedExpression;
+	// Wait for the condition result watcher to resolve before inferring the type
+	await nextTick();
+	await conditionResolutionPromise;
 	setSuggestedType();
 };
 
-const onRightValueDrop = (droppedExpression: string) => {
+const onRightValueDrop = async (droppedExpression: string): Promise<void> => {
 	condition.value.rightValue = droppedExpression;
+
+	// Wait for the condition result watcher to resolve before inferring the type
+	await nextTick();
+	await conditionResolutionPromise;
 
 	// Only auto-switch operator if the default operator for the dropped type
 	// is compatible with the right side (not single-value and right type matches)

@@ -102,7 +102,7 @@ const issues = computed(() => {
 
 watch(
 	() => props.node?.parameters,
-	() => {
+	async () => {
 		const typeOptions = props.parameter.typeOptions?.filter;
 
 		if (!typeOptions) {
@@ -113,7 +113,7 @@ watch(
 		try {
 			newOptions = {
 				...DEFAULT_FILTER_OPTIONS,
-				...resolveParameter(typeOptions as unknown as NodeParameterValue),
+				...(await resolveParameter(typeOptions as unknown as NodeParameterValue)),
 			};
 		} catch (error) {}
 

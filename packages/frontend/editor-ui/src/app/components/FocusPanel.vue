@@ -101,33 +101,50 @@ const inputValue = ref<string>('');
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 
-const isDisabled = computed(() => {
-	if (!resolvedParameter.value) return false;
+const isDisabled = ref(false);
+const isDisplayed = ref(true);
+let displayResolutionGeneration = 0;
 
-	// shouldDisplayNodeParameter returns true if disabledOptions exists and matches, OR if disabledOptions doesn't exist
-	return (
-		!!resolvedParameter.value.parameter.disabledOptions &&
-		nodeSettingsParameters.shouldDisplayNodeParameter(
+watch(
+	resolvedParameter,
+	async () => {
+		const currentGeneration = ++displayResolutionGeneration;
+
+		if (!resolvedParameter.value) {
+			isDisabled.value = false;
+			isDisplayed.value = true;
+			return;
+		}
+
+		const parentPath = resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.');
+
+		// shouldDisplayNodeParameter returns true if disabledOptions exists and matches, OR if disabledOptions doesn't exist
+		const disabled =
+			!!resolvedParameter.value.parameter.disabledOptions &&
+			(await nodeSettingsParameters.shouldDisplayNodeParameter(
+				resolvedParameter.value.node.parameters,
+				resolvedParameter.value.node,
+				resolvedParameter.value.parameter,
+				parentPath,
+				'disabledOptions',
+			));
+
+		const displayed = await nodeSettingsParameters.shouldDisplayNodeParameter(
 			resolvedParameter.value.node.parameters,
 			resolvedParameter.value.node,
 			resolvedParameter.value.parameter,
-			resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.'),
-			'disabledOptions',
-		)
-	);
-});
+			parentPath,
+			'displayOptions',
+		);
 
-const isDisplayed = computed(() => {
-	if (!resolvedParameter.value) return true;
-
-	return nodeSettingsParameters.shouldDisplayNodeParameter(
-		resolvedParameter.value.node.parameters,
-		resolvedParameter.value.node,
-		resolvedParameter.value.parameter,
-		resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.'),
-		'displayOptions',
-	);
-});
+		// Only update if this is still the latest resolution request
+		if (currentGeneration === displayResolutionGeneration) {
+			isDisabled.value = disabled;
+			isDisplayed.value = displayed;
+		}
+	},
+	{ immediate: true },
+);
 
 const node = computed<INodeUi | undefined>(() => {
 	if (!experimentalNdvStore.isNdvInFocusPanelEnabled || resolvedParameter.value) {

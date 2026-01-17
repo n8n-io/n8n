@@ -100,13 +100,13 @@ export const useAIAssistantHelpers = () => {
 	 * @param propsToRemove properties to remove from the node object
 	 * @returns processed node
 	 */
-	function processNodeForAssistant(node: INode, propsToRemove: string[]): INode {
+	async function processNodeForAssistant(node: INode, propsToRemove: string[]): Promise<INode> {
 		// Make a copy of the node object so we don't modify the original
 		const nodeForLLM = deepCopy(node);
 		propsToRemove.forEach((key) => {
 			delete nodeForLLM[key as keyof INode];
 		});
-		const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+		const resolvedParameters = await workflowHelpers.getNodeParametersWithResolvedExpressions(
 			nodeForLLM.parameters,
 		);
 		nodeForLLM.parameters = resolvedParameters;
@@ -299,10 +299,10 @@ export const useAIAssistantHelpers = () => {
 	 * @param executionData Optional execution data to filter only nodes that have executed
 	 * @returns Record mapping node names to arrays of expression/value pairs
 	 */
-	function extractExpressionsFromWorkflow(
+	async function extractExpressionsFromWorkflow(
 		workflow: IWorkflowDb,
 		executionData?: IRunExecutionData['resultData'],
-	): Record<string, ChatRequest.ExpressionValue[]> {
+	): Promise<Record<string, ChatRequest.ExpressionValue[]>> {
 		const MAX_VALUE_LENGTH = 200;
 		const MAX_EXPRESSION_LENGTH = 500;
 		const expressionsByNode: Record<string, ChatRequest.ExpressionValue[]> = {};
@@ -361,7 +361,10 @@ export const useAIAssistantHelpers = () => {
 
 			// Helper to recursively find and resolve expressions from parameters
 			// Uses a WeakSet to track visited objects and prevent infinite recursion on cycles
-			const extractExpressions = (params: unknown, visited = new WeakSet<object>()): void => {
+			const extractExpressions = async (
+				params: unknown,
+				visited = new WeakSet<object>(),
+			): Promise<void> => {
 				if (typeof params === 'string' && params.startsWith('=')) {
 					// Skip static strings like "=Static string" that don't contain expressions
 					// Only process strings that contain {{ }} expression syntax
@@ -372,7 +375,7 @@ export const useAIAssistantHelpers = () => {
 					// This is an expression - resolve it with node context
 					let resolved: unknown;
 					try {
-						resolved = workflowHelpers.resolveExpression(params, undefined, {
+						resolved = await workflowHelpers.resolveExpression(params, undefined, {
 							contextNodeName: node.name,
 						});
 					} catch (error) {
@@ -396,18 +399,22 @@ export const useAIAssistantHelpers = () => {
 						return;
 					}
 					visited.add(params);
-					params.forEach((item) => extractExpressions(item, visited));
+					for (const item of params) {
+						await extractExpressions(item, visited);
+					}
 				} else if (typeof params === 'object' && params !== null) {
 					// Check if we've already visited this object to prevent cycles
 					if (visited.has(params)) {
 						return;
 					}
 					visited.add(params);
-					Object.values(params).forEach((value) => extractExpressions(value, visited));
+					for (const value of Object.values(params)) {
+						await extractExpressions(value, visited);
+					}
 				}
 			};
 
-			extractExpressions(node.parameters);
+			await extractExpressions(node.parameters);
 
 			// Only add to map if node has expressions
 			if (nodeExpressions.length > 0) {
