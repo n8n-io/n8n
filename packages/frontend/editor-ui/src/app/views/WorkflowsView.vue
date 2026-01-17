@@ -635,7 +635,9 @@ const fetchWorkflows = async () => {
 	const parentFolder = (route.params?.folderId as string) || undefined;
 
 	const tags = filters.value.tags.length
-		? filters.value.tags.map((tagId) => tagsStore.tagsById[tagId]?.name)
+		? filters.value.tags
+				.map((tagId) => tagsStore.tagsById[tagId]?.name)
+				.filter((tagName): tagName is string => !!tagName)
 		: [];
 
 	const activeFilter =
