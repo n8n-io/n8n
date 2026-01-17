@@ -11,7 +11,7 @@ import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { logAiEvent } from '@utils/helpers';
+import { logAiEvent, redactBinaryMessages } from '@utils/helpers';
 
 type RunDetail = {
 	index: number;
@@ -118,7 +118,7 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 				[
 					{
 						json: {
-							messages: prompts,
+							messages: redactBinaryMessages(prompts),
 							estimatedTokens,
 							options,
 						},

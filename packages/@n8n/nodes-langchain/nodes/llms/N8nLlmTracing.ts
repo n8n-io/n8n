@@ -12,7 +12,7 @@ import pick from 'lodash/pick';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { logAiEvent } from '@utils/helpers';
+import { logAiEvent, redactBinaryMessages } from '@utils/helpers';
 import { estimateTokensFromStringList } from '@utils/tokenizer/token-estimator';
 
 type TokensUsageParser = (result: LLMResult) => {
@@ -169,7 +169,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 				[
 					{
 						json: {
-							messages: prompts,
+							messages: redactBinaryMessages(prompts),
 							estimatedTokens,
 							options,
 						},

@@ -1,14 +1,24 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { IBinaryData, IRunData } from 'n8n-workflow';
+import type { IBinaryData, IRunData, NodeConnectionType } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from './BinaryDataDisplayEmbed.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nButton } from '@n8n/design-system';
+
+interface IBinaryDisplayData extends IBinaryData {
+	node?: string;
+	runIndex?: number;
+	outputIndex?: number;
+	index?: number;
+	key?: string | number;
+	connectionType?: NodeConnectionType;
+}
+
 const props = defineProps<{
-	displayData: IBinaryData;
+	displayData: IBinaryDisplayData;
 	windowVisible: boolean;
 }>();
 
@@ -46,6 +56,7 @@ const binaryData = computed<IBinaryData | null>(() => {
 		props.displayData.node,
 		props.displayData.runIndex,
 		props.displayData.outputIndex,
+		props.displayData.connectionType,
 	);
 
 	if (binaryDataLocal.length === 0) {
