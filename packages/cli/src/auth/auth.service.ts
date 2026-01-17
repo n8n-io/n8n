@@ -92,6 +92,10 @@ export class AuthService {
 		];
 	}
 
+	getAuthTokenFromRequest(req: AuthenticatedRequest): string | undefined {
+		return req.cookies[AUTH_COOKIE_NAME];
+	}
+
 	createAuthMiddleware({
 		allowSkipMFA,
 		allowSkipPreviewAuth,
@@ -205,11 +209,10 @@ export class AuthService {
 		});
 	}
 
-	async resolveJwt(
-		token: string,
-		req: AuthenticatedRequest,
-		res: Response,
-	): Promise<[User, { usedMfa: boolean }]> {
+	async validateToken(token: string): Promise<{
+		user: User;
+		jwtPayload: IssuedJWT;
+	}> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
@@ -230,6 +233,18 @@ export class AuthService {
 		) {
 			throw new AuthError('Unauthorized');
 		}
+		return {
+			user,
+			jwtPayload,
+		};
+	}
+
+	async resolveJwt(
+		token: string,
+		req: AuthenticatedRequest,
+		res: Response,
+	): Promise<[User, { usedMfa: boolean }]> {
+		const { user, jwtPayload } = await this.validateToken(token);
 
 		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
 		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;

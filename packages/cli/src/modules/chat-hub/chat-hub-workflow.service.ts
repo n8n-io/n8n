@@ -64,6 +64,7 @@ export class ChatHubWorkflowService {
 		systemMessage: string | undefined,
 		tools: INode[],
 		timeZone: string,
+		authenticationToken: string,
 		trx?: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
@@ -85,6 +86,7 @@ export class ChatHubWorkflowService {
 				model,
 				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
 				tools,
+				authenticationToken,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -186,11 +188,26 @@ export class ChatHubWorkflowService {
 		sessionId: string,
 		message: string,
 		attachments: IBinaryData[],
+		authenticationToken: string,
 	): IExecuteData[] {
 		// Attachments are already processed (id field populated) by the caller
 		return [
 			{
-				node: triggerNode,
+				node: {
+					...triggerNode,
+					parameters: {
+						...triggerNode.parameters,
+						executionsHooksVersion: 1,
+						contextEstablishmentHooks: {
+							hooks: [
+								{
+									hookName: 'ChatHubExtractor',
+									isAllowedToFail: true,
+								},
+							],
+						},
+					},
+				},
 				data: {
 					main: [
 						[
@@ -200,6 +217,7 @@ export class ChatHubWorkflowService {
 									action: 'sendMessage',
 									chatInput: message,
 									files: attachments.map(({ data, ...metadata }) => metadata),
+									cookie: authenticationToken,
 								},
 								binary: Object.fromEntries(
 									attachments.map((attachment, index) => [`data${index}`, attachment]),
@@ -268,6 +286,7 @@ export class ChatHubWorkflowService {
 		model,
 		systemMessage,
 		tools,
+		authenticationToken,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -278,6 +297,7 @@ export class ChatHubWorkflowService {
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
 		tools: INode[];
+		authenticationToken: string;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
@@ -383,6 +403,7 @@ export class ChatHubWorkflowService {
 			sessionId,
 			humanMessage,
 			attachments,
+			authenticationToken,
 		);
 
 		const executionData = createRunExecutionData({
