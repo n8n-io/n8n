@@ -11,13 +11,14 @@
 		},
 		{
 			"parameters": {
-				"resource": "calendar",
+				"resource": "message",
 				"operation": "delete",
-				"calendarId": {
+				"messageId": {
 					"__rl": true,
-					"value": "AAAXXXYYYnnnT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEGAABZf4De-LkrSqpPI8eyjUmAAAFXBBZ_AAA=",
+					"value": "AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA=",
 					"mode": "list",
-					"cachedResultName": "New Calendar"
+					"cachedResultName": "Test Email Subject",
+					"cachedResultUrl": "https://outlook.office365.com/owa/?ItemID=AAMkAGVmMDEzMTM4LTExMWMtNDAxYy05MWNjLWQ5YTY3NWUzNzE4ZgBGAAAAAAA_iGOFSpJvRJ8V0rRW_J9FBwBZf4De_LkrSqpPI8eyjUmAAAACEDdwAABZf4De_LkrSqpPI8eyjUmAAAFSpKecAAA%3D&exvsurl=1&viewmodel=ReadMessageItem"
 				}
 			},
 			"id": "baff6798-0304-4255-bdb0-dd3f2659373b",
@@ -59,7 +60,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "888e5578-c726-4a84-9658-321ba04fd0c7",
+	"versionId": "bd9fce0e-d4fa-437d-a980-bdabb6d3f784",
 	"id": "1CYHzBXQw1nfPGtB",
 	"meta": {
 		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
