@@ -31,12 +31,24 @@ The SDK exports three functions:
 import { workflow, node, trigger } from '@n8n/workflow-sdk';
 ```
 
-### `workflow(name: string)`
+### `workflow(name: string, settings?)`
 
-Creates a new workflow builder.
+Creates a new workflow builder with optional settings.
 
 ```typescript
 const wf = workflow('My Workflow');
+
+// Or with settings
+const wf = workflow('My Workflow', {
+  timezone: 'America/New_York',
+  errorWorkflow: 'error-handler-workflow-id',
+  saveDataErrorExecution: 'all',
+  saveDataSuccessExecution: 'none',
+  saveManualExecutions: true,
+  saveExecutionProgress: true,
+  executionTimeout: 3600,
+  executionOrder: 'v1',
+});
 ```
 
 ### `node(type, version, config)`
@@ -146,6 +158,47 @@ Required subnodes are enforced by the type system.
 
 ---
 
+## Workflow Settings
+
+Workflow-level settings control execution behavior:
+
+```typescript
+const wf = workflow('My Workflow', {
+  // Timezone for date/time operations
+  timezone: 'America/New_York',  // or 'DEFAULT' to use instance default
+
+  // Error handling
+  errorWorkflow: 'workflow-id',  // Workflow to run on error
+
+  // Execution data retention
+  saveDataErrorExecution: 'all' | 'none' | 'DEFAULT',
+  saveDataSuccessExecution: 'all' | 'none' | 'DEFAULT',
+  saveManualExecutions: true | false | 'DEFAULT',
+  saveExecutionProgress: true | false | 'DEFAULT',
+
+  // Execution limits
+  executionTimeout: 3600,  // Seconds, -1 for no timeout
+
+  // Execution order (v1 is breadth-first, v0 is legacy)
+  executionOrder: 'v1' | 'v0',
+
+  // Caller restrictions (for sub-workflow execution)
+  callerPolicy: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner',
+  callerIds: 'workflow-id-1,workflow-id-2',  // When policy is 'workflowsFromAList'
+});
+```
+
+Settings can also be modified after creation:
+
+```typescript
+wf.settings({
+  timezone: 'Europe/London',
+  executionTimeout: 7200,
+});
+```
+
+---
+
 ## Workflow Building & Connections
 
 ### Linear Chains
@@ -219,11 +272,17 @@ The `$` parameter in expression functions provides typed access to:
 | `$.input.item` | Current item |
 | `$('nodeName')` | Reference another node's output |
 | `$.env.VAR_NAME` | Environment variables |
+| `$.vars.VAR_NAME` | Workflow variables (instance-level) |
+| `$.secrets.PROVIDER.SECRET` | External secrets (e.g., `$.secrets.vault.apiKey`) |
 | `$.now` | Current DateTime |
 | `$.itemIndex` | Current item index |
 | `$.runIndex` | Current run index |
 | `$.execution.id` | Execution ID |
+| `$.execution.mode` | Execution mode ('test' or 'production') |
+| `$.execution.resumeUrl` | Resume URL for wait nodes |
 | `$.workflow.id` | Workflow ID |
+| `$.workflow.name` | Workflow name |
+| `$.workflow.active` | Whether workflow is active |
 
 ### Output Schemas
 
