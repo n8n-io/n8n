@@ -1,0 +1,473 @@
+{
+	"id": "0eQvHzKKVrYZMyyZ",
+	"meta": {
+		"instanceId": "16d5a69b6a4f4733c8f669903729902650204c895b060993271b9227d7b0b3e8",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Invoice Workflow",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "6ebd4d73-17b9-41b7-945a-8554e3e0961b",
+			"name": "Extract from File",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [480, 0],
+			"parameters": {
+				"options": {},
+				"operation": "pdf"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "79708781-1b1c-44ef-8798-c2c707721817",
+			"name": "Google Drive Trigger",
+			"type": "n8n-nodes-base.googleDriveTrigger",
+			"position": [0, 0],
+			"parameters": {
+				"event": "fileCreated",
+				"options": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				},
+				"triggerOn": "specificFolder",
+				"folderToWatch": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1PgLKqvN8CFFXWAKhZxzjuk6gMnXJ7-np",
+					"cachedResultUrl": "Redacted",
+					"cachedResultName": "n8n Invoices Folder"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c8b9a734-a541-4462-845e-b91505aeeedf",
+			"name": "Google Drive",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [260, 0],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $json.id }}"
+				},
+				"options": {},
+				"operation": "download"
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "61d72361-63e9-4a4e-9f52-83fa97a16209",
+			"name": "Information Extractor",
+			"type": "@n8n/n8n-nodes-langchain.informationExtractor",
+			"position": [740, 0],
+			"parameters": {
+				"text": "={{ $json.text }}",
+				"options": {
+					"systemPromptTemplate": "You are an expert extraction algorithm.\nOnly extract relevant information from the text.\nIf you do not know the value of an attribute asked to extract, you may omit the attribute's value."
+				},
+				"attributes": {
+					"attributes": [
+						{
+							"name": "Invoice Number",
+							"required": true,
+							"description": "The Number of the Invoice"
+						},
+						{
+							"name": "Client Name",
+							"required": true,
+							"description": "Name of the client"
+						},
+						{
+							"name": "Client Email",
+							"required": true,
+							"description": "Email address of the client"
+						},
+						{
+							"name": "Total Amount",
+							"required": true,
+							"description": "Total Amount Due in the Invoice"
+						},
+						{
+							"name": "Invoice Date",
+							"required": true,
+							"description": "Date of the Invoice"
+						},
+						{
+							"name": "Due Date",
+							"description": "Date with the invoice is due"
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dc101071-b872-4868-8aaf-c96397e50a0a",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [840, 220],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "de80a18e-6110-45f7-9c77-02398f69a552",
+			"name": "Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1100, 0],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Due Date": "={{ $json.output['Due Date'] }}",
+						"Client Name": "={{ $json.output['Client Name'] }}",
+						"Client Email": "={{ $json.output['Client Email'] }}",
+						"Invoice Date": "={{ $json.output['Invoice Date'] }}",
+						"Total Amount": "={{ $json.output['Total Amount'] }}",
+						"Invoice Number": "={{ $json.output['Invoice Number'] }}"
+					},
+					"schema": [
+						{
+							"id": "Invoice Number",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Invoice Number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Client Name",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Client Name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Client Email",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Client Email",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Client Address",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Client Address",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Client Phone",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Client Phone",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Total Amount",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Total Amount",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Invoice Date",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Invoice Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Due Date",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Due Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "Redacted",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1lMMuPAU_rRU6VdybxgiPeVd9KRZrKhlzJ3gVc4Wz7iA",
+					"cachedResultUrl": "Redacted",
+					"cachedResultName": "Invoice DB"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "7927d3d5-44ab-4762-b87a-43df7623a65a",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"position": [1880, 0],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "be57e980-f1fa-48c8-a676-247dc245456f",
+			"name": "Anthropic Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"position": [1380, 200],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-sonnet-4-20250514",
+					"cachedResultName": "Claude 4 Sonnet"
+				},
+				"options": {}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "41e75f50-7643-43a4-84d3-79f2888355cb",
+			"name": "Anthropic Agent",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [1300, 0],
+			"parameters": {
+				"text": "=Invoice Number:{{ $json['Invoice Number'] }}\nClient Name:{{ $json['Client Name'] }}\nClient Email:{{ $json['Client Email'] }}\nTotal Amount:{{ $json['Total Amount'] }}\nInvoice Due Date:{{ $json['Invoice Date'] }}",
+				"batching": {},
+				"messages": {
+					"messageValues": [
+						{
+							"message": "#Overview You are an telegram notification expert. You will receive invoice information. You will craft a message notifying the billing team of the invoice and the available information of the invoice. "
+						}
+					]
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "ec5e6d1d-af54-4876-8007-37228d675a77",
+			"name": "Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1700, 0],
+			"webhookId": "c7ceb78a-40ff-4adc-ab1f-420a75287e10",
+			"parameters": {
+				"text": "={{  $json [output] }}",
+				"chatId": "Redacted",
+				"additionalFields": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f97dce52-41c0-4325-abc2-05d84f7bccb7",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-140, -200],
+			"parameters": {
+				"width": 320,
+				"height": 680,
+				"content": "Upload Invoice Doc Trigger"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "459a8433-145e-4ebe-bb27-cca67d32859a",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [200, -200],
+			"parameters": {
+				"color": 6,
+				"width": 480,
+				"height": 680,
+				"content": "Extract Invoice Doc"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "10c71de5-9607-491c-a60d-21ca11e0e0c2",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [700, -200],
+			"parameters": {
+				"color": 5,
+				"width": 540,
+				"height": 680,
+				"content": "Extract Information & Log"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "207ce567-badd-498b-b275-5c032a75ba88",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1260, -200],
+			"parameters": {
+				"color": 3,
+				"width": 380,
+				"height": 680,
+				"content": "Telegram Notification"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "786542fa-d347-4624-90e1-fab4830c300d",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1660, -200],
+			"parameters": {
+				"color": 4,
+				"width": 440,
+				"height": 680,
+				"content": "Notification & End"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "80d41b3e-54a4-4c30-a716-d66518db91b2",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-860, -200],
+			"parameters": {
+				"color": 7,
+				"width": 660,
+				"height": 1180,
+				"content": "📥 Invoice Intake & Notification Workflow\nThis automated n8n workflow monitors a Google Drive folder for newly uploaded invoice PDFs, extracts essential information (like client name, invoice number, amount, due date), logs the data into a Google Sheet for recordkeeping, and sends a formatted Telegram message to notify the billing team.\n\nFor step-by-step video build of workflows like this:\nhttps://www.youtube.com/@automatewithmarc\n\n✅ What This Workflow Does\n🕵️ Watches a Google Drive folder for new invoice files\n📄 Extracts data from PDF invoices using AI (LangChain Information Extractor)\n📊 Appends extracted data into a structured Google Sheet\n💬 Notifies the billing team via Telegram with invoice details\n🤖 Optionally uses Claude Sonnet AI model to format human-friendly summaries\n\n⚙️ How It Works – Step-by-Step\nTrigger: Workflow starts when a new PDF invoice is added to a specific Google Drive folder.\n\nDownload & Parse: The file is downloaded and its content extracted.\n\nData Extraction: AI-powered extractor pulls invoice details (invoice number, client, date, amount, etc.).\n\nLog to Google Sheets: All extracted data is appended to a predefined Google Sheet.\n\nAI Notification Formatting: An Anthropic Claude model formats a clear invoice notification message.\n\nTelegram Alert: The formatted summary is sent to a Telegram channel or group to alert the billing team.\n\n🧠 AI & Tools Used\nGoogle Drive Trigger & File Download\n\nPDF Text Extraction Node\n\nLangChain Information Extractor\n\nGoogle Sheets Node (Append Data)\n\nAnthropic Claude (Telegram Message Formatter)\n\nTelegram Node (Send Notification)\n\n🛠️ Setup Instructions\nGoogle Drive: Set up OAuth2 credentials and specify the folder ID to watch.\n\nGoogle Sheets: Link the workflow to your invoice tracking sheet.\n\nTelegram: Set up your Telegram bot and obtain the chat ID.\n\nAnthropic & OpenAI: Add your Claude/OpenAI credentials if formatting is enabled.\n\n💡 Use Cases\nAutomated bookkeeping and invoice tracking\n\nReal-time billing alerts for accounting teams\n\nAI-powered invoice ingestion and summary\n\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "96993b60-0e95-4b50-ae29-8432cdfcae94",
+	"connections": {
+		"Telegram": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Drive": {
+			"main": [
+				[
+					{
+						"node": "Extract from File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Anthropic Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Anthropic Agent": {
+			"main": [
+				[
+					{
+						"node": "Telegram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from File": {
+			"main": [
+				[
+					{
+						"node": "Information Extractor",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Information Extractor",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Anthropic Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Anthropic Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Drive Trigger": {
+			"main": [
+				[
+					{
+						"node": "Google Drive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Information Extractor": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

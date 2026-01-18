@@ -1,0 +1,534 @@
+{
+	"meta": {
+		"instanceId": "db30e8ae4100235addbd4638770997b7ef11878d049073c888ba440ca84c55fc"
+	},
+	"nodes": [
+		{
+			"id": "97e85725-b387-480e-a9d1-8066a5aef2de",
+			"name": "Schedule Daily Check",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-960, 240],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours",
+							"hoursInterval": 24
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ac8ed47a-01cd-46b9-aff3-6fb6297f0b33",
+			"name": "Fetch Google Ads Data",
+			"type": "n8n-nodes-base.googleAds",
+			"position": [-736, 240],
+			"parameters": {
+				"requestOptions": {},
+				"additionalOptions": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ae7508bf-4292-4db2-93ac-be1af7bf73d0",
+			"name": "AI Performance Analysis",
+			"type": "n8n-nodes-base.code",
+			"position": [-512, 240],
+			"parameters": {
+				"jsCode": "// AI-powered campaign performance analysis\nconst items = $input.all();\nconst analyzedItems = [];\n\nfor (const item of items) {\n  const data = item.json;\n  let performanceScore = 0;\n  let insights = [];\n  let recommendations = [];\n  let alertLevel = 'normal';\n  \n  // Extract metrics\n  const clicks = data.metrics?.clicks || 0;\n  const impressions = data.metrics?.impressions || 0;\n  const cost = (data.metrics?.cost_micros || 0) / 1000000;\n  const conversions = data.metrics?.conversions || 0;\n  const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;\n  const conversionRate = clicks > 0 ? (conversions / clicks) * 100 : 0;\n  const costPerConversion = conversions > 0 ? cost / conversions : 0;\n  const avgCpc = clicks > 0 ? cost / clicks : 0;\n  \n  // CTR Analysis (Click-Through Rate)\n  if (ctr >= 5) {\n    performanceScore += 30;\n    insights.push(`Excellent CTR: ${ctr.toFixed(2)}% (+30 points)`);\n  } else if (ctr >= 3) {\n    performanceScore += 20;\n    insights.push(`Good CTR: ${ctr.toFixed(2)}% (+20 points)`);\n  } else if (ctr >= 1.5) {\n    performanceScore += 10;\n    insights.push(`Average CTR: ${ctr.toFixed(2)}% (+10 points)`);\n    recommendations.push('Consider A/B testing ad copy to improve CTR');\n  } else {\n    insights.push(`Low CTR: ${ctr.toFixed(2)}% (0 points)`);\n    recommendations.push('URGENT: Review ad relevance and targeting');\n    alertLevel = 'warning';\n  }\n  \n  // Conversion Rate Analysis\n  if (conversionRate >= 10) {\n    performanceScore += 35;\n    insights.push(`Outstanding conversion rate: ${conversionRate.toFixed(2)}% (+35 points)`);\n  } else if (conversionRate >= 5) {\n    performanceScore += 25;\n    insights.push(`Strong conversion rate: ${conversionRate.toFixed(2)}% (+25 points)`);\n  } else if (conversionRate >= 2) {\n    performanceScore += 15;\n    insights.push(`Moderate conversion rate: ${conversionRate.toFixed(2)}% (+15 points)`);\n    recommendations.push('Optimize landing pages for better conversions');\n  } else {\n    insights.push(`Low conversion rate: ${conversionRate.toFixed(2)}% (0 points)`);\n    recommendations.push('CRITICAL: Review landing page experience and targeting');\n    alertLevel = 'critical';\n  }\n  \n  // Cost Efficiency Analysis\n  if (costPerConversion > 0) {\n    if (costPerConversion <= 25) {\n      performanceScore += 25;\n      insights.push(`Excellent cost per conversion: $${costPerConversion.toFixed(2)} (+25 points)`);\n    } else if (costPerConversion <= 50) {\n      performanceScore += 15;\n      insights.push(`Good cost per conversion: $${costPerConversion.toFixed(2)} (+15 points)`);\n    } else if (costPerConversion <= 100) {\n      performanceScore += 8;\n      insights.push(`Fair cost per conversion: $${costPerConversion.toFixed(2)} (+8 points)`);\n      recommendations.push('Look for ways to reduce cost per conversion');\n    } else {\n      insights.push(`High cost per conversion: $${costPerConversion.toFixed(2)} (0 points)`);\n      recommendations.push('URGENT: Review bid strategy and audience targeting');\n      alertLevel = alertLevel === 'critical' ? 'critical' : 'warning';\n    }\n  }\n  \n  // Volume Analysis\n  if (clicks >= 1000) {\n    performanceScore += 10;\n    insights.push(`High traffic volume: ${clicks} clicks (+10 points)`);\n  } else if (clicks >= 500) {\n    performanceScore += 5;\n    insights.push(`Good traffic volume: ${clicks} clicks (+5 points)`);\n  } else if (clicks < 100) {\n    insights.push(`Low traffic volume: ${clicks} clicks (0 points)`);\n    recommendations.push('Consider increasing budget or expanding targeting');\n  }\n  \n  // Determine performance tier\n  let performanceTier = 'Underperforming';\n  if (performanceScore >= 75) {\n    performanceTier = 'Excellent';\n  } else if (performanceScore >= 55) {\n    performanceTier = 'Good';\n  } else if (performanceScore >= 35) {\n    performanceTier = 'Fair';\n  }\n  \n  // Add strategic recommendations\n  if (performanceTier === 'Excellent') {\n    recommendations.push('Scale this campaign - increase budget by 20-30%');\n    recommendations.push('Use this as a template for new campaigns');\n  } else if (performanceTier === 'Good') {\n    recommendations.push('Test incremental budget increases');\n    recommendations.push('Identify top-performing ad groups to scale');\n  }\n  \n  analyzedItems.push({\n    json: {\n      ...data,\n      campaignId: data.campaign?.id,\n      campaignName: data.campaign?.name,\n      campaignStatus: data.campaign?.status,\n      performanceScore: performanceScore,\n      performanceTier: performanceTier,\n      alertLevel: alertLevel,\n      insights: insights,\n      recommendations: recommendations,\n      metrics: {\n        clicks: clicks,\n        impressions: impressions,\n        cost: cost.toFixed(2),\n        conversions: conversions,\n        ctr: ctr.toFixed(2),\n        conversionRate: conversionRate.toFixed(2),\n        costPerConversion: costPerConversion.toFixed(2),\n        avgCpc: avgCpc.toFixed(2)\n      },\n      analyzedAt: new Date().toISOString()\n    }\n  });\n}\n\nreturn analyzedItems;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "cc1a1556-0544-4588-8259-b41891aae4fd",
+			"name": "Route by Performance",
+			"type": "n8n-nodes-base.if",
+			"position": [-288, 240],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"leftValue": "",
+						"caseSensitive": false,
+						"typeValidation": "strict"
+					},
+					"combinator": "or",
+					"conditions": [
+						{
+							"id": "excellent",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.performanceTier }}",
+							"rightValue": "Excellent"
+						},
+						{
+							"id": "good",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.performanceTier }}",
+							"rightValue": "Good"
+						}
+					]
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "0be284fc-c850-4e6c-921c-17507e3bfd38",
+			"name": "Update Campaign Dashboard",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [160, 48],
+			"parameters": {
+				"columns": {
+					"value": {
+						"CPC": "${{ $json.metrics.avgCpc }}",
+						"CTR": "={{ $json.metrics.ctr }}%",
+						"Cost": "={{ $json.metrics.cost }}",
+						"Date": "={{ $now.toFormat('yyyy-MM-dd') }}",
+						"Tier": "={{ $json.performanceTier }}",
+						"Score": "={{ $json.performanceScore }}",
+						"Clicks": "={{ $json.metrics.clicks }}",
+						"Status": "={{ $json.campaignStatus }}",
+						"Campaign": "={{ $json.campaignName }}",
+						"Conv Rate": "={{ $json.metrics.conversionRate }}%",
+						"Cost/Conv": "${{ $json.metrics.costPerConversion }}",
+						"Conversions": "={{ $json.metrics.conversions }}",
+						"Impressions": "={{ $json.metrics.impressions }}"
+					},
+					"mappingMode": "defineBelow"
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultName": "Daily Performance"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "your-dashboard-spreadsheet-id",
+					"cachedResultName": "PPC Performance Dashboard"
+				}
+			},
+			"typeVersion": 4.4
+		},
+		{
+			"id": "e92b8a04-20a2-431a-9662-1365a87657ec",
+			"name": "Log All Campaigns",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-64, 432],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Cost": "${{ $json.metrics.cost }}",
+						"Tier": "={{ $json.performanceTier }}",
+						"Score": "={{ $json.performanceScore }}",
+						"Campaign": "={{ $json.campaignName }}",
+						"Cost/Conv": "${{ $json.metrics.costPerConversion }}",
+						"Timestamp": "={{ $now.toISO() }}",
+						"Alert Level": "={{ $json.alertLevel }}",
+						"Conversions": "={{ $json.metrics.conversions }}"
+					},
+					"mappingMode": "defineBelow"
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=1",
+					"cachedResultName": "Campaign Log"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "your-dashboard-spreadsheet-id",
+					"cachedResultName": "PPC Performance Dashboard"
+				}
+			},
+			"typeVersion": 4.4
+		},
+		{
+			"id": "c47437f1-c24f-41ae-8a78-cfa9afa73f86",
+			"name": "Alert: Scale Opportunity",
+			"type": "n8n-nodes-base.slack",
+			"position": [-64, -96],
+			"webhookId": "fbe05af4-ac9e-4962-a34a-31f8a88de6b5",
+			"parameters": {
+				"text": "🚀 *SCALE OPPORTUNITY DETECTED*\n\n*Campaign:* {{ $json.campaignName }}\n*Performance Score:* {{ $json.performanceScore }}/100\n*Tier:* {{ $json.performanceTier }}\n\n*Key Metrics:*\n• Conversions: {{ $json.metrics.conversions }}\n• Conversion Rate: {{ $json.metrics.conversionRate }}%\n• Cost/Conversion: ${{ $json.metrics.costPerConversion }}\n• CTR: {{ $json.metrics.ctr }}%\n• Total Spend: ${{ $json.metrics.cost }}\n\n*Performance Insights:*\n{{ $json.insights.join('\\n') }}\n\n*💡 Recommendations:*\n{{ $json.recommendations.join('\\n') }}\n\n_Action: Consider scaling this campaign!_",
+				"otherOptions": {}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "776c44d4-1e01-42e4-b42b-163e1d1cfa73",
+			"name": "Generate Action Plan",
+			"type": "n8n-nodes-base.code",
+			"position": [-64, 240],
+			"parameters": {
+				"jsCode": "// Generate detailed action plan based on performance\nconst items = $input.all();\nconst actionPlanItems = [];\n\nfor (const item of items) {\n  const data = item.json;\n  const tier = data.performanceTier || 'Fair';\n  const campaignName = data.campaignName || 'Campaign';\n  const alertLevel = data.alertLevel || 'normal';\n  \n  let emailSubject = '';\n  let emailBody = '';\n  let priority = 'Medium';\n  \n  if (tier === 'Excellent' || tier === 'Good') {\n    priority = 'High';\n    emailSubject = `✅ ${campaignName}: Scaling Opportunity Detected`;\n    emailBody = `Hi PPC Team,\n\nGreat news! Your campaign \"${campaignName}\" is performing exceptionally well.\n\n📊 PERFORMANCE SUMMARY\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPerformance Score: ${data.performanceScore}/100\nPerformance Tier: ${tier}\nDaily Spend: $${data.metrics.cost}\nConversions: ${data.metrics.conversions}\nConversion Rate: ${data.metrics.conversionRate}%\nCost per Conversion: $${data.metrics.costPerConversion}\n\n💡 KEY INSIGHTS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${data.insights.map((insight, i) => `${i + 1}. ${insight}`).join('\\n')}\n\n🎯 RECOMMENDED ACTIONS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${data.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\\n')}\n\n📈 SCALING STRATEGY\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n• Increase daily budget by 20-30%\n• Monitor performance closely for next 3-5 days\n• If metrics hold, continue scaling gradually\n• Consider duplicating successful ad groups\n• Test expansion to similar audiences\n\nThis campaign is ready to scale. Let's capitalize on this momentum!\n\nBest,\nAutomated PPC Intelligence System`;\n  } else if (alertLevel === 'critical' || alertLevel === 'warning') {\n    priority = 'Urgent';\n    emailSubject = `⚠️ ${campaignName}: Performance Issues Detected`;\n    emailBody = `Hi PPC Team,\n\n⚠️ ATTENTION REQUIRED\n\nYour campaign \"${campaignName}\" requires immediate attention due to performance concerns.\n\n📊 PERFORMANCE SUMMARY\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPerformance Score: ${data.performanceScore}/100\nPerformance Tier: ${tier}\nAlert Level: ${alertLevel.toUpperCase()}\nDaily Spend: $${data.metrics.cost}\nConversions: ${data.metrics.conversions}\nConversion Rate: ${data.metrics.conversionRate}%\nCost per Conversion: $${data.metrics.costPerConversion}\n\n⚠️ IDENTIFIED ISSUES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${data.insights.map((insight, i) => `${i + 1}. ${insight}`).join('\\n')}\n\n🔧 REQUIRED ACTIONS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${data.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\\n')}\n\n🚨 IMMEDIATE NEXT STEPS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n1. Review campaign settings and targeting\n2. Analyze recent changes that may have impacted performance\n3. Check landing page experience and load times\n4. Review competitor activity\n5. Consider pausing low-performing ad groups\n6. Test new ad variations\n\nPlease address these issues within 24 hours to prevent budget waste.\n\nBest,\nAutomated PPC Intelligence System`;\n  } else {\n    emailSubject = `📊 ${campaignName}: Daily Performance Report`;\n    emailBody = `Hi PPC Team,\n\nHere's your daily performance summary for \"${campaignName}\".\n\n📊 PERFORMANCE SUMMARY\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPerformance Score: ${data.performanceScore}/100\nPerformance Tier: ${tier}\nDaily Spend: $${data.metrics.cost}\nConversions: ${data.metrics.conversions}\nConversion Rate: ${data.metrics.conversionRate}%\nCost per Conversion: $${data.metrics.costPerConversion}\n\n💡 INSIGHTS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${data.insights.map((insight, i) => `${i + 1}. ${insight}`).join('\\n')}\n\n📋 RECOMMENDATIONS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${data.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\\n')}\n\nContinue monitoring and optimizing for best results.\n\nBest,\nAutomated PPC Intelligence System`;\n  }\n  \n  actionPlanItems.push({\n    json: {\n      ...data,\n      emailSubject: emailSubject,\n      emailBody: emailBody,\n      priority: priority,\n      actionRequired: alertLevel === 'critical' || alertLevel === 'warning',\n      scaleRecommended: tier === 'Excellent' || tier === 'Good'\n    }\n  });\n}\n\nreturn actionPlanItems;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "b2b2389c-05b5-49c2-824a-50817acf150e",
+			"name": "Email Performance Report",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [160, 240],
+			"webhookId": "4575a129-b422-436d-834a-fbfc5c836b8e",
+			"parameters": {
+				"options": {
+					"replyTo": "user@example.com",
+					"allowUnauthorizedCerts": false
+				},
+				"subject": "={{ $json.emailSubject }}",
+				"toEmail": "user@example.com",
+				"fromEmail": "user@example.com"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "65a1623b-f9a9-415d-849a-42f779c3a766",
+			"name": "Alert: Issues Detected",
+			"type": "n8n-nodes-base.slack",
+			"position": [-64, 624],
+			"webhookId": "04c923f7-6530-484c-8f36-248a538678de",
+			"parameters": {
+				"text": "⚠️ *PERFORMANCE ALERT*\n\n*Campaign:* {{ $json.campaignName }}\n*Alert Level:* {{ $json.alertLevel }}\n*Performance Score:* {{ $json.performanceScore }}/100\n*Tier:* {{ $json.performanceTier }}\n\n*Current Metrics:*\n• Cost: ${{ $json.metrics.cost }}\n• Conversions: {{ $json.metrics.conversions }}\n• Cost/Conversion: ${{ $json.metrics.costPerConversion }}\n• Conversion Rate: {{ $json.metrics.conversionRate }}%\n\n*⚠️ Issues Identified:*\n{{ $json.insights.join('\\n') }}\n\n_Action Required: Review and optimize within 24 hours_",
+				"otherOptions": {}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "53086c74-d3f7-4761-91f1-706dd04aeda7",
+			"name": "Generate Daily Summary",
+			"type": "n8n-nodes-base.set",
+			"position": [384, 144],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "total-campaigns",
+							"name": "totalCampaigns",
+							"type": "number",
+							"value": "={{ $input.all().length }}"
+						},
+						{
+							"id": "excellent-count",
+							"name": "excellentCampaigns",
+							"type": "number",
+							"value": "={{ $input.all().filter(item => item.json.performanceTier === 'Excellent').length }}"
+						},
+						{
+							"id": "good-count",
+							"name": "goodCampaigns",
+							"type": "number",
+							"value": "={{ $input.all().filter(item => item.json.performanceTier === 'Good').length }}"
+						},
+						{
+							"id": "fair-count",
+							"name": "fairCampaigns",
+							"type": "number",
+							"value": "={{ $input.all().filter(item => item.json.performanceTier === 'Fair').length }}"
+						},
+						{
+							"id": "under-count",
+							"name": "underperformingCampaigns",
+							"type": "number",
+							"value": "={{ $input.all().filter(item => item.json.performanceTier === 'Underperforming').length }}"
+						},
+						{
+							"id": "total-spend",
+							"name": "totalSpend",
+							"type": "string",
+							"value": "=${{ $input.all().reduce((sum, item) => sum + parseFloat(item.json.metrics.cost || 0), 0).toFixed(2) }}"
+						},
+						{
+							"id": "total-conversions",
+							"name": "totalConversions",
+							"type": "number",
+							"value": "={{ $input.all().reduce((sum, item) => sum + parseInt(item.json.metrics.conversions || 0), 0) }}"
+						},
+						{
+							"id": "summary-text",
+							"name": "dailySummary",
+							"type": "string",
+							"value": "📊 Daily PPC Performance Summary\n\n{{ $('Generate Daily Summary').item.json.totalCampaigns }} campaigns analyzed:\n• {{ $('Generate Daily Summary').item.json.excellentCampaigns }} Excellent 🚀\n• {{ $('Generate Daily Summary').item.json.goodCampaigns }} Good ✅\n• {{ $('Generate Daily Summary').item.json.fairCampaigns }} Fair ⚠️\n• {{ $('Generate Daily Summary').item.json.underperformingCampaigns }} Underperforming 🔴\n\nTotal Spend: ${{ $('Generate Daily Summary').item.json.totalSpend }}\nTotal Conversions: {{ $('Generate Daily Summary').item.json.totalConversions }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.3
+		},
+		{
+			"id": "7936c950-f1d7-4f1a-9ea3-ea693a9955fd",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1552, 64],
+			"parameters": {
+				"width": 500,
+				"height": 572,
+				"content": "# 📊 PPC Campaign Intelligence System\n\nAutomatically monitors Google Ads campaigns daily, analyzes performance with AI scoring, and alerts your team about scaling opportunities or issues requiring attention.\n\n**AI Analysis:** Evaluates CTR, conversion rate, cost efficiency, and traffic volume to assign performance scores (0-100).\n\n**Setup:**\n- Connect Google Ads, Sheets, Slack, SMTP\n- Update spreadsheet IDs and Slack channels\n- Customize scoring thresholds in code\n- Adjust email recipients\n\n**Benefits:**\n- Never miss scaling opportunities\n- Catch underperforming campaigns early\n- Data-driven optimization decisions\n- Automated daily reporting\n\n*Built by Daniel Shashko*\n[Connect on LinkedIn](https://www.linkedin.com/in/daniel-shashko/)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ef8d2d41-a0ef-4b1d-818e-f5a7d7226537",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-992, 112],
+			"parameters": {
+				"width": 160,
+				"height": 96,
+				"content": "Triggers workflow automatically every morning at 9 AM daily"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fa399e33-4467-47c1-9348-cb158ee868a2",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-768, 112],
+			"parameters": {
+				"width": 160,
+				"height": 96,
+				"content": "Pulls all campaign metrics from Google Ads API"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fb6102c7-dc3e-4c25-971d-06466655d812",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-544, 112],
+			"parameters": {
+				"width": 160,
+				"height": 96,
+				"content": "Scores campaigns based on CTR, conversions, and cost efficiency\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0a0be77c-952d-4b11-ba26-65572a0e736a",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-320, 112],
+			"parameters": {
+				"width": 160,
+				"height": 96,
+				"content": "Splits campaigns into high-performers versus worst ones"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7ffd9913-010f-4cb0-9254-bbbb90871c2e",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-256, 432],
+			"parameters": {
+				"width": 160,
+				"height": 96,
+				"content": "Records all campaign data to historical log spreadsheet\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "81f36a32-5ee6-4dbf-b84e-b00677bb0264",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [128, -80],
+			"parameters": {
+				"width": 160,
+				"height": 96,
+				"content": "Logs daily metrics to Google Sheets performance tracking tab"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "19224e33-b214-421e-b867-73f7e8434669",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-272, -96],
+			"parameters": {
+				"width": 160,
+				"height": 128,
+				"content": "Sends Slack notification for excellent performing campaigns ready to scale"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a0a6c66c-167f-4bb7-9e88-d15abf368632",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-256, 624],
+			"parameters": {
+				"width": 160,
+				"height": 128,
+				"content": "Sends Slack warning for underperforming campaigns requiring immediate action\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1f7e7fcd-258b-4bc1-ba66-a6775f5b165c",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-96, 112],
+			"parameters": {
+				"width": 160,
+				"height": 96,
+				"content": "Creates customized email reports based on campaign performance tier\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "caa7a611-c83b-4936-bc34-86ee7a405754",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [128, 416],
+			"parameters": {
+				"width": 160,
+				"height": 96,
+				"content": "Sends personalized action plan emails to PPC team members\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a15c7d78-b442-4af0-a02c-97a46f8fc623",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [352, 16],
+			"parameters": {
+				"width": 160,
+				"height": 96,
+				"content": "Calculates total spend, conversions, and campaign distribution summary"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Generate Action Plan": {
+			"main": [
+				[
+					{
+						"node": "Email Performance Report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Route by Performance": {
+			"main": [
+				[
+					{
+						"node": "Update Campaign Dashboard",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Log All Campaigns",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Alert: Scale Opportunity",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Generate Action Plan",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Update Campaign Dashboard",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Log All Campaigns",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Alert: Issues Detected",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Generate Action Plan",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Daily Check": {
+			"main": [
+				[
+					{
+						"node": "Fetch Google Ads Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Google Ads Data": {
+			"main": [
+				[
+					{
+						"node": "AI Performance Analysis",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Performance Analysis": {
+			"main": [
+				[
+					{
+						"node": "Route by Performance",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Email Performance Report": {
+			"main": [
+				[
+					{
+						"node": "Generate Daily Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Campaign Dashboard": {
+			"main": [
+				[
+					{
+						"node": "Generate Daily Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

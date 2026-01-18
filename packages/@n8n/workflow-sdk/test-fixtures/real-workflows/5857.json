@@ -1,0 +1,387 @@
+{
+	"id": "SIDZ9gnOf5yEftvX",
+	"meta": {
+		"instanceId": "406735dbfbf26e97ce8cf19138586c11b62ae90e41ae49e03d25818ac92174c0",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "chat",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "6f6eb820-f3d4-4aa9-b856-1f327650924d",
+			"name": "OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [-882, -620],
+			"parameters": {
+				"text": "=Describe the content of the image or pdf in detail then wait for questions about it. Based on what is in the content, suggest 3 questions the user may ask",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "GPT-4O"
+				},
+				"options": {
+					"detail": "high"
+				},
+				"resource": "image",
+				"inputType": "base64",
+				"operation": "analyze",
+				"binaryPropertyName": "data0"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "64b1e72e-ad85-4759-8def-785ca524e468",
+			"name": "Basic LLM Chain",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [-584, -520],
+			"parameters": {
+				"text": "=Describe `{{ $json.content }}`\n\nUse the text from the chat to focus the response:\n`{{ $('chat').item.json.chatInput }}`",
+				"batching": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "16246a1a-2adb-4b41-809c-64e173738aba",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-496, -300],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "gpt-4o"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "00dafa35-ee47-4c21-8ba6-de6e139b5cba",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-584, -20],
+			"parameters": {
+				"text": "=You are an expert and will help the user with their query `{{ $(\"chat\").item.json.chatInput }}` about\n{{ $json.messages[$json.messages.length - 1].kwargs.content }}\n",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "39223440-863c-4285-9f27-edf971e953d1",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [-1180, -420],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "c9a2577d-0589-41ca-9480-2feda2dfbd9b",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.files[0].fileName }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "e1970f2b-1a01-4a11-bf65-9b3d9f0e2001",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-436, 200],
+			"parameters": {
+				"sessionKey": "={{ $('chat').item.json.sessionId }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "ee3533c1-f12a-4955-bcb8-a0618f80a67c",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-556, 200],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "gpt-4o"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "2bced281-2c19-407f-ad4b-53075667da17",
+			"name": "chatmem",
+			"type": "@n8n/n8n-nodes-langchain.memoryManager",
+			"position": [-584, -920],
+			"parameters": {
+				"mode": "insert",
+				"messages": {
+					"messageValues": [
+						{
+							"type": "ai",
+							"message": "={{ $json.content }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "d5622336-38c3-41f5-880c-a673a90c3ab3",
+			"name": "chatmem1",
+			"type": "@n8n/n8n-nodes-langchain.memoryManager",
+			"position": [-960, -20],
+			"parameters": {
+				"options": {},
+				"simplifyOutput": false
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "01d2fa3b-0d56-41a9-ad8a-c79c0038a9b8",
+			"name": "Simple Memory1",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-496, -700],
+			"parameters": {
+				"sessionKey": "={{ $(\"chat\").item.json.sessionId }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "417d63c5-3577-446c-844e-bdc9369571f1",
+			"name": "chat",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-1400, -420],
+			"webhookId": "80032670-58d5-4d08-a1cf-4d1c7aaeca75",
+			"parameters": {
+				"public": true,
+				"options": {
+					"allowFileUploads": true
+				},
+				"initialMessages": ""
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "9ac78a30-890a-46e7-9148-29795d8ce432",
+			"name": "Simple Memory2",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-872, 200],
+			"parameters": {
+				"sessionKey": "={{ $(\"chat\").item.json.sessionId }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "1e545980-1e75-436d-ad79-a4a434c6a7dd",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1520, -740],
+			"parameters": {
+				"width": 340,
+				"height": 480,
+				"content": "## Chat with thing\n\nThis n8n template lets you build a smart AI chat assistant that can handle text, images, and PDFs — using OpenAI's GPT-4o multimodal model. It supports dynamic conversations and file analysis, making it great for AI-driven support bots, personal assistants, or embedded chat widgets."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "11295c5b-fa66-4487-807c-2593991b48c0",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1100, -740],
+			"parameters": {
+				"content": "This route runs when an image/file/pdf is attached. It saves what it sees in the chatmem"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dee500b2-edba-4639-b505-d0bdec350c0f",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-360, -640],
+			"parameters": {
+				"content": "Use this node to set the conversation"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ac84b377-ce03-4a19-a5ed-6fd5952e702c",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-960, -160],
+			"parameters": {
+				"content": "This runs after the upload, it retrieves the initial content from the memory\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3dd32789-a317-44aa-9bc7-2b440a5e57f9",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-360, -140],
+			"parameters": {
+				"content": "This is the main chat, adjust the prompt to match your use case."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": true,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "5eb243f1-9afc-48c4-8d1f-d8d091615fab",
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "OpenAI",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "chatmem1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"chat": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI": {
+			"main": [
+				[
+					{
+						"node": "Basic LLM Chain",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "chatmem",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"chatmem1": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory1": {
+			"ai_memory": [
+				[
+					{
+						"node": "chatmem",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory2": {
+			"ai_memory": [
+				[
+					{
+						"node": "chatmem1",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Basic LLM Chain",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

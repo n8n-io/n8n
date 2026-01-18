@@ -1,0 +1,506 @@
+{
+	"id": "OvYZQiWH2KlJsFbK",
+	"meta": {
+		"instanceId": "da13b80f35ed9d16adbf337111fadd798f3c80e989940f27089cab3947e57699",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Multi-Agent Evaluation (eval nodes)",
+	"tags": [
+		{
+			"id": "iNuMk76zLx33FnPf",
+			"name": "multi-agent",
+			"createdAt": "2025-06-18T23:08:04.545Z",
+			"updatedAt": "2025-06-18T23:08:04.545Z"
+		},
+		{
+			"id": "shqG88dQ5QVQIPJI",
+			"name": "evaluation",
+			"createdAt": "2025-06-16T20:21:56.654Z",
+			"updatedAt": "2025-06-16T20:21:56.654Z"
+		}
+	],
+	"nodes": [
+		{
+			"id": "8e4721bf-8c21-4de3-ae92-97c627919e1b",
+			"name": "Calculator",
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"position": [-420, 160],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "4778f802-0d49-4e47-b153-6a721bec2214",
+			"name": "Check if tool called",
+			"type": "n8n-nodes-base.set",
+			"position": [540, -160],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "f31d1137-3262-4d46-979a-e9fc3c24f670",
+							"name": "tool_called",
+							"type": "boolean",
+							"value": "={{ \n  $('When fetching a dataset row').item.json.tools_to_call\n    .split(',').map(t => t.trim())\n    .every(tool => $json.intermediateSteps.some(step => step.action.tool.toLowerCase() === tool)) \n}}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "fdc479f2-b056-464d-842e-da7cc432cbf7",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-760, 40],
+			"webhookId": "6fde470e-c42b-4a89-974d-c3d21ab0133b",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "26ef423b-591f-4a0b-8abc-fdb308c75d3e",
+			"name": "Match chat format",
+			"type": "n8n-nodes-base.set",
+			"position": [-760, -160],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "3dec27ca-35df-47a7-9a53-d9b2d0b6c072",
+							"name": "chatInput",
+							"type": "string",
+							"value": "={{ $json.question }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "1d0fbac1-fb62-4b10-82c7-98d9b2a473c9",
+			"name": "Return chat response",
+			"type": "n8n-nodes-base.noOp",
+			"position": [536, 40],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "758baf05-8830-4693-9f3a-a370d9fd4dc8",
+			"name": "When fetching a dataset row",
+			"type": "n8n-nodes-base.evaluationTrigger",
+			"position": [-980, -160],
+			"parameters": {
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 969651976,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/18F1WIEq1ykZKBO1bWYhC0YxRb2ngTurfsZ7jO6sGhLY/edit#gid=969651976",
+					"cachedResultName": "Tool calling"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "18F1WIEq1ykZKBO1bWYhC0YxRb2ngTurfsZ7jO6sGhLY",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/18F1WIEq1ykZKBO1bWYhC0YxRb2ngTurfsZ7jO6sGhLY/edit?usp=drivesdk",
+					"cachedResultName": "n8n dataset for evaluation"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "33900d54-32e0-4883-9ce8-6565db389473",
+			"name": "Evaluation",
+			"type": "n8n-nodes-base.evaluation",
+			"position": [980, -160],
+			"parameters": {
+				"metrics": {
+					"assignments": [
+						{
+							"id": "5855df91-5a74-44f9-b25b-23a111dbd7a1",
+							"name": "tool_called",
+							"type": "number",
+							"value": "={{ $json.tool_called.toNumber() }}"
+						}
+					]
+				},
+				"operation": "setMetrics"
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "636b9b56-3ce3-4bc5-9dbd-42b77f2ce3a2",
+			"name": "Evaluating?",
+			"type": "n8n-nodes-base.evaluation",
+			"position": [320, -60],
+			"parameters": {
+				"operation": "checkIfEvaluating"
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "174de2c6-787a-4d87-9d0f-a72bc7accc3a",
+			"name": "Set Outputs",
+			"type": "n8n-nodes-base.evaluation",
+			"position": [760, -160],
+			"parameters": {
+				"outputs": {
+					"values": [
+						{
+							"outputName": "actual_tools_called",
+							"outputValue": "={{ $('Evaluating?').item.json.intermediateSteps.map(step => step.action.tool.toLowerCase()).join(', ') }}\n"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 969651976,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/18F1WIEq1ykZKBO1bWYhC0YxRb2ngTurfsZ7jO6sGhLY/edit#gid=969651976",
+					"cachedResultName": "Tool calling"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "18F1WIEq1ykZKBO1bWYhC0YxRb2ngTurfsZ7jO6sGhLY",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/18F1WIEq1ykZKBO1bWYhC0YxRb2ngTurfsZ7jO6sGhLY/edit?usp=drivesdk",
+					"cachedResultName": "n8n dataset for evaluation"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "38559de2-b143-4806-bd14-15015cf1e947",
+			"name": "Search Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-380, -60],
+			"parameters": {
+				"options": {
+					"systemMessage": "=You are a helpful assistant who will have access to a few tools to help with responding to user queries. I am providing some instructions below on how to use the tools. Please follow the instructions carefully.\n\nFirst, check the search_db tool to check whether the query exists. The tool expects a query string. If you use this tool and find relevant information, don't use the websearch tool.\n\nUse the web search tool to search the web for relevant information if you need to. You can ONLY call this tool once. \n\nUse the calculator for math operations or tasks. \n\nUse the summarizer tool to summarize the output. It's required to use this once you have gathered all the information you need.",
+					"returnIntermediateSteps": true
+				}
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "c2800f49-b091-4327-96c6-2c45782c670e",
+			"name": "Summarizer",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [-300, 160],
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "fehTbkLtPtlVwDYq",
+					"cachedResultName": "Summarizer Agent"
+				},
+				"description": "Call this tool to summarize the outputs. ",
+				"workflowInputs": {
+					"value": {
+						"query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('query', ``, 'string') }}"
+					},
+					"schema": [
+						{
+							"id": "query",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "query",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["query"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "fb37524f-9c88-4684-9f46-f558025d5e80",
+			"name": "Web search",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-180, 160],
+			"parameters": {
+				"url": "https://api.firecrawl.dev/v1/search",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "query",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+						},
+						{
+							"name": "limit",
+							"value": "={{ \"3\".toNumber() }}"
+						}
+					]
+				},
+				"genericAuthType": "httpBearerAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "content-type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "credential-id",
+					"name": "httpBearerAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "e15e9d58-dd8c-4288-b8fb-d8ef17df44a5",
+			"name": "OpenRouter Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+			"position": [-540, 160],
+			"parameters": {
+				"model": "openai/o3",
+				"options": {}
+			},
+			"credentials": {
+				"openRouterApi": {
+					"id": "credential-id",
+					"name": "openRouterApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "68b1c2fa-49f9-41d2-8d57-dc89c972d43a",
+			"name": "Embeddings OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [28, 360],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "090521fb-17f7-466f-8ae4-8f0d351f588a",
+			"name": "Search_db",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+			"position": [-60, 160],
+			"parameters": {
+				"mode": "retrieve-as-tool",
+				"options": {},
+				"toolDescription": "Retrievel relevant results",
+				"qdrantCollection": {
+					"__rl": true,
+					"mode": "list",
+					"value": "search_queries",
+					"cachedResultName": "search_queries"
+				}
+			},
+			"credentials": {
+				"qdrantApi": {
+					"id": "credential-id",
+					"name": "qdrantApi Credential"
+				}
+			},
+			"typeVersion": 1.3
+		}
+	],
+	"active": false,
+	"pinData": {
+		"When chat message received": [
+			{
+				"json": {
+					"chatInput": "What’s the most recent funding round for Anthropic?"
+				}
+			},
+			{
+				"json": {
+					"chatInput": "How much did OpenAI paid to acquire Windsurf? Take the results and multiply it by 1000."
+				}
+			}
+		]
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "4929985d-2b28-493e-901b-0a1c4a87fc12",
+	"connections": {
+		"Search_db": {
+			"ai_tool": [
+				[
+					{
+						"node": "Search Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator": {
+			"ai_tool": [
+				[
+					{
+						"node": "Search Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Summarizer": {
+			"ai_tool": [
+				[
+					{
+						"node": "Search Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Web search": {
+			"ai_tool": [
+				[
+					{
+						"node": "Search Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Evaluating?": {
+			"main": [
+				[
+					{
+						"node": "Check if tool called",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Return chat response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Outputs": {
+			"main": [
+				[
+					{
+						"node": "Evaluation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search Agent": {
+			"main": [
+				[
+					{
+						"node": "Evaluating?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Search_db",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Match chat format": {
+			"main": [
+				[
+					{
+						"node": "Search Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check if tool called": {
+			"main": [
+				[
+					{
+						"node": "Set Outputs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenRouter Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Search Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Search Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When fetching a dataset row": {
+			"main": [
+				[
+					{
+						"node": "Match chat format",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,830 @@
+{
+	"id": "E4pFNNNIatazgVPI",
+	"meta": {
+		"instanceId": "2000c64071c20843606b95c63795bb0797c41036047055a6586498e855b96efc"
+	},
+	"name": "Automated AI News Video Creation and Social Media Publishing With Postiz",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "5ffbcd0a-c7f3-4718-9073-e3484758669f",
+			"name": "When clicking 'Test workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-624, 784],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "ec1b8c65-3aec-4339-9313-be9675bf0413",
+			"name": "RSS Read",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-400, 784],
+			"parameters": {
+				"url": "http://rss.cnn.com/rss/edition.rss",
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7f1495af-bf4d-4415-b382-aac0e3920f9a",
+			"name": "Limit1",
+			"type": "n8n-nodes-base.limit",
+			"position": [16, 784],
+			"parameters": {},
+			"executeOnce": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "18d282ab-1d01-4b16-bcf4-13e68f1e9bf8",
+			"name": "Log news to sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [624, 784],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Guid": "={{ $json.guid }}",
+						"Link": "={{ $json.link }}",
+						"Title": "={{ $json.title }}",
+						"Content": "={{ $json.content }}",
+						"IsoDate": "={{ $json.isoDate }}",
+						"pubDate": "={{ $json.pubDate }}"
+					},
+					"mappingMode": "defineBelow"
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1UdfAbMMkJssMVu2qJy2swscL-dETUbjkervC08TYgFo"
+				}
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "a34ca38f-6dd6-432f-b537-c5d9751a33b7",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-608, 1040],
+			"parameters": {
+				"text": "=Generate a short, engaging caption (30–60 words) based on this news:\nTitle: {{ $json.Title }}\nContent: {{ $json.Content }}\n\nPlease provide just one caption that is concise and suitable for social media.",
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8710ad91-df58-4712-91f0-6f99d2f22cd9",
+			"name": "write script",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-576, 1344],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b882950d-8367-4b5a-a2f9-eb63371a6a80",
+			"name": "Parse Caption",
+			"type": "n8n-nodes-base.code",
+			"position": [-224, 1040],
+			"parameters": {
+				"jsCode": "const items = $input.all();\nconst scripts = items.map((item) => item.json.output);\nreturn [{ json: { scripts } }];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "ee185fd9-8289-4fd4-986d-03919e4d6dab",
+			"name": "Setup Heygen Parameters",
+			"type": "n8n-nodes-base.set",
+			"position": [16, 1040],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "7da6a496-0263-4723-9c08-1d15ed8ed28a",
+			"name": "Create Avatar Video (HeyGen)",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [272, 1040],
+			"parameters": {
+				"url": "https://api.heygen.com/v2/video/generate",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"video_inputs\": [\n    {\n      \"character\": {\n        \"type\": \"avatar\",\n        \"avatar_id\": \"{{ $json.avatar_id }}\",\n        \"avatar_style\": \"normal\"\n      },\n      \"voice\": {\n        \"type\": \"text\",\n        \"input_text\": \"{{ $json.caption }}\",\n        \"voice_id\": \"{{ $json.voice_id }}\",\n        \"speed\": 1.1\n      }\n    }\n  ],\n  \"dimension\": {\n    \"width\": 1280,\n    \"height\": 720\n  }\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "X-Api-Key",
+							"value": "={{ $json.heygen_api_key }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "471fc0e5-263a-450f-b642-98c066991556",
+			"name": "Wait for Video (HeyGen)",
+			"type": "n8n-nodes-base.wait",
+			"position": [480, 1040],
+			"webhookId": "d9404622-0a06-4a65-959e-badd4fd87465",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 2
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "556b79e0-a3a6-4534-bd68-19c330b2351c",
+			"name": "Get Avatar Video Status (HeyGen)",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [784, 1040],
+			"parameters": {
+				"url": "https://api.heygen.com/v1/video_status.get",
+				"options": {},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "video_id",
+							"value": "={{ $('Create Avatar Video (HeyGen)').item.json.data.video_id }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "X-Api-Key",
+							"value": "={{ $('Setup Heygen Parameters').item.json.heygen_api_key }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "a5834c43-4bca-456e-97b4-a7eedf4b3ebf",
+			"name": "Download Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-592, 1536],
+			"parameters": {
+				"url": "={{ $json.data.video_url }}",
+				"options": {}
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "bfc62fe4-58cd-40c9-8365-ad9bbc3a5f56",
+			"name": "Upload to Google Drive",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [-304, 1536],
+			"parameters": {
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "root"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "7b1b1dc9-85e1-481f-a102-0560ad185aa1",
+			"name": "Log Video Details to Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [16, 1536],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Title": "={{ $('Setup Heygen Parameters').item.json.news_title }}",
+						"video caption": "={{ $('Setup Heygen Parameters').item.json.caption }}",
+						"Heygen video url": "={{ $('Get Avatar Video Status (HeyGen)').item.json.data.video_url }}",
+						"Google Drive File ID": "={{ $('Upload to Google Drive').item.json.id }}"
+					},
+					"mappingMode": "defineBelow"
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1oA-YOUR_AWS_SECRET_KEY_HERE"
+				}
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "dcf670d4-7cc3-406c-ba1a-36cb501f98ed",
+			"name": "Upload Video to Postiz",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-688, 2000],
+			"parameters": {
+				"url": "https://postiz.yourdomain.com/api/public/v1/upload",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "file",
+							"parameterType": "formBinaryData",
+							"inputDataFieldName": "data"
+						}
+					]
+				},
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "45521d27-d9b9-4e3d-9ce1-bb0a36ed2989",
+			"name": "Get Postiz Integrations",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-464, 2000],
+			"parameters": {
+				"url": "https://postiz.yourdomain.com/api/public/v1/integrations",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "86490587-728e-4e9a-b9ea-3e3044d5c869",
+			"name": "Video Platform Router",
+			"type": "n8n-nodes-base.switch",
+			"position": [-240, 1984],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.identifier }}",
+										"rightValue": "instagram"
+									}
+								]
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.identifier }}",
+										"rightValue": "facebook"
+									}
+								]
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.identifier }}",
+										"rightValue": "youtube"
+									}
+								]
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "0386ca30-d554-4480-93b0-d2519851acc4",
+			"name": "Clean Instagram Caption",
+			"type": "n8n-nodes-base.code",
+			"position": [-16, 1808],
+			"parameters": {
+				"jsCode": "let content = $('Setup Heygen Parameters').item.json.caption;\n\nif (content) {\n  content = content\n    .replace(/[\\n\\r\\t]+/g, ' ')\n    .replace(/\\s{2,}/g, ' ')\n    .replace(/[\\\\'\"]/g, (match) => match === '\"' ? '\\\\\"' : \"'\")\n    .replace(/[\\\\]/g, '\\\\\\\\')\n    .trim();\n\n  const limit = 2200;\n  if (content.length > limit) {\n    content = content.substring(0, limit - 3) + '...';\n  }\n}\n\nreturn [{\n  json: {\n    ...items[0].json,\n    instagram_reel_caption: content\n  }\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "0d29320b-7d0c-4346-a48a-33908cea8706",
+			"name": "Instagram Video Publisher",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [208, 1808],
+			"parameters": {
+				"url": "https://postiz.yourdomain.com/api/public/v1/posts",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"type\": \"now\",\n  \"date\": \"{{ $now.plus(1, 'minute').toISO() }}\",\n  \"shortLink\": true,\n  \"tags\": [\n    { \"value\": \"instagram\", \"label\": \"Instagram\" }\n  ],\n  \"posts\": [\n    {\n      \"integration\": {\n        \"id\": \"{{ $json.id }}\"\n      },\n      \"value\": [\n        {\n          \"content\": \"{{ $('Clean Instagram Caption').item.json.instagram_reel_caption }}\",\n          \"video\": [\n            {\n              \"id\": \"1\",\n              \"path\": \"{{ $('Upload Video to Postiz').item.json.path }}\"\n            }\n          ]\n        }\n      ],\n      \"settings\": {\n        \"type\": \"post\"\n      }\n    }\n  ]\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "f6a1f484-979e-493f-b213-448765ac93be",
+			"name": "Clean Facebook Video Caption",
+			"type": "n8n-nodes-base.code",
+			"position": [-16, 2000],
+			"parameters": {
+				"jsCode": "let content = $('Setup Heygen Parameters').item.json.caption;\n\nif (content) {\n  content = content\n    .replace(/[\\n\\r\\t]+/g, ' ')\n    .replace(/\\s{2,}/g, ' ')\n    .replace(/[\\\\'\"]/g, (match) => match === '\"' ? '\\\\\"' : \"'\")\n    .replace(/[\\\\]/g, '\\\\\\\\')\n    .trim();\n\n  const limit = 63206;\n  if (content.length > limit) {\n    content = content.substring(0, limit - 3) + '...';\n  }\n}\n\nreturn [{\n  json: {\n    ...items[0].json,\n    facebook_video_caption: content\n  }\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "d301177f-e6ac-4b04-813d-05fd7ccf1cd1",
+			"name": "Facebook Video Publisher",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [208, 2000],
+			"parameters": {
+				"url": "https://postiz.yourdomain.com/api/public/v1/posts",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"type\": \"now\",\n  \"date\": \"{{ $now.plus(1, 'minute').toISO() }}\",\n  \"order\": \"\",\n  \"shortLink\": true,\n  \"inter\": 0,\n  \"tags\": [],\n  \"posts\": [\n    {\n      \"integration\": {\n        \"id\": \"{{ $json.id }}\"\n      },\n      \"value\": [\n        {\n          \"content\": \"{{ $('Clean Facebook Video Caption').item.json.facebook_video_caption }}\",\n          \"video\": [\n            {\n              \"id\": \"1\",\n              \"path\": \"{{ $('Upload Video to Postiz').item.json.path }}\"\n            }\n          ]\n        }\n      ],\n      \"settings\": {\n        \"type\": \"post\"\n      }\n    }\n  ]\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "ce67c70c-9ee2-4638-bdbd-c6f42ce442aa",
+			"name": "YouTube Video Publisher",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-16, 2192],
+			"parameters": {
+				"url": "https://postiz.yourdomain.com/api/public/v1/posts",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n \"type\": \"now\",\n \"date\": \"{{ $now.plus(1, 'minute').toISO() }}\",\n \"order\": \"\",\n \"shortLink\": true,\n \"inter\": 0,\n \"tags\": [],\n \"posts\": [\n   {\n     \"integration\": {\n       \"id\": \"{{ $json.id }}\"\n     },\n     \"value\": [\n       {\n         \"content\": \"{{ $('Setup Heygen Parameters').item.json.caption }}\",\n         \"video\": [\n           {\n             \"id\": \"1\",\n             \"path\": \"{{ $('Upload Video to Postiz').item.json.path }}\"\n           }\n         ]\n       }\n     ],\n     \"settings\": {\n       \"__type\": \"youtube\",\n       \"title\": \"{{ $('Setup Heygen Parameters').item.json.news_title }}\",\n       \"type\": \"public\",\n       \"tags\": [\"news\", \"AI\"],\n       \"categoryId\": \"22\",\n       \"madeForKids\": false\n     }\n   }\n ]\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "56c69cd0-bd0f-4392-878a-08c16bbfb899",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-864, 880],
+			"parameters": {
+				"width": 176,
+				"height": 128,
+				"content": "🚀 **Workflow Trigger:**\nThis node acts as the manual trigger for the entire workflow. When you click 'Execute Workflow' in n8n, this node initiates the process, fetching the latest news and starting the video generation and social media publishing pipeline. Ideal for testing and manual runs."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5bdcc1f2-c149-4f5c-a3bd-69e6b5d74c55",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-464, 528],
+			"parameters": {
+				"color": 4,
+				"height": 384,
+				"content": "📰 **News Feed Source:**\nConnects to the CNN Edition RSS feed (`http://rss.cnn.com/rss/edition.rss`) to pull the latest news articles. It extracts key information like the title, link, content, and publication date, serving as the raw data input for our AI content generation."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0e5b8f4e-ebd5-4adc-bb66-1f4a5fe973c9",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1056, 1712],
+			"parameters": {
+				"width": 448,
+				"height": 416,
+				"content": "⬆️ **Postiz Video Upload:**\nThis node is responsible for uploading the actual binary video file (received from 'Download Video') to your Postiz instance's internal storage (`https://postiz.yourdomain.com/api/public/v1/upload`). Postiz requires media to be hosted on its platform before it can be included in social media posts. The successful output of this node will provide a `path` to the uploaded video, which is crucial for subsequent publishing steps. Ensure your 'Postiz' HTTP Header Auth credential is correctly configured with your Postiz API key."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d83e0987-0d2e-4577-aa62-d9b00944711f",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [544, 560],
+			"parameters": {
+				"color": 4,
+				"height": 384,
+				"content": "📊 **News Article Logger (Google Sheets):**\nAppends the fetched news article details (Title, Link, Guid, pubDate, Content, IsoDate) to a specified Google Sheet ('RSS FEEDS' spreadsheet, 'Sheet1'). This provides a historical record and centralizes all news items processed by the workflow."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b507d9a4-ee7d-40ab-8c92-242c56122571",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-80, 528],
+			"parameters": {
+				"color": 5,
+				"height": 384,
+				"content": "⚡ **Data Limiter (For Testing/Control):**\nThis node is configured to limit the number of items processed from the RSS feed, typically to 1. This is crucial during development and testing to prevent processing too many news articles at once, saving API credits and execution time. Set `executeOnce` to true for single item processing."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7e56b046-a1e7-4790-8e12-9795b0d4ee0b",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [128, 1600],
+			"parameters": {
+				"color": 3,
+				"width": 496,
+				"height": 176,
+				"content": "📊 **Video Details Logger (Google Sheets):**\\nAppends a new row to your designated Google Sheet ('Avatar video' spreadsheet, 'Sheet1') with comprehensive details about the generated video. This includes the original HeyGen URL, the AI-generated caption, the news title, and the Google Drive File ID, creating a valuable record for tracking and auditing. Ensure your 'Google Sheets account 2' credential is valid."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b0479969-4ea3-471d-a49c-1cda3494152f",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-576, 1744],
+			"parameters": {
+				"color": 4,
+				"width": 368,
+				"height": 352,
+				"content": "🎯 **Dynamic Platform Routing (Video):**\nThis intelligent switch node dynamically routes the workflow to specific publishing branches based on the `identifier` of each social media integration fetched from Postiz. It directs the video content to the correct platform's dedicated cleaning and publishing logic (Instagram, Facebook, or YouTube), ensuring the right content goes to the right place."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2e9d3b33-bc69-4b65-85d3-02bf53b785df",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [512, 1840],
+			"parameters": {
+				"color": 7,
+				"width": 368,
+				"height": 128,
+				"content": "🧼 **Instagram Caption Cleaner (Video):**\nThis crucial code node sanitizes and formats the AI-generated caption specifically for Instagram video posts (Reels or regular videos). It performs essential cleaning by:\n- Replacing all line breaks, carriage returns, and tabs with single spaces.\n- Consolidating multiple spaces into single spaces.\n- **Escaping single and double quotes** (`'` and `\"`) and **backslashes** (`\\`) to prevent JSON parsing errors.\n- Trimming leading/trailing whitespace.\n- Enforcing **Instagram's 2200 character limit**, truncating the caption and adding '...' if exceeded. This prevents API errors and ensures your caption displays cleanly on Instagram."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5b994d79-0277-4cf8-ae05-a8298e8aee82",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-288, 1184],
+			"parameters": {
+				"content": "🧹 **Caption Extractor:**\nThis small code node processes the output from the 'AI Agent' to extract just the generated caption text. It simplifies the data structure, making it easier to reference the caption in subsequent nodes, particularly for passing it to HeyGen."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3a375cac-c4c4-4201-a6ca-79bc395505cb",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-960, 1056],
+			"parameters": {
+				"color": 4,
+				"content": "✍️ **Caption Generation AI:**\nUtilizes an AI agent (powered by the 'write script' node) to generate a short, engaging caption (30-60 words) for the news video. The prompt uses the news article's title and content to create relevant and concise text, essential for social media engagement."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "bfc15c14-2396-4b52-be10-3ee4a11fae7b",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [32, 1184],
+			"parameters": {
+				"content": "🔧 **HeyGen Configuration:**\nSets up the necessary parameters for the HeyGen video creation API call. This includes your HeyGen API key, the `avatar_id`, `voice_id`, the AI-generated `caption`, and the `news_title`. Remember to **replace the placeholder values** with your actual HeyGen credentials and desired avatar/voice IDs."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c1a1646c-ce7a-4cfb-b19e-2805f3e13831",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [976, 960],
+			"parameters": {
+				"color": 3,
+				"width": 544,
+				"height": 336,
+				"content": "🎬 **Video Generation (HeyGen API):**\nCalls the HeyGen API to generate a video using the specified avatar, voice, and the AI-generated caption. It sets the video dimensions and provides your HeyGen API key for authentication. This is where the news content is transformed into a visual format.\n\n⏳ **Video Processing Delay:**\nThis node introduces a deliberate wait period (2 minutes by default) to allow HeyGen to process and generate the video. Video generation can take time, so this pause is crucial to ensure the video is ready before attempting to download its status or the video itself. Adjust the duration as needed based on your video length and HeyGen's processing times.\n\n🔍 **Video Status Check (HeyGen):**\nPolls the HeyGen API to check the status of the generated video using its `video_id`. This is important to ensure the video generation is complete and successful ('completed' status) before attempting to download the actual video file. You can implement conditional logic after this node to retry or handle errors if the video is not yet ready or failed."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "bf6a9892-0661-4774-811c-0f4df7349d11",
+			"name": "Sticky Note13",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-576, 2192],
+			"parameters": {
+				"color": 4,
+				"width": 368,
+				"height": 208,
+				"content": "📸 **Publish to Instagram (Video):**\nThis node uses the Postiz API (`https://postiz.yourdomain.com/api/public/v1/posts`) to publish the video content to Instagram. It sends the cleaned caption from 'Clean Instagram Caption' and the `path` to the video previously uploaded to Postiz. It's configured for immediate posting ('now' type) and includes a generic 'instagram' tag for tracking. Ensure the correct Postiz credential is linked."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "28d3c92a-4178-4b78-a46c-e5b778977682",
+			"name": "Sticky Note14",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [400, 2064],
+			"parameters": {
+				"color": 7,
+				"width": 448,
+				"height": 144,
+				"content": "📺 **Publish to YouTube (Video):**\nThis node is responsible for publishing the generated video to YouTube via the Postiz API. It uses the `news_title` from 'Setup Heygen Parameters' as the YouTube video title and the original AI-generated `caption` as the video description. It directly references the Postiz `path` for the video (from 'Upload Video to Postiz') and sets YouTube-specific metadata such as `categoryId` (e.g., '22' for People & Blogs) and `tags` (e.g., 'news', 'AI'). It's set to 'public' visibility. Uses the 'Postiz' HTTP Header Auth credential."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "85f3fa47-0e66-45d4-84b3-01e2ab0bbef6",
+			"name": "Sticky Note15",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1840, 832],
+			"parameters": {
+				"color": 7,
+				"width": 704,
+				"height": 1136,
+				"content": "## 🤖 Automated AI News Video Creation and Social Media Publishing Workflow\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🎯 **PURPOSE:**\nThis workflow fully automates the creation and social media distribution of AI-generated news videos. It fetches news, crafts captions, generates avatar videos via HeyGen, stores them, and publishes them across Instagram, Facebook, and YouTube via Postiz.\n\n🔄 **WORKFLOW PROCESS:**\n1.  **News Fetching:** Reads the latest news from an RSS feed.\n2.  **AI Captioning:** Generates concise, engaging captions using an AI agent (GPT-4o-mini).\n3.  **Video Generation:** Creates an AI avatar video using HeyGen with the generated caption.\n4.  **Video Storage:** Downloads the video and uploads it to Google Drive for archival.\n5.  **Data Logging:** Records all news and video metadata into Google Sheets.\n6.  **Postiz Upload:** Uploads the video to Postiz's internal storage for publishing.\n7.  **Social Publishing:** Fetches Postiz integrations and routes the video to Instagram, Facebook, and YouTube after platform-specific content cleaning.\n\n⚙️ **KEY TECHNOLOGIES:**\n-   **RSS Feeds:** News source.\n-   **LangChain (n8n nodes):** AI Agent and Chat OpenAI for caption generation.\n-   **HeyGen API:** AI avatar video creation.\n-   **Google Drive:** Video file storage.\n-   **Google Sheets:** Data logging and tracking.\n-   **Postiz API:** Unified social media publishing platform.\n\n⚠️ **CRITICAL CONFIGURATIONS:**\n-   **API Keys:** Ensure HeyGen and Postiz API keys are correctly set in credentials and the 'Setup Heygen Parameters' node.\n-   **HeyGen IDs:** Verify `avatar_id` and `voice_id` in 'Setup Heygen Parameters'.\n-   **Postiz URL:** Confirm `https://postiz.yourdomain.com` is your correct Postiz instance URL across all HTTP Request nodes.\n-   **Credentials:** All Google, OpenAI, and Postiz credentials must be properly linked.\n\n📈 **BENEFITS:**\n-   Automated content creation and distribution, saving significant time.\n-   Consistent branding and messaging across multiple platforms.\n-   Centralized logging for tracking and performance analysis.\n-   Scalable solution for high-volume content demands.\n\n---"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "b5466f4c-5bcd-461f-bd9e-9865b994057b",
+	"connections": {
+		"Limit1": {
+			"main": [
+				[
+					{
+						"node": "Log news to sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Parse Caption",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RSS Read": {
+			"main": [
+				[
+					{
+						"node": "Limit1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"write script": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse Caption": {
+			"main": [
+				[
+					{
+						"node": "Setup Heygen Parameters",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Video": {
+			"main": [
+				[
+					{
+						"node": "Upload to Google Drive",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upload Video to Postiz",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Log news to sheets": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Video Platform Router": {
+			"main": [
+				[
+					{
+						"node": "Clean Instagram Caption",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Clean Facebook Video Caption",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "YouTube Video Publisher",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload Video to Postiz": {
+			"main": [
+				[
+					{
+						"node": "Get Postiz Integrations",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload to Google Drive": {
+			"main": [
+				[
+					{
+						"node": "Log Video Details to Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clean Instagram Caption": {
+			"main": [
+				[
+					{
+						"node": "Instagram Video Publisher",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Postiz Integrations": {
+			"main": [
+				[
+					{
+						"node": "Video Platform Router",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Setup Heygen Parameters": {
+			"main": [
+				[
+					{
+						"node": "Create Avatar Video (HeyGen)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Video (HeyGen)": {
+			"main": [
+				[
+					{
+						"node": "Get Avatar Video Status (HeyGen)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clean Facebook Video Caption": {
+			"main": [
+				[
+					{
+						"node": "Facebook Video Publisher",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Avatar Video (HeyGen)": {
+			"main": [
+				[
+					{
+						"node": "Wait for Video (HeyGen)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{
+						"node": "RSS Read",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Avatar Video Status (HeyGen)": {
+			"main": [
+				[
+					{
+						"node": "Download Video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

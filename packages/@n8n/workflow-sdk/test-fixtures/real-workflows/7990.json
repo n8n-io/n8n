@@ -1,0 +1,440 @@
+{
+	"meta": {
+		"instanceId": "61d1ceb8b60d551b2bd6cb318774870200f11403fbfe4e124bc9e07f08b20486",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "2c4bad91-3320-4906-af4d-7095733a9ebb",
+			"name": "Google Drive Trigger",
+			"type": "n8n-nodes-base.googleDriveTrigger",
+			"position": [0, 0],
+			"parameters": {
+				"event": "fileCreated",
+				"options": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				},
+				"triggerOn": "specificFolder",
+				"folderToWatch": {
+					"__rl": true,
+					"mode": "list",
+					"value": "12aSoGo009rsrhyJ_a4VP84m_NrWCsA3O",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/12aSoGo009rsrhyJ_a4VP84m_NrWCsA3O",
+					"cachedResultName": "Invoices"
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4e7873cf-4bf0-49cc-8961-b6822ddb7534",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [208, 0],
+			"parameters": {
+				"url": "=https://www.googleapis.com/drive/v3/files/{{ $json.id }}?alt=media",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file"
+						}
+					}
+				},
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "googleDriveOAuth2Api"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "8f95087b-ed1e-4724-b626-2e4e569b87db",
+			"name": "Extract text",
+			"type": "n8n-nodes-base.mistralAi",
+			"position": [416, 0],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"mistralCloudApi": {
+					"id": "credential-id",
+					"name": "mistralCloudApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fa981161-1090-44b0-ba3f-c94fe81c39a9",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [624, 0],
+			"parameters": {
+				"text": "=You are an expert in analyzing invoices.\n\nHere is an invoice that you should analyze: {{ $json.pages[0].markdown }}",
+				"options": {},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "891a6ece-adf2-43a0-8eaf-71d856abdf80",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [528, 208],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "442bba12-af49-4490-97d7-3d1f691bcfc2",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [832, 208],
+			"parameters": {
+				"jsonSchemaExample": "{\n\t\"invoiceNumber\": \"INV123\",\n\t\"From\": \"John street 23, 12443 Berlin, Germany\",\n    \"To\": \"Smith street 33, 23222 Berlin, Germany\",\n    \"invoiceDate\": \"20/08/2025\",\n    \"dueDate\": \"25/08/2025\",\n    \"shortDescription\": \"It is an invoice about web development costs\"\n}"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "a1c817d0-dccc-4666-9728-5f74107d5c1e",
+			"name": "Append row in sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [976, 0],
+			"parameters": {
+				"columns": {
+					"value": {
+						"To": "={{ $json.output.To }}",
+						"From": "={{ $json.output.From }}",
+						"Due Date": "={{ $json.output.dueDate }}",
+						"Invoice Date": "={{ $json.output.invoiceDate }}",
+						"Link to File": "={{ $('Google Drive Trigger').item.json.webViewLink }}",
+						"Invoice Number": "={{ $json.output.invoiceNumber }}",
+						"Short Description": "={{ $json.output.shortDescription }}"
+					},
+					"schema": [
+						{
+							"id": "Invoice Number",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Invoice Number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "From",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "From",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "To",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "To",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Invoice Date",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Invoice Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Due Date",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Due Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Short Description",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Short Description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Link to File",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Link to File",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/14tyy2at8ZtfoQq4zGYph4DG7omv9uA9aXGH5KnQbPgs/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "14tyy2at8ZtfoQq4zGYph4DG7omv9uA9aXGH5KnQbPgs",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/14tyy2at8ZtfoQq4zGYph4DG7omv9uA9aXGH5KnQbPgs/edit?usp=drivesdk",
+					"cachedResultName": "Invoices from Google Drive"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "276a2c56-5abe-41a4-87ab-4fa773c975a7",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-16, -208],
+			"parameters": {
+				"width": 352,
+				"content": "## n8n Starter Session Tutorial\n\n[Watch the Tutorials](https://www.youtube.com/playlist?list=PLWYu7XaUG3XOJwOOGiX89SQ_w67vw3dq7)\n\nTutor: [Aemal Sayer](https://aemalsayer.com)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {
+		"Google Drive Trigger": [
+			{
+				"id": "183ASCNGT8PPaktW3LsW7AuEx7lOPwNxf",
+				"kind": "drive#file",
+				"name": "Scanned 26. Aug 2025 at 14:57:04.pdf",
+				"size": "616505",
+				"owners": [
+					{
+						"me": true,
+						"kind": "drive#user",
+						"photoLink": "https://lh3.googleusercontent.com/a-/ALV-UjU3rGCBgLqN5suqepH1gVA9F-LgxKUnosIKwMTy9CdipsIOJUdyboXV5pHl_6VEC3S5odm5Ga1FNI9j95vj-IiFU-e5tCZ0C75qAFKRZ2-kMdWL7S769AhvsIAvlSQmm73cnIox1QfiV8slkP9yWVHPImEzgQj4O8faynPLmbR7CoVICMvNANlgdNkIyZ6XOr4KH5QTFvoYH1XCYF0SpznuUmrSx74jcZHmHvcB1SC7lhaxrW9mw30XOGTbaVnZUgnziG5Ep9N4S1JUtTsxK5yaCviOsJrePC20FA5E_Hpx2GjxkxwU6wkmqEmoGjJWm_7Fu_lH9y9tRbWN6W7-ZxdkSr3HLOUnkQK1JC7WxrSUuS-9W0_FHcxg9iAR5Nh0rHF-oAPpyQtDtm6WPbI3J2HaOSbmAthGDSrOW9562wp9ephXwneVdrzBuyelu_0Y5fHaEnSKTzBKL2EGWciO97WfIWET_uruCUMRk08LE0EvN1_-RRC8sRfmjSRzID0R59XIZ7F8-tSxGvkmSOdpKasbGgY3PtBLvwsgP4FtvrZLnmV22Umevr90CcoC-Ri9cp75mb9rMXUBMvGDD99fJzcZBIewX-awTVwKvMQHKZXeLkCwtbjUfki0qa8B3kcm1OVkTxLf2Y6SGBhQ4F5tugfy9skuWt2F-v_wWiBnP4vveY1_2ljmzY0Q9_hYBbGNf8AkJO7XTchcJ2LY7yPPQiD2kukORccq7_swpgT13rnwrBWn7jYOxmSFGOqEmi1nwWA2YtY3Gpnc7nH9XRBeoUt0DUkHrPXYOsEtb_Hv5mKz4o8NAFJ8Sh4Vnwojr134nk6HLROtAj1_q2A6uCUhkhipRLHSIht2gFcdAWSagkcOz2DTXLNlBBd_oPGEnbnQp0a5ryQ9sw4ZNDihit2L1cFtgI1hm5xmLa6NxpS_QbT0NJNH-TELiI4DBV2H_khf5pVQwt0QJqJ_h5kBbgessjCJfA4bHpKR=s64",
+						"displayName": "Aemal Sayer",
+						"emailAddress": "a@aemalsayer.com",
+						"permissionId": "16808739443574860847"
+					}
+				],
+				"shared": false,
+				"spaces": ["drive"],
+				"parents": ["12aSoGo009rsrhyJ_a4VP84m_NrWCsA3O"],
+				"starred": false,
+				"trashed": false,
+				"version": "5",
+				"iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/application/pdf",
+				"mimeType": "application/pdf",
+				"ownedByMe": true,
+				"viewedByMe": true,
+				"createdTime": "2025-08-26T12:57:17.619Z",
+				"md5Checksum": "a990e489170c3cb2d0ca0d7b300bdc47",
+				"permissions": [
+					{
+						"id": "16808739443574860847",
+						"kind": "drive#permission",
+						"role": "owner",
+						"type": "user",
+						"deleted": false,
+						"photoLink": "https://lh3.googleusercontent.com/a-/ALV-UjWuKFw8DRgWqBLpNd_iWpacVH39hr0AxUgrGi2gOFzzz_sSTCaSgxq3-XQs7Aw9cPhQVbMJRbUYD3qywRHSNiqIijYY9bUOSrlDbYlJDMafzVT3ltbGMaRL4dRfaDNwPk2hH1YRsIIiWAwxUP4OsgnlhlBLimF9fDM0fMIj0zzFiGwZSCIfYpDiVS-DOFQapM3e55ziAUxYobA4vOV5uQMDhcdXWmZbZOMlQNE0ss_nE50_YfFCxqAUqPozBUeh3VHv8mUTIsRbTkBmqVdZVrn_w9lgCjLAYTbFxNPnI_TWVatHK426loyJOPq5ig_OTm4tWbHpljK7KyOH5KsEVA7DEWe-Xdq9DYEbtUa4eae62vOuYATtmLcRSZxYfob9rDv33fTab9XK9Q84lrrBthv-tUsdT_NvlCZxzyOImjBFNJiD_8BMog19B5L-27cB68WHhszY-7X2vWjTJYbK4fr5fa8Kbm1I9JUnenT7UMqWPAbJWRAYss4xLhFd_RXGaKOhK20yBf1slFW5DQa6RE_nLeyeN7uvQJMvgnxeKxunVYNt5wFqcpYb5-avh1YFnZVK2EzdAK8bSdptw4qsbYzNwiNiftDgSiSgfP-rRuAklDqs_knEM_JjdpmM4gC6ytXp1AdLcQl7ApHxMQaZGq1eWpStYmDSQ1uYqW-SAuMKFhPr6_ORyMPWijI5mRooPaJx4QuEk_jGEw79_N6v5KainTp0KC64k_6KZI05ul0gbjL9Ip5qWa_OS640TAo6a93OL1oGZkDSCm991QNqn8-ILfKPwdWCGX71J4Nf45vU4L0GvBhe6sdtMomH24tFimJZXviz3ggQw4p-59560sqidB0Acc2NZ5JRw8wOTRnD33af2l2GzfyUwnKXe96NA_r0eCj4CGFzDUpnsu38d_0vAJiGd31x4I3fgsJHACZj8ycphZD5N330bNjuXfJw2_nGpawl1XNRp50wn6hQrXLCD2QBLDNu=s64",
+						"displayName": "Aemal Sayer",
+						"emailAddress": "a@aemalsayer.com",
+						"pendingOwner": false
+					}
+				],
+				"webViewLink": "https://drive.google.com/file/d/183ASCNGT8PPaktW3LsW7AuEx7lOPwNxf/view?usp=drivesdk",
+				"capabilities": {
+					"canCopy": true,
+					"canEdit": true,
+					"canShare": true,
+					"canTrash": true,
+					"canDelete": true,
+					"canRename": true,
+					"canComment": true,
+					"canUntrash": true,
+					"canDownload": true,
+					"canReadLabels": false,
+					"canAddChildren": false,
+					"canListChildren": false,
+					"canModifyLabels": false,
+					"canModifyContent": true,
+					"canReadRevisions": true,
+					"canRemoveChildren": false,
+					"canAcceptOwnership": false,
+					"canAddMyDriveParent": false,
+					"canMoveItemOutOfDrive": true,
+					"canMoveItemWithinDrive": true,
+					"canRemoveMyDriveParent": true,
+					"canMoveItemIntoTeamDrive": true,
+					"canMoveChildrenWithinDrive": false,
+					"canModifyContentRestriction": true,
+					"canRemoveContentRestriction": false,
+					"canEnableInheritedPermissions": true,
+					"canChangeSecurityUpdateEnabled": false,
+					"canChangeViewersCanCopyContent": true,
+					"canDisableInheritedPermissions": false,
+					"canChangeItemDownloadRestriction": true,
+					"canModifyOwnerContentRestriction": true,
+					"canModifyEditorContentRestriction": true,
+					"canChangeCopyRequiresWriterPermission": true
+				},
+				"hasThumbnail": true,
+				"modifiedByMe": true,
+				"modifiedTime": "2025-08-26T12:57:17.619Z",
+				"sha1Checksum": "722d6381ba4b6bbf664772fce7c8adb5c14b13ed",
+				"fileExtension": "pdf",
+				"permissionIds": ["16808739443574860847"],
+				"thumbnailLink": "https://lh3.googleusercontent.com/drive-storage/AJQWtBMCeb0uv0MKAgLmX5EUbnMQ621M4QvXyJ1jY3WfetG59AeMYBus8idzS5QkwCMWlOWwU9Bhy3BoxHwuXW_jtIWNdzTZ9zTkR5_iLRZC9wbpZT4=s220",
+				"headRevisionId": "0B33RssZRhj7COWFnVFlhRFU2V2tWMDYyVXFtUlYwczcwSm5vPQ",
+				"quotaBytesUsed": "616505",
+				"sha256Checksum": "c71b7d2c7ccf9dd1dd8e709c69980e331ff24b19e17fcf5c61d4e73b04cc4e6f",
+				"viewedByMeTime": "2025-08-26T13:49:02.572Z",
+				"webContentLink": "https://drive.google.com/uc?id=183ASCNGT8PPaktW3LsW7AuEx7lOPwNxf&export=download",
+				"isAppAuthorized": false,
+				"writersCanShare": true,
+				"modifiedByMeTime": "2025-08-26T12:57:17.619Z",
+				"originalFilename": "Scanned 26. Aug 2025 at 14:57:04.pdf",
+				"thumbnailVersion": "1",
+				"explicitlyTrashed": false,
+				"fullFileExtension": "pdf",
+				"lastModifyingUser": {
+					"me": true,
+					"kind": "drive#user",
+					"photoLink": "https://lh3.googleusercontent.com/a-/ALV-UjU3rGCBgLqN5suqepH1gVA9F-LgxKUnosIKwMTy9CdipsIOJUdyboXV5pHl_6VEC3S5odm5Ga1FNI9j95vj-IiFU-e5tCZ0C75qAFKRZ2-kMdWL7S769AhvsIAvlSQmm73cnIox1QfiV8slkP9yWVHPImEzgQj4O8faynPLmbR7CoVICMvNANlgdNkIyZ6XOr4KH5QTFvoYH1XCYF0SpznuUmrSx74jcZHmHvcB1SC7lhaxrW9mw30XOGTbaVnZUgnziG5Ep9N4S1JUtTsxK5yaCviOsJrePC20FA5E_Hpx2GjxkxwU6wkmqEmoGjJWm_7Fu_lH9y9tRbWN6W7-ZxdkSr3HLOUnkQK1JC7WxrSUuS-9W0_FHcxg9iAR5Nh0rHF-oAPpyQtDtm6WPbI3J2HaOSbmAthGDSrOW9562wp9ephXwneVdrzBuyelu_0Y5fHaEnSKTzBKL2EGWciO97WfIWET_uruCUMRk08LE0EvN1_-RRC8sRfmjSRzID0R59XIZ7F8-tSxGvkmSOdpKasbGgY3PtBLvwsgP4FtvrZLnmV22Umevr90CcoC-Ri9cp75mb9rMXUBMvGDD99fJzcZBIewX-awTVwKvMQHKZXeLkCwtbjUfki0qa8B3kcm1OVkTxLf2Y6SGBhQ4F5tugfy9skuWt2F-v_wWiBnP4vveY1_2ljmzY0Q9_hYBbGNf8AkJO7XTchcJ2LY7yPPQiD2kukORccq7_swpgT13rnwrBWn7jYOxmSFGOqEmi1nwWA2YtY3Gpnc7nH9XRBeoUt0DUkHrPXYOsEtb_Hv5mKz4o8NAFJ8Sh4Vnwojr134nk6HLROtAj1_q2A6uCUhkhipRLHSIht2gFcdAWSagkcOz2DTXLNlBBd_oPGEnbnQp0a5ryQ9sw4ZNDihit2L1cFtgI1hm5xmLa6NxpS_QbT0NJNH-TELiI4DBV2H_khf5pVQwt0QJqJ_h5kBbgessjCJfA4bHpKR=s64",
+					"displayName": "Aemal Sayer",
+					"emailAddress": "a@aemalsayer.com",
+					"permissionId": "16808739443574860847"
+				},
+				"linkShareMetadata": {
+					"securityUpdateEnabled": true,
+					"securityUpdateEligible": false
+				},
+				"downloadRestrictions": {
+					"itemDownloadRestriction": {
+						"restrictedForReaders": false,
+						"restrictedForWriters": false
+					},
+					"effectiveDownloadRestrictionWithContext": {
+						"restrictedForReaders": false,
+						"restrictedForWriters": false
+					}
+				},
+				"viewersCanCopyContent": true,
+				"copyRequiresWriterPermission": false,
+				"inheritedPermissionsDisabled": false
+			}
+		]
+	},
+	"connections": {
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Append row in sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract text": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "Extract text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Drive Trigger": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

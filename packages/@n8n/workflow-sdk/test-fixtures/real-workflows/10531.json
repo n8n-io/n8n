@@ -1,0 +1,562 @@
+{
+	"id": "I7d4x1yTzFgp0Eib",
+	"meta": {
+		"instanceId": "dd69efaf8212c74ad206700d104739d3329588a6f3f8381a46a481f34c9cc281",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Smart Inventory Replenishment & Auto-Purchase Orders",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "2557c5cc-2ee8-4241-ad2c-0e600d5923ed",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "=📋 WORKFLOW START\n\nThis workflow monitors inventory levels and automatically:\n1. Checks warehouse stock\n2. Analyzes sales velocity\n3. Forecasts demand using AI\n4. Creates purchase orders\n5. Sends POs to suppliers\n6. Logs everything in ERP\n\nConfigure your API credentials in each node!",
+			"position": [-224, -160],
+			"parameters": {
+				"width": 176,
+				"height": 736,
+				"content": "**\"🕐 SCHEDULE TRIGGER Runs every 6 hours to check inventory levels\nYou can adjust the interval:\n- Change 'hoursInterval' to run more less frequently  Use 'minutes' for faster testing This triggers the entire workflow automatically\"** to edit me. "
+			},
+			"notesInFlow": false,
+			"typeVersion": 1
+		},
+		{
+			"id": "ce149860-0f98-4be6-8fcc-fa7c6faf5b7d",
+			"name": "Fetch Current Inventory",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "📦 FETCH INVENTORY DATA\n\nRetrieves current stock levels from warehouse system\n\nTO CONFIGURE:\n1. Replace URL with your warehouse API endpoint\n2. Update Authorization token in headers\n3. Adjust method if needed (GET/POST)\n\nExpected Response Format:\n[\n  {\n    \"product_id\": \"SKU123\",\n    \"product_name\": \"Product A\",\n    \"current_stock\": 50,\n    \"reorder_point\": 20,\n    \"supplier_id\": \"SUP001\"\n  }\n]",
+			"position": [64, 384],
+			"parameters": {
+				"url": "https://your-warehouse-api.com/api/inventory",
+				"options": {},
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ecd3f434-b692-46d0-a9cc-ce98288a7e03",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "=📊 DATA COLLECTION PHASE\n\nGathering inventory & sales data from multiple sources\nBoth streams run in parallel for efficiency",
+			"position": [0, -176],
+			"parameters": {
+				"width": 176,
+				"height": 736,
+				"content": "**=📋 WORKFLOW START\nThis workflow monitors inventory levels and automatically:\n1. Checks warehouse stock\n2. Analyzes sales velocity\n3. Forecasts demand using AI\n4. Creates purchase orders\n5. Sends POs to suppliers\n6. Logs everything in ERP\n\nConfigure your API credentials in each node!\"** "
+			},
+			"notesInFlow": false,
+			"typeVersion": 1
+		},
+		{
+			"id": "faea64a7-28e5-4c09-acf1-cee765122357",
+			"name": "Fetch Sales Velocity",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "📊 FETCH SALES VELOCITY\n\nRetrieves sales data for the last 30 days\n\nTO CONFIGURE:\n1. Replace URL with your sales API endpoint\n2. Update Authorization token\n3. Adjust 'days' parameter (30, 60, 90)\n\nExpected Response Format:\n[\n  {\n    \"product_id\": \"SKU123\",\n    \"units_sold_30days\": 150,\n    \"avg_daily_sales\": 5,\n    \"trend\": \"increasing\"\n  }\n]",
+			"position": [288, 384],
+			"parameters": {
+				"url": "https://your-sales-api.com/api/sales/velocity",
+				"options": {},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "days",
+							"value": "30"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "4b00a73b-410c-48f1-bbb4-e8877477457f",
+			"name": "Merge Inventory & Sales Data",
+			"type": "n8n-nodes-base.code",
+			"notes": "🔗 MERGE DATA\n\nCombines inventory and sales data into single dataset\n\nThis code:\n1. Takes inventory data from first input\n2. Takes sales data from second input\n3. Matches products by product_id\n4. Creates unified data structure\n\nNO CONFIGURATION NEEDED\nThis node automatically processes the data",
+			"position": [512, 384],
+			"parameters": {
+				"jsCode": "// Merge inventory and sales data\nconst inventoryData = $input.first().json;\nconst salesData = $input.last().json;\n\n// Create a map of sales data by product_id\nconst salesMap = {};\nif (Array.isArray(salesData)) {\n  salesData.forEach(sale => {\n    salesMap[sale.product_id] = sale;\n  });\n} else {\n  salesMap[salesData.product_id] = salesData;\n}\n\n// Merge data\nconst mergedData = [];\nconst inventory = Array.isArray(inventoryData) ? inventoryData : [inventoryData];\n\ninventory.forEach(item => {\n  const salesInfo = salesMap[item.product_id] || {\n    units_sold_30days: 0,\n    avg_daily_sales: 0,\n    trend: 'stable'\n  };\n  \n  mergedData.push({\n    product_id: item.product_id,\n    product_name: item.product_name,\n    current_stock: item.current_stock,\n    reorder_point: item.reorder_point,\n    supplier_id: item.supplier_id,\n    units_sold_30days: salesInfo.units_sold_30days,\n    avg_daily_sales: salesInfo.avg_daily_sales,\n    trend: salesInfo.trend,\n    unit_cost: item.unit_cost || 0,\n    lead_time_days: item.lead_time_days || 7\n  });\n});\n\nreturn mergedData.map(item => ({ json: item }));"
+			},
+			"notesInFlow": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "a4a81ad5-6880-4b7f-adfe-29c7b84b1943",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "=🤖 AI ANALYSIS PHASE\n\nAI analyzes merged data to forecast demand and recommend reorder quantities\nMakes intelligent decisions based on trends and patterns",
+			"position": [224, -96],
+			"parameters": {
+				"width": 208,
+				"height": 640,
+				"content": "**\"📦 FETCH INVENTORY DATA\n\nRetrieves current stock levels from warehouse system\n\nTO CONFIGURE:\n.1 Replace URL with your warehouse API endpoint\n2. Update Authorization token in headers\n3. Adjust method if needed (GET/POST)\n\n"
+			},
+			"notesInFlow": false,
+			"typeVersion": 1
+		},
+		{
+			"id": "d76075f4-34bc-41f6-b4ac-4948d49f1725",
+			"name": "AI Demand Forecasting",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"notes": "🤖 AI DEMAND FORECASTING\n\nUses OpenAI GPT-4 to analyze data and forecast demand\n\nTO CONFIGURE:\n1. Add OpenAI API credentials in n8n\n2. Select model (gpt-4 or gpt-4-turbo)\n3. Temperature is set to 0.3 for consistent results\n\nThe AI considers:\n- Current stock levels\n- Sales velocity\n- Trends (increasing/decreasing)\n- Lead times\n- Reorder points\n\nOutputs recommendations in JSON format",
+			"position": [736, 384],
+			"parameters": {
+				"resource": "__CUSTOM_API_CALL__"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 1.3
+		},
+		{
+			"id": "dd60d6d1-584f-40c8-9dc0-662bfb07e003",
+			"name": "Parse AI Response",
+			"type": "n8n-nodes-base.code",
+			"notes": "🔍 PARSE AI RESPONSE\n\nExtracts and structures the AI forecast data\n\nThis code:\n1. Parses JSON from AI response\n2. Handles parsing errors gracefully\n3. Combines forecast with original data\n4. Prepares data for filtering\n\nNO CONFIGURATION NEEDED",
+			"position": [944, 384],
+			"parameters": {
+				"jsCode": "// Parse AI response and prepare data for filtering\nconst item = $input.first().json;\n\nlet aiResponse;\ntry {\n  // Try to parse the AI response\n  const content = item.message?.content || item.content || '{}';\n  aiResponse = typeof content === 'string' ? JSON.parse(content) : content;\n} catch (error) {\n  // If parsing fails, use defaults\n  aiResponse = {\n    should_reorder: false,\n    recommended_quantity: 0,\n    days_until_stockout: 999,\n    forecasted_demand_30days: 0,\n    confidence_level: 'low',\n    reasoning: 'Failed to parse AI response'\n  };\n}\n\n// Combine original data with AI forecast\nconst result = {\n  ...item,\n  ai_forecast: aiResponse,\n  should_reorder: aiResponse.should_reorder,\n  recommended_quantity: aiResponse.recommended_quantity,\n  days_until_stockout: aiResponse.days_until_stockout,\n  forecasted_demand_30days: aiResponse.forecasted_demand_30days,\n  confidence_level: aiResponse.confidence_level,\n  reasoning: aiResponse.reasoning\n};\n\nreturn { json: result };"
+			},
+			"notesInFlow": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "6ebb7486-72d7-4b24-bd1a-d009304ef851",
+			"name": "Filter: Reorder Needed",
+			"type": "n8n-nodes-base.filter",
+			"notes": "🎯 FILTER: REORDER NEEDED\n\nOnly passes items where AI recommends reordering\n\nCondition: should_reorder === true\n\nItems that pass continue to PO creation\nItems that fail are logged but no action taken\n\nNO CONFIGURATION NEEDED\nFilter is already set up correctly",
+			"position": [1168, 384],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $json.should_reorder }}",
+							"value2": true
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "1e1b1a6d-dcf1-4432-acbb-9e659a33f4c6",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "=📝 PURCHASE ORDER CREATION\n\nGenerating and submitting purchase orders\nAutomatically sends to suppliers and logs in systems",
+			"position": [1776, -320],
+			"parameters": {
+				"width": 192,
+				"height": 880,
+				"content": "**\"💾 LOG TO ERP SYSTEM\\n\\nRecords complete PO in your ERP system\\n\\nTO CONFIGURE:\\n1. Replace URL with your ERP API endpoint\\n   (SAP, Oracle, NetSuite, etc.)\\n2. Update Authorization credentials\\n3. Adjust body format for your ERP\\n\\nCommon ERP Systems:\\n- SAP Business One: /api/PurchaseOrders\\n- Oracle NetSuite: /services/rest/record/v1/purchaseOrder\\n- Odoo: /api/v2/purchase.order\\n- Microsoft Dynamics: /api/data/v9.0/purchaseorders\\n\\nLogs complete PO including forecast data\"**"
+			},
+			"notesInFlow": false,
+			"typeVersion": 1
+		},
+		{
+			"id": "4553aed7-261c-4616-bc96-10fdda53aba8",
+			"name": "Create Purchase Order",
+			"type": "n8n-nodes-base.code",
+			"notes": "📝 CREATE PURCHASE ORDER\n\nGenerates complete PO document\n\nThis code:\n1. Creates unique PO number with timestamp\n2. Calculates costs (quantity × unit cost)\n3. Sets delivery date based on lead time\n4. Includes all forecast data\n5. Adds AI reasoning as notes\n\nPO includes:\n- PO number, dates, supplier info\n- Product details and quantities\n- Cost calculations\n- Forecast confidence data\n\nNO CONFIGURATION NEEDED",
+			"position": [1392, 384],
+			"parameters": {
+				"jsCode": "// Generate Purchase Order\nconst items = $input.all();\n\nconst purchaseOrders = items.map((item, index) => {\n  const data = item.json;\n  \n  // Generate unique PO number\n  const poNumber = `PO-${Date.now()}-${String(index + 1).padStart(3, '0')}`;\n  \n  // Calculate order details\n  const quantity = data.recommended_quantity;\n  const unitCost = data.unit_cost || 0;\n  const totalCost = quantity * unitCost;\n  \n  // Create purchase order\n  const purchaseOrder = {\n    po_number: poNumber,\n    product_id: data.product_id,\n    product_name: data.product_name,\n    supplier_id: data.supplier_id,\n    quantity: quantity,\n    unit_cost: unitCost,\n    total_cost: totalCost,\n    currency: 'USD',\n    order_date: new Date().toISOString(),\n    expected_delivery: new Date(Date.now() + (data.lead_time_days * 24 * 60 * 60 * 1000)).toISOString(),\n    status: 'pending',\n    created_by: 'AI_System',\n    notes: data.reasoning,\n    forecast_data: {\n      current_stock: data.current_stock,\n      days_until_stockout: data.days_until_stockout,\n      forecasted_demand_30days: data.forecasted_demand_30days,\n      confidence_level: data.confidence_level\n    }\n  };\n  \n  return { json: purchaseOrder };\n});\n\nreturn purchaseOrders;"
+			},
+			"notesInFlow": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "8da308d4-0f2a-4ccc-844d-52476596d2f7",
+			"name": "Send PO to Supplier",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "📤 SEND TO SUPPLIER\n\nSends purchase order to supplier's system via API\n\nTO CONFIGURE:\n1. Replace URL with supplier API endpoint\n2. Update Authorization token\n3. Adjust body parameters to match supplier's format\n\nThis can also be configured to:\n- Send email instead of API call\n- Generate PDF and attach\n- Use multiple supplier endpoints\n\nExpected Response:\n{\n  \"status\": \"success\",\n  \"po_id\": \"SUP-PO-12345\",\n  \"confirmation\": \"Order received\"\n}",
+			"position": [1616, 384],
+			"parameters": {
+				"url": "https://your-supplier-api.com/api/purchase-orders",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "po_number",
+							"value": "={{ $json.po_number }}"
+						},
+						{
+							"name": "supplier_id",
+							"value": "={{ $json.supplier_id }}"
+						},
+						{
+							"name": "product_id",
+							"value": "={{ $json.product_id }}"
+						},
+						{
+							"name": "quantity",
+							"value": "={{ $json.quantity }}"
+						},
+						{
+							"name": "total_cost",
+							"value": "={{ $json.total_cost }}"
+						},
+						{
+							"name": "expected_delivery",
+							"value": "={{ $json.expected_delivery }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ec290c72-159c-4511-8d3e-8235c417d69b",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "=💾 LOGGING & NOTIFICATION\n\nRecording all transactions in ERP and database\nSending notifications to procurement team",
+			"position": [2000, -512],
+			"parameters": {
+				"width": 176,
+				"height": 1040,
+				"content": "**\"🗄️ SAVE TO DATABASE\\n\\nStores PO record in your database\\n\\nTO CONFIGURE:\\n1. Add database credentials in n8n\\n   (PostgreSQL, MySQL, etc.)\\n2. Adjust table name if different\\n3. Modify columns to match your schema\\n\\nDatabase Table Schema:\\nCREATE TABLE purchase_orders (\\n  id SERIAL PRIMARY KEY,\\n  po_number VARCHAR(50),\\n  product_id VARCHAR(50),\\n  product_name VARCHAR(255),\\n  supplier_id VARCHAR(50),\\n  quantity INT,\\n  unit_cost DECIMAL(10,2),\\n  total_cost DECIMAL(10,2),\\n  order_date TIMESTAMP,\\n  expected_delivery TIMESTAMP,\\n  status VARCHAR(20),\\n  created_by VARCHAR(50),\\n  notes TEXT,\\n  forecast_confidence VARCHAR(20),\\n  days_until_stockout INT,\\n  created_at TIMESTAMP DEFAULT NOW()\\n);\"** "
+			},
+			"notesInFlow": false,
+			"typeVersion": 1
+		},
+		{
+			"id": "66f9adca-d97d-4834-a0ac-bd8c0073b6e6",
+			"name": "Log to ERP System",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "💾 LOG TO ERP SYSTEM\n\nRecords complete PO in your ERP system\n\nTO CONFIGURE:\n1. Replace URL with your ERP API endpoint\n   (SAP, Oracle, NetSuite, etc.)\n2. Update Authorization credentials\n3. Adjust body format for your ERP\n\nCommon ERP Systems:\n- SAP Business One: /api/PurchaseOrders\n- Oracle NetSuite: /services/rest/record/v1/purchaseOrder\n- Odoo: /api/v2/purchase.order\n- Microsoft Dynamics: /api/data/v9.0/purchaseorders\n\nLogs complete PO including forecast data",
+			"position": [1824, 384],
+			"parameters": {
+				"url": "https://your-erp-system.com/api/purchase-orders",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "raw",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "bd21610c-e51a-4fce-ab50-7461e373eb1d",
+			"name": "Save to Database",
+			"type": "n8n-nodes-base.postgres",
+			"notes": "🗄️ SAVE TO DATABASE\n\nStores PO record in your database\n\nTO CONFIGURE:\n1. Add database credentials in n8n\n   (PostgreSQL, MySQL, etc.)\n2. Adjust table name if different\n3. Modify columns to match your schema\n\nDatabase Table Schema:\nCREATE TABLE purchase_orders (\n  id SERIAL PRIMARY KEY,\n  po_number VARCHAR(50),\n  product_id VARCHAR(50),\n  product_name VARCHAR(255),\n  supplier_id VARCHAR(50),\n  quantity INT,\n  unit_cost DECIMAL(10,2),\n  total_cost DECIMAL(10,2),\n  order_date TIMESTAMP,\n  expected_delivery TIMESTAMP,\n  status VARCHAR(20),\n  created_by VARCHAR(50),\n  notes TEXT,\n  forecast_confidence VARCHAR(20),\n  days_until_stockout INT,\n  created_at TIMESTAMP DEFAULT NOW()\n);",
+			"position": [2048, 384],
+			"parameters": {
+				"query": "INSERT INTO purchase_orders (\n  po_number, product_id, product_name, supplier_id,\n  quantity, unit_cost, total_cost, order_date,\n  expected_delivery, status, created_by, notes,\n  forecast_confidence, days_until_stockout\n) VALUES (\n  '{{ $json.po_number }}',\n  '{{ $json.product_id }}',\n  '{{ $json.product_name }}',\n  '{{ $json.supplier_id }}',\n  {{ $json.quantity }},\n  {{ $json.unit_cost }},\n  {{ $json.total_cost }},\n  '{{ $json.order_date }}',\n  '{{ $json.expected_delivery }}',\n  '{{ $json.status }}',\n  '{{ $json.created_by }}',\n  '{{ $json.notes }}',\n  '{{ $json.forecast_data.confidence_level }}',\n  {{ $json.forecast_data.days_until_stockout }}\n);",
+				"options": {},
+				"operation": "executeQuery"
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 2.4
+		},
+		{
+			"id": "a5f8ada1-934f-4d3f-8ded-7fa252ff4b1f",
+			"name": "Send Notification Email",
+			"type": "n8n-nodes-base.emailSend",
+			"notes": "📧 SEND NOTIFICATION\n\nSends email notification about created PO\n\nTO CONFIGURE:\n1. Add SMTP credentials in n8n Settings\n2. Set recipient email address\n3. Customize email template if needed\n\nSMTP Settings:\n- Host: smtp.gmail.com (for Gmail)\n- Port: 587 (TLS) or 465 (SSL)\n- Username: your-email@gmail.com\n- Password: your-app-password\n\nEmail includes:\n- PO details\n- Cost information\n- AI forecast data\n- Reasoning for order",
+			"position": [2272, 384],
+			"webhookId": "7a0fd77c-3bb7-47e4-a676-ee10fda316c7",
+			"parameters": {
+				"options": {},
+				"subject": "New Purchase Order Created: {{ $json.po_number }}",
+				"toEmail": "user@example.com",
+				"fromEmail": "user@example.com"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 2.1
+		},
+		{
+			"id": "b913e503-8d3f-41df-a077-31d23a25d123",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "=✅ WORKFLOW COMPLETE\n\nThe automated inventory management cycle is finished!\nThe workflow will run again in 6 hours.\n\nMonitor execution logs to track:\n- Number of POs created\n- Total spending\n- AI forecast accuracy\n- System errors or issues",
+			"position": [2224, -320],
+			"parameters": {
+				"height": 864,
+				"content": "**📧 SEND NOTIFICATION\\n\\nSends email notification about created PO\\n\\nTO CONFIGURE:\\n1. Add SMTP credentials in n8n Settings\\n2. Set recipient email address\\n3. Customize email template if needed\\n\\nSMTP Settings:\\n- Host: smtp.gmail.com (for Gmail)\\n- Port: 587 (TLS) or 465 (SSL)\\n- Username: your-email@gmail.com\\n- Password: your-app-password\\n\\nEmail includes:\\n- PO details\\n- Cost information\\n- AI forecast data\\n- Reasoning for order\"** "
+			},
+			"notesInFlow": false,
+			"typeVersion": 1
+		},
+		{
+			"id": "2e6af9a9-6c12-4a76-a464-dc62d28df0dd",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"notes": "🕐 SCHEDULE TRIGGER\n\nRuns every 6 hours to check inventory levels\n\nYou can adjust the interval:\n- Change 'hoursInterval' to run more/less frequently\n- Use 'minutes' for faster testing\n\nThis triggers the entire workflow automatically",
+			"position": [-144, 384],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours",
+							"hoursInterval": 6
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 1.2
+		},
+		{
+			"id": "2d8144d0-9217-41ba-a88a-717f7e1b04bd",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1552, -144],
+			"parameters": {
+				"width": 208,
+				"height": 720,
+				"content": "**\"📤 SEND TO SUPPLIER\\n\\nSends purchase order to supplier's system via API\\n\\nTO CONFIGURE:\\n1. Replace URL with supplier API endpoint\\n2. Update Authorization token\\n3. Adjust body parameters to match supplier's format\\n\\nThis can also be configured to:\\n- Send email instead of API call\\n- Generate PDF and attach\\n- Use multiple supplier endpoints\\n\\nExpected Response:\\n{\\n  \\\"status\\\": \\\"success\\\",\\n  \\\"po_id\\\": \\\"SUP-PO-12345\\\",\\n  \\\"confirmation\\\": \\\"Order received\\\"\\n}\"**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f36301eb-44bb-47d4-88e4-2cf81a7862e8",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1328, -96],
+			"parameters": {
+				"width": 208,
+				"height": 672,
+				"content": "**\"📝 CREATE PURCHASE ORDER\\n\\nGenerates complete PO document\\n\\nThis code:\\n1. Creates unique PO number with timestamp\\n2. Calculates costs (quantity × unit cost)\\n3. Sets delivery date based on lead time\\n4. Includes all forecast data\\n5. Adds AI reasoning as notes\\n\\nPO includes:\\n- PO number, dates, supplier info\\n- Product details and quantities\\n- Cost calculations\\n- Forecast confidence data\\n\\nNO CONFIGURATION NEEDED\"**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0437128d-5f64-4d49-8959-13dc61063aa5",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1104, 32],
+			"parameters": {
+				"width": 208,
+				"height": 496,
+				"content": "**\"🎯 FILTER: REORDER NEEDED\\n\\nOnly passes items where AI recommends reordering\\n\\nCondition: should_reorder === true\\n\\nItems that pass continue to PO creation\\nItems that fail are logged but no action taken\\n\\nNO CONFIGURATION NEEDED\\nFilter is already set up correctly\"** "
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8d7b14bd-8b60-427d-8f6e-07ddc65c4f0f",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [896, 0],
+			"parameters": {
+				"width": 192,
+				"height": 528,
+				"content": "**\"🔍 PARSE AI RESPONSE\\n\\nExtracts and structures the AI forecast data\\n\\nThis code:\\n1. Parses JSON from AI response\\n2. Handles parsing errors gracefully\\n3. Combines forecast with original data\\n4. Prepares data for filtering\\n\\nNO CONFIGURATION NEEDED\"**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3bc777c7-7bf4-4b9c-8f2b-842a8bb5abed",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [688, -80],
+			"parameters": {
+				"width": 176,
+				"height": 640,
+				"content": "**\"🤖 AI DEMAND FORECASTING\\n\\nUses OpenAI GPT-4 to analyze data and forecast demand\\n\\nTO CONFIGURE:\\n1. Add OpenAI API credentials in n8n\\n2. Select model (gpt-4 or gpt-4-turbo)\\n3. Temperature is set to 0.3 for consistent results\\n\\nThe AI considers:\\n- Current stock levels\\n- Sales velocity\\n- Trends (increasing/decreasing)\\n- Lead times\\n- Reorder points\\n\\nOutputs recommendations in JSON format\"** "
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "36d7a838-5302-486f-867f-f1c07fb08465",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [480, -96],
+			"parameters": {
+				"width": 160,
+				"height": 672,
+				"content": "*\"🔗 MERGE DATA\\n\\nCombines inventory and sales data into single dataset\\n\\nThis code:\\n1. Takes inventory data from first input\\n2. Takes sales data from second input\\n3. Matches products by product_id\\n4. Creates unified data structure\\n\\nNO CONFIGURATION NEEDED\\nThis node automatically processes the data\"** "
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "779815b0-7a62-4b80-b984-f7ca3a2be22d",
+	"connections": {
+		"Save to Database": {
+			"main": [
+				[
+					{
+						"node": "Send Notification Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Fetch Current Inventory",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Log to ERP System": {
+			"main": [
+				[
+					{
+						"node": "Save to Database",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse AI Response": {
+			"main": [
+				[
+					{
+						"node": "Filter: Reorder Needed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send PO to Supplier": {
+			"main": [
+				[
+					{
+						"node": "Log to ERP System",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Demand Forecasting": {
+			"main": [
+				[
+					{
+						"node": "Parse AI Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Purchase Order": {
+			"main": [
+				[
+					{
+						"node": "Send PO to Supplier",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter: Reorder Needed": {
+			"main": [
+				[
+					{
+						"node": "Create Purchase Order",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Current Inventory": {
+			"main": [
+				[
+					{
+						"node": "Fetch Sales Velocity",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge Inventory & Sales Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge Inventory & Sales Data": {
+			"main": [
+				[
+					{
+						"node": "AI Demand Forecasting",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

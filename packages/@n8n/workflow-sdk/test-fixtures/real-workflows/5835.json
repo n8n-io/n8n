@@ -1,0 +1,766 @@
+{
+	"id": "823lWldG0eG7Wp63",
+	"meta": {
+		"instanceId": "a4bfc93e975ca233ac45ed7c9227d84cf5a2329310525917adaf3312e10d5462",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Create Cheaper Video with Google Veo3 Fast and Upload to Social",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "c1240b96-5a7f-4083-b9b4-daabb2c5710c",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-224, 848],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "91219e34-506c-47b9-8265-70dac7300295",
+			"name": "Get status",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [848, 848],
+			"parameters": {
+				"url": "=https://queue.fal.run/fal-ai/veo3/requests/{{ $('Create Video').item.json.request_id }}/status ",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "033b0b85-7a84-4363-ba5e-02c1827a610c",
+			"name": "Wait 60 sec.",
+			"type": "n8n-nodes-base.wait",
+			"position": [672, 848],
+			"webhookId": "dd2c8c62-38f1-4e89-b047-6202e34525ac",
+			"parameters": {
+				"amount": 60
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "b0f922cc-3356-4580-832f-53b3e0c13c95",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-224, 704],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "1da61594-c860-4b6e-a588-93f21b146d53",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-224, -480],
+			"parameters": {
+				"color": 3,
+				"width": 740,
+				"height": 312,
+				"content": "# Generate Cheaper AI Videos (with audio), using Veo3 Fast and Upload to YouTube/TikTok\n\nThis workflow allows users to **generate AI videos** using cheaper model **Google Veo3 Fast**, save them to **Google Drive**, generate optimized YouTube titles with GPT-4o, and **automatically upload them to YouTube** . The entire process is triggered from a Google Sheet that acts as the central interface for input and output.\n\nIT automates video creation, uploading, and tracking, ensuring seamless integration between Google Sheets, Google Drive, Google Veo3, and YouTube.\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f07ee239-5eab-408b-9b32-b5ccd23e67a8",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-224, -144],
+			"parameters": {
+				"width": 740,
+				"height": 200,
+				"content": "## STEP 1 - GOOGLE SHEET\nCreate a [Google Sheet like this](https://docs.google.com/spreadsheets/d/1pcoY9N_vQp44NtSRR5eskkL5Qd0N0BGq7Jh_4m-7VEQ/edit?usp=sharing).\n\nPlease insert:\n- in the \"PROMPT\" column the accurate description of the video you want to create\n- in the \"DURATION\" column the lenght of the video you want to create\n\nLeave the \"VIDEO\" column unfilled. It will be inserted by the system once the video has been created"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7fadd373-e9f7-4ec7-8e17-b8d6b0e5cc4a",
+			"name": "Completed?",
+			"type": "n8n-nodes-base.if",
+			"position": [1024, 848],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "383d112e-2cc6-4dd4-8985-f09ce0bd1781",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.status }}",
+							"rightValue": "COMPLETED"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "e11dcb24-db2c-4a7d-98a5-da9f82617f2c",
+			"name": "Update result",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [864, 1104],
+			"parameters": {
+				"columns": {
+					"value": {
+						"VIDEO": "={{ $('Get Url Video').item.json.video.url }}",
+						"row_number": "={{ $('Get new video').item.json.row_number }}"
+					},
+					"schema": [
+						{
+							"id": "PROMPT",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "PROMPT",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "DURATION",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "DURATION",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "VIDEO",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "VIDEO",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "YOUTUBE_URL",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "YOUTUBE_URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["row_number"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/11ebWJvwwXHgvQld9kxywKQUvIoBw6xMa0g0BuIqHDxE/edit#gid=0",
+					"cachedResultName": "Foglio1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1pcoY9N_vQp44NtSRR5eskkL5Qd0N0BGq7Jh_4m-7VEQ",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pcoY9N_vQp44NtSRR5eskkL5Qd0N0BGq7Jh_4m-7VEQ/edit?usp=drivesdk",
+					"cachedResultName": "Video Google Veo3"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "3c64cedb-e28f-44b9-919c-d0005e504189",
+			"name": "Set data",
+			"type": "n8n-nodes-base.set",
+			"position": [224, 848],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "c713d31f-9abd-496a-ac79-e8e2efe60aa0",
+							"name": "prompt",
+							"type": "string",
+							"value": "={{ $json.PROMPT }}\n\nDuration of the video: {{ $json.DURATION }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "29c7b76e-3532-4bb3-8725-f7d885977943",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-224, 560],
+			"parameters": {
+				"width": 740,
+				"height": 100,
+				"content": "## STEP 4 - MAIN FLOW\nStart the workflow manually or periodically by hooking the \"Schedule Trigger\" node. It is recommended to set it at 5 minute intervals."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ae1b1b70-72ab-4e54-a761-c9bfacff7d32",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-224, 112],
+			"parameters": {
+				"width": 740,
+				"height": 140,
+				"content": "## STEP 2 - GET API KEY (YOURAPIKEY)\nCreate an account [here](https://fal.ai/) and obtain API KEY.\nIn the node \"Create Image\" set \"Header Auth\" and set:\n- Name: \"Authorization\"\n- Value: \"Key YOURAPIKEY\""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "123016dc-48f4-4088-a96a-bdc4579e5943",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [400, 784],
+			"parameters": {
+				"width": 180,
+				"height": 200,
+				"content": "Set API Key created in Step 2"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8a572767-c418-4765-8ced-9ec2d70abbbb",
+			"name": "Get new video",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [0, 848],
+			"parameters": {
+				"options": {},
+				"filtersUI": {
+					"values": [
+						{
+							"lookupColumn": "VIDEO"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pcoY9N_vQp44NtSRR5eskkL5Qd0N0BGq7Jh_4m-7VEQ/edit#gid=0",
+					"cachedResultName": "Foglio1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1pcoY9N_vQp44NtSRR5eskkL5Qd0N0BGq7Jh_4m-7VEQ",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pcoY9N_vQp44NtSRR5eskkL5Qd0N0BGq7Jh_4m-7VEQ/edit?usp=drivesdk",
+					"cachedResultName": "Video Google Veo3"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "4db8431d-7dc7-49ed-9216-731cbdb52c7e",
+			"name": "Create Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [448, 848],
+			"parameters": {
+				"url": "https://queue.fal.run/fal-ai/veo3/fast",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n     \"prompt\": \"{{$json.prompt}}\"\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "fee900ba-5595-41d1-8fdb-15db3b059a53",
+			"name": "Get Url Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-224, 1232],
+			"parameters": {
+				"url": "=https://queue.fal.run/fal-ai/veo3/requests/{{ $json.request_id }}",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "dfbe979b-9efb-480d-b41b-3b2d60c217d3",
+			"name": "Get File Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [400, 1232],
+			"parameters": {
+				"url": "={{ $('Get Url Video').item.json.video.url }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "0042395d-2ede-4dff-9530-c5b4729bb931",
+			"name": "Upload Video",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [688, 1104],
+			"parameters": {
+				"name": "={{ $now.format('yyyyLLddHHmmss') }}-{{ $('Get Url Video').item.json.video.file_name }}",
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1aHRwLWyrqfzoVC8HoB-YMrBvQ4tLC-NZ",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/1aHRwLWyrqfzoVC8HoB-YMrBvQ4tLC-NZ",
+					"cachedResultName": "Fal.run"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "db260ed7-1495-4423-9e3d-ca3c538c24b6",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [688, 1328],
+			"parameters": {
+				"url": "https://api.upload-post.com/api/upload",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "title",
+							"value": "={{ $('Generate title').item.json.message.content }}"
+						},
+						{
+							"name": "user",
+							"value": "YOUR_USERNAME"
+						},
+						{
+							"name": "platform[]",
+							"value": "youtube"
+						},
+						{
+							"name": "video",
+							"parameterType": "formBinaryData",
+							"inputDataFieldName": "data"
+						}
+					]
+				},
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "d70339f6-50ba-4287-80d0-2eea7b442bf5",
+			"name": "Generate title",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [32, 1232],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini",
+					"cachedResultName": "GPT-4O-MINI"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=Input: {{ $('Get new video').item.json.PROMPT }}"
+						},
+						{
+							"role": "system",
+							"content": "You are a YouTube SEO expert specialized in creating engaging and optimized titles.\n\nYour task is to generate an effective title for a YouTube video based on the user's video description.\n\nGUIDELINES:\n- Maximum 60 characters to avoid truncation\n- Use relevant keywords for SEO\n- Make the title catchy and clickable\n- Avoid excessive or misleading clickbait\n- Consider the target audience of the content\n- Use numbers, questions, or power words when appropriate\n- IMPORTANT: Generate the title in the same language as the input description\n\nOUTPUT FORMAT:\nProvide only the title, without additional explanations.\n\nEXAMPLE:\nInput: \"Tutorial video on how to cook perfect pasta carbonara\"\nOutput: \"PERFECT Carbonara in 10 Minutes - Chef's Secrets\""
+						}
+					]
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "8e3b8953-ae08-4c94-b3dc-c5def40b7d5c",
+			"name": "Update Youtube URL",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [864, 1328],
+			"parameters": {
+				"columns": {
+					"value": {
+						"row_number": "={{ $('Get new video').item.json.row_number }}",
+						"YOUTUBE_URL": "=https://youtu.be/{{ $json.results.youtube.video_id }}"
+					},
+					"schema": [
+						{
+							"id": "PROMPT",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "PROMPT",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "DURATION",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "DURATION",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "VIDEO",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "VIDEO",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "YOUTUBE_URL",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "YOUTUBE_URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["row_number"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/11ebWJvwwXHgvQld9kxywKQUvIoBw6xMa0g0BuIqHDxE/edit#gid=0",
+					"cachedResultName": "Foglio1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1pcoY9N_vQp44NtSRR5eskkL5Qd0N0BGq7Jh_4m-7VEQ",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pcoY9N_vQp44NtSRR5eskkL5Qd0N0BGq7Jh_4m-7VEQ/edit?usp=drivesdk",
+					"cachedResultName": "Video Google Veo3"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "4dfadc00-0730-4a5f-827a-be278cdb82bd",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [672, 1264],
+			"parameters": {
+				"width": 180,
+				"height": 408,
+				"content": "Set YOUR_USERNAME in Step 3"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "52e444a8-3b7b-4dd5-af17-6ceabdcd4ec4",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-224, 288],
+			"parameters": {
+				"width": 740,
+				"height": 232,
+				"content": "## STEP 3 - Upload video on Youtube\n- Find your API key in your [Upload-Post Manage Api Keys](https://www.upload-post.com/?linkId=lp_144414&sourceId=n3witalia&tenantId=upload-post-app) 10 FREE uploads per month\n- Set the the \"Auth Header\":\n-- Name: Authorization\n-- Value: Apikey YOUR_API_KEY_HERE\n- Create profiles to manage your social media accounts. The \"Profile\" you choose will be used in the field YOUR_USRNAME (eg. test1 or test2).  \n\n\nThe free plan allows uploads to all platforms except TikTok. To enable, please upgrade to a paid plan."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "01315b32-2a78-4e23-87a5-13250324f635",
+			"name": "Upload on TikTok",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [688, 1520],
+			"parameters": {
+				"url": "https://api.upload-post.com/api/upload",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "title",
+							"value": "={{ $('Generate title').item.json.message.content }}"
+						},
+						{
+							"name": "user",
+							"value": "YOUR_USERNAME"
+						},
+						{
+							"name": "platform[]",
+							"value": "tiktok"
+						},
+						{
+							"name": "video",
+							"parameterType": "formBinaryData",
+							"inputDataFieldName": "data"
+						}
+					]
+				},
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "a8aa8b0f-aa99-4bce-b759-b7acc735164e",
+	"connections": {
+		"Set data": {
+			"main": [
+				[
+					{
+						"node": "Create Video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Completed?": {
+			"main": [
+				[
+					{
+						"node": "Get Url Video",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait 60 sec.",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get status": {
+			"main": [
+				[
+					{
+						"node": "Completed?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Video": {
+			"main": [
+				[
+					{
+						"node": "Wait 60 sec.",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "Update Youtube URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload Video": {
+			"main": [
+				[
+					{
+						"node": "Update result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait 60 sec.": {
+			"main": [
+				[
+					{
+						"node": "Get status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Url Video": {
+			"main": [
+				[
+					{
+						"node": "Generate title",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get new video": {
+			"main": [
+				[
+					{
+						"node": "Set data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update result": {
+			"main": [[]]
+		},
+		"Generate title": {
+			"main": [
+				[
+					{
+						"node": "Get File Video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get File Video": {
+			"main": [
+				[
+					{
+						"node": "Upload Video",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upload on TikTok",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get new video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

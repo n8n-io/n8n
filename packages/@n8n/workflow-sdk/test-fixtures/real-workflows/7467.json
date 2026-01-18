@@ -1,0 +1,455 @@
+{
+	"id": "HVThZXxmw59rTi0T",
+	"meta": {
+		"instanceId": "9a562c06a632241f66aadd52a495ad98e76b760ef5cfce9c319a4759c47cd94e",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "LeadBot Autopilot: Chat-to-Lead for Salesforce Automation",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "0e189df7-1be1-4ec7-aca1-0810787c426d",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-940, -140],
+			"webhookId": "67253c51-a3e8-4657-bf6e-e65174788ecb",
+			"parameters": {
+				"public": true,
+				"options": {},
+				"initialMessages": "Hi! I'm LeadBot. I'll help you submit your interest. Let's start with your full name."
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "ca3d5237-58be-48ad-8f22-2c02ce62b882",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-240, -120],
+			"parameters": {
+				"options": {
+					"systemMessage": "You are a friendly and efficient chatbot named LeadBot, designed to replace web forms. Your goal is to collect information conversationally: Full Name, Email, Mobile Phone, and Product Interest. Guide the user step-by-step, asking one piece of info at a time. Be polite, confirm inputs, and handle corrections.\nRules:\n\nStart by greeting and explaining: \"Hi! I'm LeadBot. I'll help you submit your interest. Let's start with your full name.\"\nCollect in order: Name → Email (validate format) → Mobile Phone (validate as phone number) → Product Interest ([\"CRM Software\", \"Marketing Automation\"] – present as options).\nAfter Email: Always use the 'check_duplicate_lead' tool to search for existing records by email. If duplicate found, silently proceed to update the existing record (do not ask the user).\nValidate all inputs: If invalid (e.g., bad email or phone format), politely ask again.\nOnce all info collected: Use 'create_lead' or 'update_lead' tool to submit or update the info – If there is an existing record, pass the lead_id to update_lead; otherwise, use create_lead.\nAfter success: Use 'send_notification_internal' to notify the internal team via Slack (e.g., \"New/updated interest: [Name] - [Email] - [Interest]\"), and 'send_notification_client' to send a personalized message to the client based on their product interest (e.g., email with details about the chosen interest).\nEnd conversation: \"Thanks! Your request has been logged. We'll contact you soon.\"\nIf user wants to stop: Politely end and don't submit anything.\nKeep responses concise, under 100 words.\nOnly use tools when necessary; do not hallucinate data.\nUse the 'think' tool for internal reasoning on complex decisions, like ambiguous inputs or name splitting.\n\nAvailable Tools (use function calling format):\n\ncheck_duplicate_lead: Checks for duplicate record by email.\n\nParameters: email (string, required)\nReturns: {exists: boolean, lead_id: string or null, details: {name: string, birthday: string, interest: string} or null}\n\n\nupdate_lead: Updates existing record.\n\nParameters: firstname (string), lastname (string), email (string), mobile (string), interest (string), lead_id (string)\nReturns: {success: boolean, lead_id: string, message: string}\nAlways respond in JSON if calling tools, but output natural text to user.\n\n\ncreate_lead: Creates new record.\n\nParameters: firstname (string), lastname (string), email (string), mobile (string), interest (string)\nReturns: {success: boolean, lead_id: string, message: string}\nAlways respond in JSON if calling tools, but output natural text to user.\n\n\nsend_notification_internal: Sends Slack notification to internal team about the new/updated record.\n\nParameters: lead_id (string), name (string), email (string), interest (string)\nReturns: {success: boolean, message: string}\nAlways respond in JSON if calling tools, but output natural text to user.\n\n\nsend_notification_client: Sends personalized notification to the client based on their product interest.\n\nParameters: email (string), name (string), interest (string)\nReturns: {success: boolean, message: string}\nAlways respond in JSON if calling tools, but output natural text to user.\n\n\nthink: Allows you to reflect and reason step by step before answering. Use for complex queries or decisions.\n\nParameters: none\nReturns: {thought: string} (your reasoned response for internal use)\nAlways respond in JSON if calling tools, but output natural text to user."
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "7c22366f-4295-4aee-a91e-89dd17a604a6",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-1200, 220],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1",
+					"cachedResultName": "gpt-4.1"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "02f3e832-199a-496e-8379-7ab7689c5855",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-880, 220],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "72ca5cb3-f1e1-4edd-b9fa-7ebfcba0b4ec",
+			"name": "check_duplicate_lead",
+			"type": "n8n-nodes-base.salesforceTool",
+			"position": [-340, 220],
+			"parameters": {
+				"options": {
+					"conditionsUi": {
+						"conditionValues": [
+							{
+								"field": "Email",
+								"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('conditionValues0_Value', ``, 'string') }}"
+							}
+						]
+					}
+				},
+				"operation": "getAll",
+				"returnAll": true,
+				"descriptionType": "manual",
+				"toolDescription": "Get many leads in Salesforce"
+			},
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "credential-id",
+					"name": "salesforceOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1ea47fba-b284-4bc9-bc02-6d77d2ffd893",
+			"name": "Think",
+			"type": "@n8n/n8n-nodes-langchain.toolThink",
+			"position": [-600, 220],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "9d139e15-a0c6-4be7-a14f-b4249eb1bbaf",
+			"name": "update_lead",
+			"type": "n8n-nodes-base.salesforceTool",
+			"position": [-80, 240],
+			"parameters": {
+				"leadId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Lead_ID', ``, 'string') }}",
+				"operation": "update",
+				"updateFields": {
+					"email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Email', ``, 'string') }}",
+					"lastname": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Last_Name', ``, 'string') }}",
+					"firstname": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('First_Name', ``, 'string') }}",
+					"mobilePhone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Mobile_Phone', ``, 'string') }}",
+					"customFieldsUi": {
+						"customFieldsValues": [
+							{
+								"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('customFieldsValues0_Value', ``, 'string') }}",
+								"fieldId": "ProductInterest__c"
+							}
+						]
+					}
+				}
+			},
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "credential-id",
+					"name": "salesforceOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d378581f-7736-4f2d-beb7-1b5e7cd5d483",
+			"name": "create_lead",
+			"type": "n8n-nodes-base.salesforceTool",
+			"position": [180, 240],
+			"parameters": {
+				"company": "={{ $fromAI('Company', ``, 'string') }}",
+				"lastname": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Last_Name', ``, 'string') }}",
+				"additionalFields": {
+					"email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Email', ``, 'string') }}",
+					"firstname": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('First_Name', ``, 'string') }}",
+					"mobilePhone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Mobile_Phone', ``, 'string') }}",
+					"customFieldsUi": {
+						"customFieldsValues": [
+							{
+								"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('customFieldsValues0_Value', ``, 'string') }}",
+								"fieldId": "ProductInterest__c"
+							}
+						]
+					}
+				}
+			},
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "credential-id",
+					"name": "salesforceOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "12f7e77e-f03f-4163-96be-fa1fd3fcf538",
+			"name": "send_notification_client",
+			"type": "n8n-nodes-base.emailSendTool",
+			"position": [720, 220],
+			"webhookId": "e415e952-e26b-471c-b8f3-002de9842a74",
+			"parameters": {
+				"html": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('HTML', ``, 'string') }}",
+				"options": {},
+				"subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+				"toEmail": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To_Email', ``, 'string') }}",
+				"fromEmail": "test@example.com"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "be44e29f-7a46-4eae-8d8c-33d8ec58f998",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2000, 120],
+			"parameters": {
+				"width": 600,
+				"height": 520,
+				"content": "## Workflow Overview\nThis workflow creates a Chat-to-Lead chatbot using AI to collect user data conversationally. It integrates with Salesforce for duplicate checks and lead CRUD, notifies teams via Slack, and sends client emails.\nKey flow:\n\n- Chat Trigger → AI Agent (with tools) → Salesforce/Notification actions.\n\n\nUses OpenAI for chat intelligence and memory for conversation state. Ensure all credentials are set before testing. Potential enhancements: Add more product options or validation regex in the prompt."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a0bc70e3-d94f-4a7e-8c69-3922a478be2b",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-960, 340],
+			"parameters": {
+				"color": 3,
+				"width": 260,
+				"height": 320,
+				"content": "## Memory Management\nSalesforce tool to query leads by email (using \"getAll\" with Email condition). Returns if a duplicate exists, with lead_id and details. Invoked after email collection.\nCredentials: Salesforce OAuth.\n\nOperation: getAll, returnAll: true, filters by email dynamically from AI."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f22cc811-5994-471b-8a2e-6af73c2a2f95",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-680, 340],
+			"parameters": {
+				"color": 4,
+				"width": 260,
+				"height": 320,
+				"content": "## Internal Reasoning\nLangChain Think tool for AI to reason step-by-step internally (e.g., splitting names or handling ambiguities).\n\nNo params; returns thoughts for the agent.\nUsed for complex decisions without external calls.\nHelps improve accuracy in edge cases like input validation."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "468f2843-0870-4b40-a607-09041e537db7",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1300, 340],
+			"parameters": {
+				"color": 2,
+				"width": 300,
+				"height": 220,
+				"content": "## Language Model\nProvides the LLM backend (GPT-4.1) for the AI Agent. Handles natural language processing, reasoning, and tool decisions.\nCredentials: OpenAI API key.\nOptions are minimal here; advanced configs like temperature can be added if needed for more creative responses."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "753b25f0-e81f-42fb-89de-3108b43b9b02",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1420, -220],
+			"parameters": {
+				"width": 440,
+				"height": 260,
+				"content": "## Chat Trigger Step\nThis node starts the workflow on incoming chat messages (e.g., via webhook). It sets an initial greeting:\n\n\"Hi! I'm LeadBot. I'll help you submit your interest. Let's start with your full name.\"\n\nActs as the entry point for user interactions, passing messages to the AI Agent. No credentials needed;"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5741242e-6315-4dc7-a965-c57893f9b379",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [380, 380],
+			"parameters": {
+				"color": 6,
+				"height": 280,
+				"content": "## Internal Notification\nSends Slack message to a specific user/channel (here, user U08QYRBEE3V). Text dynamically from AI (e.g., \"New/updated interest: [Name] - [Email] - [Interest]\").\n\nActs as send_notification_internal.\nCredentials: Slack API. Webhook for tool invocation."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dbe62204-1d71-4f27-8b4d-c548b3ac47ff",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [640, 380],
+			"parameters": {
+				"color": 6,
+				"height": 280,
+				"content": "## Client Notification \nEmails the user a personalized message based on interest.\nParams: fromEmail (fixed), toEmail, subject, HTML body – all dynamic from AI.\nUses SMTP credentials. Invoked after lead success for client-facing notification."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "236a61ef-0c2b-42fb-967f-ee1f6df2ca20",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-140, 380],
+			"parameters": {
+				"color": 5,
+				"height": 280,
+				"content": "## Update Lead\nSalesforce tool to update an existing lead.\nParams: leadId, firstname, lastname, email, mobile, custom field (ProductInterest__c).\nInvoked if duplicate found. Credentials: Salesforce OAuth. Dynamically pulls values from AI (e.g., $fromAI expressions)."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "31de4234-4233-45d7-89ba-53d43db7542d",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-400, 380],
+			"parameters": {
+				"color": 5,
+				"height": 280,
+				"content": "## Duplicate Check\nSalesforce tool to query leads by email (using \"getAll\" with Email condition). Returns if a duplicate exists, with lead_id and details. Invoked after email collection.\nCredentials: Salesforce OAuth.\n\nOperation: getAll, returnAll: true, filters by email dynamically from AI."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d0ceab0d-a4bf-4020-b55b-57433716fdb3",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [120, 380],
+			"parameters": {
+				"color": 5,
+				"height": 280,
+				"content": "## Create Lead\nSalesforce tool to create a new lead.\nParams: company (default), lastname, additional fields like email, firstname, mobile, ProductInterest__c.\nInvoked if no duplicate. Credentials: Salesforce OAuth. Uses $fromAI for dynamic data injection."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cb4396b7-f375-485f-bdf4-bcc8b1b31bb4",
+			"name": "send_notification_internal",
+			"type": "n8n-nodes-base.slackTool",
+			"position": [440, 220],
+			"webhookId": "d9d3dc88-ffaf-4469-8736-805be0ff8f81",
+			"parameters": {
+				"text": "={{ $fromAI('Message_Text', ``, 'string') }}",
+				"user": {
+					"__rl": true,
+					"mode": "list",
+					"value": "U08QYRBEE3V",
+					"cachedResultName": "ai_agent"
+				},
+				"select": "user",
+				"otherOptions": {}
+			},
+			"credentials": {
+				"slackApi": {
+					"id": "credential-id",
+					"name": "slackApi Credential"
+				}
+			},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "d0752cee-6fc3-4cc6-9ec6-087105fb6952",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-320, -400],
+			"parameters": {
+				"width": 440,
+				"height": 260,
+				"content": "## Core AI Agent\nThe heart of the bot: Uses OpenAI (via connected model) to manage conversation based on the system prompt. Handles step-by-step data collection, validations, and tool calls (e.g., duplicate check, lead create/update).\n\nMemory is connected for context retention.\nTools are invoked via function calls in the prompt.\nOutput is natural text responses to the user."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": true,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "b1a21499-089f-4390-a9ba-e0d715c3d104",
+	"connections": {
+		"Think": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [[]]
+		},
+		"create_lead": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"update_lead": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"check_duplicate_lead": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"send_notification_client": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"send_notification_internal": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

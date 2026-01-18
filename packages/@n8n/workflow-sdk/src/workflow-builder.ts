@@ -68,6 +68,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _nodes: Map<string, GraphNode>;
 	private _currentNode: string | null;
 	private _currentOutput: number;
+	private _pinData?: Record<string, IDataObject[]>;
+	private _meta?: { templateId?: string; instanceId?: string; [key: string]: unknown };
 
 	constructor(
 		id: string,
@@ -75,6 +77,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		settings: WorkflowSettings = {},
 		nodes?: Map<string, GraphNode>,
 		currentNode?: string | null,
+		pinData?: Record<string, IDataObject[]>,
+		meta?: { templateId?: string; instanceId?: string; [key: string]: unknown },
 	) {
 		this.id = id;
 		this.name = name;
@@ -82,6 +86,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		this._nodes = nodes ? new Map(nodes) : new Map();
 		this._currentNode = currentNode ?? null;
 		this._currentOutput = 0;
+		this._pinData = pinData;
+		this._meta = meta;
 	}
 
 	private clone(overrides: {
@@ -96,6 +102,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			overrides.settings ?? this._settings,
 			overrides.nodes ?? this._nodes,
 			overrides.currentNode !== undefined ? overrides.currentNode : this._currentNode,
+			this._pinData,
+			this._meta,
 		);
 		builder._currentOutput = overrides.currentOutput ?? this._currentOutput;
 		return builder;
@@ -207,8 +215,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined {
-		const graphNode = this._nodes.get(name);
-		return graphNode?.instance;
+		// First try direct lookup (for backward compatibility and nodes added via add/then)
+		const directLookup = this._nodes.get(name);
+		if (directLookup) {
+			return directLookup.instance;
+		}
+		// Otherwise search by instance.name (for nodes loaded via fromJSON)
+		for (const graphNode of this._nodes.values()) {
+			if (graphNode.instance.name === name) {
+				return graphNode.instance;
+			}
+		}
+		return undefined;
 	}
 
 	toJSON(): WorkflowJSON {
@@ -219,14 +237,15 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const nodePositions = this.calculatePositions();
 
 		// Convert nodes
-		for (const [nodeName, graphNode] of this._nodes) {
+		for (const [mapKey, graphNode] of this._nodes) {
 			const instance = graphNode.instance;
 			const position = instance.config.position ??
-				nodePositions.get(nodeName) ?? [START_X, DEFAULT_Y];
+				nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
 
+			// Use the actual node name from the instance, not the map key
 			const n8nNode: INode = {
 				id: instance.id,
-				name: nodeName,
+				name: instance.name,
 				type: instance.type,
 				typeVersion: parseVersion(instance.version),
 				position,
@@ -294,8 +313,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					nodeConnections[connType] = outputArray;
 				}
 
-				if (Object.keys(nodeConnections).length > 0) {
-					connections[nodeName] = nodeConnections;
+				if (Object.keys(nodeConnections).length > 0 && instance.name !== undefined) {
+					connections[instance.name] = nodeConnections;
 				}
 			}
 		}
@@ -307,8 +326,17 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			connections,
 		};
 
-		if (Object.keys(this._settings).length > 0) {
+		// Preserve settings even if empty (for round-trip fidelity)
+		if (this._settings !== undefined) {
 			json.settings = this._settings;
+		}
+
+		if (this._pinData && Object.keys(this._pinData).length > 0) {
+			json.pinData = this._pinData;
+		}
+
+		if (this._meta) {
+			json.meta = this._meta;
 		}
 
 		return json;
@@ -565,8 +593,11 @@ function createWorkflow(id: string, name: string, settings?: WorkflowSettings): 
  */
 function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 	const nodes = new Map<string, GraphNode>();
+	// Map from connection name (how nodes reference each other) to map key
+	const nameToKey = new Map<string, string>();
 
 	// Create node instances from JSON
+	let unnamedCounter = 0;
 	for (const n8nNode of json.nodes) {
 		const version = `v${n8nNode.typeVersion}`;
 
@@ -610,7 +641,14 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 		// Initialize connections map with all connection types
 		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
 
-		nodes.set(n8nNode.name, {
+		// Use a unique key for the map (ID if available, otherwise generate one)
+		// Connections reference nodes by name, so we also build a name->key mapping
+		const mapKey = n8nNode.id || `__unnamed_${unnamedCounter++}`;
+		if (n8nNode.name !== undefined) {
+			nameToKey.set(n8nNode.name, mapKey);
+		}
+
+		nodes.set(mapKey, {
 			instance,
 			connections: connectionsMap,
 		});
@@ -619,7 +657,9 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 	// Rebuild connections - handle all connection types
 	if (json.connections) {
 		for (const [sourceName, nodeConns] of Object.entries(json.connections)) {
-			const graphNode = nodes.get(sourceName);
+			// Find the node by its name using the nameToKey mapping
+			const mapKey = nameToKey.get(sourceName);
+			const graphNode = mapKey ? nodes.get(mapKey) : undefined;
 			if (!graphNode) continue;
 
 			// Iterate over all connection types (main, ai_tool, ai_memory, etc.)
@@ -629,6 +669,7 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 				const typeMap =
 					graphNode.connections.get(connType) || new Map<number, ConnectionTarget[]>();
 
+				// Store all outputs including empty ones to preserve array structure
 				for (let outputIndex = 0; outputIndex < outputs.length; outputIndex++) {
 					const targets = outputs[outputIndex];
 					if (targets && targets.length > 0) {
@@ -640,6 +681,9 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 								index: conn.index,
 							})),
 						);
+					} else {
+						// Store empty array to preserve output index
+						typeMap.set(outputIndex, []);
 					}
 				}
 
@@ -654,7 +698,15 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 		lastNode = name;
 	}
 
-	return new WorkflowBuilderImpl(json.id ?? '', json.name, json.settings, nodes, lastNode);
+	return new WorkflowBuilderImpl(
+		json.id ?? '',
+		json.name,
+		json.settings,
+		nodes,
+		lastNode,
+		json.pinData,
+		json.meta,
+	);
 }
 
 /**

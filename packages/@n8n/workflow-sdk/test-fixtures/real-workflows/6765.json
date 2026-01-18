@@ -1,0 +1,622 @@
+{
+	"id": "uALIwhmZBIsiTqvl",
+	"meta": {
+		"instanceId": "2cf742429c2e3ee4e5a20069d3d8a75208519303b864f026a79464efa726bd95",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Instagram Auto Liking - Creators Hub",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "8cf78a9e-65dd-4d3c-aa05-f01695217c31",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [80, -1568],
+			"webhookId": "b338692f-2a16-4607-81ba-3a61ee239e2d",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "ab56652e-ebeb-4887-9a01-94e49b9127e2",
+			"name": "Wait1",
+			"type": "n8n-nodes-base.wait",
+			"position": [944, -1120],
+			"webhookId": "24e87bc0-267f-4843-b910-07dcea2a87cd",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "a7a784ff-7cc4-4622-bc5b-ad608ee6a470",
+			"name": "Launch Agent",
+			"type": "n8n-nodes-base.phantombuster",
+			"position": [-80, -1568],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "f83ffe30-471d-4d06-80c5-53de2929e03e",
+			"name": "Get Random Post",
+			"type": "n8n-nodes-base.code",
+			"position": [-1520, -1120],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "0dd95fea-606d-4f89-bac0-93096b46d4b1",
+			"name": "Create CSV Binary",
+			"type": "n8n-nodes-base.code",
+			"position": [80, -1120],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "6ba41f32-12cf-4fc9-a3f5-a77cb626f7eb",
+			"name": "Upload CSV",
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"position": [272, -1120],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "1695cba9-4f05-496e-86a8-b526ff025fcd",
+			"name": "Get Hashtag Agent",
+			"type": "n8n-nodes-base.phantombuster",
+			"position": [-256, -1568],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "79d3853e-df03-4e94-8ecc-9caf4c026e57",
+			"name": "Get Posts",
+			"type": "n8n-nodes-base.phantombuster",
+			"position": [240, -1568],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "82663cc1-9c96-4f0c-bad9-db7217ae20f8",
+			"name": "Get Response",
+			"type": "n8n-nodes-base.phantombuster",
+			"position": [1168, -1120],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b5de49cb-a48f-4266-96b4-32e9b48ed67f",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-784, -1696],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d742d0b5-4ec7-4e59-b478-790d74538b3f",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1728, -1280],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "48bed935-d830-4f5e-8956-6b8f610eea0d",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [416, -1280],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6ee9aab7-3335-44c6-94dd-43402dae65ff",
+			"name": "Get Autoliking Agent",
+			"type": "n8n-nodes-base.phantombuster",
+			"position": [512, -1120],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "29d3b873-bf9d-4ad1-bab4-f3ce4e77f4ad",
+			"name": "Launch AL Agent",
+			"type": "n8n-nodes-base.phantombuster",
+			"position": [736, -1120],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "94e4711e-658b-4b60-9c06-97a105ad3fed",
+			"name": "Set ENV Variables",
+			"type": "n8n-nodes-base.set",
+			"position": [-432, -1568],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "ea13622c-4fa6-4fdd-aa82-d9f9949f1b13",
+			"name": "Generate Random Hashtag",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-768, -1568],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "ff56a5ad-b969-4675-81b4-5f3683227f0c",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-688, -1984],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "73731550-9c86-443c-ace5-cd49c3bc1f68",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-768, -1376],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "36419534-d500-4774-99b8-55c1c50b13eb",
+			"name": "Update file",
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"position": [-128, -1120],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "3333931b-a95e-493a-8ad3-5d8cfc586e75",
+			"name": "Download file",
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"position": [-1328, -1120],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "87a2a27c-7324-460a-8828-281bca00694e",
+			"name": "Check if in List",
+			"type": "n8n-nodes-base.code",
+			"position": [-928, -1120],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "3390e713-aa52-41c9-bc59-67d14b007a78",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [-752, -1120],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "f6f93395-fb3b-4cf5-9cfa-9ce4cda0d4a6",
+			"name": "Wait2",
+			"type": "n8n-nodes-base.wait",
+			"position": [-1696, -1120],
+			"webhookId": "64502b12-edd4-477d-b345-6ac98aec0ef4",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "f773683c-e8a1-43f1-85f2-20a32112110c",
+			"name": "Prepare Updated Data",
+			"type": "n8n-nodes-base.code",
+			"position": [-528, -1120],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "90e0d974-9b36-4007-b26c-4595f483cdcb",
+			"name": "Extract from File",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [-1136, -1120],
+			"parameters": {},
+			"typeVersion": 1,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "450367fa-107c-4f6c-9562-849724559bde",
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"position": [-336, -1120],
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "90373e1c-da03-4863-b7e2-a01f8a981b62",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-80, -1840],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "bf867f16-8834-4f2f-8c1e-5bb04fdcf4fa",
+			"name": "Get Available Session Cookies",
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"position": [-496, -1984],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "a62ba00a-1620-41c8-829b-1539d36341f4",
+			"name": "Extract Cookies",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [-272, -1984],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "aa53452e-60ce-4249-b2c9-1be6c539ed8b",
+			"name": "Select Cookie",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-80, -1984],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "71bf9778-6b22-4658-800a-97686963c2ce",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-784, -2112],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f3ba0f54-4793-4e76-9f62-dda9e3a466f1",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [416, -2112],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b2b19b3a-a53c-496f-b8be-6aa830afa61a",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [416, -1696],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "027285a6-08df-467f-ba00-9a57a4efebe2",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1728, -864],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f48f5e5c-72e0-4383-ae1a-ad2b0fdd0a79",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1424, -1280],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "753f966a-467d-4e50-898a-2124e4a619d1",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-16, -864],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "d113a675-5847-42c1-beed-7c747b592424",
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Wait2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Prepare Updated Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Get Posts",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait1": {
+			"main": [
+				[
+					{
+						"node": "Get Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait2": {
+			"main": [
+				[
+					{
+						"node": "Get Random Post",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Posts": {
+			"main": [
+				[
+					{
+						"node": "Wait2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload CSV": {
+			"main": [
+				[
+					{
+						"node": "Get Autoliking Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update file": {
+			"main": [
+				[
+					{
+						"node": "Create CSV Binary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Launch Agent": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download file": {
+			"main": [
+				[
+					{
+						"node": "Extract from File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Select Cookie": {
+			"main": [
+				[
+					{
+						"node": "Generate Random Hashtag",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "Update file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Cookies": {
+			"main": [
+				[
+					{
+						"node": "Select Cookie",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Random Post": {
+			"main": [
+				[
+					{
+						"node": "Download file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Launch AL Agent": {
+			"main": [
+				[
+					{
+						"node": "Wait1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check if in List": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Get Available Session Cookies",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create CSV Binary": {
+			"main": [
+				[
+					{
+						"node": "Upload CSV",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from File": {
+			"main": [
+				[
+					{
+						"node": "Check if in List",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Hashtag Agent": {
+			"main": [
+				[
+					{
+						"node": "Launch Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Generate Random Hashtag",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set ENV Variables": {
+			"main": [
+				[
+					{
+						"node": "Get Hashtag Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Select Cookie",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Autoliking Agent": {
+			"main": [
+				[
+					{
+						"node": "Launch AL Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare Updated Data": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Random Hashtag": {
+			"main": [
+				[
+					{
+						"node": "Set ENV Variables",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Available Session Cookies": {
+			"main": [
+				[
+					{
+						"node": "Extract Cookies",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

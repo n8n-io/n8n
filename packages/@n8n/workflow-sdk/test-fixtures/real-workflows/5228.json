@@ -1,0 +1,379 @@
+{
+	"id": "dLrtZMRZzusZDlpa",
+	"meta": {
+		"instanceId": "2c12b0b552404dc07af67cd5f092afd21d18c808d4fdabdb04cb4b064195b6fb",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "GoogleVertex_template",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "9f66e6be-6de0-4e2c-ad5e-20059f4a0d85",
+			"name": "Setting",
+			"type": "n8n-nodes-base.set",
+			"position": [-80, 0],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "5cedc3de-6221-4d7e-a6c8-82f4cb9cf0e9",
+							"name": "PROJECT_ID",
+							"type": "string",
+							"value": "<YOUR_PROJECT_ID>"
+						},
+						{
+							"id": "90019751-e2d5-4764-9bf9-e13916dcc528",
+							"name": "MODEL_VERSION",
+							"type": "string",
+							"value": "veo-3.0-generate-preview"
+						},
+						{
+							"id": "67ab205c-82b3-4263-99c4-c906a0ca6ae9",
+							"name": "LOCATION",
+							"type": "string",
+							"value": "<YOUR_LOCATION>"
+						},
+						{
+							"id": "413415fb-60c5-4d0d-ac45-1e6178a55227",
+							"name": "TEXT_PROMPT",
+							"type": "string",
+							"value": "={{ $json.Prompt }}"
+						},
+						{
+							"id": "91d09e20-87db-474f-91e1-6ed58b96dae5",
+							"name": "IMAGE_COUNT",
+							"type": "string",
+							"value": "1"
+						},
+						{
+							"id": "17954335-b96b-4813-9c4a-20817d675448",
+							"name": "API_ENDPOINT",
+							"type": "string",
+							"value": "<YOUR_LOCATION>-aiplatform.googleapis.com"
+						},
+						{
+							"id": "bf0910e1-b757-4852-9341-a7792161f89b",
+							"name": "ACCESS_TOKEN",
+							"type": "string",
+							"value": "={{ $json.YOUR_ACCESS_TOKEN }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "252be387-d2c6-4618-9d44-326baa0a1d6f",
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"position": [760, 0],
+			"parameters": {
+				"options": {},
+				"operation": "toBinary",
+				"sourceProperty": "response.videos[0].bytesBase64Encoded"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "ab04d16e-4727-49bb-b868-28db703b1b0f",
+			"name": "On form submission",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-300, 0],
+			"webhookId": "1c041721-9e17-4486-927e-d2de9a113977",
+			"parameters": {
+				"options": {},
+				"formTitle": "Google Vertex AI",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Prompt",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "YOUR_ACCESS_TOKEN",
+							"requiredField": true
+						}
+					]
+				},
+				"formDescription": "Google Vertex"
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "2497f762-8f0a-4a4d-87a2-31d05c62fdee",
+			"name": "Google Drive",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [980, 0],
+			"parameters": {
+				"name": "={{ $('On form submission').item.json.submittedAt }}.mp4",
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive",
+					"cachedResultUrl": "https://drive.google.com/drive/my-drive",
+					"cachedResultName": "My Drive"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1tzpmwAWiUGolnKciZvcCghB5obhPoXzL",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/1tzpmwAWiUGolnKciZvcCghB5obhPoXzL",
+					"cachedResultName": "n8n_VertexAI"
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "f2b78a57-403e-47d8-8f48-8af3263077d5",
+			"name": "Vertex AI-VEO3",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [180, 0],
+			"parameters": {
+				"url": "=https://{{ $json.API_ENDPOINT }}/v1/projects/{{ $json.PROJECT_ID }}/locations/{{ $json.LOCATION }}/publishers/google/models/{{ $json.MODEL_VERSION }}:predictLongRunning",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"endpoint\": \"projects/n8n-project-440404/locations/us-central1/publishers/google/models/veo-3.0-generate-preview\",\n  \"instances\": [\n    {\n      \"prompt\": {{ $json.TEXT_PROMPT }}\n    }\n  ],\n  \"parameters\": {\n    \"aspectRatio\": \"16:9\",\n    \"sampleCount\": 1,\n    \"durationSeconds\": \"8\",\n    \"personGeneration\": \"allow_all\",\n    \"addWatermark\": true,\n    \"includeRaiReason\": true,\n    \"generateAudio\": true\n  }\n}\n",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{ $json.ACCESS_TOKEN }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "8b5f1887-c001-4d95-ae04-0b9c9dd80dc4",
+			"name": "Vertex AI-fetch",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [540, 0],
+			"parameters": {
+				"url": "=https://{{ $('Setting').item.json.API_ENDPOINT }}/v1/projects/{{ $('Setting').item.json.PROJECT_ID }}/locations/{{ $('Setting').item.json.LOCATION }}/publishers/google/models/{{ $('Setting').item.json.MODEL_VERSION }}:fetchPredictOperation\n",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"operationName\": \"{{ $json.name }}\"\n}\n",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{ $('On form submission').item.json.YOUR_ACCESS_TOKEN }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "61565d47-ee78-4a77-bcf1-0043636a8338",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-140, -160],
+			"parameters": {
+				"height": 320,
+				"content": "### Setting GCP\n- PROJECT_ID\n- MODEL_VERSION\n- LOCATION\n- IMAGE_COUNT\n- API_ENDPOINT"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "161e051f-9a74-46bd-a2f8-cf32b68279a2",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [120, -160],
+			"parameters": {
+				"color": 4,
+				"width": 580,
+				"height": 320,
+				"content": "## Veo3\n1. Sends the prompt to the Veo3 using Vertex AI’s predictLongRunning endpoint.\n2. Waits for the video rendering to complete.\n3. Fetches the final result"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ca75a288-5f19-4678-ac5f-cf924843f64a",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [360, 0],
+			"webhookId": "b263025f-8acf-406b-b3cc-aaaf5b6a4557",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 2
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "088bf7c8-bc74-47e5-9ca7-23807c9d5c32",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [720, -160],
+			"parameters": {
+				"color": 5,
+				"width": 200,
+				"height": 320,
+				"content": "### Convert to Video file\n\nBase64 Input Field:\n```response.videos[0].bytesBase64Encoded```"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "091c8fe2-57a9-4f62-949c-84f88b38b91a",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [940, -160],
+			"parameters": {
+				"color": 6,
+				"width": 180,
+				"height": 320,
+				"content": "### Upload Video to Google Drive"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "25da0c72-2dd8-47f1-93fc-8e116b5c3768",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-380, -160],
+			"parameters": {
+				"color": 7,
+				"width": 230,
+				"height": 320,
+				"content": "### Accepts a text prompt and a GCP access token via form.\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "14aa3de1-ece7-4272-a52e-0f0f72197f77",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-140, 180],
+			"parameters": {
+				"color": 7,
+				"width": 660,
+				"height": 400,
+				"content": "### Workflow Process\n![Alt text](https://drive.google.com/thumbnail?id=1L9KKkuS0hk5LW9hpGJ_FB9giKYFZpmy4&sz=w1000)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4e8c2cf8-0ef1-4da0-930e-54854062e36d",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [540, 180],
+			"parameters": {
+				"color": 7,
+				"width": 580,
+				"height": 400,
+				"content": "### Output\n![Alt text](https://drive.google.com/thumbnail?id=1Biq2vhbzaFLya1ZsF8PhGL1RRta7XkMK&sz=w1000)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "120dcf68-1a9b-447d-a530-1e2264eb9b8f",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-380, 180],
+			"parameters": {
+				"color": 7,
+				"width": 230,
+				"height": 400,
+				"content": "### How to get GCP Access Token\n\nUse this command in your VM/Cloud Shell:\n\n```bash\ngcloud auth print-access-token\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "f9faaec3-832c-407d-a356-14844be9fdca",
+	"connections": {
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Vertex AI-fetch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Setting": {
+			"main": [
+				[
+					{
+						"node": "Vertex AI-VEO3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Vertex AI-VEO3": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "Google Drive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Vertex AI-fetch": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On form submission": {
+			"main": [
+				[
+					{
+						"node": "Setting",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

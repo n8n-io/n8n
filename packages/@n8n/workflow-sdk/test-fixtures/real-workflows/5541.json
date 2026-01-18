@@ -1,0 +1,653 @@
+{
+	"meta": {
+		"instanceId": "d6b502dfa4d9dd072cdc5c2bb763558661053f651289291352a84403e01b3d1b",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "f78ee73d-3d5e-4162-9b40-74cc183cb59b",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-540, -520],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "9fa5f512-fd5d-4e5b-9d73-f70ec0d4b13d",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-260, -520],
+			"parameters": {
+				"text": "Help me test something and output the text \"This is a test workflow\" after calling the think tool twice.",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "35e230ce-7413-4675-b2f7-cb837cccf936",
+			"name": "Call sub-workflow",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"position": [200, -520],
+			"parameters": {
+				"mode": "each",
+				"options": {
+					"waitForSubWorkflow": false
+				},
+				"workflowId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $workflow.id }}"
+				},
+				"workflowInputs": {
+					"value": {
+						"execution_id": "={{ $execution.id }}"
+					},
+					"schema": [
+						{
+							"id": "execution_id",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "execution_id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["execution_id"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": true
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "81bf6364-cdb1-47ac-840d-8c7d940bf616",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [60, -880],
+			"parameters": {
+				"color": 3,
+				"width": 380,
+				"height": 540,
+				"content": "## Wait for the workflow to finish before calling the subworkflow\nIf the execution is still running, too much data is retrieved and it becomes messy.\n\nSo put this node at the end of the workflow and disable the option `Wait For Sub-Workflow Completion`.\n\nThat way you have to retrieve less data and it's easier to retrieve the token usage.\n\n`{{ $workflow.id }}` is an expression to get the current workflow id. Change this if your subworkflow is in a separate file.\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "11b56bfb-170d-480a-a478-5022e540a5b5",
+			"name": "Think",
+			"type": "@n8n/n8n-nodes-langchain.toolThink",
+			"position": [-60, -280],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "2e9101bd-73cb-4fab-91c6-e884ddb51fbf",
+			"name": "Extract token usage data",
+			"type": "n8n-nodes-base.set",
+			"position": [-100, 180],
+			"parameters": {
+				"include": "selected",
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "2e6b9daf-495c-44e3-a39e-40fc8e654eae",
+							"name": "execution_id",
+							"type": "number",
+							"value": "={{ $('When Executed by Another Workflow').item.json.execution_id }}"
+						},
+						{
+							"id": "1ba39074-c67e-453c-9a64-07e0376e64bf",
+							"name": "tokenUsage",
+							"type": "array",
+							"value": "={{$jmespath(\n  $json,\n  \"data.resultData.runData.*[] | [?data.ai_languageModel] | [].{model: data.ai_languageModel[0][0].json.response.generations[0][0].generationInfo.model_name || inputOverride.ai_languageModel[0][0].json.options.model_name || inputOverride.ai_languageModel[0][0].json.options.model, tokenUsage: data.ai_languageModel[0][0].json.tokenUsage || data.ai_languageModel[0][0].json.tokenUsageEstimate}\"\n)}}"
+						}
+					]
+				},
+				"includeFields": "workflowData.id, workflowData.name",
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "1bbefdea-cd7a-46e4-8b6f-02e3ba7c4569",
+			"name": "Get execution data",
+			"type": "n8n-nodes-base.n8n",
+			"position": [-320, 180],
+			"parameters": {
+				"options": {
+					"activeWorkflows": true
+				},
+				"resource": "execution",
+				"operation": "get",
+				"executionId": "={{ $json.execution_id }}",
+				"requestOptions": {}
+			},
+			"credentials": {
+				"n8nApi": {
+					"id": "credential-id",
+					"name": "n8nApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8cfd62f0-d3a6-4259-ae3f-471b31c177e6",
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [-540, 180],
+			"parameters": {
+				"workflowInputs": {
+					"values": [
+						{
+							"name": "execution_id"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "6acea4e7-3fc9-4f11-8a2e-631ab187a66d",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-840, 160],
+			"parameters": {
+				"color": 7,
+				"height": 180,
+				"content": "After the main workflow calls the subworkflow, you'll be able to see the total tokens in the Executions spreadsheet."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "88253810-84bb-4640-9fb9-9da116d10f4f",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [120, 180],
+			"parameters": {
+				"include": "allOtherFields",
+				"options": {},
+				"fieldToSplitOut": "tokenUsage"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c91c32de-6357-47ee-abaf-fbf639362b1e",
+			"name": "Sum Token Totals - aggregate by model",
+			"type": "n8n-nodes-base.summarize",
+			"position": [320, 180],
+			"parameters": {
+				"options": {},
+				"fieldsToSplitBy": "id, name, tokenUsage.model, execution_id",
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"field": "tokenUsage.tokenUsage.promptTokens",
+							"aggregation": "sum"
+						},
+						{
+							"field": "tokenUsage.tokenUsage.completionTokens",
+							"aggregation": "sum"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "022cd2fc-3d1c-43fd-910e-02af46eeb4fa",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [740, -240],
+			"parameters": {
+				"color": 7,
+				"width": 660,
+				"height": 580,
+				"content": "## Limitations\n### 1. This workflow doesn't account for [Prompt caching](https://platform.openai.com/docs/guides/prompt-caching)\nIf you're consecutively sending similar prompts to OpenAI it'll automatically use Cached Tokens to reduce the cost of your requests.\n\nSo our cost estimates will have a higher value than the actual cost.\n\nOther providers like Anthropic and Google have similar mechanisms.\n\n\n\n### 2. Not tested with audio or video files\nThis workflow was tested with text and images, but no tests were made with audio files or videos.\n\n\n\n### 3. The cost is an estimate\nIn the spreadsheet you can see the total cost of the requests, but that is only an estimate.\n\nIf you do batch requests, prompt caching or other techniques to reduce cost, the estimate might be higher than the actual cost."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5a687ff7-2f31-4541-8d8c-245cb345de2b",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-840, -520],
+			"parameters": {
+				"color": 7,
+				"height": 120,
+				"content": "This is an example AI Agent.\n\nUse this only to understand how to call the subworkflow and obtain the token amount."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6b96057d-150e-4a97-aff7-317c369af156",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1560, -620],
+			"parameters": {
+				"color": 4,
+				"width": 660,
+				"height": 260,
+				"content": "## Where to find LLM pricing?\nYou can enter each provider's website or use one of these:\n- [llm-price.com](https://llm-price.com)\n- [llm-prices.com](https://llm-prices.com)\n- [llmprices.dev](https://llmprices.dev/)\n- [LLM Price Check](https://llmpricecheck.com/)\n- [OpenRouter Models](https://openrouter.ai/models)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "18797895-4302-422c-b1a4-44a1e5e72e5c",
+			"name": "Record token usage",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [540, 180],
+			"parameters": {
+				"columns": {
+					"value": {
+						"llm_model": "={{ $json.tokenUsage_model }}",
+						"timestamp": "={{ $now.format('yyyy-MM-dd HH:mm:ss')}}",
+						"workflow_id": "={{ $json.id }}",
+						"execution_id": "={{ $json.execution_id }}",
+						"input tokens": "={{ $json.sum_tokenUsage_tokenUsage_promptTokens }}",
+						"workflow_name": "={{ $json.name }}",
+						"completion tokens": "={{ $json.sum_tokenUsage_tokenUsage_completionTokens }}"
+					},
+					"schema": [
+						{
+							"id": "execution_id",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "execution_id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "timestamp",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "timestamp",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "workflow_id",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "workflow_id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "workflow_name",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "workflow_name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "llm_model",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "llm_model",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "input tokens",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "input tokens",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "completion tokens",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "completion tokens",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "input price",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "input price",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "output price",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "output price",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "input cost",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "input cost",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "output cost",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "output cost",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "total cost",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "total cost",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1c9CeePI6ebNnIKogyJKHUpDWT6UEowpH9OwVtViadyE/edit#gid=0",
+					"cachedResultName": "Executions"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1c9CeePI6ebNnIKogyJKHUpDWT6UEowpH9OwVtViadyE",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1c9CeePI6ebNnIKogyJKHUpDWT6UEowpH9OwVtViadyE/edit?usp=drivesdk",
+					"cachedResultName": "[TEMPLATE] Calculate LLM Token Usage"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "b958bc0c-9142-4d1c-a72f-e05fb0f007c6",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1560, -880],
+			"parameters": {
+				"color": 4,
+				"width": 660,
+				"height": 240,
+				"content": "## Make a copy of this Sheets file\n👉 [**[TEMPLATE] Calculate LLM Token Usage**](https://docs.google.com/spreadsheets/d/1c9CeePI6ebNnIKogyJKHUpDWT6UEowpH9OwVtViadyE/edit?usp=sharing)\n\nThere are two sheets in this file:\n1. Executions\nAvoid changing the green columns. They have formulas on the header rows.\n\n2. LLM Pricing\nUpdate this list with the LLM models you are using"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1f7fb4ae-ca87-484a-9b45-38d4a7f14c6d",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [740, -620],
+			"parameters": {
+				"color": 7,
+				"width": 400,
+				"height": 200,
+				"content": "# Need help?\nCreate a topic on the community forums here:\nhttps://community.n8n.io/c/questions/\n\n\nOr join our exclusive [Scrapes Academy](https://www.skool.com/scrapes/about?ref=21f10ad99f4d46ba9b8aaea8c9f58c34)  community"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a4370528-00d7-4b04-8eb2-8aab6d5d77dc",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1560, -340],
+			"parameters": {
+				"color": 7,
+				"width": 660,
+				"height": 680,
+				"content": "# Author\n![Solomon](https://gravatar.com/avatar/79aa147f090807fe0f618fb47a1de932669e385bb0c84bf3a7f891ae7d174256?r=pg&d=retro&size=200)\n### Solomon\n🎓 AI & Automation Educator at the [Scrapes Academy](https://www.skool.com/scrapes/about?ref=21f10ad99f4d46ba9b8aaea8c9f58c34)\n\nFor business inquiries:\n- automations.solomon@gmail.com\n- [Telegram](https://t.me/salomaoguilherme)\n- [LinkedIn](https://www.linkedin.com/in/guisalomao/)\n\n### Check out my other templates\n### 👉 https://n8n.io/creators/solomon/\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "17cf9314-b6a2-4abc-9223-846c08d53237",
+			"name": "Sticky Note16",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1540, 240],
+			"parameters": {
+				"color": 4,
+				"width": 620,
+				"height": 80,
+				"content": "### 💡 **Want to learn advanced n8n skills and earn money building workflows?**\n‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎Check out [Scrapes Academy](https://www.skool.com/scrapes/about?ref=21f10ad99f4d46ba9b8aaea8c9f58c34)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9cd12907-4b88-4bed-a997-53b7a0d07d12",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2280, -880],
+			"parameters": {
+				"width": 700,
+				"height": 640,
+				"content": "## Description\n### This n8n template demonstrates how to obtain token usage from AI Agents and places the data into a spreadsheet that calculates the estimated cost of the execution.\n\nObtaining the token usage from AI Agents is tricky, because it doesn't provide all the data from tool calls. This workflows taps into the workflow execution metadata to extract token usage information.\n\n### How it works\n- The AI Agent executes and then calls a subworkflow to calculate the token usage.\n- The data is stored in Google Sheets\n- The spreadsheet has formulas to calculate the estimated cost of the execution.\n\n### How to use\n- The AI Agent is used as an example. Feel free to replace this with other agents you have.\n- Call the subworkflow AFTER all the other branches have finished executing.\n\n### Requirements\n- LLM account (OpenAI, Gemini...) for API usage.\n- Google Drive and Sheets credentials\n- n8n API key of your instance"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "51c0beee-ca42-4d3b-a725-1922a778cfcc",
+			"name": "Gemini",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-400, -280],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.5-flash"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2e02c00e-375e-4fdb-adc5-0b49f6217cd1",
+			"name": "OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-320, -280],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini",
+					"cachedResultName": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "7dcc1116-ba80-4fad-89f9-ddae07a906e9",
+			"name": "Anthropic",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"position": [-240, -280],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-3-haiku-20240307",
+					"cachedResultName": "Claude Haiku 3"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"anthropicApi": {
+					"id": "credential-id",
+					"name": "anthropicApi Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "e222998d-669c-47f6-9ddc-037a2b2c3166",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-420, -160],
+			"parameters": {
+				"color": 7,
+				"width": 280,
+				"height": 200,
+				"content": "Works well with all the providers above.\n\nIf you use another provider, you might need to adjust this node:\n\n`Extract token usage data`\n\nOn the below workflow 👇"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {
+		"When Executed by Another Workflow": [
+			{
+				"execution_id": "594878"
+			}
+		]
+	},
+	"connections": {
+		"Think": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gemini": {
+			"ai_languageModel": [[]]
+		},
+		"OpenAI": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Call sub-workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Anthropic": {
+			"ai_languageModel": [[]]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Sum Token Totals - aggregate by model",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get execution data": {
+			"main": [
+				[
+					{
+						"node": "Extract token usage data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract token usage data": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Get execution data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sum Token Totals - aggregate by model": {
+			"main": [
+				[
+					{
+						"node": "Record token usage",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

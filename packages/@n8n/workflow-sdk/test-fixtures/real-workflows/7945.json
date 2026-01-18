@@ -1,0 +1,1029 @@
+{
+	"id": "FnlDCNDV3x4pYVyC",
+	"meta": {
+		"instanceId": "d975180a7308eb9e1d0eb6c8833136580b02ced551ba46ad477d3b76dff98527",
+		"templateId": "self-building-ai-agent",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Hybrid Search with Qdrant & n8n, Legal AI: Indexing",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "2556a724-93f9-4ecc-8112-10458fea8b3e",
+			"name": "Create Collection",
+			"type": "n8n-nodes-qdrant.qdrant",
+			"position": [560, 368],
+			"parameters": {
+				"vectors": "{\n  \"mxbai_large\": \n  {\n    \"size\": 1024,\n    \"distance\": \"Cosine\"\n  }\n}",
+				"operation": "createCollection",
+				"shardNumber": {},
+				"sparseVectors": "{\n  \"bm25\": \n  {\n    \"modifier\": \"idf\"\n  }\n}",
+				"collectionName": "legalQA_test",
+				"requestOptions": {},
+				"replicationFactor": {},
+				"writeConsistencyFactor": {}
+			},
+			"credentials": {
+				"qdrantApi": {
+					"id": "credential-id",
+					"name": "qdrantApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c4c7120a-aff6-4bdd-880b-903761b88af8",
+			"name": "Check Collection Exists",
+			"type": "n8n-nodes-qdrant.qdrant",
+			"position": [208, 288],
+			"parameters": {
+				"operation": "collectionExists",
+				"collectionName": "legalQA_test",
+				"requestOptions": {}
+			},
+			"credentials": {
+				"qdrantApi": {
+					"id": "credential-id",
+					"name": "qdrantApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0639e81c-130c-4fd0-a4df-80509c2f0aaf",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [400, 288],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "loose"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "d67b3ed7-aea5-4307-86f0-76c06a9da5fa",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.result.exists }}",
+							"rightValue": "true"
+						}
+					]
+				},
+				"looseTypeValidation": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "c454200a-9216-4e69-88cf-bcb3f93b65f0",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1056, 192],
+			"parameters": {
+				"width": 592,
+				"height": 864,
+				"content": "## Index Legal Dataset to Qdrant for Hybrid Retrieval\n*This pipeline is the first part of **\"Hybrid Search with Qdrant & n8n, Legal AI\"**.  \nThe second part, **\"Hybrid Search with Qdrant & n8n, Legal AI: Retrieval\"**, covers retrieval and simple evaluation.* \n\n### Overview\nThis pipeline transforms a [Q&A legal corpus from Hugging Face (isaacus)](https://huggingface.co/datasets/isaacus/LegalQAEval) into vector representations and indexes them to Qdrant, providing the foundation for running [**Hybrid Search**](https://qdrant.tech/articles/hybrid-search/), combining:\n\n- [**Dense vectors**](https://qdrant.tech/documentation/concepts/vectors/#dense-vectors) (embeddings) for semantic similarity search;  \n- [**Sparse vectors**](https://qdrant.tech/documentation/concepts/vectors/#sparse-vectors) for keyword-based exact search.\n\n\nAfter running this pipeline, you will have a Qdrant collection with your legal dataset ready for hybrid retrieval on [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) and dense embeddings: either [mxbai-embed-large-v1](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1) or [`text-embedding-3-small`](https://platform.openai.com/docs/models/text-embedding-3-small).\n\n#### Options for Embedding Inference\nThis pipeline equips you with two approaches for generating dense vectors:\n\n1. Using [**Qdrant Cloud Inference**](https://qdrant.tech/documentation/cloud/inference/), conversion to vectors handled directly in Qdrant;\n2. Using external provider, e.g. OpenAI for generating embeddings.\n\n#### Prerequisites\n- A cluster on [Qdrant Cloud](https://cloud.qdrant.io/)  \n  - Paid cluster in the US region if you want to use **Qdrant Cloud Inference**  \n  - Free Tier Cluster if using an external provider (here OpenAI)  \n- Qdrant Cluster credentials: \n  - You'll be guided on how to obtain both the **URL** and **API_KEY** from the Qdrant Cloud UI when setting up your cluster;  \n- An **OpenAI API key** (if you’re not using Qdrant’s Cloud Inference);  \n\n#### P.S.\n- To ask retrieval in Qdrant-related questions, join the [Qdrant Discord](https://discord.gg/ArVgNHV6).  \n- Star [Qdrant n8n community node repo](https://github.com/qdrant/n8n-nodes-qdrant) <3"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "03b3d5c1-cbed-43c6-8d2a-241c8a04d79d",
+			"name": "Index Dataset from HuggingFace",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-368, 768],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "8e97d7e3-1daf-4cb8-89ea-6235b0d5f8ad",
+			"name": "Split Them All Out",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [256, 944],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "splits"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4e9a2449-ef56-4f76-b6b6-9195a591e2a8",
+			"name": "Get Dataset Splits",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [64, 944],
+			"parameters": {
+				"url": "https://datasets-server.huggingface.co/splits",
+				"options": {},
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "dataset",
+							"value": "={{ $json.dataset }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "4227306b-4008-4d3a-a233-404d12729114",
+			"name": "Divide Per Row",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [640, 944],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "rows"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8d9b6c80-00ff-48c5-a9aa-75318c10e080",
+			"name": "Loop Over Batches",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [2640, 496],
+			"parameters": {
+				"options": {
+					"reset": false
+				},
+				"batchSize": 8
+			},
+			"executeOnce": false,
+			"typeVersion": 3
+		},
+		{
+			"id": "987ee18a-78b8-46f4-be12-5897176784e0",
+			"name": "Aggregate a Batch",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [2976, 512],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "batch"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5a11322c-665d-41e4-86fa-b7a0b16a4c75",
+			"name": "Upsert Points",
+			"type": "n8n-nodes-qdrant.qdrant",
+			"position": [3232, 512],
+			"parameters": {
+				"points": "=[\n  {{\n    $json.batch.map(i => \n      ({      \n        \"id\": i.idx,\n        \"payload\": { \n          \"text\": i.text, \n          \"ids_qa\": i.ids_qa\n        },\n        \"vector\": {\n          \"mxbai_large\": {\n            \"text\": i.text,\n            \"model\": \"mixedbread-ai/mxbai-embed-large-v1\"\n          },\n          \"bm25\": {\n            \"text\": i.text,\n            \"model\": \"qdrant/bm25\",\n            \"options\": {\n              \"avg_len\": i.avg_len\n            }\n          }\n        }\n      }).toJsonString()\n    )\n  }}\n]",
+				"resource": "point",
+				"operation": "upsertPoints",
+				"collectionName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "legalQA_test",
+					"cachedResultName": "legalQA_test"
+				},
+				"requestOptions": {}
+			},
+			"credentials": {
+				"qdrantApi": {
+					"id": "credential-id",
+					"name": "qdrantApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a4d4ed4a-b24a-4dba-895c-46964d2915be",
+			"name": "Limit",
+			"type": "n8n-nodes-base.limit",
+			"position": [1440, 1264],
+			"parameters": {
+				"maxItems": 500
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3d45c4b2-c3da-4add-9256-a9cdba062637",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [2224, 784],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineAll"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "8a5ba479-f1b1-4bdf-8934-ff39dfa384dd",
+			"name": "Sum them Up",
+			"type": "n8n-nodes-base.summarize",
+			"position": [1856, 1264],
+			"parameters": {
+				"options": {},
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"field": "words_in_text",
+							"aggregation": "sum"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "dced86c8-5dfb-4718-89ce-707997268382",
+			"name": "Get the Average Text Length",
+			"type": "n8n-nodes-base.set",
+			"position": [2064, 1264],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0f436085-17d6-4131-8e6d-7ffee50b60be",
+							"name": "avg_len",
+							"type": "number",
+							"value": "={{ $json.sum_words_in_text / 500 }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "c6de3504-36f4-47b9-8a1d-7df398284e8e",
+			"name": "Loop Over Batches1",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [2640, 1312],
+			"parameters": {
+				"options": {
+					"reset": false
+				},
+				"batchSize": 8
+			},
+			"executeOnce": false,
+			"typeVersion": 3
+		},
+		{
+			"id": "19e6b91d-f03a-4cb7-afd9-a148eb724877",
+			"name": "Upsert Points1",
+			"type": "n8n-nodes-qdrant.qdrant",
+			"position": [4192, 1312],
+			"parameters": {
+				"points": "=[\n  {{\n    $json.batch.map(i => \n      ({      \n        \"id\": i.idx,\n        \"payload\": { \n          \"text\": i.text, \n          \"ids_qa\": i.ids_qa\n        },\n        \"vector\": {\n          \"open_ai_small\": i.embedding,\n          \"bm25\": {\n            \"text\": i.text,\n            \"model\": \"qdrant/bm25\",\n            \"options\": {\n              \"avg_len\": i.avg_len\n            }\n          }\n        }\n      }).toJsonString()\n    )\n  }}\n]",
+				"resource": "point",
+				"operation": "upsertPoints",
+				"collectionName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "legalQA_openAI_test",
+					"cachedResultName": "legalQA_openAI_test"
+				},
+				"requestOptions": {}
+			},
+			"credentials": {
+				"qdrantApi": {
+					"id": "credential-id",
+					"name": "qdrantApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1b4ceeb5-fa40-4544-a4f8-cfd9860de452",
+			"name": "Create Collection1",
+			"type": "n8n-nodes-qdrant.qdrant",
+			"position": [3008, 1840],
+			"parameters": {
+				"vectors": "{\n  \"open_ai_small\": \n  {\n    \"size\": 1536,\n    \"distance\": \"Cosine\"\n  }\n}",
+				"operation": "createCollection",
+				"shardNumber": {},
+				"sparseVectors": "{\n  \"bm25\": \n  {\n    \"modifier\": \"idf\"\n  }\n}",
+				"collectionName": "legalQA_openAI_test",
+				"requestOptions": {},
+				"replicationFactor": {},
+				"writeConsistencyFactor": {}
+			},
+			"credentials": {
+				"qdrantApi": {
+					"id": "credential-id",
+					"name": "qdrantApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "948b1d9a-a529-4919-bb99-63ce30e2e2a5",
+			"name": "Check Collection Exists1",
+			"type": "n8n-nodes-qdrant.qdrant",
+			"position": [2608, 1744],
+			"parameters": {
+				"operation": "collectionExists",
+				"collectionName": "legalQA_openAI_test",
+				"requestOptions": {}
+			},
+			"credentials": {
+				"qdrantApi": {
+					"id": "credential-id",
+					"name": "qdrantApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e73d6246-e782-4293-bd57-ccd9a9276e06",
+			"name": "If1",
+			"type": "n8n-nodes-base.if",
+			"position": [2816, 1744],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "loose"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "d67b3ed7-aea5-4307-86f0-76c06a9da5fa",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.result.exists }}",
+							"rightValue": "true"
+						}
+					]
+				},
+				"looseTypeValidation": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "7809aff3-02d1-45e4-949d-b251b37be7ef",
+			"name": "Merge1",
+			"type": "n8n-nodes-base.merge",
+			"position": [3680, 1312],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "d68cf8a5-400f-41e3-b8bf-3a3e71ff1985",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [3520, 1104],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "data"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cdac0c35-6aa9-441a-9859-3f3bfa8e3521",
+			"name": "Get OpenAI embeddings",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3344, 1104],
+			"parameters": {
+				"url": "https://api.openai.com/v1/embeddings",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"authentication": "predefinedCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "input",
+							"value": "={{ $json.batch.map(item => item.text) }}"
+						},
+						{
+							"name": "model",
+							"value": "text-embedding-3-small"
+						}
+					]
+				},
+				"nodeCredentialType": "openAiApi"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "3a5ba038-021f-4cfc-8d59-189357309479",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [0, 592],
+			"parameters": {
+				"color": 5,
+				"width": 1344,
+				"height": 528,
+				"content": "## Get Dataset from Hugging Face\n\nFetching a sample dataset from Hugging Face using the [Dataset Viewer API](https://huggingface.co/docs/dataset-viewer/quick_start).\n**Dataset:** [LegalQAEval from isaacus](https://huggingface.co/datasets/isaacus/LegalQAEval).\n\n1. **Retrieve dataset splits**.  \n2. **Fetch all items with pagination**  \n   - Apply [pagination in HTTP node](https://docs.n8n.io/code/cookbook/http-node/pagination/#enable-pagination) to retrieve the full dataset.  \n3. **Deduplicate text chunks**  \n   - The dataset contains duplicate `text` chunks, since multiple questions may belong to each passage.  \n   - Deduplicate before indexing into Qdrant to avoid storing duplicates.  \n   - Aggregate the corresponding **question–answer IDs** so they can be reused later during retrieval evaluation.  \n4. **Format data for batching** (embeddings inference & indexing to Qdrant)  \n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4f9d02bb-6474-4448-9eab-5bc599cc2587",
+			"name": "Get Dataset Rows (Pagination)",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [448, 944],
+			"parameters": {
+				"url": "=https://datasets-server.huggingface.co/rows",
+				"options": {
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"name": "offset",
+										"value": "={{ $pageCount * 100 }}"
+									}
+								]
+							},
+							"requestInterval": 1000,
+							"completeExpression": "={{ $pageCount * 100 > $response.body.num_rows_total}}\n",
+							"paginationCompleteWhen": "other"
+						}
+					}
+				},
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "dataset",
+							"value": "={{ $json.dataset }}"
+						},
+						{
+							"name": "config",
+							"value": "={{ $json.config }}"
+						},
+						{
+							"name": "split",
+							"value": "={{ $json.split }}"
+						},
+						{
+							"name": "length",
+							"value": "=100"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "d1b63d11-d424-44ca-8ca9-843eb488235a",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1424, 1024],
+			"parameters": {
+				"color": 5,
+				"width": 800,
+				"height": 416,
+				"content": "## Estimate Average Length of Text Chunks\n\nAverage length of texts in the dataset is a part of the [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) formula used for keyword-based retrieval.\n\n1. **Select a subsample**  \n2. **Count words per text chunk**  \n3. **Compute average length**  \n   - Calculate the mean across all chunks in the subsample.  \n   - This value will be used as the **average document length (avg_len)** parameter in BM25."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b16cbdd6-789c-4b21-8755-502e089ca547",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [16, -128],
+			"parameters": {
+				"color": 5,
+				"width": 1088,
+				"height": 640,
+				"content": "## Create [Qdrant Collection](https://qdrant.tech/documentation/concepts/collections/) for Hybrid Search\nThe collection used for **Hybrid Search** is configured here with two types of vectors:\n\n**1. [Dense Vectors](https://qdrant.tech/documentation/concepts/vectors/#dense-vectors)**\nIn this pipeline, we're using the [**mxbai-embed-large-v1**](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1) embedding model through Qdrant's Cloud Inference. Hence, we need to specify during the collection configuration its:\n- **Dimensions**: 1024  \n- **Similarity metric**: `cosine`\n\n\n**2. [Sparse Vectors](https://qdrant.tech/documentation/concepts/vectors/#sparse-vectors)**\nQdrant’s main mechanism for setting up **keyword-based retrieval**. \nFor example, you can set up retrieval with:\n  - [**BM25**](https://en.wikipedia.org/wiki/Okapi_BM25) (used in this pipeline);\n    - Qdrant provides an [**`IDF` modifier**](https://qdrant.tech/documentation/concepts/indexing/#idf-modifier) for sparse vectors. This enables Qdrant to calculate **inverse document frequency (IDF)** statistics on the server side. These statistics evaluate the importance of keywords, for example, in BM25.  \n  - SPLADE, miniCOIL and other sparse neural retrievers.  \n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3f4cedea-edeb-4796-967b-d75b95fd4aad",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2544, 288],
+			"parameters": {
+				"color": 5,
+				"width": 960,
+				"height": 480,
+				"content": "## (Option №1) Index Text Chunks to Qdrant Using [Cloud Inference](https://qdrant.tech/documentation/cloud/inference/)\n\n- **Embed & upsert text chunks in batches**  \n  - **Dense embeddings inference + upsert handled by Qdrant node**, it takes care of generating embeddings and inserting them into the collection.  \n  - **Sparse representations for BM25** are created automatically under the hood by Qdrant.  \n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "67fc6b7c-9168-4214-94cd-3c2d68e477cc",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2528, 1552],
+			"parameters": {
+				"color": 7,
+				"width": 688,
+				"height": 448,
+				"content": "## (Option №2) 1. Configure a Collection for OpenAI Embeddings & BM25 Retrieval\nSince [`text-embedding-3-small`] OpenAI embeddings have a different dimensionality (1536) than mxbai embeddings (1024), you need to account for this when configuring the collection. \n \nFor simplicity, create a **separate collection** dedicated to OpenAI embeddings. This collection will be used to index texts in this block.  "
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ed76cf94-3b3b-4c8f-af1f-2ea5f7096785",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2512, 864],
+			"parameters": {
+				"color": 5,
+				"width": 1872,
+				"height": 1152,
+				"content": "## (Option №2) Index Text Chunks to Qdrant Using External Embedding Provider (OpenAI)\n*Don't forget to create and configure a separate collection for OpenAI’s [`text-embedding-3-small`](https://platform.openai.com/docs/models/text-embedding-3-small) embeddings.*\n\n1. **Embed texts in batches** with OpenAI's [`text-embedding-3-small`](https://platform.openai.com/docs/models/text-embedding-3-small), generating dense vectors.  \n\n2. **Upsert batches to Qdrant:**\n- Pass pre-embedded by OpenAi dense vectors to Qdrant;\n- Sparse representations for BM25 are created automatically under the hood by Qdrant.  "
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5eb0cbf7-a151-4bf4-a180-914909a04901",
+			"name": "Restructure for Deduplicating",
+			"type": "n8n-nodes-base.set",
+			"position": [816, 944],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "961c95d9-c803-404b-b4b6-cb66a8a33928",
+							"name": "id_qa",
+							"type": "string",
+							"value": "={{ $json.row.id }}"
+						},
+						{
+							"id": "00f4a104-8515-49fe-a094-89d22a2ead05",
+							"name": "text",
+							"type": "string",
+							"value": "={{ $json.row.text }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "e3f582f9-aad1-47a4-83a8-1e0127b78ce9",
+			"name": "Restructure for Batching",
+			"type": "n8n-nodes-base.set",
+			"position": [1200, 944],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "23528728-83f3-4f11-9d66-feddc3bf27d1",
+							"name": "idx",
+							"type": "number",
+							"value": "={{ $itemIndex }}"
+						},
+						{
+							"id": "f663bae7-ff0c-440f-9a57-cb363322fc9c",
+							"name": "text",
+							"type": "string",
+							"value": "={{ $json.text }}"
+						},
+						{
+							"id": "bfb956b4-d5e2-46b2-b41a-850a4e00765f",
+							"name": "ids_qa",
+							"type": "array",
+							"value": "={{ $json.appended_id_qa }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "74568439-a6ab-4f4e-acc5-9a0784d6c1d2",
+			"name": "Deduplicate Texts",
+			"type": "n8n-nodes-base.summarize",
+			"position": [1008, 944],
+			"parameters": {
+				"options": {},
+				"fieldsToSplitBy": "text",
+				"fieldsToSummarize": {
+					"values": [
+						{
+							"field": "id_qa",
+							"aggregation": "append"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "b65a9c60-44e1-465c-99f4-1d33428e5c4a",
+			"name": "Calculate #words in Each Text",
+			"type": "n8n-nodes-base.set",
+			"position": [1648, 1264],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "29dc2299-fb1e-4b0a-bff1-0a3e88f7eb03",
+							"name": "words_in_text",
+							"type": "number",
+							"value": "={{ $json.text.trim().split(/\\s+/).length }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "f778e469-8a74-47fe-a854-7da473156f87",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [2912, 1104],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "5a66c3c1-2c6b-4280-b7cb-514f2ae5c720",
+			"name": "Aggregate a Batch to Embed",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [3088, 1216],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "batch"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1e4971c7-c41f-4e7b-b9a1-c777193578c7",
+			"name": "Aggregate a Batch to Upsert",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [3952, 1312],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData",
+				"destinationFieldName": "batch"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {
+		"Index Dataset from HuggingFace": [
+			{
+				"json": {
+					"dataset": "isaacus/LegalQAEval"
+				}
+			}
+		]
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "fc4f19dc-4bac-4a41-944d-2c3d0b469e33",
+	"connections": {
+		"If": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Create Collection",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If1": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Create Collection1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Limit": {
+			"main": [
+				[
+					{
+						"node": "Calculate #words in Each Text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Batches",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Batches1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge1": {
+			"main": [
+				[
+					{
+						"node": "Aggregate a Batch to Upsert",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sum them Up": {
+			"main": [
+				[
+					{
+						"node": "Get the Average Text Length",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upsert Points": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Batches",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Divide Per Row": {
+			"main": [
+				[
+					{
+						"node": "Restructure for Deduplicating",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upsert Points1": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Batches1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate a Batch": {
+			"main": [
+				[
+					{
+						"node": "Upsert Points",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Collection": {
+			"main": [[]]
+		},
+		"Deduplicate Texts": {
+			"main": [
+				[
+					{
+						"node": "Restructure for Batching",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Batches": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Aggregate a Batch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Dataset Splits": {
+			"main": [
+				[
+					{
+						"node": "Split Them All Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Batches1": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Aggregate a Batch to Embed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Them All Out": {
+			"main": [
+				[
+					{
+						"node": "Get Dataset Rows (Pagination)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get OpenAI embeddings": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Collection Exists": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Collection Exists1": {
+			"main": [
+				[
+					{
+						"node": "If1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Restructure for Batching": {
+			"main": [
+				[
+					{
+						"node": "Limit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate a Batch to Embed": {
+			"main": [
+				[
+					{
+						"node": "Get OpenAI embeddings",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate a Batch to Upsert": {
+			"main": [
+				[
+					{
+						"node": "Upsert Points1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get the Average Text Length": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Calculate #words in Each Text": {
+			"main": [
+				[
+					{
+						"node": "Sum them Up",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Dataset Rows (Pagination)": {
+			"main": [
+				[
+					{
+						"node": "Divide Per Row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Restructure for Deduplicating": {
+			"main": [
+				[
+					{
+						"node": "Deduplicate Texts",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Index Dataset from HuggingFace": {
+			"main": [
+				[
+					{
+						"node": "Get Dataset Splits",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Check Collection Exists",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

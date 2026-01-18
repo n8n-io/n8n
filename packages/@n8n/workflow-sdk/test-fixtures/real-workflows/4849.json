@@ -1,0 +1,1037 @@
+{
+	"id": "5mGRqFpu73QguZPC",
+	"meta": {
+		"instanceId": "06b3271522ae4bedcb94de9dac3219d19e1a4e5fcd0a448a4abc68198b391077",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "ocr Telegram - SAP",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "026397ff-3b84-49f4-adf1-d4e8bef01e38",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [1620, 100],
+			"webhookId": "76b9bf12-3264-40e5-94dc-676f3954f41c",
+			"parameters": {
+				"amount": 3
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "7c032e9c-edc3-4b23-89d5-66e092b37857",
+			"name": "Basic LLM Chain",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [1840, -100],
+			"parameters": {
+				"text": "={{ $json.markdown }}",
+				"batching": {},
+				"messages": {
+					"messageValues": [
+						{
+							"message": "Eres un asistente experto en extracción y procesamiento de datos de documentos especializado en identificar con precisión los detalles claves de una factura"
+						},
+						{
+							"type": "HumanMessagePromptTemplate",
+							"message": "=Tu tarea: Extraer de cualquier texto de factura los siguientes campos, devolviendo los datos en un JSON estructurado y con máxima precisión:\n\nCampos a extraer:\nnombre_proveedor: Nombre del proveedor.\n\nruc_proveedor: RUC del proveedor.\n\ndireccion_proveedor: Dirección del proveedor.\n\nnumero_factura: Número de factura.\n\nfecha_emision: Fecha de emisión de la factura (formato YYYY-MM-DD).\n\ndetalle_productos: Lista de líneas de detalle de los productos o servicios facturados. Cada línea incluirá:\n\ncodigo\n\ndescripcion\n\ncantidad\n\nprecio\n\nsubtotal\n\nsubtotal_factura: Subtotal general de la factura.\n\ndescuento_factura: Descuento total de la factura.\n\ntotal_neto: Total neto de la factura.\n\nFormato de salida esperado:\nSi algún campo no existe, deberá devolverse como null.\nDevuelve siempre el JSON con los nombres exactos de las claves.\n\nEjemplo de salida esperado:\n\n{\n  \"nombre_proveedor\": \"Blockies Corporation\",\n  \"ruc_proveedor\": \"78787878-7\",\n  \"direccion_proveedor\": \"AV. DE LAS ARTES NORTE NRO. 310 (ESPALDA RAMBLA DE JAVIER PRADO) LIMA - LIMA - SAN BORJA\",\n  \"numero_factura\": \"00003\",\n  \"fecha_emision\": \"2025-04-15\",\n  \"detalle_productos\": [\n    {\n      \"codigo\": \"srv001\",\n      \"descripcion\": \"Servicio de Alquiler de Montacargas\",\n      \"cantidad\": 1,\n      \"precio\": 35.00,\n      \"subtotal\": 35.00\n    }\n  ],\n  \"subtotal_factura\": 35.00,\n  \"descuento_factura\": 0.00,\n  \"total_neto\": 35.00\n}\nInstrucciones adicionales:\nNo resumas, no expliques, no añadas comentarios, solo responde con el JSON.\n\nSi existen varias líneas de productos, incluir todas dentro del array \"detalle_productos\".\n\nNo redondees importes, extrae exactamente el valor mostrado.\n\nLas fechas deben estar siempre en formato YYYY-MM-DD."
+						}
+					]
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "036c0443-0224-4a2f-9a9a-c7d9feebbdc3",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [1840, 80],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "0af0d3fb-6b87-44b4-8fe8-3c992c74a10d",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"position": [760, 820],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "a9201f0b-e504-45c2-ade0-86004ba5e323",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [2280, -100],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "output.detalle_productos"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8a189ae2-64d4-459b-a8fd-81b4423cf135",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [2240, 540],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "b13a0de4-a00e-4b38-8b12-fa9c2b1825d9",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-140, 460],
+			"parameters": {
+				"width": 3720,
+				"height": 560,
+				"content": "## Waiting for an answer on telegram"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4aa3c30a-4a2c-4168-866d-4e1b8a3651f5",
+			"name": "Callback Waiting Answer",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [-40, 640],
+			"webhookId": "56b0ca20-2362-4658-b2b8-692b0303ae0c",
+			"parameters": {
+				"updates": ["callback_query"],
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8b49790e-fc03-4a1b-944c-139e383a0a46",
+			"name": "Answer?",
+			"type": "n8n-nodes-base.switch",
+			"position": [300, 640],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "SI",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "c3ae2bff-a96d-4f42-b0b3-e04f8ef372d1",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.callback_query.data }}",
+										"rightValue": "respuesta_si"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "NO",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "59ccf0b4-bb12-4c10-b289-354be138f96c",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.callback_query.data }}",
+										"rightValue": "respuesta_no"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "a958d830-0608-4d9b-a14d-922869c9fbd3",
+			"name": "Connect to SAP",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [760, 520],
+			"parameters": {
+				"url": "={{ $vars.url_sap }}Login",
+				"method": "POST",
+				"options": {
+					"allowUnauthorizedCerts": true
+				},
+				"jsonBody": "={\n       \"UserName\": \"{{ $vars.user_sap }}\",\n       \"Password\": \"{{ $vars.password_sap }}\",\n       \"CompanyDB\": \"{{ $vars.company_db }}\"\n}",
+				"sendBody": true,
+				"specifyBody": "json"
+			},
+			"typeVersion": 4.2,
+			"alwaysOutputData": false
+		},
+		{
+			"id": "ec4c8074-6aa8-4f89-812c-3d6305a10d60",
+			"name": "Get Header",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1160, 520],
+			"parameters": {
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "",
+					"cachedResultUrl": "",
+					"cachedResultName": ""
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "5e290a19-236a-4baa-9093-1b32f486b058",
+			"name": "Get Row Details",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1560, 680],
+			"parameters": {
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "",
+					"cachedResultUrl": "",
+					"cachedResultName": ""
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6,
+			"alwaysOutputData": false
+		},
+		{
+			"id": "42edf631-ee30-4b6f-b10b-fa53ee148c26",
+			"name": "Generate DocumentLines",
+			"type": "n8n-nodes-base.code",
+			"position": [1880, 680],
+			"parameters": {
+				"jsCode": "const items = $input.all();  // capturamos todos los items que entran\nconst DocumentLines = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i].json;\n\n  DocumentLines.push({\n    ItemCode: item.código,\n    Quantity: item.cantidad,\n    UnitPrice: item.precio\n  });\n}\n\nreturn [{ DocumentLines }];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "d9d54a86-50e7-469a-88a2-c5860459bf99",
+			"name": "Create JSON",
+			"type": "n8n-nodes-base.code",
+			"position": [2580, 540],
+			"parameters": {
+				"jsCode": "const item = $json;\n\n// Construimos el objeto final para SAP\nreturn [{\n  DocDate: item.fecha_emision,\n  DocDueDate: item.fecha_emision,\n  CardCode: item.ruc_proveedor,\n  DocumentLines: item.DocumentLines\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "dfbd5b4b-a545-4062-bfdb-1d383c8277f6",
+			"name": "POST PurchaseInvoices",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2980, 540],
+			"parameters": {
+				"url": "={{ $vars.url_sap }}PurchaseInvoices",
+				"body": "={{ JSON.stringify($json) }}",
+				"method": "POST",
+				"options": {
+					"allowUnauthorizedCerts": true
+				},
+				"sendBody": true,
+				"contentType": "raw",
+				"sendHeaders": true,
+				"rawContentType": "application/json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Cookie",
+							"value": "=B1SESSION={{ $('Connect to SAP').item.json.SessionId }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ec33a3bf-2632-4f49-b0c8-4fe1284c90df",
+			"name": "PurchaseInvoices created",
+			"type": "n8n-nodes-base.telegram",
+			"position": [3360, 540],
+			"webhookId": "a3f4bedb-06da-446e-8a1a-a2666b511152",
+			"parameters": {
+				"text": "=PurchaseInvoice {{ $json.DocEntry }} creada en SAP correctamente",
+				"chatId": "={{ $('Callback Waiting Answer').item.json.callback_query.message.chat.id }}",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "311d3616-3ebf-439f-8d6f-f5aa18e89bc6",
+			"name": "Trigger Receive Message",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [0, 0],
+			"webhookId": "5af23994-f45e-4b53-8bc0-edfee56e962c",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "c01eb2e3-7aa8-4a4c-897f-4414816fa459",
+			"name": "Capture Telegram Data",
+			"type": "n8n-nodes-base.set",
+			"position": [260, 0],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b6e43e6c-452f-4747-b17c-2de6191fb0f0",
+							"name": "message.chat.id",
+							"type": "number",
+							"value": "={{ $json.message.chat.id }}"
+						},
+						{
+							"id": "a82f3829-5ce1-4a94-b7e0-a1449f7a3da6",
+							"name": "message.chat",
+							"type": "object",
+							"value": "={{ $json.message.chat }}"
+						},
+						{
+							"id": "619ffe10-2bea-4bda-a356-501562628bc5",
+							"name": "telegram.file_id",
+							"type": "string",
+							"value": "={{ $json.message.document.file_id }}"
+						},
+						{
+							"id": "afbbdb8a-47e8-4b33-8f81-91989d1121af",
+							"name": "message.caption",
+							"type": "string",
+							"value": "={{ $('Trigger Receive Message').item.json.message.caption }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "bacef005-e65c-4894-aa0b-8ef34033daac",
+			"name": "File Received",
+			"type": "n8n-nodes-base.telegram",
+			"position": [500, 0],
+			"webhookId": "39a7a3e0-95ba-400f-9c3b-58bfc70b5fb3",
+			"parameters": {
+				"text": "Hemos recibido tu documento y lo estamos procesando...",
+				"chatId": "={{ $json.message.chat.id }}",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "01bae880-e0d1-449f-b459-94b7a56b3adb",
+			"name": "Download File",
+			"type": "n8n-nodes-base.telegram",
+			"position": [720, 0],
+			"webhookId": "1393ba90-f818-4d06-88b9-806d1542abea",
+			"parameters": {
+				"fileId": "={{ $('Capture Telegram Data').item.json.telegram.file_id }}",
+				"resource": "file"
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "86e1b80a-302d-4010-a740-ce916f8f74df",
+			"name": "Upload File LlamaIndex",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [940, 0],
+			"parameters": {
+				"url": "https://api.cloud.llamaindex.ai/api/v1/parsing/upload",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"sendHeaders": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "file",
+							"parameterType": "formBinaryData",
+							"inputDataFieldName": "data"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "accept",
+							"value": "application/json"
+						},
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{ $vars.llamaindex_apikey }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "92f93bbd-3192-40aa-b81f-bf5165e3dc35",
+			"name": "Validate Status LlamaIndex",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1180, 0],
+			"parameters": {
+				"url": "=https://api.cloud.llamaindex.ai/api/v1/parsing/job/{{ $json.id }}",
+				"options": {},
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "accept",
+							"value": "application/json"
+						},
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{ $vars.llamaindex_apikey }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "4914e5d3-ec4e-4c96-b6c1-6f2ede2b5b38",
+			"name": "Status?",
+			"type": "n8n-nodes-base.switch",
+			"position": [1400, 0],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "SUCCESS",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "7005abbb-4094-4dde-9cc5-b973fe54a09e",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.status }}",
+										"rightValue": "SUCCESS"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "PENDING",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "b4bdda84-6e9d-44c9-a85c-fd87d7427765",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.status }}",
+										"rightValue": "PENDING"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "d2c19099-01c7-4547-aa3e-944c16009aaf",
+			"name": "Get Results LlamaIndex",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1620, -100],
+			"parameters": {
+				"url": "=https://api.cloud.llamaindex.ai/api/v1/parsing/job/{{ $json.id }}/result/markdown",
+				"options": {},
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "accept",
+							"value": "application/json"
+						},
+						{
+							"name": "Authorization",
+							"value": "=Bearer {{ $vars.llamaindex_apikey }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "c0ba5071-56b6-45c0-b0ad-bb87b8c543ca",
+			"name": "Structured Output Parser (Example)",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [2060, 60],
+			"parameters": {
+				"jsonSchemaExample": "{\n  \"nombre_proveedor\": \"Blockies Corporation\",\n  \"ruc_proveedor\": \"78787878-7\",\n  \"direccion_proveedor\": \"AV. DE LAS ARTES NORTE NRO. 310 (ESPALDA RAMBLA DE JAVIER PRADO) LIMA - LIMA - SAN BORJA\",\n  \"numero_factura\": \"00003\",\n  \"fecha_emision\": \"2025-04-15\",\n  \"detalle_productos\": [\n    {\n      \"codigo\": \"srv001\",\n      \"descripcion\": \"Servicio de Alquiler de Montacargas\",\n      \"cantidad\": 1,\n      \"precio\": 35.00,\n      \"subtotal\": 35.00\n    }\n  ],\n  \"subtotal_factura\": 35.00,\n  \"descuento_factura\": 0.00,\n  \"total_neto\": 35.00\n}"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f62a9650-a966-4efa-a9ec-ee166e4e3881",
+			"name": "Detail",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2480, 80],
+			"parameters": {
+				"columns": {
+					"value": {
+						"precio": "={{ $('Split Out').item.json.precio }}",
+						"código": "={{ $('Split Out').item.json.codigo }}",
+						"cantidad": "={{ $('Split Out').item.json.cantidad }}",
+						"subtotal": "={{ $('Split Out').item.json.subtotal }}",
+						"descripcion": "={{ $('Split Out').item.json.descripcion }}",
+						"numero_factura": "={{ $('Basic LLM Chain').item.json.output.numero_factura }}"
+					},
+					"schema": [
+						{
+							"id": "numero_factura",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "numero_factura",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "código",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "código",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "descripcion",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "descripcion",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "cantidad",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "cantidad",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "precio",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "precio",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "subtotal",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "subtotal",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "ec718e9d-d729-4493-8439-78cf63394e28",
+			"name": "Header",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2620, -100],
+			"parameters": {
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"executeOnce": true,
+			"typeVersion": 4.6
+		},
+		{
+			"id": "d30ac579-8f31-471f-89d6-e27b6b99a4f3",
+			"name": "¿Upload to SAP?",
+			"type": "n8n-nodes-base.telegram",
+			"position": [2900, -100],
+			"webhookId": "f327fe60-a943-4b8b-8413-8caf56d4657d",
+			"parameters": {
+				"text": "=¿Quieres enviar los datos a SAP?",
+				"chatId": "={{ $('Capture Telegram Data').item.json.message.chat.id }}",
+				"replyMarkup": "inlineKeyboard",
+				"inlineKeyboard": {
+					"rows": [
+						{
+							"row": {
+								"buttons": [
+									{
+										"text": "Si",
+										"additionalFields": {
+											"callback_data": "respuesta_si"
+										}
+									},
+									{
+										"text": "No",
+										"additionalFields": {
+											"callback_data": "respuesta_no"
+										}
+									}
+								]
+							}
+						}
+					]
+				},
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"executeOnce": true,
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e80fa814-502a-4af1-8c3f-8b35c65ed0eb",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-120, -180],
+			"parameters": {
+				"color": 7,
+				"width": 3280,
+				"height": 540,
+				"content": "## Send data and OCR with LlamaIndex\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "c7b1fdbb-20e4-48aa-b67a-7da7ceee2fa7",
+	"connections": {
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Validate Status LlamaIndex",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Create JSON",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Detail": {
+			"main": [
+				[
+					{
+						"node": "Header",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Header": {
+			"main": [
+				[
+					{
+						"node": "¿Upload to SAP?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Answer?": {
+			"main": [
+				[
+					{
+						"node": "Connect to SAP",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Status?": {
+			"main": [
+				[
+					{
+						"node": "Get Results LlamaIndex",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Detail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Header": {
+			"main": [
+				[
+					{
+						"node": "Get Row Details",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create JSON": {
+			"main": [
+				[
+					{
+						"node": "POST PurchaseInvoices",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download File": {
+			"main": [
+				[
+					{
+						"node": "Upload File LlamaIndex",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"File Received": {
+			"main": [
+				[
+					{
+						"node": "Download File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Connect to SAP": {
+			"main": [
+				[
+					{
+						"node": "Get Header",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Basic LLM Chain": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Row Details": {
+			"main": [
+				[
+					{
+						"node": "Generate DocumentLines",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"¿Upload to SAP?": {
+			"main": [[]]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Basic LLM Chain",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Capture Telegram Data": {
+			"main": [
+				[
+					{
+						"node": "File Received",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"POST PurchaseInvoices": {
+			"main": [
+				[
+					{
+						"node": "PurchaseInvoices created",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate DocumentLines": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Get Results LlamaIndex": {
+			"main": [
+				[
+					{
+						"node": "Basic LLM Chain",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload File LlamaIndex": {
+			"main": [
+				[
+					{
+						"node": "Validate Status LlamaIndex",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Callback Waiting Answer": {
+			"main": [
+				[
+					{
+						"node": "Answer?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Trigger Receive Message": {
+			"main": [
+				[
+					{
+						"node": "Capture Telegram Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Validate Status LlamaIndex": {
+			"main": [
+				[
+					{
+						"node": "Status?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser (Example)": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Basic LLM Chain",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

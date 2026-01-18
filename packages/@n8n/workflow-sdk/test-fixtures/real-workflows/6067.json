@@ -1,0 +1,632 @@
+{
+	"id": "OcdRRO25OfTnrILJ",
+	"meta": {
+		"instanceId": "d97a35efa9230ba825e389dcf8247ce5a77a88f4113df9825ba41d6ce9398085",
+		"templateId": "4352",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Blog Post : Tendencias Ecosistema",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "cc9b1e41-aaeb-43fb-a283-e3faf397cc73",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-1480, 610],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "cronExpression",
+							"expression": "0 6 * * 1"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "01d0a3b7-66db-4032-b7d7-7a7b273920a7",
+			"name": "Research Topic- Perplexity",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-1260, 610],
+			"parameters": {
+				"url": "https://api.perplexity.ai/chat/completions",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"model\": \"sonar-pro\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres un asistente experto en generar artículos SEO en español neutro sobre startups tecnológicas. El tono debe ser educativo, práctico, reflexivo e inspirador.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Redacta un artículo basado en la tendencia más relevante del ecosistema de startups tecnológicas hispanohablantes del día.\\n\\nDevuelve la respuesta estrictamente en formato JSON con esta estructura:\\n{\\n  \\\"title\\\": \\\"[título atractivo en una sola línea]\\\",\\n  \\\"content\\\": \\\"[cuerpo del artículo en HTML limpio, sin caracteres escapados, sin markdown, sin saltos \\\\n, y sin comentarios externos. Usar solo etiquetas estándar de HTML como <p>, <h2>, <ul>, <li>, <strong> y <em>. No uses etiquetas personalizadas ni scripts.]\\\"\\n}\\n\\nEl artículo debe:\\n- Tener entre 1000 y 1500 palabras.\\n- Incluir subtítulos usando <h2>.\\n- Iniciar con un gancho atractivo de máximo 3 frases dentro de <p>.\\n- Incluir al menos 2 datos estadísticos actuales con fuente (en texto).\\n- Ofrecer mínimo 3 consejos útiles, en formato de lista con <ul> y <li>.\\n- Terminar con una reflexión motivadora e invitación a sumarse a la comunidad (sin enlaces).\\n- Usar naturalmente palabras clave como: startups tecnológicas, innovación, emprendimiento, inversión, comunidad.\\n\\nNo agregues ningún texto ni explicación fuera del objeto JSON.\"\n    }\n  ]\n}\n",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "perplexityApi"
+			},
+			"credentials": {
+				"perplexityApi": {
+					"id": "credential-id",
+					"name": "perplexityApi Credential"
+				},
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "f70d8187-0f57-4680-8155-420d060536f0",
+			"name": "Crear Post en Wordpress",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [860, 760],
+			"parameters": {
+				"url": "https://cristiantala.com/wp-json/wp/v2/posts",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"title\": \"{{ $('Get Title, Content, and Image FileName').item.json.title }}\",\n  \"content\": \"{{ $('Get Title, Content, and Image FileName').item.json.content }}\",\n  \"status\": \"publish\",\n  \"categories\": [\n    916\n  ],\n  \"featured_media\": {{ $('Upload Image to Wordpress').item.json.id }}\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBasicAuth"
+			},
+			"credentials": {
+				"httpBasicAuth": {
+					"id": "credential-id",
+					"name": "httpBasicAuth Credential"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "b306aff7-c8b0-4bf7-9eb1-d8eeee45da6e",
+			"name": "Message a model",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [-820, 610],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini",
+					"cachedResultName": "GPT-4.1-MINI"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=Generate a single-line English description of an editorial-style image to visually represent the following article.\n\nThe image must follow these rules:\n- Cinematic, editorial look (not cartoonish or abstract).\n- No visible text or logos.\n- Must work for a blog post featured image in Google News and Discover (ideal size: 1200x628 px).\n- The article title is: \"{{ $json.title }}\"\n- Article content: {{ $json.content }}.\n\nOutput just the English prompt, without quotes or formatting."
+						},
+						{
+							"role": "system",
+							"content": "You are an expert in crafting AI image generation prompts for editorial and news images. You help generate cinematic, editorial-style prompts for blog images that perform well in Google News and Google Discover. Avoid any text or logos in the result."
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "e3786cd7-baac-4e9e-bd45-63ec3b5cfd5e",
+			"name": "Upload Image to Wordpress",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [420, 760],
+			"parameters": {
+				"url": "https://cristiantala.com/wp-json/wp/v2/media",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "binaryData",
+				"sendHeaders": true,
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBasicAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Disposition",
+							"value": "=attachment; filename=\"{{ $('Get Title, Content, and Image FileName').item.json.image_filename }}\""
+						},
+						{
+							"name": "Content-Type",
+							"value": "image/jpeg"
+						}
+					]
+				},
+				"inputDataFieldName": "data"
+			},
+			"credentials": {
+				"httpBasicAuth": {
+					"id": "credential-id",
+					"name": "httpBasicAuth Credential"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "bd779c40-a90d-4412-935a-7adc30e431fc",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [-20, 560],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "132de601-8ca1-46b4-9ae3-67baa33f28ad",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.generations_by_pk.status }}",
+							"rightValue": "COMPLETE"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "24b8ff73-0eff-41ce-b99b-27d4210838ac",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [200, 560],
+			"webhookId": "d14af83a-15dc-4387-adf9-0f8b785faa0c",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "072b61c5-7494-42cd-808f-bb311605f4a3",
+			"name": "Get Leonardo Image Status",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-240, 610],
+			"parameters": {
+				"url": "=https://cloud.leonardo.ai/api/rest/v1/generations/{{ $json.sdGenerationJob.generationId }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "accept",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "credential-id",
+					"name": "httpBearerAuth Credential"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "da14ecc4-ca0f-445e-9c87-0148a602bfc2",
+			"name": "Get Leonardo Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [200, 760],
+			"parameters": {
+				"url": "={{ $json.generations_by_pk.generated_images[0].url }}",
+				"options": {}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "02b052f2-0771-42b3-b4e8-526375654118",
+			"name": "Agregar ALT a la Imagen",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [640, 760],
+			"parameters": {
+				"url": "=https://cristiantala.com/wp-json/wp/v2/media/{{ $json.id }}",
+				"method": "PUT",
+				"options": {},
+				"sendBody": true,
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "alt_text",
+							"value": "={{ $('Message a model').item.json.message.content }}"
+						}
+					]
+				},
+				"genericAuthType": "httpBasicAuth"
+			},
+			"credentials": {
+				"httpBasicAuth": {
+					"id": "credential-id",
+					"name": "httpBasicAuth Credential"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "07078bdd-6d8e-485e-9581-e359361feba9",
+			"name": "Publicaciones Wordpress Startups y Tecnología",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1080, 760],
+			"parameters": {
+				"columns": {
+					"value": {
+						"URL": "={{ $json.guid.raw }}",
+						"Tipo": "Post WP",
+						"Topic": "={{ $json.title.rendered }}",
+						"Status": "Posted",
+						"URL Imagen": "={{ $('Upload Image to Wordpress').item.json.guid.rendered }}",
+						"Contenido AI": "={{ $json.content.raw }}",
+						"Fecha del Posteo": "={{ $json.date }}"
+					},
+					"schema": [
+						{
+							"id": "Topic",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Topic",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Tipo",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Tipo",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Status",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Contenido AI",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Contenido AI",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Fecha del Posteo",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Fecha del Posteo",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL Imagen",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "URL Imagen",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Topic"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1s3HKV8M3U8NvOp1CxERz8tnC9ibYmnB4Pztgv1ZjkOQ/edit#gid=0",
+					"cachedResultName": "Hoja 1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1s3HKV8M3U8NvOp1CxERz8tnC9ibYmnB4Pztgv1ZjkOQ",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1s3HKV8M3U8NvOp1CxERz8tnC9ibYmnB4Pztgv1ZjkOQ/edit?usp=drivesdk",
+					"cachedResultName": "Publicaciones RRSS"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "ce87f8ee-3d53-462c-9df5-921fdc42d17c",
+			"name": "Leonardo: Create Post Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-460, 610],
+			"parameters": {
+				"url": "https://cloud.leonardo.ai/api/rest/v1/generations",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"prompt\": \"{{ $json.message.content }}\",\n  \"modelId\": \"6bef9f1b-29cb-40c7-b9df-32b51c1f67d3\",\n  \"width\": 1280,\n  \"height\": 720,\n  \"sd_version\": \"v2\",\n  \"num_images\": 1,\n  \"promptMagic\": true,\n  \"promptMagicStrength\": 0.5,\n  \"public\": false,\n  \"scheduler\": \"LEONARDO\",\n  \"guidance_scale\": 7\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "accept",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "credential-id",
+					"name": "httpBearerAuth Credential"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "c8e83410-b334-4c2e-8095-0d424dd8455f",
+			"name": "Get Title, Content, and Image FileName",
+			"type": "n8n-nodes-base.code",
+			"position": [-1040, 610],
+			"parameters": {
+				"jsCode": "const data = JSON.parse($input.first().json.choices[0].message.content);\n\n// Función para generar slug SEO-friendly\nfunction toSlug(text) {\n  return text\n    .toLowerCase()\n    .normalize(\"NFD\")                   // elimina acentos\n    .replace(/[\\u0300-\\u036f]/g, \"\")   // elimina diacríticos\n    .replace(/[^a-z0-9\\s-]/g, \"\")      // elimina caracteres especiales\n    .replace(/\\s+/g, \"-\")              // reemplaza espacios por guiones\n    .replace(/-+/g, \"-\")               // evita guiones dobles\n    .replace(/^-|-$/g, \"\");            // quita guiones iniciales y finales\n}\n\nconst imageName = toSlug(data.title) + \".jpg\";\n\nreturn [\n  {\n    json: {\n      title: data.title,\n      content: data.content,\n      image_filename: imageName\n    }\n  }\n];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "611ebda2-da9a-4104-9888-5934afbfbe3d",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1100, 800],
+			"parameters": {
+				"height": 260,
+				"content": "## Problem in node ‘Get Title, Content, and Image FileName‘\nIf this happens, is because the Json file was not created successfully before on Perplexity. IA Models still struggles with this."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0f807531-ad62-40a8-8778-a4f7dcfc3c63",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [560, 960],
+			"parameters": {
+				"content": "## ALT Images \nALT sigue siendo una de las características seo Importantes, junto al nombre del archivo de la imagen."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "23f62c23-08c5-4da9-8579-a4b1077b43e1",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-240, 980],
+			"parameters": {
+				"width": 540,
+				"height": 120,
+				"content": "## Generación de Imagen con LeonardoAI\nEl proceso de generación de la imagen es asincrono, por lo que debemos preguntar si está listo cada cierto tiempo. % segundos son más que suficientes, y menos puede bloquearte el API."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "56512471-538c-478f-9406-685f8501a8aa",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-800, 840],
+			"parameters": {
+				"height": 200,
+				"content": "## Image Prompt\nLe pedimos a ChaGPT que nos ayude a generar el prompt que usaremos en LeonardoAI para la imagen. Si bien podemos ocupar OpenAI para la imagen, Leonardo es considerablemente más económico."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "24dd4040-a12b-4edc-a36f-668b1e4b6ab4",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [800, 560],
+			"parameters": {
+				"content": "## Publicamos\nSe genera la publicación incluyendo la imagen y la categoría."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4dee076b-728a-42eb-b1ba-a8adfae043b5",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1060, 960],
+			"parameters": {
+				"content": "## Journal\nGeneramos una lista de las publicaciones que hemos hecho a través de este flujo"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": true,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "5ff0e3cd-00ad-4e8f-99a4-cd67ae531778",
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Get Leonardo Image",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Get Leonardo Image Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Message a model": {
+			"main": [
+				[
+					{
+						"node": "Leonardo: Create Post Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Research Topic- Perplexity",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Leonardo Image": {
+			"main": [
+				[
+					{
+						"node": "Upload Image to Wordpress",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Agregar ALT a la Imagen": {
+			"main": [
+				[
+					{
+						"node": "Crear Post en Wordpress",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Crear Post en Wordpress": {
+			"main": [
+				[
+					{
+						"node": "Publicaciones Wordpress Startups y Tecnología",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Leonardo Image Status": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload Image to Wordpress": {
+			"main": [
+				[
+					{
+						"node": "Agregar ALT a la Imagen",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Research Topic- Perplexity": {
+			"main": [
+				[
+					{
+						"node": "Get Title, Content, and Image FileName",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Leonardo: Create Post Image": {
+			"main": [
+				[
+					{
+						"node": "Get Leonardo Image Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Title, Content, and Image FileName": {
+			"main": [
+				[
+					{
+						"node": "Message a model",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

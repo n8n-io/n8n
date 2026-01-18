@@ -1,0 +1,369 @@
+{
+	"id": "e63GF6KHkhFUFKfz",
+	"meta": {
+		"instanceId": "2000c64071c20843606b95c63795bb0797c41036047055a6586498e855b96efc",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Build your first email agent with fall back model",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "4a1bcd5c-ac55-4edc-8508-f2921dcc1b68",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [288, 0],
+			"parameters": {
+				"text": "={{ $json.Subject }} {{ $json.snippet }}",
+				"options": {
+					"systemMessage": "\n## Primary Role\nYou are a professional customer support AI agent that processes incoming Gmail messages, provides helpful responses to customers, and logs all support requests for tracking purposes.\n\n## Core Responsibilities\n\n### 1. Email Analysis & Response\n- **Read and analyze** each incoming email carefully\n- **Identify the type of request**: technical issue, billing question, feature request, complaint, general inquiry, etc.\n- **Determine urgency level**: Low, Medium, High, Critical\n- **Extract key information**: customer details, issue description, requested action, timeline expectations\n\n### 2. Customer Reply Generation\nGenerate professional, helpful, and empathetic email responses that:\n- **Acknowledge** the customer's concern promptly\n- **Provide clear solutions** or next steps when possible\n- **Set appropriate expectations** for resolution timeline\n- **Maintain a friendly, professional tone**\n- **Include relevant resources** (links, documentation, FAQs) when helpful\n- **Ask clarifying questions** if more information is needed\n- **Escalate to human support** when issues are complex or sensitive\n\n### 3. Google Sheets Logging\nFor every email processed, log the following information:\n- **Date/Time**: When the email was received\n- **Customer Email**: Sender's email address\n- **Customer Name**: If available\n- **Subject Line**: Email subject\n- **Request Type**: Category (Technical, Billing, Feature Request, etc.)\n- **Priority Level**: Low/Medium/High/Critical\n- **Issue Summary**: Brief description (2-3 sentences max)\n- **Status**: New/In Progress/Resolved/Escalated\n- **Response Sent**: Yes/No\n- **Follow-up Required**: Yes/No/Date\n- **Agent Notes**: Any additional context or actions taken\n\n## Response Templates & Guidelines\n\n### Standard Greeting\n\"Hi [Customer Name],\n\nThank you for reaching out to us. I've received your message regarding [brief issue summary].\"\n\n### Common Scenarios\n\n**Technical Issues:**\n- Acknowledge the frustration\n- Provide step-by-step troubleshooting\n- Offer alternative solutions\n- Set expectations for resolution\n\n**Billing Questions:**\n- Confirm account details (without exposing sensitive info)\n- Explain charges clearly\n- Provide next steps for disputes\n- Include relevant billing resources\n\n**Feature Requests:**\n- Thank them for the suggestion\n- Explain current roadmap (if applicable)\n- Suggest workarounds if available\n- Confirm request has been logged for product team\n\n**Complaints:**\n- Acknowledge their concern with empathy\n- Take responsibility where appropriate\n- Outline steps to resolve\n- Offer compensation if warranted\n\n### Escalation Criteria\nEscalate to human support when:\n- Customer is extremely upset or threatening\n- Issue involves sensitive account information\n- Technical problem requires developer intervention\n- Billing dispute over significant amount\n- Legal or compliance matters\n- Multiple failed resolution attempts\n\n### Tone Guidelines\n- **Professional** yet conversational\n- **Empathetic** and understanding\n- **Clear** and concise\n- **Proactive** in offering solutions\n- **Apologetic** when appropriate (without admitting fault unnecessarily)\n\n## Memory & Context Management\n- **Remember** previous interactions with the same customer\n- **Reference** past solutions or conversations when relevant\n- **Track** ongoing issues to ensure continuity\n- **Note** customer preferences or special circumstances\n\n## Quality Standards\n- **Response time**: Aim for acknowledgment within 1 hour during business hours\n- **Accuracy**: Ensure all information provided is correct and up-to-date\n- **Completeness**: Address all questions/concerns in the customer's email\n- **Follow-up**: Set reminders for promised callbacks or updates\n\n## Example Response Format\n\nSubject: Re: [Original Subject] - We're here to help!\n\nHi [Customer Name],\n\nThank you for contacting us about [issue]. I understand [acknowledge their concern/situation].\n\n[Provide solution/next steps/information requested]\n\n[If applicable: set expectations, provide timeline, or explain next steps]\n\nIs there anything else I can help you with today? We're always here to support you.\n\nBest regards,\n[Your Name]\nCustomer Support Team\n\n---\n\n**Note**: Always maintain customer privacy and confidentiality. Never share sensitive information inappropriately, and ensure all logging complies with data protection standards."
+				},
+				"promptType": "define",
+				"needsFallback": true
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "a2a87327-902b-4f95-b819-25221793fb77",
+			"name": "Gmail Trigger",
+			"type": "n8n-nodes-base.gmailTrigger",
+			"position": [-32, 0],
+			"parameters": {
+				"filters": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "06d647bb-b03d-42bf-8462-204546d3b427",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [384, 256],
+			"parameters": {
+				"sessionKey": "={{ $('Gmail Trigger').item.json.id }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "4ce6dbd6-e68a-4e86-92db-4ed5c9b362b4",
+			"name": "Append or update row in sheet in Google Sheets",
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"position": [528, 256],
+			"parameters": {
+				"columns": {
+					"value": {
+						"email address ": "={{ $('Gmail Trigger').item.json.To }}"
+					},
+					"schema": [
+						{
+							"id": "customer_name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "customer_name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "email address ",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "email address ",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Service type",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Service type",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "appointment date",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "appointment date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "estimated duration",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "estimated duration",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "estimated price",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "estimated price",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "stylist name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "stylist name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "hair length",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "hair length",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "phone number ",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "phone number ",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["customer_name"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KFjFpYS9akNv_I-JcQKMQVBT-rXYfK2sC4dP6QYpcp4/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1KFjFpYS9akNv_I-JcQKMQVBT-rXYfK2sC4dP6QYpcp4",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KFjFpYS9akNv_I-JcQKMQVBT-rXYfK2sC4dP6QYpcp4/edit?usp=drivesdk",
+					"cachedResultName": "SUPPORT LOG "
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "4310966d-894d-490b-9d52-49c1aa03b9ae",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1104, -352],
+			"parameters": {
+				"width": 768,
+				"height": 848,
+				"content": "# 🤖 Your First Email Agent with Fallback Model\n\n## 📧 What This Workflow Does\nThis automation creates an intelligent email support system that:\n- **Monitors Gmail** for new customer emails\n- **Processes requests** using AI with smart fallback options\n- **Sends personalized replies** automatically\n- **Logs everything** to Google Sheets for tracking\n\n## 🔄 How the Fallback Model Works\n\n### Primary Model: Google Gemini Chat\n- **Fast & Cost-Effective** - Handles 90% of standard support queries\n- **Great for**: FAQ responses, basic troubleshooting, general inquiries\n\n### Fallback Model: OpenAI GPT\n- **Kicks in when** Gemini fails or encounters complex queries\n- **Better for**: Nuanced responses, technical issues, edge cases\n- **Higher accuracy** for complex customer situations\n\n## 🏗️ Workflow Architecture\n\n```\nGmail Trigger → AI Agent → Response Decision → Actions\n                   ↓\n            [Primary Model]\n                   ↓\n            [Fallback Model] ← (if needed)\n                   ↓\n         [Send Reply + Log Data]\n```\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ddc5d69b-8386-45e1-9b7f-139e5b42c15f",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1072, -512],
+			"parameters": {
+				"width": 640,
+				"height": 1360,
+				"content": "\n## 💡 Why Use a Fallback Model?\n\n### Reliability\n- **99.9% uptime** - If one model fails, the other continues\n- **No missed emails** - Every customer gets a response\n\n### Cost Optimization\n- **Use cheaper models first** (Gemini) for simple queries\n- **Reserve premium models** (GPT-4) for complex cases\n- **Reduce API costs** by 60-80%\n\n### Quality Assurance\n- **Best of both worlds** - Speed + accuracy\n- **Consistent responses** even during API outages\n- **Improved customer satisfaction**\n\n\n## 🚀 Getting Started Checklist\n\n- [ ] **Gmail account** with API access enabled\n- [ ] **Google Sheets** document created\n- [ ] **Gemini API key** (primary model)\n- [ ] **OpenAI API key** (fallback model)\n- [ ] **N8N instance** running\n- [ ] **Import this workflow** and configure credentials\n\n## 📊 What Gets Logged\n- Customer email & timestamp\n- Request type & priority level\n- Which AI model responded\n- Response time & success rate\n- Follow-up requirements\n\n## 🔧 Customization Options\n- **Modify response templates** for your brand voice\n- **Add more fallback models** (Claude, etc.)\n- **Create custom triggers** (Slack, Discord, etc.)\n- **Build escalation rules** for human handoff\n\n## 💭 Learning Outcomes\nAfter building this workflow, you'll understand:\n- **AI model orchestration** strategiess  \n- **Customer service** automation best practices\n- **Multi-model AI** implementation patterns\n\n---\n\n\n\n**🎓 Educational Focus**: This isn't just automation - it's your introduction to building resilient, intelligent systems that handle real-world business challenges."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "08ff7ff4-4c41-43e9-a71d-43e07f0c75e4",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-192, -448],
+			"parameters": {
+				"width": 464,
+				"height": 448,
+				"content": "## 🎯 Perfect for Beginners Because:\n\n### Simple Setup\n- **Drag & drop** workflow design\n- **Pre-built integrations** with Gmail & Sheets\n- **Copy-paste ready** - Just add your API keys\n\n### Educational Value\n- **Learn AI orchestration** concepts\n- **Understand fallback patterns** in automation\n- **See real-world AI applications** in action\n\n### Immediate Results\n- **Works out of the box** with minimal configuration\n- **See responses** within minutes of setup\n- **Track performance** in Google Sheets dashboard\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "99dd9b98-5384-498e-b3e5-2552bb7016b0",
+			"name": "OpenAI  Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-96, 288],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "b91e9199-c9cd-4dc6-bd8e-9a97aad2f9c4",
+			"name": "Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-192, 272],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b56d1d13-8b88-4a69-b0d9-c2c35e6f95da",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-208, 176],
+			"parameters": {
+				"height": 224,
+				"content": "## Ai Models"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9ecaa23a-40af-4d5f-80ef-a6df1dc9acf9",
+			"name": "Reply to a message(Thread)",
+			"type": "n8n-nodes-base.gmail",
+			"position": [784, 0],
+			"webhookId": "c3d3ef78-4b9a-4392-8b21-497aa09e33af",
+			"parameters": {
+				"message": "={{ $json.output }}",
+				"options": {},
+				"resource": "thread",
+				"threadId": "={{ $('Gmail Trigger').item.json.id }}",
+				"messageId": "={{ $('Gmail Trigger').item.json.id }}",
+				"operation": "reply"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "51d6850a-e062-4209-b0d3-e6f4d5f0eb05",
+	"connections": {
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Reply to a message(Thread)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gmail Trigger": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI  Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Append or update row in sheet in Google Sheets": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

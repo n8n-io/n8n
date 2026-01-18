@@ -1,0 +1,1500 @@
+{
+	"meta": {
+		"creator": "Lucas Peyrin",
+		"instanceId": "e409ea34548a2afe2dffba31130cd1cf2e98ebe2afaeed2a63caf2a0582d1da0",
+		"fingerprint": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjcmVhdG9yIjoiIiwiaXNzIjoibjhuIiwiaWF0IjoxNzUzMTEwMjM2fQ.t3z4zUz-Pb_rTMjOtIYZmw6lxa8lkLZQXrrdDdkADNo"
+	},
+	"nodes": [
+		{
+			"id": "c769722e-d2f2-42cf-9bc2-b13018b93b8a",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note13",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [-400, -112],
+			"parameters": {
+				"width": 460,
+				"height": 552,
+				"content": "## Expressions Knowledge Test\n\nWelcome to the practical test for n8n Expressions! The goal is to use expressions to pull specific data from the **\"Source Data\"** node.\n\n**How to use this test:**\n1.  For each step, read the instructions on the purple sticky note.\n2.  Modify the corresponding **\"Test - ...\"** node by writing the correct expression in the value field.\n3.  Click **\"Execute Workflow\"** to check your answers.\n4.  A green path means a correct answer, a red path means it's incorrect. Keep trying until the path turns green!\n\n\nGood luck!"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1881550a-caa1-4e9d-9399-153356d89eb0",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Start Test!",
+			"type": "n8n-nodes-base.manualTrigger",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [-144, 240],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "7af9ab86-755f-4ed5-89f3-2f945f19d5f3",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Source Data",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [176, 240],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "12345",
+							"name": "name",
+							"type": "string",
+							"value": "Clark Kent"
+						},
+						{
+							"id": "67890",
+							"name": "city",
+							"type": "string",
+							"value": "Metropolis"
+						},
+						{
+							"id": "abcde",
+							"name": "level",
+							"type": "number",
+							"value": 99
+						},
+						{
+							"id": "fghij",
+							"name": "tools",
+							"type": "array",
+							"value": "[\"Typewriter\",\"Glasses\",\"n8n\"]"
+						},
+						{
+							"id": "klmno",
+							"name": "address",
+							"type": "object",
+							"value": "{\"street\":\"123 Main St\",\"zip\":\"10001\"}"
+						},
+						{
+							"id": "pqrst",
+							"name": "tasks",
+							"type": "array",
+							"value": "[{\"name\":\"Write Article\",\"status\":\"Done\"},{\"name\":\"Review PR\",\"status\":\"Pending\"},{\"name\":\"Save the World\",\"status\":\"Pending\"}]"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "04defff0-a2b6-4a05-8de4-160fc2857545",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Instruction - Basic Access",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [400, 16],
+			"parameters": {
+				"color": 6,
+				"width": 300,
+				"height": 428,
+				"content": "### Step 1: Basic Access\n\nModify the **\"Test - Basic Access\"** node.\n\n**Task:** Create a new field named `user_city`. Its value should be an expression that gets the `city` from the **\"Source Data\"** node."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "53f27214-cdef-45be-ad71-c60f96c0f7f0",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Test - Basic Access",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [496, 240],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "user_city",
+							"type": "string",
+							"value": "="
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "fd464cfd-3ff0-4f64-90bb-dd086a2e7b2c",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Check - Basic Access",
+			"type": "n8n-nodes-base.if",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [752, 240],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "5ac1af5c-2769-42f8-9df7-ec092d2fec05",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.user_city }}",
+							"rightValue": "={{ $('Source Data').last().json.city }}"
+						},
+						{
+							"id": "d4f115a2-6713-4beb-8b4e-4371686ca6ea",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ !$('Test - Basic Access').isExecuted || $('Test - Basic Access').params.assignments.assignments[0].value.includes('.city') }}",
+							"rightValue": "{{ $json.city }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "7df3c072-a908-498e-9034-13a7e03a4703",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Success - Basic Access",
+			"type": "n8n-nodes-base.noOp",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [992, 128],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "6e087d88-3c5d-454e-81ac-5aec12514edb",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Error - Basic Access",
+			"type": "n8n-nodes-base.stopAndError",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [992, 448],
+			"parameters": {
+				"errorMessage": "Incorrect. Hint: Use the format `{{ $('Source Data').item.json.city }}` to get the city value."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fa74e360-5b85-4fe0-9c65-547a5d788642",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Instruction - Array Access",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1216, 16],
+			"parameters": {
+				"color": 6,
+				"width": 300,
+				"height": 428,
+				"content": "### Step 2: Array Access\n\nModify the **\"Test - Array Access\"** node.\n\n**Task:** Create a field `third_tool`. Its value should be an expression that gets the *third* item from the `tools` array."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "33fc1900-e793-4c4f-8d66-849be1ebee89",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Test - Array Access",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1312, 240],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "third_tool",
+							"type": "string",
+							"value": "="
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "59622f54-9685-4115-bad0-3dcde79b0e76",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Check - Array Access",
+			"type": "n8n-nodes-base.if",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1568, 240],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "5ac1af5c-2769-42f8-9df7-ec092d2fec05",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.third_tool }}",
+							"rightValue": "={{ $('Source Data').item.json.tools[2] }}"
+						},
+						{
+							"id": "193a01cb-64c3-456a-bee4-4febaae63e66",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ !$('Test - Array Access').isExecuted || $('Test - Array Access').params.assignments.assignments[0].value.includes('.tools') }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "516d40d3-3ec9-42ff-993e-0965695d1c63",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Success - Array Access",
+			"type": "n8n-nodes-base.noOp",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1808, 128],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "823aa93b-3e0c-4bb4-a3fd-5d960c14d8b4",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Error - Array Access",
+			"type": "n8n-nodes-base.stopAndError",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1808, 448],
+			"parameters": {
+				"errorMessage": "Incorrect. Hint: Remember that arrays are zero-indexed. The third item is at index `[2]`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5c7f181c-3ebd-41e7-8012-bf26a7e724b6",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Instruction - Nested Object",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2032, 16],
+			"parameters": {
+				"color": 6,
+				"width": 300,
+				"height": 428,
+				"content": "### Step 3: Nested Object\n\nModify the **\"Test - Nested Object\"** node.\n\n**Task:** Create a field `street_address`. Its value should be an expression that gets the `street` from inside the `address` object."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6c8d3b1d-4e67-4bf7-9d52-7c37c2a52ec3",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Test - Nested Object",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2128, 240],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "street_address",
+							"type": "string",
+							"value": "="
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "188028b2-01df-46ed-9977-ef9dcb6cb9ae",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Check - Nested Object",
+			"type": "n8n-nodes-base.if",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2384, 240],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "d4e5f6a7-8901-2345-6789-0abcdef12345",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.street_address }}",
+							"rightValue": "={{ $('Source Data').item.json.address.street }}"
+						},
+						{
+							"id": "b84f01c8-0b9f-4dd5-a983-e7455fafe1ce",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ !$('Test - Nested Object').isExecuted || $('Test - Nested Object').params.assignments.assignments[0].value.includes('.address.street') }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "ebe135cb-b246-4868-ad97-6bf20c43f3e0",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Success - Nested Object",
+			"type": "n8n-nodes-base.noOp",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2624, 128],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "d1312875-9ecc-48db-81aa-14b189e4bd9c",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Error - Nested Object",
+			"type": "n8n-nodes-base.stopAndError",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2624, 448],
+			"parameters": {
+				"errorMessage": "Incorrect. Hint: Chain the keys using dots, like `...json.address.street`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "946cf25f-706d-4d05-aeaa-028e3a229856",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Instruction - Array of Objects",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2848, 16],
+			"parameters": {
+				"color": 6,
+				"width": 300,
+				"height": 428,
+				"content": "### Step 4: Array of Objects\n\nModify the **\"Test - Array of Objects\"** node.\n\n**Task:** Create a field `second_task_name`. Its value should be an expression that gets the `name` of the *second* object in the `tasks` array."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "de975fc2-c145-4d5c-8426-03e5ce702846",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Test - Array of Objects",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2944, 240],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "second_task_name",
+							"type": "string",
+							"value": "="
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "0ab0b02e-60a3-4d7f-83d0-6516b479e08d",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Check - Array of Objects",
+			"type": "n8n-nodes-base.if",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [3200, 240],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "e1234567-890a-bcde-f123-456789012345",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.second_task_name }}",
+							"rightValue": "={{ $('Source Data').item.json.tasks[1].name }}"
+						},
+						{
+							"id": "8ea84d9f-102e-44aa-b87d-96fc413af915",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ !$('Test - Array of Objects').isExecuted || $('Test - Array of Objects').params.assignments.assignments[0].value.includes('.tasks') }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "5db2abba-a971-4920-af0c-db95b4d8a1e2",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Success - Array of Objects",
+			"type": "n8n-nodes-base.noOp",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [3440, 128],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "5aab74e4-7bb8-4678-b6d3-1e00a7a22342",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Error - Array of Objects",
+			"type": "n8n-nodes-base.stopAndError",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [3440, 448],
+			"parameters": {
+				"errorMessage": "Incorrect. Hint: Combine array access `[1]` with object access `.name`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e98182bb-d555-48e0-9126-ca0590e2c424",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Instruction - JS Function",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [3664, 16],
+			"parameters": {
+				"color": 6,
+				"width": 300,
+				"height": 412,
+				"content": "### Step 5: JS Function\n\nModify the **\"Test - JS Function\"** node.\n\n**Task:** Create a field `uppercase_name`. Its value should be an expression that gets the `name` and converts it to `UPPERCASE`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "06f1e85c-f4e5-4e49-b678-22bb189421c0",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Test - JS Function",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [3760, 240],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "uppercase_name",
+							"type": "string",
+							"value": "="
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "c485b7a3-5b91-4935-b9b6-3440c8e8a241",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Check - JS Function",
+			"type": "n8n-nodes-base.if",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4016, 240],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "b0123456-7890-abcd-ef12-345678901234",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.uppercase_name }}",
+							"rightValue": "={{ $('Source Data').item.json.name.toUpperCase() }}"
+						},
+						{
+							"id": "7c1238db-4849-4525-b293-4f453b70fa21",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ !$('Test - JS Function').isExecuted || $('Test - JS Function').params.assignments.assignments[0].value.includes('.toUpperCase()') }}",
+							"rightValue": "={{ !$('Test - Array of Objects').isExecuted || $('Test - Array of Objects').params.assignments.assignments[0].value.includes('.tasks') }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "be45ea18-23db-407e-a886-a7aeef79c5ee",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Success - JS Function",
+			"type": "n8n-nodes-base.noOp",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4256, 128],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b56c667a-5818-49de-b042-0d2655f7bea2",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Error - JS Function",
+			"type": "n8n-nodes-base.stopAndError",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4256, 448],
+			"parameters": {
+				"errorMessage": "Incorrect. Hint: Add `.toUpperCase()` to the end of your expression, inside the `{{ }}`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4151ae3d-4b4c-4d4a-b5b7-b5de5288fd9a",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Instruction - Final",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4480, -48],
+			"parameters": {
+				"color": 6,
+				"width": 300,
+				"height": 476,
+				"content": "### Final Challenge!\n\nModify the **\"Test - Final\"** node.\n\n**Task:** Create a field `summary`. Its value should be a single string that reads:\n`The status of task 'Review PR' is Pending.`\n\nYou'll need to combine static text with expressions."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3d990a6c-c598-4847-b89a-8eb158db4d21",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Test - Final",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4576, 240],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "summary",
+							"type": "string",
+							"value": "="
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "d81171ab-97ac-4b14-bdae-1a7479ae2e31",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Check - Final",
+			"type": "n8n-nodes-base.if",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4832, 240],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "a1234567-890a-bcde-f123-456789012345",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.summary }}",
+							"rightValue": "=The status of task '{{ $('Source Data').item.json.tasks[1].name }}' is {{ $('Source Data').item.json.tasks[1].status }}."
+						},
+						{
+							"id": "18e1e8e4-0539-4c4f-85fe-1fa8759717ad",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ !$('Test - Final').isExecuted || ($('Test - Final').params.assignments.assignments[0].value.includes('.name') && $('Test - Final').params.assignments.assignments[0].value.includes('.status')) }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "e8e56a4a-0c20-42ce-91bc-120be38067ba",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Success - Final",
+			"type": "n8n-nodes-base.noOp",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [5072, 112],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b1ea5a88-8acc-4e46-8998-162c2e01e995",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Error - Final",
+			"type": "n8n-nodes-base.stopAndError",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [5072, 448],
+			"parameters": {
+				"errorMessage": "Incorrect. Hint: Combine static text and expressions like this: `Some text '{{ expression1 }}' and '{{ expression2 }}`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4e2a56ad-59fd-40af-82cc-ce2e64478a69",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "🎉 SUCCESS 🎉",
+			"type": "n8n-nodes-base.html",
+			"notes": "Well done! You're awesome\n\n© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [5424, 224],
+			"parameters": {
+				"html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Success</title>\n</head>\n<body style=\"margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f0f2f5; display: flex; align-items: center; justify-content: center; height: 100vh;\">\n\n    <!-- The main success card -->\n    <div style=\"background-color: #ffffff; padding: 40px 50px; border-radius: 12px; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1); text-align: center; max-width: 400px; margin: 20px;\">\n\n        <!-- Circular Green Checkmark -->\n        <div style=\"width: 100px; height: 100px; background-color: #28a745; border-radius: 50%; margin: 0 auto 25px auto; display: flex; align-items: center; justify-content: center;\">\n            <span style=\"color: white; font-size: 60px; line-height: 1;\">✔</span>\n        </div>\n\n        <!-- Main Text -->\n        <h1 style=\"font-size: 36px; font-weight: 600; color: #333; margin: 0 0 10px 0;\">\n            Success!\n        </h1>\n\n        <!-- Call to Action Text & Link -->\n        <p style=\"font-size: 16px; color: #555; line-height: 1.5; margin: 0;\">\n            You've mastered n8n expressions!\n         </p>\n        <p style=\"font-size: 16px; color: #555; line-height: 1.5; margin: 0;\">\n            <a href=\"https://n8n.io/creators/lucaspeyrin\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"color: #007bff; text-decoration: none; font-weight: 500;\">Check out more templates</a>.\n        </p>\n\n    </div>\n\n</body>\n</html>"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1.2
+		},
+		{
+			"id": "d9efe1c3-e838-46f9-91bf-074ea6dde9ff",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Instruction - Basic Access1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [80, 128],
+			"parameters": {
+				"color": 6,
+				"width": 300,
+				"height": 316,
+				"content": "![Source](https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExendjcXhicnQ1bzljNnVkdWlucThyanBvbndmcm8zd3FkdjJ6bGNsdSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3ohzdZO0nAL1H2LdMA/giphy.gif)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a5a89905-5c09-454e-9244-cec5233f6483",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer - Basic Access",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [496, 608],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "user_city",
+							"type": "string",
+							"value": "={{ $('Source Data').item.json.city }}"
+						},
+						{
+							"id": "28ef996b-d7e7-4d29-b4b5-f245de00d2c0",
+							"name": "other_solution",
+							"type": "string",
+							"value": "={{ $json.city }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "41d01828-1e14-4b3d-9f11-09493d6cb486",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer Note - Basic Access",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [400, 464],
+			"parameters": {
+				"color": 7,
+				"width": 304,
+				"height": 320,
+				"content": "💡 **Answer Key**\n\nThis node contains the correct expression for the **Basic Access** step. You can use it as a reference if you get stuck."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "923f04a6-4593-48df-981e-58ab0a8d9779",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Correct1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [928, 0],
+			"parameters": {
+				"color": 7,
+				"height": 272,
+				"content": "✅ **Correct!**\n\nGreat start. Let's access an array next."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4afc256b-88b6-47b2-b105-2b419f18b3f0",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Incorrect1",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [928, 288],
+			"parameters": {
+				"color": 7,
+				"height": 320,
+				"content": "❌ **Incorrect.**\n\n**Hint:** Use the format\n`{{ $('Source Data').item.json.city }}`\nto get the city value."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "37b4dc1e-2588-4243-b0d6-70e5956575f7",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer - Array Access",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1312, 608],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "third_tool",
+							"type": "string",
+							"value": "={{ $('Source Data').item.json.tools[2] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "2bbd9ac7-4acc-41b0-9511-0929e961b56a",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer Note - Array Access",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1216, 464],
+			"parameters": {
+				"color": 7,
+				"width": 304,
+				"height": 320,
+				"content": "💡 **Answer Key**\n\nThis node contains the correct expression for the **Array Access** step. You can use it as a reference if you get stuck."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "399cccd8-ff46-49ca-8294-5a9f7484aa47",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Correct2",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1728, 0],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 272,
+				"content": "✅ **Correct!**\n\nPerfect. Now for nested data."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ff5db2b3-6f5d-42d8-afc1-f79dcd551ce3",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Incorrect2",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [1728, 288],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 320,
+				"content": "❌ **Incorrect.**\n\n**Hint:** Remember that arrays are zero-indexed. The third item is at index `[2]`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0cf6b471-7c91-4576-9a04-31bd99553aed",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer - Nested Object",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2128, 608],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "street_address",
+							"type": "string",
+							"value": "={{ $('Source Data').item.json.address.street }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "75b741f5-8eab-400c-8a8a-b35ed5f1e930",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer Note - Nested Object",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2032, 464],
+			"parameters": {
+				"color": 7,
+				"width": 304,
+				"height": 320,
+				"content": "💡 **Answer Key**\n\nThis node contains the correct expression for the **Nested Object** step. You can use it as a reference if you get stuck."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6b39c109-465c-474e-afe7-bfc00181e5a3",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Correct3",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2544, 0],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 272,
+				"content": "✅ **Correct!**\n\nExcellent. Let's combine arrays and objects."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8836d90a-8aef-4c18-8fc3-156a7342689b",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Incorrect3",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2544, 288],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 320,
+				"content": "❌ **Incorrect.**\n\n**Hint:** Chain the keys using dots, like `...json.address.street`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "13c9a37f-9cc1-4ec3-b04f-1c8ccb4ed400",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer - Array of Objects",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2944, 608],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "second_task_name",
+							"type": "string",
+							"value": "={{ $('Source Data').item.json.tasks[1].name }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "4021f70b-f8fc-4856-a8a9-32886a39075b",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer Note - Array of Objects",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [2848, 464],
+			"parameters": {
+				"color": 7,
+				"width": 304,
+				"height": 320,
+				"content": "💡 **Answer Key**\n\nThis node contains the correct expression for the **Array of Objects** step. You can use it as a reference if you get stuck."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f1db5c03-4676-4f7f-b6d3-84e9d09ef886",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Correct4",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [3360, 0],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 272,
+				"content": "✅ **Correct!**\n\nYou're getting the hang of this. Time for some JavaScript magic."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "76578357-6c68-4144-a8a4-4d64f121aa01",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Incorrect4",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [3360, 288],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 320,
+				"content": "❌ **Incorrect.**\n\n**Hint:** Combine array access `[1]` with object access `.name`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "794be646-6a3e-4b8d-a941-90d621dca210",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer - JS Function",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [3760, 592],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "uppercase_name",
+							"type": "string",
+							"value": "={{ $('Source Data').item.json.name.toUpperCase() }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "5beb208e-4c0c-4d73-8ace-daacbf00a245",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer Note - JS Function",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [3664, 448],
+			"parameters": {
+				"color": 7,
+				"width": 304,
+				"height": 336,
+				"content": "💡 **Answer Key**\n\nThis node contains the correct expression for the **JS Function** step. You can use it as a reference if you get stuck."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3492291f-d171-418f-9dd5-40fbd766acbd",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Correct5",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4176, 0],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 272,
+				"content": "✅ **Correct!**\n\nAwesome! One final challenge to bring it all together."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d54f48f8-7924-4444-b840-6a3a2ea5f5c9",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Incorrect5",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4176, 288],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 320,
+				"content": "❌ **Incorrect.**\n\n**Hint:** Add `.toUpperCase()` to the end of your expression, inside the `{{ }}`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "550c88b1-4e26-4fb5-a0b3-cfcf649b595e",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer - Final",
+			"type": "n8n-nodes-base.set",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4576, 592],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e87952cb-878e-4feb-8261-342eaf887838",
+							"name": "summary",
+							"type": "string",
+							"value": "=The status of task '{{ $('Source Data').item.json.tasks[1].name }}' is {{ $('Source Data').item.json.tasks[1].status }}."
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "edb83bc9-25ed-488d-ab71-dd77103d874b",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Answer Note - Final",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4480, 448],
+			"parameters": {
+				"color": 7,
+				"width": 304,
+				"height": 336,
+				"content": "💡 **Answer Key**\n\nThis node contains the correct expression for the **Final** step. You can use it as a reference if you get stuck."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7a36c242-d76e-4675-8411-a24506e090c8",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Correct6",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4992, 32],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 240,
+				"content": "✅ **YOU DID IT!**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d5a3c589-35f8-49be-a27b-6a82198438bc",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Feedback Incorrect6",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [4992, 288],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 320,
+				"content": "❌ **Incorrect.**\n\n**Hint:** Combine static text and expressions like this:\n`Some text '{{ expression1 }}' and {{ expression2 }}`."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "30003316-86b3-434e-844c-f67b0722f2e0",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Congratulations!",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [5264, 32],
+			"parameters": {
+				"color": 4,
+				"width": 416,
+				"height": 576,
+				"content": "🎉 **Congratulations! You've passed the test!**\n\nYou have successfully demonstrated your understanding of all the basic JSON data types.\n\nYou are now ready to work with data in n8n.\n\n-- Well done! --"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "960695a0-b8db-4346-8566-7e5d4feb6571",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [5712, -384],
+			"parameters": {
+				"color": 3,
+				"width": 540,
+				"height": 1280,
+				"content": "## Was this helpful? Let me know!\n[![clic](https://supastudio.ia2s.app/storage/v1/object/public/assets/n8n/clic_down_lucas.gif)](https://n8n.ac)\n\nI really hope this test helped you check your Expressions understanding fully. Your feedback is incredibly valuable and helps me create better resources for the n8n community.\n\n### **Share Your Thoughts & Ideas**\n\nWhether you have a suggestion, found a typo, or just want to say thanks, I'd love to hear from you!\nHere's a simple n8n form built for this purpose:\n\n#### ➡️ **[Click here to give feedback](https://api.ia2s.app/form/templates/feedback?template=Expressions%20Test)**\n\n### **Ready to Build Something Great?**\n\nIf you're looking to take your n8n skills or business automation to the next level, I can help.\n\n**🎓 n8n Coaching:** Want to become an n8n pro? I offer one-on-one coaching sessions to help you master workflows, tackle specific problems, and build with confidence.\n#### ➡️ **[Book a Coaching Session](https://api.ia2s.app/form/templates/coaching?template=Expressions%20Test)**\n\n**💼 n8n Consulting:** Have a complex project, an integration challenge, or need a custom workflow built for your business? Let's work together to create a powerful automation solution.\n#### ➡️ **[Inquire About Consulting Services](https://api.ia2s.app/form/templates/consulting?template=Expressions%20Test)**\n\n---\n\nHappy Automating!\nLucas Peyrin | [n8n Academy](https://n8n.ac)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d3a6fe0a-3670-40c2-bcb8-4a75e5721abe",
+			"cid": "Ikx1Y2FzIFBleXJpbiI",
+			"name": "Sticky Note16",
+			"type": "n8n-nodes-base.stickyNote",
+			"notes": "© 2025 Lucas Peyrin",
+			"creator": "Lucas Peyrin",
+			"position": [5344, 384],
+			"parameters": {
+				"color": 4,
+				"width": 272,
+				"height": 184,
+				"content": "[![Test Skills](https://supastudio.ia2s.app/storage/v1/object/public/assets/n8n/n8n_animation.gif)](https://n8n.io/creators/lucaspeyrin)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Source Data": {
+			"main": [
+				[
+					{
+						"node": "Test - Basic Access",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start Test!": {
+			"main": [
+				[
+					{
+						"node": "Source Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test - Final": {
+			"main": [
+				[
+					{
+						"node": "Check - Final",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check - Final": {
+			"main": [
+				[
+					{
+						"node": "Success - Final",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error - Final",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Success - Final": {
+			"main": [
+				[
+					{
+						"node": "🎉 SUCCESS 🎉",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test - JS Function": {
+			"main": [
+				[
+					{
+						"node": "Check - JS Function",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check - JS Function": {
+			"main": [
+				[
+					{
+						"node": "Success - JS Function",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error - JS Function",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test - Array Access": {
+			"main": [
+				[
+					{
+						"node": "Check - Array Access",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test - Basic Access": {
+			"main": [
+				[
+					{
+						"node": "Check - Basic Access",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check - Array Access": {
+			"main": [
+				[
+					{
+						"node": "Success - Array Access",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error - Array Access",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check - Basic Access": {
+			"main": [
+				[
+					{
+						"node": "Success - Basic Access",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error - Basic Access",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test - Nested Object": {
+			"main": [
+				[
+					{
+						"node": "Check - Nested Object",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Answer - Basic Access": {
+			"main": [[]]
+		},
+		"Check - Nested Object": {
+			"main": [
+				[
+					{
+						"node": "Success - Nested Object",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error - Nested Object",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Success - JS Function": {
+			"main": [
+				[
+					{
+						"node": "Test - Final",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Success - Array Access": {
+			"main": [
+				[
+					{
+						"node": "Test - Nested Object",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Success - Basic Access": {
+			"main": [
+				[
+					{
+						"node": "Test - Array Access",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Success - Nested Object": {
+			"main": [
+				[
+					{
+						"node": "Test - Array of Objects",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test - Array of Objects": {
+			"main": [
+				[
+					{
+						"node": "Check - Array of Objects",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check - Array of Objects": {
+			"main": [
+				[
+					{
+						"node": "Success - Array of Objects",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error - Array of Objects",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Success - Array of Objects": {
+			"main": [
+				[
+					{
+						"node": "Test - JS Function",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

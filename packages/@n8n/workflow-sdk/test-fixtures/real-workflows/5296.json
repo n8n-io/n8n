@@ -1,0 +1,177 @@
+{
+	"id": "FPkat5e1rGZqpC29",
+	"meta": {
+		"instanceId": "ed6d846a2fce1f660ede2e7da800724cca01dc3d0685524a3c917881b7cfcfe9",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "YouTube - Trend Explorer",
+	"tags": [
+		{
+			"id": "CEVEeZJa4qgPvdpK",
+			"name": "youtube",
+			"createdAt": "2025-05-27T02:29:43.874Z",
+			"updatedAt": "2025-05-27T02:29:43.874Z"
+		}
+	],
+	"nodes": [
+		{
+			"id": "924bed93-0f27-462f-b952-7248db043997",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [560, 220],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a5613e56-3124-4049-a7ff-fad8d4e8bb91",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [720, 220],
+			"parameters": {
+				"sessionKey": "ai-agent-trend-explorer",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "937bdcbd-1b3d-46b6-8f94-884f9e832366",
+			"name": "Workflow - Youtube Search",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [880, 220],
+			"parameters": {
+				"name": "youtube_search",
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "IktojxaOHrdHkURm",
+					"cachedResultName": "Sub - Youtube Search"
+				},
+				"description": "Call this tool to search for trending videos based on a query.",
+				"jsonSchemaExample": "{\n\t\"search_term\": \"some_value\"\n}",
+				"specifyInputSchema": true
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "618f2101-b469-4b80-8358-4c193a6ee283",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [140, 0],
+			"webhookId": "74456ff2-56b8-4dac-a3f3-d9d29987e1a6",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "3fab5f20-3981-4552-8b1e-893494a46b42",
+			"name": "AI Agent - Trend Explorer",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [620, 0],
+			"parameters": {
+				"options": {
+					"systemMessage": "=You are an assistant that helps YouTube creators uncover what topics are trending in a given niche over the past two days.\n\n1. Niche Check\n\nIf the user has not yet specified a niche, respond with a short list of 5 popular niches (e.g. “fitness tips,” “tech reviews,” “kids’ crafts,” etc.) and ask them to choose one.\n\n2. Trend Search\n\nOnce you know the niche, choose up to three distinct search queries that reflect different angles of that niche.\n\nFor each query, call the youtube_search tool to retrieve videos published in the last 2 days.\n\n3. Data Handling\n\nThe tool returns multiple JSON entries, each with fields:\n  \"video_id\": \"...\", \n  \"view_count\": ..., \n  \"like_count\": ..., \n  \"comment_count\": ..., \n  \"description\": \"...\", \n  \"channel_title\": \"...\", \n  \"tags\": [...], \n  \"channel_id\": \"...\"\nVideos are delimited by ### NEXT VIDEO FOUND: ###.\n\n4. Insight Generation\n\nAggregate results across all queries. Don’t discuss individual videos; instead, synthesize overall patterns:\n\nCommon themes in titles/descriptions/tags\n\nRecurrent content formats or calls-to-action\n\nApproximate engagement ranges (views/likes/comments)\n\nProvide direct links:\n\nVideo: https://www.youtube.com/watch?v={video_id}\n\nChannel: https://www.youtube.com/channel/{channel_id}\n\n5. Final Output\n\nSummarize the top 2–3 trending topics or formats in this niche over the last 48 hours, with engagement snapshots.\n\nExplain why these themes are resonating and how the creator might leverage them.\n\nExample\n“Across the three searches, videos focusing on mental triggers in digital marketing accounted for 60–80 K views and 5 K–7 K likes. 3 out of 5 top videos used countdown lists (‘5 mental triggers…’), suggesting viewers favor bite-sized, actionable content.”"
+				}
+			},
+			"typeVersion": 1.6
+		},
+		{
+			"id": "6c1c3e0c-e7ce-449a-ac3f-d79e57c6b4f4",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-720, -360],
+			"parameters": {
+				"width": 660,
+				"height": 1420,
+				"content": "## [n8n Automation] AI YouTube Trend Explorer – Try It Out!\n**This n8n template helps you automatically discover, analyze, and track trending topics and videos on YouTube using an AI-powered agent.**\n\nUse cases are many: This workflow is perfect for **YouTube creators** needing fresh video ideas, **digital marketers** scouting new campaign topics, **social media managers** who want to catch trends early, and **researchers** who want to analyze what’s viral.\n\n## How It Works\n- The workflow starts whenever a chat message is received (e.g., a trend question, a topic prompt, or a request for insights).\n- Incoming chat is routed to the **AI Agent – Trend Explorer** node:\n     + First, the agent triggers the **Workflow – YouTube Search** tool to gather the latest trending topics and keywords from YouTube.\n     + Next, the agent supplies this real-time YouTube data to the **OpenAI Chat Model** for deep analysis, trend interpretation, and unique insights.\n     + To provide context-aware answers and track ongoing interests, the agent also references a **Simple Memory** module, recalling past queries, and user instructions.\n- Finally, the result is a fast, data-driven, and smart trend report delivered instantly to your chat.\n\n## How To Set Up\n- Download the workflow package (including 2 .json files) and import it into your n8n interface.\n- Set up necessary access in the following components of the **AI Agent - Trend Explorer** node:\n    + **OpenAI Chat Model**: allows API connection for trend insights.\n    + **Workflow – YouTube Search**: searches for trending videos based on the query.\n    + **Simple Memory** (optional): enhances experience for ongoing sessions.\n- Start by sending a chat message on n8n.\n- Check the response from the AI agent in the same chat box.\n- Ask follow-ups, explore deeper, or trigger new searches - all in one chat thread.\n\n## Requirements\n- n8n instance (self-hosted or cloud).\n- Set up API access to **OpenAI Chat Model** for chat-based AI.\n\n## How To Customize\n- **Connect to your favorite chat platforms**: Easily integrate with additional chat triggers such as Telegram, Slack, or your preferred messaging app.\n- **Choose your preferred AI model**: If you want a different viewpoint, simply swap OpenAI Chat Model for Google Gemini, Claude, or any compatible LLM model in your workflow.\n- **Upgrade memory for smarter conversations**: For long-term recall or more advanced, context-aware chats, replace **Simple Memory** with a vector database like Pinecone or Redis.\n\n## Need Help?\nIf you’d like this workflow customized to fit your tools and platforms availability, or if you’re looking to build a tailored AI Agent for your own business - please feel free to reach out to [**Agent Circle**](https://www.agentcircle.ai/). We’re always here to support and help you to bring automation ideas to life.\n\nJoin our community on different platforms for support, inspiration and tips from others.\n\nWebsite: https://www.agentcircle.ai/\nEtsy: https://www.etsy.com/shop/AgentCircle\nGumroad: http://agentcircle.gumroad.com/\nDiscord Global: https://discord.gg/d8SkCzKwnP\nFB Page Global: https://www.facebook.com/agentcircle/\nFB Group Global: https://www.facebook.com/groups/aiagentcircle/\nX: https://x.com/agent_circle\nYouTube: https://www.youtube.com/@agentcircle\nLinkedIn: https://www.linkedin.com/company/agentcircle\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cda8930b-34a9-463d-a201-eea2655645ae",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [20, -360],
+			"parameters": {
+				"color": 4,
+				"width": 340,
+				"height": 980,
+				"content": "## 1. Start When A Chat Message Is Received\n- The workflow starts when a chat message (showing your request or trend question) is received by the system.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "99a5e8e7-1e94-43f9-97d2-882f3164a938",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [380, -360],
+			"parameters": {
+				"color": 4,
+				"width": 700,
+				"height": 980,
+				"content": "## 2. Process The Request & Return Response\n- Incoming chat is routed to the **AI Agent – Trend Explorer** node:\n     + First, the agent triggers the **Workflow – YouTube Search** tool to gather the latest trending topics and keywords from YouTube.\n     + Next, the agent supplies this real-time YouTube data to the **OpenAI Chat Model** for deep analysis, trend interpretation, and unique insights.\n     + To provide context-aware answers and track ongoing interests, the agent also references a **Simple Memory** module, recalling past queries, and user instructions.\n- Finally, the result is a fast, data-driven, and smart trend report delivered instantly to your chat."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "03080ba6-25fe-4fcb-9a1a-77d2ccafc26e",
+	"connections": {
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent - Trend Explorer",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent - Trend Explorer",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow - Youtube Search": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent - Trend Explorer",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent - Trend Explorer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

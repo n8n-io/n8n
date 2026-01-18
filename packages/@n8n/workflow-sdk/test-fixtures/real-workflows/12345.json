@@ -1,0 +1,343 @@
+{
+	"id": "Hi3KUTF6mlwuZPFR",
+	"meta": {
+		"instanceId": "6fcb279fd6b00187153abdc6d8b627acfd9fe31f84b387f64b56a0996e8ea182",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Physician Profile Enricher",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "0af9c556-6b8c-47d3-bab0-722de1127819",
+			"name": "Splitting Items",
+			"type": "n8n-nodes-base.code",
+			"position": [2368, 176],
+			"parameters": {
+				"jsCode": "// Get the JSON string using the exact path provided by the user.\nconst jsonString = $input.first().json.output.string;\n\nlet parsedData;\n\n// Check if the string exists before attempting to parse\nif (!jsonString) {\n    // Return an empty array or throw an error if no string is found\n    // Throwing an error is usually better to stop the workflow if data is missing.\n    throw new Error(\"Input string is empty or missing at the specified path: $input.first().json.output.string\");\n}\n\ntry {\n    // 1. Parse the JSON string into a JavaScript array of objects\n    parsedData = JSON.parse(jsonString);\n} catch (error) {\n    // Handle JSON parsing errors (e.g., if the string is malformed)\n    throw new Error(`Failed to parse JSON string: ${error.message}`);\n}\n\n// 2. Ensure the parsed data is an array\nif (!Array.isArray(parsedData)) {\n    throw new Error('Parsed data is not an array. It cannot be split into multiple items.');\n}\n\n// 3. Map the array of objects into the n8n item format { json: object }\n// Each element in this array will be treated as a new item by n8n, achieving the split.\nconst outputItems = parsedData.map(item =&gt; ({\n    json: item,\n}));\n\n// 4. Return the new array of items\nreturn outputItems;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "31c3822d-20cf-446e-85fa-a676844918de",
+			"name": "Define Location",
+			"type": "n8n-nodes-base.set",
+			"position": [1808, 176],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0411384e-7a25-4aa3-b1e9-be72ce7a110c",
+							"name": "Location",
+							"type": "string",
+							"value": "Brooklyn"
+						},
+						{
+							"id": "60b18157-88b0-41b1-bc21-ab83a3ae09d3",
+							"name": "State",
+							"type": "string",
+							"value": "NY"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "3f70263f-f704-4f7d-8802-2f56b13d5ce7",
+			"name": "Documentation",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1200, -336],
+			"parameters": {
+				"width": 400,
+				"height": 464,
+				"content": "## ⚡ Workflow Overview & Setup\n\n**Summary:** Automate the extraction of physician profiles (Name, Address, Specialty) from **Healow** based on location, archiving data to Google Sheets and notifying via Slack.\n\n### Requirements\n* **Credentials:** BrowserAct, Google Sheets, Slack.\n* **Mandatory:** BrowserAct API (Template: **Physician Profile Enricher**)\n\n### How to Use\n1. **Credentials:** Configure your API keys for BrowserAct, Google Sheets, and Slack.\n2. **BrowserAct Template:** Ensure you have the **Healow** template saved in your BrowserAct account.\n3. **Google Sheets:** Create a sheet named \"Physician Profile\" with headers: `Name`, `Address`, `Specialty`.\n4. **Configuration:** Update the **Define Location** node with your target City and State.\n\n### Need Help?\n[How to Find Your BrowseAct API Key & Workflow ID](https://docs.browseract.com)\n[How to Connect n8n to Browseract](https://docs.browseract.com)\n[How to Use & Customize BrowserAct Templates](https://docs.browseract.com)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1ba59dc8-0198-4f02-8149-0582d433444b",
+			"name": "Step 1 Explanation",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1616, 16],
+			"parameters": {
+				"color": 7,
+				"width": 536,
+				"height": 124,
+				"content": "### 🏥 Step 1: Target & Scrape\n\nSets the search parameters (City and State) and executes the **Healow** BrowserAct automation to extract physician data from the target website."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2e93ef0a-d772-4970-befb-80dba1529a4b",
+			"name": "Step 2 Explanation",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2368, 368],
+			"parameters": {
+				"color": 7,
+				"width": 540,
+				"height": 124,
+				"content": "### 💾 Step 2: Process & Archive\n\nParses the raw scraped string into structured JSON objects, updates the Google Sheet database with new records, and sends a Slack notification upon success."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6c32cfc9-b5ab-4a34-92d7-8702796b06ab",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2496, 48],
+			"parameters": {
+				"color": 3,
+				"width": 256,
+				"height": 288,
+				"content": "### Google Sheet Headers\nTo use this workflow, create a Google Sheet with the following headers:\n* Name\n* Specialty\n* Address"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "289cd4a1-bfc5-4827-8395-375e92847137",
+			"name": "Update Leads",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2576, 176],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Name": "={{ $json.item[0].Name }}",
+						"Address": "={{ $json.item[0].Address }}",
+						"Specialty": "={{ $json.item[0].Specialty }}"
+					},
+					"schema": [
+						{
+							"id": "Name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Specialty",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Specialty",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Address",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Address",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Name"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 243879573,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/164YfKm0Jiwy2KNUyX18ugWxbKM9xfXhA2BHg8VPg8vU/edit#gid=243879573",
+					"cachedResultName": "Physician Profile"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "164YfKm0Jiwy2KNUyX18ugWxbKM9xfXhA2BHg8VPg8vU",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/164YfKm0Jiwy2KNUyX18ugWxbKM9xfXhA2BHg8VPg8vU/edit?usp=drivesdk",
+					"cachedResultName": "Physician Profile Enricher"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "BSirjWRAwIzOFp7c",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "c16f982d-e745-42fc-a438-e22d0eb03353",
+			"name": "Alert Team",
+			"type": "n8n-nodes-base.slack",
+			"position": [2800, 176],
+			"webhookId": "4db24c7f-b5c9-469c-8af8-4afb7a1bc6b5",
+			"parameters": {
+				"text": "Physician Profile Enricher Workflow Finished succesfully",
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "C09KLV9DJSX",
+					"cachedResultName": "all-browseract-workflow-test"
+				},
+				"otherOptions": {}
+			},
+			"credentials": {
+				"slackApi": {
+					"id": "y5CGeG09MENm5J7q",
+					"name": "Slack account 2"
+				}
+			},
+			"executeOnce": true,
+			"typeVersion": 2.4
+		},
+		{
+			"id": "cec08a88-a511-4720-9e72-5bf17d756dc3",
+			"name": "Run BrowserAct Workflow",
+			"type": "n8n-nodes-browseract.browserAct",
+			"position": [2032, 176],
+			"parameters": {
+				"type": "WORKFLOW",
+				"timeout": 7200,
+				"workflowId": "71087742787674119",
+				"workflowConfig": {
+					"value": {
+						"input-State": "={{ $json.State }}",
+						"input-Location": "={{ $json.Location }}"
+					},
+					"schema": [
+						{
+							"id": "input-healow",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"description": "If left blank, the default value defined in BrowserAct will be used.",
+							"displayName": "healow",
+							"defaultMatch": true
+						},
+						{
+							"id": "input-Location",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"description": "If left blank, the default value defined in BrowserAct will be used.",
+							"displayName": "Location",
+							"defaultMatch": true
+						},
+						{
+							"id": "input-State",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"description": "If left blank, the default value defined in BrowserAct will be used.",
+							"displayName": "State",
+							"defaultMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["input-State"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"open_incognito_mode": false
+			},
+			"credentials": {
+				"browserActApi": {
+					"id": "G1U5ih38TKU5wcI5",
+					"name": "BrowserAct account"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2290662a-c84a-4f4c-b946-ff81f7d2bfce",
+			"name": "On-Demand Execution",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [1600, 176],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "071fab5e-34d4-49ee-a2ba-04568895178f",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1616, -336],
+			"parameters": {
+				"color": 6,
+				"width": 528,
+				"height": 304,
+				"content": "@[youtube](DZ_Jq_b2-Ww)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "68030ec2-1858-4804-8df7-9ad0a62dd088",
+	"connections": {
+		"Update Leads": {
+			"main": [
+				[
+					{
+						"node": "Alert Team",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Define Location": {
+			"main": [
+				[
+					{
+						"node": "Run BrowserAct Workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Splitting Items": {
+			"main": [
+				[
+					{
+						"node": "Update Leads",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On-Demand Execution": {
+			"main": [
+				[
+					{
+						"node": "Define Location",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Run BrowserAct Workflow": {
+			"main": [
+				[
+					{
+						"node": "Splitting Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

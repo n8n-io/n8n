@@ -1,0 +1,443 @@
+{
+	"id": "GLcUQFi471pOAy9l",
+	"meta": {
+		"instanceId": "a4bfc93e975ca233ac45ed7c9227d84cf5a2329310525917adaf3312e10d5462"
+	},
+	"name": "Generate AI Videos (with audio), using Sora 2 and Upload to TikTok",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "c3c8b7d9-b993-475b-88f7-196edb500473",
+			"name": "Get status",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [832, 576],
+			"parameters": {
+				"url": "=https://queue.fal.run/fal-ai/sora-2/requests/{{ $('Create Video').item.json.request_id }}/status ",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "a0f0a4d4-aa2d-4296-ada1-c3ed2dc5e80f",
+			"name": "Wait 60 sec.",
+			"type": "n8n-nodes-base.wait",
+			"position": [592, 576],
+			"webhookId": "bb15f2f3-caec-4df6-ac1f-374ed90d8a3e",
+			"parameters": {
+				"amount": 60
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "52eb9e2c-5610-4bf5-b8c9-43c01d0abbd8",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-144, -80],
+			"parameters": {
+				"color": 3,
+				"width": 740,
+				"height": 328,
+				"content": "# Generate AI Videos (with audio), using Sora 2 and Upload to TikTok\n\nThis workflow allows users to **generate AI videos** using model **OpenAI Sora 2**, save them to **Google Drive**, generate optimized YouTube titles with GPT-5, and **automatically upload them to TikTok** . The entire process is triggered from a Form that acts as the central interface for input and output.\n\nNOTE: This workflow contains community nodes that are only compatible with the self-hosted version of n8n.\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ba77687d-9e91-4dbc-8a90-f82290c93572",
+			"name": "Completed?",
+			"type": "n8n-nodes-base.if",
+			"position": [1136, 576],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "383d112e-2cc6-4dd4-8985-f09ce0bd1781",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.status }}",
+							"rightValue": "COMPLETED"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "363bc856-1ce2-42d4-b7f2-e41fbcddb7e1",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [640, 128],
+			"parameters": {
+				"width": 740,
+				"height": 116,
+				"content": "## STEP 3 - MAIN FLOW\nStart the workflow manually or periodically by hooking the \"Schedule Trigger\" node. It is recommended to set it at 5 minute intervals."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "37f4778b-aa51-48ed-96af-da0413ad2ef4",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-144, 288],
+			"parameters": {
+				"width": 740,
+				"height": 172,
+				"content": "## STEP 1 - GET API KEY (YOURAPIKEY)\nCreate an account [here](https://fal.ai/) and obtain API KEY.\nIn the node \"Create Image\" set \"Header Auth\" and set:\n- Name: \"Authorization\"\n- Value: \"Key YOURAPIKEY\""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e8ac3c4c-d8b1-421c-b24c-f83e18845a20",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [192, 528],
+			"parameters": {
+				"width": 180,
+				"height": 200,
+				"content": "Set API Key created in Step 2"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "15047d29-e63a-4d29-b21c-a1beec0b6f88",
+			"name": "Create Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [240, 576],
+			"parameters": {
+				"url": "https://queue.fal.run/fal-ai/sora-2/text-to-video",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n     \"prompt\": \"{{ $json.PROMPT }}. Duration of the video: {{ $json.DURATION }}\"\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "487ab020-dfd8-4956-9263-ffe944840978",
+			"name": "Get Url Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-96, 832],
+			"parameters": {
+				"url": "=https://queue.fal.run/fal-ai/sora-2/requests/{{ $json.request_id }}",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "616e4deb-c5f3-4a13-a970-5816a5327aae",
+			"name": "Get File Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [544, 832],
+			"parameters": {
+				"url": "={{ $('Get Url Video').item.json.video.url }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "0c25e7c8-f960-4f46-9530-437bece778a4",
+			"name": "Generate title",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [192, 832],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini",
+					"cachedResultName": "GPT-4O-MINI"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=Input: {{ $('Get new video').item.json.PROMPT }}"
+						},
+						{
+							"role": "system",
+							"content": "You are a YouTube SEO expert specialized in creating engaging and optimized titles.\n\nYour task is to generate an effective title for a YouTube video based on the user's video description.\n\nGUIDELINES:\n- Maximum 60 characters to avoid truncation\n- Use relevant keywords for SEO\n- Make the title catchy and clickable\n- Avoid excessive or misleading clickbait\n- Consider the target audience of the content\n- Use numbers, questions, or power words when appropriate\n- IMPORTANT: Generate the title in the same language as the input description\n\nOUTPUT FORMAT:\nProvide only the title, without additional explanations.\n\nEXAMPLE:\nInput: \"Tutorial video on how to cook perfect pasta carbonara\"\nOutput: \"PERFECT Carbonara in 10 Minutes - Chef's Secrets\""
+						}
+					]
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "538d18c3-4049-4940-a08f-180c3871e9b9",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1104, 784],
+			"parameters": {
+				"width": 180,
+				"height": 200,
+				"content": "Set ChannelId Step 3"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1921e2b7-d6b7-41f2-83e0-b453b4902a11",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [640, -80],
+			"parameters": {
+				"width": 740,
+				"height": 184,
+				"content": "## STEP 2 - Upload video on TikTok\n- Create an account on [Postiz](https://postiz.com/?ref=n3witalia) FREE 7 days-trial\n- Get your API Key and set it in Postiz node and Upload Image node\n- In Calendar tab on [Postiz](https://postiz.com/?ref=n3witalia) click on \"Add channel\" and connect your social networks (TikTok)\n- Once connected, copy the \"ChannelId\" for each social network and insert the appropriate one into the Postiz nodes, replacing the \"XXX\" string. "
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6a914695-7ae2-4c67-bd2f-3946576a0a6a",
+			"name": "TikTok",
+			"type": "n8n-nodes-postiz.postiz",
+			"position": [1152, 832],
+			"parameters": {
+				"date": "={{ $now.format('yyyy-LL-dd') }}T{{ $now.format('HH:ii:ss') }}",
+				"posts": {
+					"post": [
+						{
+							"value": {
+								"contentItem": [
+									{
+										"image": {
+											"imageItem": [
+												{
+													"id": "={{ $json.id }}",
+													"path": "={{ $json.path }}"
+												}
+											]
+										},
+										"content": "={{ $('Generate title').item.json.message.content }}"
+									}
+								]
+							},
+							"integrationId": "XXX"
+						}
+					]
+				},
+				"shortLink": true
+			},
+			"credentials": {
+				"postizApi": {
+					"id": "credential-id",
+					"name": "postizApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d90711bc-6528-437d-9214-8277941348ec",
+			"name": "Upload Video to Postiz",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [832, 832],
+			"parameters": {
+				"url": "https://api.postiz.com/public/v1/upload",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "file",
+							"parameterType": "formBinaryData",
+							"inputDataFieldName": "data"
+						}
+					]
+				},
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "fa405717-0efa-4d6f-9a21-7abba6331fec",
+			"name": "On form submission",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-112, 576],
+			"webhookId": "32c47078-918b-41f8-ba5c-3d1ec1bfa42b",
+			"parameters": {
+				"options": {},
+				"formTitle": "Generate AI Videos (with audio)",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "PROMPT",
+							"requiredField": true
+						},
+						{
+							"fieldType": "number",
+							"fieldLabel": "DURATION",
+							"requiredField": true
+						}
+					]
+				},
+				"formDescription": "Generate AI Videos (with audio), using OpenAI Sora 2 and Upload to TikTok"
+			},
+			"typeVersion": 2.3
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "b1721168-dbc7-4724-bee5-dd524ab1ee83",
+	"connections": {
+		"Completed?": {
+			"main": [
+				[
+					{
+						"node": "Get Url Video",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait 60 sec.",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get status": {
+			"main": [
+				[
+					{
+						"node": "Completed?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Video": {
+			"main": [
+				[
+					{
+						"node": "Wait 60 sec.",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait 60 sec.": {
+			"main": [
+				[
+					{
+						"node": "Get status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Url Video": {
+			"main": [
+				[
+					{
+						"node": "Generate title",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate title": {
+			"main": [
+				[
+					{
+						"node": "Get File Video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get File Video": {
+			"main": [
+				[
+					{
+						"node": "Upload Video to Postiz",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On form submission": {
+			"main": [
+				[
+					{
+						"node": "Create Video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload Video to Postiz": {
+			"main": [
+				[
+					{
+						"node": "TikTok",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

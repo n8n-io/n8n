@@ -1,0 +1,1107 @@
+{
+	"id": "JdFtT41G2iqwGt1e",
+	"meta": {
+		"instanceId": "c778ccc6e6bdd79c80ccc835bc5d5a950bf07bb2941c80ee5afaeb18d9e2e8ef",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "🤖 AI content generation for Auto Service 🚘 Automate your social media📲!",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "e4a3ceac-acaa-434c-aefc-19e4fed34ea6",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [340, -1340],
+			"parameters": {
+				"color": 5,
+				"width": 5760,
+				"height": 2920,
+				"content": "![Source example](https://i.ibb.co/PZF4szJr/photo-2025-05-30-13-24-04.jpg#full-width)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d806bec6-ee52-4e7e-9b10-41b2dd16b1ba",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [340, -500],
+			"parameters": {
+				"color": 5,
+				"width": 1260,
+				"height": 1260,
+				"content": "# [made with ❤️ by N8ner 👈 click! Feel free to message me!](https://community.n8n.io/u/n8ner/badges) ![](https://i.ibb.co/2YyTWq2v/circuit.jpg#full-width#full-width)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6e8ee9ec-fe55-48d8-afab-b5d2a677cedb",
+			"name": "Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"position": [4180, -320],
+			"webhookId": "f33ade31-7243-4d8f-a7e9-fc450ebf7eb5",
+			"parameters": {
+				"chatId": "123456789",
+				"operation": "sendPhoto",
+				"binaryData": true,
+				"additionalFields": {
+					"caption": "={{ $('GENERATE TEXT').item.json.output }}"
+				},
+				"binaryPropertyName": "={{'data'}}"
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2,
+			"alwaysOutputData": false
+		},
+		{
+			"id": "72b10789-5887-49b3-bbc3-06c220bc8150",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [1800, -220],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"triggerAtHour": 9
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "64bd78e2-2a1b-4ea8-bf92-e6c113acd229",
+			"name": "When clicking Execute workflow",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [1800, 60],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "cb7597f8-fdb9-48de-994a-da6b684421c7",
+			"name": "Google Sheets Trigger",
+			"type": "n8n-nodes-base.googleSheetsTrigger",
+			"position": [1800, 380],
+			"parameters": {
+				"event": "=rowAdded",
+				"options": {
+					"valueRender": "UNFORMATTED_VALUE",
+					"columnsToWatch": ["Links for articles to refer"],
+					"dataLocationOnSheet": {
+						"values": {
+							"range": "A2:A10",
+							"rangeDefinition": "specifyRangeA1"
+						}
+					}
+				},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyX",
+							"unit": "minutes",
+							"value": 1
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_AWS_SECRET_KEY_HERE-y-c/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "YOUR_AWS_SECRET_KEY_HERE-y-c"
+				}
+			},
+			"credentials": {
+				"googleSheetsTriggerOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsTriggerOAuth2Api Credential"
+				}
+			},
+			"notesInFlow": false,
+			"typeVersion": 1
+		},
+		{
+			"id": "157ac7c9-54df-4dc0-aa89-1b63b17f3148",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [3640, -140],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "choices[0].message.content"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "bcd7bc00-fb79-4709-8a97-0a43bc274f4c",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3960, -520],
+			"parameters": {
+				"color": 7,
+				"width": 520,
+				"height": 1300,
+				"content": "# Finish - Upload to Platforms![Guide](https://i.ibb.co/d41JsL8q/Screenshot-2025-05-30-122423-1.jpg#full-width#full-width)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2f7884d1-7da0-492b-8503-9a4de0911773",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [4120, 420],
+			"parameters": {
+				"color": 7,
+				"width": 210,
+				"height": 200,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f7181d0c-1bf4-4031-86dd-95761940de68",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [4120, 160],
+			"parameters": {
+				"color": 7,
+				"width": 210,
+				"height": 200,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d1e3f2e4-8f4e-40aa-b512-b7e7d2667f1e",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [4120, -100],
+			"parameters": {
+				"color": 7,
+				"width": 210,
+				"height": 200,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "64b6a403-4913-4d1b-8b61-581dec0223a7",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [4120, -360],
+			"parameters": {
+				"color": 7,
+				"width": 210,
+				"height": 200,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a48fa4e0-3781-426f-9f48-1fec77acba68",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1600, -500],
+			"parameters": {
+				"color": 7,
+				"width": 500,
+				"height": 1260,
+				"content": "# START - Choose a Trigger![Guide](https://i.ibb.co/d41JsL8q/Screenshot-2025-05-30-122423-1.jpg#full-width#full-width)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "33dc129d-2784-4fb9-a027-589aa443d37b",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1740, 320],
+			"parameters": {
+				"color": 4,
+				"height": 220,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e1666561-2404-460e-b37e-0ebfd15b6261",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1740, 20],
+			"parameters": {
+				"color": 4,
+				"height": 220,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d34574fe-5791-4508-b847-e20eda64cd66",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1740, -280],
+			"parameters": {
+				"color": 4,
+				"height": 220,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ac1bb708-89fb-496e-8291-e86d509ff2f8",
+			"name": "Sticky Note13",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2160, -360],
+			"parameters": {
+				"color": 7,
+				"width": 760,
+				"height": 460,
+				"content": "### Edit prompt and system message up for you, customize llm and search links, add your own prompts database ![](https://i.ibb.co/TxQrh405/erasebg-transformed-removebg-preview.png#full-width)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1c2803d0-8ea1-48c1-b3df-6e9a5156be07",
+			"name": "Sticky Note14",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2520, 300],
+			"parameters": {
+				"color": 7,
+				"width": 760,
+				"height": 420,
+				"content": "### Edit prompt and system message up for you, customize llm and add own prompts database ![](https://i.ibb.co/TxQrh405/erasebg-transformed-removebg-preview.png#full-width)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b40ab1d2-e7d4-4dce-8200-41ecb761eb9b",
+			"name": "Sticky Note15",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3120, -300],
+			"parameters": {
+				"color": 7,
+				"width": 760,
+				"height": 380,
+				"content": "### Set up Ai model for generating images, customize prompt up for you ![](https://i.ibb.co/TxQrh405/erasebg-transformed-removebg-preview.png#full-width)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4aeadd2d-a393-414d-a584-344934f89586",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [4480, -520],
+			"parameters": {
+				"color": 5,
+				"width": 1620,
+				"height": 1300,
+				"content": "# The template is set up for Auto Service daily content uploads, but the underlying logic is universal. You can easily adapt it for any niche by editing prompts, adding nodes, and creating or uploading a variety of content to any platform. You can use any LLM and generative AI of your choice. Personally, I prefer the smooth and effective results from ChatGPT 4.1 combined with GPT Image 1.  Enjoy and [message me](https://community.n8n.io/u/n8ner/badges) with your reviews for future improvements! ![](https://i.ibb.co/qLxMHbd5/customize-ride1.jpg#full-width#full-width )"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "07a0cb9c-fdd6-4120-b9cc-f92d636eed27",
+			"name": "Mistral Cloud Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+			"position": [4620, -220],
+			"parameters": {
+				"model": "pixtral-large-latest",
+				"options": {}
+			},
+			"credentials": {
+				"mistralCloudApi": {
+					"id": "credential-id",
+					"name": "mistralCloudApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "765cbb25-897b-408d-ac1d-613c07629a78",
+			"name": "OpenRouter Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+			"position": [4880, -80],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openRouterApi": {
+					"id": "credential-id",
+					"name": "openRouterApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "486efc72-84ea-4f1e-bc8d-f3e53f250ddd",
+			"name": "Anthropic Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"position": [4620, 40],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-3-7-sonnet-20250219",
+					"cachedResultName": "Claude 3.7 Sonnet"
+				},
+				"options": {}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "21d18ef8-7520-476b-a471-5e3a64902a65",
+			"name": "Google Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [4980, -220],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c14142c6-7294-47a9-805a-038bbe367097",
+			"name": "xAI Grok Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+			"position": [4780, 40],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9460fa92-6e31-448f-b87b-7a440a791426",
+			"name": "DeepSeek Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+			"position": [4980, 40],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5db59ffd-c09a-4146-b140-47e8399d6c41",
+			"name": "Hugging Face Inference Model",
+			"type": "@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference",
+			"position": [5160, -220],
+			"parameters": {
+				"model": "https://huggingface.co/black-forest-labs/FLUX.1-dev",
+				"options": {}
+			},
+			"credentials": {
+				"huggingFaceApi": {
+					"id": "credential-id",
+					"name": "huggingFaceApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8eea8670-a4a2-4e58-ae04-3a1e7f8cf1de",
+			"name": "Freepik API",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [4540, 400],
+			"parameters": {
+				"url": "https://api.freepik.com/v1/ai/text-to-image/imagen3",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "{\n  \"prompt\": \"Crazy dog in the space\",\n  \"num_images\": 1,\n  \"aspect_ratio\": \"square_1_1\",\n  \"styling\": {\n    \"style\": \"anime\",\n    \"effects\": {\n      \"color\": \"pastel\",\n      \"lightning\": \"warm\",\n      \"framing\": \"portrait\"\n    }\n  },\n  \"person_generation\": \"allow_all\",\n  \"safety_settings\": \"block_none\"\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "x-freepik-api-key",
+							"value": "FPSX38a53a81a693e71a0e9437a657de6342"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "dc0fb490-d710-4a3d-9c49-2ba3652b2770",
+			"name": "Runware API",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [4540, 580],
+			"parameters": {
+				"url": "https://api.runware.ai/v1",
+				"method": "POST",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"jsonBody": "[\n  {\n    \"taskType\": \"authentication\",\n    \"apiKey\": \"<API_KEY>\"\n  },\n  {\n    \"taskType\": \"imageInference\",\n    \"taskUUID\": \"39d7207a-87ef-4c93-8082-1431f9c1dc97\",\n    \"positivePrompt\": \"a cat\",\n    \"width\": 512,\n    \"height\": 512,\n    \"model\": \"civitai:102438@133677\",\n    \"numberResults\": 1\n  }\n]",
+				"sendBody": true,
+				"specifyBody": "json"
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "b2ea776e-4b6f-4f1a-9c3a-1719719209ec",
+			"name": "Clipdrop API",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [4760, 580],
+			"parameters": {
+				"url": "https://clipdrop-api.co/text-to-image/v1",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "prompt"
+						}
+					]
+				},
+				"genericAuthType": "httpBearerAuth"
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "credential-id",
+					"name": "httpBearerAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "4133831e-0c79-44ae-ba7a-0bf8bead48fd",
+			"name": "Ollama Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+			"position": [4780, -220],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c045b699-12cf-48a2-94ce-bcec997434de",
+			"name": "Azure OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+			"position": [5160, 40],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d6134f16-65c1-49ee-823a-2b10954707a2",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"position": [5200, 580],
+			"parameters": {},
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "credential-id",
+					"name": "apiTemplateIoApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2f627d07-42e6-4334-8255-24aa86ba7146",
+			"name": "Ideogram API",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [4980, 580],
+			"parameters": {
+				"url": "https://api.ideogram.ai/v1/ideogram-v3/generate",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"sendHeaders": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "prompt",
+							"value": "A photo of a cat sleeping on a couch."
+						},
+						{
+							"name": "rendering_speed",
+							"value": "TURBO"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Api-Key",
+							"value": "<apiKey>"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "72377c43-3e1e-4c52-84de-aa8ef825f150",
+			"name": "Replicate API",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [4760, 400],
+			"parameters": {
+				"url": "https://api.replicate.com/v1/models/ideogram-ai/ideogram-v2/predictions",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "{\n  \"input\": {\n    \"prompt\": \"An illustration of a black running shoe with the text \\\"Run AI with an API\\\" written on the shoe. The shoe is placed on a blue background. The text is white and bold. The overall image has a modern and techy vibe.\",\n    \"aspect_ratio\": \"16:9\"\n  }\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer $REPLICATE_API_TOKEN"
+						},
+						{
+							"name": "Prefer",
+							"value": "wait"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ae03e3a1-ff22-46ce-b31b-e355611252c0",
+			"name": "Imagen Google API",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [4980, 400],
+			"parameters": {
+				"url": "https://LOCATION-aiplatform.googleapis.com/v1/projects/PROJECT_ID/locations/LOCATION/YOUR_AWS_SECRET_KEY_HERE@002:predict",
+				"body": "0",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "raw",
+				"sendHeaders": true,
+				"rawContentType": "application/json; charset=utf-8",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer $(gcloud auth print-access-token)"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "16eeca87-25b3-42c9-a2d1-7dde51e08db4",
+			"name": "HuggingFace API",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [5200, 400],
+			"parameters": {
+				"url": "https://uu149rez6gw9ehej.eu-west-1.aws.endpoints.huggingface.cloud/distilbert-sentiment",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "form-urlencoded",
+				"sendHeaders": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "{\"inputs\": \"Deploying my first endpoint was an amazing experience.\"}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer <Token>"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ed97601a-7ced-478a-ace3-63ab79f951e8",
+			"name": "Runway Images",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [4980, 220],
+			"parameters": {
+				"url": "https://api.dev.runwayml.com/v1/text_to_image",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "{\n  \"promptText\": \"string\",\n  \"ratio\": \"1920:1080\",\n  \"seed\": 4294967295,\n  \"model\": \"gen4_image\",\n  \"referenceImages\": [\n    {\n      \"uri\": \"http://example.com\",\n      \"tag\": \"string\"\n    }\n  ],\n  \"contentModeration\": {\n    \"publicFigureThreshold\": \"auto\"\n  }\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{ YOUR API KEY }}"
+						},
+						{
+							"name": "X-Runway-Version",
+							"value": "2024-11-06"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "7db2a283-7061-4440-8def-534e96ff7dfe",
+			"name": "GENERATE TEXT",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2340, -180],
+			"parameters": {
+				"text": "=Use link as a main reference article source {{ $json.name }}! IMPORTANT! Actualize up to date information and facts check up, use Internet research with Tavily tool!",
+				"options": {
+					"systemMessage": "(!IMPORTANT!) Write short engaging posts under 1024  characters for Telegram. \n\nOverview\nYou are a brand agent for Autoservis, specializing in creating professional and educational posts about car repair. You write random and interesting daily tips, lifehacks, notes, actual news for 2025 year.\n\nGoals:\nAlways start by conducting real-time research using the Tavily tool to gather the most accurate and up-to-date information on the topic. The post should be written to engage the specified target audience.\n\nBased on your research, create a well-structured Telegram post that:\n\nBegins with a captivating hook\n\nMaintains a professional tone\n\nIs clear and easy to read\n\nIs educational and informative\n\nUses minimal emojis (only when very relevant)\n\nIncludes proper source attribution (e.g., \"according to [Source]\")\n\nContains relevant hashtags to improve visibility\n\nEnds with a clear call to action (e.g., ask for thoughts, feedback, or shares)\n\nOutput instructions:\nYour ONLY output should be the final Telegram post text.\n\nDo not include explanations, notes, or anything outside the post itself.\n\nExample workflow:\nReceive the topic (e.g., вЂњReturn on investment in warehouse automationвЂќ)\n\nUse Tavily to research and gather the latest information or case studies\n\nDraft the post using this research\n\nFormat it with references, clear structure, relevant hashtags, and a call to action\n\nAt the end of the post write\nService center address: 123 Main St, New York, NY, for appointments call (212) 555-1234"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "946716eb-39a5-42f6-88a2-bc89b3351c91",
+			"name": "GENERATE PROMPT",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2680, 460],
+			"parameters": {
+				"text": "Make it perfect.\nPhoto-realistic to Hyper-realistic style.\nWidescreen aspect ratio with the highest pixel resolution. Generate an extremely detailed and realistic image based on the provided reference description {{ $json.output }}. Include comprehensive visual details covering:\n\n- SubjectвЂ™s appearance: facial features, expressions, skin tone, hair style and texture, clothing fabric, color, and fit, posture, accessories.\n- Environment: specific real-world setting and background elements, natural lighting (direction, intensity, color temperature), and ambient mood.\n- Colors and textures: precise color palettes, authentic fabric and skin textures, natural reflections, and subtle visual cues enhancing lifelike clarity.\n\nExclude any abstract art styles, text, numbers, letters, logos, or non-photographic elements to ensure natural realism.\n\nThe prompt should specify image rendering in 16K photographic resolution with maximum clarity and realism.\n\nAdditionally, provide explicit, practical instructions on enhancing an existing photo to 16K resolution using advanced AI super-resolution upscaling techniques that:\n\n- Preserve fine details without blurriness or unnatural sharpening.\n- Maintain natural textures and lighting.\n- Minimize artifacts like noise, halos, or abnormal edges.\n- Deliver photo-realistic output with enhanced clarity.\n\nEnsure the background is clear, finely detailed, and naturally integrated with the subject to reinforce photographic accuracy.\n\nFocus solely on producing a precise, clear prompt and enhancement guidance centered on natural realism and photographic fidelity for ultra-high resolution images.\n\n",
+				"options": {
+					"systemMessage": "=Overview\nYou are an AI agent that converts Telegram posts into visual prompt descriptions for generating graphic marketing materials. These visuals are meant to accompany the Telegram post, effectively conveying the message in a visually appealing, brand-consistent style.\n\nObjective:\nAnalyze the provided Telegram post.\n\nExtract the core message, insight, or key takeaway.\n\nCraft a clear, compelling graphic prompt suitable for a text-to-image generator.\n\nThe final graphic should:\n\nVisually represent or enhance the main idea of the post\n\nBe appropriate for a professional Telegram feed\n\nAppear polished, modern, and engaging\n\nOutput Instructions:\nProvide only the final image prompt without quotation marks.\n\nDo not repeat or paraphrase the Telegram post.\n\nAvoid adding explanations or any additional textвЂ”output only the image prompt.\n\nDo not leave placeholders like вЂњHeader area reserved for customizable callout text.вЂќ\n\nInclude numeric data from the original post when relevant.\n\nStyle Guidelines:\nApproach this like a brand designer or marketing creative.\n\nVisual elements may include text, charts, icons, abstract shapes, overlays, modern illustrations, motion-inspired effects, bold typographic elements (described but not rendered), or metaphorical concepts.\n\nYou may suggest layout styles (e.g., вЂњsplit screen layout,вЂќ вЂњheader with bold title and subtle background illustrationвЂќ).\n\nKeep in mind the prompt will be used by AI image generation toolsвЂ”make it clear and effective.\n\nExample Prompt Format:\nA sleek flat-design graphic featuring a human brain intertwined with mechanical gears, symbolizing the integration of AI and automation.\nMinimalist background with soft gradients, clean sans-serif text areas.\n- - - Important! dont put text on image! - - -"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "bd34e79d-6f3e-4b75-b6cc-ac5e3062ad3e",
+			"name": "LinkedIn",
+			"type": "n8n-nodes-base.linkedIn",
+			"position": [4180, 200],
+			"parameters": {
+				"text": "={{ $json['choices[0].message.content'] }}",
+				"person": "[CONFIGURE_YOUR_LINKEDIN_PERSON_ID]",
+				"authentication": "communityManagement",
+				"additionalFields": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b49aaca1-f326-4fc2-8cc6-265891905f52",
+			"name": "X",
+			"type": "n8n-nodes-base.twitter",
+			"position": [4180, 460],
+			"parameters": {
+				"additionalFields": {}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "d5cc6185-5c6d-4ed4-8b93-c546fe57b804",
+			"name": "Facebook",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [4180, -60],
+			"parameters": {
+				"options": {},
+				"httpRequestMethod": "POST"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7525e88c-eacd-4bb5-8f08-b85dd6aa8777",
+			"name": "Minimax Images",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [4540, 220],
+			"parameters": {
+				"url": "https://api.minimaxi.chat/v1/image_generation",
+				"method": "POST",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"sendBody": true,
+				"sendHeaders": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "model",
+							"value": "image-01"
+						},
+						{
+							"name": "prompt",
+							"value": "men Dressing in white t shirt, full-body stand front view image :25, outdoor, Venice beach sign, full-body image, Los Angeles, Fashion photography of 90s, documentary, Film grain, photorealistic"
+						},
+						{
+							"name": "aspect_ratio",
+							"value": "16:9"
+						},
+						{
+							"name": "response_format",
+							"value": "url"
+						},
+						{
+							"name": "n",
+							"value": "3"
+						},
+						{
+							"name": "prompt_optimizer",
+							"value": "true"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {api_key}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "02acacfc-fa40-440d-a35c-f615c3369c82",
+			"name": "Kling Images",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [4760, 220],
+			"parameters": {
+				"url": "https://api-singapore.klingai.com/v1/images/text2image",
+				"method": "POST",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"jsonBody": "{\n\t\"code\": 0, //Error codesпј›Specific definitions can be found in Error codes\n  \"message\": \"string\", //Error information\n  \"request_id\": \"string\", //Request ID, generated by the system, is used to track requests and troubleshoot problems\n  \"data\":[\n    {\n      \"task_id\": \"string\", //Task ID, generated by the system\n      \"task_status\": \"string\", //Task status, Enum valuesпјљsubmittedгЂЃprocessingгЂЃsucceedгЂЃfailed\n      \"task_status_msg\": \"string\", //Task status information, displaying the failure reason when the task fails (such as triggering the content risk control of the platform, etc.)\n      \"created_at\": 1722769557708, //Task creation time, Unix timestamp, unit ms\n      \"updated_at\": 1722769557708, //Task update time, Unix timestamp, unit ms\n      \"task_result\":{\n        \"images\":[\n          {\n            \"index\": int, //Image NumberпјЊ0-9\n            \"url\": \"string\" //URL for generating imagesпјЊsuch asпјљhttps://h1.inkwai.com/bs2/upload-ylab-stunt/1fa0ac67d8ce6cd55b50d68b967b3a59.png(To ensure information security, generated images/videos will be cleared after 30 days. Please make sure to save them promptly.)\n          }\n      \t]\n      }\n    }\n  ]\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "0a394dbb-ae24-456c-b13f-f568edd40b44",
+			"name": "Leonardo Images",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [5200, 220],
+			"parameters": {
+				"url": "https://cloud.leonardo.ai/api/rest/v1/generations/id",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "accept",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "692e118f-9272-45f9-80c4-6463add4977c",
+			"name": "Tavily Internet Search",
+			"type": "@tavily/n8n-nodes-tavily.tavilyTool",
+			"position": [2260, -280],
+			"parameters": {
+				"query": "={\n  \"query\": \"{searchTerm}\",\n  \"topic\": \"general\",\n  \"search_depth\": \"advanced\",\n  \"chunks_per_source\": 3,\n  \"max_results\": 1,\n  \"time_range\": null,\n  \"days\": 7,\n  \"include_answer\": true,\n  \"include_raw_content\": false,\n  \"include_images\": false,\n  \"include_image_descriptions\": false,\n  \"include_domains\": [],\n  \"exclude_domains\": []\n}",
+				"options": {},
+				"descriptionType": "manual",
+				"toolDescription": "Search in Tavily"
+			},
+			"credentials": {
+				"tavilyApi": {
+					"id": "credential-id",
+					"name": "tavilyApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "de72e33d-5f58-4fbd-80cf-0eb9f4344175",
+			"name": "OPENAI GENERATES IMAGE",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [3280, -140],
+			"parameters": {
+				"model": "gpt-image-1",
+				"prompt": "= IMPORTANT! DONT WRITE TEXT ON A PICTURE! Create perfect visual for\n{{ $json.output }}",
+				"options": {},
+				"resource": "image"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "0dbe4250-2cd8-4295-bd4b-42ec26ab6cb6",
+			"name": "OPENAI WRITES PROMPTS",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [2620, 600],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1",
+					"cachedResultName": "gpt-4.1"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "07dc3e20-3d51-4bb7-a327-5d961afb2b96",
+			"name": "OPENAI WRITES POSTS",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [2260, -40],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1",
+					"cachedResultName": "gpt-4.1"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		}
+	],
+	"active": false,
+	"pinData": {
+		"X": [
+			{
+				"json": {
+					"code": 1,
+					"name": "First item"
+				}
+			},
+			{
+				"json": {
+					"code": 2,
+					"name": "Second item"
+				}
+			}
+		],
+		"Facebook": [
+			{
+				"json": {
+					"code": 1,
+					"name": "First item"
+				}
+			},
+			{
+				"json": {
+					"code": 2,
+					"name": "Second item"
+				}
+			}
+		],
+		"LinkedIn": [
+			{
+				"json": {
+					"code": 1,
+					"name": "First item"
+				}
+			},
+			{
+				"json": {
+					"code": 2,
+					"name": "Second item"
+				}
+			}
+		],
+		"APITemplate.io": [
+			{
+				"json": {
+					"code": 1,
+					"name": "First item"
+				}
+			},
+			{
+				"json": {
+					"code": 2,
+					"name": "Second item"
+				}
+			}
+		]
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "37a7baec-9442-450f-9373-fad685598558",
+	"connections": {
+		"LinkedIn": {
+			"main": [[]]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "X",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Facebook",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "LinkedIn",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Telegram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"GENERATE TEXT": {
+			"main": [
+				[
+					{
+						"node": "GENERATE PROMPT",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"APITemplate.io": {
+			"main": [[]]
+		},
+		"Minimax Images": {
+			"main": [[]]
+		},
+		"GENERATE PROMPT": {
+			"main": [
+				[
+					{
+						"node": "OPENAI GENERATES IMAGE",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "GENERATE TEXT",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OPENAI WRITES POSTS": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "GENERATE TEXT",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets Trigger": {
+			"main": [
+				[
+					{
+						"node": "GENERATE TEXT",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OPENAI WRITES PROMPTS": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "GENERATE PROMPT",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OPENAI GENERATES IMAGE": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tavily Internet Search": {
+			"ai_tool": [
+				[
+					{
+						"node": "GENERATE TEXT",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking вЂExecute workflowвЂ™": {
+			"main": [
+				[
+					{
+						"node": "GENERATE TEXT",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

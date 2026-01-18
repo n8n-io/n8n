@@ -1,0 +1,420 @@
+{
+	"meta": {
+		"instanceId": "ad0113c344ee237399e44e9f11798b05baeb83a6196d514a9ae9d2ad71c3b5c9",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "218bfd26-8ac9-479e-8c92-f99d9af14770",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [3456, 416],
+			"parameters": {
+				"jsonSchemaExample": "{\n\t\"course\": \"recommended course excact name\",\n\t\"reasoning\": \"reasoning\",\n    \"url\": \"url\"\n}"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "a85905ca-d20a-40f0-9b3a-915ff310387c",
+			"name": "Survey Submission",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [1600, 208],
+			"webhookId": "289170a7-6b67-4a87-be8c-fb929706bb40",
+			"parameters": {
+				"options": {},
+				"formTitle": "Survey",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Name"
+						},
+						{
+							"fieldLabel": "Q1: Where did you learn about n8n?"
+						},
+						{
+							"fieldType": "dropdown",
+							"fieldLabel": "Q2: What is your experience with n8n?",
+							"fieldOptions": {
+								"values": [
+									{
+										"option": "Beginner"
+									},
+									{
+										"option": "Intermediate"
+									},
+									{
+										"option": "Advanced"
+									}
+								]
+							}
+						},
+						{
+							"fieldLabel": "Q3: What kind of automations do you need help with?"
+						}
+					]
+				},
+				"responseMode": "lastNode"
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "6dfe3d26-40de-490b-b7d3-5eda288a443c",
+			"name": "Store Survey Result",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [2048, 288],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Q1": "={{ $json[\"Q1: Where did you learn about n8n?\"] }}",
+						"Q2": "={{ $json[\"Q2: What is your experience with n8n?\"] }}",
+						"Q3": "={{ $json[\"Q3: What kind of automations do you need help with?\"] }}",
+						"Name": "={{ $json.Name }}"
+					},
+					"schema": [
+						{
+							"id": "Name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Q1",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Q1",
+							"defaultMatch": false
+						},
+						{
+							"id": "Q2",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Q2",
+							"defaultMatch": false
+						},
+						{
+							"id": "Q3",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Q3",
+							"defaultMatch": false
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "Name",
+							"keyValue": "={{ $json.Name }}"
+						}
+					]
+				},
+				"operation": "upsert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "OQV4v3sGHFOgIdi1",
+					"cachedResultUrl": "/projects/hQhYsbYCXUcQaMSY/datatables/OQV4v3sGHFOgIdi1",
+					"cachedResultName": "Survey Responses"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2ba87035-0fd2-42ec-ad19-145819a4d234",
+			"name": "Get Available Courses",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [2048, 1024],
+			"parameters": {
+				"operation": "get",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "Sf4Q1kD2R6v17c7A",
+					"cachedResultUrl": "/projects/hQhYsbYCXUcQaMSY/datatables/Sf4Q1kD2R6v17c7A",
+					"cachedResultName": "Courses"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0ecea044-d72d-4c14-bd4f-1fbd3f708b8d",
+			"name": "Aggregate Courses",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [2368, 912],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "80991d97-db44-4b92-8368-fdcaf211706b",
+			"name": "Convert to Text",
+			"type": "n8n-nodes-base.set",
+			"position": [2592, 592],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b12a41cb-5aaa-4a47-91c8-856a3970e3e1",
+							"name": "Available Courses",
+							"type": "string",
+							"value": "={{ $json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "350b907e-dd94-44df-99b8-599d8c6b3785",
+			"name": "Combine Results",
+			"type": "n8n-nodes-base.merge",
+			"position": [2704, 208],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineAll"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "e02ed24b-259c-4122-af95-b35c8100b8f2",
+			"name": "Choose Best Course",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2960, 0],
+			"parameters": {
+				"text": "=Q1: Where did you learn about n8n?  {{ $('Survey Submission').item.json[\"Q1: Where did you learn about n8n?\"] }}\nQ2: What is your experience with n8n? {{ $('Survey Submission').item.json[\"Q2: What is your experience with n8n?\"] }}\nQ3: What kind of automations do you need help with? {{ $('Survey Submission').item.json[\"Q3: What kind of automations do you need help with?\"] }}\n\nCourses: {{ $json[\"Available Courses\"] }}",
+				"options": {
+					"systemMessage": "You are taking in survey responses. Compare their input, and pick the best course for them to take. \n\n\noutput like this. \n\n{\n\t\"course\": \"recommended course excact name\",\n\t\"reasoning\": \"reasoning\",\n    \"url\": \"url\"\n}"
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "c85a187a-de54-4ee9-97d7-5f7b61de6cd8",
+			"name": "Sticky Note55",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1520, -464],
+			"parameters": {
+				"color": 7,
+				"width": 2272,
+				"height": 1808,
+				"content": "### Recommend the Best n8n Course from a User Survey (Form Trigger + **Data Tables** + OpenAI Agent)\n\nUse the **n8n Data Tables** feature to store, retrieve, and analyze survey results — then let OpenAI automatically recommend the most relevant course for each respondent.\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3d36f680-757e-4c39-a3e8-f79623160809",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1072, -464],
+			"parameters": {
+				"width": 400,
+				"height": 1792,
+				"content": "### Recommend the Best n8n Course from a User Survey (Form Trigger + **Data Tables** + OpenAI Agent)\n\n@[youtube](lFbjJAcWII8)\n\n\n## ⚙️ How to set it up\n### 1️⃣ Create your **n8n Data Tables**\nThis workflow uses **two Data Tables** — both created directly inside n8n.\n\n#### 🧾 Table 1: `Survey Responses`\nColumns:\n- `Name`\n- `Q1` — Where did you learn about n8n?\n- `Q2` — What is your experience with n8n?\n- `Q3` — What kind of automations do you need help with?\n\nTo create:\n1. Add a **Data Table node** to your workflow.  \n2. From the list, click **“Create New Data Table.”**  \n3. Name it **Survey Responses** and add the columns above.\n\n---\n\n#### 📚 Table 2: `Courses`\nColumns:\n- `Course`\n- `Description`\n\nTo create:\n1. Add another **Data Table node**.  \n2. Click **“Create New Data Table.”**  \n3. Name it **Courses** and create the columns above.  \n4. Copy course data from this Google Sheet:  \n   👉 https://docs.google.com/spreadsheets/d/1Y0Q0CnqN0w47c5nCpbA1O3sn0mQaKXPhql2Bc1UeiFY/edit?usp=sharing\n\nThis **Courses Data Table** is where you’ll store all available learning paths or programs for the AI to compare against survey inputs.\n\n---\n\n### 2️⃣ Connect OpenAI\n1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)  \n2. Create an API key  \n3. In n8n, open **Credentials → OpenAI API** and paste your key  \n4. The workflow uses the **gpt-4.1-mini** model via the LangChain integration\n\n## 📬 Contact  \nNeed help customizing this (e.g., expanding Data Tables, connecting multiple surveys, or automating follow-ups)?  \n\n- 📧 **robert@ynteractive.com**  \n- 🔗 **[Robert Breen](https://www.linkedin.com/in/robert-breen-29429625/)**  \n- 🌐 **[ynteractive.com](https://ynteractive.com)**\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "20ee632c-993c-47a4-8b64-2a99b96f6ad3",
+			"name": "Sticky Note61",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1952, 512],
+			"parameters": {
+				"color": 3,
+				"width": 288,
+				"height": 688,
+				"content": "#### 📚 Table 2: `Courses`\nColumns:\n- `Course`\n- `Description`\n\nTo create:\n1. Add another **Data Table node**.  \n2. Click **“Create New Data Table.”**  \n3. Name it **Courses** and create the columns above.  \n4. Copy course data from this Google Sheet:  \n   👉 https://docs.google.com/spreadsheets/d/1Y0Q0CnqN0w47c5nCpbA1O3sn0mQaKXPhql2Bc1UeiFY/edit?usp=sharing\n\nThis **Courses Data Table** is where you’ll store all available learning paths or programs for the AI to compare against survey inputs."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "543cf3e4-a7e4-47c2-95e7-53a74ebd5e92",
+			"name": "Sticky Note63",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1952, -128],
+			"parameters": {
+				"color": 3,
+				"width": 288,
+				"height": 560,
+				"content": "#### 🧾 Table 1: `Survey Responses`\nColumns:\n- `Name`\n- `Q1` — Where did you learn about n8n?\n- `Q2` — What is your experience with n8n?\n- `Q3` — What kind of automations do you need help with?\n\nTo create:\n1. Add a **Data Table node** to your workflow.  \n2. From the list, click **“Create New Data Table.”**  \n3. Name it **Survey Responses** and add the columns above.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cf8eccf0-ae1e-4a4d-9fc3-487692aabbea",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [3072, 624],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "4640b8a8-cdda-4c73-8913-48d0028290d4",
+			"name": "Sticky Note31",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2960, 432],
+			"parameters": {
+				"color": 3,
+				"width": 288,
+				"height": 304,
+				"content": "### 2️⃣ Set Up OpenAI Connection\n1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)  \n2. Navigate to [OpenAI Billing](https://platform.openai.com/settings/organization/billing/overview)  \n3. Add funds to your billing account  \n4. Copy your API key into the **OpenAI credentials** in n8n  "
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "468c1406-4990-473a-8a3f-bd70168a2220",
+			"name": "Form",
+			"type": "n8n-nodes-base.form",
+			"position": [3392, 16],
+			"webhookId": "53615200-f0d2-4723-a833-c2e120ceac73",
+			"parameters": {
+				"operation": "completion",
+				"respondWith": "showText",
+				"responseText": "=<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n  <title>Course Recommendation</title>\n  <style>\n    body {\n      font-family: Arial, sans-serif;\n      margin: 40px;\n      background-color: #f9f9f9;\n      color: #333;\n    }\n    .container {\n      background: #fff;\n      padding: 20px 30px;\n      border-radius: 10px;\n      box-shadow: 0 4px 12px rgba(0,0,0,0.1);\n      max-width: 600px;\n      margin: auto;\n    }\n    h1 {\n      color: #0066cc;\n    }\n    a {\n      color: #0066cc;\n      text-decoration: none;\n      font-weight: bold;\n    }\n    .reasoning {\n      margin-top: 20px;\n      font-style: italic;\n    }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <h1>Recommended Course</h1>\n    <p>\n      We recommend the following course:\n      <strong>{{ $json.output.course }}</strong>\n    </p>\n    <p>\n      You can view it here:\n      <a href=\"{{ $json.output.url }}\" target=\"_blank\">{{ $json.output.url }}</a>\n    </p>\n    <div class=\"reasoning\">\n      <p>Reasoning: {{ $json.output.reasoning }}</p>\n    </div>\n  </div>\n</body>\n</html>\n"
+			},
+			"typeVersion": 2.3
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Combine Results": {
+			"main": [
+				[
+					{
+						"node": "Choose Best Course",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to Text": {
+			"main": [
+				[
+					{
+						"node": "Combine Results",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Aggregate Courses": {
+			"main": [
+				[
+					{
+						"node": "Convert to Text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Choose Best Course",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Survey Submission": {
+			"main": [
+				[
+					{
+						"node": "Store Survey Result",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Available Courses",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Choose Best Course": {
+			"main": [
+				[
+					{
+						"node": "Form",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Store Survey Result": {
+			"main": [
+				[
+					{
+						"node": "Combine Results",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Available Courses": {
+			"main": [
+				[
+					{
+						"node": "Aggregate Courses",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Choose Best Course",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

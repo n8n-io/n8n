@@ -1,0 +1,208 @@
+{
+	"meta": {
+		"instanceId": "YOUR_INSTANCE_ID",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "408c2c7c-3e0a-4a56-baae-d1334fffbb49",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-608, -224],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b2b1cb54-aad2-40f2-a6d3-82a87d7977b8",
+			"name": "WhatsApp Message Received",
+			"type": "n8n-nodes-base.whatsAppTrigger",
+			"position": [48, 496],
+			"webhookId": "YOUR_WEBHOOK_ID",
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "df4cedfa-4dc9-4cbf-9a57-bda2169b43c6",
+			"name": "Get Media URL",
+			"type": "n8n-nodes-base.whatsApp",
+			"position": [288, 496],
+			"webhookId": "YOUR_WEBHOOK_ID_2",
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "83ddeda5-6189-494c-909b-750d702dea18",
+			"name": "Download Image File",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [544, 496],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "af69c54c-cc63-41ce-a938-a0f5a87773da",
+			"name": "Image to Base64",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [880, 400],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "9ee51832-ec77-4887-ad02-ca6e0022a5fe",
+			"name": "AI Design Analysis",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [880, 592],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "f78cef2a-30a8-4bef-a6bd-f17a0b7543de",
+			"name": "Combine Image & Analysis",
+			"type": "n8n-nodes-base.merge",
+			"position": [1200, 496],
+			"parameters": {},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "e02461e3-16c5-45ab-b5fc-c8f1c8561cff",
+			"name": "Prepare API Payload",
+			"type": "n8n-nodes-base.code",
+			"position": [1408, 496],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "5d14ccf3-70cc-4be6-9c28-8046207aacbf",
+			"name": "Generate Enhanced Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1648, 496],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ae68ba68-2df4-4fb3-bf8f-d83c6f19e3fd",
+			"name": "Convert Base64 to Image",
+			"type": "n8n-nodes-base.convertToFile",
+			"position": [1872, 496],
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "46305e1c-aac0-4722-a512-52e58c15e9b2",
+			"name": "Send Image",
+			"type": "n8n-nodes-base.whatsApp",
+			"position": [2080, 496],
+			"webhookId": "YOUR_WEBHOOK_ID_3",
+			"parameters": {},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Get Media URL": {
+			"main": [
+				[
+					{
+						"node": "Download Image File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Image to Base64": {
+			"main": [
+				[
+					{
+						"node": "Combine Image & Analysis",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Design Analysis": {
+			"main": [
+				[
+					{
+						"node": "Combine Image & Analysis",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Download Image File": {
+			"main": [
+				[
+					{
+						"node": "Image to Base64",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AI Design Analysis",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare API Payload": {
+			"main": [
+				[
+					{
+						"node": "Generate Enhanced Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert Base64 to Image": {
+			"main": [
+				[
+					{
+						"node": "Send Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Enhanced Image": {
+			"main": [
+				[
+					{
+						"node": "Convert Base64 to Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Combine Image & Analysis": {
+			"main": [
+				[
+					{
+						"node": "Prepare API Payload",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"WhatsApp Message Received": {
+			"main": [
+				[
+					{
+						"node": "Get Media URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

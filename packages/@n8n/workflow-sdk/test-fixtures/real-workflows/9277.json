@@ -1,0 +1,1721 @@
+{
+	"meta": {
+		"instanceId": "fb8765e796a0e7e1ba27ec1c7d863beb874259da34a1055eebdbc2e56190ae6b",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "084bc81b-c5b1-4fea-9324-133d549c5b43",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-2544, -1472],
+			"webhookId": "e9d18eff-60cc-4899-8be4-fbce5cf36d36",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "0161e9d2-e421-495c-9d62-4389a7b07367",
+			"name": "Course  Topic Agent",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"position": [-2768, -688],
+			"parameters": {
+				"text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+				"options": {
+					"systemMessage": "You are Course_Topic_Agent, an AI assistant specialized in managing Google Classroom topics via the Classroom REST v1 API. Invoke the correct tool to handle each request:\n\nList topics\n– Inputs: courseId\n– Returns: an array of Topic resources\n\nGet topic\n– Inputs: courseId, topicId\n– Returns: the specified Topic resource\n\nCreate topic\n– Inputs: courseId, JSON body with Topic fields (name, topicId)\n– Returns: the newly created Topic resource\n\nPatch topic\n– Inputs: courseId, topicId, updateMask specifying which fields to update, JSON body with updated fields (e.g., name)\n– Returns: the updated Topic resource\n\nDelete topic\n– Inputs: courseId, topicId\n– Returns: empty response on success"
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "8892e1d1-3705-44ce-b33b-85787093dcc7",
+			"name": "List topics",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-3008, -352],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'List topics for a course.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/topics') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "0204efae-787b-4a45-a82f-e982cbd1445b",
+			"name": "Get topic",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-2880, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'Get a specific topic.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/topics/{topicId}') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "37599138-4514-4d89-a927-a822941ec8ad",
+			"name": "Create topic",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-2752, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'Create a new topic.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/topics') }}",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Name', ``, 'string') }}",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "beab45ae-0e81-4a74-a5f7-b56a8540c9be",
+			"name": "Patch topic",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-2512, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'Update a topic name.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/topics/{topicId}?updateMask=name') }}",
+				"method": "PATCH",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Name', ``, 'string') }}",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						},
+						{
+							"name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Name', ``, 'string') }}",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', ``, 'string') }}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ae8bdc1f-bf01-4abb-a11a-dd127231aa3a",
+			"name": "Delete topic",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-2624, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'Delete a topic.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/topics/{topicId}') }}",
+				"method": "DELETE",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "fd7c68ef-6061-4950-b223-21783ece1e33",
+			"name": "Teacher agent",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"position": [-2336, -688],
+			"parameters": {
+				"text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+				"options": {
+					"systemMessage": "You are Teacher_Agent. Available tools:\n\nList teachers: lists all teachers in a course\n\nGet teacher: retrieves a specific teacher by ID"
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "1c99d7b1-82bd-4be6-b177-58de7814670f",
+			"name": "List teachers",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-2144, -400],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'List teachers in a course.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/teachers') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "5f4ea9d6-a5d3-49d3-a43e-0cd281c7591a",
+			"name": "Get teacher",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-2032, -384],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'Get a specific teacher.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/teachers/{userId}') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "96b4462a-a436-4f2e-9d19-2d86c33a427a",
+			"name": "Students Agent",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"position": [-2096, -688],
+			"parameters": {
+				"text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+				"options": {
+					"systemMessage": "You are Students_Agent. Available tools:\n\nList students: lists all students in a course\n\nGet student: retrieves a specific student by ID"
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "d132cff3-4757-4a66-a8a5-4d674863d104",
+			"name": "List students",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-1632, -384],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'List students in a course.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/students') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "96db0ec3-9088-42c0-9837-0e968dc4d046",
+			"name": "Get student",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-1488, -352],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'Get a specific student.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/students/{userId}') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "4edf9b0f-3ded-476e-80e5-f6fc32395a3c",
+			"name": "Course Post Agent",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"position": [-1152, -704],
+			"parameters": {
+				"text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+				"options": {
+					"systemMessage": "You are Course_Post_Agent, an AI assistant specialized in managing Google Classroom post attachments and their submissions via the Classroom REST v1 API. Invoke exactly the tool that matches the user’s request:\n\nGet post add-on context\n– Input: postId\n– Returns: the AddOnContext resource for the specified post\n\nList post add-on attachments\n– Input: postId\n– Returns: an array of AddOnAttachment resources for the specified post\n\nGet post add-on attachment\n– Input: postId, attachmentId\n– Returns: the specified AddOnAttachment resource\n\nGet post attachment submission\n– Input: postId, attachmentId, submissionId\n– Returns: the StudentSubmission resource for the specified attachment"
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "e1680f30-bc23-47c5-96a6-f663d8b3a2c9",
+			"name": "Get post add-on context",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-1088, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'Get add-on context for a post.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/posts/{postId}/addOnContext') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "1b641ee8-933d-4746-bdb5-9f66e76a850e",
+			"name": "List post add-on attachments",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-960, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'List add-on attachments for a post.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/posts/{postId}/addOnAttachments') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "1d70ecb3-6137-403a-8454-0c9af9df8d94",
+			"name": "Get post add-on attachment",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-832, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'Get a specific add-on attachment.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/posts/{postId}/addOnAttachments/{attachmentId}') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "c5382bf8-b12f-4ea2-a51d-3ee293b60263",
+			"name": "Get post attachment submission",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-704, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url', 'Get a student submission for a post add-on attachment.', 'string', 'https://classroom.googleapis.com/v1/courses/{courseId}/posts/{postId}/addOnAttachments/{attachmentId}/studentSubmissions/{submissionId}') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "39d6c93a-d537-48de-909d-054144d10b28",
+			"name": "Announcements Agent",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"position": [-240, -592],
+			"parameters": {
+				"text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+				"options": {
+					"systemMessage": "You are Announcements_Agent, an AI assistant specialized in managing Google Classroom announcements via the Classroom REST v1 API. Invoke exactly the tool that matches the user’s request:\n\nList announcements\n– Inputs: courseId\n– Returns: an array of Announcement resources\n\nGet announcement\n– Inputs: courseId, announcementId\n– Returns: the specified Announcement resource\n\nCreate announcement\n– Inputs: courseId, JSON body with Announcement fields (text, state, etc.)\n– Returns: the newly created Announcement resource\n\nPatch announcement\n– Inputs: courseId, announcementId, updateMask specifying fields to update, JSON body with updated values\n– Returns: the updated Announcement resource\n\nDelete announcement\n– Inputs: courseId, announcementId\n– Returns: empty response on success\n\nGet announcement add-on context\n– Inputs: courseId, announcementId\n– Returns: the AddOnContext resource for the specified announcement"
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "3de3a409-39b2-4592-a91e-ab1ac3ea324a",
+			"name": "Create announcement",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-64, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url','Create an announcement.','string','https://classroom.googleapis.com/v1/courses/{courseId}/announcements') }}",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Name', ``, 'string') }}",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						},
+						{
+							"name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Name', ``, 'string') }}",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', ``, 'string') }}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "1cf43bc6-686b-4d6b-886a-9b230e4ba98d",
+			"name": "Delete announcement",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [320, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url','Delete an announcement.','string','https://classroom.googleapis.com/v1/courses/{courseId}/announcements/{announcementId}') }}",
+				"method": "DELETE",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "d5e3bfcd-f54d-4820-a7c6-929d2715f9cb",
+			"name": "Get announcement",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [192, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url','Get an announcement.','string','https://classroom.googleapis.com/v1/courses/{courseId}/announcements/{announcementId}') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "d55d90d5-ae49-494b-a03a-7fb789e73448",
+			"name": "Get announcement add-on context",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [64, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url','Get announcement add-on context.','string','https://classroom.googleapis.com/v1/courses/{courseId}/announcements/{announcementId}/addOnContext') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "fff0be5d-5791-414c-a662-c60b19d3b943",
+			"name": "List announcements",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-320, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url','List announcements.','string','https://classroom.googleapis.com/v1/courses/{courseId}/announcements') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "b2d79c12-3645-4f35-8070-6d04f6d67e06",
+			"name": "Patch announcement",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [-192, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url','Update announcement text.','string','https://classroom.googleapis.com/v1/courses/{courseId}/announcements/{announcementId}?updateMask=text') }}",
+				"method": "PATCH",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Name', ``, 'string') }}",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "3c7341d4-06fa-40c8-a4dc-6d0c60e500d8",
+			"name": "Course Management Agent",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"position": [640, -576],
+			"parameters": {
+				"text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+				"options": {
+					"systemMessage": "You are Course Management Agent, a focused controller for Google Classroom course data; call only the tools listed below and validate required inputs before invocation.\n\nList courses\n\nInputs: none\n\nReturns: array of Course resources\n\nGet course\n\nInputs: courseId\n\nReturns: Course resource\n\nGet grading period settings\n\nInputs: courseId\n\nReturns: GradingPeriodSettings resource"
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "3e42042e-9ff2-4386-90c2-cb08710bf50c",
+			"name": "Get course",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [832, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url','Get course details.','string','https://classroom.googleapis.com/v1/courses/{courseId}') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "713937c4-8955-4f30-b170-e76bb66edc8a",
+			"name": "Get grading period settings",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [704, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url','Get grading period settings.','string','https://classroom.googleapis.com/v1/courses/{courseId}/gradingPeriodSettings') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "7446d4ee-fc91-462e-8a52-a63c1d137d81",
+			"name": "List courses",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [960, -336],
+			"parameters": {
+				"url": "={{ $fromAI('url','List all courses.','string','https://classroom.googleapis.com/v1/courses') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "43caddc8-df57-49b4-887c-f768a639d9ea",
+			"name": "Get coursework",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [1632, -320],
+			"parameters": {
+				"url": "={{ $fromAI('url','Get coursework.','string','https://classroom.googleapis.com/v1/courses/{courseId}/courseWork/{courseWorkId}') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "4a588b11-8bcc-4ff3-bc53-631e58781b9c",
+			"name": "Get coursework add-on context",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [1488, -320],
+			"parameters": {
+				"url": "={{ $fromAI('url','Get coursework add-on context.','string','https://classroom.googleapis.com/v1/courses/{courseId}/courseWork/{courseWorkId}/addOnContext') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "346aa475-e1f0-46b0-97d5-d3b294a79d1e",
+			"name": "List coursework",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [1360, -320],
+			"parameters": {
+				"url": "={{ $fromAI('url','List coursework.','string','https://classroom.googleapis.com/v1/courses/{courseId}/courseWork') }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer {{$credentials.oauth2.access_token}}"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "5e66b9d6-dd1a-491f-ab84-64d86f5ad2a4",
+			"name": "Coursework Management SubAgent",
+			"type": "@n8n/n8n-nodes-langchain.agentTool",
+			"position": [1296, -544],
+			"parameters": {
+				"text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+				"options": {
+					"systemMessage": "ou are Coursework Management Agent. Use only the tools shown for this node and validate required inputs before calling.\n\nList coursework: Inputs: courseId. Returns: array of CourseWork resources.\n\nGet coursework: Inputs: courseId, courseWorkId. Returns: a CourseWork resource.\n\nGet coursework add-on context: Inputs: courseId, courseWorkId. Returns: AddOnContext for the coursework."
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "69cbeb93-4f8b-4d6f-be79-3d11141bf707",
+			"name": "Google Gemini Chat Model3",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-3264, -368],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fc556a42-7a41-437d-a67a-e96ebf6f4cf3",
+			"name": "Simple Memory3",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-3136, -352],
+			"parameters": {
+				"contextWindowLength": 10
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "4fddf904-a1ca-4317-96ad-8367ce93254c",
+			"name": "Google Gemini Chat Model4",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-2384, -400],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c5385ae2-14c0-4684-a9f4-0ad7ff9992cb",
+			"name": "Simple Memory4",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-2272, -400],
+			"parameters": {
+				"contextWindowLength": 10
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "dcc25c6a-5d06-45d8-8c64-44153d89545f",
+			"name": "Google Gemini Chat Model5",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-1888, -384],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "981307c7-a65d-4ce6-a7a6-7f6bc8f33bcb",
+			"name": "Simple Memory5",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-1760, -384],
+			"parameters": {
+				"contextWindowLength": 10
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "f7ad6370-1ed6-471f-b368-66e16deba73e",
+			"name": "Google Gemini Chat Model7",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-1344, -336],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fc0f33a7-2f94-4225-b49e-72066acfc831",
+			"name": "Simple Memory7",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-1216, -336],
+			"parameters": {
+				"contextWindowLength": 20
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "a40538d9-e3ae-45e0-ad04-1af5b3b280fb",
+			"name": "Google Gemini Chat Model8",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-576, -336],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "86041003-d0ce-4c82-b951-4c478742a928",
+			"name": "Simple Memory8",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-448, -336],
+			"parameters": {
+				"contextWindowLength": 10
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "f9d92491-b856-4259-aade-065062ef1b00",
+			"name": "Google Gemini Chat Model10",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [448, -336],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9e3729b4-d5bc-4dce-be6e-4aac9ad18b4b",
+			"name": "Simple Memory10",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [576, -336],
+			"parameters": {
+				"contextWindowLength": 10
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "15ed20f2-b15e-4a90-b2bb-6d3387b36844",
+			"name": "Google Gemini Chat Model12",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [1088, -352],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ac23aeb2-794e-47af-b7ee-7b754fa9728a",
+			"name": "Simple Memory12",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [1232, -336],
+			"parameters": {
+				"contextWindowLength": 10
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "fab0b0cb-4244-4905-b627-d903a43036c7",
+			"name": "Google Gemini Chat Model18",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-2336, -1344],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "184223bc-ed0f-498e-8a02-c82906c24f39",
+			"name": "Google Classroom Ultimate Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-1584, -1472],
+			"parameters": {
+				"options": {
+					"systemMessage": "=Google Classroom Master Agent\nAct as an orchestrator that routes requests to the correct sub-agent and tool below. Validate required inputs before invoking any tool. Authorization and JSON handling are managed by the tools. Only call tools listed here.\n\nCoursework Management Agent\n\nList coursework: Inputs: courseId. Returns: array of CourseWork resources.\n\nGet coursework: Inputs: courseId, courseWorkId. Returns: a CourseWork resource.\n\nGet coursework add-on context: Inputs: courseId, courseWorkId. Returns: AddOnContext for the coursework.\n\nCourse Management Agent\n\nList courses: Inputs: none. Returns: array of Course resources.\n\nGet course: Inputs: courseId. Returns: Course resource.\n\nGet grading period settings: Inputs: courseId. Returns: GradingPeriodSettings resource.\n\nAnnouncements Agent\n\nList announcements: Inputs: courseId. Returns: array of Announcement resources.\n\nGet announcement: Inputs: courseId, announcementId. Returns: the specified Announcement resource.\n\nCreate announcement: Inputs: courseId, JSON body with Announcement fields. Returns: newly created Announcement resource.\n\nPatch announcement: Inputs: courseId, announcementId, updateMask, JSON body with updated values. Returns: updated Announcement resource.\n\nDelete announcement: Inputs: courseId, announcementId. Returns: empty response on success.\n\nGet announcement add-on context: Inputs: courseId, announcementId. Returns: AddOnContext for the announcement.\n\nCourse Post Agent\n\nGet post add-on context: Inputs: postId. Returns: AddOnContext for the post.\n\nList post add-on attachments: Inputs: postId. Returns: array of AddOnAttachment resources.\n\nGet post add-on attachment: Inputs: postId, attachmentId. Returns: specified AddOnAttachment resource.\n\nGet post attachment submission: Inputs: postId, attachmentId, submissionId. Returns: StudentSubmission resource for the attachment.\n\nStudents Agent\n\nList students: Inputs: courseId. Returns: array of Student resources.\n\nGet student: Inputs: courseId, studentId. Returns: specified Student resource.\n\nTeacher Agent\n\nList teachers: Inputs: courseId. Returns: array of Teacher resources.\n\nGet teacher: Inputs: courseId, teacherId. Returns: specified Teacher resource.\n\nCreate teacher: Inputs: courseId, JSON body with Teacher fields. Returns: newly created Teacher resource.\n\nDelete teacher: Inputs: courseId, teacherId. Returns: empty response on success.\n\nCourse Topic Agent\n\nList topics: Inputs: courseId. Returns: array of Topic resources.\n\nGet topic: Inputs: courseId, topicId. Returns: specified Topic resource.\n\nCreate topic: Inputs: courseId, JSON body with Topic fields. Returns: newly created Topic resource.\n\nPatch topic: Inputs: courseId, topicId, updateMask, JSON body with updated fields. Returns: updated Topic resource.\n\nDelete topic: Inputs: courseId, topicId. Returns: empty response on success."
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "ac3cad1e-09a9-4566-aed2-d6c975b99cad",
+			"name": "Simple Memory18",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-2160, -1280],
+			"parameters": {
+				"contextWindowLength": 100
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "959923b0-749f-41ed-81d1-2097eb9b098d",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2848, -880],
+			"parameters": {
+				"color": 7,
+				"width": 416,
+				"height": 288,
+				"content": "🗂️ Course Topic Agent Overview\n\n\nOperations:\n• List Topics - Retrieve all topics for a course\n• Get Topic - Fetch details of a specific topic\n• Create Topic - Add a new topic to a course\n• Patch Topic - Update an existing topic's details\n• Delete Topic - Remove a topic from a course\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b8b51037-d87a-49b4-845e-93ce73d9dec8",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2336, -912],
+			"parameters": {
+				"color": 7,
+				"width": 496,
+				"height": 416,
+				"content": "👩‍🏫 Teacher & 👨‍🎓 Student Agents Overview\n\n\nOperations:\n• List Teachers/Students - Retrieve all teachers or students in a course\n• Get Teacher/Student - Fetch details of an individual participant\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3c75e0a3-0354-49f9-91e7-d8fa9df0fc2a",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-320, -864],
+			"parameters": {
+				"color": 7,
+				"width": 400,
+				"height": 368,
+				"content": "📢 Announcement Agent Overview\n\nOperations:\n• List Announcements - Retrieve all announcements in a course\n• Get Announcement Details - Fetch information about a specific announcement\n• Create Announcement - Post a new announcement to the course\n• Patch Announcement - Update an existing announcement's content or context\n• Delete Announcement - Remove an announcement from the course"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8eb61d38-338e-453b-b05c-7d321b144fbc",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1216, -928],
+			"parameters": {
+				"color": 7,
+				"width": 368,
+				"height": 320,
+				"content": "📬 Course Post Agent Overview\n\n\nOperations:\n• List Posts - Retrieve all posts in a course\n• Get Post Details - Fetch information about a specific post\n• Get Attachments - Retrieve all board attachments or related files for a post\n• Get Submission Data - Collect all submission details associated with a post"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a9ecff3a-5904-419b-9363-8a6841c1d492",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, -784],
+			"parameters": {
+				"color": 7,
+				"width": 480,
+				"height": 288,
+				"content": "🏫 Course Management Agent Overview\n\nOperations:\n• List Courses - Retrieve all available courses for the authenticated user\n• Get Course Details - Fetch complete information about a specific course\n• Get Grading Period Data - Retrieve grading period information and related course performance data\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "92c46f38-cc81-413b-957d-32592f551c9f",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1184, -736],
+			"parameters": {
+				"color": 7,
+				"width": 464,
+				"height": 272,
+				"content": "🧾 Coursework Management Agent Overview\n\nOperations:\n• List Coursework - Retrieve all coursework items for a specific course\n• Get Coursework Details - Fetch information about an individual coursework\n• Get Coursework with Context - Retrieve coursework along with its attached content, instructions, and related data\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7c5845f8-343f-4314-9fe9-829f69f6bfa2",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1696, -2160],
+			"parameters": {
+				"color": 4,
+				"width": 432,
+				"height": 816,
+				"content": "🎓Automate Google Classroom: Topics,Assignments   & Student Tracking\n\nAutomate Google Classroom via n8n: courses, topics, teachers, students, announcements, and coursework.\n\n🔐 Authentication Setup\nOAuth 2.0 required. Enable Google Classroom API in OAuth consent screen. Connect credentials in n8n. Webhook included for external triggers.\n\n🧠 Agents Included\n\n🗂️ Course Topic Agent - Manage topics: List, Get, Create, Patch, Delete\n\n👩‍🏫 Teacher & 👨‍🎓 Student Agents - Manage participants: List all or individual teachers/students\n\n📬 Course Post Agent - Handle posts: List, Get details, attachments, submissions\n\n📢 Announcement Agent - Manage announcements: List, Get, Create, Patch, Delete\n\n🏫 Course Management Agent - Manage courses: List, Get details, grading periods\n\n🧾 Coursework Management Agent - Manage coursework: List, Get details, Get with context\n\n💡 With OAuth connected, fully automate classroom management. Extend with webhooks for live interactions.\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Get topic": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course  Topic Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get course": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course Management Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get student": {
+			"ai_tool": [
+				[
+					{
+						"node": "Students Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get teacher": {
+			"ai_tool": [
+				[
+					{
+						"node": "Teacher agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List topics": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course  Topic Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Patch topic": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course  Topic Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create topic": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course  Topic Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete topic": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course  Topic Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List courses": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course Management Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List students": {
+			"ai_tool": [
+				[
+					{
+						"node": "Students Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List teachers": {
+			"ai_tool": [
+				[
+					{
+						"node": "Teacher agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Teacher agent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Classroom Ultimate Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get coursework": {
+			"ai_tool": [
+				[
+					{
+						"node": "Coursework Management SubAgent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory3": {
+			"ai_memory": [
+				[
+					{
+						"node": "Course  Topic Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory4": {
+			"ai_memory": [
+				[
+					{
+						"node": "Teacher agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory5": {
+			"ai_memory": [
+				[
+					{
+						"node": "Students Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory7": {
+			"ai_memory": [
+				[
+					{
+						"node": "Course Post Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory8": {
+			"ai_memory": [
+				[
+					{
+						"node": "Announcements Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Students Agent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Classroom Ultimate Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List coursework": {
+			"ai_tool": [
+				[
+					{
+						"node": "Coursework Management SubAgent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory10": {
+			"ai_memory": [
+				[
+					{
+						"node": "Course Management Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory12": {
+			"ai_memory": [
+				[
+					{
+						"node": "Coursework Management SubAgent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory18": {
+			"ai_memory": [
+				[
+					{
+						"node": "Google Classroom Ultimate Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get announcement": {
+			"ai_tool": [
+				[
+					{
+						"node": "Announcements Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Course Post Agent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Classroom Ultimate Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List announcements": {
+			"ai_tool": [
+				[
+					{
+						"node": "Announcements Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Patch announcement": {
+			"ai_tool": [
+				[
+					{
+						"node": "Announcements Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Announcements Agent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Classroom Ultimate Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Course  Topic Agent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Classroom Ultimate Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create announcement": {
+			"ai_tool": [
+				[
+					{
+						"node": "Announcements Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete announcement": {
+			"ai_tool": [
+				[
+					{
+						"node": "Announcements Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Course Management Agent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Classroom Ultimate Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get post add-on context": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course Post Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model3": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Course  Topic Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model4": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Teacher agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model5": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Students Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model7": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Course Post Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model8": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Announcements Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get post add-on attachment": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course Post Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model10": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Course Management Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model12": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Coursework Management SubAgent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model18": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Google Classroom Ultimate Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Google Classroom Ultimate Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get grading period settings": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course Management Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"List post add-on attachments": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course Post Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get coursework add-on context": {
+			"ai_tool": [
+				[
+					{
+						"node": "Coursework Management SubAgent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Coursework Management SubAgent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Classroom Ultimate Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get post attachment submission": {
+			"ai_tool": [
+				[
+					{
+						"node": "Course Post Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get announcement add-on context": {
+			"ai_tool": [
+				[
+					{
+						"node": "Announcements Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

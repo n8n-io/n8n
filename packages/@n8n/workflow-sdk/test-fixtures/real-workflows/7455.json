@@ -1,0 +1,3540 @@
+{
+	"meta": {
+		"instanceId": "50be75eaab016244f302e16f06394e6613d664bfc61e8cd41452474a0de6a3ee",
+		"templateId": "7455",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "e5e130c1-f878-4735-9eec-32c44850113e",
+			"name": "Download Voice Message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 1072],
+			"webhookId": "d3e9d36d-6402-45d6-9f56-5886e616f9fa",
+			"parameters": {
+				"fileId": "={{ $json.message.voice.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "1794a6d4-7786-4c18-997e-8ba8d7dc71f0",
+			"name": "Send a text message1",
+			"type": "n8n-nodes-base.telegram",
+			"position": [4272, 688],
+			"webhookId": "ef6a9544-83e3-4631-93bc-ecefd56951fb",
+			"parameters": {
+				"text": "={{ $json.message }}",
+				"chatId": "={{ $('Normalize input').first().json.chat_id }}",
+				"additionalFields": {
+					"parse_mode": "MarkdownV2",
+					"appendAttribution": false
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "98403909-001a-4d05-a889-6fde41ec3a34",
+			"name": "Input Message Router1",
+			"type": "n8n-nodes-base.switch",
+			"position": [784, 1296],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "Text",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "fcb767ee-565e-4b56-a54e-6f97f739fc24",
+										"operator": {
+											"type": "string",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.text }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Voice Message",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "c1016c40-f8f2-4e08-8ec8-5cdb88f5c87a",
+										"operator": {
+											"type": "object",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.voice }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Video note",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "9b94667e-c79b-4e4a-81ca-c4cd0d55f465",
+										"operator": {
+											"type": "string",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.video_note.file_id }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Image",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "f8150ac7-eea4-4658-8da9-f7a1c88a471d",
+										"operator": {
+											"type": "string",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.photo[0].file_id }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Audio",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "24ad08e0-6567-41e2-921f-b2a5cd6e2d47",
+										"operator": {
+											"type": "string",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.audio.file_id }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Video",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "c266ee51-45e8-45e0-ba4a-d3d8f41f2e43",
+										"operator": {
+											"type": "string",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.video.file_id }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Document",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "67b350d3-97e9-4966-a05e-cabbe825fe8d",
+										"operator": {
+											"type": "string",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.document.file_id }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {
+					"ignoreCase": false,
+					"fallbackOutput": "extra",
+					"allMatchingOutputs": true
+				}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "ea9a62b2-02ed-452a-a61d-31bbcb73251e",
+			"name": "Media_group?2",
+			"type": "n8n-nodes-base.if",
+			"position": [2448, 1376],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "df19fe9e-d1bd-42e4-9617-654fb984cc55",
+							"operator": {
+								"type": "string",
+								"operation": "exists",
+								"singleValue": true
+							},
+							"leftValue": "={{ $('Telegram Trigger').item.json.message.media_group_id }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "b250bfa7-4440-453c-9b31-b0d5dfb85c87",
+			"name": "Captions?1",
+			"type": "n8n-nodes-base.if",
+			"position": [2272, 1520],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "e6c61b94-9a84-4d6f-91a4-1839209fdc89",
+							"operator": {
+								"type": "string",
+								"operation": "exists",
+								"singleValue": true
+							},
+							"leftValue": "={{ $('Telegram Trigger').first().json.message.caption }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "c92646c7-1197-4400-8ce4-7f4ba3cf4778",
+			"name": "Media_group?3",
+			"type": "n8n-nodes-base.if",
+			"position": [2448, 1648],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "df19fe9e-d1bd-42e4-9617-654fb984cc55",
+							"operator": {
+								"type": "string",
+								"operation": "exists",
+								"singleValue": true
+							},
+							"leftValue": "={{ $('Telegram Trigger').first().json.message.media_group_id }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "d7dc3a19-3181-4d8d-a9e9-d9cb7671a078",
+			"name": "Insert documents in media_group",
+			"type": "n8n-nodes-base.postgres",
+			"position": [2656, 1280],
+			"parameters": {
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "media_group",
+					"cachedResultName": "media_group"
+				},
+				"schema": {
+					"__rl": true,
+					"mode": "list",
+					"value": "public"
+				},
+				"columns": {
+					"value": {
+						"media_group": "={{ $('Telegram Trigger').item.json.message.media_group_id }}",
+						"file_description": "={{ $json.message }}"
+					},
+					"schema": [
+						{
+							"id": "id",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "id",
+							"defaultMatch": true,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "media_group",
+							"type": "string",
+							"display": true,
+							"required": true,
+							"displayName": "media_group",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "file_description",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "file_description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["id"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {}
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 2.6
+		},
+		{
+			"id": "56551a78-93f0-41a4-9221-f416e0b4edb8",
+			"name": "Insert documents in media_group1",
+			"type": "n8n-nodes-base.postgres",
+			"onError": "continueRegularOutput",
+			"position": [2656, 1600],
+			"parameters": {
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "media_group",
+					"cachedResultName": "media_group"
+				},
+				"schema": {
+					"__rl": true,
+					"mode": "list",
+					"value": "public",
+					"cachedResultName": "public"
+				},
+				"columns": {
+					"value": {
+						"media_group": "={{ $('Telegram Trigger').item.json.message.media_group_id }}",
+						"file_description": "={{ $json.message }}"
+					},
+					"schema": [
+						{
+							"id": "id",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "id",
+							"defaultMatch": true,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "media_group",
+							"type": "string",
+							"display": true,
+							"required": true,
+							"displayName": "media_group",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "file_description",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "file_description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["id"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {}
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 2.6
+		},
+		{
+			"id": "3ecb2c02-5396-4684-aaa2-311102bb4b40",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [2832, 1600],
+			"webhookId": "bffdffe2-7993-4f9f-9852-9dcda3e1b283",
+			"parameters": {
+				"amount": 2
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "b470a0df-94ea-4902-9093-f0ea75afbfd9",
+			"name": "Insert media_queue with captions (Trigger)",
+			"type": "n8n-nodes-base.postgres",
+			"onError": "continueRegularOutput",
+			"position": [2832, 1280],
+			"parameters": {
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "media_queue",
+					"cachedResultName": "media_queue"
+				},
+				"schema": {
+					"__rl": true,
+					"mode": "list",
+					"value": "public"
+				},
+				"columns": {
+					"value": {
+						"chat_id": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+						"captions": "={{ $('Telegram Trigger').item.json.message.caption }}",
+						"media_group_id": "={{ $('Telegram Trigger').item.json.message.media_group_id }}"
+					},
+					"schema": [
+						{
+							"id": "media_group_id",
+							"type": "string",
+							"display": true,
+							"required": true,
+							"displayName": "media_group_id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "chat_id",
+							"type": "number",
+							"display": true,
+							"required": true,
+							"displayName": "chat_id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "captions",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "captions",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {}
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 2.6,
+			"alwaysOutputData": false
+		},
+		{
+			"id": "d11e1a56-ea08-45b9-b8c5-eba27335afce",
+			"name": "Insert media_queue (Trigger)",
+			"type": "n8n-nodes-base.postgres",
+			"onError": "continueRegularOutput",
+			"position": [3008, 1600],
+			"parameters": {
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "media_queue",
+					"cachedResultName": "media_queue"
+				},
+				"schema": {
+					"__rl": true,
+					"mode": "list",
+					"value": "public"
+				},
+				"columns": {
+					"value": {
+						"chat_id": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+						"media_group_id": "={{ $('Telegram Trigger').item.json.message.media_group_id }}"
+					},
+					"schema": [
+						{
+							"id": "media_group_id",
+							"type": "string",
+							"display": true,
+							"required": true,
+							"displayName": "media_group_id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "chat_id",
+							"type": "number",
+							"display": true,
+							"required": true,
+							"displayName": "chat_id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "captions",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "captions",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {}
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 2.6
+		},
+		{
+			"id": "677b9052-c0ff-4932-b297-2431bf8ac790",
+			"name": "Get_file_and_captions",
+			"type": "n8n-nodes-base.set",
+			"position": [2656, 1440],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "c9c892e7-7f78-4a8d-a749-452a0d1b92cf",
+							"name": "message",
+							"type": "string",
+							"value": "=Captions: {{ $('Telegram Trigger').item.json.message.caption }}\n{{ $json.message }}\n"
+						},
+						{
+							"id": "cda76cee-0b9c-4062-b987-10e438eb3b8f",
+							"name": "chat_id",
+							"type": "string",
+							"value": "={{ $json.chat_id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8bb84948-0f83-4c35-8cdd-23f941a12c5d",
+			"name": "get_message (text)",
+			"type": "n8n-nodes-base.set",
+			"position": [1152, 928],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "801ec600-22ad-4a94-a2b4-ae72eb271df0",
+							"name": "message",
+							"type": "string",
+							"value": "={{ $json.message.text }}"
+						},
+						{
+							"id": "263071fb-bcdf-42b0-bb46-71b75fa0bf2a",
+							"name": "chat_id",
+							"type": "string",
+							"value": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "3d4e1e9c-0da6-4909-b619-efa2fd792823",
+			"name": "Get_only_file",
+			"type": "n8n-nodes-base.set",
+			"position": [2656, 1760],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "9e549a53-8801-42ea-8c41-e1e38032f62c",
+							"name": "message",
+							"type": "string",
+							"value": "=File description: {{ $json.message }}"
+						},
+						{
+							"id": "df93f18e-9e2d-4ea6-8a0a-44046ee60f19",
+							"name": "chat_id",
+							"type": "string",
+							"value": "={{ $json.chat_id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "867ac0ea-68e0-4488-95ae-a35a300425f8",
+			"name": "unified_variables",
+			"type": "n8n-nodes-base.code",
+			"position": [1328, 704],
+			"parameters": {
+				"jsCode": "const allItems = $input.all().map((item) => item.json);\n\nlet telegramItems = [];\ntry {\n  telegramItems = $(\"Media_queue Trigger\").all().map((item) => item.json);\n} catch (e) {\n  telegramItems = [];\n}\n\n// Capturamos el caption (solo una vez, del primer elemento disponible)\nconst caption = telegramItems[0]?.payload?.captions || \"\";\n\n// Creamos la lista de archivos usando file_description\nconst fileList = allItems.map((item, index) => {\n  const fileDesc = item.file_description || \"\";\n  return `file${index + 1}: ${fileDesc}`;\n});\n\n// Unificamos el mensaje\nconst unifiedMessage = `caption: ${caption}\\n${fileList.join(\"\\n\")}`;\n\nreturn {\n  json: {\n    unifiedMessage\n  }\n};\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "ee085f92-a654-49f0-8a5a-12062990a06e",
+			"name": "Wait for all the files",
+			"type": "n8n-nodes-base.wait",
+			"position": [960, 704],
+			"webhookId": "0d0e28fa-8b35-48ba-ab86-6bde64e81670",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "f09d722b-ff26-40e1-af52-af1fd6830fcf",
+			"name": "Get all files from group_id",
+			"type": "n8n-nodes-base.postgres",
+			"position": [1152, 704],
+			"parameters": {
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "media_group",
+					"cachedResultName": "media_group"
+				},
+				"where": {
+					"values": [
+						{
+							"value": "={{ $('get_chat_id').item.json.payload.media_group_id }}",
+							"column": "media_group"
+						}
+					]
+				},
+				"schema": {
+					"__rl": true,
+					"mode": "list",
+					"value": "public"
+				},
+				"options": {},
+				"operation": "select"
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 2.6,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "4342c43b-9955-485a-868c-3c295753f3ed",
+			"name": "Media_queue Trigger",
+			"type": "n8n-nodes-base.postgresTrigger",
+			"position": [624, 704],
+			"parameters": {
+				"schema": {
+					"__rl": true,
+					"mode": "list",
+					"value": "public",
+					"cachedResultName": "public"
+				},
+				"options": {},
+				"tableName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "media_queue",
+					"cachedResultName": "media_queue"
+				},
+				"additionalFields": {}
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "576c4eec-6ecc-423e-aea0-5073d16b0f3c",
+			"name": "get_chat_id",
+			"type": "n8n-nodes-base.set",
+			"position": [800, 704],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "3f3ff787-3c12-494e-8d64-bc313956bc96",
+							"name": "chat_id",
+							"type": "string",
+							"value": "={{ $json.payload.chat_id }}"
+						},
+						{
+							"id": "28e55878-a7c3-4b6f-b92c-6a71d62a8250",
+							"name": "payload.media_group_id",
+							"type": "string",
+							"value": "={{ $json.payload.media_group_id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "308554ed-f7b6-401e-8ce3-b5088983113a",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [624, 464],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "5264db65-e580-424f-873f-cf86ad8d3ea1",
+			"name": " Create Tables",
+			"type": "n8n-nodes-base.postgres",
+			"position": [800, 464],
+			"parameters": {
+				"query": "CREATE TABLE IF NOT EXISTS public.media_group (\n  id bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL,\n  media_group text NOT NULL,\n  file_description text NULL,\n  CONSTRAINT media_group_pkey PRIMARY KEY (id)\n) TABLESPACE pg_default;\n\nCREATE TABLE IF NOT EXISTS public.media_queue (\n  media_group_id text NOT NULL,\n  chat_id bigint NOT NULL,\n  captions text NULL,\n  CONSTRAINT media_queue_pkey PRIMARY KEY (media_group_id),\n  CONSTRAINT media_queue_media_group_id_key UNIQUE (media_group_id)\n) TABLESPACE pg_default;\n\nCREATE TABLE IF NOT EXISTS public.chat_histories (\n  id serial NOT NULL,\n  session_id character varying(255) NOT NULL,\n  message jsonb NOT NULL,\n  CONSTRAINT chat_histories_pkey PRIMARY KEY (id)\n) TABLESPACE pg_default;\n\nCREATE INDEX IF NOT EXISTS idx_pch_session \n  ON public.chat_histories USING btree (session_id) TABLESPACE pg_default;\n\nCREATE INDEX IF NOT EXISTS idx_pch_message_gin \n  ON public.chat_histories USING gin (message) TABLESPACE pg_default;\n\nCREATE INDEX IF NOT EXISTS idx_pch_message_type \n  ON public.chat_histories USING btree (((message ->> 'type'::text))) TABLESPACE pg_default;\n",
+				"options": {},
+				"operation": "executeQuery"
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 2.6
+		},
+		{
+			"id": "be09c45d-5ccc-476f-a5dd-e0cdc845a991",
+			"name": "AI Agent1",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [3776, 688],
+			"parameters": {
+				"text": "={{ $json.message }}",
+				"options": {
+					"systemMessage": "",
+					"returnIntermediateSteps": true
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "8d4c4fef-65c5-435d-9323-c2e147c6e988",
+			"name": "Group Similar Documents",
+			"type": "n8n-nodes-base.code",
+			"position": [608, 2864],
+			"parameters": {
+				"jsCode": "const results = [];\nfor (const item of $input.all()) {\n  const fileName = item.json?.fileName || item.json?.message?.document?.file_name || '';\n  const ext = fileName.toLowerCase().split('.').pop();\n\n  let type = 'fallback';\n  if (['csv'].includes(ext)) type = 'csv';\n  else if (['html', 'htm'].includes(ext)) type = 'html';\n  else if (['ics'].includes(ext)) type = 'ics';\n  else if (['json'].includes(ext)) type = 'json';\n  else if (['ods'].includes(ext)) type = 'ods';\n  else if (['pdf'].includes(ext)) type = 'pdf';\n  else if (['rtf'].includes(ext)) type = 'rtf';\n  else if (['txt', 'md', 'log'].includes(ext)) type = 'text file';\n  else if (['xml'].includes(ext)) type = 'xml';\n  else if (['xls', 'xlsx'].includes(ext)) type = 'spreadsheet';\n  else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tiff'].includes(ext)) type = 'image';\n  else if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) type = 'audio';\n  else if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) type = 'video';\n\n  item.json.fileTypeCategory = type;\n  results.push(item);\n}\nreturn results;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "fb212505-00b8-404c-9e67-ddbc76e7e4a9",
+			"name": "Download CSV",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 2048],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "6e8b91fe-6c28-4985-9e78-47b68d47241b",
+			"name": "Extract from CSV",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1312, 2048],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "70f975fb-af9e-470b-881e-55e4ce0b9082",
+			"name": "Download HTML",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 2192],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8fe52c9c-8c5c-4f81-9270-823c04725a27",
+			"name": "Download ICS",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 2336],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f6c1b259-af21-4064-902e-314e098004ea",
+			"name": "Extract from ICS",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1312, 2336],
+			"parameters": {
+				"options": {},
+				"operation": "fromIcs"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f87ed880-11cb-45c3-a71d-fdfe82b05182",
+			"name": "Download JSON",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 2480],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "374f5c82-6805-4598-b457-18da43993a98",
+			"name": "Extract from JSON",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1312, 2480],
+			"parameters": {
+				"options": {},
+				"operation": "fromJson"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "aa6ef83f-6677-41aa-b31c-45c3b230751b",
+			"name": "Download ODS",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 2624],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "fdabc74a-b7de-4983-b167-45789f3c91f7",
+			"name": "Extract from ODS",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1312, 2624],
+			"parameters": {
+				"options": {},
+				"operation": "ods"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f2c10e5f-981f-4b33-90ff-d704bd5c7468",
+			"name": "Download PDF",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 2864],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "db4dbec4-277c-418f-9004-1df41ec5bc4b",
+			"name": "Extract from PDF",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1312, 2784],
+			"parameters": {
+				"options": {},
+				"operation": "pdf"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3cb41827-1371-47bd-9b91-02b0107e74cf",
+			"name": "Download RTF",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 3088],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "b33eb4c9-3383-42a3-ba4a-072159a3ca05",
+			"name": "Extract from RTF",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1312, 3088],
+			"parameters": {
+				"options": {},
+				"operation": "rtf"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f6360fa9-c7ba-47fe-96d3-b82ed0bd7677",
+			"name": "Download TEXT FILE",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 3232],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "d42e06fd-96b0-4da9-b184-0cd5ad272f89",
+			"name": "Extract from File",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1312, 3232],
+			"parameters": {
+				"options": {},
+				"operation": "text"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "93b621d8-c89d-4146-9720-e5bf915d6d16",
+			"name": "Download XML",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 3376],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ec9fe0a6-4cea-44fc-b015-3c1f4b062f54",
+			"name": "Download XLSX",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 3520],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e428d4bd-d245-48b8-ab27-cb54da205648",
+			"name": "Extract from XLSX",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1312, 3520],
+			"parameters": {
+				"options": {},
+				"operation": "xlsx"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3ba98218-91b5-4ef0-94e7-0b97e0d0ae1c",
+			"name": "Download IMAGE",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 1376],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ $json.message.photo[3]?.file_id || $json.message.photo[2]?.file_id || $json.message.photo[1]?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "cf214ecc-3e6f-48dd-81ab-dc97a7dc05a2",
+			"name": "Download AUDIO",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 1520],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ $json.message.audio.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "cde94c9a-2c32-48c1-bdf7-ab55e8ae832e",
+			"name": "Download VIDEO",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 1664],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "d8f3d7ab-fd41-4e36-a5e7-ca9c8b5a9a44",
+			"name": "Analyze image",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1488, 1376],
+			"parameters": {
+				"text": "What's in this image from telegram user?",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "models/gemini-2.5-flash",
+					"cachedResultName": "models/gemini-2.5-flash"
+				},
+				"options": {},
+				"resource": "image",
+				"inputType": "binary",
+				"operation": "analyze"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "aeef3459-38fe-4cd9-a40a-d095458749af",
+			"name": "Analyze video",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1488, 1664],
+			"parameters": {
+				"text": "What's in this video from telegram user?",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "models/gemini-2.5-pro",
+					"cachedResultName": "models/gemini-2.5-pro"
+				},
+				"options": {},
+				"resource": "video",
+				"inputType": "binary",
+				"operation": "analyze"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "aa609f5a-5e32-43da-ae5e-515c5ed2f623",
+			"name": "Google Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [3728, 896],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.5-pro"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4a04372a-5692-4aa3-87b6-2dfc9d8fb08d",
+			"name": "Analyze voice message",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1488, 1072],
+			"parameters": {
+				"text": "What's in this audio message from telegram user?",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "models/gemini-2.5-pro",
+					"cachedResultName": "models/gemini-2.5-pro"
+				},
+				"options": {},
+				"resource": "audio",
+				"inputType": "binary",
+				"operation": "analyze"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d49d1079-647a-4b33-bb0a-8107a20050d7",
+			"name": "Analyze audio",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1488, 1520],
+			"parameters": {
+				"text": "What's in this audio from telegram user?",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "models/gemini-2.5-flash",
+					"cachedResultName": "models/gemini-2.5-flash"
+				},
+				"options": {},
+				"resource": "audio",
+				"inputType": "binary",
+				"operation": "analyze"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "46f16729-e657-4881-9015-22c5ac360a3b",
+			"name": "Fix mime4",
+			"type": "n8n-nodes-base.code",
+			"position": [1328, 1664],
+			"parameters": {
+				"jsCode": "// --- Mapa Extendido de Tipos MIME ---\n// Una lista completa para cubrir la mayoría de los formatos de archivo comunes.\nconst mimeMap = {\n  // --- Formatos de Documentos ---\n  'pdf': 'application/pdf',\n  'txt': 'text/plain',\n  'rtf': 'application/rtf',\n  'csv': 'text/csv',\n  'html': 'text/html',\n  'htm': 'text/html',\n  'json': 'application/json',\n  'xml': 'application/xml', // 'text/xml' también es válido pero 'application/xml' es más común\n  'yaml': 'application/x-yaml',\n  'yml': 'application/x-yaml',\n\n  // --- Formatos de Microsoft Office ---\n  'doc': 'application/msword',\n  'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',\n  'xls': 'application/vnd.ms-excel',\n  'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',\n  'ppt': 'application/vnd.ms-powerpoint',\n  'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',\n  'pub': 'application/vnd.ms-publisher',\n\n  // --- Formatos de OpenOffice / LibreOffice ---\n  'odt': 'application/vnd.oasis.opendocument.text',\n  'ods': 'application/vnd.oasis.opendocument.spreadsheet',\n  'odp': 'application/vnd.oasis.opendocument.presentation',\n  'odg': 'application/vnd.oasis.opendocument.graphics',\n\n  // --- Formatos de Apple iWork ---\n  'pages': 'application/vnd.apple.pages',\n  'numbers': 'application/vnd.apple.numbers',\n  'key': 'application/vnd.apple.keynote',\n\n  // --- Formatos de Imagen ---\n  'png': 'image/png',\n  'jpg': 'image/jpeg',\n  'jpeg': 'image/jpeg',\n  'gif': 'image/gif',\n  'webp': 'image/webp',\n  'svg': 'image/svg+xml',\n  'bmp': 'image/bmp',\n  'ico': 'image/vnd.microsoft.icon',\n  'tif': 'image/tiff',\n  'tiff': 'image/tiff',\n  'heic': 'image/heic',\n  'heif': 'image/heif',\n\n  // --- Formatos de Audio ---\n  'mp3': 'audio/mpeg',\n  'wav': 'audio/wav',\n  'oga': 'audio/ogg',\n  'ogg': 'audio/ogg',\n  'flac': 'audio/flac',\n  'm4a': 'audio/mp4',\n  'aac': 'audio/aac',\n  'opus': 'audio/opus',\n  'wma': 'audio/x-ms-wma',\n  'mid': 'audio/midi',\n  'midi': 'audio/midi',\n\n  // --- Formatos de Video ---\n  'mp4': 'video/mp4',\n  'mov': 'video/quicktime',\n  'webm': 'video/webm',\n  'mpeg': 'video/mpeg',\n  'mpg': 'video/mpeg',\n  'avi': 'video/x-msvideo',\n  'wmv': 'video/x-ms-wmv',\n  'flv': 'video/x-flv',\n  'mkv': 'video/x-matroska',\n\n  // --- Formatos de Archivos y Compresión ---\n  'zip': 'application/zip',\n  'rar': 'application/vnd.rar',\n  '7z': 'application/x-7z-compressed',\n  'tar': 'application/x-tar',\n  'gz': 'application/gzip',\n  'bz2': 'application/x-bzip2',\n\n  // --- Otros Formatos ---\n  'epub': 'application/epub+zip',\n  'ics': 'text/calendar',\n  'vcf': 'text/vcard',\n  'js': 'text/javascript',\n  'css': 'text/css',\n  'sh': 'application/x-sh',\n  'py': 'text/x-python',\n};\n\n// --- Lógica de Procesamiento (sin cambios) ---\n\n// Obtenemos todos los items que llegan al nodo\nconst items = $input.all();\n\n// Iteramos sobre cada item para procesarlo\nfor (const item of items) {\n  // Verificamos que el item tenga datos binarios para procesar\n  if (item.binary && item.binary['data']) {\n    // Obtenemos el nombre del archivo de forma segura\n    const fileName = item.binary['data'].fileName || '';\n    if (!fileName) {\n      continue; // Si no hay nombre de archivo, pasamos al siguiente item\n    }\n\n    // Extraemos la extensión del archivo de forma robusta\n    const extension = fileName.slice((fileName.lastIndexOf(\".\") - 1 >>> 0) + 2).toLowerCase();\n\n    // Buscamos la extensión en nuestro mapa\n    const newMimeType = mimeMap[extension];\n\n    // Si encontramos una coincidencia en el mapa, actualizamos el mimeType\n    if (newMimeType) {\n      if(item.binary['data'].mimeType !== newMimeType) {\n        console.log(`Cambiando mimeType para '${fileName}' de '${item.binary['data'].mimeType}' a '${newMimeType}'.`);\n        item.binary['data'].mimeType = newMimeType;\n      }\n    }\n  }\n}\n\n// Devolvemos todos los items, modificados o no\nreturn items;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "33c6839c-94bf-41bb-9909-a2fb05e3ff92",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"position": [784, 2720],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "csv",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "f1aefe24-17fb-4bf8-84fb-949a6802b66e",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.fileTypeCategory }}",
+										"rightValue": "csv"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "html",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "b09d29b5-b263-4115-963d-d6879de78649",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.fileTypeCategory }}",
+										"rightValue": "html"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "ics",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "2a7822f4-889b-41d3-8a1c-7f4405eacb42",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.fileTypeCategory }}",
+										"rightValue": "ics"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "json",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "f09cd376-96df-4f3d-9218-6a918715335a",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.fileTypeCategory }}",
+										"rightValue": "json"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "ods",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "1bf5c1f9-38a9-4bc5-8757-b85f98441579",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.fileTypeCategory }}",
+										"rightValue": "ods"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "pdf",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "4988d14f-4e3f-4494-96b0-a1a9d70a2787",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.fileTypeCategory }}",
+										"rightValue": "pdf"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "rtf",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "f5bc921e-c083-4b12-8167-86a24e39fe5c",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.fileTypeCategory }}",
+										"rightValue": "rtf"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "text file",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "29251fca-c611-419c-85a2-a9e1ad6bd102",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.fileTypeCategory }}",
+										"rightValue": "text file"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "xml",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "fd1cbb91-f3c6-4b20-91dc-2e490f77fe96",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.fileTypeCategory }}",
+										"rightValue": "xml"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "spreadsheet",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "16fc2a80-c341-4a5d-9d50-a1856ffb5242",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.fileTypeCategory }}",
+										"rightValue": "spreadsheet"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra"
+				}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "64571ee7-fa6b-4958-bfd9-691e0a3e3b1e",
+			"name": "Download VIDEO NOTE",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1152, 1232],
+			"webhookId": "b4a21f4c-e6a6-4c83-9e8e-af73cb7cc96a",
+			"parameters": {
+				"fileId": "={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "1b60699d-d557-4ca0-bb24-d265c7cf882f",
+			"name": "Analyze video note",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1488, 1232],
+			"parameters": {
+				"text": "What's in this video message from telegram user? don't talk about the circular frame of telegram",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "models/gemini-2.5-pro",
+					"cachedResultName": "models/gemini-2.5-pro"
+				},
+				"options": {},
+				"resource": "video",
+				"simplify": false,
+				"inputType": "=binary",
+				"operation": "analyze"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5f171482-a612-44cb-97cf-34f1b30500f6",
+			"name": "get_message (Audio/Video message)",
+			"type": "n8n-nodes-base.set",
+			"position": [1840, 1152],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "d8935452-fe20-469d-a68d-1aad056cb8dd",
+							"name": "message",
+							"type": "string",
+							"value": "=Media Message Transcription:{{ $json.candidates?.[0]?.content?.parts?.[0]?.text || $json.content?.parts?.[0]?.text }}"
+						},
+						{
+							"id": "93f1bba1-1180-404a-93ca-c34cf1d1b7ac",
+							"name": "chat_id",
+							"type": "string",
+							"value": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "45d9e266-5ad8-453a-a9f4-53f9fb9de398",
+			"name": "get_message (Media  message)",
+			"type": "n8n-nodes-base.set",
+			"position": [1824, 1520],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "d8935452-fe20-469d-a68d-1aad056cb8dd",
+							"name": "message",
+							"type": "string",
+							"value": "=Media description: {{ $json.content.parts[0].text }}"
+						},
+						{
+							"id": "53e34499-7dad-4f94-aa7d-f778321f13f4",
+							"name": "chat_id",
+							"type": "string",
+							"value": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "fabc6b75-005f-40ec-9b90-5e4c8b6dd1b9",
+			"name": "get_message (File message)",
+			"type": "n8n-nodes-base.set",
+			"position": [2096, 2832],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "d8935452-fe20-469d-a68d-1aad056cb8dd",
+							"name": "message",
+							"type": "string",
+							"value": "=File name:{{ $('Telegram Trigger').item.json.message.document.file_name }}\nFile type:{{ $('Group Similar Documents').first().json.fileTypeCategory }}\nExtracted data from file:\n{{ $json.data }}"
+						},
+						{
+							"id": "6bceaed5-5a79-4354-a49a-d794ce4fb3ee",
+							"name": "chat_id",
+							"type": "number",
+							"value": "={{ $('Telegram Trigger').first().json.message.chat.id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "1f04d9f3-a18d-4b53-a5e2-aca53dcaa75d",
+			"name": "Typing…",
+			"type": "n8n-nodes-base.telegram",
+			"position": [784, 1152],
+			"webhookId": "412793ca-7cad-4a84-acea-98debbbfa2ac",
+			"parameters": {
+				"chatId": "={{ $json.message.chat.id }}",
+				"operation": "sendChatAction"
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "4d611ff9-41b4-4bd4-88b0-766de47917d7",
+			"name": "Fix mime",
+			"type": "n8n-nodes-base.code",
+			"position": [1328, 1072],
+			"parameters": {
+				"jsCode": "// --- Mapa Extendido de Tipos MIME ---\n// Una lista completa para cubrir la mayoría de los formatos de archivo comunes.\nconst mimeMap = {\n  // --- Formatos de Documentos ---\n  'pdf': 'application/pdf',\n  'txt': 'text/plain',\n  'rtf': 'application/rtf',\n  'csv': 'text/csv',\n  'html': 'text/html',\n  'htm': 'text/html',\n  'json': 'application/json',\n  'xml': 'application/xml', // 'text/xml' también es válido pero 'application/xml' es más común\n  'yaml': 'application/x-yaml',\n  'yml': 'application/x-yaml',\n\n  // --- Formatos de Microsoft Office ---\n  'doc': 'application/msword',\n  'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',\n  'xls': 'application/vnd.ms-excel',\n  'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',\n  'ppt': 'application/vnd.ms-powerpoint',\n  'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',\n  'pub': 'application/vnd.ms-publisher',\n\n  // --- Formatos de OpenOffice / LibreOffice ---\n  'odt': 'application/vnd.oasis.opendocument.text',\n  'ods': 'application/vnd.oasis.opendocument.spreadsheet',\n  'odp': 'application/vnd.oasis.opendocument.presentation',\n  'odg': 'application/vnd.oasis.opendocument.graphics',\n\n  // --- Formatos de Apple iWork ---\n  'pages': 'application/vnd.apple.pages',\n  'numbers': 'application/vnd.apple.numbers',\n  'key': 'application/vnd.apple.keynote',\n\n  // --- Formatos de Imagen ---\n  'png': 'image/png',\n  'jpg': 'image/jpeg',\n  'jpeg': 'image/jpeg',\n  'gif': 'image/gif',\n  'webp': 'image/webp',\n  'svg': 'image/svg+xml',\n  'bmp': 'image/bmp',\n  'ico': 'image/vnd.microsoft.icon',\n  'tif': 'image/tiff',\n  'tiff': 'image/tiff',\n  'heic': 'image/heic',\n  'heif': 'image/heif',\n\n  // --- Formatos de Audio ---\n  'mp3': 'audio/mpeg',\n  'wav': 'audio/wav',\n  'oga': 'audio/ogg',\n  'ogg': 'audio/ogg',\n  'flac': 'audio/flac',\n  'm4a': 'audio/mp4',\n  'aac': 'audio/aac',\n  'opus': 'audio/opus',\n  'wma': 'audio/x-ms-wma',\n  'mid': 'audio/midi',\n  'midi': 'audio/midi',\n\n  // --- Formatos de Video ---\n  'mp4': 'video/mp4',\n  'mov': 'video/quicktime',\n  'webm': 'video/webm',\n  'mpeg': 'video/mpeg',\n  'mpg': 'video/mpeg',\n  'avi': 'video/x-msvideo',\n  'wmv': 'video/x-ms-wmv',\n  'flv': 'video/x-flv',\n  'mkv': 'video/x-matroska',\n\n  // --- Formatos de Archivos y Compresión ---\n  'zip': 'application/zip',\n  'rar': 'application/vnd.rar',\n  '7z': 'application/x-7z-compressed',\n  'tar': 'application/x-tar',\n  'gz': 'application/gzip',\n  'bz2': 'application/x-bzip2',\n\n  // --- Otros Formatos ---\n  'epub': 'application/epub+zip',\n  'ics': 'text/calendar',\n  'vcf': 'text/vcard',\n  'js': 'text/javascript',\n  'css': 'text/css',\n  'sh': 'application/x-sh',\n  'py': 'text/x-python',\n};\n\n// --- Lógica de Procesamiento (sin cambios) ---\n\n// Obtenemos todos los items que llegan al nodo\nconst items = $input.all();\n\n// Iteramos sobre cada item para procesarlo\nfor (const item of items) {\n  // Verificamos que el item tenga datos binarios para procesar\n  if (item.binary && item.binary['data']) {\n    // Obtenemos el nombre del archivo de forma segura\n    const fileName = item.binary['data'].fileName || '';\n    if (!fileName) {\n      continue; // Si no hay nombre de archivo, pasamos al siguiente item\n    }\n\n    // Extraemos la extensión del archivo de forma robusta\n    const extension = fileName.slice((fileName.lastIndexOf(\".\") - 1 >>> 0) + 2).toLowerCase();\n\n    // Buscamos la extensión en nuestro mapa\n    const newMimeType = mimeMap[extension];\n\n    // Si encontramos una coincidencia en el mapa, actualizamos el mimeType\n    if (newMimeType) {\n      if(item.binary['data'].mimeType !== newMimeType) {\n        console.log(`Cambiando mimeType para '${fileName}' de '${item.binary['data'].mimeType}' a '${newMimeType}'.`);\n        item.binary['data'].mimeType = newMimeType;\n      }\n    }\n  }\n}\n\n// Devolvemos todos los items, modificados o no\nreturn items;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "526cc0f5-44c3-49fd-8329-4dff738ba559",
+			"name": "Fix mime1",
+			"type": "n8n-nodes-base.code",
+			"position": [1328, 1232],
+			"parameters": {
+				"jsCode": "// --- Mapa Extendido de Tipos MIME ---\n// Una lista completa para cubrir la mayoría de los formatos de archivo comunes.\nconst mimeMap = {\n  // --- Formatos de Documentos ---\n  'pdf': 'application/pdf',\n  'txt': 'text/plain',\n  'rtf': 'application/rtf',\n  'csv': 'text/csv',\n  'html': 'text/html',\n  'htm': 'text/html',\n  'json': 'application/json',\n  'xml': 'application/xml', // 'text/xml' también es válido pero 'application/xml' es más común\n  'yaml': 'application/x-yaml',\n  'yml': 'application/x-yaml',\n\n  // --- Formatos de Microsoft Office ---\n  'doc': 'application/msword',\n  'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',\n  'xls': 'application/vnd.ms-excel',\n  'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',\n  'ppt': 'application/vnd.ms-powerpoint',\n  'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',\n  'pub': 'application/vnd.ms-publisher',\n\n  // --- Formatos de OpenOffice / LibreOffice ---\n  'odt': 'application/vnd.oasis.opendocument.text',\n  'ods': 'application/vnd.oasis.opendocument.spreadsheet',\n  'odp': 'application/vnd.oasis.opendocument.presentation',\n  'odg': 'application/vnd.oasis.opendocument.graphics',\n\n  // --- Formatos de Apple iWork ---\n  'pages': 'application/vnd.apple.pages',\n  'numbers': 'application/vnd.apple.numbers',\n  'key': 'application/vnd.apple.keynote',\n\n  // --- Formatos de Imagen ---\n  'png': 'image/png',\n  'jpg': 'image/jpeg',\n  'jpeg': 'image/jpeg',\n  'gif': 'image/gif',\n  'webp': 'image/webp',\n  'svg': 'image/svg+xml',\n  'bmp': 'image/bmp',\n  'ico': 'image/vnd.microsoft.icon',\n  'tif': 'image/tiff',\n  'tiff': 'image/tiff',\n  'heic': 'image/heic',\n  'heif': 'image/heif',\n\n  // --- Formatos de Audio ---\n  'mp3': 'audio/mpeg',\n  'wav': 'audio/wav',\n  'oga': 'audio/ogg',\n  'ogg': 'audio/ogg',\n  'flac': 'audio/flac',\n  'm4a': 'audio/mp4',\n  'aac': 'audio/aac',\n  'opus': 'audio/opus',\n  'wma': 'audio/x-ms-wma',\n  'mid': 'audio/midi',\n  'midi': 'audio/midi',\n\n  // --- Formatos de Video ---\n  'mp4': 'video/mp4',\n  'mov': 'video/quicktime',\n  'webm': 'video/webm',\n  'mpeg': 'video/mpeg',\n  'mpg': 'video/mpeg',\n  'avi': 'video/x-msvideo',\n  'wmv': 'video/x-ms-wmv',\n  'flv': 'video/x-flv',\n  'mkv': 'video/x-matroska',\n\n  // --- Formatos de Archivos y Compresión ---\n  'zip': 'application/zip',\n  'rar': 'application/vnd.rar',\n  '7z': 'application/x-7z-compressed',\n  'tar': 'application/x-tar',\n  'gz': 'application/gzip',\n  'bz2': 'application/x-bzip2',\n\n  // --- Otros Formatos ---\n  'epub': 'application/epub+zip',\n  'ics': 'text/calendar',\n  'vcf': 'text/vcard',\n  'js': 'text/javascript',\n  'css': 'text/css',\n  'sh': 'application/x-sh',\n  'py': 'text/x-python',\n};\n\n// --- Lógica de Procesamiento (sin cambios) ---\n\n// Obtenemos todos los items que llegan al nodo\nconst items = $input.all();\n\n// Iteramos sobre cada item para procesarlo\nfor (const item of items) {\n  // Verificamos que el item tenga datos binarios para procesar\n  if (item.binary && item.binary['data']) {\n    // Obtenemos el nombre del archivo de forma segura\n    const fileName = item.binary['data'].fileName || '';\n    if (!fileName) {\n      continue; // Si no hay nombre de archivo, pasamos al siguiente item\n    }\n\n    // Extraemos la extensión del archivo de forma robusta\n    const extension = fileName.slice((fileName.lastIndexOf(\".\") - 1 >>> 0) + 2).toLowerCase();\n\n    // Buscamos la extensión en nuestro mapa\n    const newMimeType = mimeMap[extension];\n\n    // Si encontramos una coincidencia en el mapa, actualizamos el mimeType\n    if (newMimeType) {\n      if(item.binary['data'].mimeType !== newMimeType) {\n        console.log(`Cambiando mimeType para '${fileName}' de '${item.binary['data'].mimeType}' a '${newMimeType}'.`);\n        item.binary['data'].mimeType = newMimeType;\n      }\n    }\n  }\n}\n\n// Devolvemos todos los items, modificados o no\nreturn items;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "fcad24fc-4fcf-44d0-ad23-d64d5011b501",
+			"name": "Fix mime5",
+			"type": "n8n-nodes-base.code",
+			"position": [1328, 1376],
+			"parameters": {
+				"jsCode": "// --- Mapa Extendido de Tipos MIME ---\n// Una lista completa para cubrir la mayoría de los formatos de archivo comunes.\nconst mimeMap = {\n  // --- Formatos de Documentos ---\n  'pdf': 'application/pdf',\n  'txt': 'text/plain',\n  'rtf': 'application/rtf',\n  'csv': 'text/csv',\n  'html': 'text/html',\n  'htm': 'text/html',\n  'json': 'application/json',\n  'xml': 'application/xml', // 'text/xml' también es válido pero 'application/xml' es más común\n  'yaml': 'application/x-yaml',\n  'yml': 'application/x-yaml',\n\n  // --- Formatos de Microsoft Office ---\n  'doc': 'application/msword',\n  'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',\n  'xls': 'application/vnd.ms-excel',\n  'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',\n  'ppt': 'application/vnd.ms-powerpoint',\n  'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',\n  'pub': 'application/vnd.ms-publisher',\n\n  // --- Formatos de OpenOffice / LibreOffice ---\n  'odt': 'application/vnd.oasis.opendocument.text',\n  'ods': 'application/vnd.oasis.opendocument.spreadsheet',\n  'odp': 'application/vnd.oasis.opendocument.presentation',\n  'odg': 'application/vnd.oasis.opendocument.graphics',\n\n  // --- Formatos de Apple iWork ---\n  'pages': 'application/vnd.apple.pages',\n  'numbers': 'application/vnd.apple.numbers',\n  'key': 'application/vnd.apple.keynote',\n\n  // --- Formatos de Imagen ---\n  'png': 'image/png',\n  'jpg': 'image/jpeg',\n  'jpeg': 'image/jpeg',\n  'gif': 'image/gif',\n  'webp': 'image/webp',\n  'svg': 'image/svg+xml',\n  'bmp': 'image/bmp',\n  'ico': 'image/vnd.microsoft.icon',\n  'tif': 'image/tiff',\n  'tiff': 'image/tiff',\n  'heic': 'image/heic',\n  'heif': 'image/heif',\n\n  // --- Formatos de Audio ---\n  'mp3': 'audio/mpeg',\n  'wav': 'audio/wav',\n  'oga': 'audio/ogg',\n  'ogg': 'audio/ogg',\n  'flac': 'audio/flac',\n  'm4a': 'audio/mp4',\n  'aac': 'audio/aac',\n  'opus': 'audio/opus',\n  'wma': 'audio/x-ms-wma',\n  'mid': 'audio/midi',\n  'midi': 'audio/midi',\n\n  // --- Formatos de Video ---\n  'mp4': 'video/mp4',\n  'mov': 'video/quicktime',\n  'webm': 'video/webm',\n  'mpeg': 'video/mpeg',\n  'mpg': 'video/mpeg',\n  'avi': 'video/x-msvideo',\n  'wmv': 'video/x-ms-wmv',\n  'flv': 'video/x-flv',\n  'mkv': 'video/x-matroska',\n\n  // --- Formatos de Archivos y Compresión ---\n  'zip': 'application/zip',\n  'rar': 'application/vnd.rar',\n  '7z': 'application/x-7z-compressed',\n  'tar': 'application/x-tar',\n  'gz': 'application/gzip',\n  'bz2': 'application/x-bzip2',\n\n  // --- Otros Formatos ---\n  'epub': 'application/epub+zip',\n  'ics': 'text/calendar',\n  'vcf': 'text/vcard',\n  'js': 'text/javascript',\n  'css': 'text/css',\n  'sh': 'application/x-sh',\n  'py': 'text/x-python',\n};\n\n// --- Lógica de Procesamiento (sin cambios) ---\n\n// Obtenemos todos los items que llegan al nodo\nconst items = $input.all();\n\n// Iteramos sobre cada item para procesarlo\nfor (const item of items) {\n  // Verificamos que el item tenga datos binarios para procesar\n  if (item.binary && item.binary['data']) {\n    // Obtenemos el nombre del archivo de forma segura\n    const fileName = item.binary['data'].fileName || '';\n    if (!fileName) {\n      continue; // Si no hay nombre de archivo, pasamos al siguiente item\n    }\n\n    // Extraemos la extensión del archivo de forma robusta\n    const extension = fileName.slice((fileName.lastIndexOf(\".\") - 1 >>> 0) + 2).toLowerCase();\n\n    // Buscamos la extensión en nuestro mapa\n    const newMimeType = mimeMap[extension];\n\n    // Si encontramos una coincidencia en el mapa, actualizamos el mimeType\n    if (newMimeType) {\n      if(item.binary['data'].mimeType !== newMimeType) {\n        console.log(`Cambiando mimeType para '${fileName}' de '${item.binary['data'].mimeType}' a '${newMimeType}'.`);\n        item.binary['data'].mimeType = newMimeType;\n      }\n    }\n  }\n}\n\n// Devolvemos todos los items, modificados o no\nreturn items;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "f4ca8e31-3633-467b-91a5-e2a5392f21cf",
+			"name": "Fix mime6",
+			"type": "n8n-nodes-base.code",
+			"position": [1328, 1520],
+			"parameters": {
+				"jsCode": "// --- Mapa Extendido de Tipos MIME ---\n// Una lista completa para cubrir la mayoría de los formatos de archivo comunes.\nconst mimeMap = {\n  // --- Formatos de Documentos ---\n  'pdf': 'application/pdf',\n  'txt': 'text/plain',\n  'rtf': 'application/rtf',\n  'csv': 'text/csv',\n  'html': 'text/html',\n  'htm': 'text/html',\n  'json': 'application/json',\n  'xml': 'application/xml', // 'text/xml' también es válido pero 'application/xml' es más común\n  'yaml': 'application/x-yaml',\n  'yml': 'application/x-yaml',\n\n  // --- Formatos de Microsoft Office ---\n  'doc': 'application/msword',\n  'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',\n  'xls': 'application/vnd.ms-excel',\n  'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',\n  'ppt': 'application/vnd.ms-powerpoint',\n  'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',\n  'pub': 'application/vnd.ms-publisher',\n\n  // --- Formatos de OpenOffice / LibreOffice ---\n  'odt': 'application/vnd.oasis.opendocument.text',\n  'ods': 'application/vnd.oasis.opendocument.spreadsheet',\n  'odp': 'application/vnd.oasis.opendocument.presentation',\n  'odg': 'application/vnd.oasis.opendocument.graphics',\n\n  // --- Formatos de Apple iWork ---\n  'pages': 'application/vnd.apple.pages',\n  'numbers': 'application/vnd.apple.numbers',\n  'key': 'application/vnd.apple.keynote',\n\n  // --- Formatos de Imagen ---\n  'png': 'image/png',\n  'jpg': 'image/jpeg',\n  'jpeg': 'image/jpeg',\n  'gif': 'image/gif',\n  'webp': 'image/webp',\n  'svg': 'image/svg+xml',\n  'bmp': 'image/bmp',\n  'ico': 'image/vnd.microsoft.icon',\n  'tif': 'image/tiff',\n  'tiff': 'image/tiff',\n  'heic': 'image/heic',\n  'heif': 'image/heif',\n\n  // --- Formatos de Audio ---\n  'mp3': 'audio/mpeg',\n  'wav': 'audio/wav',\n  'oga': 'audio/ogg',\n  'ogg': 'audio/ogg',\n  'flac': 'audio/flac',\n  'm4a': 'audio/mp4',\n  'aac': 'audio/aac',\n  'opus': 'audio/opus',\n  'wma': 'audio/x-ms-wma',\n  'mid': 'audio/midi',\n  'midi': 'audio/midi',\n\n  // --- Formatos de Video ---\n  'mp4': 'video/mp4',\n  'mov': 'video/quicktime',\n  'webm': 'video/webm',\n  'mpeg': 'video/mpeg',\n  'mpg': 'video/mpeg',\n  'avi': 'video/x-msvideo',\n  'wmv': 'video/x-ms-wmv',\n  'flv': 'video/x-flv',\n  'mkv': 'video/x-matroska',\n\n  // --- Formatos de Archivos y Compresión ---\n  'zip': 'application/zip',\n  'rar': 'application/vnd.rar',\n  '7z': 'application/x-7z-compressed',\n  'tar': 'application/x-tar',\n  'gz': 'application/gzip',\n  'bz2': 'application/x-bzip2',\n\n  // --- Otros Formatos ---\n  'epub': 'application/epub+zip',\n  'ics': 'text/calendar',\n  'vcf': 'text/vcard',\n  'js': 'text/javascript',\n  'css': 'text/css',\n  'sh': 'application/x-sh',\n  'py': 'text/x-python',\n};\n\n// --- Lógica de Procesamiento (sin cambios) ---\n\n// Obtenemos todos los items que llegan al nodo\nconst items = $input.all();\n\n// Iteramos sobre cada item para procesarlo\nfor (const item of items) {\n  // Verificamos que el item tenga datos binarios para procesar\n  if (item.binary && item.binary['data']) {\n    // Obtenemos el nombre del archivo de forma segura\n    const fileName = item.binary['data'].fileName || '';\n    if (!fileName) {\n      continue; // Si no hay nombre de archivo, pasamos al siguiente item\n    }\n\n    // Extraemos la extensión del archivo de forma robusta\n    const extension = fileName.slice((fileName.lastIndexOf(\".\") - 1 >>> 0) + 2).toLowerCase();\n\n    // Buscamos la extensión en nuestro mapa\n    const newMimeType = mimeMap[extension];\n\n    // Si encontramos una coincidencia en el mapa, actualizamos el mimeType\n    if (newMimeType) {\n      if(item.binary['data'].mimeType !== newMimeType) {\n        console.log(`Cambiando mimeType para '${fileName}' de '${item.binary['data'].mimeType}' a '${newMimeType}'.`);\n        item.binary['data'].mimeType = newMimeType;\n      }\n    }\n  }\n}\n\n// Devolvemos todos los items, modificados o no\nreturn items;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "a5b92bec-7efe-4f84-a66a-99a55dbbe004",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [1488, 2048],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2949390a-4c7c-4365-866a-cf62b4a53e44",
+			"name": "get_error_message",
+			"type": "n8n-nodes-base.set",
+			"position": [1152, 3680],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "d8935452-fe20-469d-a68d-1aad056cb8dd",
+							"name": "message",
+							"type": "string",
+							"value": "=It was not possible to process the file.File type not supported."
+						},
+						{
+							"id": "38ba2498-2141-4a04-a22a-64563fe2ee6f",
+							"name": "chat_id",
+							"type": "string",
+							"value": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "871e5208-a75e-43fb-b8a8-37f273c98e1d",
+			"name": "HTML Extract Generic1",
+			"type": "n8n-nodes-base.html",
+			"position": [1312, 2192],
+			"parameters": {
+				"options": {
+					"cleanUpText": true
+				},
+				"operation": "extractHtmlContent",
+				"sourceData": "binary",
+				"extractionValues": {
+					"values": [
+						{
+							"key": "pageTitle",
+							"cssSelector": "title"
+						},
+						{
+							"key": "metaDescription",
+							"cssSelector": "meta[name=\"description\"]"
+						},
+						{
+							"key": "fullBodyText",
+							"cssSelector": "body",
+							"returnValue": "html"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "de565ee9-fa30-44fa-bd35-857f0afbfc68",
+			"name": "Get ODS data",
+			"type": "n8n-nodes-base.code",
+			"position": [1488, 2624],
+			"parameters": {
+				"jsCode": "// Get the first item from the input array.\nconst firstItem = items[0];\n\n// Create a new object that has a single key: \"data\".\n// The value of \"data\" will be the entire json object from the input.\n// This gathers all fields (First Name, Last Name, Age, etc.) dynamically.\nconst result = {\n  data: firstItem.json\n};\n\n// Return the newly structured object.\n// It will be outputted as a single item with a 'json' property\n// containing the 'data' object.\nreturn result;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "15ee6585-6522-4b67-bda9-2559df332c9b",
+			"name": "Normalize ODS",
+			"type": "n8n-nodes-base.set",
+			"position": [1648, 2624],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "24b93984-e305-4c11-a856-5fa0bfaaaa79",
+							"name": "data",
+							"type": "string",
+							"value": "={{ $json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "0ca2903f-ed9a-4719-904a-5440308cf2fa",
+			"name": "Normalize CSV",
+			"type": "n8n-nodes-base.set",
+			"position": [1680, 2048],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "24b93984-e305-4c11-a856-5fa0bfaaaa79",
+							"name": "data",
+							"type": "string",
+							"value": "={{ $json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "b0d1b577-f629-4ca0-8901-ce36e5b40725",
+			"name": "Normalize HTML",
+			"type": "n8n-nodes-base.set",
+			"position": [1488, 2192],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b4ab7227-9db9-4c74-aa17-80071ee0a7f0",
+							"name": "data",
+							"type": "string",
+							"value": "=Page title:  {{ $json.pageTitle}}\nMeta description: {{ $json.metaDescription }}\nbody: {{ $json.fullBodyText }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "03a4cf03-2b5d-4c08-af76-234d2634fcdd",
+			"name": "Normalize ICS",
+			"type": "n8n-nodes-base.set",
+			"position": [1488, 2336],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "24b93984-e305-4c11-a856-5fa0bfaaaa79",
+							"name": "data",
+							"type": "string",
+							"value": "={{ $json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "2f688c04-4c5c-4867-a51c-ef8943ea9fda",
+			"name": "Normalize JSON",
+			"type": "n8n-nodes-base.set",
+			"position": [1488, 2480],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "24b93984-e305-4c11-a856-5fa0bfaaaa79",
+							"name": "data",
+							"type": "string",
+							"value": "={{ $json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "22ddea54-677d-40af-b5e2-20bbeb71e855",
+			"name": "Normalize PDF",
+			"type": "n8n-nodes-base.set",
+			"position": [1648, 2768],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "24b93984-e305-4c11-a856-5fa0bfaaaa79",
+							"name": "data",
+							"type": "string",
+							"value": "={{ $json.text }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "f04cbce9-7fe1-49f4-b4ab-2ea74945dc33",
+			"name": "Normalize RTF",
+			"type": "n8n-nodes-base.set",
+			"position": [1648, 3088],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "24b93984-e305-4c11-a856-5fa0bfaaaa79",
+							"name": "data",
+							"type": "string",
+							"value": "={{ $json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "25d4c36c-fd18-49c4-ba40-e22fc94b453e",
+			"name": "Normalize text file",
+			"type": "n8n-nodes-base.set",
+			"position": [1488, 3232],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "24b93984-e305-4c11-a856-5fa0bfaaaa79",
+							"name": "data",
+							"type": "string",
+							"value": "={{ $json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8feb8c65-d387-4884-969b-6383fd4e8d79",
+			"name": "Normalize XML",
+			"type": "n8n-nodes-base.set",
+			"position": [1488, 3376],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "24b93984-e305-4c11-a856-5fa0bfaaaa79",
+							"name": "data",
+							"type": "string",
+							"value": "={{ $json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "958a33e1-d47f-4816-a54b-be858b4f00f3",
+			"name": "Extract from XML",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1312, 3376],
+			"parameters": {
+				"options": {},
+				"operation": "xml"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9df948f1-a227-4540-88c0-df46c5ce7827",
+			"name": "Normalize XLSX",
+			"type": "n8n-nodes-base.set",
+			"position": [1648, 3520],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "24b93984-e305-4c11-a856-5fa0bfaaaa79",
+							"name": "data",
+							"type": "string",
+							"value": "={{ $json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "c26a73c4-b640-46fd-ba5e-0ec06e5d4307",
+			"name": "Get RTF data",
+			"type": "n8n-nodes-base.code",
+			"position": [1488, 3088],
+			"parameters": {
+				"jsCode": "// Get the first item from the input array.\nconst firstItem = items[0];\n\n// Create a new object that has a single key: \"data\".\n// The value of \"data\" will be the entire json object from the input.\n// This gathers all fields (First Name, Last Name, Age, etc.) dynamically.\nconst result = {\n  data: firstItem.json\n};\n\n// Return the newly structured object.\n// It will be outputted as a single item with a 'json' property\n// containing the 'data' object.\nreturn result;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "6a048820-a060-4b41-a2bf-1e562a44ef1c",
+			"name": "Get RTF data1",
+			"type": "n8n-nodes-base.code",
+			"position": [1488, 3520],
+			"parameters": {
+				"jsCode": "// Get the first item from the input array.\nconst firstItem = items[0];\n\n// Create a new object that has a single key: \"data\".\n// The value of \"data\" will be the entire json object from the input.\n// This gathers all fields (First Name, Last Name, Age, etc.) dynamically.\nconst result = {\n  data: firstItem.json\n};\n\n// Return the newly structured object.\n// It will be outputted as a single item with a 'json' property\n// containing the 'data' object.\nreturn result;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "2d6893e4-9246-4400-8f69-bb5c43102e68",
+			"name": "get_error_message1",
+			"type": "n8n-nodes-base.set",
+			"position": [1152, 1808],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "d8935452-fe20-469d-a68d-1aad056cb8dd",
+							"name": "message",
+							"type": "string",
+							"value": "=It was not possible to process the file.File type not supported."
+						},
+						{
+							"id": "38ba2498-2141-4a04-a22a-64563fe2ee6f",
+							"name": "chat_id",
+							"type": "string",
+							"value": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "3e2c460b-1857-49b9-9c0d-4bc4ad136c16",
+			"name": "Text?",
+			"type": "n8n-nodes-base.if",
+			"position": [1488, 2784],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "333a436f-c087-4250-a181-40657874959b",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.text }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "edf7c18c-129a-4b04-835b-defd44e8881e",
+			"name": "Analyze document",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1488, 2928],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "models/gemini-2.5-pro",
+					"cachedResultName": "models/gemini-2.5-pro"
+				},
+				"options": {},
+				"resource": "document",
+				"inputType": "binary"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9963ed16-9670-4251-ac40-bd15028f1c90",
+			"name": "Normalize PDF (AI)",
+			"type": "n8n-nodes-base.set",
+			"position": [1648, 2928],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "24b93984-e305-4c11-a856-5fa0bfaaaa79",
+							"name": "data",
+							"type": "string",
+							"value": "={{ $json.content.parts[0].text }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8fba0cb4-c570-40d9-9fbe-8bf26d7e135f",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [1312, 2928],
+			"parameters": {
+				"mode": "chooseBranch",
+				"useDataOfInput": 2
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "eb035564-b961-409d-b85a-05eaa146cb2d",
+			"name": "MarkdownV2",
+			"type": "n8n-nodes-base.code",
+			"position": [4080, 688],
+			"parameters": {
+				"jsCode": "/**\n * MarkdownV2-safe formatter + auto-chunker for Telegram (n8n Code node)\n * --------------------------------------------------------------------\n * - Allows: *bold*, _italic_, ||spoiler||, [label](url)\n * - Escapes everything else for Telegram MarkdownV2\n * - Validates/normalizes URLs\n * - Converts \"# Heading\" lines to bold titles\n * - Splits long messages into <= 4096-char chunks (uses a 4000-char budget)\n * - Outputs one item per chunk so the Telegram node sends all parts\n *\n * Recommended: Run this node in \"Run Once for All Items\".\n */\n\nconst MAX_TELEGRAM = 4096;\nconst SAFE_BUDGET = 4000; // small margin to avoid edge overflows\n\n// ============ MarkdownV2 helpers ============\nfunction escapeMarkdownV2(text) {\n  if (!text) return '';\n  return String(text).replace(/([\\\\_*[\\]()~`>#+\\-=|{}.!])/g, '\\\\$1');\n}\n\nfunction escapeForUrl(url) {\n  return String(url).replace(/[)\\\\]/g, '\\\\$&');\n}\n\nfunction normalizeAndValidateUrl(url) {\n  let raw = String(url || '').trim();\n  try {\n    const u = new URL(raw);\n    return u.toString();\n  } catch {}\n  // Try https:// for bare domains\n  const domainLike = /^[a-z0-9.-]+\\.[a-z]{2,}([/:?#].*)?$/i.test(raw);\n  if (domainLike) {\n    try {\n      const u2 = new URL('https://' + raw);\n      return u2.toString();\n    } catch {}\n  }\n  return null;\n}\n\nfunction normalizeHeadings(text) {\n  // Turn \"# Title\" → \"*Title*\"\n  return text.replace(/^(#{1,6})\\s+(.*)$/gm, (m, hashes, title) => `*${title.trim()}*`);\n}\n\nfunction normalizeCommonMd(text) {\n  return String(text)\n    .replace(/\\*\\*([\\s\\S]*?)\\*\\*/g, '*$1*') // **bold** → *bold*\n    .replace(/__([\\s\\S]*?)__/g, '_$1_');    // __italic__ → _italic_\n}\n\n/**\n * Convert incoming text to Telegram-safe MarkdownV2.\n */\nfunction processMarkdownV2Safe(inputText) {\n  if (!inputText) return '';\n\n  let text = normalizeCommonMd(String(inputText));\n  text = normalizeHeadings(text);\n\n  const placeholders = { links: [], bolds: [], italics: [], spoilers: [] };\n\n  // Links: keep safe via placeholders during escaping\n  text = text.replace(/\\[([^\\]\\n]+)\\]\\(([^)]+)\\)/g, (m, label, url) => {\n    const normalizedUrl = normalizeAndValidateUrl(url);\n    if (!normalizedUrl) return escapeMarkdownV2(label);\n    const idx = placeholders.links.length;\n    const ph = `⟬L${idx}⟭`;\n    const safeLabel = escapeMarkdownV2(label);\n    const safeUrl = escapeForUrl(normalizedUrl);\n    placeholders.links.push(`[${safeLabel}](${safeUrl})`);\n    return ph;\n  });\n\n  // Bold\n  text = text.replace(/\\*([\\s\\S]+?)\\*/g, (m, inner) => {\n    const idx = placeholders.bolds.length;\n    const ph = `⟬B${idx}⟭`;\n    placeholders.bolds.push(`*${escapeMarkdownV2(inner)}*`);\n    return ph;\n  });\n\n  // Italic\n  text = text.replace(/_([\\s\\S]+?)_/g, (m, inner) => {\n    const idx = placeholders.italics.length;\n    const ph = `⟬I${idx}⟭`;\n    placeholders.italics.push(`_${escapeMarkdownV2(inner)}_`);\n    return ph;\n  });\n\n  // Spoilers\n  text = text.replace(/\\|\\|([\\s\\S]+?)\\|\\|/g, (m, inner) => {\n    const idx = placeholders.spoilers.length;\n    const ph = `⟬S${idx}⟭`;\n    placeholders.spoilers.push(`||${escapeMarkdownV2(inner)}||`);\n    return ph;\n  });\n\n  // Escape everything else\n  text = escapeMarkdownV2(text);\n\n  // Restore placeholders\n  placeholders.links.forEach((md, i) => { text = text.replace(`⟬L${i}⟭`, md); });\n  placeholders.bolds.forEach((md, i) => { text = text.replace(`⟬B${i}⟭`, md); });\n  placeholders.italics.forEach((md, i) => { text = text.replace(`⟬I${i}⟭`, md); });\n  placeholders.spoilers.forEach((md, i) => { text = text.replace(`⟬S${i}⟭`, md); });\n\n  return text;\n}\n\n// ============ Chunking helpers ============\n/**\n * Split text into Telegram-safe chunks <= maxLen.\n * Prefers paragraph boundaries, then sentence boundaries, then words.\n * Falls back to hard cuts only when unavoidable (e.g., extremely long URL).\n */\nfunction chunkForTelegram(text, maxLen = SAFE_BUDGET) {\n  if (!text || text.length <= maxLen) return [text || ''];\n\n  const parts = [];\n  let buffer = '';\n\n  const flush = () => {\n    if (buffer) {\n      parts.push(buffer);\n      buffer = '';\n    }\n  };\n\n  // 1) Paragraph-level packing\n  const paragraphs = text.split(/\\n{2,}/);\n  for (const pRaw of paragraphs) {\n    const p = pRaw; // keep paragraph as-is\n    const candidate = buffer ? buffer + '\\n\\n' + p : p;\n    if (candidate.length <= maxLen) {\n      buffer = candidate;\n      continue;\n    }\n    if (p.length <= maxLen) {\n      flush();\n      buffer = p;\n      continue;\n    }\n\n    // 2) Sentence-level packing (paragraph is still too big)\n    flush();\n    const sentences = p.split(/(?<=[.!?…])\\s+(?=[^\\s])/u);\n    let sBuf = '';\n    for (const s of sentences) {\n      const sCandidate = sBuf ? sBuf + ' ' + s : s;\n      if (sCandidate.length <= maxLen) {\n        sBuf = sCandidate;\n        continue;\n      }\n      if (s.length <= maxLen) {\n        if (sBuf) parts.push(sBuf);\n        sBuf = s;\n        continue;\n      }\n\n      // 3) Word-level packing (sentence is still too big)\n      if (sBuf) { parts.push(sBuf); sBuf = ''; }\n      let wBuf = '';\n      const words = s.split(/\\s+/);\n      for (const w of words) {\n        const wCandidate = wBuf ? wBuf + ' ' + w : w;\n        if (wCandidate.length <= maxLen) {\n          wBuf = wCandidate;\n          continue;\n        }\n        if (w.length <= maxLen) {\n          if (wBuf) parts.push(wBuf);\n          wBuf = w;\n          continue;\n        }\n        // 4) Hard split (extremely long token, e.g., massive URL)\n        if (wBuf) { parts.push(wBuf); wBuf = ''; }\n        const re = new RegExp(`.{1,${maxLen}}`, 'g');\n        const hardPieces = w.match(re) || [];\n        parts.push(...hardPieces);\n      }\n      if (wBuf) parts.push(wBuf);\n    }\n    if (sBuf) parts.push(sBuf);\n  }\n  if (buffer) parts.push(buffer);\n\n  // Final safety pass: trim chunks that might still exceed MAX_TELEGRAM\n  return parts.flatMap(part => {\n    if (part.length <= MAX_TELEGRAM) return [part];\n    const re = new RegExp(`.{1,${SAFE_BUDGET}}`, 'g');\n    return part.match(re) || [];\n  });\n}\n\n// ============ Main ============\nconst inputItems = $input.all();\nconst out = [];\n\nfor (const item of inputItems) {\n  const j = item.json || {};\n  const raw =\n    j.message ?? j.output ?? j.text ?? j.content ?? '';\n\n  const formatted = processMarkdownV2Safe(raw);\n  const chunks = chunkForTelegram(formatted, SAFE_BUDGET);\n\n  chunks.forEach((chunk, idx) => {\n    out.push({\n      json: {\n        ...j,\n        message: chunk,\n        message_part_index: idx + 1,\n        message_parts_total: chunks.length,\n      },\n      binary: item.binary,\n    });\n  });\n}\n\nreturn out;\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "1f1a460c-799d-467b-8828-a66aa35dc5c6",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, 2048],
+			"parameters": {
+				"color": 3,
+				"width": 1728,
+				"height": 1872,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c7430169-29d7-44ea-add4-d700fcbe1461",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3504, 576],
+			"parameters": {
+				"color": 6,
+				"width": 960,
+				"height": 496,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0c756596-0293-4546-be6b-3b9df80c912b",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, 400],
+			"parameters": {
+				"color": 7,
+				"width": 576,
+				"height": 240,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4a069636-fb37-4f6e-86c3-521d226db569",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, 656],
+			"parameters": {
+				"color": 4,
+				"width": 1360,
+				"height": 208,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5d49d6eb-b33b-460b-8dab-a4947624b2e2",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, 912],
+			"parameters": {
+				"color": 5,
+				"width": 1504,
+				"height": 1104,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6319463a-4c9e-4cb8-a358-52f760cd6a60",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2208, 1200],
+			"parameters": {
+				"width": 1104,
+				"height": 752,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "32619245-df37-4e49-9ebd-656bfd425d83",
+			"name": "Postgres Chat Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+			"position": [3872, 896],
+			"parameters": {
+				"tableName": "chat_histories",
+				"sessionKey": "={{ $json.chat_id }}",
+				"sessionIdType": "customKey"
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "fb53fc4f-0961-43bf-bb87-cce3a617a631",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-112, 64],
+			"parameters": {
+				"color": 7,
+				"width": 608,
+				"height": 528,
+				"content": "### Gray Section – Database Setup\n\nThis section creates the PostgreSQL tables required for the workflow to function.\n\n**Tables:**\n1. **media_group** – Stores descriptions of files that belong to the same Telegram `media_group_id`.  \n   - Purpose: After files are processed (see Yellow section), their metadata and descriptions are stored here.\n   - Reason: Telegram sends multiple files in separate messages but groups them using `media_group_id`. This table helps collect them for combined processing.\n\n2. **media_queue** – Tracks incoming media groups.  \n   - Purpose: When a new `media_group_id` is detected, this table is updated only once with:\n     - `media_group_id` (unique)\n     - `chat_id` (for sending messages back to the correct chat)\n     - `captions` (optional text from Telegram)\n\n3. **chat_histories** – Stores conversation history for the AI agent.  \n   - Purpose: Provides context for ongoing chats.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f9eba4d1-8022-4d51-92d6-e91f6c983a3b",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-112, 656],
+			"parameters": {
+				"color": 4,
+				"width": 608,
+				"height": 448,
+				"content": "### Green Section – Media Queue Trigger\n\nThis section listens for updates in the `media_queue` table.\n\n**Process:**\n1. The trigger checks regularly for new entries in `media_queue`.\n2. When new data is detected, it retrieves:\n   - `chat_id`\n   - `media_group_id`\n3. Waits 5 seconds to ensure all files in the media group are uploaded.  \n   > ⚠️ **Note:** Depending on the preprocessing speed, larger or more complex files may not finish processing before the `media_queue` trigger sends the message to the chatbot. If you are working with heavy or complex files, consider increasing the value of **\"Wait for all the files\"** (default: 5 seconds) to allow sufficient time for proper processing.  \n4. Fetches all file descriptions from the `media_group` table that match the `media_group_id`.\n5. Combines these descriptions into a single message.\n6. Sends the combined message to the AI agent (Purple section).\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3d8a9609-f652-453c-9b60-e63eec5c8223",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-112, 1280],
+			"parameters": {
+				"color": 5,
+				"width": 608,
+				"height": 528,
+				"content": "### Blue Section – Telegram Trigger & Message Type Handling\n\nTriggered when a new message is received on Telegram.\n\n**Flow:**\n1. Sends a \"typing\" action to Telegram.\n2. Detects message type:\n   - **Text** → Sent directly to the AI agent.\n   - **Voice message** → Downloaded, transcribed, then sent to AI agent.\n   - **Video note** → Downloaded, described, then sent to AI agent.\n3. The above three types are sent directly since only one can appear in a message.\n\n**For media files (image, audio, video):**\n- Processed to generate descriptions.\n- Sent to Yellow section for grouping & database handling.\n\n**For documents:**\n- Sent to Red section for specialized processing.\n\n**If unsupported type:**\n- Sent to fallback → Generates error message → Sent to AI agent.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dcaae51c-ffa4-4250-9709-161295c0191d",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-112, 2048],
+			"parameters": {
+				"color": 3,
+				"width": 608,
+				"height": 496,
+				"content": "### Red Section – Document Processing\n\nProcesses supported document types: `CSV, HTML, ICS, JSON, ODS, PDF, RTF, TXT, XML, Spreadsheet`.\n\n**Steps:**\n1. Download the file.\n2. Extract data (file name, file type, extracted content).\n\n**Special PDF handling:**\n- If the initial extraction returns no text:\n  - Pass the PDF to an AI-based analyzer for description.\n\n**Unsupported documents:**\n- Sent to fallback with error message.\n\n**All extracted document descriptions** are sent to Yellow section for storage and possible grouping.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "088dcb99-8eec-4d6d-9cf5-5c6e859ac527",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2448, 2000],
+			"parameters": {
+				"width": 608,
+				"height": 576,
+				"content": "### Yellow Section – File & Caption Handling\n\nDetermines how files are stored and processed based on presence of `captions` and `media_group_id`.\n\n**Cases:**\n1. **Captions + Media Group**  \n   - First file in a multi-file group with captions.  \n   - Store description in `media_group` table.  \n   - Add entry to `media_queue` to trigger Green section.\n\n2. **Captions only (no Media Group)**  \n   - Single file with captions.  \n   - Combine captions + file description → Send to AI agent.\n\n3. **No Captions + Media Group**  \n   - Part of a multi-file group (first or later).  \n   - Insert into `media_group` table.  \n   - Wait 2 seconds to allow captions to be stored first.  \n   - Insert into `media_queue` if not already present.\n\n4. **No Captions + No Media Group**  \n   - Single file without captions.  \n   - Send file description directly to AI agent.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "615b4bf9-05ae-4131-9200-eae91729400a",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3504, 1136],
+			"parameters": {
+				"color": 6,
+				"width": 608,
+				"height": 496,
+				"content": "### Purple Section – AI Agent & Output Formatting\n\nThis section contains the AI Agent connected to:\n- PostgreSQL chat memory (replaceable with any memory type)\n- AI model of choice (replaceable)\n\n**Notes:**\n- No fixed prompt for maximum flexibility.\n- Incoming processed messages follow a consistent format:\n  - **Captions** (optional)\n  - **File descriptions**:\n    - For documents → File name, type, extracted data\n    - For media → Media description\n  - **Voice/video messages** → Media message description\n\n**MarkdownV2 Formatting Node:**\n- Escapes Telegram’s restricted characters.\n- Splits long messages (>4096 chars) into multiple parts.\n- Sends them sequentially back to the user.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8da02301-1c6d-4092-b86b-d378c1afae48",
+			"name": "Get_message (multiple files)",
+			"type": "n8n-nodes-base.set",
+			"position": [1488, 704],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b9c92d3b-db05-4d27-968e-3fc8b27d4d2b",
+							"name": "message",
+							"type": "string",
+							"value": "={{ $json.unifiedMessage }}"
+						},
+						{
+							"id": "812d7730-117c-4d1f-b18e-8c3561e86c5e",
+							"name": "chat_id",
+							"type": "number",
+							"value": "={{ $('get_chat_id').first().json.chat_id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "fad74af7-1f60-474c-87fe-0c15823ed829",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, 144],
+			"parameters": {
+				"color": 2,
+				"width": 448,
+				"height": 176,
+				"content": "**🙏 Special Thanks**\n\nA huge thank you to **Ezema Gingsley Chibuzo** for the inspiration of the first version of this workflow:  \n[Create a Multi-Modal Telegram Support Bot with GPT-4 and Supabase RAG](https://n8n.io/workflows/5589-create-a-multi-modal-telegram-support-bot-with-gpt-4-and-supabase-rag/)\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5c245033-1efe-43c4-961a-df92eb3792f5",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [608, 1392],
+			"webhookId": "e9030185-5468-4529-8f4f-d7eec5daf8f0",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ab44181a-1610-4c41-8b09-a123b6675491",
+			"name": "Normalize input",
+			"type": "n8n-nodes-base.set",
+			"position": [3584, 688],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "eb807b26-c415-42d2-9cef-707825d6fa82",
+							"name": "message",
+							"type": "string",
+							"value": "={{ $json.message }}"
+						},
+						{
+							"id": "62235ef7-8bc9-485b-bb75-4fc2c5829cfb",
+							"name": "chat_id",
+							"type": "number",
+							"value": "={{ $json.chat_id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "b7486e58-b419-44f4-9229-e8118514f69a",
+			"name": "Sticky Note13",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [4496, 832],
+			"parameters": {
+				"color": 2,
+				"width": 352,
+				"height": 224,
+				"content": "---\n\n## 💡 Need Assistance?\n\nIf you’d like help customizing or extending this workflow, feel free to reach out:  \n\n📧 Email: [johnsilva11031@gmail.com](mailto:johnsilva11031@gmail.com)  \n🔗 LinkedIn: [John Alejandro Silva Rodríguez](https://www.linkedin.com/in/john-alejandro-silva-rodriguez-48093526b/)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Insert media_queue (Trigger)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Analyze document",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Text?": {
+			"main": [
+				[
+					{
+						"node": "Normalize PDF",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Download CSV",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download HTML",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download ICS",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download JSON",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download ODS",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download PDF",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download RTF",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download TEXT FILE",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download XML",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download XLSX",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "get_error_message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fix mime": {
+			"main": [
+				[
+					{
+						"node": "Analyze voice message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent1": {
+			"main": [
+				[
+					{
+						"node": "MarkdownV2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "Normalize CSV",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fix mime1": {
+			"main": [
+				[
+					{
+						"node": "Analyze video note",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fix mime4": {
+			"main": [
+				[
+					{
+						"node": "Analyze video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fix mime5": {
+			"main": [
+				[
+					{
+						"node": "Analyze image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fix mime6": {
+			"main": [
+				[
+					{
+						"node": "Analyze audio",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Captions?1": {
+			"main": [
+				[
+					{
+						"node": "Media_group?2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Media_group?3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MarkdownV2": {
+			"main": [
+				[
+					{
+						"node": "Send a text message1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"get_chat_id": {
+			"main": [
+				[
+					{
+						"node": "Wait for all the files",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download CSV": {
+			"main": [
+				[
+					{
+						"node": "Extract from CSV",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download ICS": {
+			"main": [
+				[
+					{
+						"node": "Extract from ICS",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download ODS": {
+			"main": [
+				[
+					{
+						"node": "Extract from ODS",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download PDF": {
+			"main": [
+				[
+					{
+						"node": "Extract from PDF",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Download RTF": {
+			"main": [
+				[
+					{
+						"node": "Extract from RTF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download XML": {
+			"main": [
+				[
+					{
+						"node": "Extract from XML",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get ODS data": {
+			"main": [
+				[
+					{
+						"node": "Normalize ODS",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get RTF data": {
+			"main": [
+				[
+					{
+						"node": "Normalize RTF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analyze audio": {
+			"main": [
+				[
+					{
+						"node": "get_message (Media  message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analyze image": {
+			"main": [
+				[
+					{
+						"node": "get_message (Media  message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analyze video": {
+			"main": [
+				[
+					{
+						"node": "get_message (Media  message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download HTML": {
+			"main": [
+				[
+					{
+						"node": "HTML Extract Generic1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download JSON": {
+			"main": [
+				[
+					{
+						"node": "Extract from JSON",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download XLSX": {
+			"main": [
+				[
+					{
+						"node": "Extract from XLSX",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get RTF data1": {
+			"main": [
+				[
+					{
+						"node": "Normalize XLSX",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get_only_file": {
+			"main": [
+				[
+					{
+						"node": "Normalize input",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Media_group?2": {
+			"main": [
+				[
+					{
+						"node": "Insert documents in media_group",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Get_file_and_captions",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Media_group?3": {
+			"main": [
+				[
+					{
+						"node": "Insert documents in media_group1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Get_only_file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize CSV": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize ICS": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize ODS": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize PDF": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize RTF": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize XML": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download AUDIO": {
+			"main": [
+				[
+					{
+						"node": "Fix mime6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download IMAGE": {
+			"main": [
+				[
+					{
+						"node": "Fix mime5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download VIDEO": {
+			"main": [
+				[
+					{
+						"node": "Fix mime4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize HTML": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize JSON": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize XLSX": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize input": {
+			"main": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analyze document": {
+			"main": [
+				[
+					{
+						"node": "Normalize PDF (AI)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from CSV": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from ICS": {
+			"main": [
+				[
+					{
+						"node": "Normalize ICS",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from ODS": {
+			"main": [
+				[
+					{
+						"node": "Get ODS data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from PDF": {
+			"main": [
+				[
+					{
+						"node": "Text?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from RTF": {
+			"main": [
+				[
+					{
+						"node": "Get RTF data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from XML": {
+			"main": [
+				[
+					{
+						"node": "Normalize XML",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "Input Message Router1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from File": {
+			"main": [
+				[
+					{
+						"node": "Normalize text file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from JSON": {
+			"main": [
+				[
+					{
+						"node": "Normalize JSON",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from XLSX": {
+			"main": [
+				[
+					{
+						"node": "Get RTF data1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"get_error_message": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"unified_variables": {
+			"main": [
+				[
+					{
+						"node": "Get_message (multiple files)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analyze video note": {
+			"main": [
+				[
+					{
+						"node": "get_message (Audio/Video message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download TEXT FILE": {
+			"main": [
+				[
+					{
+						"node": "Extract from File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize PDF (AI)": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"get_error_message1": {
+			"main": [
+				[
+					{
+						"node": "get_message (Media  message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"get_message (text)": {
+			"main": [
+				[
+					{
+						"node": "Normalize input",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download VIDEO NOTE": {
+			"main": [
+				[
+					{
+						"node": "Fix mime1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Media_queue Trigger": {
+			"main": [
+				[
+					{
+						"node": "get_chat_id",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize text file": {
+			"main": [
+				[
+					{
+						"node": "get_message (File message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Postgres Chat Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analyze voice message": {
+			"main": [
+				[
+					{
+						"node": "get_message (Audio/Video message)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get_file_and_captions": {
+			"main": [
+				[
+					{
+						"node": "Normalize input",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTML Extract Generic1": {
+			"main": [
+				[
+					{
+						"node": "Normalize HTML",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Input Message Router1": {
+			"main": [
+				[
+					{
+						"node": "get_message (text)",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download Voice Message",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download VIDEO NOTE",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download IMAGE",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download AUDIO",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Download VIDEO",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Group Similar Documents",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "get_error_message1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Voice Message": {
+			"main": [
+				[
+					{
+						"node": "Fix mime",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for all the files": {
+			"main": [
+				[
+					{
+						"node": "Get all files from group_id",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Group Similar Documents": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"get_message (File message)": {
+			"main": [
+				[
+					{
+						"node": "Captions?1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get all files from group_id": {
+			"main": [
+				[
+					{
+						"node": "unified_variables",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get_message (multiple files)": {
+			"main": [
+				[
+					{
+						"node": "Normalize input",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"get_message (Media  message)": {
+			"main": [
+				[
+					{
+						"node": "Captions?1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Insert documents in media_group": {
+			"main": [
+				[
+					{
+						"node": "Insert media_queue with captions (Trigger)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Insert documents in media_group1": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"get_message (Audio/Video message)": {
+			"main": [
+				[
+					{
+						"node": "Normalize input",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": " Create Tables",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,1114 @@
+{
+	"id": "94ZTfrnyRHFV3xxr",
+	"meta": {
+		"instanceId": "a0abdc0b77c415ea268f7f162cb1411f29a01e7656935f2ebce0ae66e8df8e13"
+	},
+	"name": "DocAgentForTemplate",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "d6dae967-cee4-4c8b-9f80-a1eb8279b2a0",
+			"name": "Google Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-20, 300],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.5-pro"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "514e6233-fe2d-4031-9ea6-ad046d2d1479",
+			"name": "GetMetaData",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [420, 300],
+			"parameters": {
+				"url": "https://script.google.com/macros/s/<YOUR_DEPLOY_ID>/exec",
+				"options": {},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "mode",
+							"value": "meta"
+						},
+						{
+							"name": "id",
+							"value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `The id of the template requested by the user comes here.`, 'string') }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "accept",
+							"value": "application/json"
+						}
+					]
+				},
+				"nodeCredentialType": "googleDriveOAuth2Api"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "c2d0ed01-0b5f-4e92-89a1-c140990b6998",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-60, -20],
+			"webhookId": "6c3d3341-4e58-40c9-b399-96c67481ed4a",
+			"parameters": {
+				"public": true,
+				"options": {},
+				"initialMessages": "Merhaba! 👋\nMy name is DocAgent. "
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "74c575a0-6523-47d5-834e-a0c388d06676",
+			"name": "DocAgent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [240, -20],
+			"parameters": {
+				"options": {
+					"systemMessage": "=You are “Legal-Doc Agent”, an expert that drafts professional Turkish\ndocuments from fixed Google Docs templates.\n\n<templateCatalog>\n{{ YOUR_MANUAL_TO_ADD_TEMPLATE_LIST }}\n</templateCatalog> \n\n#TOOLS AND USAGE RULES\nGetMetaData(id)                           → { placeholders\\[], conditionals\\[] }\nDocProcess(user_choice_name, user_choice_id, data{}) → \n\n(Call a tool by replying ONLY with\n{\"tool\":\"ToolName\",\"params\":{...}} )\n\n\n#FLOW\nstep-1 Determine which document in the templateCatalog the user wants to create.\nstep-2 Call GetMetaData with the identified id.  \n         → You get back:\n           • metadata.placeholders       (global/static placeholders)\n           • metadata.conditionals[]     (each has flag, label, help, placeholders[])\n\nstep-3 Request the necessary information from the user:\n         a) For each name in metadata.placeholders, ask “What is <PLACEHOLDER>? ”\n         b) For each item in metadata.conditionals:\n              i.   Ask “Would you like to include the <label> section? <help>”\n              ii.  Record in blocks[KEY].include = true/false\n              iii. If include===true, then for each p in placeholders[] ask “What is <p>? ”\n         → Build up a `data` object:\n            {\n              /* static values from 3a */,\n              blocks: {\n                KEY1: { include: true,  P1: val1, P2: val2… },\n                KEY2: { include: false            },\n                …\n              }\n            }\n\nstep-4 After collecting all the required information, submit the information provided by the user to the user for approval as a whole.\nstep-5 Using the `docId` and that `data` object, call the DocProcess (FillDocument) tool.\n\nstep-6 If there are no errors, return the new document’s download URL (or ID) to the user indicating success.\n\n\n#STYLE\n• Speak concise, formal Turkish.\n• Never guess data; always ask.\n• Only tool-call messages may contain JSON blocks.\n\n#RULES\nWhen calling DocProcess, DO NOT CHANGE/TRANSLATE the placeholder names and conditional flag names/structure returned by GetMetaData. Only place the answers you obtained from the user next to them.\n"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "753c8e8c-18f3-4a54-80a5-af1b5256a656",
+			"name": "DocProcess",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [600, 300],
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "<YOUR_WORKFLOW_ID>"
+				},
+				"description": "Call this tool for Doc Process",
+				"workflowInputs": {
+					"value": {
+						"data": "={{ $fromAI('data') }}",
+						"user_choice_id": "={{ $fromAI('user_choice_id') }}",
+						"user_choice_name": "={{ $fromAI('user_choice_name') }}"
+					},
+					"schema": [
+						{
+							"id": "user_choice_name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "user_choice_name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "user_choice_id",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "user_choice_id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "data",
+							"type": "object",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "data",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "25b8e0ed-90ed-4e14-a042-a36a2cb6ec15",
+			"name": "Postgres Chat Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+			"position": [200, 300],
+			"parameters": {},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "806c4fa9-6276-4066-b2ca-f0432c4ef228",
+			"name": "Template List",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-500, 440],
+			"parameters": {
+				"url": "https://www.googleapis.com/drive/v3/files?q='%3CYOUR_PARENT_ID%3E'+in+parents+and+trashed=false&fields=files(id,name,description)&pageSize=1000",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Accept",
+							"value": "application/json"
+						}
+					]
+				},
+				"nodeCredentialType": "googleDriveOAuth2Api"
+			},
+			"credentials": {
+				"googleDocsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDocsOAuth2Api Credential"
+				},
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "5a5f198e-b611-492e-a194-0cdfc6d8a3de",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-560, 260],
+			"parameters": {
+				"color": 4,
+				"width": 260,
+				"height": 360,
+				"content": "## Manual Template List Retrieval\n**The response returned from this API request is manually added to the system prompt.\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0ff8e732-1497-45af-b8a6-b29287d72f5f",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [160, 260],
+			"parameters": {
+				"width": 180,
+				"height": 320,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**It is preferred for more consistent memory management. Other alternatives can also be tried."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "656dedde-5074-412b-ab5b-d6ee9980d8d9",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [380, 260],
+			"parameters": {
+				"width": 180,
+				"height": 320,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**Metadata of the template selected by the user is dynamically retrieved."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "79633aef-0d8e-4f85-93f4-af4a13f47a7a",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-60, 260],
+			"parameters": {
+				"width": 180,
+				"height": 320,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**Prioritized due to free API-Key trial."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "839584c8-ce14-4c66-aee2-aa6572345fcc",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2000, -60],
+			"parameters": {
+				"color": 6,
+				"width": 1280,
+				"height": 4140,
+				"content": "## Description  \n\n## 1 — What Does It Do / Which Problem Does It Solve?\n\nThis workflow turns Google Docs-based contract & form templates into **ready-to-sign PDFs in minutes**—all from a single chat flow.\n\n- **Automates repetitive document creation.** Instead of copying a rental, sales, or NDA template and filling it by hand every time, the bot asks for the required values and fills them in.\n- **Eliminates human error.** It lists every mandatory field so nothing is missed, and removes unnecessary clauses via conditional blocks.\n- **Speeds up approvals.** The final draft arrives as a direct PDF link—one click to send for signing.\n- **One template → unlimited variations.** Every new template you drop in Drive is auto-listed with **zero workflow edits—**it scales effortlessly.\n- **100 % no-code.** Runs on n8n + Google Apps Script—no extra backend, self-hosted or cloud.\n\n---\n\n## 2 — How It Works (Detailed Flow)\n\n1. 📝 **Template Discovery**\n    \n    📂 The **TemplateList** node scans the Drive folder you specify via the `?mode=meta` endpoint and returns an `id / title / desc` list. The bot shows this list in chat.\n    \n2. 🎯 **Selection & Metadata Fetch**\n    \n    The user types a template name.\n    \n    🔍 **GetMetaData** opens the chosen Doc, extracts `META_JSON`, placeholders, and conditional blocks, then lists mandatory & optional fields.\n    \n3. 🗣 **Data-Collection Loop**\n    - The bot asks for every **placeholder** value.\n    - For each **conditional block** it asks 🟢 **Yes** / 🔴 **No**.\n        \n        Answers are accumulated in a `data` JSON object.\n        \n4. ✅ **Final Confirmation**\n    \n    The bot summarizes the inputs → when the user clicks **Confirm**, the *DocProcess* sub-workflow starts.\n    \n5. ⚙️ **DocProcess Sub-Workflow**\n    \n    \n    | 🔧 Step | Node | Task |\n    | --- | --- | --- |\n    | 1 | **User Choice Match Check** | Verifies name–ID match; throws if wrong |\n    | 2 | **GetMetaData (renew)** | Gets the latest placeholder list |\n    | 3 | **Validate JSON Format** | Checks for missing / unknown fields |\n    | 4 | **CopyTemplate** | Copies the Doc via Drive API |\n    | 5 | **FillDocument** | Apps Script fills placeholders & removes blocks |\n    | 6 | **Generate PDF Link** | Builds an `export?format=pdf` URL |\n6. 📎 **Delivery**\n    \n    The master agent sends **🔗 Download PDF** & **✏️ Open Google Doc** links.\n    \n7. 🚫 **Error Paths**\n    - `status:\"ERROR\", missing:[…]` → bot lists missing fields and re-asks.\n    - `unknown:[…]` → template list is outdated; rerun *TemplateList*.\n    - Any Apps Script error → the returned `message` is shown verbatim in chat.\n\n---\n\n## 3 — 🚀 Setup Steps (Full Checklist)\n\n> Goal: Get a flawless PDF on the first run.\n> \n> \n> Mentally **tick** the ☑️ in front of every line as you go.\n> \n\n### ☁️ A. Google Drive Preparation\n\n| Step | Do This | Watch Out For |\n| --- | --- | --- |\n| 1 | Create a `Templates/` folder → put every template Doc inside | Exactly **one** folder; **no** sub-folders |\n| 2 | Placeholders in every Doc are **`{{UPPER_CASE}}`** | No Turkish chars or spaces |\n| 3 | Wrap optional clauses with **`[[BLOCK_NAME:START]]…[[BLOCK_NAME:END]]`** | The `START` tag must have a **blank line above** |\n| 4 | Add a `META_JSON` block at the very end | Script deletes it automatically after fill |\n| 5 | Right-click Doc > **Details ▸ Description** = 1-line human description | Shown by the bot in the list |\n| 6 | Create a second `Generated/` folder (for copies) | Keeps Drive tidy |\n\n> 🔑 Folder ID (long alphanumerical) = <TEMPLATE_PARENT_ID>\n> \n> \n> We’ll paste this into the TemplateList node next.\n> \n\n[Simple sample template → Template Link](https://www.notion.so/Simple-sample-template-Template-Link-22b3f8a1e57f8070beacd034ba6f557f?pvs=21)\n\n---\n\n### 🛠 B. Import the Workflow into n8n\n\n```bash\nSettings ▸ Import Workflow ▸ DocAgent.json\n\n```\n\nIf nodes look **Broken** afterwards → no community-node problem; you only need to select credentials.\n\n---\n\n### 📑 C. Customize the TemplateList Node\n\n1. Open **Template List** node ⚙️ → replace\n    \n    `'%3CYOUR_PARENT_ID%3E' in parents`\n    \n    with the real **folder ID** in the **URL**.\n    \n2. Right-click node > **Execute Node**.\n3. Copy the entire JSON response.\n4. In the editor paste it into:\n    - **DocAgent** → *System Prompt* (top)\n    - **User Choice Match Check** → *System Prompt* (top)\n        \n        Save.\n        \n\n> ⚠️ Why manual? Caching the list saves LLM tokens. Whenever you add a template, rerun the node and update the prompts.\n> \n\n---\n\n### 🔗 D. Deploy the Apps Script\n\n| Step | Screen | Note |\n| --- | --- | --- |\n| 1 | Open Gist files **GetMetaData.gs** + **FillDocument.gs** → *File ▸ Make a copy* | Both files may live in one project |\n| 2 | *Project Settings* > enable **Google Docs API** ✔️ & **Google Drive API** ✔️ | Otherwise you’ll see 403 errors |\n| 3 | *Deploy ▸ New deployment ▸ Web app* |  |\n| • Execute as | **Me** |  |\n| • Who has access | **Anyone** |  |\n| 4 | On the consent screen allow scopes:• `…/auth/documents`• `…/auth/drive` | Click **Advanced › Go** if Google warns |\n| 5 | Copy the **Web App URL** (e.g. `https://script.google.com/macros/s/ABC123/exec`) | If this URL changes, update n8n |\n\n[Apps Script source code → Notion Link](https://www.notion.so/Apps-Script-source-code-Notion-Link-22b3f8a1e57f8015a280d90de16c031f?pvs=21)\n\n---\n\n### 🔧 E. Wire the Script URL in n8n\n\n| Node | Field | Action |\n| --- | --- | --- |\n| **GetMetaData** | *URL* | `<WEB_APP_URL>?mode=meta&id={{ $json[\"id\"] }}` |\n| **FillDocument** | *URL* | `<WEB_APP_URL>` |\n\n> 💡 Prefer using an .env file? Add GAS_WEBAPP_URL=… and reference it as {{ $env.GAS_WEBAPP_URL }}.\n> \n\n---\n\n### 🔐 F. Add Credentials\n\n- **Google Drive OAuth2** → *Drive API (v3) Full Access*\n- **Google Docs OAuth2** → same account\n- **LLM key** (OpenAI / Gemini)\n- (Optional) **Postgres Chat Memory** credential for the corresponding node\n\n---\n\n### 🧪 G. First Run (Smoke Test)\n\n1. Switch the workflow **Active**.\n2. In the chat panel type `/start`.\n3. Bot lists templates → pick one.\n4. Fill mandatory fields, optionally toggle blocks → **Confirm**.\n5. **🔗 Download PDF** link appears → ☑️ setup complete.\n\n---\n\n### ❌ H. Common Errors & Fixes\n\n| 🆘 Error | Likely Cause | Remedy |\n| --- | --- | --- |\n| `403: Apps Script permission denied` | Web app access set to *User* | Redeploy as **Anyone**, re-authorize scopes |\n| `placeholder validation failed` | Missing required field | Provide the listed values → rerun DocProcess |\n| `unknown placeholders: …` | Template vs. agent mismatch | Check placeholder spelling (UPPER_CASE ASCII) |\n| `Template ID not found` | Prompt list is old | Rerun **TemplateList** → update both prompts |\n| `Cannot find META_JSON` | No meta block / wrong tag | Add `[[META_JSON_START]] … [[META_JSON_END]]`, retry |\n\n---\n\n### ✅ Final Checklist\n\n- [ ]  Drive folder structure & template rules ready\n- [ ]  Workflow imported, folder ID set in node\n- [ ]  TemplateList output pasted into both prompts\n- [ ]  Apps Script deployed, URL set in nodes\n- [ ]  OAuth credentials & LLM key configured\n- [ ]  `/start` test passes, PDF link received\n\n---\n\n## 🙋‍♂️ Need Help with Customizations?\n\nReach out for consulting & support on LinkedIn: [**Özgür Karateke**](https://www.linkedin.com/in/%C3%B6zg%C3%BCr-karateke-130514147/)\n\n[Simple sample template → Template Link](https://www.notion.so/Simple-sample-template-Template-Link-22b3f8a1e57f8070beacd034ba6f557f?pvs=21)\n\n[Apps Script source code → Notion Link](https://www.notion.so/Apps-Script-source-code-Notion-Link-22b3f8a1e57f8015a280d90de16c031f?pvs=21)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "69000a74-eba7-41a8-8c93-635e8664a1ce",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-100, 660],
+			"parameters": {
+				"color": 4,
+				"width": 3640,
+				"height": 1040,
+				"content": "## DocProcess (Subworkflow)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d5f08f8a-d45c-4a6b-9223-b98aafe7b6a3",
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [80, 1020],
+			"parameters": {
+				"workflowInputs": {
+					"values": [
+						{
+							"name": "user_choice_name"
+						},
+						{
+							"name": "user_choice_id"
+						},
+						{
+							"name": "data",
+							"type": "object"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "709b08c4-7c8c-4d63-a8c2-3e8d96df40ce",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [660, 1020],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "a78bfdab-11cc-4ef1-8074-1fdcd6f14275",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.output.eslesme }}",
+							"rightValue": "true"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "2dd91c47-fefb-4715-a3ce-4a9f411d569d",
+			"name": "Google Gemini Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [1620, 1140],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.5-pro"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "eac6b3cd-eb34-476d-a500-71bce8d5c29a",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [440, 1240],
+			"parameters": {
+				"jsonSchemaExample": "{\n\t\"eslesme\": true,\n\t\"user_choice_name\": \"SATIŞ SÖZLEŞMESİ\",\n    \"user_choice_id\": \"<EXAMPLE_TEMPLATE_ID>\"\n}"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "76be9549-a482-496a-b11c-ddf8a958f39a",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [1320, 920],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": []
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "011d9a1a-3841-4fbd-84f6-99b4ad4eb782",
+			"name": "If1",
+			"type": "n8n-nodes-base.if",
+			"position": [2340, 920],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "91055448-6534-40ca-939b-dfbdf2974ab1",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $('Format Control').item.json.output.docId }}",
+							"rightValue": "={{ $json.id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "1f537d7f-d6d1-463b-999c-73fcba2b5024",
+			"name": "Other Errors",
+			"type": "n8n-nodes-base.set",
+			"position": [3220, 1420],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "cb4572fd-8cc7-4e85-860b-aabbb6b1038d",
+							"name": "Belge oluşturulamama sebebi:",
+							"type": "string",
+							"value": "=Please consult the user to resolve the following error.\n{{ $('FillDocument').item.json.message }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "b0790f5f-256e-4559-926d-9ab45f1cad96",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"position": [3000, 1120],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "Template Technical Error",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "c35889e4-f027-49b9-9b59-69cf996f0e9c",
+										"operator": {
+											"type": "array",
+											"operation": "notEmpty",
+											"singleValue": true
+										},
+										"leftValue": "={{ $('FillDocument').item.json.unknown }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Incomplete Information Error",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "08a43597-51af-4632-82c5-ff54505bae13",
+										"operator": {
+											"type": "array",
+											"operation": "notEmpty",
+											"singleValue": true
+										},
+										"leftValue": "={{ $('FillDocument').item.json.missing }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Other Errors",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "b42acb05-8237-46c2-80f4-27cfb1232710",
+										"operator": {
+											"type": "string",
+											"operation": "notEquals"
+										},
+										"leftValue": "={{ $('FillDocument').item.json.message }}",
+										"rightValue": " Placeholder validation failed"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "26c8978f-4f18-4026-994a-4c3b2b0dfeed",
+			"name": "CopyTemplate",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [2120, 920],
+			"parameters": {
+				"name": "={{ $now.toFormat('dd.MM.yyyy') }} tarihli {{ $('GetMetaData2').item.json.metadata.title }} belgesi",
+				"fileId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $json.docId }}"
+				},
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<YOUR_FOLDER_ID>"
+				},
+				"operation": "copy",
+				"sameFolder": false
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "9ff9e7e9-1455-4d0b-8191-79b0c74b363b",
+			"name": "FillDocument",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2560, 1020],
+			"parameters": {
+				"url": "https://script.google.com/macros/s/<YOUR_DEPLOY_ID>/exec",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "docId",
+							"value": "={{ $json.id }}"
+						},
+						{
+							"name": "data",
+							"value": "={{ $('Formatting Correction').item.json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ce49d769-0a53-40d0-b05c-25b071994aff",
+			"name": "Google Gemini Chat Model2",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [320, 1240],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.5-pro"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cec0fdb3-0d86-47d5-9393-7718f20c5cf1",
+			"name": "User Choice Matching Error",
+			"type": "n8n-nodes-base.set",
+			"position": [880, 1120],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0bd79b8c-66b5-4a4e-9888-6a0af9276061",
+							"name": "pdf_id",
+							"type": "string",
+							"value": "The template name selected by the user does not match the template matched by the agent. Please check if the template name selected by the user matches its id."
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "bbb55fdb-6f7c-404c-8f00-c5d9da4e4803",
+			"name": "User Choice Match Correct",
+			"type": "n8n-nodes-base.set",
+			"position": [880, 920],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "0a616fd3-6227-4902-9d1d-1ca09f14412e",
+							"name": "output.user_choice_id",
+							"type": "string",
+							"value": "={{ $json.output.user_choice_id }}"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "e47a0291-ffa1-4cf5-850d-f882849eb917",
+			"name": "User Choice Match Check",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [300, 1020],
+			"parameters": {
+				"text": "=The reference point is the document name chosen by the user.\n\n<document_name_and_id>\n{{ $json.user_choice_name }}\n{{ $json.user_choice_id }}\n</document_name>\n\n<guide_template_list>\n{{ YOUR_MANUAL_TO_ADD_TEMPLATE_LIST }}\n</guide_template_list>\n\nA match of id information is given according to the document name. Examine this match according to the guide list given to you.\n\nIf match is correct\n\n{\n\"match\": true,\n\"user_choice_name\":\"{{ $json.user_choice_name }}\" ,\n\"user_choice_id\": {{ $json.user_choice_id }}\n}\n\nIf match is incorrect:\n{\n\"match\": false,\n\"user_choice_name\":\"{{ $json.user_choice_name }}\" ,\n\"user_choice_id\": {{ $json.user_choice_id }},\n\"correct_id\":\"WRITE THE ID YOU NEED HERE\"\n}",
+				"batching": {},
+				"messages": {
+					"messageValues": [
+						{
+							"message": "Cevaplarını JSON formatında ver."
+						}
+					]
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "6c13dece-f397-4d12-b60f-64890848889e",
+			"name": "GetMetaData2",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1100, 920],
+			"parameters": {
+				"url": "https://script.google.com/macros/s/<YOUR_DEPLOY_ID>/exec",
+				"options": {},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "mode",
+							"value": "meta"
+						},
+						{
+							"name": "id",
+							"value": "={{ $json.output.user_choice_id }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "accept",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "a9303653-7510-4fb7-b16c-14e49e7de89b",
+			"name": "Format Control",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [1540, 920],
+			"parameters": {
+				"text": "=Place the actual user answers according to the rules using the metadata information of the document given to you.\n\nMatch only the original metadata placeholder and conditional flags with the answers given by the user. DO NOT change the placeholder and conditional flag texts in the metadata.\n\n<metadata>\n{{ $json.metadata.toJsonString() }}\n</metadata>\n\n<user_answers>\n\n{{ $('When Executed by Another Workflow').item.json.data.toJsonString() }}\n</user_answers>\n\nFormat example of the output you should give:\n\n{\n\"docId\": \"<EXAMPLE_TEMPLATE_ID>\",\n\"data\": {\n// — Static (mandatory) placeholders —\n\"SELLER_NAME\": \"Özgür Mözgür\",\n\"BUYER_NAME\": \"Ali Veli\",\n\"PRODUCT_NAME\": \"Computer\",\n\"PRICE\": \"10000\",\n\"DELIVER_DATE\": \"12.06.2025\",\n\"TODAY_DATE\": \"02.07.2025\",\n\n// — Conditional blocks in the “blocks” object —\n\"blocks\": {\n\"MADATE_INSTALLMENT\": {\n\"include\": false\n// INSTALLMENT_PLAN is not sent because include:false\n},\n\"GUARANTEE\": {\n\"include\": true,\n\"GUARANTEE_PERIOD\": \"24\"\n}\n}\n}\n}",
+				"batching": {},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "ad6cfa0a-d879-465c-8fec-26f3bc281f4c",
+			"name": "Formatting Correction",
+			"type": "n8n-nodes-base.code",
+			"position": [1900, 920],
+			"parameters": {
+				"jsCode": "// 1) We get the raw text with $input.first() (direct JS instead of Expression)\n// $input provides access to each item as n8n's global variable.\nconst raw = $input.first().json.text;\n\n// 2) Regex to catch ```json … ``` block\nconst match = raw.match(/```json\\s*([\\s\\S]*?)```/i);\n\n// 3) Extract block or use full text\nconst jsonString = match ? match[1] : raw;\n\n// 4) Trim + parse\nconst clean = jsonString.trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(clean);\n} catch (e) {\n  throw new Error(`JSON parse hatası: ${e.message}\\n\\nRaw içerik:\\n${clean}`);\n}\n\n// 5) Return a single item output\nreturn [{ json: parsed }];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "faeaad9d-e23c-429b-bff9-bb277dcf677f",
+			"name": "Cop. Document ID Matching Error",
+			"type": "n8n-nodes-base.set",
+			"position": [2560, 820],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "4dec2470-f7cb-4b0a-92a8-31cf88581921",
+							"name": "Belge oluşturulamama sebebi:",
+							"type": "string",
+							"value": "=The document id to be filled with the copied document does not match"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "2dba1518-f4ce-4d85-95a3-40245b3226bc",
+			"name": "if",
+			"type": "n8n-nodes-base.if",
+			"position": [2780, 1020],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "fc031e6c-6bc6-445b-9cd5-f8e749156f88",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.status }}",
+							"rightValue": "OK"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "ca0de06e-d55a-4243-94ff-55cd742c28a8",
+			"name": "Generate Download Link",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3000, 820],
+			"parameters": {
+				"url": "=https://www.googleapis.com/drive/v3/files/{{ $('CopyTemplate').item.json.id }}?fields=webContentLink,exportLinks ",
+				"options": {},
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "googleDriveOAuth2Api"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "9deae9c7-8b62-475d-bff8-b04295df2e35",
+			"name": "Download Link Format",
+			"type": "n8n-nodes-base.set",
+			"position": [3220, 820],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "9af065e4-ec39-480b-b577-99351ed48228",
+							"name": "download_link",
+							"type": "string",
+							"value": "={{ $json.exportLinks['application/pdf'] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "3a2bbdb7-a69c-4b5f-8050-b75cfaed6d2e",
+			"name": "Incomplete Information Error",
+			"type": "n8n-nodes-base.set",
+			"position": [3220, 1020],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "4dec2470-f7cb-4b0a-92a8-31cf88581921",
+							"name": "Belge oluşturulamama sebebi:",
+							"type": "string",
+							"value": "={{ $('FillDocument').item.json.status }}\nError description:\n{{ $('FillDocument').item.json.message }}\n\n\nLütfen buradaki eksik belgeleri user'dan isteyiniz. Tüm bilgileri tamamladıktan sonra tekrar DocProcess aracını çağırabilirsiniz. {{ $('FillDocument').item.json.missing.toJsonString() }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "132e6eb0-6630-4cd2-b490-b5033bf1782a",
+			"name": "Template Technical Error",
+			"type": "n8n-nodes-base.set",
+			"position": [3220, 1220],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "cb4572fd-8cc7-4e85-860b-aabbb6b1038d",
+							"name": "Belge oluşturulamama sebebi:",
+							"type": "string",
+							"value": "=This is a technical error, you can send the following text to the user: \"Please consult your institution or organization for this issue. The draft that the document you requested was created from is incorrect.\""
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "8d310631-7990-4ed7-b18a-2c351cee1768",
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "User Choice Match Correct",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "User Choice Matching Error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"if": {
+			"main": [
+				[
+					{
+						"node": "Generate Download Link",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If1": {
+			"main": [
+				[
+					{
+						"node": "Cop. Document ID Matching Error",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "FillDocument",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Template Technical Error",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Incomplete Information Error",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Other Errors",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"DocProcess": {
+			"ai_tool": [
+				[
+					{
+						"node": "DocAgent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Format Control",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"GetMetaData": {
+			"ai_tool": [
+				[
+					{
+						"node": "DocAgent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"CopyTemplate": {
+			"main": [
+				[
+					{
+						"node": "If1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"FillDocument": {
+			"main": [
+				[
+					{
+						"node": "if",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"GetMetaData2": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format Control": {
+			"main": [
+				[
+					{
+						"node": "Formatting Correction",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Postgres Chat Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "DocAgent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Formatting Correction": {
+			"main": [
+				[
+					{
+						"node": "CopyTemplate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Download Link": {
+			"main": [
+				[
+					{
+						"node": "Download Link Format",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"User Choice Match Check": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "DocAgent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "User Choice Match Check",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Format Control",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model2": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "User Choice Match Check",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"User Choice Match Correct": {
+			"main": [
+				[
+					{
+						"node": "GetMetaData2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "DocAgent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "User Choice Match Check",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

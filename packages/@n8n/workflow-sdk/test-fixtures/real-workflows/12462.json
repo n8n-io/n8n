@@ -1,0 +1,4801 @@
+{
+	"id": "ZtcCMj69WUhc1BHs",
+	"meta": {
+		"instanceId": "de822f81f3a2367cef7d9549771a77783236bc9596481be2ae65c05fbcc4b4fd"
+	},
+	"name": "Generate product images with NanoBanana Pro to Veo videos and Blotato - vide 2 ok",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "79e2d979-dfdf-423c-a120-640fa7a9ec64",
+			"name": "Set Image URL",
+			"type": "n8n-nodes-base.set",
+			"position": [496, 1664],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "image_url",
+							"type": "string",
+							"value": "={{ $json.image_contactsheet }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "7b222802-5e00-45ee-936f-3af163a3caac",
+			"name": "Download Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [704, 1664],
+			"parameters": {
+				"url": "={{ $json.image_url }}",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file"
+						}
+					}
+				}
+			},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "475a5f1d-8050-48c3-9a55-03de1d32630a",
+			"name": "Crop Top Left",
+			"type": "n8n-nodes-base.editImage",
+			"position": [1456, 1184],
+			"parameters": {
+				"width": "={{ Math.floor($json.size.width / 3) }}",
+				"height": "={{ Math.floor($json.size.height / 2) }}",
+				"options": {},
+				"operation": "crop"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9c3b49b8-3d1b-42c3-802c-2c9997be6321",
+			"name": "Crop Top Center",
+			"type": "n8n-nodes-base.editImage",
+			"position": [1456, 1376],
+			"parameters": {
+				"width": "={{ Math.floor($json.size.width / 3) }}\n",
+				"height": "={{ Math.floor($json.size.height / 2) }}\n",
+				"options": {},
+				"operation": "crop",
+				"positionX": "={{ Math.floor($json.size.width / 3) }}\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "538e6079-1b0a-4ad2-9184-bb5e2ddd0002",
+			"name": "Crop Top Right",
+			"type": "n8n-nodes-base.editImage",
+			"position": [1456, 1568],
+			"parameters": {
+				"width": "={{ Math.floor($json.size.width / 3) }}\n",
+				"height": "={{ Math.floor($json.size.height / 2) }}\n",
+				"options": {},
+				"operation": "crop",
+				"positionX": "={{ Math.floor($json.size.width * 2 / 3) }}\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f7e83e97-b6d8-4147-b57f-8d4eeaf4d0ff",
+			"name": "Crop Bottom Left",
+			"type": "n8n-nodes-base.editImage",
+			"position": [1456, 1760],
+			"parameters": {
+				"width": "={{ Math.floor($json.size.width / 3) }}\n",
+				"height": "={{ Math.floor($json.size.height / 2) }}\n",
+				"options": {},
+				"operation": "crop",
+				"positionY": "={{ Math.floor($json.size.height / 2) }}\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6f21457a-f703-4cb9-a15a-71fc4c05bb7a",
+			"name": "Crop Bottom Center",
+			"type": "n8n-nodes-base.editImage",
+			"position": [1456, 1952],
+			"parameters": {
+				"width": "={{ Math.floor($json.size.width / 3) }}\n",
+				"height": "={{ Math.floor($json.size.height / 2) }}\n",
+				"options": {},
+				"operation": "crop",
+				"positionX": "={{ Math.floor($json.size.width / 3) }}\n",
+				"positionY": "={{ Math.floor($json.size.height / 2) }}\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6230b210-3637-4c9d-ba62-1d70ce6aa977",
+			"name": "Crop Bottom Right",
+			"type": "n8n-nodes-base.editImage",
+			"position": [1456, 2144],
+			"parameters": {
+				"width": "={{ Math.floor($json.size.width / 3) }}\n",
+				"height": "={{ Math.floor($json.size.height / 2) }}\n",
+				"options": {},
+				"operation": "crop",
+				"positionX": "={{ Math.floor($json.size.width * 2 / 3) }}\n",
+				"positionY": "={{ Math.floor($json.size.height / 2) }}\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d6b15a51-e5f7-460f-a5ec-3e96ae089ab6",
+			"name": "Upload to Google Drive",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1744, 1184],
+			"parameters": {
+				"name": "={{ \n  \"image_top_left_\" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace(\"T\", \"_\")\n    .replace(/:/g, \"-\")\n}}.png",
+				"driveId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "odf7JAwyqVFVZBhQ",
+					"name": "Google Drive account"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "5e713b2d-6756-43c2-8c55-7dfa26797ea1",
+			"name": "Edit Image",
+			"type": "n8n-nodes-base.editImage",
+			"position": [1008, 1664],
+			"parameters": {
+				"operation": "information"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1feb8bed-9156-460a-91f0-40e0968fa77b",
+			"name": "Upload to Google Drive1",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1744, 1376],
+			"parameters": {
+				"name": "={{ \n  \"image_top_center_\" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace(\"T\", \"_\")\n    .replace(/:/g, \"-\")\n}}.png",
+				"driveId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "odf7JAwyqVFVZBhQ",
+					"name": "Google Drive account"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "fc3cc7b3-9f4a-44a5-9dba-00e115b750d9",
+			"name": "Upload to Google Drive2",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1744, 1568],
+			"parameters": {
+				"name": "={{ \n  \"image_top_right_\" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace(\"T\", \"_\")\n    .replace(/:/g, \"-\")\n}}.png",
+				"driveId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>"
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "odf7JAwyqVFVZBhQ",
+					"name": "Google Drive account"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "314f4ca9-10a2-4110-8b4c-8ef426db8ca8",
+			"name": "Upload to Google Drive3",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1744, 1760],
+			"parameters": {
+				"name": "={{ \n  \"image_bottom_left_\" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace(\"T\", \"_\")\n    .replace(/:/g, \"-\")\n}}.png",
+				"driveId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "odf7JAwyqVFVZBhQ",
+					"name": "Google Drive account"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "bde757be-c869-42ab-b4a5-ffc0b58f518f",
+			"name": "Upload to Google Drive4",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1744, 1952],
+			"parameters": {
+				"name": "={{ \n  \"image_bottom_center_\" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace(\"T\", \"_\")\n    .replace(/:/g, \"-\")\n}}.png",
+				"driveId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "odf7JAwyqVFVZBhQ",
+					"name": "Google Drive account"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "3e24fa2c-0e84-49f4-acd8-8b40ce8d56d5",
+			"name": "Upload to Google Drive5",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1744, 2144],
+			"parameters": {
+				"name": "={{ \n  \"image_bottom_right_\" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace(\"T\", \"_\")\n    .replace(/:/g, \"-\")\n}}.png",
+				"driveId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "odf7JAwyqVFVZBhQ",
+					"name": "Google Drive account"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "e218c4bf-7cc4-4a24-b787-d99ad4961f49",
+			"name": "Update url image_top_left",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1952, 1184],
+			"parameters": {
+				"columns": {
+					"value": {
+						"new_image_1": "={{ $json.webContentLink }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "37cca6f3-f484-4cf6-9cfa-fbe3880d26da",
+			"name": "Update url image_top_center",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1952, 1376],
+			"parameters": {
+				"columns": {
+					"value": {
+						"new_image_2": "={{ $json.webContentLink }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "925c029f-6a93-4c9c-bf04-4596dea35842",
+			"name": "Update url image_top_right",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1952, 1568],
+			"parameters": {
+				"columns": {
+					"value": {
+						"new_image_3": "={{ $json.webContentLink }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "692d6144-0031-464e-90af-d2701cbb58b6",
+			"name": "Update url image_bottom_left",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1952, 1760],
+			"parameters": {
+				"columns": {
+					"value": {
+						"new_image_4": "={{ $json.webContentLink }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "3fdea09a-5260-4342-a878-7bd99594933f",
+			"name": "Update url image_bottom_center",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1952, 1952],
+			"parameters": {
+				"columns": {
+					"value": {
+						"new_image_5": "={{ $json.webContentLink }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "4bff23d7-e944-4aff-95bd-b1911aa535fc",
+			"name": "Update url image_bottom_right",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1952, 2144],
+			"parameters": {
+				"columns": {
+					"value": {
+						"new_image_6": "={{ $json.webContentLink }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "067f6811-230d-4723-ac2d-7575f9898241",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [80, 1664],
+			"parameters": {
+				"rule": {
+					"interval": [{}]
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "3e0483ab-180c-4d45-a05f-2dc852ecce66",
+			"name": "Merge1",
+			"type": "n8n-nodes-base.merge",
+			"position": [2240, 1264],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "d39d26a4-3103-429b-aab5-0922cfdefa2f",
+			"name": "Veo Generation",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2528, 1264],
+			"parameters": {
+				"url": "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video",
+				"method": "POST",
+				"options": {
+					"timeout": 600000,
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"jsonBody": "={\n  \"prompt\": \"The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.\",\n  \"first_frame_url\": \"{{ $json.new_image_1 }}\",\n  \"last_frame_url\": \"{{ $json.new_image_2 }}\",\n  \"aspect_ratio\": \"auto\",\n  \"duration\": \"4s\",\n  \"resolution\": \"720p\",\n  \"generate_audio\": false,\n  \"auto_fix\": true\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "=<__PLACEHOLDER_VALUE__fal Key__>"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "3e558904-7e9f-4c6b-b3b0-397aa1e55025",
+			"name": "Merge2",
+			"type": "n8n-nodes-base.merge",
+			"position": [2240, 1472],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "bfe0e601-96bd-48e0-ae49-9079470eda73",
+			"name": "Veo Generation1",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2528, 1472],
+			"parameters": {
+				"url": "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video",
+				"method": "POST",
+				"options": {
+					"timeout": 600000,
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"jsonBody": "={\n  \"prompt\": \"The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement. Audio: soft cinematic ambient music, very subtle, calm pads, no vocals, low volume. Add gentle room tone.\",\n  \"first_frame_url\": \"{{ $json.new_image_2 }}\",\n  \"last_frame_url\": \"{{ $json.new_image_3 }}\",\n  \"aspect_ratio\": \"auto\",\n  \"duration\": \"4s\",\n  \"resolution\": \"720p\",\n  \"generate_audio\": false,\n  \"auto_fix\": true\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "=<__PLACEHOLDER_VALUE__fal Key__>"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "70ecd07d-93fc-4204-b9fe-78ca46134147",
+			"name": "Merge3",
+			"type": "n8n-nodes-base.merge",
+			"position": [2240, 1664],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "9c72142f-e781-418c-9479-7e2445e4ef8c",
+			"name": "Veo Generation2",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2528, 1664],
+			"parameters": {
+				"url": "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video",
+				"method": "POST",
+				"options": {
+					"timeout": 600000,
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"jsonBody": "={\n  \"prompt\": \"The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.\",\n  \"first_frame_url\": \"{{ $json.new_image_3 }}\",\n  \"last_frame_url\": \"{{ $json.new_image_4 }}\",\n  \"aspect_ratio\": \"auto\",\n  \"duration\": \"4s\",\n  \"resolution\": \"720p\",\n  \"generate_audio\": false,\n  \"auto_fix\": true\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "=<__PLACEHOLDER_VALUE__fal Key__>"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "18bcc8ec-85f3-4f1b-b53e-1ad1005a01f8",
+			"name": "Merge4",
+			"type": "n8n-nodes-base.merge",
+			"position": [2240, 1872],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "ce7d1299-3d78-41d7-8883-e433aecdd710",
+			"name": "Veo Generation3",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2528, 1872],
+			"parameters": {
+				"url": "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video",
+				"method": "POST",
+				"options": {
+					"timeout": 600000,
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"jsonBody": "={\n  \"prompt\": \"The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.\",\n  \"first_frame_url\": \"{{ $json.new_image_4 }}\",\n  \"last_frame_url\": \"{{ $json.new_image_5 }}\",\n  \"aspect_ratio\": \"auto\",\n  \"duration\": \"4s\",\n  \"resolution\": \"720p\",\n  \"generate_audio\": false,\n  \"auto_fix\": true\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "=<__PLACEHOLDER_VALUE__fal Key__>"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "fef23731-0f15-4680-915c-13228b23148e",
+			"name": "Merge5",
+			"type": "n8n-nodes-base.merge",
+			"position": [2240, 2080],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "87840840-ac7e-4877-b376-c7211793f427",
+			"name": "Veo Generation4",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2528, 2080],
+			"parameters": {
+				"url": "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video",
+				"method": "POST",
+				"options": {
+					"timeout": 600000,
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"jsonBody": "={\n  \"prompt\": \"The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.\",\n  \"first_frame_url\": \"{{ $json.new_image_5 }}\",\n  \"last_frame_url\": \"{{ $json.new_image_6 }}\",\n  \"aspect_ratio\": \"auto\",\n  \"duration\": \"4s\",\n  \"resolution\": \"720p\",\n  \"generate_audio\": false,\n  \"auto_fix\": true\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "=<__PLACEHOLDER_VALUE__fal Key__>"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "7d98612b-7643-46b4-abff-8e2f94f1640b",
+			"name": "Update video 2",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [3072, 1472],
+			"parameters": {
+				"columns": {
+					"value": {
+						"video_2": "={{ $json.video.url }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_2",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "video_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "6a3e34fe-2697-4175-8bb9-6f3e93f7e6d4",
+			"name": "Update video 5",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [3072, 2080],
+			"parameters": {
+				"columns": {
+					"value": {
+						"video_5": "={{ $json.video.url }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_5",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "video_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "0ade2e46-7157-4901-907f-2e575f50f1b0",
+			"name": "Update video 4",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [3072, 1872],
+			"parameters": {
+				"columns": {
+					"value": {
+						"video_4": "={{ $json.video.url }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_4",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "video_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "7e15685d-fdb7-4bec-a5f6-ccb95f4e81c2",
+			"name": "Update video 3",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [3072, 1664],
+			"parameters": {
+				"columns": {
+					"value": {
+						"video_3": "={{ $json.video.url }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_3",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "video_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "3393dba0-470a-4997-a0e7-91649816e116",
+			"name": "Update video 1",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [3072, 1264],
+			"parameters": {
+				"columns": {
+					"value": {
+						"video_1": "={{ $json.video.url }}",
+						"image_contactsheet": "={{ $('Set Image URL').first().json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_1",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "video_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "2b78a81c-37d0-4872-b178-909a5c3362d2",
+			"name": "Wait: Merge Process",
+			"type": "n8n-nodes-base.wait",
+			"position": [3616, 1920],
+			"webhookId": "65f9a846-4db7-40a6-ad22-6bc693d3ad56",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 3
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "32087f35-e7e6-4e17-8d22-db4dfc661679",
+			"name": "Merge 3 Videos",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3616, 1664],
+			"parameters": {
+				"url": "https://fal.run/fal-ai/ffmpeg-api/merge-videos",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"video_urls\": [\n    \"{{ $json.video_1 }}\",\n    \"{{ $json.video_2 }}\",\n    \"{{ $json.video_3 }}\",\n    \"{{ $json.video_4 }}\",\n    \"{{ $json.video_5 }}\"\n  ],\n  \"resolution\": \"landscape_16_9\",\n  \"output\": {\n    \"format\": \"mp4\"\n  }\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "<__PLACEHOLDER_VALUE__fal Key__>"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "67c7c244-e7e8-4d56-919e-e98d95a09d1b",
+			"name": "Update URL Final video",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [3616, 2144],
+			"parameters": {
+				"columns": {
+					"value": {
+						"status": "done",
+						"Final video": "={{ $json.video.url }}",
+						"image_contactsheet": "={{ $('Set Image URL').item.json.image_url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "new_image_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "new_image_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_4",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_4",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_5",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "video_6",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "video_6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Final video",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Final video",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_contactsheet"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "a26bca08-e037-495c-af30-b56e3609796a",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [2816, 1264],
+			"webhookId": "e7c39fae-d575-4f5f-ae37-d35c0df671af",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 3
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "dc3cb839-439f-4080-9f0a-431fd3666806",
+			"name": "Wait1",
+			"type": "n8n-nodes-base.wait",
+			"position": [2816, 1472],
+			"webhookId": "261efe5f-f8c2-4654-8915-65204ee04bb3",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 3
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "ce1e2ed5-b645-4df8-bcbd-f6680d5f314f",
+			"name": "Wait2",
+			"type": "n8n-nodes-base.wait",
+			"position": [2816, 1664],
+			"webhookId": "9edb60e6-8778-44ee-b6f9-b3fc88297ca0",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 3
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "8cb1d23d-808b-4e6e-897d-66ddde03cf5b",
+			"name": "Wait3",
+			"type": "n8n-nodes-base.wait",
+			"position": [2816, 1872],
+			"webhookId": "3faf8fcd-e668-4988-8d22-badea3fadc6a",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 3
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "1bba7457-9f83-4c8b-a3c2-35e4d499dc7c",
+			"name": "Wait4",
+			"type": "n8n-nodes-base.wait",
+			"position": [2816, 2080],
+			"webhookId": "dd4cdf11-d889-4da3-ba7e-8fa9e20f3f2c",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 3
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "a27f72dd-b969-42ac-b0cd-4a54dc44f28b",
+			"name": "Merge6",
+			"type": "n8n-nodes-base.merge",
+			"position": [3408, 1616],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition",
+				"numberInputs": 5
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "3c25a229-96d3-4520-bea9-f2e812bb7c82",
+			"name": "Search new image",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [288, 1664],
+			"parameters": {
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "",
+					"cachedResultUrl": "",
+					"cachedResultName": ""
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "21de713e-b642-41f4-ba91-c5809241fefd",
+			"name": "Upload Video to BLOTATO",
+			"type": "@blotato/n8n-nodes-blotato.blotato",
+			"position": [3856, 2144],
+			"parameters": {
+				"mediaUrl": "={{ $json['Final video'] }}",
+				"resource": "media"
+			},
+			"credentials": {
+				"blotatoApi": {
+					"id": "wozsYJYLfCZO37j8",
+					"name": "Blotato account"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "674e0352-e69e-496b-9b2f-5f47ae968740",
+			"name": "Youtube",
+			"type": "@blotato/n8n-nodes-blotato.blotato",
+			"position": [4112, 2144],
+			"parameters": {
+				"options": {},
+				"platform": "youtube",
+				"accountId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "8047",
+					"cachedResultUrl": "https://backend.blotato.com/v2/accounts/8047",
+					"cachedResultName": "DR FIRASS (Dr. Firas)"
+				},
+				"postContentText": "My new vidéo",
+				"postContentMediaUrls": "={{ $json.url }}",
+				"postCreateYoutubeOptionTitle": "My new vidéo",
+				"postCreateYoutubeOptionPrivacyStatus": "private",
+				"postCreateYoutubeOptionShouldNotifySubscribers": false
+			},
+			"credentials": {
+				"blotatoApi": {
+					"id": "wozsYJYLfCZO37j8",
+					"name": "Blotato account"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "f30603de-6725-4837-8d75-90bad02a8792",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [0, 0],
+			"parameters": {
+				"width": 784,
+				"height": 1104,
+				"content": "# Setup & Configuration Guide\n\n## Workflow Purpose\nThis workflow automates the creation of **AI-generated product images and videos**, starting from product images and ending with **automatic video publishing** on social platforms.\n\n---\n\n## Required Services & Credentials\n\n### 1. NanoBanana Pro (Product Image Generation)\n- API endpoint:  \n  👉 https://fal.ai/models/fal-ai/nano-banana-pro/edit/api\n- Create an account on **fal.ai**\n- Generate your API key\n- Add credentials in n8n: **HTTP Request / Bearer Token**\n- Used to:\n  - Generate high-quality product images\n  - Create marketing-ready visuals\n  - Apply Contact Sheet Prompting for visual variations\n- Recommended for high consistency and realism\n\n---\n\n### 2. Veo 3.1 (Video Generation)\n- API endpoint:  \n  👉 https://fal.ai/models/fal-ai/veo3.1/first-last-frame-to-video\n- Get access via **fal.ai**\n- Add credentials in n8n: **HTTP Request / Bearer Token**\n- Used to:\n  - Convert images into short AI-generated videos\n  - Control camera motion and pacing via prompts\n- Recommended aspect ratio: **16:9**\n\n---\n\n### 3. BLOTATO (Video Publishing)\n- Sign up at [BLOTATO](https://blotato.com/?ref=firas)\n- Get API credentials\n- Add credentials in n8n: **Blotato API**\n- Credential name: `Blotato account`\n- Connect your social accounts (YouTube, TikTok, Instagram, etc.)\n- Used to automatically publish the final videos"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e341a569-50d2-442e-9c78-25937d9b3683",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [0, 1168],
+			"parameters": {
+				"color": 7,
+				"width": 4336,
+				"height": 1168,
+				"content": "# Step 3 – Video Creation & Publishing (Veo 3.1 + Blotato)\n\n\n\n#  📘 Documentation  \n- Access detailed setup instructions, API config, platform connection guides, and workflow customization tips:\n📎 [Open the full documentation on Notion](https://automatisation.notion.site/Generate-product-images-with-NanoBanana-Pro-to-Veo-videos-and-Blotato-2dc3d6550fd980dc81adea10a5df6b28?source=copy_link)\n\n\n-  Credential name: `Google Sheets account` \n📎 **[Copy my Google Sheets ](https://docs.google.com/spreadsheets/d/130hio-ntnPCZbGzmp1R3ROHXSpKQBUC0I_iM0uQPPi4/copy)** \n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b74dafb4-950e-45b1-8a3e-731f10366fd8",
+			"name": "Form Trigger (3 images)",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [944, 192],
+			"webhookId": "63d0c466-8b99-4104-aa7c-88f0893cbdcf",
+			"parameters": {
+				"options": {
+					"buttonLabel": "Analyze Images",
+					"appendAttribution": false
+				},
+				"formTitle": "Upload 3 Images for Analysis",
+				"formFields": {
+					"values": [
+						{
+							"fieldName": "image1",
+							"fieldType": "file",
+							"fieldLabel": "Image 1",
+							"multipleFiles": false,
+							"requiredField": true,
+							"acceptFileTypes": ".jpg, .jpeg, .png, .gif, .bmp, .webp"
+						},
+						{
+							"fieldName": "image2",
+							"fieldType": "file",
+							"fieldLabel": "Image 2",
+							"multipleFiles": false,
+							"requiredField": true,
+							"acceptFileTypes": ".jpg, .jpeg, .png, .gif, .bmp, .webp"
+						},
+						{
+							"fieldName": "image3",
+							"fieldType": "file",
+							"fieldLabel": "Image 3",
+							"multipleFiles": false,
+							"requiredField": true,
+							"acceptFileTypes": ".jpg, .jpeg, .png, .gif, .bmp, .webp"
+						},
+						{
+							"fieldName": "notes",
+							"fieldLabel": "Optional Notes"
+						}
+					]
+				},
+				"formDescription": "Please upload exactly 3 images for AI-powered analysis"
+			},
+			"typeVersion": 2.4
+		},
+		{
+			"id": "216db0b6-25a9-40ed-bb74-fedee7d07534",
+			"name": "Validate inputs",
+			"type": "n8n-nodes-base.if",
+			"position": [1168, 192],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"leftValue": "",
+						"caseSensitive": false,
+						"typeValidation": "loose"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "id-1",
+							"operator": {
+								"type": "object",
+								"operation": "exists"
+							},
+							"leftValue": "={{ $binary.image1 }}"
+						},
+						{
+							"id": "id-2",
+							"operator": {
+								"type": "object",
+								"operation": "exists"
+							},
+							"leftValue": "={{ $binary.image2 }}"
+						},
+						{
+							"id": "id-3",
+							"operator": {
+								"type": "object",
+								"operation": "exists"
+							},
+							"leftValue": "={{ $binary.image3 }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "c7f6efc7-5256-41ae-bbb0-947af71405b1",
+			"name": "Error Response - Missing Files",
+			"type": "n8n-nodes-base.set",
+			"position": [1392, 96],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "error",
+							"type": "string",
+							"value": "Please upload 3 images (image1, image2, image3)."
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "ba17091e-82fe-4f25-9859-314090b0dcf2",
+			"name": "Normalize binary names",
+			"type": "n8n-nodes-base.set",
+			"position": [1392, 288],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "image0",
+							"type": "object",
+							"value": "={{ $binary.image1 }}"
+						},
+						{
+							"id": "id-2",
+							"name": "image1",
+							"type": "object",
+							"value": "={{ $binary.image2 }}"
+						},
+						{
+							"id": "id-3",
+							"name": "image2",
+							"type": "object",
+							"value": "={{ $binary.image3 }}"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "2a4e4164-abef-4c0a-80a0-d66dc8c49e86",
+			"name": "Split images",
+			"type": "n8n-nodes-base.code",
+			"position": [1616, 288],
+			"parameters": {
+				"jsCode": "const item = items[0];\n\nif (\n  !item.binary ||\n  !item.binary.image1 ||\n  !item.binary.image2 ||\n  !item.binary.image3\n) {\n  throw new Error('Missing binary images (expected image1, image2, image3)');\n}\n\nreturn [\n  {\n    json: { imageNumber: 1 },\n    binary: { image: item.binary.image1 }\n  },\n  {\n    json: { imageNumber: 2 },\n    binary: { image: item.binary.image2 }\n  },\n  {\n    json: { imageNumber: 3 },\n    binary: { image: item.binary.image3 }\n  }\n];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "37469722-d9c9-4652-84be-4d082443e8e6",
+			"name": "OpenAI Vision – Image 1",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [1968, 496],
+			"parameters": {
+				"text": "Describe the image in detail. Include: objects, people, setting, actions, colors, and any text visible.",
+				"modelId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o"
+				},
+				"options": {},
+				"resource": "image",
+				"inputType": "base64",
+				"operation": "analyze",
+				"binaryPropertyName": "image"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "HUbsD20wv3CFr7gN",
+					"name": "OpenAi account"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "8b201b71-14d9-4e50-8b11-4dc2321aa5f3",
+			"name": "Aggregate descriptions",
+			"type": "n8n-nodes-base.code",
+			"position": [2496, 288],
+			"parameters": {
+				"jsCode": "function extractOpenAIText(it) {\n  // Après Merge by position, OpenAI est sous la clé \"0\"\n  const openai = it.json?.[\"0\"];\n\n  if (openai?.content && Array.isArray(openai.content)) {\n    const t = openai.content.map(x => x?.text).filter(Boolean).join(\"\\n\");\n    if (t) return t;\n  }\n\n  // fallback (au cas où)\n  if (typeof openai?.text === \"string\" && openai.text.trim()) return openai.text.trim();\n\n  return null;\n}\n\nfunction extractDriveUrl(it) {\n  return it.json?.webContentLink || it.json?.webViewLink || null;\n}\n\nconst rows = items.map((it, idx) => ({\n  n: idx + 1,\n  desc: extractOpenAIText(it) || \"No description\",\n  url: extractDriveUrl(it) || \"No link\",\n}));\n\nreturn [{\n  json: {\n    image1Description: rows[0]?.desc || \"No description\",\n    image2Description: rows[1]?.desc || \"No description\",\n    image3Description: rows[2]?.desc || \"No description\",\n\n    image1Url: rows[0]?.url || \"No link\",\n    image2Url: rows[1]?.url || \"No link\",\n    image3Url: rows[2]?.url || \"No link\",\n    imageUrls: rows.map(r => r.url).filter(u => u && u !== \"No link\"),\n\n    allDescriptions: rows.map(r => `Image ${r.n}: ${r.desc}`).join(\"\\n\\n\"),\n  }\n}];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "d775cd52-f2a7-464d-8eea-b369a8038bf3",
+			"name": "LLM: Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [2880, 480],
+			"parameters": {
+				"jsonSchemaExample": "{\n\t\"image_prompt\": \"string\"\n}"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "472d6099-5878-4427-89db-a8528460c98d",
+			"name": "LLM: OpenAI Chat",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [2656, 480],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "HUbsD20wv3CFr7gN",
+					"name": "OpenAi account"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "b800626c-2aaf-4ca0-95d3-6fe548d6172e",
+			"name": "Generate Image Prompt",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2704, 288],
+			"parameters": {
+				"text": "=Your task is to create an image prompt following the system guidelines.  \nEnsure that the reference image is represented as **accurately as possible**, including all text elements.  \n\nUse the following inputs:  \n\n- **IMAGES’s description:**  \n{{ $json.allDescriptions }}",
+				"options": {
+					"systemMessage": "=You output a prompt that is a variation of the prompt below. Follow this prompt exactly but just change:\n\n-the hand positioning based on what makes sense for the product\n-how the product is worn and where it is placed\n\neverything else stays the same\n\n***\n\nShow a high fashion studio photoshoot image of this reference character as a photorealistic model wearing the featured apparel and product, captured as a full body shot. The model looks slightly past the camera with a bored expression and raised eyebrows. One hand is lifted, with two fingers interacting with or touching the featured product in a natural, stylish way.\n\nThe setting is a clean studio environment with a solid color background that matches the primary color of the character. The featured product is intentionally prominent.\n\nThe image is shot from a low angle, looking up at the subject to emphasize presence and dominance.\n\nThe photo is captured on Fuji Velvia film using a 55mm prime lens with hard flash lighting. Light is concentrated on the subject and softly fades toward the edges of the frame. The image is intentionally overexposed, with visible film grain and heavy oversaturation. Skin appears shiny, almost oily, and the featured product shows harsh white reflections that highlight its surface and form.\n"
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "a5797b08-8975-4074-81dc-793cc4b2c9d7",
+			"name": "NanoBanana: Create Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3120, 288],
+			"parameters": {
+				"url": "https://queue.fal.run/fal-ai/nano-banana-pro/edit",
+				"method": "POST",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"jsonBody": "={\n  \"prompt\": \"{{ ($json.output.image_prompt || '').replace(/\\r?\\n/g, ' ').replace(/\\\"/g, '\\\\\\\"') }}\",\n  \"image_urls\": {{ JSON.stringify($('Aggregate descriptions').item.json.imageUrls) }},\n  \"resolution\": \"1K\",\n  \"aspect_ratio\": \"16:9\",\n  \"output_format\": \"png\"\n}\n",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"name": "Authorization",
+							"value": "=<__PLACEHOLDER_VALUE__fal Key__>"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "5acb657e-4a36-47c8-b3d1-54101b1a3ad6",
+			"name": "Wait for Image Edit",
+			"type": "n8n-nodes-base.wait",
+			"position": [3392, 288],
+			"webhookId": "45feec52-8081-49b5-87df-1a24821deb51",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 2
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "a585b80a-5e45-4237-a10a-6f4732d5eb36",
+			"name": "Download Edited Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3696, 288],
+			"parameters": {
+				"url": "={{ $json.response_url }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "e1858aae-e735-4b7b-93c3-3a4dca8ba3df",
+			"name": "Upload file",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1968, 64],
+			"parameters": {
+				"name": "={{$binary.image.fileName}}\n",
+				"driveId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				},
+				"inputDataFieldName": "image"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "odf7JAwyqVFVZBhQ",
+					"name": "Google Drive account"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "31c520c0-dd34-4852-89af-126d6314fadb",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [2304, 288],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "084cbc5f-db93-4463-aff6-fc48f52c29b9",
+			"name": "Append row in sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [3936, 288],
+			"parameters": {
+				"columns": {
+					"value": {
+						"status": "nano_done",
+						"image_1": "={{ $('Aggregate descriptions').item.json.image1Url }}",
+						"image_2": "={{ $('Aggregate descriptions').item.json.image2Url }}",
+						"image_3": "={{ $('Aggregate descriptions').item.json.image3Url }}",
+						"description_all": "={{ $('Aggregate descriptions').item.json.allDescriptions }}",
+						"image_nanobanana": "={{ $json.images[0].url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["id"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>\n"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "9838a243-3ac7-4bf9-a634-bfaa5263bf01",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [848, 0],
+			"parameters": {
+				"color": 5,
+				"width": 3488,
+				"height": 688,
+				"content": "# Step 1 –  Product Image Creation – NanoBanana Pro\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e4fe8b5a-8b84-4dde-b653-4b57288748c7",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [944, 896],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "5565af9e-f320-4816-be23-d047d0b61f69",
+			"name": "Get image nanobanana",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1456, 896],
+			"parameters": {
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "",
+					"cachedResultUrl": "",
+					"cachedResultName": ""
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "073b238d-886c-491a-a97a-3af1b4e84fcc",
+			"name": "Wait for Image Edit1",
+			"type": "n8n-nodes-base.wait",
+			"position": [2512, 896],
+			"webhookId": "45feec52-8081-49b5-87df-1a24821deb51",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 2
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "be919bb4-6a78-4f46-bd3a-bba3283c0592",
+			"name": "Download Edited Image1",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2800, 896],
+			"parameters": {
+				"url": "={{ $json.response_url }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "aca2278e-00c3-4d98-8821-9334ba1d6dca",
+			"name": "NanoBanana: Contact Sheet",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1952, 896],
+			"parameters": {
+				"url": "https://queue.fal.run/fal-ai/nano-banana-pro/edit",
+				"method": "POST",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"jsonBody": "={\n  \"prompt\": {{ JSON.stringify($json.contactSheetPrompt || '') }},\n  \"image_urls\": {{ JSON.stringify(\n    (() => {\n      const v = $('Get image nanobanana').item.json.image_nanobanana;\n\n      // 1) déjà un array\n      if (Array.isArray(v)) return v;\n\n      // 2) string JSON \"[...]\" -> parse\n      if (typeof v === 'string' && v.trim().startsWith('[')) {\n        try { return JSON.parse(v); } catch (e) {}\n      }\n\n      // 3) string simple -> le mettre en array\n      if (typeof v === 'string' && v.trim()) return [v.trim()];\n\n      // 4) fallback vide\n      return [];\n    })()\n  ) }},\n  \"resolution\": \"1K\",\n  \"aspect_ratio\": \"3:2\",\n  \"output_format\": \"png\"\n}\n",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"name": "Authorization",
+							"value": "=key beee05d5-bab7-4be3-b268-5bf1bfeedefb:42a7be98a6b343f7a626878760ae547d"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "a029f705-4b1e-4c9f-aabd-f0d51d734b6d",
+			"name": "Edit Fields : contactSheetPrompt",
+			"type": "n8n-nodes-base.set",
+			"position": [1744, 896],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "84d2672d-ec5e-44e9-986d-f707c2a90eb3",
+							"name": "contactSheetPrompt",
+							"type": "string",
+							"value": "Analyze the input image and silently inventory all fashion-critical details: the subject(s), exact wardrobe pieces, materials, colors, textures, accessories, hair, makeup, body proportions, environment, set geometry, light direction, and shadow quality. All wardrobe, styling, hair, makeup, lighting, environment, and color grade must remain 100% unchanged across all frames. Do not add or remove anything. Do not reinterpret materials or colors. Do not output any reasoning. Perfectly replicate the exact facial features of the model.  Face & Identity Preservation Rule Do NOT modify the face or head of the person in the original image. The subject must remain the exact same person, with no AI alteration to facial features, identity, proportions, or appearance. No face swap, no enhancement, no identity change.  Your visible output must be: One 2×3 contact sheet image (6 frames). Then a keyframe breakdown for each frame.  Each frame must represent a resting point after a dramatic camera move — only describe the final camera position and what the subject is doing, never the motion itself. The six frames must be spatially dynamic, non-linear, and visually distinct.  Required 6-Frame Shot List  High-Fashion Beauty Portrait (Close, Editorial, Intimate) Camera positioned very close to the subject's face, slightly above or slightly below eye level, using an elegant offset angle that enhances bone structure and highlights key wardrobe elements near the neckline. Shallow depth of field, flawless texture rendering, and a sculptural fashion-forward composition.  High-Angle Three-Quarter Frame Camera positioned overhead but off-center, capturing the subject from a diagonal downward angle. This frame should create strong shape abstraction and reveal wardrobe details from above.  Low-Angle Oblique Full-Body Frame Camera positioned low to the ground and angled obliquely toward the subject. This elongates the silhouette, emphasizes footwear, and creates a dramatic perspective distinct from Frames 1 and 2.  Side-On Compression Frame (Long Lens) Camera placed far to one side of the subject, using a tighter focal length to compress space. The subject appears in clean profile or near-profile, showcasing garment structure in a flattened, editorial manner.  Intimate Close Portrait From an Unexpected Height Camera positioned very close to the subject's face (or upper torso) but slightly above or below eye level. The angle should feel fashion-editorial, not conventional — offset, elegant, and expressive.  Extreme Detail Frame From a Non-Intuitive Angle Camera positioned extremely close to a wardrobe detail, accessory, or texture, but from an unusual spatial direction (e.g., from below, from behind, from the side of a neckline). This must be a striking, abstract, editorial detail frame.  Continuity & Technical Requirements  Maintain perfect wardrobe fidelity in every frame: exact garment type, silhouette, material, color, texture, stitching, accessories, closures, jewelry, shoes, hair, and makeup. Environment, textures, and lighting must remain consistent.  Depth of field shifts naturally with focal length (deep for distant shots, shallow for close/detail shots). Photoreal textures and physically plausible light behavior required. Frames must feel like different camera placements within the same scene, not different scenes.  All keyframes must share the exact same dimensions and 3:2 aspect ratio, and exactly 6 keyframes must be produced.  Maintain the exact visual style in all keyframes: shot on Fuji Velvia film with a hard flash, light concentrated on the subject and fading toward the edges. The image is overexposed, shows significant film grain, is oversaturated, with shiny (almost oily) skin and harsh white reflections on glasses frames.  Output Format  A) One mandatory 2×3 contact sheet image (6 frames)"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "05441a54-658f-4e13-b838-1f65f3322119",
+			"name": "Update database",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [3056, 896],
+			"parameters": {
+				"columns": {
+					"value": {
+						"status": "ContactSheet_done",
+						"row_number": 0,
+						"image_nanobanana": "={{ $('Get image nanobanana').item.json.image_nanobanana }}",
+						"image_contactsheet": "={{ $json.images[0].url }}"
+					},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_1",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_1",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_2",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_3",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image_3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "description_all",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "description_all",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_nanobanana",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_nanobanana",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image_contactsheet",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "image_contactsheet",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": false,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["image_nanobanana"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Sheet Tab Name__>"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "YlIXFU6zUDsqwmRG",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "8a46291a-b57f-4827-afc7-fcc6224b7d79",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [848, 752],
+			"parameters": {
+				"color": 7,
+				"width": 3488,
+				"height": 352,
+				"content": "# Step 2 – Contact Sheet Prompting Technique\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"availableInMCP": false,
+		"executionOrder": "v1"
+	},
+	"versionId": "df73454b-bcc7-4471-8eef-9bad35bbaab3",
+	"connections": {
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Update video 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Aggregate descriptions",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait1": {
+			"main": [
+				[
+					{
+						"node": "Update video 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait2": {
+			"main": [
+				[
+					{
+						"node": "Update video 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait3": {
+			"main": [
+				[
+					{
+						"node": "Update video 4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait4": {
+			"main": [
+				[
+					{
+						"node": "Update video 5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge1": {
+			"main": [
+				[
+					{
+						"node": "Veo Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge2": {
+			"main": [
+				[
+					{
+						"node": "Veo Generation1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge3": {
+			"main": [
+				[
+					{
+						"node": "Veo Generation2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge4": {
+			"main": [
+				[
+					{
+						"node": "Veo Generation3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge5": {
+			"main": [
+				[
+					{
+						"node": "Veo Generation4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge6": {
+			"main": [
+				[
+					{
+						"node": "Merge 3 Videos",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Image": {
+			"main": [
+				[
+					{
+						"node": "Crop Top Left",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crop Top Center",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crop Top Right",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crop Bottom Left",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crop Bottom Center",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crop Bottom Right",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload file": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split images": {
+			"main": [
+				[
+					{
+						"node": "OpenAI Vision – Image 1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upload file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Crop Top Left": {
+			"main": [
+				[
+					{
+						"node": "Upload to Google Drive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Image URL": {
+			"main": [
+				[
+					{
+						"node": "Download Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Crop Top Right": {
+			"main": [
+				[
+					{
+						"node": "Upload to Google Drive2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Image": {
+			"main": [
+				[
+					{
+						"node": "Edit Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge 3 Videos": {
+			"main": [
+				[
+					{
+						"node": "Wait: Merge Process",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update video 1": {
+			"main": [
+				[
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update video 2": {
+			"main": [
+				[
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Update video 3": {
+			"main": [
+				[
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Update video 4": {
+			"main": [
+				[
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"Update video 5": {
+			"main": [
+				[
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 4
+					}
+				]
+			]
+		},
+		"Veo Generation": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Crop Top Center": {
+			"main": [
+				[
+					{
+						"node": "Upload to Google Drive1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Validate inputs": {
+			"main": [
+				[
+					{
+						"node": "Normalize binary names",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error Response - Missing Files",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Veo Generation1": {
+			"main": [
+				[
+					{
+						"node": "Wait1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Veo Generation2": {
+			"main": [
+				[
+					{
+						"node": "Wait2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Veo Generation3": {
+			"main": [
+				[
+					{
+						"node": "Wait3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Veo Generation4": {
+			"main": [
+				[
+					{
+						"node": "Wait4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Crop Bottom Left": {
+			"main": [
+				[
+					{
+						"node": "Upload to Google Drive3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LLM: OpenAI Chat": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Generate Image Prompt",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Search new image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search new image": {
+			"main": [
+				[
+					{
+						"node": "Set Image URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Crop Bottom Right": {
+			"main": [
+				[
+					{
+						"node": "Upload to Google Drive5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Crop Bottom Center": {
+			"main": [
+				[
+					{
+						"node": "Upload to Google Drive4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Image Edit": {
+			"main": [
+				[
+					{
+						"node": "Download Edited Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait: Merge Process": {
+			"main": [
+				[
+					{
+						"node": "Update URL Final video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get image nanobanana": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields : contactSheetPrompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Image Edit1": {
+			"main": [
+				[
+					{
+						"node": "Download Edited Image1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Edited Image": {
+			"main": [
+				[
+					{
+						"node": "Append row in sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Image Prompt": {
+			"main": [
+				[
+					{
+						"node": "NanoBanana: Create Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate descriptions": {
+			"main": [
+				[
+					{
+						"node": "Generate Image Prompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Edited Image1": {
+			"main": [
+				[
+					{
+						"node": "Update database",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Normalize binary names": {
+			"main": [
+				[
+					{
+						"node": "Split images",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update URL Final video": {
+			"main": [
+				[
+					{
+						"node": "Upload Video to BLOTATO",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload to Google Drive": {
+			"main": [
+				[
+					{
+						"node": "Update url image_top_left",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Form Trigger (3 images)": {
+			"main": [
+				[
+					{
+						"node": "Validate inputs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload Video to BLOTATO": {
+			"main": [
+				[
+					{
+						"node": "Youtube",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload to Google Drive1": {
+			"main": [
+				[
+					{
+						"node": "Update url image_top_center",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload to Google Drive2": {
+			"main": [
+				[
+					{
+						"node": "Update url image_top_right",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload to Google Drive3": {
+			"main": [
+				[
+					{
+						"node": "Update url image_bottom_left",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload to Google Drive4": {
+			"main": [
+				[
+					{
+						"node": "Update url image_bottom_center",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload to Google Drive5": {
+			"main": [
+				[
+					{
+						"node": "Update url image_bottom_right",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"NanoBanana: Create Image": {
+			"main": [
+				[
+					{
+						"node": "Wait for Image Edit",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"NanoBanana: Contact Sheet": {
+			"main": [
+				[
+					{
+						"node": "Wait for Image Edit1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Vision – Image 1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Update url image_top_left": {
+			"main": [
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update url image_top_right": {
+			"main": [
+				[
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update url image_top_center": {
+			"main": [
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update url image_bottom_left": {
+			"main": [
+				[
+					{
+						"node": "Merge3",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LLM: Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Generate Image Prompt",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update url image_bottom_right": {
+			"main": [
+				[
+					{
+						"node": "Merge5",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Update url image_bottom_center": {
+			"main": [
+				[
+					{
+						"node": "Merge4",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields : contactSheetPrompt": {
+			"main": [
+				[
+					{
+						"node": "NanoBanana: Contact Sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get image nanobanana",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

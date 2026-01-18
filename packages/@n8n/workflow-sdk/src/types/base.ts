@@ -24,6 +24,8 @@ export interface WorkflowSettings {
 	callerPolicy?: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	/** Comma-separated list of caller workflow IDs */
 	callerIds?: string;
+	/** Allow additional settings fields */
+	[key: string]: unknown;
 }
 
 /**

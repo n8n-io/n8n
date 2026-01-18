@@ -1,0 +1,479 @@
+{
+	"id": "cU2fwVR3z955Vuqt",
+	"meta": {
+		"instanceId": "a1ae5c8dc6c65e674f9c3947d083abcc749ef2546dff9f4ff01de4d6a36ebfe6",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Generate Ad Image Variations Using GPT-4, Dumpling AI & Google Drive",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "849a3377-d9bb-42d4-b602-61ca789bfb1f",
+			"name": "Submit Brand Info + Image",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [240, 55],
+			"webhookId": "da177997-c71a-4127-816e-d0e3a442b94a",
+			"parameters": {
+				"options": {},
+				"formTitle": "Ad Image Generator",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Brand Name",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Brand Website",
+							"requiredField": true
+						},
+						{
+							"fieldType": "file",
+							"fieldLabel": "Ad Image",
+							"multipleFiles": false,
+							"requiredField": true
+						}
+					]
+				},
+				"formDescription": "Provide brand and product info, and an optional reference image to generate image variations with AI."
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "25dc9e03-7c7e-44eb-897c-bd8956e554d7",
+			"name": " Upload Ad Image to Google Drive",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [460, 55],
+			"parameters": {
+				"name": "={{ $json['Ad Image'].filename }} (Original)",
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive",
+					"cachedResultUrl": "https://drive.google.com/drive/my-drive",
+					"cachedResultName": "My Drive"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1R5bTxrKmi9NDMFJIh3aQgbNuZwmCybLV",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/1R5bTxrKmi9NDMFJIh3aQgbNuZwmCybLV",
+					"cachedResultName": "n8n Testing"
+				},
+				"inputDataFieldName": "Ad_Image"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "feb9a701-63d5-4c68-b4d2-56693dfd667a",
+			"name": "Download Ad Image for Analysis",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [680, 55],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $(' Upload Ad Image to Google Drive').item.json.id }}"
+				},
+				"options": {},
+				"operation": "download"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "c6000bdb-ce69-4302-b27e-aab73d128337",
+			"name": "Describe Visual Style of Image",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [900, 55],
+			"parameters": {
+				"text": "Describe the visual style, subject matter, and composition of this image. Is it a lifestyle image, a product-only shot, or a combination? Include lighting style and camera angle if possible.",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "GPT-4O"
+				},
+				"options": {},
+				"resource": "image",
+				"inputType": "base64",
+				"operation": "analyze"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "110842b9-d0d0-4c46-bc2d-94851bd6aa30",
+			"name": "Analyze Brand Website Style",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [1120, 55],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4",
+					"cachedResultName": "GPT-4"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=You are a visual brand strategist and art director for direct-to-consumer (DTC) e-commerce brands.\n\nPlease analyze the following brand website. Focus **only** on the brand’s **visual aesthetic**, including:\n\n- Color palette\n- Photography style and lighting\n- Imagery themes (e.g. lifestyle vs. product shots)\n- Mood or tone evoked by visuals\n- Any repeating design elements or layout patterns\n\nBe descriptive but concise. The output will be used to help design consistent and creative AI-generated images for ad creatives — so focus entirely on the visual look and feel.\n\n\nBrand Website: {{ $('Submit Brand Info + Image').item.json['Brand Website'] }}\nBrand Name: {{ $('Submit Brand Info + Image').item.json['Brand Name'] }}\n"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "41a97d61-1d3a-4ec3-9b76-c5fe4fb2b312",
+			"name": "LangChain Agent: Generate Variation Prompts",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1496, 55],
+			"parameters": {
+				"text": "=Brand Name: {{ $('Submit Brand Info + Image').item.json['Brand Name'] }}\nWebsite: {{ $('Submit Brand Info + Image').item.json['Brand Website'] }}\nReference Ad Description: {{ $('Describe Visual Style of Image').item.json.content }}\nVisual Style Overview: {{ $json.message.content }}",
+				"options": {
+					"systemMessage": "=Brand Name: {{ $('Submit Brand Info + Image').item.json['Brand Name'] }}\nWebsite: {{ $('Submit Brand Info + Image').item.json['Brand Website'] }}\nReference Ad Description: {{ $('Describe Visual Style of Image').item.json.content }}\nVisual Style Overview: {{ $json.message.content }}\n\nYour task is to generate **10 tightly related visual variations** of a reference ad image — not new concepts. These prompts are for testing subtle creative changes on Facebook/Instagram ads (e.g., backdrop, mood, color, lighting) while preserving the original subject and composition.\n\n### Reference Materials:\n\n**Brand Info**: {{ $('Submit Brand Info + Image').item.json['Brand Name'] }}\n**Website**:  {{ $('Submit Brand Info + Image').item.json['Brand Website'] }}\n**Visual Aesthetics Guideline**: {{ $json.message.content }}\n**Reference Image Description**: {{ $('Describe Visual Style of Image').item.json.content }}\n\nUse the Reference Image Description to ground your concepts in visual reality — the new prompts should **feel like believable variations** of this original ad image in terms of camera angle, lighting, and context, while introducing fresh concepts or creative twists.\n\n### For each of the 10 prompts:\n\n- **Preserve** the reference image's subject (product, camera angle, core framing)\n- **Only vary** the background, environment, mood, lighting, or color treatment\n- Examples of variation types:\n  - Daylight vs sunset lighting\n  - Poolside vs marble countertop\n  - Lavender tones vs beach sand tones\n  - Summer vibe vs spa-like calm\n- Use vivid, sensory language to describe each variation\n- Always include **aspect ratio** (1:1 or 4:5)\n- Never introduce logos, overlays, or major subject changes\n\nThe goal is to create **subtle, performance-testable image variations**, not entirely new compositions.\n\nPlease return **only** a JSON array of 10 objects, each with a single property `\"prompt\"` containing the image prompt. Example output structure:\n\n[\n  {\n    \"prompt\": \"Sun-drenched poolside shot of the product on a marble ledge at golden hour, with soft shadows and warm tones. Aspect ratio 1:1.\"\n  },\n  {\n    \"prompt\": \"Cool lavender-tinted sunset beach backdrop behind the product, highlighting reflective metallic accents. Aspect ratio 4:5.\"\n  },\n  {\n    \"prompt\": \"...\"\n  }\n]"
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "549abb3a-c944-47ce-a5eb-a5e35e8b7934",
+			"name": "Parse Prompts into JSON Array",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [1720, 260],
+			"parameters": {
+				"jsonSchemaExample": "[\n  {\n    \"prompt\": \"Sun-drenched poolside shot of the product on a marble ledge at golden hour, with soft shadows and warm tones. Aspect ratio 1:1.\"\n  },\n  {\n    \"prompt\": \"Cool lavender-tinted sunset beach backdrop behind the product, highlighting reflective metallic accents. Aspect ratio 4:5.\"\n  },\n  {\n    \"prompt\": \"...\"\n  }\n]"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "833fd095-e1ea-4b70-989f-542b415f4294",
+			"name": "Split: One Prompt per Item",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [1872, 55],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "output"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "89875b01-68e0-4aec-a688-9965a8ca4a3d",
+			"name": "Download Base Image for Each Variation",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [2092, 55],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $(' Upload Ad Image to Google Drive').item.json.id }}"
+				},
+				"options": {},
+				"operation": "download"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "6c0131d3-46c3-47af-b8d4-d293f5378760",
+			"name": "Loop: Process Image Variations",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [2312, 55],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "046f2619-c1a3-4674-9ae6-33221bb6f095",
+			"name": "Dumpling AI: Generate Image Variation",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2532, -20],
+			"parameters": {
+				"url": "https://app.dumplingai.com/api/v1/generate-ai-image",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"model\": \"FLUX.1-pro\",\n  \"input\": {\n    \"prompt\": \"{{ $json.prompt }}\"\n  }\n}\n",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "815e004d-f1ed-485f-be24-c4bf565a61f1",
+			"name": " Log Image Variation URLs to Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2752, 55],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Image URL": "={{ $json.url }}"
+					},
+					"schema": [
+						{
+							"id": "Image URL",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Image URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Image URL"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/12bBSaMdX-jE7QtIlEX4CBUEGScmJx3xK7bwFtHWan64/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/12bBSaMdX-jE7QtIlEX4CBUEGScmJx3xK7bwFtHWan64/edit?usp=drivesdk",
+					"cachedResultName": "Edited image "
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "165b9120-6c0b-446e-afd6-c4f233d167df",
+			"name": "GPT-4o (Connected to LangChain Agent)",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [1524, 275],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "b52a1b6b-d5c5-43ad-a2c4-b318aa715f7d",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [300, -480],
+			"parameters": {
+				"width": 780,
+				"height": 740,
+				"content": "### 🖼️ Ad Image Variation Generator (Using GPT-4 + Dumpling AI)\n\nThis workflow creates 10 subtle creative variations of a reference ad image  \nto test performance across visual styles, lighting, background, and tone —  \nwhile preserving the product's framing and subject.\n\n---\n\n### 🔧 How It Works\n\n1. User submits brand name, website, and reference ad image via a form.\n2. The image is uploaded to Google Drive.\n3. GPT-4o analyzes the image’s visual style (composition, subject, lighting).\n4. GPT-4 analyzes the brand website to understand overall visual identity.\n5. A LangChain AI Agent uses both to generate 10 variation prompts.\n6. Each prompt is passed to Dumpling AI to generate a new ad image.\n7. All image URLs are logged in Google Sheets.\n\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "3bc41ee0-40f8-4a07-b76d-e8fe2ff5a0c8",
+	"connections": {
+		"Submit Brand Info + Image": {
+			"main": [
+				[
+					{
+						"node": " Upload Ad Image to Google Drive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split: One Prompt per Item": {
+			"main": [
+				[
+					{
+						"node": "Download Base Image for Each Variation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analyze Brand Website Style": {
+			"main": [
+				[
+					{
+						"node": "LangChain Agent: Generate Variation Prompts",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse Prompts into JSON Array": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "LangChain Agent: Generate Variation Prompts",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Describe Visual Style of Image": {
+			"main": [
+				[
+					{
+						"node": "Analyze Brand Website Style",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Ad Image for Analysis": {
+			"main": [
+				[
+					{
+						"node": "Describe Visual Style of Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop: Process Image Variations": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Dumpling AI: Generate Image Variation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		" Upload Ad Image to Google Drive": {
+			"main": [
+				[
+					{
+						"node": "Download Ad Image for Analysis",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Dumpling AI: Generate Image Variation": {
+			"main": [
+				[
+					{
+						"node": " Log Image Variation URLs to Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"GPT-4o (Connected to LangChain Agent)": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "LangChain Agent: Generate Variation Prompts",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Base Image for Each Variation": {
+			"main": [
+				[
+					{
+						"node": "Loop: Process Image Variations",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		" Log Image Variation URLs to Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Loop: Process Image Variations",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LangChain Agent: Generate Variation Prompts": {
+			"main": [
+				[
+					{
+						"node": "Split: One Prompt per Item",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

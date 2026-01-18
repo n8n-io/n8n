@@ -1,0 +1,531 @@
+{
+	"id": "EPSFcDt1f8LdRzZU",
+	"meta": {
+		"instanceId": "061ca141d020a6e1355b8c7fe05f92a699e37e92079ad2e150a506ee8bbe9e11"
+	},
+	"name": "Amazon Affiliate Marketing Automation",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "7c77fce7-01ef-4ab9-898c-f4378cfb12fb",
+			"name": "Amazon Product Details",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-1248, 144],
+			"parameters": {
+				"url": "=https://real-time-amazon-data.p.rapidapi.com/product-details?asin={{ $json.output }}&country=US",
+				"options": {},
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "x-rapidapi-host",
+							"value": "real-time-amazon-data.p.rapidapi.com"
+						},
+						{
+							"name": "x-rapidapi-key",
+							"value": "YOUR_API_KEY"
+						},
+						{
+							"name": "country",
+							"value": "US"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "0a1dc175-1109-475c-908d-f13c4876e5c1",
+			"name": "Product Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-576, 496],
+			"parameters": {
+				"url": "={{ $('Amazon Product Details').item.json.data.product_photo }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "9150b652-f44a-45d4-83c7-3fd85a1cde48",
+			"name": "Image Upload To Server",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-368, 496],
+			"parameters": {
+				"url": "=https://generativelanguage.googleapis.com/upload/v1beta/files?key=YOUR_API_KEY",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "binaryData",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "X-Goog-Upload-Command",
+							"value": "start,upload,finalize"
+						},
+						{
+							"name": "X-Goog-Upload-Header-Content-Length",
+							"value": "123"
+						},
+						{
+							"name": "X-Goog-Upload-Header-Content-Type",
+							"value": "image/png"
+						},
+						{
+							"name": "Content-Type",
+							"value": "image/png"
+						}
+					]
+				},
+				"inputDataFieldName": "data"
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "51f82722-4ea3-423c-80be-fdb8ae8f1f15",
+			"name": "OpenRouter Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+			"position": [-96, 336],
+			"parameters": {
+				"model": "google/gemini-2.0-flash-exp:free",
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2c2b5f47-cc55-4d2a-9184-67fc16d28e73",
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"position": [528, 464],
+			"parameters": {
+				"options": {},
+				"operation": "toBinary",
+				"sourceProperty": "candidates[0].content.parts[0].inlineData.data"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "b56e9f83-0da7-4655-af71-f7ada6c9a175",
+			"name": "Facebook Graph API",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [960, 464],
+			"parameters": {
+				"edge": "photos",
+				"node": "me",
+				"options": {
+					"queryParameters": {
+						"parameter": [
+							{
+								"name": "message",
+								"value": "={{ $('FB caption').item.json.output }}"
+							}
+						]
+					}
+				},
+				"sendBinaryData": true,
+				"graphApiVersion": "v22.0",
+				"httpRequestMethod": "POST",
+				"binaryPropertyName": "data"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ab6aaa26-df15-4305-b509-a8a6c058ad0f",
+			"name": "OpenRouter Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+			"position": [-976, 320],
+			"parameters": {
+				"model": "google/gemini-2.0-flash-exp:free",
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1a625956-49b9-4d6c-98f5-cf26fdb8e64c",
+			"name": "Google Sheets Trigger",
+			"type": "n8n-nodes-base.googleSheetsTrigger",
+			"position": [-2000, 384],
+			"parameters": {
+				"event": "rowAdded",
+				"options": {},
+				"pollTimes": {
+					"item": [{}]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1unoIMG4dKLP1Fw0euo64deo_FyBJp4viN4_Sy4LT0Dc/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1unoIMG4dKLP1Fw0euo64deo_FyBJp4viN4_Sy4LT0Dc",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1unoIMG4dKLP1Fw0euo64deo_FyBJp4viN4_Sy4LT0Dc/edit?usp=drivesdk",
+					"cachedResultName": "Affiliate Automation"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2c432e37-5015-4f84-8765-58f8be937812",
+			"name": "OpenRouter Chat Model2",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+			"position": [-1680, 544],
+			"parameters": {
+				"model": "google/gemini-2.0-flash-exp:free",
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c10eba08-eedc-498f-8bf6-6bce81283408",
+			"name": "Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1168, 464],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Product Link": "={{ $('Google Sheets Trigger').item.json['Product Link'] }}",
+						"Facebook Upload": "Done ✅"
+					},
+					"schema": [
+						{
+							"id": "Product Link",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Product Link",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Facebook Upload",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Facebook Upload",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Product Link"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1unoIMG4dKLP1Fw0euo64deo_FyBJp4viN4_Sy4LT0Dc/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1unoIMG4dKLP1Fw0euo64deo_FyBJp4viN4_Sy4LT0Dc",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1unoIMG4dKLP1Fw0euo64deo_FyBJp4viN4_Sy4LT0Dc/edit?usp=drivesdk",
+					"cachedResultName": "Affiliate Automation"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "fd610152-2766-4a98-a279-d9143ef824c5",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [736, 464],
+			"webhookId": "fe8a2c4f-1f11-4f61-843b-a14ce0fefd74",
+			"parameters": {
+				"amount": 10
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "5ff4b215-8ee9-4546-9089-4793b14edbee",
+			"name": "FB caption",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-976, 144],
+			"parameters": {
+				"text": "=You are a copywriter helping an Amazon affiliate marketer write high-converting, scroll-stopping Facebook captions.\n\nFor each product, generate a short and engaging caption (1–3 lines max) that:\n- Grabs attention fast\n- Focuses on the product’s top benefit or unique feature\n- Sounds casual and native to Facebook\n- Includes a CTA to buy\n- Ends with the affiliate link\n\nHere is the product name and features:\n\nProduct: {{ $('Amazon Product Details').item.json.data.product_title }}\n\nAbout Product : {{ $('Amazon Product Details').item.json.data.about_product[3] }}\n\nAffiliate Link: {{ $('Amazon Product Details').item.json.data.product_url }}?tag=rakin114-20\n\n\nGive only 1 caption directly and don't contain any symbol. Add emojis and with the affiliate link add here's the poduct or purchase link any thing that goes well.",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "3d13ea66-ad45-49fa-bc9f-aa549bfa371e",
+			"name": "Image Prompt Generate",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-96, 160],
+			"parameters": {
+				"text": "=Create a very short prompt for an AI image generator that will be fed a photo of a product, to ultimately have professional product photography. \n\n- If the product is wearable you have to include the product worn by a human model, if it's not wearable then include a model holding it or doing something with it. The product should ALWAYS be with a human model, and with the model's face visible.\n\n- Make sure to include instructions to get the best realism, the best lighting, the best angle, the best colors, the best model positioning, etc. according to the type of product.\n\n- Always prompt it as referring to the product, eg. \"this [PRODUCT]\" so that the AI image generator knows that it's gonna be sent an input photo of the product.\n\n- Make sure to always instruct to include subtle grain for a cinematic look.\n\nThe description of the product will be sent to you. Only reply with the final prompt inside double quotes.\n\nThe prompt must be under 100 words and very simple.\n\n\nHere is the Product Description:\nProduct Title: {{ $('Amazon Product Details').item.json.data.product_title }}\n\nAbout Product: {{ $('Amazon Product Details').item.json.data.about_product[0] }}\n\n",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "1122ff77-f6f2-46bb-b62c-f6060e1aaad9",
+			"name": "asin number",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-1680, 384],
+			"parameters": {
+				"text": "=You only have to give the asin number from this amazon product url:  {{ $json['Product Link'] }}",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "71e48678-a38a-44c0-8222-eae6c3559b49",
+			"name": "ai image generator",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [320, 464],
+			"parameters": {
+				"url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=YOUR_API_KEY",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\": [\n        {\n          \"fileData\": {\n            \"fileUri\": \"{{ $('Image Upload To Server').item.json.file.uri }}\",\n            \"mimeType\": \"{{ $('Image Upload To Server').item.json.file.mimeType }}\"\n          }\n        },\n        {\n          \"text\": {{ $json.output }}\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 1.4,\n    \"topK\": 40,\n    \"topP\": 0.95,\n    \"maxOutputTokens\": 8192,\n    \"responseModalities\": [\"Text\", \"Image\"]\n  }\n}\n",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "da6e2741-b0f3-4924-87d0-070f30c4a62b",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1088, -352],
+			"parameters": {
+				"width": 528,
+				"height": 272,
+				"content": "---\n\n## 1️⃣ Purpose of This Agent\n\nThis workflow automates:\n\n* **Fetching Amazon product details** from a product link (via ASIN extraction).\n* **Generating Facebook captions** and **product images** with AI.\n* **Uploading** final creatives directly to **Facebook** and updating a **Google Sheet** for tracking.\n\n---\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ce082196-a1c0-4411-a9c2-925975475f19",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-448, -400],
+			"parameters": {
+				"width": 608,
+				"height": 320,
+				"content": "\n## 2️⃣ How to Use\n\n* Add a **Product Link** to the connected **Google Sheet**.\n* The workflow will:\n\n  * **Extract** the ASIN number.\n  * **Fetch product details** via **RapidAPI**.\n  * **Generate Facebook captions** using OpenRouter AI.\n  * **Create product image prompts** and send them to **Google Gemini** image generator.\n  * **Upload** the generated creative to Facebook automatically.\n  * **Mark the sheet** as “Done ✅” once complete.\n\n---"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6ad4dae7-88d7-4531-b1d6-f921c75fee0f",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [272, -528],
+			"parameters": {
+				"width": 896,
+				"height": 592,
+				"content": "## 🛠 Setup Guide\n\n1. **Google Sheets**\n\n   * Connect your sheet to the **Google Sheets Trigger** node.\n   * Ensure columns: “Product Link” & “Facebook Upload” exist.\n\n2. **RapidAPI**\n\n   * Get your [RapidAPI Key](https://rapidapi.com/) and replace `YOUR_API_KEY` in the **Amazon Product Details** node.\n\n3. **OpenRouter**\n\n   * Add your OpenRouter credentials for AI caption generation.\n\n4. **Google Gemini API**\n\n   * Add your [Gemini API Key](https://aistudio.google.com/apikey) for image prompt generation & image creation.\n\n5. **Facebook Graph API**\n\n   * Connect your Facebook account to allow posting to your page/profile.\n\nOnce connected, the workflow is **ready to run automatically** every time you add a new product link to the sheet. 🚀\n\n---"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ef61af2a-e0c5-4689-a05f-e7bd3c0662ce",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1584, -464],
+			"parameters": {
+				"width": 387,
+				"height": 390,
+				"content": "## Start here: Step-by Step Youtube Tutorial :star:\n\n[![Amazon Affiliate Marketing Automation](https://img.youtube.com/vi/7Gz4C0XbBK8/sddefault.jpg)](https://youtu.be/7Gz4C0XbBK8?si=RtW-ATYRF07C3o7_)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "7f0c52ab-8b18-4fb6-99d4-963f3340fe4b",
+	"connections": {
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Facebook Graph API",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"FB caption": {
+			"main": [
+				[
+					{
+						"node": "Product Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"asin number": {
+			"main": [
+				[
+					{
+						"node": "Amazon Product Details",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Product Image": {
+			"main": [
+				[
+					{
+						"node": "Image Upload To Server",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Facebook Graph API": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ai image generator": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets Trigger": {
+			"main": [
+				[
+					{
+						"node": "asin number",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Image Prompt Generate": {
+			"main": [
+				[
+					{
+						"node": "ai image generator",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenRouter Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Image Prompt Generate",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Amazon Product Details": {
+			"main": [
+				[
+					{
+						"node": "FB caption",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Image Upload To Server": {
+			"main": [
+				[
+					{
+						"node": "Image Prompt Generate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenRouter Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "FB caption",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenRouter Chat Model2": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "asin number",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

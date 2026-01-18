@@ -1,0 +1,1323 @@
+{
+	"id": "GWiHdxtRvqh14vln",
+	"meta": {
+		"instanceId": "a2b23892dd6989fda7c1209b381f5850373a7d2b85609624d7c2b7a092671d44",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "💥 Create viral Ads with NanoBanana & Seedance, publish on socials via upload-post - version II - vide",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "3b6bcff1-cc32-4e4e-aa79-f7e06b2bdf15",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, -32],
+			"parameters": {
+				"width": 1020,
+				"height": 288,
+				"content": "# 🟢 Step 1 — Input"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b39b95c5-468e-434c-a455-8f91f7795d41",
+			"name": "Telegram: Get Image File",
+			"type": "n8n-nodes-base.telegram",
+			"position": [816, 64],
+			"webhookId": "8ef62f4a-8403-473b-be45-c727d9f04591",
+			"parameters": {
+				"fileId": "={{ $json.message.photo[2].file_id }}",
+				"resource": "file",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8f91f9aa-e882-493d-a5a6-8ca4d57f4154",
+			"name": "Trigger: Receive Idea via Telegram",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [592, 64],
+			"webhookId": "0e83fedb-5e23-4711-a8f4-dff788a8669a",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "81a38bbf-47b7-45fa-8113-26ab9b7abc0f",
+			"name": "Google Drive: Upload Image",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1040, 64],
+			"parameters": {
+				"name": "={{ $('Trigger: Receive Idea via Telegram').item.json.message.photo[2].file_unique_id }}",
+				"driveId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "fa33c037-fc4e-49d2-ba4e-70ced6457085",
+			"name": "Parse Idea Into Prompts",
+			"type": "n8n-nodes-base.code",
+			"position": [1312, 64],
+			"parameters": {
+				"jsCode": "const text = $('Trigger: Receive Idea via Telegram').first().json.message.caption;\nconst parts = text.split(';').map(part => part.trim());\nreturn {\nimagePrompt: parts[0],\ntextOverlay: parts[1],\nvideoPrompt: parts[2],\nmusicPrompt: parts[3]\n};\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "82460b49-c263-48b9-b63b-5e0acba1543f",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1584, -32],
+			"parameters": {
+				"width": 908,
+				"height": 576,
+				"content": "# 🟢 Step 2 — Generate Product Image"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d3e988f1-df01-4c16-a77b-bd21ddee732e",
+			"name": "Generate Image Prompt",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1664, 64],
+			"parameters": {
+				"text": "=Your task is to create an image prompt following the system guidelines.  \nEnsure that the reference image is represented as **accurately as possible**, including all text elements.  \n\nUse the following inputs:  \n\n- **User’s description:**  \n{{ $json.imagePrompt }}\n",
+				"options": {
+					"systemMessage": "=You are a helpful assistantROLE: UGC Image Prompt Builder  \n\nGOAL:  \nGenerate one concise, natural, and realistic image prompt (≤120 words) from a given product or reference image. The prompt must simulate authentic UGC (user-generated content) photography.  \n\nRULES:  \nYou must always create a professional background for the product image. You must never return the image with a plain white or empty background. The background must always enhance and highlight the product in the photo.\n\n- Always output **one JSON object only** with the key:  \n  - `image_prompt`: (string with full description)  \n- Do **not** add commentary, metadata, or extra keys. JSON only.  \n- User node think to be creative\n\nSTYLE GUIDELINES:  \n- Tone: casual, unstaged, lifelike, handheld snapshot.  \n- Camera cues: include at least 2–3 (e.g., phone snapshot, handheld framing, off-center composition, natural indoor light, soft shadows, slight motion blur, auto exposure, unpolished look, mild grain).  \n- Realism: embrace imperfections (wrinkles, stray hairs, skin texture, clutter, smudges).  \n- Packaging/Text: preserve exactly as visible. Never invent claims, numbers, or badges.  \n- Diversity: if people appear but are unspecified, vary gender/ethnicity naturally; default age range = 21–38.  \n- Setting: default to real-world everyday spaces (home, street, store, gym, office).  \n- User node think to be creative\nYou must always create a professional background for the product image. You must never return the image with a plain white or empty background. The background must always enhance and highlight the product in the photo.\n\nSAFETY:  \n- No copyrighted character names.  \n- No dialogue or scripts. Only describe scenes.  \n\nOUTPUT CONTRACT:  \n- JSON only, no prose outside.  \n- Max 120 words in `image_prompt`.  \n- Must cover: subject, action, mood, setting, background, style/camera, colors, and text accuracy.  \n\nCHECKLIST BEFORE OUTPUT:  \n- Natural handheld tone?  \n- At least 2 camera cues included?  \n- Product text preserved exactly?  \n- Only JSON returned?  \n\n---  \n\n### Example  \n\nGood Example :  \n```json\n{ \"image_prompt\": \"a young adult casually holding a skincare tube near a bathroom mirror; action: dabs small amount on the back of the hand; mood: easy morning; setting: small apartment bathroom with towel on rack and toothbrush cup; background: professional-looking bathroom scene that enhances the product, never plain white or empty, always styled to highlight the tube naturally; style/camera: phone snapshot, handheld framing, off-center composition, natural window light, slight motion blur, mild grain; colors: soft whites and mint label; text accuracy: keep every word on the tube exactly as visible, no added claims\" }\n"
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "20f5e316-f06e-4634-96c5-554c81533bcb",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [1936, 384],
+			"parameters": {
+				"jsonSchemaExample": "{\n\t\"image_prompt\": \"string\"\n}"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "c30cbe40-9aad-4963-9196-d6c976251045",
+			"name": "Think",
+			"type": "@n8n/n8n-nodes-langchain.toolThink",
+			"position": [1776, 400],
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "abab5953-ed16-4d8b-aeb5-ab95c5ed99b7",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [1632, 384],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-5-mini",
+					"cachedResultName": "gpt-5-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8b232102-7143-4846-b4ec-4588db2f0e41",
+			"name": "NanoBanana: Create Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2048, 64],
+			"parameters": {
+				"url": "https://queue.fal.run/fal-ai/nano-banana/edit",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n\t\"prompt\": \"{{ $json.output.image_prompt.replace(/\\\"/g, '\\\\\\\"').replace(/\\n/g, '\\\\n') }}\",\n\"image_urls\": [\"{{ $('Google Drive: Upload Image').item.json.webContentLink }}\"]\n\n} ",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "4e10ac9b-8757-486f-97ff-f26af4d1b14a",
+			"name": "Wait for Image Edit",
+			"type": "n8n-nodes-base.wait",
+			"position": [2256, 64],
+			"webhookId": "32a1b1fc-9fe6-418a-b1ee-e703de063e28",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 2
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "24d0d943-787f-4c09-9bf5-424b9d1970e0",
+			"name": "Download Edited Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2240, 352],
+			"parameters": {
+				"url": "={{ $json.response_url }}",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "03c16d70-e7e8-43b8-b566-3f620bd80b1a",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, 272],
+			"parameters": {
+				"color": 5,
+				"width": 1020,
+				"height": 272,
+				"content": "# 🟢 Step 3 — Publish Product Image on Instagram & X"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e2797a73-d47a-41c5-85f1-c7ccf9e6e95c",
+			"name": "Rewrite Caption (TikTok/Instagram)",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [608, 352],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "GPT-4O"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=You are rewriting a TikTok video script, caption, and overlay —\nnot inventing a new one. You must follow this format and obey\nthese rules strictly.\n---\n### CONTEXT:\nHere is the content idea to use:{{ $('Parse Idea Into Prompts').item.json.imagePrompt }}\n\nTitle is : {{ $('Parse Idea Into Prompts').item.json.textOverlay }}\n\n\n\nWrite the caption text using the topic.\n\n---\n- MUST be under 200 characters (yes \"Characters\" not wordcount)\nthis is an absolute MUST, no more than 200 characters!!! \n\n### FINAL OUTPUT FORMAT (no markdown formatting):\n\nDO NOT return any explanations. Only return the Caption Text"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "a449912b-62e5-4490-977d-3acc9db5061b",
+			"name": "Upload Post",
+			"type": "n8n-nodes-upload-post.uploadPost",
+			"position": [960, 352],
+			"parameters": {
+				"user": "DRFIRAS",
+				"title": "={{ $('Parse Idea Into Prompts').item.json.textOverlay }}",
+				"photos": "={{ $('Download Edited Image').item.json.images[0].url }}",
+				"caption": "={{ $json.message.content }}",
+				"platform": ["instagram", "x"]
+			},
+			"credentials": {
+				"uploadPostApi": {
+					"id": "credential-id",
+					"name": "uploadPostApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "89830f94-4f14-42df-bdf3-ef71fafc40dc",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, 576],
+			"parameters": {
+				"width": 1020,
+				"height": 320,
+				"content": "# 🟢 Step 4 — Generate Product Video with Seedance"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "869bd5f2-d3b5-4a23-a500-a9b7826d3b04",
+			"name": "Seedance: Generate Video from Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [608, 688],
+			"parameters": {
+				"url": "https://api.kie.ai/api/v1/jobs/createTask",
+				"body": "={\n  \"model\": \"bytedance/v1-pro-image-to-video\",\n  \"input\": {\n    \"prompt\": \"{{ $('Parse Idea Into Prompts').item.json.videoPrompt }}\",\n    \"image_url\": \"{{ $json.images[0].url }}\",\n    \"resolution\": \"720p\",\n    \"duration\": \"10\",\n    \"aspect_ratio\": \"16:9\",\n    \"camera_fixed\": false,\n    \"seed\": -1,\n    \"enable_safety_checker\": true\n  }\n}\n",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "raw",
+				"authentication": "genericCredentialType",
+				"rawContentType": "application/json",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "e53c94dc-bb5d-4f9b-8e55-6f0fa175a17d",
+			"name": "Wait for Rendering",
+			"type": "n8n-nodes-base.wait",
+			"position": [816, 688],
+			"webhookId": "2f585e0c-caec-4278-8c32-4f8463141a8c",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 4
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "3937315a-f9ad-4e57-afcc-ca5c1160c889",
+			"name": "Download Video from Seedance",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1024, 688],
+			"parameters": {
+				"url": "=https://api.kie.ai/api/v1/jobs/recordInfo?taskId={{ $json.data.taskId }}",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "9496534d-cba2-4234-87ea-1d7170aab7c8",
+			"name": "Set: Video URL",
+			"type": "n8n-nodes-base.set",
+			"position": [1232, 688],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "04c7d6bf-430a-4423-bd36-d76f8a6ff1c9",
+							"name": "url_video",
+							"type": "string",
+							"value": "={{ ($json.data.resultJson.match(/https:\\/\\/tempfile\\.aiquickdraw\\.com\\/f\\/[^\"]+\\.mp4/) || [])[0] }}\n"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "3a9ca65f-49f2-48d0-b8ef-bf7b36e905cb",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1584, 576],
+			"parameters": {
+				"width": 908,
+				"height": 320,
+				"content": "# 🟢 Step 5 — Generate Background Music with Suno"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1d2fb2ea-f440-4f41-b7c2-7924fa3f3dfc",
+			"name": "Wait: Music Rendering",
+			"type": "n8n-nodes-base.wait",
+			"position": [1904, 688],
+			"webhookId": "ea78dd0d-854c-469c-bbef-88d2e9aba69e",
+			"parameters": {
+				"unit": "minutes"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "fe8b83b0-97ad-45c9-ae03-b4daf82c7cd4",
+			"name": "Wait: Music Rendering1",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1696, 688],
+			"parameters": {
+				"url": "https://api.kie.ai/api/v1/generate",
+				"body": "={\n  \"model\": \"V3_5\",\n  \"callBackUrl\": \"https://YOUR_DOMAIN.com/api/kie-callback\",\n  \"customMode\": true,\n  \"instrumental\": true,\n  \"input\": {\n    \"prompt\": \"{{ $('Parse Idea Into Prompts').item.json.musicPrompt }}\",\n    \"style\": \"Classical\",\n    \"title\": \"Peaceful Piano Meditation\",\n    \"styleWeight\": 0.65,\n    \"weirdnessConstraint\": 0.65,\n    \"audioWeight\": 0.65\n  }\n}",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "raw",
+				"authentication": "genericCredentialType",
+				"rawContentType": "application/json",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "157cfa1c-83df-4f95-a31e-9496d15e907b",
+			"name": "Download Music File",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2112, 688],
+			"parameters": {
+				"url": "https://api.kie.ai/api/v1/generate/record-info",
+				"options": {},
+				"sendQuery": true,
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "taskId",
+							"value": "={{ $json.data.taskId }}"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "72fa36a0-763a-49d8-994e-ed4762592e10",
+			"name": "Set: Audio URL",
+			"type": "n8n-nodes-base.set",
+			"position": [2320, 688],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "8f12fa54-c5e8-4836-871c-c29faee02cd8",
+							"name": "url_audio",
+							"type": "string",
+							"value": "={{ $json.data.response.sunoData[0].audioUrl }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "56ea4e57-cfd8-4337-8420-e31cc4bd8034",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, 928],
+			"parameters": {
+				"width": 1964,
+				"height": 320,
+				"content": "# 🟢 Step 6 — Merge Video & Audio into Final Ad"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0999b21b-bc41-4f28-b95e-d2052bb48083",
+			"name": "Merge Audio + Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [624, 1008],
+			"parameters": {
+				"url": "https://queue.fal.run/fal-ai/ffmpeg-api/merge-audio-video",
+				"body": "={\n\"video_url\": \"{{ $('Set: Video URL').item.json.url_video.trim() }}\",\n  \"audio_url\": \"{{ $json.url_audio.trim() }}\",\n  \"start_offset\": 0\n}",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "raw",
+				"authentication": "genericCredentialType",
+				"rawContentType": "application/json",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "f7ffe60d-091d-452b-8312-26c98d80bf52",
+			"name": "Check Merge Status",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1040, 1008],
+			"parameters": {
+				"url": "={{ $json.response_url }}",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "bbd106c8-5d79-47ea-9045-ff35a15d1a80",
+			"name": "Wait: Merge Process",
+			"type": "n8n-nodes-base.wait",
+			"position": [832, 1008],
+			"webhookId": "4653a9d8-950e-479c-a37e-64a361463108",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 3
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "68c18d21-8fb0-4d30-b7eb-04d845ab1be6",
+			"name": "Download Final Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1248, 1008],
+			"parameters": {
+				"url": "={{ $json.video.url }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "01c91813-1cfd-4a60-b1d9-1ff8ddaf5244",
+			"name": "Upload Final Video to Google Drive",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [2304, 1008],
+			"parameters": {
+				"name": "={{ $('Trigger: Receive Idea via Telegram').item.json.message.photo[2].file_unique_id }}",
+				"driveId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "0c913343-2b2a-4993-b952-ae8c888c8142",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, 1296],
+			"parameters": {
+				"color": 5,
+				"width": 1964,
+				"height": 336,
+				"content": "# 🟢 Step 7 — Publish Final Ad on Social Media"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "022f6ad9-a306-4c6a-8298-9bc5f52f175b",
+			"name": "Read Brand Settings",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [608, 1424],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "e2dd6fbe-88e6-4c7a-bec4-ddce0383d079",
+			"name": "Extract Brand Info",
+			"type": "n8n-nodes-base.code",
+			"position": [816, 1424],
+			"parameters": {
+				"jsCode": "const allRows = $input.all();\nreturn [{\njson: {\nproductName: allRows[0].json.col_2,\nproductCategory: allRows[1].json.col_2,\nmainOffer: allRows[2].json.col_2,\nkeyFeature1: allRows[3].json.col_2,\nkeyFeature2: allRows[4].json.col_2,\nwebsiteURL: allRows[5].json.col_2\n}\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "1419bc84-1312-40c2-8b5d-7d2acece24fb",
+			"name": "Message a model",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [1024, 1424],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "GPT-4O"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=You are an expert ad copywriter for social media campaigns.\nYour task: Create compelling ad copy following this exact\nstructure:\n🚨 [Attention-grabbing headline with product benefit]\n✔ [Primary offer/benefit]\n✔ [Key product feature/quality]\n✔ [Trust/credibility element]\n[Call to action] → [website/link]\n# Input Variables:\nProduct Name: {{ $json.productName }}\nProduct Category: {{ $json.productCategory }}\nMain Offer: {{ $json.mainOffer }}\nKey Feature 1: {{ $json.keyFeature1 }}\nKey Feature 2: {{ $json.keyFeature2 }}\nWebsite URL: {{ $json.websiteURL }}\nRules:\n- Keep headline under 35 characters\n- Each checkmark line under 40 characters\n- Use power words that create urgency\n- Include specific product benefits, not generic claims\n- CTA must be action-oriented (Shop Now, Get Yours, Claim Offer,\netc.)\n- Output ONLY the ad copy text, no explanations\n- No quotes around the text\n- Maintain the emoji structure exactly as shown"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "5a1d9765-d8d3-4822-b780-beeac3b452a7",
+			"name": "Save Ad Data to Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1344, 1424],
+			"parameters": {
+				"columns": {
+					"value": {
+						"STATUS": "CREATE",
+						"ADS TEXT": "={{ $json.message.content }}",
+						"ID IMAGE": "={{ $('Trigger: Receive Idea via Telegram').first().json.message.photo[2].file_unique_id }}",
+						"URL IMAGE": "={{ $('Download Edited Image').first().json.images[0].url }}",
+						"URL VIDEO": "={{ $('Set: Video URL').first().json.url_video }}",
+						"URL FINAL VIDEO": "={{ $('Download Final Video').first().json.video.url }}"
+					},
+					"schema": [
+						{
+							"id": "ID IMAGE",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "ID IMAGE",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL IMAGE",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "URL IMAGE",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL VIDEO",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "URL VIDEO",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL FINAL VIDEO",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "URL FINAL VIDEO",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "ADS TEXT",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "ADS TEXT",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "STATUS",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "STATUS",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "80b86bac-c4e5-4c20-b3e0-09961765eeb5",
+			"name": "Send Video URL via Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1552, 1424],
+			"webhookId": "8d7616d8-83f9-439c-be3d-9c271c07fffd",
+			"parameters": {
+				"text": "=Url VIDEO :   {{ $json['URL FINAL VIDEO'] }}",
+				"chatId": "={{ $('Trigger: Receive Idea via Telegram').first().json.message.chat.id }}",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "9e80d517-debe-490e-a1c3-dbe30718c271",
+			"name": "Send a video",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1760, 1424],
+			"webhookId": "9f975179-fd78-464f-9a2a-2aec9c978d9f",
+			"parameters": {
+				"file": "={{ $('Save Ad Data to Google Sheets').item.json['URL FINAL VIDEO'] }}",
+				"chatId": "={{ $('Trigger: Receive Idea via Telegram').first().json.message.chat.id }}",
+				"operation": "sendVideo",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "bb608bb8-f8d3-453e-a6f6-23c939e1e209",
+			"name": "Post Video on Social Media (FB, TikTok, YT)",
+			"type": "n8n-nodes-upload-post.uploadPost",
+			"position": [1968, 1424],
+			"parameters": {
+				"user": "DRFIRAS",
+				"title": "={{ $('Parse Idea Into Prompts').first().json.textOverlay }}",
+				"video": "={{ $('Upload Final Video to Google Drive').first().json.webContentLink }}",
+				"caption": "={{ $('Message a model').item.json.message.content }}",
+				"platform": ["facebook", "youtube", "x"],
+				"operation": "uploadVideo",
+				"facebookPageId": "101603614680195",
+				"youtubeDescription": "={{ $('Message a model').item.json.message.content }}",
+				"youtubePrivacyStatus": "private",
+				"facebookVideoDescription": "={{ $('Message a model').item.json.message.content }}"
+			},
+			"credentials": {
+				"uploadPostApi": {
+					"id": "credential-id",
+					"name": "uploadPostApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "eb3e9be3-44fe-4406-9fce-a842e5a9a522",
+			"name": "Save Publishing Status to Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2176, 1424],
+			"parameters": {
+				"columns": {
+					"value": {
+						"STATUS": "Published",
+						"ID IMAGE": "={{ $('Trigger: Receive Idea via Telegram').first().json.message.photo[2].file_unique_id }}"
+					},
+					"schema": [
+						{
+							"id": "ID IMAGE",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "ID IMAGE",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL IMAGE",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "URL IMAGE",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL VIDEO",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "URL VIDEO",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL FINAL VIDEO",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "URL FINAL VIDEO",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "ADS TEXT",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "ADS TEXT",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "STATUS",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "STATUS",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["ID IMAGE"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "="
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "5bbe1942-c31d-40be-8f6d-8efa896aa078",
+			"name": "Telegram: Send notification",
+			"type": "n8n-nodes-base.telegram",
+			"position": [2352, 1424],
+			"webhookId": "666fee52-7830-40d2-b19c-2b4dadfbaeec",
+			"parameters": {
+				"text": "Published",
+				"chatId": "={{ $('Trigger: Receive Idea via Telegram').first().json.message.chat.id }}",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "a469e2cf-7431-4445-848d-84c9784a5405",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-192, -32],
+			"parameters": {
+				"color": 6,
+				"width": 700,
+				"height": 1652,
+				"content": "# 💥 Create Viral Ads with NanoBanana & Seedance — Publish on Socials via Upload-Post (By Dr. Firas)\n\n---\n\n## 🎥 Full Tutorial  \n\n## [Video Tutorial](https://youtu.be/4ec9WDCz9CY)  \n@[youtube](4ec9WDCz9CY)\n\n---\n\n## 📘 Documentation  \nAccédez aux instructions détaillées, guides API, connexions de plateformes et personnalisation du workflow :  \n\n📎 [Open full documentation on Notion](https://automatisation.notion.site/Create-viral-Ads-with-NanoBanana-Seedance-publish-on-socials-via-upload-post-2683d6550fd980ffa23ee340fdb3285e?source=copy_link)\n\n---\n\n## ⚙️ Requirements\n\n1. ✅ **Create an [Upload-Post](https://www.upload-post.com/) account** (Pro plan required for API access)  \n2. 🔑 **Generate your Upload-Post API Key** inside your dashboard (`Settings > API Keys`)  \n3. 📦 **Have n8n installed** (latest version recommended)  \n4. 🧩 **Install the Upload-Post node** in n8n ([integration here](https://n8n.io/integrations/upload-post/))  \n5. 🛠 **Create Upload-Post API credentials** inside your n8n credentials tab  \n6. 📄 **Prepare your video asset** generated with **NanoBanana** + enhanced by **Seedance**  \n7. ☁️ **Ensure video source is accessible** (public Drive, S3, or binary data in n8n)  \n8. 📌 **Follow the official [Upload-Post documentation](https://www.upload-post.com/)** for parameters and setup  \n9. 📊 **Duplicate this Google Sheet template** to log your ads:  \n   [Google Sheets à copier](https://docs.google.com/spreadsheets/d/1TCebBvfgvVJyxYXeOiFVpg0RJGP38CpLKNxcOiRwbfQ/edit?usp=sharing)\n\n---\n\n## 📝 Workflow Steps in n8n\n\n1. **Trigger / Start Node**  \n   Example: new video in Google Drive, or manual execution.  \n\n2. **Content Creation**  \n   - NanoBanana generates the creative (image/video/voice).  \n   - Seedance adds effects, transitions, and ad-style polish.  \n\n3. **Upload-Post Node / HTTP Request**  \n   Configure Upload-Post to send the final video to TikTok, Instagram, YouTube, etc.  \n\n---\n\n### ⚡ Example Configuration (HTTP Request Node)\n\n**Method:** `POST`  \n**URL:** `https://api.upload-post.com/api/upload`  \n**Headers:**  \n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "14bbfcb5-4794-4ea4-af8c-9a4490f5ad2c",
+	"connections": {
+		"Think": {
+			"ai_tool": [
+				[
+					{
+						"node": "Generate Image Prompt",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send a video": {
+			"main": [
+				[
+					{
+						"node": "Post Video on Social Media (FB, TikTok, YT)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set: Audio URL": {
+			"main": [
+				[
+					{
+						"node": "Merge Audio + Video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set: Video URL": {
+			"main": [
+				[
+					{
+						"node": "Wait: Music Rendering1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Message a model": {
+			"main": [
+				[
+					{
+						"node": "Save Ad Data to Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Generate Image Prompt",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Merge Status": {
+			"main": [
+				[
+					{
+						"node": "Download Final Video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Brand Info": {
+			"main": [
+				[
+					{
+						"node": "Message a model",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Rendering": {
+			"main": [
+				[
+					{
+						"node": "Download Video from Seedance",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Music File": {
+			"main": [
+				[
+					{
+						"node": "Set: Audio URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge Audio + Video": {
+			"main": [
+				[
+					{
+						"node": "Wait: Merge Process",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Brand Settings": {
+			"main": [
+				[
+					{
+						"node": "Extract Brand Info",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Image Edit": {
+			"main": [
+				[
+					{
+						"node": "Download Edited Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait: Merge Process": {
+			"main": [
+				[
+					{
+						"node": "Check Merge Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Final Video": {
+			"main": [
+				[
+					{
+						"node": "Upload Final Video to Google Drive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Edited Image": {
+			"main": [
+				[
+					{
+						"node": "Rewrite Caption (TikTok/Instagram)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Seedance: Generate Video from Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Image Prompt": {
+			"main": [
+				[
+					{
+						"node": "NanoBanana: Create Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait: Music Rendering": {
+			"main": [
+				[
+					{
+						"node": "Download Music File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait: Music Rendering1": {
+			"main": [
+				[
+					{
+						"node": "Wait: Music Rendering",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse Idea Into Prompts": {
+			"main": [
+				[
+					{
+						"node": "Generate Image Prompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"NanoBanana: Create Image": {
+			"main": [
+				[
+					{
+						"node": "Wait for Image Edit",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Generate Image Prompt",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram: Get Image File": {
+			"main": [
+				[
+					{
+						"node": "Google Drive: Upload Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Drive: Upload Image": {
+			"main": [
+				[
+					{
+						"node": "Parse Idea Into Prompts",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Video URL via Telegram": {
+			"main": [
+				[
+					{
+						"node": "Send a video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Video from Seedance": {
+			"main": [
+				[
+					{
+						"node": "Set: Video URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Save Ad Data to Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Send Video URL via Telegram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Rewrite Caption (TikTok/Instagram)": {
+			"main": [
+				[
+					{
+						"node": "Upload Post",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Trigger: Receive Idea via Telegram": {
+			"main": [
+				[
+					{
+						"node": "Telegram: Get Image File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload Final Video to Google Drive": {
+			"main": [
+				[
+					{
+						"node": "Read Brand Settings",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Seedance: Generate Video from Image": {
+			"main": [
+				[
+					{
+						"node": "Wait for Rendering",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Save Publishing Status to Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Telegram: Send notification",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post Video on Social Media (FB, TikTok, YT)": {
+			"main": [
+				[
+					{
+						"node": "Save Publishing Status to Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

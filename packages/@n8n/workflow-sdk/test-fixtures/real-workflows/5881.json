@@ -1,0 +1,268 @@
+{
+	"id": "OQuVjQzqswmDM86W",
+	"meta": {
+		"instanceId": "dd69efaf8212c74ad206700d104739d3329588a6f3f8381a46a481f34c9cc281",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "WhatsApp Chatbot – Restaurant Info Assistant (Bookings, Menu, Timing)",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "2990c149-51a8-4fa8-a9a6-2fe4c4e42b72",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-220, -620],
+			"parameters": {
+				"width": 1000,
+				"content": "## This workflow powers a WhatsApp chatbot that answers customer questions about restaurant timing, menu, booking, services, and offers.\n\n## It uses a chat model (LLM) to understand queries and respond clearly via WhatsApp.\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "32a367b4-c14d-47f8-9ba1-483772e30564",
+			"name": "Send Reply to Customer",
+			"type": "n8n-nodes-base.whatsApp",
+			"position": [636, -140],
+			"webhookId": "a607994c-4e44-4d84-8d8c-725cd4cd903e",
+			"parameters": {
+				"textBody": "={{ $json.output }}",
+				"operation": "send",
+				"phoneNumberId": "550325331503475",
+				"additionalFields": {},
+				"recipientPhoneNumber": "={{ $('Receive WhatsApp Message').item.json.contacts[0].wa_id }}"
+			},
+			"credentials": {
+				"whatsAppApi": {
+					"id": "credential-id",
+					"name": "whatsAppApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "44c64110-9c14-411b-9e12-9843510696d2",
+			"name": "Wait For Response",
+			"type": "n8n-nodes-base.wait",
+			"position": [196, -240],
+			"webhookId": "d9c5d69c-2dfa-4b9f-89f5-76f25d0dd241",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "3021f85b-00af-417b-8022-dc5f717e4ab7",
+			"name": "Receive WhatsApp Message",
+			"type": "n8n-nodes-base.whatsAppTrigger",
+			"position": [-400, -240],
+			"webhookId": "62614db0-4088-41be-a329-fc9ca989ca81",
+			"parameters": {
+				"options": {},
+				"updates": ["messages"]
+			},
+			"credentials": {
+				"whatsAppTriggerApi": {
+					"id": "credential-id",
+					"name": "whatsAppTriggerApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "34cf3695-d559-43ab-b720-e419c1094aee",
+			"name": "Extract Customer Query",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-180, -240],
+			"parameters": {
+				"text": "={{ $json.messages[0].text.body }}",
+				"options": {
+					"systemMessage": "=**You are a helpful and friendly WhatsApp chatbot for a restaurant.**\nWhen a customer sends a message, greet them politely and provide clear, short replies to their questions about:\n\n* Restaurant timings (opening/closing hours)\n* Table booking or reservation availability\n* Menu items (food types, popular dishes, specials)\n* Restaurant location or directions\n* Services offered (dine-in, takeaway, delivery)\n* Pricing and current offers\n* Confirming or cancelling a reservation\n\nIf the customer asks something unrelated to the restaurant, reply:\n🟢 *“I’m here to help with restaurant-related questions. Would you like to know our timings, menu, or book a table?”*\n\nIf a message is unclear or incomplete, respond with:\n🟢 *“Could you please clarify your question so I can assist you better?”*\n\nAlways keep the conversation short, polite, and informative.\n\n"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "92c21a3b-01ad-4ec7-97e2-e5816f23ff81",
+			"name": "Generate Reply with AI",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+			"position": [-92, -20],
+			"parameters": {
+				"model": "llama3.2-16000:latest",
+				"options": {}
+			},
+			"credentials": {
+				"ollamaApi": {
+					"id": "credential-id",
+					"name": "ollamaApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dd5381b8-337a-4b60-857c-4c84b682edd6",
+			"name": "Check If Table Booking Required",
+			"type": "n8n-nodes-base.if",
+			"position": [416, -240],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "0282b709-8b08-4831-ab40-5725db7d6034",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "Booking",
+							"rightValue": "add_your_value_here"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "6fd96474-c7b2-444c-9f9e-960f6897a76d",
+			"name": "Create New Table Booking",
+			"type": "n8n-nodes-base.postgres",
+			"position": [636, -340],
+			"parameters": {
+				"table": {
+					"__rl": true,
+					"mode": "name",
+					"value": "id"
+				},
+				"schema": {
+					"__rl": true,
+					"mode": "list",
+					"value": "public"
+				},
+				"columns": {
+					"value": {},
+					"schema": [],
+					"mappingMode": "autoMapInputData",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {}
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 2.6
+		},
+		{
+			"id": "f5a58ce9-c39e-40bf-989a-328e8e1a67b3",
+			"name": "Send Booking Confirmation to Customer",
+			"type": "n8n-nodes-base.whatsApp",
+			"position": [856, -340],
+			"webhookId": "a607994c-4e44-4d84-8d8c-725cd4cd903e",
+			"parameters": {
+				"textBody": "={{ $json.output }}",
+				"operation": "send",
+				"phoneNumberId": "550325331503475",
+				"additionalFields": {},
+				"recipientPhoneNumber": "={{ $('Receive WhatsApp Message').item.json.contacts[0].wa_id }}"
+			},
+			"credentials": {
+				"whatsAppApi": {
+					"id": "credential-id",
+					"name": "whatsAppApi Credential"
+				}
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "3bedc946-ce52-4aaa-b868-96b0e6b59b1b",
+	"connections": {
+		"Wait For Response": {
+			"main": [
+				[
+					{
+						"node": "Check If Table Booking Required",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Customer Query": {
+			"main": [
+				[
+					{
+						"node": "Wait For Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Reply with AI": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Extract Customer Query",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create New Table Booking": {
+			"main": [
+				[
+					{
+						"node": "Send Booking Confirmation to Customer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Receive WhatsApp Message": {
+			"main": [
+				[
+					{
+						"node": "Extract Customer Query",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check If Table Booking Required": {
+			"main": [
+				[
+					{
+						"node": "Create New Table Booking",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send Reply to Customer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

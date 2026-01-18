@@ -1,0 +1,818 @@
+{
+	"id": "szS5RoHWF5QAzxqk",
+	"meta": {
+		"instanceId": "62172c4a779f9d76cabb6e444eae38bca222b7b8bf4a332d0410a521bd92ef58",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "B2B AI Leads Automation",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "d33856c0-ae76-494d-aa57-39ffe8de3852",
+			"name": "On form submission",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-540, -20],
+			"webhookId": "f92b6ca4-81cc-405c-adec-5111e6983cad",
+			"parameters": {
+				"options": {},
+				"formTitle": "Contact us",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "What's your Full Name?",
+							"placeholder": "e.g. John Wich",
+							"requiredField": true
+						},
+						{
+							"fieldType": "email",
+							"fieldLabel": "What is your email address?",
+							"placeholder": "e.g. user@example.com",
+							"requiredField": true
+						},
+						{
+							"fieldType": "number",
+							"fieldLabel": "What's your phone number?",
+							"placeholder": "e.g. 1234567890",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "What's your Linkedin Profile URL"
+						}
+					]
+				},
+				"formDescription": "get back to you"
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "87e4f3a8-8f35-4320-9ddc-218bd8f1ccd0",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-320, -20],
+			"parameters": {
+				"url": "https://api.apollo.io/api/v1/people/match",
+				"method": "POST",
+				"options": {},
+				"sendQuery": true,
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "name",
+							"value": "={{ $json['What\\'s your Full Name?'] }}"
+						},
+						{
+							"name": "email",
+							"value": "={{ $json['What is your email address?'] }}"
+						},
+						{
+							"name": "reveal_phone_number",
+							"value": "={{ $json['What\\'s your phone number?'] }}"
+						},
+						{
+							"name": "linkedin_url",
+							"value": "={{ $json['What\\'s your Linkedin Profile URL'] }}"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "5aac3e51-fd45-4f7c-99e1-7b81b1a6ea8b",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [520, -40],
+			"parameters": {
+				"text": "=You are a professional B2B sales assistant.\n\nCompose a short, professional, and polite outreach email to schedule a call with the following lead.\n\nTone: concise and respectful. The goal is to open a conversation and set up a meeting.\n\nUse this format:\n---\nSend a message in Gmail:\nTo: {{ $('HTTP Request').item.json.person.email }}\nSubject: Exploring Collaboration in AI Solutions\n\nHi {{ $('HTTP Request').item.json.person.name }},\n\nI hope this message finds you well.\n\nI’m reaching out from ABC Pvt Ltd—we specialize in tailored IT solutions, including AI and machine learning services. Given your role at {{ $('HTTP Request').item.json.person.employment_history[0].organization_name }}, I’d love to briefly connect and explore potential synergies.\n\nWould you be available for a quick call sometime this week?\n\nBest regards,  \nABC XYZ  \nABC Pvt Ltd\n---\n\nHere is the lead detail:\nName: {{ $('HTTP Request').item.json.person.name }}\nEmail: {{ $('HTTP Request').item.json.person.email }}\nJob Title: {{ $('HTTP Request').item.json.person.title }}\nOrganization: {{ $('HTTP Request').item.json.person.employment_history[0].organization_name }}\n\nInstructions:\nTools - Send a message in Gmail Tools for send mails",
+				"options": {},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "02cd5fdd-1baa-4a03-8832-af83476eec98",
+			"name": "Send a message in Gmail",
+			"type": "n8n-nodes-base.gmailTool",
+			"position": [600, 200],
+			"webhookId": "6e94385c-502e-47a0-94fc-e6e05975a2ba",
+			"parameters": {
+				"sendTo": "={{ $('HTTP Request').item.json.person.email }}",
+				"message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+				"options": {},
+				"subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+				"emailType": "text"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "cae69208-18b5-493b-8f14-809e0180a868",
+			"name": "Groq Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+			"position": [480, 200],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"groqApi": {
+					"id": "credential-id",
+					"name": "groqApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fac878f8-18eb-482c-a889-5d694549af6c",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [720, 200],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "da7ad0ef-87ae-4da0-bee0-d464c7e33d3c",
+			"name": "Append row in sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [920, -40],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Name": "={{ $('On form submission').item.json[\"What's your Full Name?\"] }}",
+						"Email": "={{ $('On form submission').item.json[\"What is your email address?\"] }}",
+						"Phone": "={{ $('On form submission').item.json[\"What's your phone number?\"] }}",
+						"Job Title ": "={{ $('HTTP Request').item.json.person.title }}",
+						"Linkedin URL": "={{ $('On form submission').item.json[\"What's your Linkedin Profile URL\"] }}",
+						"Organization": "={{ $('HTTP Request').item.json.person.employment_history[0].organization_name }}"
+					},
+					"schema": [
+						{
+							"id": "Name",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Phone",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Phone",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Email",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Email",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Job Title ",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Job Title ",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Organization",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Organization",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Linkedin URL",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Linkedin URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Lead Potential",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Lead Potential",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Z3BuYjWFsGjCjTmpyCUqtjL_gHPZDBriDzfMUudmArA/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1Z3BuYjWFsGjCjTmpyCUqtjL_gHPZDBriDzfMUudmArA",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Z3BuYjWFsGjCjTmpyCUqtjL_gHPZDBriDzfMUudmArA/edit?usp=drivesdk",
+					"cachedResultName": "N8N Leads"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "b0c08c59-1116-44ed-914f-2e71e43d3208",
+			"name": "AI Agent1",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-100, -20],
+			"parameters": {
+				"text": "=You are an expert lead qualifier.\n\nScore the lead from 1 to 10 based on these two criteria:\n\n— INDUSTRY MATCH (5 points max) —\n- 5 points: Industry is AI, Artificial Intelligence, Machine Learning, Data Science\n- 3-4 points: Industry is closely related (e.g., analytics, automation, enterprise AI tools)\n- 0-2 points: Unrelated industry\n\n— JOB TITLE MATCH (5 points max) —\n- 5 points: Decision-makers or influencers in AI (e.g., Head of AI, AI Director, CTO, AI Product Manager)\n- 3-4 points: Mid-level AI professionals (e.g., ML Engineer, Data Scientist)\n- 0-2 points: Not related to AI or junior roles\n\nReturn **only a single digit between 1 and 10** — no explanation, no labels, no extra text. and the data type must be a number\n\nLead details:\nName: {{ $json.person.name }}\nJob Title: {{ $json.person.title }}\nOrganization: {{ $json.person.employment_history[0].organization_name }}\n",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "e4e59a80-4c68-4880-accd-bd3be08cb759",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [260, -20],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "or",
+					"conditions": [
+						{
+							"id": "eb511082-5f34-4027-993b-a787340fc4ea",
+							"operator": {
+								"type": "number",
+								"operation": "gte"
+							},
+							"leftValue": "={{Number($json.output)}}",
+							"rightValue": 6
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "7aeac238-77c1-43ec-a189-2b69e72f745c",
+			"name": "Groq Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+			"position": [-20, 200],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"groqApi": {
+					"id": "credential-id",
+					"name": "groqApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fa0db3cb-6bdf-46f4-9135-d2b149ca15a1",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-540, 180],
+			"webhookId": "17cfab42-90df-4af6-88ff-6ed925f861cc",
+			"parameters": {
+				"path": "17cfab42-90df-4af6-88ff-6ed925f861cc",
+				"options": {}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "e74c132d-0270-4585-ace8-0651fa4d9617",
+			"name": "Google Sheets Trigger",
+			"type": "n8n-nodes-base.googleSheetsTrigger",
+			"position": [-560, -240],
+			"parameters": {
+				"event": "rowAdded",
+				"options": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				}
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {
+		"HTTP Request": [
+			{
+				"json": {
+					"person": {
+						"id": "614eb2c7ccfa290001f4faff",
+						"city": "Indore",
+						"name": "Sujal Tamrakar",
+						"email": "sujal.tamrakar@vkaps.com",
+						"state": "Madhya Pradesh",
+						"title": "Generative AI Developer ",
+						"country": "India",
+						"headline": "AI Intern",
+						"functions": ["engineering"],
+						"last_name": "Tamrakar",
+						"photo_url": "https://media.licdn.com/dms/image/v2/D4D03AQHk2X_gKm4zfw/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1723404358413?e=2147483647&v=beta&t=9sdZlW7bRno6AN7bCTZp7XjEpk_O3x4ZQhy4l-_y_Uc",
+						"seniority": "entry",
+						"first_name": "Sujal",
+						"github_url": null,
+						"departments": ["master_engineering_technical", "master_information_technology"],
+						"show_intent": false,
+						"twitter_url": null,
+						"email_status": null,
+						"facebook_url": null,
+						"linkedin_url": "http://www.linkedin.com/in/sujaltamrakar",
+						"organization": {
+							"id": "54a1b7cf7468695c8218770a",
+							"city": "Indore",
+							"name": "VKAPS IT Solutions Pvt. Ltd. | A leading AI & Business Automation Company",
+							"phone": "+91 73142 39176",
+							"state": "Madhya Pradesh",
+							"country": "India",
+							"blog_url": null,
+							"industry": "information technology & services",
+							"keywords": [
+								"artificial intelligence",
+								"machine learning",
+								"dev ops",
+								"business process automation",
+								"zapier",
+								"mvp development",
+								"app prototyping",
+								"strategy consulting",
+								"product architecture",
+								"custom software development",
+								"saas development",
+								"mvp consultancy",
+								"api integr",
+								"minimum viable product (mvp)",
+								"ui/ux design",
+								"ecommerce solutions",
+								"mobile app development",
+								"annual maintenance contract",
+								"cloud services",
+								"ai and machine learning",
+								"blockchain integration",
+								"technology consulting",
+								"scalable solutions",
+								"secure applications",
+								"web development",
+								"digital transformation",
+								"api integration",
+								"devops practices",
+								"agile methodology",
+								"scrum project management",
+								"client relationship management",
+								"healthtech solutions",
+								"fintech software",
+								"real estate applications",
+								"fmcg solutions",
+								"cybersecurity services",
+								"software optimization",
+								"technical consulting",
+								"business analytics",
+								"product design",
+								"data analytics",
+								"software testing",
+								"continuous integration",
+								"continuous deployment",
+								"javascript frameworks",
+								"mern stack development",
+								"php development",
+								"laravel framework",
+								"react development",
+								"node.js applications",
+								"python development",
+								"aws cloud solutions",
+								"search engine optimization (seo)",
+								"digital marketing strategies",
+								"performance monitoring",
+								"project management tools",
+								"stakeholder engagement",
+								"information technology & services",
+								"strategic consulting",
+								"b2b",
+								"management consulting",
+								"e-commerce",
+								"consumer internet",
+								"consumers",
+								"internet",
+								"software development",
+								"cloud computing",
+								"enterprise software",
+								"enterprises",
+								"computer software"
+							],
+							"logo_url": "https://zenprospect-production.s3.amazonaws.com/uploads/pictures/686782c7d39c2300017192b4/picture",
+							"languages": ["English"],
+							"industries": ["information technology & services", "computer software"],
+							"postal_code": "452003",
+							"raw_address": "8/1-A Roshan Singh Bhandari Marg, Opp. of Landmark Abhay Prashal's street, Indore, Madhya Pradesh 452001, IN",
+							"twitter_url": "https://twitter.com/vkapsl",
+							"website_url": "http://www.vkaps.com",
+							"facebook_url": "https://facebook.com/vkaps-it-solutions-pvt-ltd-2348207792079570",
+							"founded_year": 2010,
+							"linkedin_uid": "1912704",
+							"linkedin_url": "http://www.linkedin.com/company/vkaps-it-solutions",
+							"alexa_ranking": null,
+							"angellist_url": null,
+							"primary_phone": {
+								"number": "+91 73142 39176",
+								"source": "Account",
+								"sanitized_number": "+917314239176"
+							},
+							"total_funding": null,
+							"crunchbase_url": null,
+							"funding_events": [],
+							"primary_domain": "vkaps.com",
+							"street_address": "8-A Roshni Singh Bhandari Marg",
+							"industry_tag_id": "5567cd4773696439b10b0000",
+							"sanitized_phone": "+917314239176",
+							"snippets_loaded": true,
+							"org_chart_sector": "OrgChart::SectorHierarchy::Rules::IT",
+							"suborganizations": [],
+							"technology_names": [
+								"Adobe Media Optimizer",
+								"Bootstrap Framework",
+								"Cedexis Radar",
+								"Google Analytics",
+								"Google Font API",
+								"Google Tag Manager",
+								"Mobile Friendly",
+								"Nginx",
+								"Vimeo",
+								"WordPress.org",
+								"reCAPTCHA"
+							],
+							"industry_tag_hash": {
+								"computer software": "5567cd4e7369643b70010000",
+								"information technology & services": "5567cd4773696439b10b0000"
+							},
+							"org_chart_removed": null,
+							"short_description": "VKAPS IT Solutions Pvt. Ltd. is a web and mobile app development company established in 2010, with over 12 years of experience in the industry. The company specializes in AI-driven solutions and business process automation, focusing on delivering Minimum Viable Products (MVPs) and SaaS solutions for startups and enterprises. VKAPS has successfully completed over 2,000 projects for more than 700 customers across 30 countries.\n\nThe company offers a range of services, including full-cycle web and mobile development, AI and business automation tools, SaaS product development, and custom blockchain solutions. VKAPS emphasizes long-term client relationships and provides comprehensive support from pre-sale consulting to post-delivery maintenance. Their team of over 50 engineers combines technical expertise with industry knowledge to deliver scalable and secure solutions. Led by founder Sudesh Agrawal, VKAPS is committed to fostering trust and reducing long-term costs for their clients.",
+							"current_technologies": [
+								{
+									"uid": "adobe_media_optimizer",
+									"name": "Adobe Media Optimizer",
+									"category": "Search Marketing"
+								},
+								{
+									"uid": "bootstrap_framework",
+									"name": "Bootstrap Framework",
+									"category": "CSS and JavaScript Libraries"
+								},
+								{
+									"uid": "cedexis_radar",
+									"name": "Cedexis Radar",
+									"category": "Web Performance Monitoring"
+								},
+								{
+									"uid": "google_analytics",
+									"name": "Google Analytics",
+									"category": "Analytics and Tracking"
+								},
+								{
+									"uid": "google_font_api",
+									"name": "Google Font API",
+									"category": "Fonts"
+								},
+								{
+									"uid": "google_tag_manager",
+									"name": "Google Tag Manager",
+									"category": "Tag Management"
+								},
+								{
+									"uid": "mobile_friendly",
+									"name": "Mobile Friendly",
+									"category": "Other"
+								},
+								{
+									"uid": "nginx",
+									"name": "Nginx",
+									"category": "Load Balancers"
+								},
+								{
+									"uid": "vimeo",
+									"name": "Vimeo",
+									"category": "Online Video Platforms"
+								},
+								{
+									"uid": "wordpress_org",
+									"name": "WordPress.org",
+									"category": "CMS"
+								},
+								{
+									"uid": "recaptcha",
+									"name": "reCAPTCHA",
+									"category": "Captcha"
+								}
+							],
+							"latest_funding_stage": null,
+							"num_suborganizations": 0,
+							"secondary_industries": ["computer software"],
+							"retail_location_count": 0,
+							"total_funding_printed": null,
+							"publicly_traded_symbol": null,
+							"estimated_num_employees": 96,
+							"owned_by_organization_id": null,
+							"publicly_traded_exchange": null,
+							"latest_funding_round_date": null,
+							"org_chart_root_people_ids": [],
+							"org_chart_show_department_filter": null,
+							"organization_headcount_six_month_growth": null,
+							"organization_headcount_twelve_month_growth": null,
+							"organization_headcount_twenty_four_month_growth": null
+						},
+						"subdepartments": [
+							"artificial_intelligence_machine_learning",
+							"software_development",
+							"application_development"
+						],
+						"intent_strength": null,
+						"organization_id": "54a1b7cf7468695c8218770a",
+						"employment_history": [
+							{
+								"id": "6848f994a60b5b000142aa1c",
+								"_id": "6848f994a60b5b000142aa1c",
+								"key": "6848f994a60b5b000142aa1c",
+								"kind": null,
+								"major": null,
+								"title": "Generative AI Developer ",
+								"degree": null,
+								"emails": null,
+								"current": true,
+								"end_date": null,
+								"created_at": null,
+								"start_date": "2024-07-01",
+								"updated_at": null,
+								"description": null,
+								"grade_level": null,
+								"raw_address": null,
+								"organization_id": "54a1b7cf7468695c8218770a",
+								"organization_name": "VKAPS IT Solutions Pvt. Ltd. | A leading AI & Business Automation Company"
+							},
+							{
+								"id": "6848f994a60b5b000142aa1d",
+								"_id": "6848f994a60b5b000142aa1d",
+								"key": "6848f994a60b5b000142aa1d",
+								"kind": null,
+								"major": null,
+								"title": "Data Science Trainee",
+								"degree": null,
+								"emails": null,
+								"current": false,
+								"end_date": "2024-07-01",
+								"created_at": null,
+								"start_date": "2024-05-01",
+								"updated_at": null,
+								"description": null,
+								"grade_level": null,
+								"raw_address": null,
+								"organization_id": "618b9a9966d3b400dc6aa72a",
+								"organization_name": "Dr Reddy's Foundation"
+							},
+							{
+								"id": "6848f994a60b5b000142aa1e",
+								"_id": "6848f994a60b5b000142aa1e",
+								"key": "6848f994a60b5b000142aa1e",
+								"kind": null,
+								"major": null,
+								"title": "Trainee",
+								"degree": null,
+								"emails": null,
+								"current": false,
+								"end_date": "2022-12-01",
+								"created_at": null,
+								"start_date": "2022-09-01",
+								"updated_at": null,
+								"description": null,
+								"grade_level": null,
+								"raw_address": null,
+								"organization_id": "54a1277669702dcef9562500",
+								"organization_name": "Zensar Technologies"
+							},
+							{
+								"id": "6848f994a60b5b000142aa1f",
+								"_id": "6848f994a60b5b000142aa1f",
+								"key": "6848f994a60b5b000142aa1f",
+								"kind": null,
+								"major": null,
+								"title": "PERCEPTRON NETWORK FOR  IDENTIFICATION OF ODD NUMBERS",
+								"degree": null,
+								"emails": null,
+								"current": false,
+								"end_date": "2022-09-01",
+								"created_at": null,
+								"start_date": "2022-08-01",
+								"updated_at": null,
+								"description": null,
+								"grade_level": null,
+								"raw_address": null,
+								"organization_id": "54a25e4674686930c2d7701d",
+								"organization_name": "Indian Institute of Technology, Indore"
+							}
+						],
+						"email_domain_catchall": false,
+						"revealed_for_current_team": true,
+						"extrapolated_email_confidence": null
+					}
+				}
+			}
+		],
+		"On form submission": [
+			{
+				"json": {
+					"formMode": "test",
+					"submittedAt": "2025-07-09T05:46:32.341-04:00",
+					"What's your Full Name?": "Sujal Tamrakar",
+					"What's your phone number?": 7067599678,
+					"What is your email address?": "sujal.tamrakar@vkaps.com",
+					"What's your Linkedin Profile URL": "www.google.com"
+				}
+			}
+		]
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "f3d19998-54cd-44f4-9b27-35bdc6ed4a56",
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Append row in sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent1": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Groq Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Groq Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On form submission": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets Trigger": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send a message in Gmail": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

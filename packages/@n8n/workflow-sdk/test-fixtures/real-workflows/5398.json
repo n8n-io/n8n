@@ -1,0 +1,224 @@
+{
+	"meta": {
+		"instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "91f18887-363a-4c6d-9d49-981e05bb52bf",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [0, 0],
+			"webhookId": "543b5127-33dc-4e0f-b658-8643d404506b",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "7d21346c-f225-4cc8-85d6-6dd68fc9a035",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [220, 0],
+			"parameters": {
+				"options": {
+					"systemMessage": "You are a helpful assistant\n\nYou answer questions about MCP (Model Context Protocol). You have access to two MCP servers:\n\n- The RAG MCP Server which answers general questions about MCP\n- The Search Engine MCP Server which allows you to use a Search Engine in realtime.\n\nThe Search Engine MCP Server has two tools;\n- list tool - which shows all the available tools\n- execute tool - which allows you to execute a search query on a search engine.\n\nYou DO NOT answer questions with your internal knowledge, you ONLY use the knowledge provided by the two MCP servers to answer questions."
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "ab24be4f-acbd-47b9-abe1-1db621150971",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-20, 280],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "71e5008a-2e56-4588-a4c3-a8724026b998",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [180, 280],
+			"parameters": {
+				"contextWindowLength": 15
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "aa1ae334-de5d-4cd3-a4a5-60f48ca37bbe",
+			"name": "MCP_Search_List_Tools",
+			"type": "n8n-nodes-mcp.mcpClientTool",
+			"position": [680, 280],
+			"parameters": {},
+			"credentials": {
+				"mcpClientApi": {
+					"id": "credential-id",
+					"name": "mcpClientApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cef78817-9d96-4e16-80d1-6c8a2e7b574b",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [320, 220],
+			"parameters": {
+				"color": 3,
+				"width": 280,
+				"height": 220,
+				"content": "## RAG MCP Server"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "62d8bad6-50f4-4eec-b553-2107c7e5ee28",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [620, 220],
+			"parameters": {
+				"color": 5,
+				"width": 360,
+				"height": 220,
+				"content": "## Search Engine MCP Server"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4522cb25-9a05-4509-a3cb-0f4275c95bb3",
+			"name": "MCP_Search_Search_Engine",
+			"type": "n8n-nodes-mcp.mcpClientTool",
+			"position": [860, 280],
+			"parameters": {
+				"toolName": "search_engine",
+				"operation": "executeTool",
+				"toolParameters": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}"
+			},
+			"credentials": {
+				"mcpClientApi": {
+					"id": "credential-id",
+					"name": "mcpClientApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e96335a9-cc8a-4d29-85d2-905321fba47c",
+			"name": "RAG MCP Server",
+			"type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+			"position": [420, 280],
+			"parameters": {
+				"sseEndpoint": "http://localhost:5678/mcp/f88b9b77-40f2-4fad-8e14-0fc7faed7a0b"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "76531f2c-8f92-455f-a618-8fc1dd579d03",
+			"name": "MCP Client",
+			"type": "n8n-nodes-mcp.mcpClientTool",
+			"position": [580, 220],
+			"parameters": {},
+			"credentials": {
+				"mcpClientApi": {
+					"id": "credential-id",
+					"name": "mcpClientApi Credential"
+				}
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"MCP Client": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RAG MCP Server": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MCP_Search_List_Tools": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MCP_Search_Search_Engine": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,335 @@
+{
+	"id": "83Ad0ngUzuJQHqb6",
+	"meta": {
+		"instanceId": "42b2652ebb0a87755df4710a5630695eec8e35cb0ce04a63b0e25751b1f044f1",
+		"templateId": "8074",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "AI Voice Assistant | Shareable",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "9684bd78-2d6c-42c8-acbf-fecdc8f063d9",
+			"name": "Webhook: Receive User Request (ElevenLabs)",
+			"type": "n8n-nodes-base.webhook",
+			"position": [1008, 400],
+			"webhookId": "90d9fd4e-4549-4dd3-acb6-91742b89b939",
+			"parameters": {
+				"path": "REPLACE ME",
+				"options": {},
+				"httpMethod": "POST",
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "85c5ffe7-d8eb-4728-9fa5-46bec37971d1",
+			"name": "Webhook: Return AI Response (ElevenLabs)",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [1552, 400],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "6bcabb27-e908-4ff4-bd75-e2d87c1e787e",
+			"name": "Calendar: Check Availability",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [1456, 624],
+			"parameters": {
+				"options": {},
+				"timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+				"timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+				"calendar": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=REPLACE ME"
+				},
+				"operation": "getAll",
+				"returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}"
+			},
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleCalendarOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "eee96f04-be2d-48c7-9ca7-a86756a5af97",
+			"name": "Calendar: Create Appointment",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [1616, 624],
+			"parameters": {
+				"end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+				"start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+				"calendar": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=REPLACE ME"
+				},
+				"additionalFields": {
+					"summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
+					"attendees": [
+						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('attendees0_Attendees', ``, 'string') }}"
+					],
+					"description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+					"sendUpdates": "all"
+				}
+			},
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleCalendarOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "b375f67e-e657-4e36-872d-1e84d897de25",
+			"name": "Reasoning Tool (LangChain)",
+			"type": "@n8n/n8n-nodes-langchain.toolThink",
+			"position": [1264, 624],
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "ed1e947f-93dc-4df4-99cb-d6d8cc998f66",
+			"name": "Anthropic Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"position": [976, 624],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-3-5-sonnet-20241022",
+					"cachedResultName": "Claude Sonnet 3.5 (New)"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"anthropicApi": {
+					"id": "credential-id",
+					"name": "anthropicApi Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "f751a4ae-d06e-469a-a584-88f992eea6dc",
+			"name": "Voice AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1232, 400],
+			"parameters": {
+				"text": "=# n8n Scheduling Assistant\n\n## CONTEXT\n- Current time: {{ $now }} [TIMEZONE]\n- Session ID: {{ $json.body.sessionId }}\n- User utterance: {{ $json.body.utterance }}\n- Caller's phone number: {{ $json.body.system_caller_id }}\n- Full conversation: {{ $json.body.call_log }}\n\n## TOOLS\n1. think - ALWAYS use first to analyze state\n2. get_availability - Check calendar ([APPOINTMENT_DURATION]-min slots)\n3. create_appointment - Book appointment\n4. update_appointment - Modify existing appointment\n\n## VOICE RULES\n- ONE short sentence per response\n- Spell email handles pre-domain with hyphens: j-o-h-n-@-gmail.com\n- Spell phone numbers with hyphens: +-1-4-0-8-3-4-0-3-2-6-5\n- Be concise and natural\n\n## BOOKING FLOW\n\n### 1. TIME SELECTION\n**User wants to schedule but no specific time:**\n- Check availability and offer: \"I have [earliest slot] or [second earliest slot] available. Which works better?\"\n\n**User suggests specific time:**\n- Check availability\n- Hours are [START_TIME]-[END_TIME], [OPERATING_DAYS] | NEVER ALLOW BOOKING NOR SUGGEST BOOKING [BLOCKED_DAYS] EVEN FOR AN EMERGENCY\n- Never allow booking of a time within the next [MINIMUM_LEAD_TIME] minutes EVEN FOR AN EMERGENCY\n- If available: \"[Time] works. Want to book it?\"\n- If conflict: \"That's taken. I have [earlier] or [later] available.\"\n\n### 2. COLLECT INFORMATION\n**First, check call_log for any previously mentioned info ([REQUIRED_FIELDS])**\n\n**After time confirmed, ask ONLY for missing info:**\n- If nothing in history: \"Great! I need [REQUIRED_FIELDS_NATURAL_LANGUAGE].\"\n- If some info exists: \"Great! I just need [missing items].\"\n\n**If user provides partial info:**\n\"Thanks! I still need [missing items].\"\n\n### 3. CONFIRM EVERYTHING\n**Once all info collected:**\n\"Let me confirm - [spell email], service at [address], and is this the best phone number to reach you at {{ $json.body.system_caller_id }}?\"\n\n**User must say yes/correct to proceed**\n\n### 4. BOOK APPOINTMENT\n**After confirmation:**\n1. Create appointment with all details from call_log:\n   - Title: \"[SERVICE_TYPE] - [PRIMARY_IDENTIFIER]\"\n   - Duration: [APPOINTMENT_DURATION] minutes\n   - Always include in the notes: [REQUIRED_NOTES_FIELDS]\n   - When scheduling an appointment, always include the customer's email address as an attendee so they receive the calendar invite\n\n2. Response: \"Perfect! Your appointment is booked for [day] at [time]. Is there anything else I can help you with today?\"\n\n## APPOINTMENT UPDATES\nIf user wants changes after booking:\n- Use update_appointment (not create)\n- Confirm the change: \"Updated to [new details].\"\n\n## CRITICAL RULES\n✓ ALWAYS use think first\n✓ ALWAYS collect all required fields: [REQUIRED_FIELDS_LIST]\n✓ ALWAYS spell email for confirmation\n✓ ALWAYS end with \"anything else I can help with?\"\n✓ NEVER book without explicit confirmation\n✓ NEVER create duplicate appointments\n\n## DO NOT\n- Ask for information multiple times\n- Say \"I'll confirm\" repeatedly\n- Book overlapping appointments\n- Skip any of the required fields",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "ed23ba82-3a16-4128-b975-67b4596debb7",
+			"name": "Update an event in Google Calendar",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [1776, 624],
+			"parameters": {
+				"eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+				"calendar": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=REPLACE ME"
+				},
+				"operation": "update",
+				"updateFields": {},
+				"useDefaultReminders": "="
+			},
+			"credentials": {
+				"googleCalendarOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleCalendarOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "aa9dda7b-36b5-4d5f-ad11-8943cf69293c",
+			"name": "Redis Chat Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+			"position": [1120, 624],
+			"parameters": {
+				"sessionKey": "={{ $json.body.sessionId }}",
+				"sessionIdType": "customKey",
+				"contextWindowLength": 20
+			},
+			"credentials": {
+				"redis": {
+					"id": "credential-id",
+					"name": "redis Credential"
+				}
+			},
+			"typeVersion": 1.5
+		},
+		{
+			"id": "f3ebb51b-efd2-479c-bc8f-4cc84c310811",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [816, -224],
+			"parameters": {
+				"color": 4,
+				"width": 1120,
+				"height": 608,
+				"content": "## PROMPT CONFIGURATION REQUIRED\n\n1. **[TIMEZONE]** - Set your timezone (e.g., PST, EST, GMT)\n\n2. **[APPOINTMENT_DURATION]** - Default appointment length in minutes (e.g., 30, 45, 60)\n\n3. **[START_TIME] & [END_TIME]** - Business hours (e.g., 8am & 6pm)\n\n4. **[OPERATING_DAYS]** - Days you're open (e.g., Monday through Friday)\n\n5. **[BLOCKED_DAYS]** - Days never available (e.g., Saturday or Sunday)\n\n6. **[MINIMUM_LEAD_TIME]** - Buffer time before appointments in minutes (e.g., 60)\n\n7. **[REQUIRED_FIELDS]** - Data you need to collect (e.g., email, phone, address)\n\n8. **[REQUIRED_FIELDS_NATURAL_LANGUAGE]** - How to ask for the fields (e.g., \"the service address and your email\")\n\n9. **[REQUIRED_FIELDS_LIST]** - List format for critical rules (e.g., \"address, email, phone\")\n\n10. **[SERVICE_TYPE]** - Your service name (e.g., \"Plumbing Service\", \"Consultation\", \"Dental Appointment\")\n\n11. **[PRIMARY_IDENTIFIER]** - What goes after service type in title (e.g., [Address], [Customer Name], [Service Details])\n\n12. **[REQUIRED_NOTES_FIELDS]** - What to include in appointment notes (e.g., \"Problem description from call_log, user's email, user's address, and user's phone number\")\n\n**NOTE:** Keep all {{ }} variables exactly as they are - these dynamically pull data from the ElevenLabs webhook and should NOT be modified."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "edea27a6-2ee6-49a9-9420-4581ca51f1c0",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [416, 736],
+			"parameters": {
+				"width": 448,
+				"height": 336,
+				"content": "## AI MODEL CONFIGURATION\n**Recommended:** Claude 3.5 Sonnet provides best results for voice interactions due to superior reasoning and instruction following.\n\n**Alternative Options:**\n- GPT-4 models can work but may require prompt adjustments\n- Smaller models may struggle with complex scheduling logic\n- Test thoroughly if using non-Claude models\n\n**Note:** The \"think\" tool is critical for maintaining conversation state - do not remove it regardless of model choice."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "26365258-1bb5-4d9e-a237-4955798e5cf1",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [416, 496],
+			"parameters": {
+				"color": 3,
+				"width": 448,
+				"height": 224,
+				"content": "## WEBHOOK SETUP\n1. Replace \"REPLACE ME\" in the webhook path with your desired endpoint\n2. This webhook URL will be provided to ElevenLabs for integration\n3. Ensure webhook is set to POST method\n4. Test with ElevenLabs webhook tester before going live"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ff4c1ff7-d6c8-43e6-9e32-d8ce88a3f24c",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1408, 784],
+			"parameters": {
+				"color": 4,
+				"width": 512,
+				"height": 192,
+				"content": "## GOOGLE CALENDAR SETUP\n1. Replace all instances of \"REPLACE ME\" in calendar nodes with your Calendar ID\n2. Calendar ID format: xxxxx@group.calendar.google.com or your-email@gmail.com\n3. Ensure calendar has appropriate sharing permissions\n4. Connect your Google account via OAuth2 in credentials"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e2e2f64b-366e-4771-ac5b-7e8a09a9c2f8",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [880, 784],
+			"parameters": {
+				"color": 6,
+				"width": 512,
+				"height": 288,
+				"content": "## REDIS MEMORY SETUP\nRedis memory is necessary for this workflow to function properly. Without memory, the AI must reparse the entire conversation on every turn, causing severe lag and breaking the real-time voice experience.\n\n**Configuration:**\n- Stores 20 messages per session (adjustable in contextWindowLength parameter)\n- Uses session ID from ElevenLabs to maintain conversation continuity\n- Session data persists between calls from the same user\n- Configure Redis connection in credentials before using this workflow"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "7c8b8ff4-b793-4e11-bb35-6a3b0acdf57b",
+	"connections": {
+		"Voice AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Webhook: Return AI Response (ElevenLabs)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Redis Chat Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "Voice AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Anthropic Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Voice AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Reasoning Tool (LangChain)": {
+			"ai_tool": [
+				[
+					{
+						"node": "Voice AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calendar: Check Availability": {
+			"ai_tool": [
+				[
+					{
+						"node": "Voice AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calendar: Create Appointment": {
+			"ai_tool": [
+				[
+					{
+						"node": "Voice AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update an event in Google Calendar": {
+			"ai_tool": [
+				[
+					{
+						"node": "Voice AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook: Receive User Request (ElevenLabs)": {
+			"main": [
+				[
+					{
+						"node": "Voice AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

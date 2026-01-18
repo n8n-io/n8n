@@ -1,0 +1,1620 @@
+{
+	"meta": {
+		"instanceId": "26d945156957a6ac0008d35968549211335f2bf747019335959de41529542205",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "273f6c2c-3485-4cad-a328-975a8b11f890",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [1408, 640],
+			"parameters": {
+				"jsonSchemaExample": "{\n\t\"email_subject\": \"text\",\n\t\"email_content\": \"text\"\n}"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "c67b8548-edb4-40a5-a375-dae85fbeff34",
+			"name": "Structured Output Parser1",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [1888, 640],
+			"parameters": {
+				"jsonSchemaExample": "{\n\t\"approval\": \"APPROVED OR REVISE\",\n\t\"feedback\": \"Context\"\n}"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "0d71683c-e55a-4633-8ac6-ffdd76b68758",
+			"name": "Main Loop",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [1104, 432],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "de3ded1b-ef3f-4b6a-bc15-bf4da5d85c57",
+			"name": "Approval Route",
+			"type": "n8n-nodes-base.if",
+			"position": [2064, 432],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "loose"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "21d24406-386b-4360-879c-8a1d56354b40",
+							"operator": {
+								"type": "string",
+								"operation": "contains"
+							},
+							"leftValue": "={{ $json.output }}",
+							"rightValue": "APPROVED"
+						}
+					]
+				},
+				"looseTypeValidation": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "2a92627e-7966-4f55-9463-77be9610517a",
+			"name": "Agent One",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1264, 448],
+			"parameters": {
+				"text": "=COMPANY INFORMATION BELOW THIS LINE\n——————————————————————————————————————\nFirst_name: {{ $json.First_name }}\nLast_name: {{ $json.Last_name }}\nTitle: {{ $json.Title }}\nLocation (City, State, Country); {{ $json.Location }}\nCompany_Name: {{ $json.Company_Name }}\nCompany_site: {{ $json.Company_site }}\nCrunchbase_Data: {{ $json.crunchbase_company_scrape }}\nLinkedin_Personal: {{ $json.linkedin_profile_scrape }}\nLinkedin_Company: {{ $json.linkedin_company_scrape }}\n——————————————————————————————————————\n\nABOUT ME: USE FOR EMAIL CONTENT AS ME\n——————————————————————————————————————\nName: James\nTitle: CEO\nCompany: Company Sample\nIndustry: AI Automations\n——————————————————————————————————————\n",
+				"options": {
+					"maxIterations": 10,
+					"systemMessage": "=# Role and Objective\nYou are a **Creative Outreach Agent** — a relationship-focused specialist who crafts personalized, research-driven outreach emails that establish authentic connections with prospects.  \nYour primary objective is to **identify meaningful insights**, reference them naturally, and deliver concise, value-oriented messages that open conversations — not push sales.\n\n# Instructions & Rules / Task\n1. Use all available information to understand:\n   - Recent posts or likes  \n   - Company updates, keywords, or milestones  \n   - Interests, intent signals, or opportunities  \n   - Funding rounds, new hires, or partnerships  \n   - ABOUT ME section is the person sending the email, use that as your base\n\n2. **Email Crafting Guidelines**\n   - **Start strong:** Open with a relevant fact, post, or milestone about the person or their company.  \n   - **Be conversational:** Write in a warm, friendly, and natural tone — as if reaching out peer-to-peer.  \n   - **Provide value:** Focus on solving a potential problem, sharing insight, or aligning with their goals — not selling a product.  \n   - **Be concise:** Keep the body under ~120 words.  \n   - **Include a light CTA:** Suggest a simple next step like exchanging ideas, hopping on a short chat, or sharing feedback — not a hard pitch.  \n   - **Avoid fluff:** No filler phrases, overused sales language, or unnecessary compliments.  \n   - **Always personalize:** Ensure every sentence feels directly written for that specific person.  \n\n3. **Output Requirements**\n   - Return the final result in **JSON format** with the following keys only:\n     ```json\n     {\n       \"subject\": \"string\",\n       \"email_body\": \"string\"\n     }\n     ```\n   - Do **not** include reasoning steps, analysis, or tool outputs in the final message — only the JSON response.\n\n# Context\nYour mission is to help a business build genuine connections with prospects through thoughtful, insight-driven outreach.  \nEach message should demonstrate clear understanding of who the prospect is, what they care about, and how you can provide relevant value or perspective.  \nPrioritize curiosity and helpfulness over persuasion.  \nYou are not writing sales emails — you are starting meaningful conversations.\n",
+					"returnIntermediateSteps": true
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"retryOnFail": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "e64c3b47-4cb3-46dc-b4a9-ff05b6c3f705",
+			"name": "Email Context",
+			"type": "n8n-nodes-base.set",
+			"position": [1552, 448],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "543eb3a4-b33a-4531-897a-c1d448782b35",
+							"name": "email_subject",
+							"type": "string",
+							"value": "={{ $json.output.email_subject }}"
+						},
+						{
+							"id": "10a30bf0-ea91-487e-bfc7-115fbf083614",
+							"name": "email_content",
+							"type": "string",
+							"value": "={{ $json.output.email_content }}"
+						},
+						{
+							"id": "6140b31b-0545-4acb-98b7-49214b504ea5",
+							"name": "email",
+							"type": "string",
+							"value": "={{ $('Main Loop').item.json.email }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "9a5c29bb-6ba4-4b15-aa26-8a8d79d1f6df",
+			"name": "Judge Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"onError": "continueErrorOutput",
+			"position": [1728, 448],
+			"parameters": {
+				"text": "=email_subject: {{ $json.email_subject }}\nemail_content: {{ $json.email_content }}",
+				"options": {
+					"maxIterations": 20,
+					"systemMessage": "=# Role and Objective\nYou are the **Outreach Email Judge** — an impartial evaluator whose sole purpose is to assess the quality and personalization of outreach emails created by the Creative Outreach Agent.  \nYour job is to determine whether the email feels genuinely personalized, relevant, and conversational — not generic or sales-driven.\n\n# Instructions & Rules / Task\n1. **Input**\n   You will receive a JSON object from the outreach agent in the format:\n   ```json\n   {\n     \"subject\": \"string\",\n     \"email_body\": \"string\"\n   }\nEvaluation Criteria\nEvaluate the email using the following key dimensions:\n\nA. Personalization Check\n\nDoes the email mention a specific fact, event, or achievement related to the recipient or their company?\n\nDoes it clearly reflect data-driven insights (e.g., LinkedIn post, company update, funding news, or role-specific challenge)?\n\nDoes it sound like it was written for this exact person, not a segment or template?\n\nB. Relevance & Value\n\nDoes the message provide relevant value, perspective, or problem-solving insight instead of a sales pitch?\n\nIs the message connected logically to the recipient’s role, company, or current context?\n\nC. Tone & Engagement\n\nIs the tone warm, conversational, and human (not overly formal or robotic)?\n\nIs it under ~120 words and easy to read?\n\nDoes it include a clear but light call to action (e.g., ask for feedback, offer help, or suggest a chat)?\n\nD. Authenticity & Flow\n\nDoes the email sound like it was written by a real person who did research?\n\nDoes it flow naturally without awkward phrasing or filler content?\n\nDecision Logic\n\nIf the email meets all key criteria above → respond with:\nAPPROVED\nIf the email fails any of the checks (personalization, tone, value, or clarity) → respond with:\nREVISE\nFeedback (Optional Enhancement)\n\nIf returning REVISE, you may include a brief explanation (1–2 sentences max) outlining what needs improvement, such as:\n\nMissing personalization detail\n\nToo generic or salesy\n\nWeak value proposition\n\nUnclear or missing call to action\n\nOutput Format\n\nAlways return one of the following:\nAPPROVED\n\nor\nREVISE: [short feedback here]\nContext\n\nYou are not writing or editing the email — only evaluating.\nYour judgment ensures every outreach email maintains a high standard of authenticity, relevance, and personalization before it reaches a prospect.\n"
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "3d3f2289-f7a2-489a-86d8-bdf02daa4559",
+			"name": "Google Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [1584, 720],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b1d7ec1f-6e56-4cd0-9a5f-d6063d3fb4ab",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [976, -144],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b08a9639-3dd1-4d35-b188-9d70af49b321",
+			"name": "Get row(s)",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [912, 432],
+			"parameters": {
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "email_subject",
+							"condition": "isEmpty"
+						}
+					]
+				},
+				"operation": "get",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "6XegBPA9Om69hRLz",
+					"cachedResultUrl": "/projects/sLfRUA3B2xKNo0Sc/datatables/6XegBPA9Om69hRLz",
+					"cachedResultName": "email_linkedin_list"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4ae61ca4-c45e-41d5-9cf5-33aed2aec378",
+			"name": "Update row(s)",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [2256, 416],
+			"parameters": {
+				"columns": {
+					"value": {
+						"email_body": "={{ $('Email Context').item.json.email_content }}",
+						"email_subject": "={{ $('Email Context').item.json.email_subject }}"
+					},
+					"schema": [
+						{
+							"id": "First_name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "First_name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Last_name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Last_name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Title",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Title",
+							"defaultMatch": false
+						},
+						{
+							"id": "Location",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Location",
+							"defaultMatch": false
+						},
+						{
+							"id": "Company_Name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Company_Name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Company_site",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Company_site",
+							"defaultMatch": false
+						},
+						{
+							"id": "Crunchbase_URL",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Crunchbase_URL",
+							"defaultMatch": false
+						},
+						{
+							"id": "Linkedin_URL",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Linkedin_URL",
+							"defaultMatch": false
+						},
+						{
+							"id": "email_subject",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email_subject",
+							"defaultMatch": false
+						},
+						{
+							"id": "email_body",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email_body",
+							"defaultMatch": false
+						},
+						{
+							"id": "linkedin_profile_scrape",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "linkedin_profile_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "linkedin_company_scrape",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "linkedin_company_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "crunchbase_company_scrape",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "crunchbase_company_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "email",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email",
+							"defaultMatch": false
+						},
+						{
+							"id": "company_linkedin",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "company_linkedin",
+							"defaultMatch": false
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "email",
+							"keyValue": "={{ $('Main Loop').item.json.email }}"
+						}
+					]
+				},
+				"options": {},
+				"operation": "update",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "6XegBPA9Om69hRLz",
+					"cachedResultUrl": "/projects/sLfRUA3B2xKNo0Sc/datatables/6XegBPA9Om69hRLz",
+					"cachedResultName": "email_linkedin_list"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "10dc5def-f87b-406f-a0ae-0e5f70545802",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [560, 352],
+			"parameters": {
+				"color": 4,
+				"width": 1872,
+				"height": 528,
+				"content": "## Creative Outreach Agent - A dedicated agent designated for creativity and equipped with enriched data for a creative personalized email"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fabd70ab-ab6f-4893-a498-b739c2d88355",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [928, -448],
+			"parameters": {
+				"width": 1504,
+				"height": 768,
+				"content": "## Data Enrichment - Step 1; Fetch person details from local table, scrap data from multiple resources to enrich the user profile"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1ffa8773-fca9-4be6-ae66-798f75f29e18",
+			"name": "Get row(s)1",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [1312, -144],
+			"parameters": {
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "email_subject",
+							"condition": "isEmpty"
+						}
+					]
+				},
+				"operation": "get",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "6XegBPA9Om69hRLz",
+					"cachedResultUrl": "/projects/sLfRUA3B2xKNo0Sc/datatables/6XegBPA9Om69hRLz",
+					"cachedResultName": "email_linkedin_list"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "24c6246a-efe6-4c38-ab4a-a73e63930923",
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [672, 448],
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "560141e7-d746-4848-90d3-7b32e221f83b",
+			"name": "Linkedin_URL",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1616, -336],
+			"parameters": {
+				"url": "https://cold-outreach-enrichment-scraper.p.rapidapi.com/company_url",
+				"options": {
+					"batching": {
+						"batch": {
+							"batchSize": 1
+						}
+					}
+				},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "url",
+							"value": "={{ $json.Linkedin_URL }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "x-rapidapi-host",
+							"value": "cold-outreach-enrichment-scraper.p.rapidapi.com"
+						},
+						{
+							"name": "x-rapidapi-key",
+							"value": "={{ $('RapidAPI-Key').item.json['RapidAPI-Key'] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "7fb7852d-1b67-48ac-a742-93c45b27295e",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [560, -448],
+			"parameters": {
+				"color": 3,
+				"width": 352,
+				"height": 768,
+				"content": "## Prerequisites\n\n- This workflow is designed to enrich outreach with up-to-date data also generate a personalized outreach emails\n\n\n- **Subscript to RapidAPI Scraper:** [HERE](https://rapidapi.com/ikemo-ikemo-default/api/cold-outreach-enrichment-scraper)\n\n- **Table headers;**\n\"First_name\",\n\"Last_name\",\n\"email\",\n\"Title\",\n\"Location\",\n\"Company_Name\",\n\"Company_site\",\n\"Crunchbase_URL\",\n\"Linkedin_URL\",\n\"linkedin_profile_scrape\",\n\"linkedin_company_scrape\",\n\"crunchbase_company_scrape\",\n\"company_linkedin\",\n\"email_subject\",\n\"email_body\"\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b35c1dec-8e1f-41b5-b0b6-c81b641c8b52",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [1808, -336],
+			"webhookId": "cdf87baf-7be7-4e81-8343-9e4fa9db3c85",
+			"parameters": {
+				"unit": "minutes"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "1323dbff-3759-4586-8c83-ef63c4277beb",
+			"name": "RapidAPI-Key",
+			"type": "n8n-nodes-base.set",
+			"position": [1136, -144],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "69b2f1d8-061e-4821-8a63-d4562bb8aa7e",
+							"name": "RapidAPI-Key",
+							"type": "string",
+							"value": "XXXXXXXXXXX"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "4242832e-e515-4078-989e-7d1adbef44e6",
+			"name": "results",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1968, -336],
+			"parameters": {
+				"url": "https://cold-outreach-enrichment-scraper.p.rapidapi.com/results",
+				"options": {
+					"batching": {
+						"batch": {
+							"batchSize": 1
+						}
+					}
+				},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "task_id",
+							"value": "={{ $('Linkedin_URL').item.json.task_id }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "x-rapidapi-host",
+							"value": "cold-outreach-enrichment-scraper.p.rapidapi.com"
+						},
+						{
+							"name": "x-rapidapi-key",
+							"value": "={{ $('RapidAPI-Key').item.json['RapidAPI-Key'] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "e6ddfe94-e6a1-4baf-9417-534bbaac3e5a",
+			"name": "Update row(s)1",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [2176, -336],
+			"parameters": {
+				"columns": {
+					"value": {
+						"linkedin_profile_scrape": "={{ $json.results.toJsonString() }}"
+					},
+					"schema": [
+						{
+							"id": "First_name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "First_name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Last_name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Last_name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Title",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Title",
+							"defaultMatch": false
+						},
+						{
+							"id": "Location",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Location",
+							"defaultMatch": false
+						},
+						{
+							"id": "Company_Name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Company_Name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Company_site",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Company_site",
+							"defaultMatch": false
+						},
+						{
+							"id": "Crunchbase_URL",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Crunchbase_URL",
+							"defaultMatch": false
+						},
+						{
+							"id": "Linkedin_URL",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Linkedin_URL",
+							"defaultMatch": false
+						},
+						{
+							"id": "email_subject",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email_subject",
+							"defaultMatch": false
+						},
+						{
+							"id": "email_body",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email_body",
+							"defaultMatch": false
+						},
+						{
+							"id": "linkedin_profile_scrape",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "linkedin_profile_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "linkedin_company_scrape",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "linkedin_company_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "crunchbase_company_scrape",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "crunchbase_company_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "email",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email",
+							"defaultMatch": false
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "email",
+							"keyValue": "={{ $('Get row(s)1').item.json.email }}"
+						}
+					]
+				},
+				"options": {},
+				"operation": "update",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "6XegBPA9Om69hRLz",
+					"cachedResultUrl": "/projects/sLfRUA3B2xKNo0Sc/datatables/6XegBPA9Om69hRLz",
+					"cachedResultName": "email_linkedin_list"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a14eb5e0-4004-4b32-a7b5-758bc918953f",
+			"name": "Wait1",
+			"type": "n8n-nodes-base.wait",
+			"position": [1808, -96],
+			"webhookId": "cdf87baf-7be7-4e81-8343-9e4fa9db3c85",
+			"parameters": {
+				"unit": "minutes"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "258402c6-4e0a-4784-898a-3b3c8bd76e2b",
+			"name": "results1",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1968, -96],
+			"parameters": {
+				"url": "https://cold-outreach-enrichment-scraper.p.rapidapi.com/results",
+				"options": {
+					"batching": {
+						"batch": {
+							"batchSize": 1
+						}
+					}
+				},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "task_id",
+							"value": "={{ $('Linkedin_URL_COMPANY').item.json.task_id }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "x-rapidapi-host",
+							"value": "cold-outreach-enrichment-scraper.p.rapidapi.com"
+						},
+						{
+							"name": "x-rapidapi-key",
+							"value": "={{ $('RapidAPI-Key').item.json['RapidAPI-Key'] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "6c6937ac-f928-4960-9450-87c7fd04321e",
+			"name": "Update row(s)2",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [2176, -96],
+			"parameters": {
+				"columns": {
+					"value": {
+						"linkedin_company_scrape": "={{ $json.results.toJsonString() }}",
+						"linkedin_profile_scrape": "="
+					},
+					"schema": [
+						{
+							"id": "First_name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "First_name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Last_name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Last_name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Title",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Title",
+							"defaultMatch": false
+						},
+						{
+							"id": "Location",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Location",
+							"defaultMatch": false
+						},
+						{
+							"id": "Company_Name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Company_Name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Company_site",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Company_site",
+							"defaultMatch": false
+						},
+						{
+							"id": "Crunchbase_URL",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Crunchbase_URL",
+							"defaultMatch": false
+						},
+						{
+							"id": "Linkedin_URL",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Linkedin_URL",
+							"defaultMatch": false
+						},
+						{
+							"id": "email_subject",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email_subject",
+							"defaultMatch": false
+						},
+						{
+							"id": "email_body",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email_body",
+							"defaultMatch": false
+						},
+						{
+							"id": "linkedin_profile_scrape",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "linkedin_profile_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "linkedin_company_scrape",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "linkedin_company_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "crunchbase_company_scrape",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "crunchbase_company_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "email",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email",
+							"defaultMatch": false
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "email",
+							"keyValue": "={{ $('Get row(s)1').item.json.email }}"
+						}
+					]
+				},
+				"options": {},
+				"operation": "update",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "6XegBPA9Om69hRLz",
+					"cachedResultUrl": "/projects/sLfRUA3B2xKNo0Sc/datatables/6XegBPA9Om69hRLz",
+					"cachedResultName": "email_linkedin_list"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b3f868f3-7da7-46c4-819e-c1697ddb0672",
+			"name": "Linkedin_URL_COMPANY",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1616, -96],
+			"parameters": {
+				"url": "https://cold-outreach-enrichment-scraper.p.rapidapi.com/company_url",
+				"options": {
+					"batching": {
+						"batch": {
+							"batchSize": 1
+						}
+					}
+				},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "url",
+							"value": "={{ $json.company_linkedin }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "x-rapidapi-host",
+							"value": "cold-outreach-enrichment-scraper.p.rapidapi.com"
+						},
+						{
+							"name": "x-rapidapi-key",
+							"value": "={{ $('RapidAPI-Key').item.json['RapidAPI-Key'] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "9e29750c-9ded-4e1e-b0a9-0f6abe8d064b",
+			"name": "Wait2",
+			"type": "n8n-nodes-base.wait",
+			"position": [1824, 144],
+			"webhookId": "cdf87baf-7be7-4e81-8343-9e4fa9db3c85",
+			"parameters": {
+				"unit": "minutes"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "438e834b-ab15-4779-af3b-92eba85015c2",
+			"name": "results2",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1984, 144],
+			"parameters": {
+				"url": "https://cold-outreach-enrichment-scraper.p.rapidapi.com/results",
+				"options": {
+					"batching": {
+						"batch": {
+							"batchSize": 1
+						}
+					}
+				},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "task_id",
+							"value": "={{ $('Crunchbase_URL').item.json.task_id }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "x-rapidapi-host",
+							"value": "cold-outreach-enrichment-scraper.p.rapidapi.com"
+						},
+						{
+							"name": "x-rapidapi-key",
+							"value": "={{ $('RapidAPI-Key').item.json['RapidAPI-Key'] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "14a1d054-28e3-431a-955a-730cec15e00c",
+			"name": "Update row(s)3",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [2192, 144],
+			"parameters": {
+				"columns": {
+					"value": {
+						"linkedin_company_scrape": "=",
+						"linkedin_profile_scrape": "=",
+						"crunchbase_company_scrape": "={{ $json.results.toJsonString() }}"
+					},
+					"schema": [
+						{
+							"id": "First_name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "First_name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Last_name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Last_name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Title",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Title",
+							"defaultMatch": false
+						},
+						{
+							"id": "Location",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Location",
+							"defaultMatch": false
+						},
+						{
+							"id": "Company_Name",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Company_Name",
+							"defaultMatch": false
+						},
+						{
+							"id": "Company_site",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Company_site",
+							"defaultMatch": false
+						},
+						{
+							"id": "Crunchbase_URL",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Crunchbase_URL",
+							"defaultMatch": false
+						},
+						{
+							"id": "Linkedin_URL",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Linkedin_URL",
+							"defaultMatch": false
+						},
+						{
+							"id": "email_subject",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email_subject",
+							"defaultMatch": false
+						},
+						{
+							"id": "email_body",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email_body",
+							"defaultMatch": false
+						},
+						{
+							"id": "linkedin_profile_scrape",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "linkedin_profile_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "linkedin_company_scrape",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "linkedin_company_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "crunchbase_company_scrape",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "crunchbase_company_scrape",
+							"defaultMatch": false
+						},
+						{
+							"id": "email",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "email",
+							"defaultMatch": false
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "email",
+							"keyValue": "={{ $('Get row(s)1').item.json.email }}"
+						}
+					]
+				},
+				"options": {},
+				"operation": "update",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "6XegBPA9Om69hRLz",
+					"cachedResultUrl": "/projects/sLfRUA3B2xKNo0Sc/datatables/6XegBPA9Om69hRLz",
+					"cachedResultName": "email_linkedin_list"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "184b7430-510d-4935-8812-32f20349ccec",
+			"name": "Crunchbase_URL",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1632, 144],
+			"parameters": {
+				"url": "https://cold-outreach-enrichment-scraper.p.rapidapi.com/url_search",
+				"options": {
+					"batching": {
+						"batch": {
+							"batchSize": 1
+						}
+					}
+				},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "url",
+							"value": "={{ $json.Crunchbase_URL }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "x-rapidapi-host",
+							"value": "cold-outreach-enrichment-scraper.p.rapidapi.com"
+						},
+						{
+							"name": "x-rapidapi-key",
+							"value": "={{ $('RapidAPI-Key').item.json['RapidAPI-Key'] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "4a1423cd-10fd-4158-90b3-d069dfa6dc1e",
+			"name": "Call 'My workflow'",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"position": [1328, 144],
+			"parameters": {
+				"options": {
+					"waitForSubWorkflow": false
+				},
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "8PMrSTmEahhkUV53",
+					"cachedResultUrl": "/workflow/8PMrSTmEahhkUV53",
+					"cachedResultName": "My workflow"
+				},
+				"workflowInputs": {
+					"value": {},
+					"mappingMode": "defineBelow"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "cc1db8bc-0eb1-4bf1-b61a-970114e96ca0",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1568, -400],
+			"parameters": {
+				"color": 6,
+				"width": 800,
+				"height": 224,
+				"content": "## Enrich personal LinkedIn data"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "33d2df4b-004c-4764-9dcf-06a438002416",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1568, -160],
+			"parameters": {
+				"color": 6,
+				"width": 800,
+				"height": 224,
+				"content": "## Enrich Company's LinkedIn data"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "20a6becf-c61a-43e4-b653-587b21ede468",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1568, 80],
+			"parameters": {
+				"color": 6,
+				"width": 800,
+				"height": 224,
+				"content": "## Enrich Company's Crunchbase data"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "results",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait1": {
+			"main": [
+				[
+					{
+						"node": "results1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait2": {
+			"main": [
+				[
+					{
+						"node": "results2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"results": {
+			"main": [
+				[
+					{
+						"node": "Update row(s)1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"results1": {
+			"main": [
+				[
+					{
+						"node": "Update row(s)2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"results2": {
+			"main": [
+				[
+					{
+						"node": "Update row(s)3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Agent One": {
+			"main": [
+				[
+					{
+						"node": "Email Context",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Main Loop": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Agent One",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get row(s)": {
+			"main": [
+				[
+					{
+						"node": "Main Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get row(s)1": {
+			"main": [
+				[
+					{
+						"node": "Linkedin_URL",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Linkedin_URL_COMPANY",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crunchbase_URL",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Call 'My workflow'",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Judge Agent": {
+			"main": [
+				[
+					{
+						"node": "Approval Route",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Main Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Linkedin_URL": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RapidAPI-Key": {
+			"main": [
+				[
+					{
+						"node": "Get row(s)1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Email Context": {
+			"main": [
+				[
+					{
+						"node": "Judge Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update row(s)": {
+			"main": [
+				[
+					{
+						"node": "Main Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Approval Route": {
+			"main": [
+				[
+					{
+						"node": "Update row(s)",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Get row(s)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Crunchbase_URL": {
+			"main": [
+				[
+					{
+						"node": "Wait2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Linkedin_URL_COMPANY": {
+			"main": [
+				[
+					{
+						"node": "Wait1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Judge Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "Agent One",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Agent One",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser1": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Judge Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Get row(s)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "RapidAPI-Key",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

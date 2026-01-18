@@ -1,0 +1,376 @@
+{
+	"meta": {
+		"instanceId": "b6731f6e46273cffeac6b5188a5b3bcb0840c00108e73b48ae2b799ac6e8e081",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "7ac1a47f-3373-418c-84ff-30106c911340",
+			"name": "Content for the Training",
+			"type": "n8n-nodes-base.googleDocs",
+			"position": [-1880, -100],
+			"parameters": {
+				"operation": "get",
+				"documentURL": "1shUBSb2aEFZrOWOROcCeG9glxi7u205p4lEopNt1e7E",
+				"authentication": "serviceAccount"
+			},
+			"credentials": {
+				"googleApi": {
+					"id": "credential-id",
+					"name": "googleApi Credential"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "2aabc964-23e8-4113-8280-9eb70588c858",
+			"name": "Splitting into Chunks",
+			"type": "n8n-nodes-base.code",
+			"position": [-1660, -100],
+			"parameters": {
+				"jsCode": "const text = $input.first().json.content;\nconst chunkSize = 1000;\n\nlet chunks = [];\nfor (let i = 0; i < text.length; i += chunkSize) {\n  chunks.push({\n    json: { chunk: text.slice(i, i + chunkSize) }\n  });\n}\n\nreturn chunks;\n\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "561cff53-365d-4d09-baf6-f1a864ec6c46",
+			"name": "Embedding Uploaded document",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-1440, -100],
+			"parameters": {
+				"url": "https://api.together.xyz/v1/embeddings",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "model",
+							"value": "BAAI/bge-large-en-v1.5"
+						},
+						{
+							"name": "input",
+							"value": "={{ $json.chunk }}"
+						}
+					]
+				},
+				"genericAuthType": "httpBearerAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "credential-id",
+					"name": "httpBearerAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "57488d21-d59b-4e1a-916c-e35409d796c4",
+			"name": "Save the embedding in DB",
+			"type": "n8n-nodes-base.supabase",
+			"position": [-1220, -100],
+			"parameters": {
+				"tableId": "embed",
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "chunk",
+							"fieldValue": "={{ $('Splitting into Chunks').item.json.chunk }}"
+						},
+						{
+							"fieldId": "embedding",
+							"fieldValue": "={{ JSON.stringify($json.data[0].embedding) }}"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"supabaseApi": {
+					"id": "credential-id",
+					"name": "supabaseApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a91cd4dd-eab7-468b-932e-3fd7122bd5f5",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"disabled": true,
+			"position": [-2160, -100],
+			"webhookId": "d5337a19-baec-4329-8a33-b5f5406cb155",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f9bd510a-1894-4f03-abb1-b1aa9fa007e1",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-300, -140],
+			"webhookId": "705cc3e9-1972-47cf-832f-951868b0ec99",
+			"parameters": {
+				"public": true,
+				"options": {},
+				"initialMessages": "Hi there! 👋\nTest the basic RAG chat with Supabase "
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "d4be0adb-e8ad-4ce8-aaaa-2bb957da47ce",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [360, -140],
+			"parameters": {
+				"options": {},
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{
+							"fieldToAggregate": "chunk"
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2db8d4ed-e32a-449e-ae2b-68399c552ea4",
+			"name": "Basic LLM Chain",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [680, -140],
+			"parameters": {
+				"text": "=You are an AI assistant. Use the following context to answer the user's question.\n\nContext:\n{{ $json.chunk }}\n\nUser's message:\n{{ $('When chat message received').item.json.chatInput }}\n\nProvide a helpful and detailed answer based *only* on the context. If the answer is not in the context, say \"I don't know based on the provided information.\"\n",
+				"batching": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "db2ba386-1a3b-4d46-abc3-c53f98323ca4",
+			"name": "OpenRouter Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+			"position": [680, 60],
+			"parameters": {
+				"model": "qwen/qwen3-8b:free",
+				"options": {}
+			},
+			"credentials": {
+				"openRouterApi": {
+					"id": "credential-id",
+					"name": "openRouterApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ed1849e9-fb30-4763-a6bf-2ba8c6c243f7",
+			"name": "Search Embeddings",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [140, -140],
+			"parameters": {
+				"url": "https://fqdttboovkcezrxizkpw.supabase.co/rest/v1/rpc/matchembeddings1",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"authentication": "predefinedCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "=query_embedding",
+							"value": "={{ $json.data[0].embedding }}"
+						},
+						{
+							"name": "match_count",
+							"value": "5"
+						}
+					]
+				},
+				"nodeCredentialType": "supabaseApi"
+			},
+			"credentials": {
+				"supabaseApi": {
+					"id": "credential-id",
+					"name": "supabaseApi Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "e5966ced-618c-4fbf-85c9-d8fd8bf0576b",
+			"name": "Embend User Message",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-80, -140],
+			"parameters": {
+				"url": "https://api.together.xyz/v1/embeddings",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "model",
+							"value": "BAAI/bge-large-en-v1.5"
+						},
+						{
+							"name": "input",
+							"value": "={{ $json.chatInput }}"
+						}
+					]
+				},
+				"genericAuthType": "httpBearerAuth"
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "credential-id",
+					"name": "httpBearerAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "3aed0aa2-25ab-4f5e-b6d1-fe536bce5ef3",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2900, -300],
+			"parameters": {
+				"width": 1900,
+				"height": 1080,
+				"content": "## ⚠️ RUN THIS FIRST & RUN IT FOR ONLY ONCE \n(as it will convert your content in Embedding format and save it in DB and is ready for the RAG Chat)\n\n## 📌 Telegram Trigger\n\n* **Type:** `telegramTrigger`\n* **Purpose:** Waits for new Telegram messages to trigger the workflow.\n* **Note:** Currently disabled.\n\n---\n\n## 📄 Content for the Training\n\n* **Type:** `googleDocs`\n* **Purpose:** Fetches document content from Google Docs using its URL.\n* **Details:** Uses Service Account authentication.\n\n---\n\n## ✂️ Splitting into Chunks\n\n* **Type:** `code`\n* **Purpose:** Splits the fetched document text into smaller chunks (1000 chars each) for processing.\n* **Logic:** Loops over text and slices it.\n\n---\n\n## 🧠 Embedding Uploaded Document\n\n* **Type:** `httpRequest`\n* **Purpose:** Calls Together AI embedding API to get vector embeddings for each text chunk.\n* **Details:** Sends JSON with model name and chunk as input.\n\n---\n\n## 🛢 Save the embedding in DB\n\n* **Type:** `supabase`\n* **Purpose:** Saves each text chunk and its embedding vector into the Supabase `embed` table."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6afc7ab6-18d2-4781-bfc5-a0ae03a9ef68",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-900, -300],
+			"parameters": {
+				"width": 1900,
+				"height": 1080,
+				"content": "## 💬 When chat message received\n\n* **Type:** `chatTrigger`\n* **Purpose:** Starts the workflow when a user sends a chat message.\n* **Details:** Sends an initial greeting message to the user.\n\n---\n\n## 🧩 Embend User Message\n\n* **Type:** `httpRequest`\n* **Purpose:** Generates embedding for the user’s input message.\n* **Details:** Calls Together AI embeddings API.\n\n---\n\n## 🔍 Search Embeddings\n\n* **Type:** `httpRequest`\n* **Purpose:** Searches Supabase DB for the top 5 most similar text chunks based on the generated embedding.\n* **Details:** Calls Supabase RPC function `matchembeddings1`.\n\n---\n\n## 📦 Aggregate\n\n* **Type:** `aggregate`\n* **Purpose:** Combines all retrieved text chunks into a single aggregated context for the LLM.\n\n---\n\n## 🧠 Basic LLM Chain\n\n* **Type:** `chainLlm`\n* **Purpose:** Passes the user's question + aggregated context to the LLM to generate a detailed answer.\n* **Details:** Contains prompt instructing the LLM to answer only based on context.\n\n---\n\n## 🤖 OpenRouter Chat Model\n\n* **Type:** `lmChatOpenRouter`\n* **Purpose:** Provides the actual AI language model that processes the prompt.\n* **Details:** Uses `qwen/qwen3-8b:free` model via OpenRouter."
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "Basic LLM Chain",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "Content for the Training",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search Embeddings": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embend User Message": {
+			"main": [
+				[
+					{
+						"node": "Search Embeddings",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenRouter Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Basic LLM Chain",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Splitting into Chunks": {
+			"main": [
+				[
+					{
+						"node": "Embedding Uploaded document",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Content for the Training": {
+			"main": [
+				[
+					{
+						"node": "Splitting into Chunks",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Embend User Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embedding Uploaded document": {
+			"main": [
+				[
+					{
+						"node": "Save the embedding in DB",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

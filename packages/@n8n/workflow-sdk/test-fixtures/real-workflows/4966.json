@@ -1,0 +1,624 @@
+{
+	"id": "e0BX3fhHvcBuQTBU",
+	"meta": {
+		"instanceId": "0bb95f247e6cda467b7bfa0ecb34ff52cee89ad78f51d5982d5e97b8ca9b00d0"
+	},
+	"name": "whats app agent community",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "02f761e2-83c4-488b-91f4-f4ae11b15c00",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"maxTries": 5,
+			"position": [1040, 440],
+			"parameters": {
+				"text": "={{ $json.finalPrompt }}\n\n\n",
+				"options": {
+					"systemMessage": "You are [Company]’s support assistant for Black Ball Sporting Club.\n• Do NOT include any preamble such as “Based on the document you provided” or “Okay, [Name].” Just jump straight to the answer.\n* don't ever start your response with\"based on the document you provided\" , or \"According to the document\", don't mention any documents at all , also don't mention today's date unless you asked\n"
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"retryOnFail": false,
+			"typeVersion": 1.7,
+			"alwaysOutputData": true,
+			"waitBetweenTries": null
+		},
+		{
+			"id": "57ecb397-5772-4db3-8a5a-ce28a4e01e63",
+			"name": "cleanAnswer",
+			"type": "n8n-nodes-base.code",
+			"position": [2300, 340],
+			"parameters": {
+				"jsCode": "// cleanAnswer – run once per item\nlet txt = $('AI Agent').first().json.output || '';\n\n// 1. Remove bold / italic / strike markers\ntxt = txt.replace(/[*_~]+/g, '');\n\n// 2. Convert [Texto](https://url) → Texto https://url\ntxt = txt.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1 $2');\n\n// 3. Collapse 3+ blank lines\ntxt = txt.replace(/\\n{3,}/g, '\\n\\n').trim();\n\n// 4. Remove the unwanted source-reference preamble\ntxt = txt.replace(/^.*?based on the document you provided[,:]?\\s*/i, '');\n\nreturn [{ json: { answer: txt } }];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "d70cf8b1-8c24-44f2-9b37-5205b130cff2",
+			"name": "24-hour window check",
+			"type": "n8n-nodes-base.code",
+			"position": [1860, 440],
+			"parameters": {
+				"jsCode": "// within24h?  – run once per item\n// Meta (WhatsApp) timestamp arrives as seconds since epoch\nconst lastTs = Number($('when message received').first().json.messages[0].timestamp) * 1000;   // → ms\nconst withinWindow = Date.now() - lastTs < 24 * 60 * 60 * 1000;\n\nreturn [{ json: { withinWindow, answer: $json.answer, userId: $json.userId } }];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "66c83de5-413a-440f-804e-15b137beb873",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [2080, 440],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "d33e218e-a49a-49ed-9c6b-55b9ea0b0dbb",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.withinWindow }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "80fc3049-8474-4392-9e04-f5686eb82687",
+			"name": "Send Pre-approved Template Message to Reopen the Conversation",
+			"type": "n8n-nodes-base.whatsApp",
+			"position": [2300, 540],
+			"webhookId": "ef6de86f-66df-4586-bd75-2056626d5474",
+			"parameters": {
+				"template": "hello_world|en_US",
+				"phoneNumberId": "641448739058783",
+				"recipientPhoneNumber": "={{ $('when message received').item.json.contacts[0].wa_id }}"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d77ae0ae-c332-4030-8c77-8ea44c56c9a8",
+			"name": "Send AI Agent's Answer",
+			"type": "n8n-nodes-base.whatsApp",
+			"position": [2520, 340],
+			"webhookId": "8da6eeda-31ec-448a-9d75-2d5dbc5f10f9",
+			"parameters": {
+				"textBody": "={{ $json.answer }}",
+				"operation": "send",
+				"phoneNumberId": "=641448739058783",
+				"additionalFields": {},
+				"recipientPhoneNumber": "={{ $('when message received').item.json.contacts[0].wa_id }}"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c9d931c3-d88c-4d15-b8fe-787327c0200a",
+			"name": "Google Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [1000, 660],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.5-flash-preview-04-17-thinking"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "630ac52d-1d65-408e-b614-17a97bddab10",
+			"name": "when message received",
+			"type": "n8n-nodes-base.whatsAppTrigger",
+			"position": [380, 440],
+			"webhookId": "6b645b70-61db-4d4d-af47-2f39295cf196",
+			"parameters": {
+				"options": {},
+				"updates": ["messages"]
+			},
+			"credentials": {
+				"whatsAppTriggerApi": {
+					"id": "credential-id",
+					"name": "whatsAppTriggerApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "df46b528-cbbd-49c2-9b83-4402ef0c8ac7",
+			"name": "Prepare Prompt",
+			"type": "n8n-nodes-base.aiTransform",
+			"position": [820, 440],
+			"parameters": {
+				"jsCode": "const googleDocs = $input.all().map((item) => item.json);\nconst whatsappMessages = $(\"when message received\")\n  .all()\n  .map((item) => item.json);\n\nconst date = new Date();\nconst formattedDate = `${date.getMonth() + 1} ${date.getDate()}, ${date.getFullYear()}`;\n\nconst docText = googleDocs[0].content.split(\"\\n\").join(\" \");\n\nconst body = whatsappMessages[0].messages[0].text.body;\n\nconst finalPrompt = `Today's date is: ${formattedDate}\\n\\n${docText}\\n\\nUser's question:\\n${body}`;\n\nreturn { finalPrompt };\n",
+				"instructions": "Write code to:\n• Get today’s date formatted “Month Day, Year”\n• Extract the Google Doc’s plain text by joining its body.content textRuns\n• Extract the WhatsApp message from messages[0].text.body\n• Build a field finalPrompt exactly as:\n\nvbnet\nCopy\nEdit\nToday's date is: [date]\n\n[doc text]\n\nUser's question:\n[body]\n• Return finalPrompt only.",
+				"codeGeneratedForPrompt": "Write code to:\n• Get today’s date formatted “Month Day, Year”\n• Extract the Google Doc’s plain text by joining its body.content textRuns\n• Extract the WhatsApp message from messages[0].text.body\n• Build a field finalPrompt exactly as:\n\nvbnet\nCopy\nEdit\nToday's date is: [date]\n\n[doc text]\n\nUser's question:\n[body]\n• Return finalPrompt only."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "19de46dc-add8-4cad-81a9-6e5b341f1f33",
+			"name": "Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1640, 440],
+			"parameters": {
+				"columns": {
+					"value": {
+						"User": "={{ $('when message received').item.json.messages[0].from }}",
+						"Message": "={{ $('when message received').item.json.messages[0].text.body }}",
+						"Response": "={{ $('AI Agent').item.json.output }}",
+						"Timestamp": "={{ $json.currentDate }}"
+					},
+					"schema": [
+						{
+							"id": "Timestamp",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Timestamp",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "User",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "User",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Message",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Message",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Response",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Response",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 5",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 5",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 6",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 6",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 7",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 7",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 8",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 8",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 9",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 9",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 10",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 10",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 11",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 11",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 12",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 12",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 13",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 13",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 14",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 14",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 15",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 15",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 16",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 16",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 17",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 17",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 18",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 18",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 19",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 19",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 20",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 20",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 21",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 21",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 22",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 22",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 23",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 23",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 24",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 24",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 25",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 25",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Column 26",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Column 26",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Timestamp"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Ub8QIhGPOm1G4ylaM48iMAous1zvBO3YDl-38AKDuFw/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1Ub8QIhGPOm1G4ylaM48iMAous1zvBO3YDl-38AKDuFw",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Ub8QIhGPOm1G4ylaM48iMAous1zvBO3YDl-38AKDuFw/edit?usp=drivesdk",
+					"cachedResultName": "Chat Logs"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "b622392e-65dc-4d27-a5f9-d27ea57aae61",
+			"name": "Date & Time",
+			"type": "n8n-nodes-base.dateTime",
+			"position": [1420, 440],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "a6ae2118-9d68-4fb0-b975-b9c6d4170e00",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [0, 0],
+			"parameters": {
+				"height": 1420,
+				"content": "**Smart WhatsApp AI Assistant Using Google Docs**\n\n📌 What it does:\nAnswers WhatsApp questions instantly using internal document knowledge. No training needed — just update the doc.\n\n📄 Reads a live Google Doc\n💬 Receives WhatsApp messages\n🧠 Crafts AI prompt using today's date + message + doc\n⚡ Uses OpenAI/Gemini to generate a response\n📤 Sends reply back over WhatsApp\n\n🧰 Prerequisites:\n- WhatsApp Business Cloud API account\n- Google Doc with your business content\n- OpenAI or Gemini API \nkey\n- you can setup the postgress memory using the following link:\nhttps://www.youtube.com/watch?v=JjBofKJnYIU\n\n\n🛠 Setup:\n1. Paste your Google Doc ID in the Docs node\n2. Connect WhatsApp Cloud API (Meta)\n3. Map the message field\n4. Connect OpenAI or Gemini\n5. Publish and test with a live message\n\nYou’re done!\n🤝 Need Help Setting It Up?\nIf you'd like help connecting your WhatsApp Business API, setting up Google Docs access, or customizing this AI assistant for your business or clients…\n\n📩 I offer setup, branding, and customization services:\nWhatsApp Cloud API setup & verification\n\nGoogle OAuth & Doc structure guidance\n\nAI model configuration (OpenAI / Gemini)\n\nBranding & prompt tone customization\n\nLogging, reporting, and escalation logic\n\nJust send a message via:\n\nEmail: tharwat.elsayed2000@gmail.com\n\nWhatsApp: +201061803236"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8f4a786b-fc6d-4e2f-b8df-c605475afc81",
+			"name": "company's knowledge",
+			"type": "n8n-nodes-base.googleDocs",
+			"position": [600, 440],
+			"parameters": {
+				"operation": "get",
+				"documentURL": "=1Uv1WYCcXNlp-jaeJ7-3MNxWYfPj-wcYnJv4_colXSvk"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "a6de89dd-ada0-432c-9f8e-ece38264ad81",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [1120, 660],
+			"parameters": {
+				"sessionKey": "={{ $('when message received').item.json.contacts[0].wa_id }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "d9d79584-559b-4948-be55-ba2e4160a527",
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "cleanAnswer",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send Pre-approved Template Message to Reopen the Conversation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Date & Time",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Date & Time": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"cleanAnswer": {
+			"main": [
+				[
+					{
+						"node": "Send AI Agent's Answer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "24-hour window check",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare Prompt": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"company's knowledge": {
+			"main": [
+				[
+					{
+						"node": "Prepare Prompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"24-hour window check": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"when message received": {
+			"main": [
+				[
+					{
+						"node": "company's knowledge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
