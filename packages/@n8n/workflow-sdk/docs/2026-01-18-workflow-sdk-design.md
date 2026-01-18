@@ -155,19 +155,13 @@ Sticky notes are added to the workflow but don't participate in the node chain.
 Creates a Split In Batches node with semantic `.done()` and `.each()` methods for the two output branches.
 
 ```typescript
-const batchNode = splitInBatches('v3', {
-  parameters: {
-    batchSize: 10,
-    options: {}
-  }
-});
-
 wf.add(trigger(...))
-  .then(codeNode)  // Produces multiple items
-  .then(batchNode)
-  .done().then(finalizeNode)   // Output 0: All items processed
-  .each().then(processNode)    // Output 1: Each batch
-    .then(batchNode);          // Loop back
+  .then(generateItems)
+  .then(
+    splitInBatches('v3', { parameters: { batchSize: 10 } })
+      .done().then(finalizeNode)
+      .each().then(processNode).loop()  // Explicit loop-back
+  );
 ```
 
 **Parameters:**
@@ -182,18 +176,15 @@ wf.add(trigger(...))
 
 **Methods:**
 
-| Method | Output | Description |
-|--------|--------|-------------|
-| `.done()` | 0 | Chain from "done" branch (all items processed) |
-| `.each()` | 1 | Chain from "each" branch (current batch) |
+| Method | Description |
+|--------|-------------|
+| `.done()` | Chain from output 0 (all items processed) |
+| `.each()` | Chain from output 1 (current batch) |
+| `.loop()` | Connects back to the splitInBatches node (terminates `.each()` chain) |
 
-**Loop pattern:** The `.each()` branch typically loops back to the split node after processing:
+**Example with multiple nodes in loop:**
 
 ```typescript
-const batcher = splitInBatches('v3', {
-  parameters: { batchSize: 5 }
-});
-
 const initOnce = node('n8n-nodes-base.set', 'v3.4', {
   parameters: { ... },
   executeOnce: true  // Only run on first iteration
@@ -203,24 +194,17 @@ const processItem = node('n8n-nodes-base.httpRequest', 'v4.2', {
   parameters: { url: $ => $.json.apiUrl }
 });
 
+const finalReport = node('n8n-nodes-base.set', 'v3.4', {
+  parameters: { ... }
+});
+
 wf.add(trigger(...))
   .then(generateItems)
-  .then(batcher)
-  .done().then(finalReport)
-  .each().then(initOnce)
-    .then(processItem)
-    .then(batcher);  // Loop back to process next batch
-```
-
-This is equivalent to using `node()` with `.output(0)` and `.output(1)`:
-
-```typescript
-// These are equivalent:
-batchNode.done().then(...)   // Semantic
-batchNode.output(0).then(...) // Generic
-
-batchNode.each().then(...)   // Semantic
-batchNode.output(1).then(...) // Generic
+  .then(
+    splitInBatches('v3', { parameters: { batchSize: 5 } })
+      .done().then(finalReport)
+      .each().then(initOnce).then(processItem).loop()
+  );
 ```
 
 ---
