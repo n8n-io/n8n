@@ -411,6 +411,7 @@ The `$` parameter in expression functions provides typed access to:
 | Property | Description |
 |----------|-------------|
 | `$.json` | Current item's JSON data (typed from upstream) |
+| `$.binary` | Current item's binary data |
 | `$.input.first()` | First input item |
 | `$.input.all()` | All input items |
 | `$.input.item` | Current item |
@@ -427,6 +428,53 @@ The `$` parameter in expression functions provides typed access to:
 | `$.workflow.id` | Workflow ID |
 | `$.workflow.name` | Workflow name |
 | `$.workflow.active` | Whether workflow is active |
+
+### Binary Data
+
+Binary data (files, images, etc.) is accessed via `$.binary`:
+
+```typescript
+// Access binary from current item
+node('n8n-nodes-base.httpRequest', 'v4.2', {
+  parameters: {
+    method: 'POST',
+    url: 'https://api.example.com/upload',
+    sendBody: true,
+    bodyParameters: {
+      parameters: [{
+        name: 'file',
+        value: $ => $.binary.data.data  // Base64-encoded binary
+      }]
+    }
+  }
+})
+```
+
+**Binary data structure:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `data` | `string` | Base64-encoded content or storage mode ID |
+| `mimeType` | `string` | Content type (e.g., `'application/pdf'`) |
+| `fileName` | `string?` | Original filename |
+| `fileExtension` | `string?` | File extension |
+| `fileSize` | `string?` | Human-readable size (e.g., `'1.2 MB'`) |
+
+**Referencing binary from other nodes:**
+
+```typescript
+// Reference binary from a specific node
+node('n8n-nodes-base.httpRequest', 'v4.2', {
+  parameters: {
+    url: 'https://api.example.com/upload',
+    sendBody: true,
+    contentType: 'binaryData',
+    inputDataFieldName: $ => $('Read File').binary.file.data
+  }
+})
+```
+
+**Nodes outputting binary data** (like Read Binary File, HTTP Request with binary response) include binary in their output alongside JSON.
 
 ### Output Schemas
 
