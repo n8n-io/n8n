@@ -103,8 +103,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.initEventBus();
 		this.logger.debug('Event bus init complete');
 		await this.initScalingService();
-		await this.initOrchestration();
-		this.logger.debug('Orchestration init complete');
 
 		await Container.get(MessageEventBus).send(
 			new EventMessageGeneric({
@@ -116,6 +114,11 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		);
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+
+		// Initialize orchestration after modules so that any module
+		// @OnPubSubEvent handler decorators are taken into account
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();

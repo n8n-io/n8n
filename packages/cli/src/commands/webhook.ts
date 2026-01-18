@@ -69,8 +69,6 @@ export class Webhook extends BaseCommand {
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
-		await this.initOrchestration();
-		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
@@ -84,6 +82,12 @@ export class Webhook extends BaseCommand {
 		Container.get(LogStreamingEventRelay).init();
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+
+		// Initialize orchestration after modules so that any module
+		// @OnPubSubEvent handler decorators are taken into account
+		await this.initOrchestration();
+
+		this.logger.debug('Orchestration init complete');
 	}
 
 	async run() {

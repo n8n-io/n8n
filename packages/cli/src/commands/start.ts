@@ -215,10 +215,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			this.instanceSettings.markAsLeader();
-		} else {
-			await this.initOrchestration();
 		}
-
 		await this.initLicense();
 
 		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
@@ -248,6 +245,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+
+		// Initialize orchestration after modules so that any module
+		// @OnPubSubEvent handler decorators are taken into account
+		if (this.globalConfig.executions.mode === 'queue') {
+			await this.initOrchestration();
+		}
 
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
