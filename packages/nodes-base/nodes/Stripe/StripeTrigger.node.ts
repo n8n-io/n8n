@@ -12,6 +12,7 @@ import type {
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { stripeApiRequest } from './helpers';
+import { verifySignature } from './StripeTriggerHelpers';
 
 export class StripeTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -949,8 +950,15 @@ export class StripeTrigger implements INodeType {
 		const bodyData = this.getBodyData();
 		const req = this.getRequestObject();
 
-		const events = this.getNodeParameter('events', []) as string[];
+		if (!(await verifySignature.call(this))) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
 
+		const events = this.getNodeParameter('events', []) as string[];
 		const eventType = bodyData.type as string | undefined;
 
 		if (eventType === undefined || (!events.includes('*') && !events.includes(eventType))) {

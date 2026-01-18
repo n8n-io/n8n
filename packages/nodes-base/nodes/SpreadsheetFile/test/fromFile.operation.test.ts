@@ -1,5 +1,5 @@
 import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, INodeExecutionData, IBinaryData, INode } from 'n8n-workflow';
+import type { IBinaryData, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import { Readable } from 'stream';
 
@@ -675,6 +675,126 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			internationalChars.forEach((expectedChar, index) => {
 				expect(result[index].json.text).toBe(expectedChar);
 			});
+		});
+	});
+
+	describe('CSV parsing with skipRecordsWithErrors', () => {
+		const invalidCsvData = 'id,name\n3,"John"\n1,"Alice\n2,"Bob"';
+		const mockBinaryDataCSV: IBinaryData = {
+			data: Buffer.from(invalidCsvData, 'utf8').toString(BINARY_ENCODING),
+			mimeType: 'text/csv',
+			fileExtension: 'csv',
+			fileName: 'test.csv',
+		};
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue?: any) => {
+					switch (paramName) {
+						case 'fileFormat':
+							return 'csv';
+						case 'binaryPropertyName':
+							return 'data';
+						case 'options':
+							return {};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(mockBinaryDataCSV);
+			mockExecuteFunctions.getNode.mockReturnValue({
+				name: 'SpreadsheetFile',
+				type: 'n8n-nodes-base.spreadsheetFile',
+				id: 'test-node-id',
+			} as INode);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+		});
+
+		it('should skip records with errors when skipRecordsWithErrors is enabled with limit -1', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'fileFormat') return 'csv';
+				if (paramName === 'binaryPropertyName') return 'data';
+				if (paramName === 'options')
+					return {
+						skipRecordsWithErrors: { value: { enabled: true, maxSkippedRecords: -1 } },
+						columns: true,
+					};
+				return undefined;
+			});
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			const result = await execute.call(mockExecuteFunctions, items);
+
+			// Should have 1 valid record (John), Bob and Alice is considered a single record with error
+			expect(result).toHaveLength(1);
+			expect(result[0].json).toEqual({ id: '3', name: 'John' });
+		});
+
+		it('should skip records with errors when skipRecordsWithErrors is enabled with limit 1', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'fileFormat') return 'csv';
+				if (paramName === 'binaryPropertyName') return 'data';
+				if (paramName === 'options')
+					return {
+						skipRecordsWithErrors: { value: { enabled: true, maxSkippedRecords: 1 } },
+						columns: true,
+					};
+				return undefined;
+			});
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			const result = await execute.call(mockExecuteFunctions, items);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].json).toEqual({ id: '3', name: 'John' });
+			expect(result[0].pairedItem).toEqual({ item: 0 });
+		});
+
+		it('should throw error when skipped records exceed maxSkippedRecords limit', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'fileFormat') return 'csv';
+				if (paramName === 'binaryPropertyName') return 'data';
+				if (paramName === 'options')
+					return {
+						skipRecordsWithErrors: { value: { enabled: true, maxSkippedRecords: 1 } },
+						columns: true,
+					};
+				return undefined;
+			});
+
+			const csvWithThreeErrors =
+				'id,name\n3,"John"\n1,"Alice\n2,"Bob"\n4,"Charlie\n5,"Eve\n6,"David';
+			const mockBinaryDataThreeErrors: IBinaryData = {
+				data: Buffer.from(csvWithThreeErrors, 'utf8').toString(BINARY_ENCODING),
+				mimeType: 'text/csv',
+				fileExtension: 'csv',
+				fileName: 'test-three-errors.csv',
+			};
+
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(mockBinaryDataThreeErrors);
+
+			const items: INodeExecutionData[] = [{ json: {} }];
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'fileFormat') return 'csv';
+				if (paramName === 'binaryPropertyName') return 'data';
+				if (paramName === 'options')
+					return {
+						skipRecordsWithErrors: { value: { enabled: true, maxSkippedRecords: 1 } },
+						columns: true,
+					};
+				return undefined;
+			});
+
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(mockBinaryDataThreeErrors);
+
+			await expect(execute.call(mockExecuteFunctions, items)).rejects.toThrow(
+				'Max number of skipped records exceeded',
+			);
 		});
 	});
 });

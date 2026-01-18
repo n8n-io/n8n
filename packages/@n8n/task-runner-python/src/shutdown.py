@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import signal
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.task_runner import TaskRunner
@@ -15,8 +15,8 @@ class Shutdown:
     def __init__(
         self,
         task_runner: "TaskRunner",
-        health_check_server: Optional["HealthCheckServer"] = None,
-        sentry: Optional["TaskRunnerSentry"] = None,
+        health_check_server: "HealthCheckServer | None" = None,
+        sentry: "TaskRunnerSentry | None" = None,
     ):
         self.logger = logging.getLogger(__name__)
         self.is_shutting_down = False
@@ -30,7 +30,7 @@ class Shutdown:
         self._register_handler(signal.SIGINT)
         self._register_handler(signal.SIGTERM)
 
-    async def start_shutdown(self, custom_timeout: Optional[int] = None):
+    async def start_shutdown(self, custom_timeout: int | None = None):
         if self.is_shutting_down:
             return
 

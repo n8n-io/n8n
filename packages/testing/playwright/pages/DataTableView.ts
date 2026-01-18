@@ -25,7 +25,19 @@ export class DataTableView extends BasePage {
 	}
 
 	getNewDataTableNameInput() {
-		return this.page.getByTestId('data-table-name-input');
+		return this.page.getByTestId('data-table-name-input-select');
+	}
+
+	getFromScratchOption() {
+		return this.page.getByTestId('create-from-scratch-option');
+	}
+
+	getImportCsvOption() {
+		return this.page.getByTestId('import-csv-option');
+	}
+
+	getProceedFromSelectButton() {
+		return this.page.getByTestId('proceed-from-select-button');
 	}
 
 	getNewDataTableConfirmButton() {
@@ -80,8 +92,8 @@ export class DataTableView extends BasePage {
 		await this.getEmptyStateActionBoxButton().click();
 	}
 
-	async clickAddDataTableAction() {
-		await this.addResource.dataTable();
+	async clickAddDataTableAction(fromDataTableTab: boolean = true) {
+		await this.addResource.dataTable(fromDataTableTab);
 	}
 
 	async clickDataTableCardActionsButton(dataTableName: string) {

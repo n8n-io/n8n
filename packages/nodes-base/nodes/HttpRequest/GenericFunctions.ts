@@ -291,3 +291,19 @@ export const setAgentOptions = (
 		requestOptions.agentOptions = agentOptions;
 	}
 };
+
+export const updadeQueryParameterConfig = (version: number) => {
+	if (version < 4.3) {
+		return (qs: IDataObject, name: string, value: string) => (qs[name] = value);
+	} else {
+		return (qs: { [key: string]: any }, name: string, value: any) => {
+			if (qs[name] === undefined) {
+				qs[name] = value;
+			} else if (Array.isArray(qs[name])) {
+				qs[name].push(value);
+			} else {
+				qs[name] = [qs[name], value];
+			}
+		};
+	}
+};

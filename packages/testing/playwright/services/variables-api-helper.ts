@@ -10,6 +10,7 @@ interface VariableResponse {
 interface CreateVariableDto {
 	key: string;
 	value: string;
+	projectId?: string;
 }
 
 interface UpdateVariableDto {
@@ -103,9 +104,10 @@ export class VariablesApiHelper {
 	async createTestVariable(
 		keyPrefix: string = 'TEST_VAR',
 		value: string = 'test_value',
+		projectId?: string,
 	): Promise<VariableResponse> {
 		const key = `${keyPrefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
-		return await this.createVariable({ key, value });
+		return await this.createVariable({ key, value, projectId });
 	}
 
 	/**

@@ -1,27 +1,37 @@
 <script lang="ts" setup>
+import { FocusScope } from 'reka-ui';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import N8nCommandBarItem from './CommandBarItem.vue';
 import type { CommandBarItem } from './types';
 import N8nBadge from '../N8nBadge';
+import N8nLoading from '../N8nLoading/Loading.vue';
+import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
+import N8nSpinner from '../N8nSpinner';
 
 interface CommandBarProps {
 	placeholder?: string;
 	context?: string;
 	items: CommandBarItem[];
+	isLoading?: boolean;
+	zIndex?: number;
 }
 
 defineOptions({ name: 'N8nCommandBar' });
 const props = withDefaults(defineProps<CommandBarProps>(), {
 	placeholder: 'Type a command...',
 	context: '',
+	isLoading: false,
+	zIndex: 1900,
 });
 
 const emit = defineEmits<{
 	inputChange: [value: string];
 	navigateTo: [parentId: string | null];
-	loadMore: [parentId: string];
 }>();
+
+const NUM_LOADING_ITEMS_FULL = 8;
+const NUM_LOADING_ITEMS_PARTIAL = 3;
 
 const isOpen = ref(false);
 const inputRef = ref<HTMLInputElement>();
@@ -42,7 +52,7 @@ const currentPlaceholder = computed(() => {
 });
 
 const commandBarRef = ref<HTMLElement>();
-const itemsListRef = ref<HTMLElement>();
+const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 
 const filteredItems = computed(() => {
 	let items = currentItems.value;
@@ -50,10 +60,20 @@ const filteredItems = computed(() => {
 	if (inputValue.value) {
 		const query = inputValue.value.toLowerCase();
 		items = items.filter((item) => {
-			const searchText = [item.title, ...(item.keywords ?? [])]
+			const searchText = [
+				typeof item.title === 'string' ? item.title : '',
+				...(item.keywords ?? []),
+			]
 				.filter(Boolean)
 				.join(' ')
 				.toLowerCase();
+
+			if (item.matchAnySearchTerm) {
+				return query
+					.split(' ')
+					.filter(Boolean)
+					.some((word) => searchText.includes(word));
+			}
 
 			return searchText.includes(query);
 		});
@@ -99,6 +119,10 @@ const flattenedItems = computed(() => {
 	return result;
 });
 
+const numLoadingItems = computed(() => {
+	return flattenedItems.value.length > 0 ? NUM_LOADING_ITEMS_PARTIAL : NUM_LOADING_ITEMS_FULL;
+});
+
 const getGlobalIndex = (item: CommandBarItem): number => {
 	return flattenedItems.value.findIndex((flatItem) => flatItem.id === item.id);
 };
@@ -106,18 +130,12 @@ const getGlobalIndex = (item: CommandBarItem): number => {
 const scrollSelectedIntoView = () => {
 	if (selectedIndex.value < 0) return;
 
-	void nextTick(() => {
+	void nextTick(async () => {
 		if (selectedIndex.value === 0) {
-			itemsListRef.value?.scrollTo({
-				top: 0,
-				behavior: 'smooth',
-			});
+			await scrollAreaRef.value?.scrollToTop({ smooth: true });
 			return;
 		} else if (selectedIndex.value === flattenedItems.value.length - 1) {
-			itemsListRef.value?.scrollTo({
-				top: itemsListRef.value.scrollHeight,
-				behavior: 'smooth',
-			});
+			await scrollAreaRef.value?.scrollToBottom({ smooth: true });
 			return;
 		}
 
@@ -149,22 +167,11 @@ const closeCommandBar = () => {
 	currentParentId.value = null;
 };
 
-const handleScroll = (event: Event) => {
-	if (!(event.target instanceof HTMLElement)) return;
-	const target = event.target;
-	const { scrollTop, scrollHeight, clientHeight } = target;
-
-	if (scrollHeight - scrollTop - clientHeight < 50) {
-		if (currentParent.value?.hasMoreChildren) {
-			emit('loadMore', currentParent.value.id);
-		}
-	}
-};
-
 const navigateToChildren = (item: CommandBarItem) => {
 	currentParentId.value = item.id;
 	selectedIndex.value = 0;
 	inputValue.value = '';
+	scrollSelectedIntoView();
 
 	emit('navigateTo', item.id);
 };
@@ -189,10 +196,6 @@ const selectItem = (item: CommandBarItem) => {
 		void item.handler();
 	}
 
-	if (item.href) {
-		window.location.href = item.href;
-	}
-
 	closeCommandBar();
 };
 
@@ -204,6 +207,8 @@ const handleKeydown = (event: KeyboardEvent) => {
 	}
 
 	if (!isOpen.value) return;
+
+	event.stopPropagation();
 
 	switch (event.key) {
 		case 'Escape':
@@ -258,60 +263,92 @@ watch(inputValue, (newValue) => {
 });
 
 onMounted(() => {
-	document.addEventListener('keydown', handleKeydown);
+	document.addEventListener('keydown', handleKeydown, { capture: true });
 	document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {
-	document.removeEventListener('keydown', handleKeydown);
+	document.removeEventListener('keydown', handleKeydown, { capture: true });
 	document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
 <template>
 	<Teleport to="body">
-		<Transition name="command-bar" appear>
-			<div v-if="isOpen" ref="commandBarRef" :class="$style.commandBar">
-				<div v-if="context" :class="$style.contextContainer">
-					<N8nBadge size="small">{{ context }}</N8nBadge>
-				</div>
-				<input
-					ref="inputRef"
-					v-model="inputValue"
-					:placeholder="currentPlaceholder"
-					:class="$style.input"
-					type="text"
-				/>
+		<FocusScope :trapped="isOpen">
+			<Transition name="command-bar" appear>
 				<div
-					v-if="flattenedItems.length > 0"
-					ref="itemsListRef"
-					:class="$style.itemsList"
-					@scroll="handleScroll"
+					v-if="isOpen"
+					ref="commandBarRef"
+					:class="$style.commandBar"
+					:style="{ zIndex }"
+					data-test-id="command-bar"
 				>
-					<template v-for="item in groupedItems.ungrouped" :key="item.id">
-						<N8nCommandBarItem
-							:item="item"
-							:is-selected="getGlobalIndex(item) === selectedIndex"
-							@select="selectItem"
+					<div v-if="context" :class="$style.contextContainer">
+						<N8nBadge size="small">{{ context }}</N8nBadge>
+					</div>
+					<div :class="$style.inputWrapper">
+						<input
+							ref="inputRef"
+							v-model="inputValue"
+							:placeholder="currentPlaceholder"
+							:class="$style.input"
+							type="text"
 						/>
-					</template>
-
-					<template v-for="section in groupedItems.sections" :key="section.title">
-						<div :class="$style.sectionHeader">{{ section.title }}</div>
-						<div v-for="item in section.items" :key="item.id">
-							<N8nCommandBarItem
-								:item="item"
-								:is-selected="getGlobalIndex(item) === selectedIndex"
-								@select="selectItem"
-							/>
+						<div
+							v-if="isLoading"
+							:class="$style.inputSpinner"
+							data-test-id="command-bar-input-spinner"
+							aria-hidden="true"
+						>
+							<N8nSpinner size="medium" />
 						</div>
-					</template>
+					</div>
+					<N8nScrollArea
+						v-if="flattenedItems.length > 0 || isLoading"
+						ref="scrollAreaRef"
+						max-height="350px"
+						:class="$style.scrollArea"
+						data-test-id="command-bar-items-list"
+					>
+						<div :class="$style.itemsList">
+							<div v-if="groupedItems.ungrouped.length > 0" :class="$style.ungroupedSection">
+								<div v-for="item in groupedItems.ungrouped" :key="item.id">
+									<N8nCommandBarItem
+										:item="item"
+										:is-selected="getGlobalIndex(item) === selectedIndex"
+										@select="selectItem"
+									/>
+								</div>
+							</div>
+
+							<template v-for="section in groupedItems.sections" :key="section.title">
+								<div :class="$style.sectionHeader">{{ section.title }}</div>
+								<div v-for="item in section.items" :key="item.id">
+									<N8nCommandBarItem
+										:item="item"
+										:is-selected="getGlobalIndex(item) === selectedIndex"
+										@select="selectItem"
+									/>
+								</div>
+							</template>
+
+							<div
+								v-if="isLoading"
+								:class="[$style.loadingSection, { [$style.hasItems]: flattenedItems.length > 0 }]"
+							>
+								<div v-for="i in numLoadingItems" :key="i" :class="$style.loadingItem">
+									<N8nLoading variant="custom" :class="$style.loading" />
+								</div>
+							</div>
+						</div>
+					</N8nScrollArea>
+					<div v-else-if="inputValue && flattenedItems.length === 0" :class="$style.noResults">
+						No results found
+					</div>
 				</div>
-				<div v-else-if="inputValue && flattenedItems.length === 0" :class="$style.noResults">
-					No results found
-				</div>
-			</div>
-		</Transition>
+			</Transition>
+		</FocusScope>
 	</Teleport>
 </template>
 
@@ -323,11 +360,15 @@ onUnmounted(() => {
 	transform: translateX(-50%);
 	background: var(--color--background--light-3);
 	border: var(--border);
-	border-radius: var(--radius--lg);
-	box-shadow: var(--shadow--dark);
+	border-radius: var(--radius);
+	box-shadow: var(--command-bar--shadow);
+
 	width: 100%;
-	max-width: 600px;
-	z-index: 1000;
+	max-width: 700px;
+}
+
+.inputWrapper {
+	position: relative;
 }
 
 .input {
@@ -335,10 +376,13 @@ onUnmounted(() => {
 	border: none;
 	outline: none;
 	background: transparent;
-	font-size: var(--font-size--md);
+	font-size: var(--font-size--sm);
 	font-family: var(--font-family);
 	color: var(--color--text);
-	padding: var(--spacing--md) var(--spacing--lg);
+	height: var(--spacing--2xl);
+	padding: 0 var(--spacing--2xs);
+	padding-left: var(--spacing--sm);
+	padding-right: var(--spacing--xl);
 	border-bottom: var(--border);
 
 	&::placeholder {
@@ -346,14 +390,34 @@ onUnmounted(() => {
 	}
 }
 
+.inputSpinner {
+	position: absolute;
+	top: 0;
+	right: var(--spacing--sm);
+	height: 100%;
+	display: flex;
+	align-items: center;
+}
+
+.scrollArea {
+	padding: 0 var(--spacing--2xs) var(--spacing--2xs);
+}
+
 .itemsList {
-	max-height: 300px;
-	overflow-y: auto;
-	padding-bottom: var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+.ungroupedSection {
+	padding-top: var(--spacing--2xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 .sectionHeader {
-	padding: var(--spacing--xs) var(--spacing--lg);
+	padding: var(--spacing--xs) var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--regular);
 	color: var(--color--text--tint-1);
@@ -367,7 +431,24 @@ onUnmounted(() => {
 }
 
 .contextContainer {
-	padding: var(--spacing--xs) var(--spacing--lg) 0;
+	padding: var(--spacing--xs) var(--spacing--xs) 0;
+}
+
+.loadingSection {
+	padding-top: var(--spacing--2xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+
+	&.hasItems {
+		padding-top: 0;
+	}
+}
+
+.loadingItem {
+	height: var(--command-bar-item--height);
+	display: flex;
+	align-items: center;
 }
 </style>
 
@@ -375,14 +456,14 @@ onUnmounted(() => {
 /* Global transition classes for command bar animations */
 .command-bar-enter-active {
 	transition:
-		opacity 0.2s ease-out,
-		transform 0.2s ease-out;
+		opacity 0.1s ease-out,
+		transform 0.1s ease-out;
 }
 
 .command-bar-leave-active {
 	transition:
-		opacity 0.15s ease-in,
-		transform 0.15s ease-in;
+		opacity 0.1s ease-in,
+		transform 0.1s ease-in;
 }
 
 .command-bar-enter-from {

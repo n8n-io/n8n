@@ -24,6 +24,12 @@ const FileStatusSchema = z.enum([
 ]);
 export const SOURCE_CONTROL_FILE_STATUS = FileStatusSchema.Values;
 
+export type SourceControlledFileStatus = z.infer<typeof FileStatusSchema>;
+
+export function isSourceControlledFileStatus(value: unknown): value is SourceControlledFileStatus {
+	return FileStatusSchema.safeParse(value).success;
+}
+
 const FileLocationSchema = z.enum(['local', 'remote']);
 export const SOURCE_CONTROL_FILE_LOCATION = FileLocationSchema.Values;
 

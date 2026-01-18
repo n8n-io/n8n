@@ -61,13 +61,24 @@ function prepareRequestedNodesForExecution(
 		const parentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
 		const parentRunIndex = parentSourceData?.previousNodeRun ?? 0;
 		const parentSourceNode = parentSourceData?.previousNode ?? currentNode.name;
+
+		// Get the item index from action metadata to access the correct agent input data
+		const itemIndex = (action.metadata as { itemIndex?: number })?.itemIndex ?? 0;
+		// Use index 0 for main input as agents have only one main input connection
+		const agentInputData = executionData.data.main?.[0]?.[itemIndex];
+
+		// Merge agent's input data with action.input so tools have access to workflow data
+		// action.input takes precedence to allow tool-specific parameters to override
+		const mergedJson = {
+			...(agentInputData?.json ?? {}),
+			...action.input,
+			toolCallId: action.id,
+		};
+
 		const parentOutputData: INodeExecutionData[][] = [
 			[
 				{
-					json: {
-						...action.input,
-						toolCallId: action.id,
-					},
+					json: mergedJson,
 					pairedItem: {
 						item: parentRunIndex,
 						input: parentOutputIndex,
@@ -96,12 +107,19 @@ function prepareRequestedNodesForExecution(
 
 		nodesToBeExecuted.push({
 			inputConnectionData,
-			parentOutputIndex,
+			parentOutputIndex: 0, // Tools connect to agent's output 0 (agents have only one main output)
 			parentNode,
 			parentOutputData,
 			runIndex,
 			nodeRunIndex,
-			metadata: { preserveSourceOverwrite: true },
+			metadata: {
+				preserveSourceOverwrite: true,
+				preservedSourceOverwrite: executionData.metadata?.preservedSourceOverwrite ?? {
+					previousNode: parentSourceNode,
+					previousNodeOutput: parentOutputIndex,
+					previousNodeRun: parentRunIndex,
+				},
+			},
 		});
 		subNodeExecutionData.actions.push({
 			action,
@@ -140,6 +158,14 @@ function prepareRequestingNodeForResuming(
 
 		return undefined;
 	}
+	const metadata: Partial<ITaskMetadata> =
+		executionData.metadata?.preservedSourceOverwrite &&
+		executionData.metadata?.preserveSourceOverwrite
+			? {
+					preserveSourceOverwrite: true,
+					preservedSourceOverwrite: executionData.metadata.preservedSourceOverwrite,
+				}
+			: {};
 	const connectionData: IConnection = {
 		// agents always have a main input
 		type: 'ai_tool',
@@ -148,7 +174,7 @@ function prepareRequestingNodeForResuming(
 		index: 0,
 	};
 
-	return { connectionData, parentNode };
+	return { connectionData, parentNode, metadata };
 }
 
 /**
@@ -197,7 +223,7 @@ export function handleRequest({
 		parentOutputData: executionData.data.main as INodeExecutionData[][],
 		runIndex,
 		nodeRunIndex: runIndex,
-		metadata: { subNodeExecutionData },
+		metadata: { nodeWasResumed: true, subNodeExecutionData, ...result.metadata },
 	});
 
 	return { nodesToBeExecuted };

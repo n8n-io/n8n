@@ -34,18 +34,19 @@ export const defaultSettings: FrontendSettings = {
 		sourceControl: false,
 		auditLogs: false,
 		showNonProdBanner: false,
-		workflowHistory: false,
 		binaryDataS3: false,
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
 		apiKeyScopes: false,
 		workflowDiffs: false,
+		provisioning: true,
 		projects: {
 			team: {
 				limit: 1,
 			},
 		},
+		customRoles: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -104,7 +105,6 @@ export const defaultSettings: FrontendSettings = {
 	nodeJsVersion: '',
 	nodeEnv: '',
 	concurrency: -1,
-	isNativePythonRunnerEnabled: false,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',
@@ -137,6 +137,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	aiBuilder: {
 		enabled: false,
+		setup: false,
 	},
 	workflowHistory: {
 		pruneTime: 0,
@@ -162,4 +163,8 @@ export const defaultSettings: FrontendSettings = {
 	},
 	activeModules: [],
 	envFeatureFlags: {},
+	dynamicBanners: {
+		endpoint: 'https://api.n8n.io/api/banners',
+		enabled: true,
+	},
 };

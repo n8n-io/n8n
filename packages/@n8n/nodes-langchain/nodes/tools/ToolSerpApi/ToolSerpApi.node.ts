@@ -1,4 +1,6 @@
 import { SerpAPI } from '@langchain/community/tools/serpapi';
+import { logWrapper } from '@utils/logWrapper';
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import {
 	type IExecuteFunctions,
 	NodeConnectionTypes,
@@ -7,10 +9,9 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 	type INodeExecutionData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 async function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions, itemIndex: number) {
 	const credentials = await ctx.getCredentials('serpApi');
 
@@ -133,8 +134,17 @@ export class ToolSerpApi implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < inputData.length; itemIndex++) {
 			const tool = await getTool(this, itemIndex);
-			const query = inputData[itemIndex];
-			const result = await tool.invoke(query);
+			const item = inputData[itemIndex].json;
+
+			if (typeof item.input !== 'string' || !item.input) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Missing search query input at itemIndex ${itemIndex}`,
+				);
+			}
+
+			const result = (await tool.invoke(item)) as string;
+
 			returnData.push({
 				json: {
 					response: result,

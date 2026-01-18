@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import type { RequestHandler } from 'express';
 
 import { ControllerRegistryMetadata } from './controller-registry-metadata';
-import type { Controller, Method, RateLimit } from './types';
+import type { Controller, CorsOptions, Method, RateLimit } from './types';
 
 interface RouteOptions {
 	middlewares?: RequestHandler[];
@@ -16,6 +16,8 @@ interface RouteOptions {
 	rateLimit?: boolean | RateLimit;
 	/** When this flag is set to true, the endpoint is protected by API key */
 	apiKeyAuth?: boolean;
+	/** CORS options for the route, this does not handle preflight requests */
+	cors?: Partial<CorsOptions> | true;
 }
 
 const RouteFactory =
@@ -35,6 +37,7 @@ const RouteFactory =
 		routeMetadata.allowSkipMFA = options.allowSkipMFA ?? false;
 		routeMetadata.apiKeyAuth = options.apiKeyAuth ?? false;
 		routeMetadata.rateLimit = options.rateLimit;
+		routeMetadata.cors = options.cors;
 	};
 
 export const Get = RouteFactory('get');
@@ -42,3 +45,5 @@ export const Post = RouteFactory('post');
 export const Put = RouteFactory('put');
 export const Patch = RouteFactory('patch');
 export const Delete = RouteFactory('delete');
+export const Head = RouteFactory('head');
+export const Options = RouteFactory('options');

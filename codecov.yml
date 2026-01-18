@@ -2,6 +2,14 @@ codecov:
   max_report_age: off
   require_ci_to_pass: true
 
+bundle_analysis:
+  status: warning
+  warning_threshold: 1%
+
+comment:
+  require_bundle_changes: bundle_increase
+  bundle_change_threshold: 100Kb
+
 coverage:
   status:
     patch: false
@@ -13,9 +21,15 @@ github_checks:
   annotations: false
 
 flags:
-  tests:
-    paths:
-      - '**'
+  backend-unit:
+    carryforward: true
+  backend-integration:
+    carryforward: true
+  nodes-unit:
+    carryforward: true
+  frontend:
+    carryforward: true
+  frontend-e2e:
     carryforward: true
 
 component_management:
@@ -69,3 +83,4 @@ ignore:
   - (?s:.*/[^\/]*\.test\.ts.*)\Z
   - (?s:.*/[^\/]*e2e[^\/]*\.ts.*)\Z
   - (?s:.*/test_[^\/]*\.py.*)\Z
+  - (?s:.*/scripts/.*)\Z

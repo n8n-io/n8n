@@ -4,6 +4,7 @@ import {
 	getValueDescription,
 	tryToParseDateTime,
 	tryToParseJsonToFormFields,
+	tryToParseUrl,
 	validateFieldType,
 } from '../src/type-validation';
 
@@ -370,6 +371,142 @@ describe('Type Validation', () => {
 			const json = '[{"fieldType": "html", "html": "<div>test</div>"}]';
 			const fields = tryToParseJsonToFormFields(json);
 			expect(fields).toEqual([{ fieldType: 'html', html: '<div>test</div>' }]);
+		});
+	});
+
+	describe('binary', () => {
+		it('should validate valid binary data objects with data property', () => {
+			const validBinaryWithData = {
+				mimeType: 'image/png',
+				data: 'base64encodeddata',
+				fileName: 'test.png',
+			};
+			expect(validateFieldType('binary', validBinaryWithData, 'binary')).toEqual({
+				valid: true,
+				newValue: validBinaryWithData,
+			});
+		});
+
+		it('should validate valid binary data objects with id property', () => {
+			const validBinaryWithId = {
+				mimeType: 'application/pdf',
+				id: 'binary-id-123',
+				fileName: 'document.pdf',
+			};
+			expect(validateFieldType('binary', validBinaryWithId, 'binary')).toEqual({
+				valid: true,
+				newValue: validBinaryWithId,
+			});
+		});
+
+		it('should validate binary data objects with both data and id', () => {
+			const validBinaryBoth = {
+				mimeType: 'text/plain',
+				data: 'some text content',
+				id: 'text-id-456',
+			};
+			expect(validateFieldType('binary', validBinaryBoth, 'binary')).toEqual({
+				valid: true,
+				newValue: validBinaryBoth,
+			});
+		});
+
+		it('should return valid for null or undefined', () => {
+			// null and undefined are handled by the early return in validateFieldType
+			expect(validateFieldType('binary', null, 'binary').valid).toBe(true);
+			expect(validateFieldType('binary', undefined, 'binary').valid).toBe(true);
+		});
+
+		it('should not validate arrays', () => {
+			const arrayValue = [{ mimeType: 'image/png', data: 'test' }];
+			expect(validateFieldType('binary', arrayValue, 'binary').valid).toBe(false);
+		});
+
+		it('should not validate non-object values', () => {
+			expect(validateFieldType('binary', 'string value', 'binary').valid).toBe(false);
+			expect(validateFieldType('binary', 123, 'binary').valid).toBe(false);
+			expect(validateFieldType('binary', true, 'binary').valid).toBe(false);
+		});
+
+		it('should not validate objects without mimeType', () => {
+			const invalidBinary = {
+				data: 'base64encodeddata',
+				fileName: 'test.png',
+			};
+			expect(validateFieldType('binary', invalidBinary, 'binary').valid).toBe(false);
+		});
+
+		it('should not validate objects without data or id', () => {
+			const invalidBinary = {
+				mimeType: 'image/png',
+				fileName: 'test.png',
+			};
+			expect(validateFieldType('binary', invalidBinary, 'binary').valid).toBe(false);
+		});
+
+		it('should not validate empty objects', () => {
+			expect(validateFieldType('binary', {}, 'binary').valid).toBe(false);
+		});
+
+		it('should provide proper error message for invalid binary data', () => {
+			const result = validateFieldType('binary', 'not a binary object', 'binary');
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.errorMessage).toContain('Make sure the value is a valid binary data object');
+				expect(result.errorMessage).toContain("'mimeType' and 'data' or 'id' property");
+			}
+		});
+	});
+
+	describe('tryToParseUrl', () => {
+		it('should accept valid http URLs', () => {
+			expect(tryToParseUrl('http://example.com')).toBe('http://example.com');
+			expect(tryToParseUrl('http://example.com/path')).toBe('http://example.com/path');
+			expect(tryToParseUrl('http://example.com:8080')).toBe('http://example.com:8080');
+		});
+
+		it('should accept valid https URLs', () => {
+			expect(tryToParseUrl('https://example.com')).toBe('https://example.com');
+			expect(tryToParseUrl('https://example.com/path?query=1')).toBe(
+				'https://example.com/path?query=1',
+			);
+		});
+
+		it('should accept ftp URLs', () => {
+			expect(tryToParseUrl('ftp://ftp.example.com/file.txt')).toBe(
+				'ftp://ftp.example.com/file.txt',
+			);
+		});
+
+		it('should accept file URLs', () => {
+			expect(tryToParseUrl('file:///path/to/file.txt')).toBe('file:///path/to/file.txt');
+		});
+
+		it('should add https:// prefix when protocol is missing', () => {
+			expect(tryToParseUrl('example.com')).toBe('https://example.com');
+			expect(tryToParseUrl('example.com/path')).toBe('https://example.com/path');
+		});
+
+		it('should allow URLs with username and password', () => {
+			expect(tryToParseUrl('http://user:pass@example.com')).toBe('http://user:pass@example.com');
+			expect(tryToParseUrl('ftp://user:pass@ftp.example.com')).toBe(
+				'ftp://user:pass@ftp.example.com',
+			);
+		});
+
+		it('should reject javascript: protocol URLs', () => {
+			expect(() => tryToParseUrl('javascript:alert(1)')).toThrow('is not a valid url');
+		});
+
+		it('should reject data: protocol URLs', () => {
+			expect(() => tryToParseUrl('data:text/html,<script>alert(1)</script>')).toThrow(
+				'is not a valid url',
+			);
+		});
+
+		it('should reject invalid URLs', () => {
+			expect(() => tryToParseUrl('not a url at all')).toThrow('is not a valid url');
+			expect(() => tryToParseUrl('')).toThrow('is not a valid url');
 		});
 	});
 });

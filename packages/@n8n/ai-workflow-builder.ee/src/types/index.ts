@@ -8,3 +8,10 @@ export type * from './streaming';
 export type * from './nodes';
 export type * from './config';
 export type * from './utils';
+export type * from './categorization';
+export type * from './best-practices';
+export type * from './node-guidance';
+
+// exports with enumerations, export types and enums
+export * from './web/templates';
+export * from './node-recommendations';

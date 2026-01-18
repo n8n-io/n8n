@@ -3,7 +3,7 @@ import { getGlobalScopes } from '../get-global-scopes.ee';
 import { createAuthPrincipal } from './utils';
 
 describe('getGlobalScopes', () => {
-	test.each(['global:owner', 'global:admin', 'global:member'] as const)(
+	test.each(['global:owner', 'global:admin', 'global:member', 'global:chatUser'] as const)(
 		'should return correct scopes for %s',
 		(role) => {
 			const scopes = getGlobalScopes(createAuthPrincipal(role));

@@ -12,6 +12,7 @@ import type {
 import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from './utils';
 
 export class AwsSnsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,12 +28,7 @@ export class AwsSnsTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		webhooks: [
 			{
 				name: 'default',
@@ -42,6 +38,7 @@ export class AwsSnsTrigger implements INodeType {
 			},
 		],
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Topic',
 				name: 'topic',

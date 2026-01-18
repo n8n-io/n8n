@@ -33,6 +33,26 @@ export class TemplateCredentialSetupPage extends BasePage {
 		return this.page.getByTestId('continue-button');
 	}
 
+	getCanvasSetupButton(): Locator {
+		return this.page.getByTestId('setup-credentials-button');
+	}
+
+	getCanvasCredentialModal(): Locator {
+		return this.page.getByTestId('setup-workflow-credentials-modal');
+	}
+
+	getSetupCredentialModalCloseButton(): Locator {
+		return this.page
+			.getByTestId('setup-workflow-credentials-modal')
+			.getByRole('button', { name: 'Close this dialog' });
+	}
+
+	getSetupCredentialModalSteps(): Locator {
+		return this.page
+			.getByTestId('setup-workflow-credentials-modal')
+			.getByTestId('setup-credentials-form-step');
+	}
+
 	getCreateCredentialButton(appName: string): Locator {
 		return this.page.getByRole('button', { name: `Create new ${appName} credential` });
 	}
@@ -53,5 +73,10 @@ export class TemplateCredentialSetupPage extends BasePage {
 		const messageBox = this.getMessageBox();
 		await messageBox.waitFor({ state: 'visible' });
 		await messageBox.locator('.btn--cancel').click();
+	}
+
+	async closeSetupCredentialModal(): Promise<void> {
+		await this.getSetupCredentialModalCloseButton().click();
+		await this.getCanvasCredentialModal().waitFor({ state: 'hidden' });
 	}
 }

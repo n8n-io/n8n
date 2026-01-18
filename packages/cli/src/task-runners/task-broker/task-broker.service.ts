@@ -46,7 +46,7 @@ export interface TaskRequest {
 	requestId: string;
 	requesterId: string;
 	taskType: string;
-
+	timeout?: NodeJS.Timeout;
 	acceptInProgress?: boolean;
 }
 
@@ -95,6 +95,28 @@ export class TaskBroker {
 		if (this.taskRunnersConfig.taskTimeout <= 0) {
 			throw new UserError('Task timeout must be greater than 0');
 		}
+	}
+
+	private createRequestTimeout(requestId: string): NodeJS.Timeout {
+		return setTimeout(() => {
+			this.handleRequestTimeout(requestId);
+		}, this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds);
+	}
+
+	private handleRequestTimeout(requestId: string) {
+		const requestIndex = this.pendingTaskRequests.findIndex((r) => r.requestId === requestId);
+		if (requestIndex === -1) return;
+
+		const request = this.pendingTaskRequests[requestIndex];
+		this.pendingTaskRequests.splice(requestIndex, 1);
+
+		clearTimeout(request.timeout);
+
+		void this.requesters.get(request.requesterId)?.({
+			type: 'broker:requestexpired',
+			requestId: request.requestId,
+			reason: 'timeout',
+		});
 	}
 
 	expireTasks() {
@@ -306,6 +328,7 @@ export class TaskBroker {
 					taskType: message.taskType,
 					requestId: message.requestId,
 					requesterId,
+					timeout: this.createRequestTimeout(message.requestId),
 				});
 				break;
 			case 'requester:taskdataresponse':
@@ -533,6 +556,8 @@ export class TaskBroker {
 			}
 			if (e instanceof TaskDeferredError) {
 				this.logger.debug(`Task (${taskId}) deferred until runner is ready`);
+				clearTimeout(request.timeout);
+				request.timeout = this.createRequestTimeout(request.requestId);
 				this.pendingTaskRequests.push(request); // will settle on receiving task offer from runner
 				return;
 			}
@@ -542,6 +567,8 @@ export class TaskBroker {
 			}
 			throw e;
 		}
+
+		clearTimeout(request.timeout);
 
 		const task: Task = {
 			id: taskId,

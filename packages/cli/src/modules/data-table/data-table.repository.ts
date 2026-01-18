@@ -3,6 +3,7 @@ import {
 	type DataTableCreateColumnSchema,
 	type ListDataTableQueryDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Project, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -24,8 +25,24 @@ export class DataTableRepository extends Repository<DataTable> {
 		dataSource: DataSource,
 		private ddlService: DataTableDDLService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly logger: Logger,
 	) {
 		super(DataTable, dataSource.manager);
+	}
+
+	/**
+	 * Updates the updatedAt timestamp for a data table without modifying any other fields.
+	 * This is used to track when the table's content (rows/columns) has changed.
+	 *
+	 * Note: This method logs but does not throw errors to ensure that timestamp
+	 * update failures don't affect the primary data operations.
+	 */
+	async touchUpdatedAt(dataTableId: string, trx?: EntityManager) {
+		await withTransaction(this.manager, trx, async (em) => {
+			await em.update(DataTable, { id: dataTableId }, { updatedAt: new Date() });
+		}).catch((error) => {
+			this.logger.warn('Failed to update DataTable timestamp', { dataTableId, error });
+		});
 	}
 
 	async createDataTable(

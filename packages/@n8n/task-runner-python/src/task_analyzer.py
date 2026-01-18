@@ -1,6 +1,5 @@
 import ast
 import hashlib
-from typing import Set, Tuple
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
@@ -9,12 +8,15 @@ from src.config.security_config import SecurityConfig
 from src.constants import (
     MAX_VALIDATION_CACHE_SIZE,
     ERROR_RELATIVE_IMPORT,
+    ERROR_DANGEROUS_NAME,
     ERROR_DANGEROUS_ATTRIBUTE,
+    ERROR_NAME_MANGLED_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
     BLOCKED_ATTRIBUTES,
+    BLOCKED_NAMES,
 )
 
-CacheKey = Tuple[str, Tuple]  # (code_hash, allowlists_tuple)
+CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
@@ -23,7 +25,7 @@ class SecurityValidator(ast.NodeVisitor):
     """AST visitor that enforces import allowlists and blocks dangerous attribute access."""
 
     def __init__(self, security_config: SecurityConfig):
-        self.checked_modules: Set[str] = set()
+        self.checked_modules: set[str] = set()
         self.violations: list[str] = []
         self.security_config = security_config
 
@@ -47,6 +49,12 @@ class SecurityValidator(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_Name(self, node: ast.Name) -> None:
+        if node.id in BLOCKED_NAMES:
+            self._add_violation(node.lineno, ERROR_DANGEROUS_NAME.format(name=node.id))
+
+        self.generic_visit(node)
+
     def visit_Attribute(self, node: ast.Attribute) -> None:
         """Detect access to unsafe attributes that could bypass security restrictions."""
 
@@ -54,6 +62,11 @@ class SecurityValidator(ast.NodeVisitor):
             self._add_violation(
                 node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
             )
+
+        if node.attr.startswith("_") and "__" in node.attr:
+            parts = node.attr.split("__", 1)
+            if len(parts) == 2 and parts[0].startswith("_"):
+                self._add_violation(node.lineno, ERROR_NAME_MANGLED_ATTRIBUTE)
 
         self.generic_visit(node)
 
@@ -87,22 +100,32 @@ class SecurityValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Subscript(self, node: ast.Subscript) -> None:
-        """Detect dict access to blocked attributes, e.g. __builtins__['__spec__']"""  
-        
+        """Detect dict access to blocked attributes, e.g. __builtins__['__spec__']"""
+
         is_builtins_access = (
             # __builtins__['__spec__']
-            (isinstance(node.value, ast.Name) and node.value.id in {"__builtins__", "builtins"})
+            (
+                isinstance(node.value, ast.Name)
+                and node.value.id in {"__builtins__", "builtins"}
+            )
             # obj.__builtins__['__spec__']
-            or (isinstance(node.value, ast.Attribute) and node.value.attr in {"__builtins__", "builtins"})
+            or (
+                isinstance(node.value, ast.Attribute)
+                and node.value.attr in {"__builtins__", "builtins"}
+            )
         )
-        
-        if is_builtins_access and isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
+
+        if (
+            is_builtins_access
+            and isinstance(node.slice, ast.Constant)
+            and isinstance(node.slice.value, str)
+        ):
             key = node.slice.value
             if key in BLOCKED_ATTRIBUTES:
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=key)
                 )
-        
+
         self.generic_visit(node)
 
     # ========== Validation ==========
@@ -126,6 +149,7 @@ class SecurityValidator(ast.NodeVisitor):
         )
 
         if not is_allowed:
+            assert error_msg is not None
             self._add_violation(lineno, error_msg)
 
     def _add_violation(self, lineno: int, message: str) -> None:
@@ -152,16 +176,14 @@ class TaskAnalyzer:
 
         cache_key = self._to_cache_key(code)
         cached_violations = self._cache.get(cache_key)
-        cache_hit = cached_violations is not None
 
-        if cache_hit:
+        if cached_violations is not None:
             self._cache.move_to_end(cache_key)
 
             if len(cached_violations) == 0:
                 return
 
-            if len(cached_violations) > 0:
-                self._raise_security_error(cached_violations)
+            self._raise_security_error(cached_violations)
 
         tree = ast.parse(code)
 

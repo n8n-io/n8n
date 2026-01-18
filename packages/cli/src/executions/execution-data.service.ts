@@ -1,5 +1,11 @@
 import { Service } from '@n8n/di';
-import type { ExecutionError, INode, IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	type ExecutionError,
+	type INode,
+	type IRun,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 @Service()
 export class ExecutionDataService {
@@ -15,12 +21,12 @@ export class ExecutionDataService {
 			stack: error.stack,
 		};
 		const returnData: IRun = {
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					error: executionError,
 					runData: {},
 				},
-			},
+			}),
 			finished: false,
 			mode,
 			startedAt: new Date(),
@@ -30,7 +36,10 @@ export class ExecutionDataService {
 
 		if (node) {
 			returnData.data.startData = {
-				destinationNode: node.name,
+				destinationNode: {
+					nodeName: node.name,
+					mode: 'inclusive',
+				},
 				runNodeFilter: [node.name],
 			};
 			returnData.data.resultData.lastNodeExecuted = node.name;

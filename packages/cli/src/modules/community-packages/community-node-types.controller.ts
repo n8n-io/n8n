@@ -8,12 +8,12 @@ import { CommunityNodeTypesService } from './community-node-types.service';
 export class CommunityNodeTypesController {
 	constructor(private readonly communityNodeTypesService: CommunityNodeTypesService) {}
 
-	@Get('/:name')
+	@Get('/:name', { allowSkipPreviewAuth: true })
 	async getCommunityNodeType(req: Request): Promise<CommunityNodeType | null> {
 		return await this.communityNodeTypesService.getCommunityNodeType(req.params.name);
 	}
 
-	@Get('/')
+	@Get('/', { allowSkipPreviewAuth: true })
 	async getCommunityNodeTypes() {
 		return await this.communityNodeTypesService.getCommunityNodeTypes();
 	}

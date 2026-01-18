@@ -18,7 +18,7 @@ export class NodeDetailsViewComposer {
 
 		const items = this.n8n.page.getByTestId('rlc-item');
 		const targetItem = items.filter({ hasText: workflowName });
-		await targetItem.click();
+		await targetItem.first().click();
 	}
 
 	/**

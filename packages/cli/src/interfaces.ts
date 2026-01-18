@@ -15,6 +15,7 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
+	IExecutionContext,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -47,7 +48,10 @@ export interface IWorkflowResponse extends IWorkflowBase {
 }
 
 export interface IWorkflowToImport
-	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
+	extends Omit<
+		IWorkflowBase,
+		'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
+	> {
 	owner?:
 		| {
 				type: 'personal';
@@ -138,6 +142,7 @@ export interface IWorkflowErrorData {
 		error: ExecutionError;
 		lastNodeExecuted: string;
 		mode: WorkflowExecuteMode;
+		executionContext?: IExecutionContext;
 	};
 	trigger?: {
 		error: ExecutionError;

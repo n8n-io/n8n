@@ -3,8 +3,8 @@ import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
+import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
 import { CredentialsEntity } from './credentials-entity';
-import { EventDestinations } from './event-destinations';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
@@ -26,18 +26,22 @@ import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
+import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
+import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
-	EventDestinations,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
 	Variables,
 	ApiKey,
+	BinaryDataFile,
+	SourceTypeSchema,
+	type SourceType,
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
@@ -50,12 +54,14 @@ export {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,
@@ -67,12 +73,12 @@ export {
 };
 
 export const entities = {
-	EventDestinations,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
 	Variables,
 	ApiKey,
+	BinaryDataFile,
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
@@ -84,12 +90,14 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,

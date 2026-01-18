@@ -169,12 +169,6 @@
 		"status": "SKIPPED"
 	},
 	{
-		"workflowId": "83",
-		"status": "SKIPPED",
-		"skipReason": "Producthunt.com is returning a 403 for the RSS Feed, we should swap to an rss without auth",
-		"ticketReference": "CAT-1470"
-	},
-	{
 		"workflowId": "85",
 		"status": "SKIPPED"
 	},
@@ -297,6 +291,12 @@
 		"workflowId": "131",
 		"status": "SKIPPED",
 		"skipReason": "This API service has been discontinued. For more details, please check here: https://notify-bot.line.me/closing-announce on node Line"
+	},
+	{
+		"workflowId": "133",
+		"status": "SKIPPED",
+		"skipReason": "Account is inactive, looks like expired credentials, but it returns as 'Bad Request'.",
+		"ticketReference": "NODE-3805"
 	},
 	{
 		"workflowId": "134",

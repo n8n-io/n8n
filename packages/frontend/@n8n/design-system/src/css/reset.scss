@@ -103,7 +103,8 @@ body {
 
 body,
 button,
-input {
+input,
+textarea {
 	font-family: var(--font-family);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;

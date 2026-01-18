@@ -15,7 +15,14 @@ describe('N8nPromptInput', () => {
 		it('should render correctly with default props', () => {
 			const { container } = renderComponent({
 				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: false,
+						N8nTooltip: {
+							template: '<slot />',
+						},
+					},
 				},
 			});
 			expect(container).toMatchSnapshot();
@@ -40,7 +47,14 @@ describe('N8nPromptInput', () => {
 					streaming: true,
 				},
 				global: {
-					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: true,
+						N8nSendStopButton: false,
+						N8nTooltip: {
+							template: '<slot />',
+						},
+					},
 				},
 			});
 			const textarea = container.querySelector('textarea');
@@ -220,6 +234,22 @@ describe('N8nPromptInput', () => {
 	});
 
 	describe('user interactions', () => {
+		it('should emit submit on plain Enter', async () => {
+			const render = renderComponent({
+				props: {
+					modelValue: 'Test message',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
+
+			expect(render.emitted('submit')).toBeTruthy();
+		});
+
 		it('should emit submit on Ctrl+Enter', async () => {
 			const render = renderComponent({
 				props: {
@@ -252,7 +282,7 @@ describe('N8nPromptInput', () => {
 			expect(render.emitted('submit')).toBeTruthy();
 		});
 
-		it('should not emit submit on plain Enter', async () => {
+		it('should insert newline on Shift+Enter', async () => {
 			const render = renderComponent({
 				props: {
 					modelValue: 'Test message',
@@ -263,9 +293,12 @@ describe('N8nPromptInput', () => {
 			});
 
 			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
 
+			// Should not emit submit
 			expect(render.emitted('submit')).toBeFalsy();
+			// Should have inserted a newline in the value
+			expect(render.emitted('update:modelValue')).toBeTruthy();
 		});
 
 		it('should emit update:modelValue when typing', async () => {
@@ -600,7 +633,9 @@ describe('N8nPromptInput', () => {
 							props: ['disabled', 'streaming'],
 							template: '<button :disabled="disabled"></button>',
 						},
-						N8nTooltip: true,
+						N8nTooltip: {
+							template: '<div><slot /></div>',
+						},
 						N8nLink: true,
 						N8nIcon: true,
 					},
@@ -688,7 +723,7 @@ describe('N8nPromptInput', () => {
 						N8nTooltip: {
 							props: ['disabled', 'content', 'placement'],
 							template:
-								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="disabled"><slot /></div>',
+								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="String(disabled)"><slot /></div>',
 						},
 						N8nLink: true,
 						N8nIcon: true,
@@ -696,11 +731,11 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			// Find tooltips with different placements
-			const creditsTooltip = wrapper.find('.tooltip-top');
-			const askOwnerTooltip = wrapper.findAll('.tooltip-top')[1]; // Second tooltip with top placement
+			// Find tooltips: [0]=outer wrapper, [1]=credits info, [2]=ask owner
+			const tooltips = wrapper.findAll('.tooltip-top');
+			const askOwnerTooltip = tooltips[2];
 
-			expect(creditsTooltip.exists()).toBe(true);
+			expect(tooltips.length).toBe(3);
 			expect(askOwnerTooltip.exists()).toBe(true);
 			expect(askOwnerTooltip.attributes('data-disabled')).toBe('false');
 
@@ -722,7 +757,7 @@ describe('N8nPromptInput', () => {
 						N8nTooltip: {
 							props: ['disabled', 'content', 'placement'],
 							template:
-								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="disabled"><slot /></div>',
+								'<div :class="`tooltip-${placement || \'top\'}`" :data-disabled="String(disabled)"><slot /></div>',
 						},
 						N8nLink: true,
 						N8nIcon: true,
@@ -730,11 +765,11 @@ describe('N8nPromptInput', () => {
 				},
 			});
 
-			// Find tooltips with different placements
-			const creditsTooltip = wrapper.find('.tooltip-top');
-			const askOwnerTooltip = wrapper.findAll('.tooltip-top')[1]; // Second tooltip with top placement
+			// Find tooltips: [0]=outer wrapper, [1]=credits info, [2]=ask owner
+			const tooltips = wrapper.findAll('.tooltip-top');
+			const askOwnerTooltip = tooltips[2];
 
-			expect(creditsTooltip.exists()).toBe(true);
+			expect(tooltips.length).toBe(3);
 			expect(askOwnerTooltip.exists()).toBe(true);
 			expect(askOwnerTooltip.attributes('data-disabled')).toBe('true');
 
@@ -817,8 +852,8 @@ describe('N8nPromptInput', () => {
 			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
 			const focusSpy = vi.spyOn(textarea, 'focus');
 
-			// Trigger submit with Ctrl+Enter
-			await fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+			// Trigger submit with Enter
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			// Wait for next tick and animation frame
 			await wrapper.vm.$nextTick();
@@ -842,8 +877,8 @@ describe('N8nPromptInput', () => {
 			const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
 			const focusSpy = vi.spyOn(textarea, 'focus');
 
-			// Trigger submit with Ctrl+Enter
-			await fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+			// Trigger submit with Enter
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			// Wait for next tick
 			await wrapper.vm.$nextTick();
@@ -930,7 +965,7 @@ describe('N8nPromptInput', () => {
 			});
 
 			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
-			await fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
 
 			expect(render.emitted('submit')).toBeFalsy();
 		});
@@ -947,6 +982,136 @@ describe('N8nPromptInput', () => {
 
 			const disabledContainer = container.querySelector('.disabled');
 			expect(disabledContainer).toBeTruthy();
+		});
+	});
+
+	describe('height adjustment optimization', () => {
+		it('should skip height adjustment when content fits within current height', async () => {
+			// Mock scrollHeight and clientHeight to simulate content that fits
+			const originalScrollHeightDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'scrollHeight',
+			);
+			const originalClientHeightDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'clientHeight',
+			);
+
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+				configurable: true,
+				get(this: HTMLTextAreaElement) {
+					return 72; // Content height
+				},
+			});
+
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'clientHeight', {
+				configurable: true,
+				get(this: HTMLTextAreaElement) {
+					return 72; // Container height (content fits perfectly)
+				},
+			});
+
+			try {
+				const wrapper = mount(N8nPromptInput, {
+					props: {
+						modelValue: 'Line 1\nLine 2\nLine 3\nLine 4',
+					},
+					global: {
+						stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					},
+				});
+
+				// Wait for initial mount to complete
+				await wrapper.vm.$nextTick();
+
+				const textarea = wrapper.find('textarea').element as HTMLTextAreaElement;
+
+				// Start spying after mount
+				const setHeightSpy = vi.spyOn(textarea.style, 'height', 'set');
+
+				// Type some text that doesn't change the height requirement
+				await wrapper.setProps({ modelValue: 'Line 1\nLine 2\nLine 3\nLine 4a' });
+
+				// Wait for the watcher to trigger
+				await wrapper.vm.$nextTick();
+
+				// Since content fits, adjustHeight should return early without setting height to '0'
+				const heightCalls = setHeightSpy.mock.calls;
+				const hasZeroHeightCall = heightCalls.some((call) => call[0] === '0');
+
+				// If early return works, there should be no '0' height call after the prop update
+				expect(hasZeroHeightCall).toBe(false);
+
+				wrapper.unmount();
+			} finally {
+				// Restore original descriptors
+				if (originalScrollHeightDescriptor) {
+					Object.defineProperty(
+						HTMLTextAreaElement.prototype,
+						'scrollHeight',
+						originalScrollHeightDescriptor,
+					);
+				}
+				if (originalClientHeightDescriptor) {
+					Object.defineProperty(
+						HTMLTextAreaElement.prototype,
+						'clientHeight',
+						originalClientHeightDescriptor,
+					);
+				}
+			}
+		});
+
+		it('should use ScrollArea to constrain visible area', () => {
+			// This test verifies that the component uses N8nScrollArea with max-height
+			// to constrain the visible area, rather than capping the textarea height itself
+			const wrapper = mount(N8nPromptInput, {
+				props: {
+					modelValue: 'Line1\nLine2',
+					maxLinesBeforeScroll: 10,
+					minLines: 2,
+				},
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: {
+							props: ['maxHeight', 'type'],
+							template: '<div class="scroll-area-stub"><slot /></div>',
+						},
+						N8nSendStopButton: true,
+					},
+				},
+			});
+
+			// Verify that N8nScrollArea is used in multiline mode
+			const scrollArea = wrapper.find('.scroll-area-stub');
+			expect(scrollArea.exists()).toBe(true);
+
+			wrapper.unmount();
+		});
+	});
+
+	describe('autofocus', () => {
+		it('should be focused if enabled', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					autofocus: true,
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			expect(emitted('focus')).toBeTruthy();
+		});
+
+		it('should not be focused if disabled', () => {
+			const { emitted } = renderComponent({
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+			expect(emitted('focus')).toBeFalsy();
 		});
 	});
 });

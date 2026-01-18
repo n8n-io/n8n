@@ -1,7 +1,7 @@
 {
   "name": "@n8n/eslint-plugin-community-nodes",
   "type": "module",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "main": "./dist/plugin.js",
   "types": "./dist/plugin.d.ts",
   "exports": {
@@ -21,6 +21,7 @@
     "lint:fix": "eslint src --fix",
     "lint:docs": "eslint-doc-generator --check",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch --project tsconfig.build.json"

@@ -1,7 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { VectorDBQAChain } from 'langchain/chains';
-import { VectorStoreQATool } from 'langchain/tools';
+import { VectorDBQAChain } from '@langchain/classic/chains';
+import { VectorStoreQATool } from '@langchain/classic/tools';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,

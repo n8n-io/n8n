@@ -30,6 +30,9 @@ export class MongoDb implements ICredentialType {
 			displayName: 'Connection String',
 			name: 'connectionString',
 			type: 'string',
+			typeOptions: {
+				password: true,
+			},
 			displayOptions: {
 				show: {
 					configurationType: ['connectionString'],

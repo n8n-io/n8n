@@ -5,7 +5,7 @@ import { useI18n } from '../../composables/useI18n';
 import type { ButtonSize, IconSize } from '../../types';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
-import N8nPopoverReka from '../N8nPopoverReka/N8nPopoverReka.vue';
+import N8nPopover from '../N8nPopover';
 
 export type ColumnHeader =
 	| {
@@ -129,7 +129,7 @@ const handleDragEnd = () => {
 </script>
 
 <template>
-	<N8nPopoverReka :class="$style.container" width="260px" max-height="300px" scroll-type="auto">
+	<N8nPopover :class="$style.container" width="260px" max-height="300px" scroll-type="auto">
 		<template #trigger>
 			<N8nButton
 				icon="sliders-horizontal"
@@ -223,7 +223,7 @@ const handleDragEnd = () => {
 				</div>
 			</div>
 		</template>
-	</N8nPopoverReka>
+	</N8nPopover>
 </template>
 
 <style lang="scss" module>

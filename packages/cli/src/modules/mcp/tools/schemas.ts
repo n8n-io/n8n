@@ -35,6 +35,7 @@ export const workflowDetailsOutputSchema = z.object({
 			tags: z.array(tagSchema),
 			meta: workflowMetaSchema,
 			parentFolderId: z.string().nullable(),
+			description: z.string().optional().describe('The description of the workflow'),
 		})
 		.passthrough()
 		.describe('Sanitized workflow data safe for MCP consumption'),

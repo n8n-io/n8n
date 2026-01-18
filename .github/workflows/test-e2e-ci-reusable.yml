@@ -1,0 +1,69 @@
+name: 'Test: E2E CI'
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'GitHub branch/ref to test'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
+  # Only runs for internal PRs (not community/fork PRs)
+  # Builds Docker images locally per shard for faster parallel execution
+  multi-main-e2e:
+    name: 'Multi-Main: E2E'
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ inputs.branch }}
+      test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
+      shards: 14
+      runner: blacksmith-2vcpu-ubuntu-2204
+      workers: '1'
+      use-custom-orchestration: true
+    secrets: inherit
+
+  multi-main-isolated:
+    name: 'Multi-Main: Isolated'
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ inputs.branch }}
+      test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:container:multi-main:isolated
+      shards: 2
+      runner: blacksmith-2vcpu-ubuntu-2204
+      workers: '1'
+    secrets: inherit
+
+  # Community PR tests: Local mode with SQLite (no container building, no secrets required)
+  # Runs on GitHub-hosted runners without Currents reporting
+  community-e2e:
+    name: 'Community: E2E'
+    if: ${{ github.event.pull_request.head.repo.fork }}
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ inputs.branch }}
+      test-mode: local
+      test-command: pnpm --filter=n8n-playwright test:local:e2e-only
+      shards: 6
+      runner: ubuntu-latest
+      workers: '1'
+      upload-failure-artifacts: true
+
+  community-isolated:
+    name: 'Community: Isolated'
+    if: ${{ github.event.pull_request.head.repo.fork }}
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      branch: ${{ inputs.branch }}
+      test-mode: local
+      test-command: pnpm --filter=n8n-playwright test:local:isolated
+      shards: 2
+      runner: ubuntu-latest
+      workers: '1'
+      upload-failure-artifacts: true

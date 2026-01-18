@@ -5,7 +5,6 @@ import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
-import { engine as expressHandlebars } from 'express-handlebars';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
@@ -16,6 +15,7 @@ import { ServiceUnavailableError } from '@/errors/response-errors/service-unavai
 import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
+import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
@@ -68,7 +68,7 @@ export abstract class AbstractServer {
 		this.app = express();
 		this.app.disable('x-powered-by');
 		this.app.set('query parser', 'extended');
-		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
+		this.app.engine('handlebars', createHandlebarsEngine());
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
 
@@ -121,7 +121,7 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
-	private async setupHealthCheck() {
+	private setupHealthCheck() {
 		// main health check should not care about DB connections
 		this.app.get('/healthz', (_req, res) => {
 			res.send({ status: 'ok' });
@@ -200,7 +200,7 @@ export abstract class AbstractServer {
 
 		this.externalHooks = Container.get(ExternalHooks);
 
-		await this.setupHealthCheck();
+		this.setupHealthCheck();
 
 		this.logger.info(`n8n ready on ${address}, port ${port}`);
 	}
@@ -296,7 +296,7 @@ export abstract class AbstractServer {
 	 * then closes them forcefully.
 	 */
 	@OnShutdown()
-	async onShutdown(): Promise<void> {
+	onShutdown(): void {
 		if (!this.server) {
 			return;
 		}

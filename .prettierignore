@@ -8,7 +8,6 @@ packages/cli/templates/form-trigger.handlebars
 packages/cli/templates/form-trigger-completion.handlebars
 packages/cli/templates/form-trigger-409.handlebars
 packages/cli/templates/form-trigger-404.handlebars
-cypress/fixtures
 CHANGELOG.md
 .github/pull_request_template.md
 # Ignored for now

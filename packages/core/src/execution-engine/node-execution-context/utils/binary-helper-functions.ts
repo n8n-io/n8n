@@ -3,6 +3,7 @@ import chardet from 'chardet';
 import FileType from 'file-type';
 import { IncomingMessage } from 'http';
 import iconv from 'iconv-lite';
+import get from 'lodash/get';
 import { extension, lookup } from 'mime-types';
 import type { StringValue as TimeUnitValue } from 'ms';
 import type {
@@ -11,12 +12,17 @@ import type {
 	INode,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	WorkflowSettingsBinaryMode,
 } from 'n8n-workflow';
 import {
 	NodeOperationError,
 	fileTypeFromMimeType,
 	ApplicationError,
 	UnexpectedError,
+	isBinaryValue,
+	BINARY_MODE_COMBINED,
+	BINARY_MODE_SEPARATE,
+	sanitizeFilename,
 } from 'n8n-workflow';
 import path from 'path';
 import type { Readable } from 'stream';
@@ -56,13 +62,6 @@ async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promis
 }
 
 /**
- * Check if object is a binary data
- */
-function isBinaryData(obj: unknown): obj is IBinaryData {
-	return typeof obj === 'object' && obj !== null && 'data' in obj && 'mimeType' in obj;
-}
-
-/**
  * If parameterData is a string, returns the binary data the given item index and
  * property name from the input data.
  * Else if parameterData is a binary data object, returns the binary data object.
@@ -73,8 +72,9 @@ export function assertBinaryData(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
+	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): IBinaryData {
-	if (isBinaryData(parameterData)) {
+	if (isBinaryValue(parameterData)) {
 		return parameterData;
 	}
 	if (typeof parameterData !== 'string') {
@@ -88,32 +88,49 @@ export function assertBinaryData(
 			},
 		);
 	}
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
-	if (binaryKeyData === undefined) {
-		throw new NodeOperationError(
-			node,
-			`This operation expects the node's input data to contain a binary file '${parameterData}', but none was found [item ${itemIndex}]`,
-			{
-				itemIndex,
-				description: 'Make sure that the previous node outputs a binary file',
-			},
-		);
-	}
 
-	const binaryPropertyData = binaryKeyData[parameterData];
-	if (binaryPropertyData === undefined) {
-		throw new NodeOperationError(
-			node,
-			`The item has no binary field '${parameterData}' [item ${itemIndex}]`,
-			{
-				itemIndex,
-				description:
-					'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
-			},
-		);
-	}
+	if (binaryMode === BINARY_MODE_COMBINED) {
+		const itemData = inputData.main[inputIndex]![itemIndex].json;
+		const binaryData = get(itemData, parameterData);
+		if (!isBinaryValue(binaryData)) {
+			throw new NodeOperationError(
+				node,
+				`The path '${parameterData}' does not resolve to a binary data object in the input data [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description: `Check that the path '${parameterData}' is correct, and that it resolves to a binary data object in the input data`,
+				},
+			);
+		}
+		return binaryData;
+	} else {
+		const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
+		if (binaryKeyData === undefined) {
+			throw new NodeOperationError(
+				node,
+				`This operation expects the node's input data to contain a binary file '${parameterData}', but none was found [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description: 'Make sure that the previous node outputs a binary file',
+				},
+			);
+		}
 
-	return binaryPropertyData;
+		const binaryPropertyData = binaryKeyData[parameterData];
+		if (binaryPropertyData === undefined) {
+			throw new NodeOperationError(
+				node,
+				`The item has no binary field '${parameterData}' [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description:
+						'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
+				},
+			);
+		}
+
+		return binaryPropertyData;
+	}
 }
 
 /**
@@ -126,13 +143,21 @@ export async function getBinaryDataBuffer(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
+	binaryMode: WorkflowSettingsBinaryMode = BINARY_MODE_SEPARATE,
 ): Promise<Buffer> {
 	let binaryData: IBinaryData;
 
-	if (isBinaryData(parameterData)) {
+	if (isBinaryValue(parameterData)) {
 		binaryData = parameterData;
-	} else if (typeof parameterData === 'string') {
+	} else if (typeof parameterData === 'string' && binaryMode !== BINARY_MODE_COMBINED) {
 		binaryData = inputData.main[inputIndex]![itemIndex].binary![parameterData];
+	} else if (typeof parameterData === 'string') {
+		const itemData = inputData.main[inputIndex]![itemIndex].json;
+		const data = get(itemData, parameterData);
+		if (!isBinaryValue(data)) {
+			throw new UnexpectedError('Provided parameter is not a string or binary data object.');
+		}
+		binaryData = data;
 	} else {
 		throw new UnexpectedError('Provided parameter is not a string or binary data object.');
 	}
@@ -159,8 +184,7 @@ export async function setBinaryDataBuffer(
 	executionId: string,
 ): Promise<IBinaryData> {
 	return await Container.get(BinaryDataService).store(
-		workflowId,
-		executionId,
+		{ type: 'execution', workflowId, executionId },
 		bufferOrStream,
 		binaryData,
 	);
@@ -212,14 +236,13 @@ export async function copyBinaryFile(
 	};
 
 	if (fileName) {
-		returnData.fileName = fileName;
+		returnData.fileName = sanitizeFilename(fileName);
 	} else if (filePath) {
-		returnData.fileName = path.parse(filePath).base;
+		returnData.fileName = sanitizeFilename(filePath);
 	}
 
 	return await Container.get(BinaryDataService).copyBinaryFile(
-		workflowId,
-		executionId,
+		{ type: 'execution', workflowId, executionId },
 		returnData,
 		filePath,
 	);
@@ -238,6 +261,7 @@ export async function prepareBinaryData(
 	mimeType?: string,
 ): Promise<IBinaryData> {
 	let fileExtension: string | undefined;
+	let fullUrl: string | undefined;
 	if (binaryData instanceof IncomingMessage) {
 		if (!filePath) {
 			try {
@@ -245,6 +269,7 @@ export async function prepareBinaryData(
 				filePath =
 					binaryData.contentDisposition?.filename ??
 					((responseUrl && new URL(responseUrl).pathname) ?? binaryData.req?.path)?.slice(1);
+				fullUrl = responseUrl;
 			} catch {}
 		}
 		if (!mimeType) {
@@ -298,9 +323,12 @@ export async function prepareBinaryData(
 	if (filePath) {
 		const filePathParts = path.parse(filePath);
 
-		if (filePathParts.dir !== '') {
+		if (fullUrl) {
+			returnData.directory = fullUrl;
+		} else if (filePathParts.dir !== '') {
 			returnData.directory = filePathParts.dir;
 		}
+
 		returnData.fileName = filePathParts.base;
 
 		// Remove the dot

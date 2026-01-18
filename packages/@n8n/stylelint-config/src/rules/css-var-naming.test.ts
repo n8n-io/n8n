@@ -43,13 +43,27 @@ describe('css-var-naming rule', () => {
 			expect(result.warnings).toHaveLength(0);
 		});
 
+		it('should accept any reka css vars as valid', async () => {
+			const namespacePattern = `
+				:root {
+					--reka-color-primary: #0d6efd;
+					--reka--button--color--background--primary: #0d6efd;
+					--reka--other: #333;
+					--ag-other: #333;
+					--chat-other: #333;
+				}
+			`;
+			const result = await lintCSS(namespacePattern);
+			expect(result.warnings).toHaveLength(0);
+		});
+
 		it('should accept valid p namespace for primitives', async () => {
 			const namespacePattern = `
 				:root {
 					--p--color--primary: #0d6efd;
 					--p--color--primary-500: #0d6efd;
 					--p--spacing--md: 20px;
-					--p--color--gray-740: #2e3440;
+					--color--neutral-850: #2e3440;
 				}
 			`;
 			const result = await lintCSS(namespacePattern);
@@ -417,7 +431,7 @@ describe('css-var-naming rule', () => {
 		it('should reject namespace with muted value before color--text property', async () => {
 			const invalidOrder = `
 				:root {
-					--chat--muted--color--text: #888;
+					--namespace--muted--color--text: #888;
 				}
 			`;
 			const result = await lintCSS(invalidOrder);

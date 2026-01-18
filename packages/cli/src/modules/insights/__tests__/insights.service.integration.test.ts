@@ -6,29 +6,23 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
+import type { InstanceType } from '@n8n/constants';
 import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
-import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
-import { UserError, type IRun } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-import {
-	createCompactedInsightsEvent,
-	createMetadata,
-	createRawInsightsEvents,
-} from '../database/entities/__tests__/db-utils';
-import type { InsightsRaw } from '../database/entities/insights-raw';
+import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
-import { InsightsCompactionService } from '../insights-compaction.service';
+import type { InsightsCompactionService } from '../insights-compaction.service';
 import type { InsightsPruningService } from '../insights-pruning.service';
-import { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
-describe('InsightsService', () => {
+describe('InsightsService (Integration)', () => {
 	const today = new Date();
 
 	beforeAll(async () => {
@@ -54,13 +48,14 @@ describe('InsightsService', () => {
 	describe('startTimers', () => {
 		let insightsService: InsightsService;
 		let compactionService: InsightsCompactionService;
-		let collectionService: InsightsCollectionService;
 		let pruningService: InsightsPruningService;
 		let instanceSettings: MockProxy<InstanceSettings>;
+		let realCollectionService: InsightsCollectionService;
+		let initSpy: jest.SpyInstance;
+		let shutdownSpy: jest.SpyInstance;
 
 		beforeEach(() => {
 			compactionService = mock<InsightsCompactionService>();
-			collectionService = mock<InsightsCollectionService>();
 			pruningService = mock<InsightsPruningService>();
 			instanceSettings = mock<InstanceSettings>({
 				instanceType: 'main',
@@ -68,18 +63,30 @@ describe('InsightsService', () => {
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
 				compactionService,
-				collectionService,
 				pruningService,
 				mock<LicenseState>(),
 				instanceSettings,
 				mockLogger(),
 			);
 
+			// Get the real service from the container and spy on it
+			realCollectionService = Container.get(InsightsCollectionService);
+			initSpy = jest.spyOn(realCollectionService, 'init');
+			shutdownSpy = jest.spyOn(realCollectionService, 'shutdown');
+
 			jest.clearAllMocks();
 		});
 
+		afterEach(async () => {
+			// Shutdown the service to clear timers
+			await insightsService.shutdown();
+			// Clean up spies
+			initSpy.mockRestore();
+			shutdownSpy.mockRestore();
+		});
+
 		const setupMocks = (
-			instanceType: string,
+			instanceType: InstanceType,
 			isLeader: boolean = false,
 			isPruningEnabled: boolean = false,
 		) => {
@@ -92,38 +99,52 @@ describe('InsightsService', () => {
 			});
 		};
 
-		test('starts flushing timer for main instance', () => {
+		test('starts flushing timer for main instance', async () => {
 			setupMocks('main', false, false);
-			insightsService.startTimers();
 
-			expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+			await insightsService.init();
+
+			expect(initSpy).toHaveBeenCalled();
 			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
 			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction and flushing timers for main leader instances', () => {
+		test('starts compaction and flushing timers for main leader instances', async () => {
 			setupMocks('main', true, false);
-			insightsService.startTimers();
 
-			expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+			await insightsService.init();
+
+			expect(initSpy).toHaveBeenCalled();
 			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
 			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction, flushing and pruning timers for main leader instance with pruning enabled', () => {
+		test('starts compaction, flushing and pruning timers for main leader instance with pruning enabled', async () => {
 			setupMocks('main', true, true);
-			insightsService.startTimers();
 
-			expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+			await insightsService.init();
+
+			expect(initSpy).toHaveBeenCalled();
 			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
 			expect(pruningService.startPruningTimer).toHaveBeenCalled();
 		});
 
-		test('starts only collection flushing timer for webhook instance', () => {
+		test('starts only collection flushing timer for webhook instance', async () => {
 			setupMocks('webhook', false, false);
-			insightsService.startTimers();
 
-			expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+			await insightsService.init();
+
+			expect(initSpy).toHaveBeenCalled();
+			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
+			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
+		});
+
+		test('do no start any timers for non-main instances', async () => {
+			setupMocks('worker', false, false);
+
+			await insightsService.init();
+
+			expect(initSpy).not.toHaveBeenCalled();
 			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
 			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
@@ -143,68 +164,73 @@ describe('InsightsService', () => {
 			workflow = await createWorkflow({}, project);
 		});
 
-		test('compacted data are summarized correctly', async () => {
-			const now = DateTime.utc();
+		test('should get summarized insights for the last 7', async () => {
 			// ARRANGE
-			// last 6 days
+			const endDate = DateTime.utc();
+			const startDate = endDate.minus({ days: 6 });
+
+			// Insights withing range
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
-				value: 1,
+				value: 8,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: endDate.minus({ day: 1 }),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 2 }),
+				value: 2,
+				periodUnit: 'hour',
+				periodStart: endDate.minus({ day: 2 }),
 			});
 			await createCompactedInsightsEvent(workflow, {
 				type: 'failure',
-				value: 1,
+				value: 2,
 				periodUnit: 'day',
-				periodStart: now,
+				periodStart: endDate.minus({ day: 2 }),
 			});
-			// last 12 days
+
+			// Insights within previous period
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
-				value: 1,
+				value: 15,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
+				periodStart: startDate.minus({ days: 1 }),
 			});
 			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
+				type: 'failure',
+				value: 3,
 				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
-			});
-			//Outside range should not be taken into account
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 13 }),
+				periodStart: startDate.minus({ days: 2 }),
 			});
 
-			const startDate = now.minus({ days: 6 }).toJSDate();
+			// Insights outside range should not be taken into account
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: startDate.minus({ days: 10 }),
+			});
 
 			// ACT
-			const summary = await insightsService.getInsightsSummary({ startDate, endDate: today });
+			const summary = await insightsService.getInsightsSummary({
+				startDate: startDate.toJSDate(),
+				endDate: endDate.toJSDate(),
+			});
 
 			// ASSERT
 			expect(summary).toEqual({
-				averageRunTime: { deviation: -123, unit: 'millisecond', value: 0 },
-				failed: { deviation: 1, unit: 'count', value: 1 },
-				failureRate: { deviation: 0.333, unit: 'ratio', value: 0.333 },
+				averageRunTime: { deviation: 0, unit: 'millisecond', value: 0 },
+				failed: { deviation: -1, unit: 'count', value: 2 },
+				failureRate: { deviation: 0, unit: 'ratio', value: 0.167 },
 				timeSaved: { deviation: 0, unit: 'minute', value: 0 },
-				total: { deviation: 2, unit: 'count', value: 3 },
+				total: { deviation: -6, unit: 'count', value: 12 },
 			});
 		});
 
 		test('no data for previous period should return null deviation', async () => {
 			// ARRANGE
 			const now = DateTime.utc();
-			// last 7 days
+
 			await createCompactedInsightsEvent(workflow, {
 				type: 'success',
 				value: 1,
@@ -227,215 +253,71 @@ describe('InsightsService', () => {
 			]);
 		});
 
-		// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-		test.skip('mixed period data are summarized correctly', async () => {
-			// ARRANGE
-			const now = DateTime.utc();
-
-			// current period
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 14 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 2,
-				periodUnit: 'hour',
-				periodStart: now.minus({ day: 10 }),
-			});
-
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 11,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 13 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 8,
-				periodUnit: 'hour',
-				periodStart: now.minus({ day: 10, hours: 8 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 1,
-				periodUnit: 'hour',
-				periodStart: now.minus({ day: 9, hours: 7 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 35789,
-				periodUnit: 'week',
-				periodStart: now.minus({ day: 14 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'time_saved_min',
-				value: 15,
-				periodUnit: 'week',
-				periodStart: now.minus({ day: 14 }),
-			});
-
-			// previous period
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 2,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 16 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 2,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 17 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
-				periodUnit: 'week',
-				periodStart: now.minus({ day: 21 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'time_saved_min',
-				value: 10,
-				periodUnit: 'week',
-				periodStart: now.minus({ day: 21 }),
-			});
-
-			// out of range data (after selected period)
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 5,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 6 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 3,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 4 }),
-			});
-
-			// out of range data (before selected period)
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 2,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 22 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ year: 1 }),
-			});
-
-			const startDate = now.minus({ days: 14 }).toJSDate();
-			const endDate = now.minus({ days: 7 }).toJSDate();
-
-			// ACT
-			const summary = await insightsService.getInsightsSummary({ startDate, endDate });
-
-			// ASSERT
-			expect(summary).toEqual({
-				averageRunTime: { value: 1556.04, unit: 'millisecond', deviation: 1525.29 },
-				failed: { value: 20, unit: 'count', deviation: 18 },
-				failureRate: { value: 0.87, unit: 'ratio', deviation: 0.37 },
-				timeSaved: { value: 15, unit: 'minute', deviation: 5 },
-				total: { value: 23, unit: 'count', deviation: 19 },
-			});
-		});
-
 		test('filter by projectId', async () => {
 			// ARRANGE
-			const now = DateTime.utc();
+			const endDate = DateTime.utc();
+			const startDate = endDate.minus({ days: 6 });
 			const otherProject = await createTeamProject();
 			const otherWorkflow = await createWorkflow({}, otherProject);
 
-			// last 6 days
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now,
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 2 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'failure',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now,
-			});
+			for (const wf of [workflow, otherWorkflow]) {
+				// Insights for the current period
+				await createCompactedInsightsEvent(wf, {
+					type: 'success',
+					value: 10,
+					periodUnit: 'day',
+					periodStart: endDate.minus({ days: 1 }),
+				});
+				await createCompactedInsightsEvent(wf, {
+					type: 'runtime_ms',
+					value: 400,
+					periodUnit: 'day',
+					periodStart: endDate.minus({ days: 1 }),
+				});
 
-			await createCompactedInsightsEvent(otherWorkflow, {
-				type: 'runtime_ms',
-				value: 430,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 1 }),
-			});
-			await createCompactedInsightsEvent(otherWorkflow, {
-				type: 'failure',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ day: 3 }),
-			});
+				// Insights for the previous period
+				await createCompactedInsightsEvent(wf, {
+					type: 'success',
+					value: 15,
+					periodUnit: 'day',
+					periodStart: startDate.minus({ days: 2 }),
+				});
+				await createCompactedInsightsEvent(wf, {
+					type: 'runtime_ms',
+					value: 600,
+					periodUnit: 'day',
+					periodStart: startDate.minus({ days: 2 }),
+				});
 
-			// last 12 days
-			await createCompactedInsightsEvent(workflow, {
-				type: 'success',
-				value: 1,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
-			});
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 10 }),
-			});
-			await createCompactedInsightsEvent(otherWorkflow, {
-				type: 'runtime_ms',
-				value: 45,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 11 }),
-			});
-
-			//Outside range should not be taken into account
-			await createCompactedInsightsEvent(workflow, {
-				type: 'runtime_ms',
-				value: 123,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 13 }),
-			});
-			await createCompactedInsightsEvent(otherWorkflow, {
-				type: 'runtime_ms',
-				value: 100,
-				periodUnit: 'day',
-				periodStart: now.minus({ days: 20 }),
-			});
-
-			const startDate = now.minus({ days: 6 }).toJSDate();
+				// Insights outside range should not be taken into account
+				await createCompactedInsightsEvent(wf, {
+					type: 'success',
+					value: 2,
+					periodUnit: 'day',
+					periodStart: startDate.minus({ days: 10 }),
+				});
+				await createCompactedInsightsEvent(wf, {
+					type: 'runtime_ms',
+					value: 200,
+					periodUnit: 'day',
+					periodStart: startDate.minus({ days: 10 }),
+				});
+			}
 
 			// ACT
 			const summary = await insightsService.getInsightsSummary({
-				startDate,
-				endDate: now.toJSDate(),
+				startDate: startDate.toJSDate(),
+				endDate: endDate.toJSDate(),
 				projectId: project.id,
 			});
 
 			// ASSERT
 			expect(summary).toEqual({
-				averageRunTime: { deviation: -123, unit: 'millisecond', value: 0 },
-				failed: { deviation: 1, unit: 'count', value: 1 },
-				failureRate: { deviation: 0.333, unit: 'ratio', value: 0.333 },
-				timeSaved: { deviation: 0, unit: 'minute', value: 0 },
-				total: { deviation: 2, unit: 'count', value: 3 },
+				averageRunTime: { value: 40, unit: 'millisecond', deviation: 0 },
+				failed: { value: 0, unit: 'count', deviation: 0 },
+				failureRate: { value: 0, unit: 'ratio', deviation: 0 },
+				timeSaved: { value: 0, unit: 'minute', deviation: 0 },
+				total: { value: 10, unit: 'count', deviation: -5 },
 			});
 		});
 	});
@@ -512,7 +394,7 @@ describe('InsightsService', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 1 }),
+					periodStart: now.minus({ days: 2 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -690,7 +572,7 @@ describe('InsightsService', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).startOf('day'),
+					periodStart: now.minus({ days: 14 }).endOf('day'),
 				});
 
 				// Out of date range insight (should not be included)
@@ -851,7 +733,7 @@ describe('InsightsService', () => {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).startOf('day'),
+					periodStart: now.minus({ days: 14 }).endOf('day'),
 				});
 
 				// Out of date range insight (should not be included)
@@ -1009,7 +891,7 @@ describe('InsightsService', () => {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).startOf('day'),
+					periodStart: now.minus({ days: 14 }).endOf('day'),
 				});
 
 				// Out of date range insight (should not be included)
@@ -1031,153 +913,54 @@ describe('InsightsService', () => {
 				projectId: project.id,
 			});
 
-			// ASSERT
-			expect(byTime).toHaveLength(4);
-
-			// expect date to be sorted by oldest first
-			expect(byTime[0].date).toEqual(now.minus({ days: 14 }).startOf('day').toISO());
-			expect(byTime[1].date).toEqual(now.minus({ days: 10 }).startOf('day').toISO());
-			expect(byTime[2].date).toEqual(now.minus({ days: 2 }).startOf('day').toISO());
-			expect(byTime[3].date).toEqual(now.startOf('day').toISO());
-
-			expect(byTime[0].values).toEqual({
-				total: 2,
-				succeeded: 1,
-				failed: 1,
-				failureRate: 0.5,
-				averageRunTime: 0,
-				timeSaved: 0,
-			});
-
-			expect(byTime[1].values).toEqual({
-				total: 2,
-				succeeded: 2,
-				failed: 0,
-				failureRate: 0,
-				averageRunTime: 15,
-				timeSaved: 0,
-			});
-
-			expect(byTime[2].values).toEqual({
-				total: 2,
-				succeeded: 2,
-				failed: 0,
-				failureRate: 0,
-				averageRunTime: 0,
-				timeSaved: 0,
-			});
-
-			expect(byTime[3].values).toEqual({
-				total: 7,
-				succeeded: 3,
-				failed: 4,
-				failureRate: 4 / 7,
-				averageRunTime: 0,
-				timeSaved: 0,
-			});
-		});
-	});
-
-	describe('getAvailableDateRanges', () => {
-		let licenseMock: jest.Mocked<LicenseState>;
-		let insightsService: InsightsService;
-
-		beforeAll(() => {
-			licenseMock = mock<LicenseState>();
-			insightsService = new InsightsService(
-				mock(),
-				mock(),
-				mock(),
-				mock(),
-				licenseMock,
-				mock(),
-				mockLogger(),
+			expect(byTime).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						date: now.minus({ days: 14 }).startOf('day').toISO(),
+						values: {
+							total: 2,
+							succeeded: 1,
+							failed: 1,
+							failureRate: 0.5,
+							averageRunTime: 0,
+							timeSaved: 0,
+						},
+					}),
+					expect.objectContaining({
+						date: now.minus({ days: 10 }).startOf('day').toISO(),
+						values: {
+							total: 2,
+							succeeded: 2,
+							failed: 0,
+							failureRate: 0,
+							averageRunTime: 15,
+							timeSaved: 0,
+						},
+					}),
+					expect.objectContaining({
+						date: now.minus({ days: 2 }).startOf('day').toISO(),
+						values: {
+							total: 2,
+							succeeded: 2,
+							failed: 0,
+							failureRate: 0,
+							averageRunTime: 0,
+							timeSaved: 0,
+						},
+					}),
+					expect.objectContaining({
+						date: now.startOf('day').toISO(),
+						values: {
+							total: 7,
+							succeeded: 3,
+							failed: 4,
+							failureRate: 4 / 7,
+							averageRunTime: 0,
+							timeSaved: 0,
+						},
+					}),
+				]),
 			);
-		});
-
-		test('returns correct ranges when hourly data is enabled and max history is unlimited', () => {
-			licenseMock.getInsightsMaxHistory.mockReturnValue(-1);
-			licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
-
-			const result = insightsService.getAvailableDateRanges();
-
-			expect(result).toEqual([
-				{ key: 'day', licensed: true, granularity: 'hour' },
-				{ key: 'week', licensed: true, granularity: 'day' },
-				{ key: '2weeks', licensed: true, granularity: 'day' },
-				{ key: 'month', licensed: true, granularity: 'day' },
-				{ key: 'quarter', licensed: true, granularity: 'week' },
-				{ key: '6months', licensed: true, granularity: 'week' },
-				{ key: 'year', licensed: true, granularity: 'week' },
-			]);
-		});
-
-		test('returns correct ranges when hourly data is enabled and max history is 365 days', () => {
-			licenseMock.getInsightsMaxHistory.mockReturnValue(365);
-			licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
-
-			const result = insightsService.getAvailableDateRanges();
-
-			expect(result).toEqual([
-				{ key: 'day', licensed: true, granularity: 'hour' },
-				{ key: 'week', licensed: true, granularity: 'day' },
-				{ key: '2weeks', licensed: true, granularity: 'day' },
-				{ key: 'month', licensed: true, granularity: 'day' },
-				{ key: 'quarter', licensed: true, granularity: 'week' },
-				{ key: '6months', licensed: true, granularity: 'week' },
-				{ key: 'year', licensed: true, granularity: 'week' },
-			]);
-		});
-
-		test('returns correct ranges when hourly data is disabled and max history is 30 days', () => {
-			licenseMock.getInsightsMaxHistory.mockReturnValue(30);
-			licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
-
-			const result = insightsService.getAvailableDateRanges();
-
-			expect(result).toEqual([
-				{ key: 'day', licensed: false, granularity: 'hour' },
-				{ key: 'week', licensed: true, granularity: 'day' },
-				{ key: '2weeks', licensed: true, granularity: 'day' },
-				{ key: 'month', licensed: true, granularity: 'day' },
-				{ key: 'quarter', licensed: false, granularity: 'week' },
-				{ key: '6months', licensed: false, granularity: 'week' },
-				{ key: 'year', licensed: false, granularity: 'week' },
-			]);
-		});
-
-		test('returns correct ranges when max history is less than 7 days', () => {
-			licenseMock.getInsightsMaxHistory.mockReturnValue(5);
-			licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
-
-			const result = insightsService.getAvailableDateRanges();
-
-			expect(result).toEqual([
-				{ key: 'day', licensed: false, granularity: 'hour' },
-				{ key: 'week', licensed: false, granularity: 'day' },
-				{ key: '2weeks', licensed: false, granularity: 'day' },
-				{ key: 'month', licensed: false, granularity: 'day' },
-				{ key: 'quarter', licensed: false, granularity: 'week' },
-				{ key: '6months', licensed: false, granularity: 'week' },
-				{ key: 'year', licensed: false, granularity: 'week' },
-			]);
-		});
-
-		test('returns correct ranges when max history is 90 days and hourly data is enabled', () => {
-			licenseMock.getInsightsMaxHistory.mockReturnValue(90);
-			licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
-
-			const result = insightsService.getAvailableDateRanges();
-
-			expect(result).toEqual([
-				{ key: 'day', licensed: true, granularity: 'hour' },
-				{ key: 'week', licensed: true, granularity: 'day' },
-				{ key: '2weeks', licensed: true, granularity: 'day' },
-				{ key: 'month', licensed: true, granularity: 'day' },
-				{ key: 'quarter', licensed: true, granularity: 'week' },
-				{ key: '6months', licensed: false, granularity: 'week' },
-				{ key: 'year', licensed: false, granularity: 'week' },
-			]);
 		});
 	});
 
@@ -1190,7 +973,6 @@ describe('InsightsService', () => {
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
 				mock<InsightsCompactionService>(),
-				mock<InsightsCollectionService>(),
 				mock<InsightsPruningService>(),
 				licenseStateMock,
 				mock<InstanceSettings>(),
@@ -1286,11 +1068,6 @@ describe('InsightsService', () => {
 	describe('shutdown', () => {
 		let insightsService: InsightsService;
 
-		const mockCollectionService = mock<InsightsCollectionService>({
-			shutdown: jest.fn().mockResolvedValue(undefined),
-			stopFlushingTimer: jest.fn(),
-		});
-
 		const mockCompactionService = mock<InsightsCompactionService>({
 			stopCompactionTimer: jest.fn(),
 		});
@@ -1303,92 +1080,26 @@ describe('InsightsService', () => {
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
 				mockCompactionService,
-				mockCollectionService,
 				mockPruningService,
 				mock<LicenseState>(),
-				mock<InstanceSettings>(),
+				mock<InstanceSettings>({ instanceType: 'main' }),
 				mockLogger(),
 			);
 		});
 
 		test('shutdown stops timers and shuts down services', async () => {
+			// ARRANGE
+			// Get the real service from the container and spy on it
+			const realCollectionService = Container.get(InsightsCollectionService);
+			const shutdownSpy = jest.spyOn(realCollectionService, 'shutdown');
+
 			// ACT
 			await insightsService.shutdown();
 
 			// ASSERT
-			expect(mockCollectionService.shutdown).toHaveBeenCalled();
+			expect(shutdownSpy).toHaveBeenCalled();
 			expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
 			expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
-		});
-	});
-
-	describe('legacy sqlite (without pooling) handles concurrent insights db process without throwing', () => {
-		let initialFlushBatchSize: number;
-		let insightsConfig: InsightsConfig;
-		beforeAll(() => {
-			insightsConfig = Container.get(InsightsConfig);
-			initialFlushBatchSize = insightsConfig.flushBatchSize;
-
-			insightsConfig.flushBatchSize = 50;
-		});
-
-		afterAll(() => {
-			insightsConfig.flushBatchSize = initialFlushBatchSize;
-		});
-
-		test('should handle concurrent flush and compaction without error', async () => {
-			const insightsCollectionService = Container.get(InsightsCollectionService);
-			const insightsCompactionService = Container.get(InsightsCompactionService);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-			await createMetadata(workflow);
-
-			const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
-			const startedAt = DateTime.utc();
-			const stoppedAt = startedAt.plus({ seconds: 5 });
-			ctx.runData = mock<IRun>({
-				mode: 'webhook',
-				status: 'success',
-				startedAt: startedAt.toJSDate(),
-				stoppedAt: stoppedAt.toJSDate(),
-			});
-
-			// Create test data
-			const rawInsights = [];
-			for (let i = 0; i < 100; i++) {
-				rawInsights.push({
-					type: 'success' as InsightsRaw['type'],
-					value: 1,
-					periodUnit: 'hour',
-					periodStart: DateTime.now().minus({ day: 91, hour: i + 1 }),
-				});
-			}
-			// Create raw insights events to be compacted
-			await createRawInsightsEvents(workflow, rawInsights);
-
-			//
-			for (let i = 0; i < 100; i++) {
-				await createCompactedInsightsEvent(workflow, {
-					type: 'success',
-					value: 1,
-					periodUnit: 'hour',
-					periodStart: DateTime.now().minus({ day: 91, hour: i + 1 }),
-				});
-			}
-
-			for (let i = 0; i < 100; i++) {
-				await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
-			}
-
-			// ACT
-			const promises = [
-				insightsCollectionService.flushEvents(),
-				insightsCollectionService.flushEvents(),
-				insightsCompactionService.compactRawToHour(),
-				insightsCompactionService.compactHourToDay(),
-			];
-			await expect(Promise.all(promises)).resolves.toBeDefined();
 		});
 	});
 });

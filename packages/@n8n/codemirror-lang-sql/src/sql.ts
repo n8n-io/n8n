@@ -362,3 +362,24 @@ export const PLSQL = SQLDialect.define({
 	doubleQuotedStrings: true,
 	charSetCasts: true,
 });
+
+/// [OracleDB](https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/index.html) dialect.
+export const OracleDB = SQLDialect.define({
+	operatorChars: '*/+-<>=!', // Only valid SQL operators
+	doubleQuotedStrings: true, // "IDENTIFIER" support
+	charSetCasts: true, // e.g., N'こんにちは'
+	functions:
+		SQLFunctions +
+		' acos asin atan atan2 bitand ceil chr cos cosh cosine_distance count decode exp extract floor greatest inner_product json_array json_arrayagg json_exists json_object json_objectagg json_query json_scalar json_serialize json_table json_transform json_value l1_distance l2_distance least length lower initcap lpad ltrim max median min mod nvl nvl2 nullif power replace round rpad regexp_instr regexp_replace regexp_substr sign sqrt stddev substr to_blob to_char to_clob to_clob to_date to_number to_ncclob to_timestamp to_timestamp_tz to_vector to_vector translate trunc trim upper uuid vector_distance vector_embedding vector_serialize xmlquery xmltable',
+	keywords:
+		SQLKeywords +
+		'access char check cluster dual noaudit nocompress nowait null offline pctfree rename resource rowid rowlabel rownum share size smallint successful synonym sysdate uid validate varchar varchar2',
+	types:
+		'binary_double binary_float blob bfile boolean char clob date decimal double float integer interval day to second smallint interval year to month json long longraw nchar nclob number nvarchar2 raw rowid timestamp timestamp with local time zone timestamp with time zone urowid vector varchar2 xmltype',
+	builtin:
+		'current_date current_timestamp dbtimezone level localtimestamp rowid rownum sql%found sql%isopen sql%notfound sql%rowcount sessiontimezone sysdate systimestamp user',
+	hashComments: false, // does not use #
+	slashComments: false, // does not use //
+	spaceAfterDashes: true, // -- This is a comment
+	doubleDollarQuotedStrings: false,
+});

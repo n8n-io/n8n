@@ -16,7 +16,12 @@ import type {
 	NodeConnectionType,
 	IRunData,
 } from 'n8n-workflow';
-import { ApplicationError, ManualExecutionCancelledError, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	ApplicationError,
+	createRunExecutionData,
+	ManualExecutionCancelledError,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
@@ -317,6 +322,353 @@ describe('SupplyDataContext', () => {
 				taskData,
 				testRunExecutionData,
 			]);
+		});
+	});
+
+	describe('addExecutionHints', () => {
+		it('should add single hint to context', () => {
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			const hint = {
+				message: 'Test warning message',
+				location: 'outputPane' as const,
+			};
+
+			testContext.addExecutionHints(hint);
+
+			expect(testContext.hints).toHaveLength(1);
+			expect(testContext.hints[0]).toEqual(hint);
+		});
+
+		it('should add multiple hints to context', () => {
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			const hint1 = {
+				message: 'First hint',
+				location: 'outputPane' as const,
+			};
+			const hint2 = {
+				message: 'Second hint',
+				location: 'inputPane' as const,
+				type: 'warning' as const,
+			};
+
+			testContext.addExecutionHints(hint1, hint2);
+
+			expect(testContext.hints).toHaveLength(2);
+			expect(testContext.hints[0]).toEqual(hint1);
+			expect(testContext.hints[1]).toEqual(hint2);
+		});
+
+		it('should accumulate hints across multiple calls', () => {
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			const hint1 = {
+				message: 'First hint',
+				location: 'outputPane' as const,
+			};
+			const hint2 = {
+				message: 'Second hint',
+				location: 'outputPane' as const,
+			};
+
+			testContext.addExecutionHints(hint1);
+			testContext.addExecutionHints(hint2);
+
+			expect(testContext.hints).toHaveLength(2);
+			expect(testContext.hints[0]).toEqual(hint1);
+			expect(testContext.hints[1]).toEqual(hint2);
+		});
+
+		it('should attach hints to task data when adding output', async () => {
+			const mockHooks = {
+				runHook: jest.fn().mockResolvedValue(undefined),
+			};
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+				hooks: mockHooks,
+				currentNodeExecutionIndex: 0,
+			});
+			const testRunExecutionData = mock<IRunExecutionData>({
+				resultData: {
+					runData: {
+						[node.name]: [
+							{
+								startTime: Date.now(),
+								executionTime: 0,
+								executionIndex: 0,
+								executionStatus: 'running' as const,
+								source: [],
+							},
+						],
+					},
+					error: undefined,
+				},
+				executionData: { metadata: {} },
+			});
+
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				testAdditionalData,
+				mode,
+				testRunExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				NodeConnectionTypes.AiTool,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			const hint = {
+				message: 'Value to match is null or undefined',
+				location: 'outputPane' as const,
+				type: 'warning' as const,
+			};
+
+			// Add hint to context
+			testContext.addExecutionHints(hint);
+
+			// Add output data which should trigger storing hints in task data
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				0,
+			);
+
+			// Verify hints were stored in task data
+			const taskData = testRunExecutionData.resultData.runData[node.name][0];
+			expect(taskData.hints).toBeDefined();
+			expect(taskData.hints).toHaveLength(1);
+			expect(taskData.hints![0]).toEqual(hint);
+		});
+
+		it('should not add hints property to task data if no hints exist', async () => {
+			const mockHooks = {
+				runHook: jest.fn().mockResolvedValue(undefined),
+			};
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+				hooks: mockHooks,
+				currentNodeExecutionIndex: 0,
+			});
+
+			// Create run execution data with plain object (not mock) to avoid mock functions
+			const testRunExecutionData = createRunExecutionData({
+				resultData: {
+					runData: {
+						[node.name]: [
+							{
+								startTime: Date.now(),
+								executionTime: 0,
+								executionIndex: 0,
+								executionStatus: 'running' as const,
+								source: [],
+							},
+						],
+					},
+				},
+				executionData: {
+					metadata: {},
+					contextData: {},
+					nodeExecutionStack: [],
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				testAdditionalData,
+				mode,
+				testRunExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				NodeConnectionTypes.AiTool,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			// Don't add any hints
+
+			// Add output data
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				0,
+			);
+
+			// Verify hints property was not added
+			const taskData = testRunExecutionData.resultData.runData[node.name][0];
+			expect(taskData.hints).toBeUndefined();
+		});
+
+		it('should handle hints when tool is used in AI workflow', async () => {
+			// This test simulates the Google Sheets Update Row tool scenario
+			const mockHooks = {
+				runHook: jest.fn().mockResolvedValue(undefined),
+			};
+			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+				hooks: mockHooks,
+				currentNodeExecutionIndex: 0,
+			});
+			const testRunExecutionData = mock<IRunExecutionData>({
+				resultData: {
+					runData: {},
+					error: undefined,
+				},
+				executionData: { metadata: {} },
+			});
+
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				testAdditionalData,
+				mode,
+				testRunExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				NodeConnectionTypes.AiTool,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			// Simulate input data being added
+			testContext.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query: 'test' } }]]);
+
+			// Simulate the node adding a hint during execution (like Google Sheets does)
+			const hint = {
+				message: 'Warning: The value of column to match is null or undefined',
+				location: 'outputPane' as const,
+			};
+			testContext.addExecutionHints(hint);
+
+			// Add output data
+			const outputData = [[{ json: { response: 'Row updated' } }]];
+			await testContext.addExecutionDataFunctions(
+				'output',
+				outputData,
+				NodeConnectionTypes.AiTool,
+				node.name,
+				0,
+			);
+
+			// Verify the hint is stored in task data and accessible
+			const taskData = testRunExecutionData.resultData.runData[node.name][0];
+			expect(taskData.hints).toBeDefined();
+			expect(taskData.hints).toHaveLength(1);
+			expect(taskData.hints![0].message).toContain('null or undefined');
+			expect(taskData.hints![0].location).toBe('outputPane');
+		});
+	});
+
+	describe('isToolExecution', () => {
+		it('should return true when connectionType is AiTool', () => {
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				NodeConnectionTypes.AiTool,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(testContext.isToolExecution()).toBe(true);
+		});
+
+		it('should return false when connectionType is Main', () => {
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				NodeConnectionTypes.Main,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(testContext.isToolExecution()).toBe(false);
+		});
+
+		it('should return false when connectionType is AiAgent', () => {
+			const testContext = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				NodeConnectionTypes.AiAgent,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(testContext.isToolExecution()).toBe(false);
 		});
 	});
 });

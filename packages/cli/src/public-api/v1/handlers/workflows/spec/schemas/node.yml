@@ -49,6 +49,7 @@ properties:
     example: [-100, 80]
   parameters:
     type: object
+    additionalProperties: true
     example: { additionalProperties: {} }
   credentials:
     type: object

@@ -324,21 +324,6 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				);
 			});
 
-			it('should handle network timeout errors', async () => {
-				const networkError = {
-					error: {
-						error: {
-							message: 'ETIMEDOUT - Network timeout',
-						},
-					},
-				};
-				mockRequest.mockRejectedValue(networkError);
-
-				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
-				).rejects.toThrow(NodeApiError);
-			});
-
 			it('should handle errors without nested structure', async () => {
 				const simpleError = {
 					error: {

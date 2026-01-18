@@ -32,7 +32,7 @@
 	}
 
 	@include mixins.e((increase, decrease)) {
-		--disabled-color: var(--color--text--tint-1);
+		--input--color--disabled: var(--color--text--tint-1);
 		position: absolute;
 		z-index: 1;
 		top: 1px;

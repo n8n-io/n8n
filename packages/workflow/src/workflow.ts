@@ -42,10 +42,7 @@ import * as NodeHelpers from './node-helpers';
 import { renameFormFields } from './node-parameters/rename-node-utils';
 import { applyAccessPatterns } from './node-reference-parser-utils';
 import * as ObservableObject from './observable-object';
-
-function dedupe<T>(arr: T[]): T[] {
-	return [...new Set(arr)];
-}
+import { dedupe } from './utils';
 
 export interface WorkflowParameters {
 	id?: string;

@@ -8,6 +8,7 @@ const SIZE = ['small', 'medium', 'large'] as const;
 
 interface InputLabelProps {
 	compact?: boolean;
+	// @TODO Tech debt - property value should be updated to match token names (text-shade-2 instead of text-dark for example)
 	color?: TextColor;
 	label?: string;
 	tooltipText?: string;
@@ -131,6 +132,8 @@ const addTargetBlank = (html: string) =>
 
 .main-content {
 	display: flex;
+	min-width: 0;
+	flex: 1;
 	&:hover {
 		.infoIcon {
 			opacity: 1;
@@ -149,6 +152,7 @@ const addTargetBlank = (html: string) =>
 .trailing-content {
 	display: flex;
 	gap: var(--spacing--3xs);
+	flex-shrink: 0;
 
 	* {
 		align-self: center;

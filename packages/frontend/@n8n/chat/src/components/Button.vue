@@ -1,7 +1,26 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+
+const props = withDefaults(
+	defineProps<{
+		type?: 'primary' | 'secondary';
+		element?: 'button' | 'a';
+	}>(),
+	{
+		type: 'primary',
+		element: 'button',
+	},
+);
+
+const buttonTypeClass = computed(() => {
+	return `chat-button-${props.type}`;
+});
+</script>
+
 <template>
-	<button class="chat-button">
+	<component :is="element" :class="['chat-button', buttonTypeClass]">
 		<slot />
-	</button>
+	</component>
 </template>
 <style lang="scss">
 .chat-button {
@@ -9,12 +28,9 @@
 	text-align: center;
 	vertical-align: middle;
 	user-select: none;
-	color: var(--chat--button--color);
-	background-color: var(--chat--button--background);
-	border: 1px solid transparent;
 	padding: var(--chat--button--padding);
-	font-size: 1rem;
-	line-height: 1.5;
+	font-size: var(--chat--button--font-size);
+	line-height: var(--chat--button--line-height);
 	border-radius: var(--chat--button--border-radius);
 	transition:
 		color var(--chat--transition-duration) ease-in-out,
@@ -22,12 +38,7 @@
 		border-color var(--chat--transition-duration) ease-in-out,
 		box-shadow var(--chat--transition-duration) ease-in-out;
 	cursor: pointer;
-
-	&:hover {
-		color: var(--chat--button--hover--color);
-		background-color: var(--chat--button--hover--background);
-		text-decoration: none;
-	}
+	text-decoration: none;
 
 	&:focus {
 		outline: 0;
@@ -36,6 +47,30 @@
 
 	&:disabled {
 		opacity: 0.65;
+	}
+}
+
+.chat-button-primary {
+	color: var(--chat--button--color--primary);
+	background-color: var(--chat--button--background--primary);
+	border: var(--chat--button--border--primary);
+
+	&:hover {
+		color: var(--chat--button--color--primary--hover);
+		background-color: var(--chat--button--background--primary--hover);
+		border: var(--chat--button--border--primary--hover);
+	}
+}
+
+.chat-button-secondary {
+	color: var(--chat--button--color--secondary);
+	background-color: var(--chat--button--background--secondary);
+	border: var(--chat--button--border--secondary);
+
+	&:hover {
+		color: var(--chat--button--color--secondary--hover);
+		background-color: var(--chat--button--background--secondary--hover);
+		border: var(--chat--button--border--secondary--hover);
 	}
 }
 </style>

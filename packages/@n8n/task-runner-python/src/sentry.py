@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from src.config.sentry_config import SentryConfig
 from src.constants import (
@@ -41,7 +41,7 @@ class TaskRunnerSentry:
         sentry_sdk.flush(timeout=2.0)
         self.logger.info("Sentry stopped")
 
-    def _filter_out_ignored_errors(self, event: Any, hint: Any) -> Optional[Any]:
+    def _filter_out_ignored_errors(self, event: Any, hint: Any) -> Any | None:
         if "exc_info" in hint:
             exc_type, _, _ = hint["exc_info"]
             for ignored_type in IGNORED_ERROR_TYPES:
@@ -70,7 +70,7 @@ class TaskRunnerSentry:
         return False
 
 
-def setup_sentry(sentry_config: SentryConfig) -> Optional[TaskRunnerSentry]:
+def setup_sentry(sentry_config: SentryConfig) -> TaskRunnerSentry | None:
     if not sentry_config.enabled:
         return None
 

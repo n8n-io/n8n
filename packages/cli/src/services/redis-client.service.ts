@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
-import type { Cluster, RedisOptions } from 'ioredis';
+import type { Cluster, ClusterOptions, RedisOptions } from 'ioredis';
 
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -120,10 +120,9 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		const clusterNodes = this.clusterNodes();
 
-		const clusterClient = new ioRedis.Cluster(clusterNodes, {
-			redisOptions: options,
-			clusterRetryStrategy: this.retryStrategy(),
-		});
+		const clusterOptions = this.getClusterOptions(options, this.retryStrategy());
+
+		const clusterClient = new ioRedis.Cluster(clusterNodes, clusterOptions);
 
 		this.logger.debug(`Started Redis cluster client ${type}`, { type, clusterNodes });
 
@@ -158,6 +157,28 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		if (tls) options.tls = {}; // enable TLS with default Node.js settings
 
 		return options;
+	}
+
+	private getClusterOptions(
+		options: RedisOptions,
+		retryStrategy: () => number | null,
+	): ClusterOptions {
+		const { slotsRefreshTimeout, slotsRefreshInterval, dnsResolveStrategy } =
+			this.globalConfig.queue.bull.redis;
+		const clusterOptions: ClusterOptions = {
+			redisOptions: options,
+			clusterRetryStrategy: retryStrategy,
+			slotsRefreshTimeout,
+			slotsRefreshInterval,
+		};
+
+		// NOTE: this is necessary to use AWS Elasticache Clusters with TLS.
+		// See https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls.
+		if (dnsResolveStrategy === 'NONE') {
+			clusterOptions.dnsLookup = (address, lookupFn) => lookupFn(null, address);
+		}
+
+		return clusterOptions;
 	}
 
 	/**

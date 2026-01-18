@@ -43,6 +43,7 @@ const displayContent = computed(() =>
 				'data-action-parameter-creatorview',
 			],
 		},
+		allowedTags: ['a', 'ul', 'li'],
 	}),
 );
 
@@ -91,7 +92,7 @@ const onClick = (event: MouseEvent) => {
 	color: var(--notice--color--text);
 	margin: var(--notice--margin, var(--spacing--sm) 0);
 	padding: var(--spacing--2xs);
-	background-color: var(--background-color);
+	background-color: var(--notice--color--background);
 	border-width: 1px 1px 1px 7px;
 	border-style: solid;
 	border-color: var(--border-color);
@@ -101,26 +102,35 @@ const onClick = (event: MouseEvent) => {
 	a {
 		font-weight: var(--font-weight--bold);
 	}
+
+	ul {
+		padding-left: var(--spacing--lg);
+		margin: var(--spacing--xs) 0;
+	}
+
+	li {
+		margin-bottom: var(--spacing--4xs);
+	}
 }
 
 .warning {
 	--border-color: var(--notice--border-color--warning);
-	--background-color: var(--notice--color--background--warning);
+	--notice--color--background: var(--notice--color--background--warning);
 }
 
 .danger {
-	--border-color: var(--color--danger--tint-3);
-	--background-color: var(--color--danger--tint-4);
+	--border-color: var(--callout--border-color--danger);
+	--notice--color--background: var(--callout--color--background--danger);
 }
 
 .success {
-	--border-color: var(--color--success--tint-3);
-	--background-color: var(--color--success--tint-4);
+	--border-color: var(--callout--border-color--success);
+	--notice--color--background: var(--callout--color--background--success);
 }
 
 .info {
 	--border-color: var(--color--info--tint-1);
-	--background-color: var(--color--info--tint-2);
+	--notice--color--background: var(--color--info--tint-2);
 }
 
 .expanded {

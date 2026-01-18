@@ -1,0 +1,49 @@
+# This action works transparently on both Blacksmith and GitHub-hosted runners.
+# Blacksmith runners benefit from transparent caching and optional Docker layer caching.
+# GitHub-hosted runners use standard GitHub Actions caching.
+
+name: 'Node.js Build Setup'
+description: 'Configures Node.js with pnpm, installs dependencies, enables Turborepo caching, (optional) sets up Docker layer caching, and builds the project or an optional command.'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use. Uses latest 22.x by default.'
+    required: false
+    default: '22.x'
+  enable-docker-cache:
+    description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
+    required: false
+    default: 'false'
+    type: boolean
+  build-command:
+    description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
+    required: false
+    default: 'pnpm build'
+    type: string
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup pnpm
+      uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'pnpm'
+
+    - name: Install Dependencies
+      run: pnpm install --frozen-lockfile
+      shell: bash
+
+    - name: Configure Turborepo Cache
+      uses: rharkor/caching-for-turbo@cda201ff2b32699a2ae9f59704db029e3dde4fbd # v2.3.5
+
+    - name: Setup Docker Builder for Docker Cache
+      if: ${{ inputs.enable-docker-cache == 'true' }}
+      uses: useblacksmith/setup-docker-builder@53647ab5afe8827af5623b35bd4302eabd41619f # v1.2.0
+
+    - name: Build Project
+      run: ${{ inputs.build-command }}
+      shell: bash

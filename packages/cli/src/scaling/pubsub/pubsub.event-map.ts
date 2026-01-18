@@ -21,7 +21,12 @@ export type PubSubCommandMap = {
 	'reload-oidc-config': never;
 	'reload-saml-config': never;
 
+	// # sso provisioning
+	'reload-sso-provisioning-configuration': never;
+
 	// #endregion
+
+	'reload-source-control-config': never;
 
 	// #region Community packages
 
@@ -53,6 +58,7 @@ export type PubSubCommandMap = {
 
 	'add-webhooks-triggers-and-pollers': {
 		workflowId: string;
+		activeVersionId: string;
 	};
 
 	'remove-triggers-and-pollers': {
@@ -61,6 +67,7 @@ export type PubSubCommandMap = {
 
 	'display-workflow-activation': {
 		workflowId: string;
+		activeVersionId: string;
 	};
 
 	'display-workflow-deactivation': {

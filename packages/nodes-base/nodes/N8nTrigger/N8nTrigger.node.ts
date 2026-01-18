@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-type eventType = 'Instance started' | 'Workflow activated' | 'Workflow updated' | undefined;
+type eventType = 'Instance started' | 'Workflow published' | 'Workflow updated' | undefined;
 
 export class N8nTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,15 +32,16 @@ export class N8nTrigger implements INodeType {
 				default: [],
 				description: `Specifies under which conditions an execution should happen:
 				<ul>
-					<li><b>Active Workflow Updated</b>: Triggers when this workflow is updated</li>
+					<li><b>Published Workflow Updated</b>: Triggers when workflow version is published from a published state (workflow was already published)</li>
 					<li><b>Instance Started</b>:  Triggers when this n8n instance is started or re-started</li>
-					<li><b>Workflow Activated</b>: Triggers when this workflow is activated</li>
+					<li><b>Workflow Published</b>: Triggers when workflow version is published from an unpublished state (workflow was unpublished)</li>
 				</ul>`,
 				options: [
 					{
-						name: 'Active Workflow Updated',
+						name: 'Published Workflow Updated',
 						value: 'update',
-						description: 'Triggers when this workflow is updated',
+						description:
+							'Triggers when workflow version is published from a published state (workflow was already published)',
 					},
 					{
 						name: 'Instance Started',
@@ -48,9 +49,10 @@ export class N8nTrigger implements INodeType {
 						description: 'Triggers when this n8n instance is started or re-started',
 					},
 					{
-						name: 'Workflow Activated',
+						name: 'Workflow Published',
 						value: 'activate',
-						description: 'Triggers when this workflow is activated',
+						description:
+							'Triggers when workflow version is published from an unpublished state (workflow was not published)',
 					},
 				],
 			},
@@ -65,7 +67,7 @@ export class N8nTrigger implements INodeType {
 		if (events.includes(activationMode)) {
 			let event: eventType;
 			if (activationMode === 'activate') {
-				event = 'Workflow activated';
+				event = 'Workflow published';
 			}
 			if (activationMode === 'update') {
 				event = 'Workflow updated';

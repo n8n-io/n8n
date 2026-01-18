@@ -15,18 +15,14 @@ import { writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuid } from 'uuid';
 
-import { SourceControlExportService } from '@/environments.ee/source-control/source-control-export.service.ee';
-import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
+import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee';
+import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 
 import { createCredentials } from '../shared/db/credentials';
 import { createUser } from '../shared/db/users';
 
 // Mock file system operations
 jest.mock('node:fs/promises');
-jest.mock('@/environments.ee/source-control/source-control-helper.ee', () => ({
-	...jest.requireActual('@/environments.ee/source-control/source-control-helper.ee'),
-	sourceControlFoldersExistCheck: jest.fn().mockResolvedValue(true),
-}));
 
 describe('SourceControlExportService Integration', () => {
 	let exportService: SourceControlExportService;
@@ -420,6 +416,93 @@ describe('SourceControlExportService Integration', () => {
 			// Verify numbers and booleans are preserved
 			expect((exportedCredential.data.connection as any).port).toBe(5432);
 			expect((exportedCredential.data.settings as any).ssl).toBe(true);
+		});
+
+		it('should export global credentials with isGlobal flag set to true', async () => {
+			// Arrange
+			const credentialData = {
+				apiKey: 'global-api-key',
+				apiSecret: 'global-secret',
+			};
+
+			const credential = await createCredentials(
+				{
+					name: 'Global Test Credential',
+					type: 'globalCredentialType',
+					data: Container.get(Cipher).encrypt(credentialData),
+					isGlobal: true,
+				},
+				personalProject,
+			);
+
+			const candidates = [{ id: credential.id }] as SourceControlledFile[];
+
+			// Act
+			const result = await exportService.exportCredentialsToWorkFolder(candidates);
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+
+			// Verify file write was called
+			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
+
+			const exportedCredential = getWrittenCredentialData(credential.id);
+
+			// Verify isGlobal flag is exported
+			expect(exportedCredential).toMatchObject({
+				id: credential.id,
+				name: 'Global Test Credential',
+				type: 'globalCredentialType',
+				isGlobal: true,
+				data: {
+					apiKey: '',
+					apiSecret: '',
+				},
+			});
+
+			// Verify isGlobal is explicitly true
+			expect(exportedCredential.isGlobal).toBe(true);
+		});
+
+		it('should export non-global credentials with isGlobal flag set to false', async () => {
+			// Arrange
+			const credentialData = {
+				username: 'test-user',
+				password: 'test-password',
+			};
+
+			const credential = await createCredentials(
+				{
+					name: 'Non-Global Credential',
+					type: 'standardCredentialType',
+					data: Container.get(Cipher).encrypt(credentialData),
+					isGlobal: false,
+				},
+				teamProject,
+			);
+
+			const candidates = [{ id: credential.id }] as SourceControlledFile[];
+
+			// Act
+			const result = await exportService.exportCredentialsToWorkFolder(candidates);
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
+
+			const exportedCredential = getWrittenCredentialData(credential.id);
+
+			// Verify isGlobal flag is false
+			expect(exportedCredential).toMatchObject({
+				id: credential.id,
+				name: 'Non-Global Credential',
+				type: 'standardCredentialType',
+				isGlobal: false,
+			});
+
+			// Verify isGlobal is explicitly false
+			expect(exportedCredential.isGlobal).toBe(false);
 		});
 	});
 });

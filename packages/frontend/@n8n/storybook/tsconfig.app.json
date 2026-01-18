@@ -1,0 +1,28 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
+	"compilerOptions": {
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+		"baseUrl": ".",
+		"rootDirs": [".", "../composables/src"],
+		"outDir": "dist",
+		"moduleResolution": "bundler",
+
+		"types": [
+			"vite/client",
+			"vitest/globals",
+			"unplugin-icons/types/vue",
+			"../design-system/src/shims-modules.d.ts"
+		],
+		"paths": {
+			"@n8n/chat*": ["../chat/src*"],
+			"@n8n/design-system*": ["../design-system/src*"]
+		}
+	},
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.tsx",
+		"src/**/*.vue",
+		"../chat/src/**/*.stories.ts",
+		"../design-system/src/**/*.stories.ts"
+	]
+}

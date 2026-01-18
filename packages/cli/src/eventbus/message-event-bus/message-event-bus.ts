@@ -1,19 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { EventDestinationsRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { DeleteResult } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
-import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
-
-import config from '@/config';
-import { License } from '@/license';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import type { EventMessageTypes } from '../event-message-classes/';
@@ -26,10 +18,6 @@ import { EventMessageAudit } from '../event-message-classes/event-message-audit'
 import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
 import type { EventMessageExecutionOptions } from '../event-message-classes/event-message-execution';
 import { EventMessageExecution } from '../event-message-classes/event-message-execution';
-import {
-	EventMessageGeneric,
-	eventMessageGenericDestinationTestEvent,
-} from '../event-message-classes/event-message-generic';
 import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
 import { EventMessageNode } from '../event-message-classes/event-message-node';
 import type { EventMessageQueueOptions } from '../event-message-classes/event-message-queue';
@@ -38,8 +26,6 @@ import type { EventMessageRunnerOptions } from '../event-message-classes/event-m
 import { EventMessageRunner } from '../event-message-classes/event-message-runner';
 import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
 import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
-import { messageEventBusDestinationFromDb } from '../message-event-bus-destination/message-event-bus-destination-from-db';
-import type { MessageEventBusDestination } from '../message-event-bus-destination/message-event-bus-destination.ee';
 import { MessageEventBusLogWriter } from '../message-event-bus-writer/message-event-bus-log-writer';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
@@ -63,20 +49,13 @@ export class MessageEventBus extends EventEmitter {
 
 	logWriter: MessageEventBusLogWriter;
 
-	destinations: {
-		[key: string]: MessageEventBusDestination;
-	} = {};
-
 	private pushIntervalTimer: NodeJS.Timeout;
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly publisher: Publisher,
 		private readonly recoveryService: ExecutionRecoveryService,
-		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super();
@@ -97,21 +76,6 @@ export class MessageEventBus extends EventEmitter {
 		}
 
 		this.logger.debug('Initializing event bus...');
-
-		const savedEventDestinations = await this.eventDestinationsRepository.find({});
-		if (savedEventDestinations.length > 0) {
-			for (const destinationData of savedEventDestinations) {
-				try {
-					const destination = messageEventBusDestinationFromDb(this, destinationData);
-					if (destination) {
-						await this.addDestination(destination, false);
-					}
-				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					if (error.message) this.logger.debug(error.message as string);
-				}
-			}
-		}
 
 		this.logger.debug('Initializing event writer');
 		if (options?.workerId || options?.webhookProcessorId) {
@@ -150,7 +114,7 @@ export class MessageEventBus extends EventEmitter {
 
 			// if we are in queue mode, running jobs may still be running on a worker despite the main process
 			// crashing, so we can't just mark them as crashed
-			if (config.get('executions.mode') !== 'queue') {
+			if (this.globalConfig.executions.mode !== 'queue') {
 				const dbUnfinishedExecutionIds = (
 					await this.executionRepository.find({
 						where: {
@@ -166,7 +130,7 @@ export class MessageEventBus extends EventEmitter {
 
 			if (unfinishedExecutionIds.length > 0) {
 				const activeWorkflows = await this.workflowRepository.find({
-					where: { active: true },
+					where: { activeVersionId: Not(IsNull()) },
 					select: ['id', 'name'],
 				});
 				if (activeWorkflows.length > 0) {
@@ -187,14 +151,20 @@ export class MessageEventBus extends EventEmitter {
 					// start actual recovery process and write recovery process flag file
 					this.logWriter?.startRecoveryProcess();
 					const recoveredIds: string[] = [];
+					const crashedWorkflowIds: Set<string> = new Set();
 
 					for (const executionId of unfinishedExecutionIds) {
-						const logMesssages = unsentAndUnfinished.unfinishedExecutions[executionId];
+						const logMessages = unsentAndUnfinished.unfinishedExecutions[executionId];
 						const recoveredExecution = await this.recoveryService.recoverFromLogs(
 							executionId,
-							logMesssages ?? [],
+							logMessages ?? [],
 						);
-						if (recoveredExecution) recoveredIds.push(executionId);
+						if (recoveredExecution) {
+							if (recoveredExecution.status === 'crashed') {
+								crashedWorkflowIds.add(recoveredExecution.workflowId);
+							}
+							recoveredIds.push(executionId);
+						}
 					}
 
 					if (recoveredIds.length > 0) {
@@ -202,6 +172,13 @@ export class MessageEventBus extends EventEmitter {
 						this.logger.info(
 							'This could be due to a crash of an active workflow or a restart of n8n',
 						);
+					}
+
+					if (
+						this.globalConfig.executions.recovery.workflowDeactivationEnabled &&
+						crashedWorkflowIds.size > 0
+					) {
+						await this.recoveryService.autoDeactivateWorkflowsIfNeeded(crashedWorkflowIds);
 					}
 				}
 
@@ -223,42 +200,6 @@ export class MessageEventBus extends EventEmitter {
 		this.isInitialized = true;
 	}
 
-	async addDestination(destination: MessageEventBusDestination, notifyWorkers: boolean = true) {
-		await this.removeDestination(destination.getId(), false);
-		this.destinations[destination.getId()] = destination;
-		this.destinations[destination.getId()].startListening();
-		if (notifyWorkers) {
-			void this.publisher.publishCommand({ command: 'restart-event-bus' });
-		}
-		return destination;
-	}
-
-	async findDestination(id?: string): Promise<MessageEventBusDestinationOptions[]> {
-		let result: MessageEventBusDestinationOptions[];
-		if (id && Object.keys(this.destinations).includes(id)) {
-			result = [this.destinations[id].serialize()];
-		} else {
-			result = Object.keys(this.destinations).map((e) => this.destinations[e].serialize());
-		}
-		return result.sort((a, b) => (a.__type ?? '').localeCompare(b.__type ?? ''));
-	}
-
-	async removeDestination(id: string, notifyWorkers: boolean = true) {
-		if (Object.keys(this.destinations).includes(id)) {
-			await this.destinations[id].close();
-			delete this.destinations[id];
-		}
-		if (notifyWorkers) {
-			void this.publisher.publishCommand({ command: 'restart-event-bus' });
-		}
-	}
-
-	async deleteDestination(id: string): Promise<DeleteResult | undefined> {
-		return await this.eventDestinationsRepository.delete({
-			id,
-		});
-	}
-
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
 		const unsentMessages = msgs ?? (await this.getEventsUnsent());
 		if (unsentMessages.length > 0) {
@@ -273,20 +214,8 @@ export class MessageEventBus extends EventEmitter {
 	async close() {
 		this.logger.debug('Shutting down event writer...');
 		await this.logWriter?.close();
-		for (const destinationName of Object.keys(this.destinations)) {
-			this.logger.debug(
-				`Shutting down event destination ${this.destinations[destinationName].getId()}...`,
-			);
-			await this.destinations[destinationName].close();
-		}
 		this.isInitialized = false;
 		this.logger.debug('EventBus shut down.');
-	}
-
-	@OnPubSubEvent('restart-event-bus')
-	async restart() {
-		await this.close();
-		await this.initialize({ skipRecoveryPass: true });
 	}
 
 	async send(msgs: EventMessageTypes | EventMessageTypes[]) {
@@ -295,40 +224,12 @@ export class MessageEventBus extends EventEmitter {
 		}
 		for (const msg of msgs) {
 			this.logWriter?.putMessage(msg);
-			// if there are no set up destinations, immediately mark the event as sent
-			if (!this.shouldSendMsg(msg)) {
-				this.confirmSent(msg, { id: '0', name: 'eventBus' });
-			}
 			await this.emitMessage(msg);
 		}
 	}
 
-	async testDestination(destinationId: string): Promise<boolean> {
-		const msg = new EventMessageGeneric({
-			eventName: eventMessageGenericDestinationTestEvent,
-		});
-		const destination = await this.findDestination(destinationId);
-		if (destination.length > 0) {
-			const sendResult = await this.destinations[destinationId].receiveFromEventBus({
-				msg,
-				confirmCallback: () => this.confirmSent(msg, { id: '0', name: 'eventBus' }),
-			});
-			return sendResult;
-		}
-		return false;
-	}
-
 	confirmSent(msg: EventMessageTypes, source?: EventMessageConfirmSource) {
 		this.logWriter?.confirmMessageSent(msg.id, source);
-	}
-
-	private hasAnyDestinationSubscribedToEvent(msg: EventMessageTypes): boolean {
-		for (const destinationName of Object.keys(this.destinations)) {
-			if (this.destinations[destinationName].hasSubscribedToEvent(msg)) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
@@ -337,26 +238,12 @@ export class MessageEventBus extends EventEmitter {
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
 		this.emitMessageWithCallback('message', msg);
-
-		if (this.shouldSendMsg(msg)) {
-			for (const destinationName of Object.keys(this.destinations)) {
-				this.emitMessageWithCallback(this.destinations[destinationName].getId(), msg);
-			}
-		}
 	}
 
 	private emitMessageWithCallback(eventName: string, msg: EventMessageTypes): boolean {
 		const confirmCallback = (message: EventMessageTypes, src: EventMessageConfirmSource) =>
 			this.confirmSent(message, src);
 		return this.emit(eventName, msg, confirmCallback);
-	}
-
-	shouldSendMsg(msg: EventMessageTypes): boolean {
-		return (
-			this.license.isLogStreamingEnabled() &&
-			Object.keys(this.destinations).length > 0 &&
-			this.hasAnyDestinationSubscribedToEvent(msg)
-		);
 	}
 
 	async getEventsAll(): Promise<EventMessageTypes[]> {

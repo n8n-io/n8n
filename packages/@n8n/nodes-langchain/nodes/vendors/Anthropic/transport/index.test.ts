@@ -163,4 +163,105 @@ describe('Anthropic transport', () => {
 			},
 		);
 	});
+
+	it('should add custom header when header toggle is enabled', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			header: true,
+			headerName: 'X-Custom-Header',
+			headerValue: 'custom-value-123',
+		});
+
+		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages');
+
+		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'anthropicApi',
+			{
+				method: 'POST',
+				url: 'https://api.anthropic.com/v1/messages',
+				json: true,
+				headers: {
+					'anthropic-version': '2023-06-01',
+					'anthropic-beta': 'files-api-2025-04-14',
+					'X-Custom-Header': 'custom-value-123',
+				},
+			},
+		);
+	});
+
+	it('should not add custom header when header toggle is disabled', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			header: false,
+			headerName: 'X-Custom-Header',
+			headerValue: 'custom-value-123',
+		});
+
+		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages');
+
+		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'anthropicApi',
+			{
+				method: 'POST',
+				url: 'https://api.anthropic.com/v1/messages',
+				json: true,
+				headers: {
+					'anthropic-version': '2023-06-01',
+					'anthropic-beta': 'files-api-2025-04-14',
+				},
+			},
+		);
+	});
+
+	it('should add custom header along with other headers', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			header: true,
+			headerName: 'X-Custom-Header',
+			headerValue: 'custom-value-123',
+		});
+
+		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages', {
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		});
+
+		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'anthropicApi',
+			{
+				method: 'POST',
+				url: 'https://api.anthropic.com/v1/messages',
+				json: true,
+				headers: {
+					'anthropic-version': '2023-06-01',
+					'anthropic-beta': 'files-api-2025-04-14',
+					'Content-Type': 'application/json',
+					'X-Custom-Header': 'custom-value-123',
+				},
+			},
+		);
+	});
+
+	it('should handle custom header with custom URL', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			url: 'https://custom-url.com',
+			header: true,
+			headerName: 'X-Custom-Header',
+			headerValue: 'custom-value-123',
+		});
+
+		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages');
+
+		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'anthropicApi',
+			{
+				method: 'POST',
+				url: 'https://custom-url.com/v1/messages',
+				json: true,
+				headers: {
+					'anthropic-version': '2023-06-01',
+					'anthropic-beta': 'files-api-2025-04-14',
+					'X-Custom-Header': 'custom-value-123',
+				},
+			},
+		);
+	});
 });

@@ -18,7 +18,7 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { TestRun } from './test-run.ee';
 import type { ISimplifiedPinData, IWorkflowDb } from './types-db';
-import type { WorkflowStatistics } from './workflow-statistics';
+import type { WorkflowHistory } from './workflow-history';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
 
@@ -32,6 +32,10 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ length: 128 })
 	name: string;
 
+	@Column({ type: 'text', nullable: true })
+	description: string | null;
+
+	/** @deprecated Please rely on `activeVersionId` being not `null` instead. */
 	@Column()
 	active: boolean;
 
@@ -86,10 +90,6 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@OneToMany('SharedWorkflow', 'workflow')
 	shared: SharedWorkflow[];
 
-	@OneToMany('WorkflowStatistics', 'workflow')
-	@JoinColumn({ referencedColumnName: 'workflow' })
-	statistics: WorkflowStatistics[];
-
 	@Column({
 		type: dbType === 'sqlite' ? 'text' : 'json',
 		nullable: true,
@@ -100,6 +100,18 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ length: 36 })
 	versionId: string;
 
+	@Column({ name: 'activeVersionId', length: 36, nullable: true })
+	activeVersionId: string | null;
+
+	@ManyToOne('WorkflowHistory', { nullable: true })
+	@JoinColumn({ name: 'activeVersionId', referencedColumnName: 'versionId' })
+	activeVersion: WorkflowHistory | null;
+
+	@Column({ default: 1 })
+	versionCounter: number;
+
+	// Excludes error and sub-workflow triggers and disabled triggers
+	// Used for billing of plans based on trigger count
 	@Column({ default: 0 })
 	triggerCount: number;
 
