@@ -900,6 +900,57 @@ return [{
 		expect(jsCode).toContain('const emailBody =');
 		expect(jsCode).toContain('Weekend Email Summary');
 	});
+
+	it('should auto-escape n8n runtime variables like $today', () => {
+		// When jsCode is defined as a template literal with unescaped ${$today},
+		// the parser now auto-escapes it to prevent "$today is not defined" errors
+		const codeWithUnescapedVars = `return workflow('test', 'Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [0, 0] } }))
+  .then(node({
+    type: 'n8n-nodes-base.code',
+    version: 2,
+    config: {
+      parameters: {
+        jsCode: \`return { date: \${$today} };\`
+      },
+      position: [200, 0]
+    }
+  }))`;
+
+		// Should now work - variables are auto-escaped
+		const workflow = parseWorkflowCode(codeWithUnescapedVars);
+		const codeNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.code');
+
+		// The jsCode should contain the literal ${$today}
+		const jsCode = (codeNode?.parameters?.jsCode as string) || '';
+		expect(jsCode).toContain('${$today}');
+	});
+
+	it('should parse jsCode with properly escaped n8n runtime variables', () => {
+		// To preserve ${$today} as a literal string in jsCode, escape it as \${$today}
+		const codeWithEscapedVars = `return workflow('test', 'Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [0, 0] } }))
+  .then(node({
+    type: 'n8n-nodes-base.code',
+    version: 2,
+    config: {
+      parameters: {
+        jsCode: \`return { date: \\\${$today}, now: \\\${$now} };\`
+      },
+      position: [200, 0]
+    }
+  }))`;
+
+		// This should work - the escaped expressions become literal strings
+		const workflow = parseWorkflowCode(codeWithEscapedVars);
+		const codeNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.code');
+		expect(codeNode).toBeDefined();
+
+		// The jsCode should contain the literal ${$today} and ${$now} strings
+		const jsCode = (codeNode?.parameters?.jsCode as string) || '';
+		expect(jsCode).toContain('${$today}');
+		expect(jsCode).toContain('${$now}');
+	});
 });
 
 describe('parseWorkflowCode with splitInBatches', () => {
