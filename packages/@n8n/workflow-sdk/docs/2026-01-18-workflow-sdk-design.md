@@ -100,7 +100,7 @@ node(type, version, {
   position?: [x, y],        // Canvas position
   disabled?: boolean,       // Whether node is disabled
   name?: string,            // Custom node name (auto-generated if omitted)
-  outputSchema?: { ... },   // For dynamic nodes (HTTP, Code)
+  outputSchema?: z.ZodType, // Zod schema for dynamic nodes (HTTP, Code)
 });
 ```
 
@@ -300,14 +300,22 @@ const sendMessage = node('n8n-nodes-base.slack', 'v2.2', {
 // sendMessage output is already typed as { ts: string, channel: string, ... }
 ```
 
-**Dynamic nodes** (HTTP Request, Code) accept user-provided schemas:
+**Dynamic nodes** (HTTP Request, Code) accept user-provided Zod schemas (preferred):
 
 ```typescript
-const fetchUsers = node('n8n-nodes-base.httpRequest', 'v4.2', {
+import { z } from '@n8n/workflow-sdk';
+
+const userSchema = z.object({
+  users: z.array(z.object({
+    id: z.number(),
+    email: z.string(),
+    name: z.string()
+  }))
+});
+
+const fetchUsers = node<z.infer<typeof userSchema>>('n8n-nodes-base.httpRequest', 'v4.2', {
   parameters: { url: 'https://api.example.com/users', method: 'GET' },
-  outputSchema: {
-    users: [{ id: 'number', email: 'string', name: 'string' }]
-  }
+  outputSchema: userSchema
 });
 
 // Downstream nodes get typed access
