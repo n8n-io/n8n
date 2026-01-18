@@ -23,8 +23,8 @@
 - [x] Export `sticky(content, config?)` function
 - [x] Export `splitInBatches(version, config)` function
 - [x] Export `placeholder(hint)` function
-- [ ] Export `runOnceForAllItems<T>(fn)` helper
-- [ ] Export `runOnceForEachItem<T>(fn)` helper
+- [x] Export `runOnceForAllItems<T>(fn)` helper
+- [x] Export `runOnceForEachItem<T>(fn)` helper
 
 ---
 
@@ -189,39 +189,39 @@
 
 ### runOnceForAllItems
 
-- [ ] `runOnceForAllItems<T>(fn)` helper function
-- [ ] Context provides `ctx.$input.all()`
-- [ ] Context provides `ctx.$input.first()`
-- [ ] Context provides `ctx.$input.last()`
-- [ ] Context provides `ctx.$input.itemMatching(i)`
-- [ ] Return type must be array matching `T`
-- [ ] Serialize to `{ mode: 'runOnceForAllItems', jsCode: '...' }`
-- [ ] Strip `ctx.` prefix during serialization
+- [x] `runOnceForAllItems<T>(fn)` helper function
+- [x] Context provides `ctx.$input.all()`
+- [x] Context provides `ctx.$input.first()`
+- [x] Context provides `ctx.$input.last()`
+- [x] Context provides `ctx.$input.itemMatching(i)`
+- [x] Return type must be array matching `T`
+- [x] Serialize to `{ mode: 'runOnceForAllItems', jsCode: '...' }`
+- [x] Strip `ctx.` prefix during serialization
 
 ### runOnceForEachItem
 
-- [ ] `runOnceForEachItem<T>(fn)` helper function
-- [ ] Context provides `ctx.$input.item`
-- [ ] Context provides `ctx.$itemIndex`
-- [ ] Return type is single item matching `T` or `null`
-- [ ] Serialize to `{ mode: 'runOnceForEachItem', jsCode: '...' }`
-- [ ] Strip `ctx.` prefix during serialization
+- [x] `runOnceForEachItem<T>(fn)` helper function
+- [x] Context provides `ctx.$input.item`
+- [x] Context provides `ctx.$itemIndex`
+- [x] Return type is single item matching `T` or `null`
+- [x] Serialize to `{ mode: 'runOnceForEachItem', jsCode: '...' }`
+- [x] Strip `ctx.` prefix during serialization
 
 ### Shared Context
 
-- [ ] `ctx.$env.VAR_NAME`
-- [ ] `ctx.$vars.name`
-- [ ] `ctx.$secrets.provider.key`
-- [ ] `ctx.$now`
-- [ ] `ctx.$today`
-- [ ] `ctx.$runIndex`
-- [ ] `ctx.$execution.id`
-- [ ] `ctx.$execution.mode`
-- [ ] `ctx.$execution.resumeUrl`
-- [ ] `ctx.$workflow.id`
-- [ ] `ctx.$workflow.name`
-- [ ] `ctx.$workflow.active`
-- [ ] `ctx.$('nodeName')` reference
+- [x] `ctx.$env.VAR_NAME`
+- [x] `ctx.$vars.name`
+- [x] `ctx.$secrets.provider.key`
+- [x] `ctx.$now`
+- [x] `ctx.$today`
+- [x] `ctx.$runIndex`
+- [x] `ctx.$execution.id`
+- [x] `ctx.$execution.mode`
+- [x] `ctx.$execution.resumeUrl`
+- [x] `ctx.$workflow.id`
+- [x] `ctx.$workflow.name`
+- [x] `ctx.$workflow.active`
+- [x] `ctx.$('nodeName')` reference
 - [ ] `ctx.$jmespath(data, expr)`
 
 ### Python Support
