@@ -160,13 +160,6 @@ export class DatabaseConfig {
 	@Env('DB_TYPE', dbTypeSchema)
 	type: DbType = 'sqlite';
 
-	/**
-	 * Legacy sqlite is no longer supported. Setting kept until we clean up all uses.
-	 */
-	get isLegacySqlite() {
-		return false;
-	}
-
 	/** Prefix for table names */
 	@Env('DB_TABLE_PREFIX')
 	tablePrefix: string = '';
