@@ -2055,6 +2055,9 @@ importers:
       mjml:
         specifier: ^4.15.3
         version: 4.15.3(encoding@0.1.13)
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../testing/containers
       openapi-types:
         specifier: ^12.1.3
         version: 12.1.3
