@@ -2573,5 +2573,91 @@ describe('RoutingNode', () => {
 			expect(result![0][2].error).toBeDefined();
 			expect(result![0][2].pairedItem).toEqual({ item: 2 });
 		});
+
+		it('should preserve input data in error output json when continueOnFail is enabled', async () => {
+			const node: INode = { ...baseNode };
+
+			const workflowData = {
+				nodes: [node],
+				connections: {},
+			};
+
+			nodeType.description = {
+				requestDefaults: {
+					baseURL: 'http://127.0.0.1:5678',
+					url: '/test-url',
+				},
+				properties: [
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						routing: {
+							send: {
+								property: 'toEmail',
+								type: 'body',
+								value: 'fixedValue',
+							},
+						},
+						default: '',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = new Workflow({
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+				active: false,
+				nodeTypes,
+			});
+
+			const executeData = {
+				data: {},
+				node,
+				source: null,
+			} as IExecuteData;
+
+			const inputData: ITaskDataConnections = {
+				main: [[{ json: { inputField: 'inputValue', id: 123, nested: { key: 'value' } } }]],
+			};
+
+			const executeFunctions = mock<executionContexts.ExecuteContext>();
+			Object.assign(executeFunctions, {
+				executeData,
+				inputData,
+				runIndex,
+				additionalData,
+				workflow,
+				node,
+				mode,
+				connectionInputData,
+				runExecutionData,
+			});
+
+			const executeSingleFunctions = createFailingExecuteSingleFunctions(
+				workflow,
+				runExecutionData,
+				runIndex,
+				node,
+				0,
+			);
+
+			jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(executeSingleFunctions);
+
+			executeFunctions.getNodeParameter.mockImplementation(() => ({}));
+
+			const routingNode = new RoutingNode(executeFunctions, nodeType);
+			const result = await routingNode.runNode();
+
+			expect(result).toBeDefined();
+			expect(result![0]).toHaveLength(1);
+			expect(result![0][0].error).toBeDefined();
+			// Input data should be preserved in error output json
+			expect(result![0][0].json).toEqual({
+				inputField: 'inputValue',
+				id: 123,
+				nested: { key: 'value' },
+			});
+		});
 	});
 });

@@ -246,7 +246,9 @@ export class RoutingNode {
 
 				if (itemContext[itemIndex].thisArgs?.continueOnFail()) {
 					returnData.push({
-						json: {},
+						json: {
+							...items[itemIndex].json,
+						},
 						error: error as NodeApiError,
 						pairedItem: { item: itemIndex },
 					});

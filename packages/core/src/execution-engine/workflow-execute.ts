@@ -1910,7 +1910,7 @@ export class WorkflowExecute {
 									error: (lineResult.json.$error as NodeApiError | NodeOperationError).message,
 								};
 							} else if (lineResult.error !== undefined) {
-								lineResult.json = { error: lineResult.error.message };
+								lineResult.json = { ...lineResult.json, error: lineResult.error.message };
 							}
 						}
 					}
