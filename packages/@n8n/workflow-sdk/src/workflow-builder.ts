@@ -217,7 +217,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 			// Add optional properties
 			if (instance.config.credentials) {
-				n8nNode.credentials = instance.config.credentials;
+				// Serialize credentials to ensure newCredential() markers are converted to JSON
+				n8nNode.credentials = JSON.parse(JSON.stringify(instance.config.credentials));
 			}
 			if (instance.config.disabled) {
 				n8nNode.disabled = instance.config.disabled;

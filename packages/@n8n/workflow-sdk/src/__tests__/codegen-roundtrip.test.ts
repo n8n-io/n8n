@@ -431,6 +431,104 @@ return workflow('test-id', 'Test Workflow')
 			);
 		});
 	});
+
+	describe('parses newCredential() in workflow code', () => {
+		it('should parse code with newCredential() in credentials', () => {
+			const code = `
+return workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(node({ type: 'n8n-nodes-base.slack', version: 2.2, config: {
+    name: 'Send Slack Message',
+    parameters: { channel: '#general', text: 'Hello!' },
+    credentials: { slackApi: newCredential('My Slack Bot') }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			expect(parsedJson.id).toBe('test-id');
+			expect(parsedJson.nodes).toHaveLength(2);
+
+			const slackNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.slack');
+			expect(slackNode).toBeDefined();
+			expect(slackNode?.credentials).toEqual({
+				slackApi: { id: 'NEW_ID', name: 'My Slack Bot' },
+			});
+		});
+
+		it('should parse code with multiple newCredential() calls', () => {
+			const code = `
+return workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {
+    name: 'HTTP Request',
+    parameters: { url: 'https://api.example.com' },
+    credentials: {
+      httpBasicAuth: newCredential('Basic Auth'),
+      httpHeaderAuth: newCredential('API Key Header')
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const httpNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode?.credentials).toEqual({
+				httpBasicAuth: { id: 'NEW_ID', name: 'Basic Auth' },
+				httpHeaderAuth: { id: 'NEW_ID', name: 'API Key Header' },
+			});
+		});
+
+		it('should parse code with newCredential() mixed with regular credentials', () => {
+			const code = `
+return workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {
+    name: 'HTTP Request',
+    parameters: { url: 'https://api.example.com' },
+    credentials: {
+      httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
+      httpHeaderAuth: newCredential('New API Key')
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const httpNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode?.credentials).toEqual({
+				httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
+				httpHeaderAuth: { id: 'NEW_ID', name: 'New API Key' },
+			});
+		});
+
+		it('should parse AI agent with newCredential() on subnode', () => {
+			const code = `
+return workflow('test-id', 'AI Agent')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(node({
+    type: '@n8n/n8n-nodes-langchain.agent',
+    version: 3.1,
+    config: {
+      name: 'AI Agent',
+      parameters: { promptType: 'define', text: 'You are helpful' },
+      subnodes: {
+        model: languageModel({
+          type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+          version: 1,
+          config: {
+            parameters: {},
+            credentials: { openAiApi: newCredential('OpenAI API') }
+          }
+        })
+      }
+    }
+  }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const openAiNode = parsedJson.nodes.find(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			);
+			expect(openAiNode).toBeDefined();
+			expect(openAiNode?.credentials).toEqual({
+				openAiApi: { id: 'NEW_ID', name: 'OpenAI API' },
+			});
+		});
+	});
 });
 
 describe('Codegen Roundtrip with Real Workflows', () => {

@@ -118,6 +118,32 @@ const WORKFLOW_RULES = `<workflow_rules>
    - Start at [240, 300] for trigger
    - Each node +300 in x direction: [540, 300], [840, 300], etc.
    - Branch vertically: [540, 200] for top branch, [540, 400] for bottom branch
+
+5. **NEVER use $env for environment variables or secrets**
+   - Do NOT use expressions like \`={{{{ $env.API_KEY }}}}\` or \`={{{{ $env.SECRET }}}}\`
+   - Instead, use \`placeholder('description')\` for any values that need user input
+   - Examples:
+     - Bad: \`url: '={{{{ $env.API_URL }}}}'\`
+     - Good: \`url: placeholder('Your API endpoint URL')\`
+     - Bad: \`apiKey: '={{{{ $env.OPENAI_API_KEY }}}}'\`
+     - Good: Use credentials instead of API keys in parameters
+   - The placeholder() function creates a user-friendly prompt for the value
+
+6. **Use newCredential() for nodes that require credentials**
+   - When a node needs authentication, use \`newCredential('Name')\` in the credentials config
+   - This creates a placeholder credential that the user will configure
+   - Example:
+     \`\`\`typescript
+     node({{
+       type: 'n8n-nodes-base.slack',
+       version: 2.2,
+       config: {{
+         parameters: {{ channel: '#general', text: 'Hello!' }},
+         credentials: {{ slackApi: newCredential('Slack Bot') }}
+       }}
+     }})
+     \`\`\`
+   - The credential type (e.g., \`slackApi\`) must match what the node expects - check the type definitions
 </workflow_rules>`;
 
 /**

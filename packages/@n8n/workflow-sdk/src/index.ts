@@ -50,6 +50,7 @@ export type {
 	SplitInBatchesEachChain,
 	// Other types
 	PlaceholderValue,
+	NewCredentialValue,
 	AllItemsContext,
 	EachItemContext,
 	CodeResult,
@@ -61,6 +62,7 @@ export type {
 	TriggerFn,
 	StickyFn,
 	PlaceholderFn,
+	NewCredentialFn,
 	MergeFn,
 	IfBranchFn,
 	IfBranchConfig,
@@ -86,7 +88,7 @@ export * from './types/generated';
 export { workflow } from './workflow-builder';
 
 // Node builders
-export { node, trigger, sticky, placeholder } from './node-builder';
+export { node, trigger, sticky, placeholder, newCredential } from './node-builder';
 
 // Subnode builders (for AI/LangChain nodes)
 export {

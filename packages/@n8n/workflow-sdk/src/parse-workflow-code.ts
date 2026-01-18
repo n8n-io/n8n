@@ -230,7 +230,12 @@ function escapeN8nVariables(code: string): string {
 	result = escapeN8nVariablesInTemplateLiterals(result);
 	return result;
 }
-import { node as nodeFn, trigger as triggerFn, sticky as stickyFn } from './node-builder';
+import {
+	node as nodeFn,
+	trigger as triggerFn,
+	sticky as stickyFn,
+	newCredential as newCredentialFn,
+} from './node-builder';
 import {
 	languageModel as languageModelFn,
 	memory as memoryFn,
@@ -273,6 +278,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 			'node',
 			'trigger',
 			'sticky',
+			'newCredential',
 			'languageModel',
 			'memory',
 			'tool',
@@ -304,6 +310,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		nodeFn,
 		triggerFn,
 		stickyFn,
+		newCredentialFn,
 		languageModelFn,
 		memoryFn,
 		toolFn,

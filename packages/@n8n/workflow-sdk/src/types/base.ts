@@ -127,8 +127,8 @@ export interface SubnodeConfig {
 export interface NodeConfig<TParams = IDataObject> {
 	/** Node-specific parameters */
 	parameters?: TParams;
-	/** Credential references keyed by credential type */
-	credentials?: Record<string, CredentialReference>;
+	/** Credential references keyed by credential type. Use newCredential() for new credentials. */
+	credentials?: Record<string, CredentialReference | NewCredentialValue>;
 	/** Custom node name (auto-generated if omitted) */
 	name?: string;
 	/** Canvas position [x, y] */
@@ -667,6 +667,16 @@ export interface PlaceholderValue {
 }
 
 /**
+ * Marker for new credentials that need to be created
+ * Serializes to { id: 'NEW_ID', name: '...' } to signal the frontend
+ * that a new credential needs to be created with the given name.
+ */
+export interface NewCredentialValue {
+	readonly __newCredential: true;
+	readonly name: string;
+}
+
+/**
  * Code node execution context for runOnceForAllItems
  */
 export interface AllItemsContext {
@@ -846,6 +856,19 @@ export type StickyFn = (
  * ```
  */
 export type PlaceholderFn = (hint: string) => PlaceholderValue;
+
+/**
+ * Creates a new credential marker for credentials that need to be created
+ *
+ * @example
+ * ```typescript
+ * const httpNode = node('n8n-nodes-base.httpRequest', 'v4.3', {
+ *   parameters: { url: 'https://api.example.com' },
+ *   credentials: { httpBasicAuth: newCredential('My API Auth') }
+ * });
+ * ```
+ */
+export type NewCredentialFn = (name: string) => NewCredentialValue;
 
 /**
  * Creates a merge composite for parallel branch execution

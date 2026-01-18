@@ -7,6 +7,7 @@ import type {
 	TriggerInput,
 	StickyNoteConfig,
 	PlaceholderValue,
+	NewCredentialValue,
 	DeclaredConnection,
 } from './types/base';
 
@@ -310,4 +311,43 @@ class PlaceholderImpl implements PlaceholderValue {
  */
 export function placeholder(hint: string): PlaceholderValue {
 	return new PlaceholderImpl(hint);
+}
+
+/**
+ * New credential implementation
+ * Serializes to { id: 'NEW_ID', name: '...' } format
+ */
+class NewCredentialImpl implements NewCredentialValue {
+	readonly __newCredential: true = true;
+	readonly name: string;
+
+	constructor(name: string) {
+		this.name = name;
+	}
+
+	toJSON(): { id: string; name: string } {
+		return { id: 'NEW_ID', name: this.name };
+	}
+}
+
+/**
+ * Create a new credential marker for credentials that need to be created
+ *
+ * Use this when a workflow needs a credential that doesn't exist yet.
+ * The frontend will prompt the user to create the credential.
+ *
+ * @param name - Display name for the credential (e.g., 'My Slack Bot')
+ * @returns A credential marker that serializes to { id: 'NEW_ID', name: '...' }
+ *
+ * @example
+ * ```typescript
+ * const slackNode = node('n8n-nodes-base.slack', 'v2.2', {
+ *   parameters: { channel: '#general' },
+ *   credentials: { slackApi: newCredential('My Slack Bot') }
+ * });
+ * // Serializes credentials as: { slackApi: { id: 'NEW_ID', name: 'My Slack Bot' } }
+ * ```
+ */
+export function newCredential(name: string): NewCredentialValue {
+	return new NewCredentialImpl(name);
 }

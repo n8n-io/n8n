@@ -1,4 +1,4 @@
-import { node, trigger, sticky, placeholder } from '../node-builder';
+import { node, trigger, sticky, placeholder, newCredential } from '../node-builder';
 import { languageModel, memory, tool, outputParser } from '../subnode-builders';
 import type { LcAgentV31Node } from '../types/generated';
 
@@ -215,6 +215,55 @@ describe('Node Builder', () => {
 		it('should serialize to placeholder format', () => {
 			const p = placeholder('API Key');
 			expect(String(p)).toBe('<__PLACEHOLDER_VALUE__API Key__>');
+		});
+	});
+
+	describe('newCredential()', () => {
+		it('should create a new credential marker with name', () => {
+			const c = newCredential('My Slack Bot');
+			expect(c.__newCredential).toBe(true);
+			expect(c.name).toBe('My Slack Bot');
+		});
+
+		it('should serialize to credential format with NEW_ID', () => {
+			const c = newCredential('My API Auth');
+			const json = JSON.parse(JSON.stringify(c));
+			expect(json).toEqual({ id: 'NEW_ID', name: 'My API Auth' });
+		});
+
+		it('should work in node credentials config', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					parameters: { channel: '#general' },
+					credentials: { slackApi: newCredential('Slack Bot') },
+				},
+			});
+			expect(n.config.credentials).toBeDefined();
+			const credJson = JSON.parse(JSON.stringify(n.config.credentials));
+			expect(credJson).toEqual({
+				slackApi: { id: 'NEW_ID', name: 'Slack Bot' },
+			});
+		});
+
+		it('should work alongside regular credential references', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					parameters: { url: 'https://api.example.com' },
+					credentials: {
+						httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
+						httpHeaderAuth: newCredential('New Header Auth'),
+					},
+				},
+			});
+			const credJson = JSON.parse(JSON.stringify(n.config.credentials));
+			expect(credJson).toEqual({
+				httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
+				httpHeaderAuth: { id: 'NEW_ID', name: 'New Header Auth' },
+			});
 		});
 	});
 
