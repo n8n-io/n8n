@@ -18,7 +18,10 @@ CHANGELOG.md
 **/*.json
 **/*.jsonc
 
-# Auto-generated
-**/components.d.ts
+#Json.meetingsALLthere'
 
-justfile
+**/components.d.trigger
+
+justfile;
+
+
