@@ -5,8 +5,10 @@ import type { WorkflowJSON, NodeJSON, ConnectionTarget } from './types/base';
 
 /**
  * Escapes a string for use in a single-quoted TypeScript string literal.
+ * Returns empty string if input is null/undefined.
  */
-function escapeString(str: string): string {
+function escapeString(str: string | null | undefined): string {
+	if (str == null) return '';
 	return str
 		.replace(/\\/g, '\\\\')
 		.replace(/'/g, "\\'")
@@ -93,12 +95,15 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 	// Build node info map
 	const nodeInfoMap = new Map<string, NodeInfo>();
 	const nodesByName = new Map<string, NodeJSON>();
+	let unnamedCounter = 0;
 
 	for (const nodeJson of json.nodes) {
-		nodesByName.set(nodeJson.name, nodeJson);
-		nodeInfoMap.set(nodeJson.name, {
-			node: nodeJson,
-			varName: generateVarName(nodeJson.name),
+		// Use node name, falling back to id or generated name for nodes without names
+		const nodeName = nodeJson.name ?? nodeJson.id ?? `__unnamed_${unnamedCounter++}`;
+		nodesByName.set(nodeName, nodeJson);
+		nodeInfoMap.set(nodeName, {
+			node: { ...nodeJson, name: nodeName }, // Ensure name is set
+			varName: generateVarName(nodeName),
 			incomingConnections: [],
 			outgoingConnections: new Map(),
 		});
@@ -202,8 +207,9 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 /**
  * Generates a variable name from a node name.
  */
-function generateVarName(nodeName: string): string {
-	return nodeName
+function generateVarName(nodeName: string | null | undefined): string {
+	const name = nodeName ?? 'unnamed';
+	return name
 		.replace(/[^a-zA-Z0-9]/g, '_')
 		.replace(/^(\d)/, '_$1')
 		.replace(/_+/g, '_')
