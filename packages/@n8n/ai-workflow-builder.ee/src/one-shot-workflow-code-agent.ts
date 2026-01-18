@@ -5,6 +5,8 @@
  * Replaces the complex multi-agent system with a simpler, faster approach.
  */
 
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -21,13 +23,24 @@ import type { StreamOutput, AgentMessageChunk, WorkflowUpdateChunk } from './typ
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**
+ * Read the SDK types/base.ts source file for the prompt.
+ * Resolves the path relative to the workflow-sdk package.
+ */
+function readSdkSourceFile(): string {
+	// Resolve path to workflow-sdk package
+	const workflowSdkPath = dirname(require.resolve('@n8n/workflow-sdk/package.json'));
+	const baseTsPath = join(workflowSdkPath, 'src', 'types', 'base.ts');
+	return readFileSync(baseTsPath, 'utf-8');
+}
+
+/**
  * Structured output schema for the LLM response
  */
 const WorkflowCodeOutputSchema = z.object({
 	reasoning: z.string().describe('Brief explanation of workflow design decisions'),
 	workflowCode: z
 		.string()
-		.describe("Complete TypeScript SDK code starting with 'const wf = workflow(...)'"),
+		.describe("Complete TypeScript SDK code starting with 'return workflow(...)'"),
 	warnings: z
 		.array(z.string())
 		.optional()
@@ -61,11 +74,13 @@ export class OneShotWorkflowCodeAgent {
 	private llm: BaseChatModel;
 	private nodeTypeParser: NodeTypeParser;
 	private logger?: Logger;
+	private sdkSourceCode: string;
 
 	constructor(config: OneShotWorkflowCodeAgentConfig) {
 		this.llm = config.llm;
 		this.nodeTypeParser = new NodeTypeParser(config.nodeTypes);
 		this.logger = config.logger;
+		this.sdkSourceCode = readSdkSourceFile();
 	}
 
 	/**
@@ -183,11 +198,11 @@ export class OneShotWorkflowCodeAgent {
 	}
 
 	/**
-	 * Build the system prompt with node IDs
+	 * Build the system prompt with node IDs and SDK reference
 	 */
 	private buildPrompt(currentWorkflow?: string) {
 		const nodeIds = this.nodeTypeParser.getNodeIdsByCategory();
-		return buildOneShotGeneratorPrompt(nodeIds, currentWorkflow);
+		return buildOneShotGeneratorPrompt(nodeIds, this.sdkSourceCode, currentWorkflow);
 	}
 
 	/**

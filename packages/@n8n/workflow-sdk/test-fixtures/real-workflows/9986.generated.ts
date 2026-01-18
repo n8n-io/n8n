@@ -1,454 +1,277 @@
-const wf = workflow('', '')
-	.add(
-		trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [48, 1120] } }),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '4b458b37-0440-4110-b62d-7076f4490610',
-								name: 'folderProductId',
-								type: 'string',
-								value: '={{GOOGLE_DRIVE_FOLDER_ID}}',
-							},
-							{
-								id: '4b559d50-0017-4f58-afeb-fad3333f3867',
-								name: 'folderGeneratedId',
-								type: 'string',
-								value: '={{GOOGLE_DRIVE_FOLDER_ID}}',
-							},
-							{
-								id: 'c7a44a49-b828-464c-a9c8-574b801a0a54',
-								name: 'baseUrl',
-								type: 'string',
-								value: '=https://public.api.foreplay.co/api',
-							},
-							{
-								id: '8521d447-e36a-453f-944a-8bffa2dc9227',
-								name: 'foreplayApiKey',
-								type: 'string',
-								value: '={{FOREPLAY_API_KEY}}',
-							},
-							{
-								id: '12adf778-3c00-4a89-b909-2595238fc3c5',
-								name: 'brandId',
-								type: 'string',
-								value: '={{FOREPLAY_BRAND_ID}}',
-							},
-						],
-					},
-				},
-				position: [272, 1120],
-				name: 'Set Workflow Credentials',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'b65ccd77-d030-47df-b704-78a8174c8876',
-								name: 'productName',
-								type: 'string',
-								value: 'Homyped',
-							},
-							{
-								id: 'ece2edb0-e27e-47fe-8b81-b6160e71e8e9',
-								name: 'niche',
-								type: 'string',
-								value: 'fashion',
-							},
-							{
-								id: 'd94bea58-6546-4a31-876b-650c6e7f1178',
-								name: 'category',
-								type: 'string',
-								value: 'shoes',
-							},
-							{
-								id: 'd7f2b956-0c08-421d-b41a-aedd04a1160e',
-								name: 'targetMarket',
-								type: 'string',
-								value: 'b2c',
-							},
-						],
-					},
-				},
-				position: [496, 1120],
-				name: 'Set Product Information',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					limit: 1,
-					filter: {
-						folderId: {
-							__rl: true,
-							mode: 'id',
-							value: "={{ $('Set Workflow Credentials').item.json.folderProductId }}",
-						},
-					},
-					options: {},
-					resource: 'fileFolder',
-				},
-				credentials: {
-					googleDriveOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleDriveOAuth2Api Credential',
-					},
-				},
-				position: [720, 1120],
-				name: 'Fetch Product Image from Google Drive',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "={{ $('Set Workflow Credentials').item.json.baseUrl }}/spyder/brand/ads",
-					options: {},
-					sendQuery: true,
-					sendHeaders: true,
-					queryParameters: {
-						parameters: [
-							{
-								name: 'brand_id',
-								value: "={{ $('Set Workflow Credentials').item.json.brandId }}",
-							},
-							{
-								name: 'start_date',
-								value: "={{ $now.minus(1, 'month').format('yyyy-MM-dd') }}",
-							},
-							{
-								name: 'end_date',
-								value: "={{ $now.minus(1, 'day').format('yyyy-MM-dd') }}",
-							},
-							{ name: 'live', value: 'true' },
-							{ name: 'display_format', value: 'video' },
-							{ name: 'publisher_platform', value: 'instagram' },
-							{
-								name: 'niches',
-								value: "={{ $('Set Product Information').item.json.niche }}",
-							},
-							{
-								name: 'market_target',
-								value: "={{ $('Set Product Information').item.json.targetMarket }}",
-							},
-							{ name: 'languages', value: 'en' },
-							{ name: 'video_duration_min', value: '5' },
-							{ name: 'video_duration_max', value: '30' },
-							{ name: 'running_duration_min_days', value: '1' },
-							{ name: 'limit', value: '5' },
-							{ name: 'order', value: 'longest_running' },
-						],
-					},
-					headerParameters: {
-						parameters: [
-							{
-								name: 'Authorization',
-								value: "=Bearer {{ $('Set Workflow Credentials').item.json.foreplayApiKey }}",
-							},
-						],
-					},
-				},
-				position: [944, 1120],
-				name: 'Fetch Competitor Video Data (Foreplay API)',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitOut',
-			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'data' },
-				position: [1168, 1120],
-				name: 'Split Foreplay Response',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '77b8c6dc-3bdb-4edf-8d65-78d87bca7dd5',
-								name: 'desc',
-								type: 'string',
-								value: '={{ $json.description }}',
-							},
-							{
-								id: '659ad795-0aae-4bb1-8bbb-f949475e704e',
-								name: 'transcript',
-								type: 'string',
-								value: '={{ $json.full_transcription }}',
-							},
-							{
-								id: '5797be9b-27a2-4f7f-91f4-d8c5663b3d9d',
-								name: 'mood',
-								type: 'object',
-								value: '={{ $json.emotional_drivers }}',
-							},
-							{
-								id: '7024af66-9cc5-4064-86e8-ebcd550356a9',
-								name: 'duration',
-								type: 'number',
-								value: '={{ $json.video_duration }}',
-							},
-							{
-								id: '68a1fca5-9147-4db0-96b0-b9f7e015088d',
-								name: 'pictureUrl',
-								type: 'string',
-								value:
-									"=https://drive.google.com/thumbnail?id={{ $('Fetch Product Image from Google Drive').item.json.id }}",
-							},
-						],
-					},
-				},
-				position: [1392, 1120],
-				name: 'Assemble Video Input Data',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitInBatches',
-			version: 3,
-			config: {
-				parameters: { options: {} },
-				position: [64, 1328],
-				name: 'Iterate Over Ad Examples',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: "=Generate a personalized product video prompt using the following data:\n\nProduct Information:\nProduct Name: {{ $('Set Product Information').item.json.productName }}\nNiche: {{ $('Set Product Information').item.json.niche }}\nCategory: {{ $('Set Product Information').item.json.category }}\nTarget Market: {{ $('Set Product Information').item.json.targetMarket }}\n\nDescription:\n{{ $json.desc }}\n\nTranscription (can be null):\n{{ $json.transcript }}\n\nMood (JSON format of emotion scores, each range from 1-10):\n{{ $json.mood.toJsonString() }}\n\nVideo Duration (in seconds):\n{{ $json.duration }}",
-					options: {
-						systemMessage:
-							'=## ROLE\n\nYou are VidPrompt, an AI assistant that generates personalized, cinematic-quality prompts for text-to-video generation models.\n\nYour task is to take the user’s inputs — `productName`, `niche`, `category`, `targetMarket`, `desc`, `transcript`, `mood`, and `duration` — and produce a vivid, emotionally aligned paragraph describing the ideal video scene.\n\n## INPUT FIELDS\n\n- productName → The brand or product name to be featured in the video.\n- niche → The specific market focus (e.g. fitness, fashion, tech, education).\n- category → The product or service type (e.g. sportswear, skincare, SaaS tool).\n- targetMarket → The intended audience or user group.\n- desc → A short text describing the concept, product, or message of the video.\n- transcript → (Optional) May contain narration or spoken lines. If null, focus purely on visuals.\n- mood → JSON object with emotion scores (e.g. achievement, fear, curiosity, etc.).\n- duration → Target video duration in seconds.\n\n## TASK OBJECTIVES\n\n1. Incorporate white label info naturally — subtly weave the product name, niche, category, and target market into the video prompt.\n   - Example: “A cinematic 30-second video ad for `productName`, a cutting-edge `category` in the `niche` niche, designed for `targetMarket`.”\n\n2. Infer the emotional tone from the top 1–2 mood values (use human-readable emotion names).\n\n3. Determine video length:\n   - ≤10s → short video\n   - >10s and ≤20s → medium-length video\n   - >20s → long video\n\n4. Describe style (cinematic, product ad, explainer, vlog, animation, etc.) based on the description and tone.\n\n5. Incorporate the transcript if provided (e.g. describe it as voiceover, narrator dialogue, or lip-synced scene).\n\n6. Write one cohesive, richly detailed paragraph that mentions:\n   - The title or theme (implied or stated naturally)\n   - The scene visuals and camera feel\n   - The mood and style\n   - The video duration category\n\n## RULES\n\n- Don\'t include any double quotes for in the generated prompt (""), you could use single quote instead (\'\').\n- Don\'t include or mention other brands in the generated prompt, just focus on the white label product.\n\n## EXAMPLE\n\nInput:\n{\n  "product_name": "Nike Air Superfly",\n  "niche": "Athletic Footwear",\n  "category": "Sportswear",\n  "target_market": "Runners and fitness enthusiasts",\n  "desc": "Set the pace in the Nike Air Superfly, now with upgraded cushioning and a low-profile design.",\n  "transcript": null,\n  "mood": {\n    "achievement": 7,\n    "anger": 1,\n    "authority": 2,\n    "belonging": 1,\n    "competence": 8,\n    "curiosity": 3,\n    "empowerment": 6,\n    "engagement": 4,\n    "esteem": 5,\n    "fear": 1,\n    "guilt": 1,\n    "nostalgia": 1,\n    "nurturance": 1,\n    "security": 3,\n    "urgency": 2\n  },\n  "duration": 21.61\n}\n\nOutput:\nA long, cinematic sports commercial in an achievement-driven and empowering mood, promoting the Nike Air Superfly, a premium sportswear innovation in the athletic footwear niche for runners and fitness enthusiasts. The 30-second film opens at sunrise with a runner sprinting across the cityscape, sweat glinting in golden light. Smooth tracking shots capture the low-profile design and upgraded cushioning, symbolizing precision and drive. The mood feels strong and aspirational, underscored by rhythmic breathing and pulsing ambient beats that echo determination.',
-					},
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-						version: 1,
-						config: {
-							parameters: { options: {} },
-							credentials: {
-								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-							},
-							name: 'Google Gemini LLM',
-						},
-					}),
-				},
-				position: [288, 1392],
-				name: 'Generate Video Prompt',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.kie.ai/api/v1/jobs/createTask',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "model": "sora-2-image-to-video",\n  "input": {\n    "callBackUrl": "{{ $(\'Set Workflow Credentials\').item.json.callBackUrl }}",\n    "prompt": "{{ $json.output }}",\n    "image_urls": ["{{ $(\'Assemble Video Input Data\').item.json.pictureUrl }}"],\n    "aspect_ratio": "portrait",\n    "remove_watermark": true\n  }\n}',
-					sendBody: true,
-					specifyBody: 'json',
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpBearerAuth',
-				},
-				credentials: {
-					httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [640, 1392],
-				name: 'Create Video Task (Kie.ai)',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.kie.ai/api/v1/jobs/recordInfo?taskId={{ $json.data.taskId }}',
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpBearerAuth',
-				},
-				credentials: {
-					httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [864, 1392],
-				name: 'Check Video Generation Status',
-			},
-		}),
-	)
-	.then(
-		switchCase(
-			[
-				node({
-					type: 'n8n-nodes-base.httpRequest',
-					version: 4.2,
-					config: {
-						parameters: {
-							url: '={{ $json.data.resultJson.parseJson().resultUrls.first() }}',
-							options: {},
-						},
-						position: [1312, 1328],
-						name: 'Download Finished Video',
-					},
-				}),
-				node({
-					type: 'n8n-nodes-base.splitInBatches',
-					version: 3,
-					config: {
-						parameters: { options: {} },
-						position: [64, 1328],
-						name: 'Iterate Over Ad Examples',
-					},
-				}),
-				node({
-					type: 'n8n-nodes-base.wait',
-					version: 1.1,
-					config: {
-						parameters: { unit: 'minutes', amount: 1 },
-						position: [1312, 1552],
-						name: 'Wait Before Checking Again',
-					},
-				}),
-			],
-			{
-				version: 3.3,
-				parameters: {
-					rules: {
-						values: [
-							{
-								outputKey: 'Success',
-								conditions: {
-									options: {
-										version: 2,
-										leftValue: '',
-										caseSensitive: true,
-										typeValidation: 'strict',
-									},
-									combinator: 'and',
-									conditions: [
-										{
-											id: '3f37a57f-f3d0-4d14-80da-8574c383a0b9',
-											operator: { type: 'string', operation: 'equals' },
-											leftValue: '={{ $json.data.state }}',
-											rightValue: 'success',
-										},
-									],
-								},
-								renameOutput: true,
-							},
-							{
-								outputKey: 'Failed',
-								conditions: {
-									options: {
-										version: 2,
-										leftValue: '',
-										caseSensitive: true,
-										typeValidation: 'strict',
-									},
-									combinator: 'and',
-									conditions: [
-										{
-											id: '5872a82e-f279-4cf0-89fe-3e774e34bc61',
-											operator: {
-												name: 'filter.operator.equals',
-												type: 'string',
-												operation: 'equals',
-											},
-											leftValue: '={{ $json.data.state }}',
-											rightValue: 'failed',
-										},
-									],
-								},
-								renameOutput: true,
-							},
-						],
-					},
-					options: { fallbackOutput: 'extra' },
-				},
-				name: 'Video Generation Status',
-			},
-		),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					name: "={{ $now.format('yyyy-MM-dd HH:mm') }}",
-					driveId: { __rl: true, mode: 'list', value: 'My Drive' },
-					options: {},
-					folderId: {
-						__rl: true,
-						mode: 'id',
-						value: "={{ $('Set Workflow Credentials').item.json.folderGeneratedId }}",
-					},
-				},
-				credentials: {
-					googleDriveOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleDriveOAuth2Api Credential',
-					},
-				},
-				position: [1536, 1632],
-				name: 'Upload Generated Video to Google Drive',
-			},
-		}),
-	)
-	.add(
-		sticky(
-			"![Workflow Thumbnail](https://drive.google.com/thumbnail?id=1Q1-UcWXwv1eYzxjTumYCFXG1S7C3Be2V&sz=w1000)\n## AI-Powered Product Video Generator (Foreplay + Gemini + Sora 2)\n\nSign Up For Foreplay [HERE](https://foreplay.co/?via=urpwUS)\n\nAutomatically generate personalized, cinematic-quality product videos using Foreplay’s ad data, Google Gemini AI for creative prompts, and Sora 2 for text-to-video generation.\n\n## Who’s it for?\nPerfect for marketers, brand managers, or creators who want to produce quick, high-quality video ads without manual scripting or editing.\n\n## How it works\n1. Fetch product data and related competitor videos from Foreplay.\n2. Use Gemini AI to generate creative text-to-video prompts.\n3. Send the prompt and image to Kie.ai to generate a short, cinematic product video.\n4. Save the finished video automatically to Google Drive.\n\n## How to set up\n- Connect your [Foreplay](https://foreplay.co/?via=urpwUS), Google Drive, Gemini, and Kie.ai credentials.  \n- Set your product image folder's permission (Google Drive) as public.  \n- Add your API keys inside the _**Set Workflow Credentials**_ node.  \n- Then run the workflow manually to generate your first video ad!",
-			{ position: [32, 128], width: 816, height: 960 },
-		),
-	)
-	.add(
-		sticky(
-			'## Step-by-Step Instructions\n### 1. Before _Set Workflow Credentials_ node:\nAdd your Foreplay, Google Drive, Gemini, and Kie.ai API keys. Never store real credentials directly in nodes before submission.\n\n### 2. Before _Set Product Information_ node:\nDefine product name, category, niche, and target market. Use variables to make it reusable.\n\n### 3. Before _Fetch Product Image from Google Drive_ node:\nEnsure Google Drive credentials are connected and folder IDs are updated.\n\n### 4. Before _Fetch Competitor Video Data (Foreplay API)_ node:\nThis fetches recent ad data for your product niche. Verify API key and endpoint base URL.\n\n### 5. Before _Generate Video Prompt_ node:\nGemini AI crafts a personalized text prompt for video creation based on input data.\n\n### 6. Before _Create Video Task (Kie.ai)_ node:\nSends generated prompt and public product image to Kie.ai to start video rendering.\n\n### 7. Before _Check Video Generation Status_ node:\nMonitors the Kie.ai job until completion.\n\n### 8. Before _Upload Generated Video to Google Drive_ node:\nAutomatically saves the generated video into your configured Drive folder.',
-			{ name: 'Sticky Note1', color: 5, position: [880, 128], width: 768, height: 656 },
-		),
-	);
+return workflow('', '')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [48, 1120] } }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: {
+      options: {},
+      assignments: {
+        assignments: [
+          {
+            id: '4b458b37-0440-4110-b62d-7076f4490610',
+            name: 'folderProductId',
+            type: 'string',
+            value: '={{GOOGLE_DRIVE_FOLDER_ID}}'
+          },
+          {
+            id: '4b559d50-0017-4f58-afeb-fad3333f3867',
+            name: 'folderGeneratedId',
+            type: 'string',
+            value: '={{GOOGLE_DRIVE_FOLDER_ID}}'
+          },
+          {
+            id: 'c7a44a49-b828-464c-a9c8-574b801a0a54',
+            name: 'baseUrl',
+            type: 'string',
+            value: '=https://public.api.foreplay.co/api'
+          },
+          {
+            id: '8521d447-e36a-453f-944a-8bffa2dc9227',
+            name: 'foreplayApiKey',
+            type: 'string',
+            value: '={{FOREPLAY_API_KEY}}'
+          },
+          {
+            id: '12adf778-3c00-4a89-b909-2595238fc3c5',
+            name: 'brandId',
+            type: 'string',
+            value: '={{FOREPLAY_BRAND_ID}}'
+          }
+        ]
+      }
+    }, position: [272, 1120], name: 'Set Workflow Credentials' } }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: {
+      options: {},
+      assignments: {
+        assignments: [
+          {
+            id: 'b65ccd77-d030-47df-b704-78a8174c8876',
+            name: 'productName',
+            type: 'string',
+            value: 'Homyped'
+          },
+          {
+            id: 'ece2edb0-e27e-47fe-8b81-b6160e71e8e9',
+            name: 'niche',
+            type: 'string',
+            value: 'fashion'
+          },
+          {
+            id: 'd94bea58-6546-4a31-876b-650c6e7f1178',
+            name: 'category',
+            type: 'string',
+            value: 'shoes'
+          },
+          {
+            id: 'd7f2b956-0c08-421d-b41a-aedd04a1160e',
+            name: 'targetMarket',
+            type: 'string',
+            value: 'b2c'
+          }
+        ]
+      }
+    }, position: [496, 1120], name: 'Set Product Information' } }))
+  .then(node({ type: 'n8n-nodes-base.googleDrive', version: 3, config: { parameters: {
+      limit: 1,
+      filter: {
+        folderId: {
+          __rl: true,
+          mode: 'id',
+          value: '={{ $(\'Set Workflow Credentials\').item.json.folderProductId }}'
+        }
+      },
+      options: {},
+      resource: 'fileFolder'
+    }, credentials: {
+      googleDriveOAuth2Api: {
+        id: 'credential-id',
+        name: 'googleDriveOAuth2Api Credential'
+      }
+    }, position: [720, 1120], name: 'Fetch Product Image from Google Drive' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: '={{ $(\'Set Workflow Credentials\').item.json.baseUrl }}/spyder/brand/ads',
+      options: {},
+      sendQuery: true,
+      sendHeaders: true,
+      queryParameters: {
+        parameters: [
+          {
+            name: 'brand_id',
+            value: '={{ $(\'Set Workflow Credentials\').item.json.brandId }}'
+          },
+          {
+            name: 'start_date',
+            value: '={{ $now.minus(1, \'month\').format(\'yyyy-MM-dd\') }}'
+          },
+          {
+            name: 'end_date',
+            value: '={{ $now.minus(1, \'day\').format(\'yyyy-MM-dd\') }}'
+          },
+          { name: 'live', value: 'true' },
+          { name: 'display_format', value: 'video' },
+          { name: 'publisher_platform', value: 'instagram' },
+          {
+            name: 'niches',
+            value: '={{ $(\'Set Product Information\').item.json.niche }}'
+          },
+          {
+            name: 'market_target',
+            value: '={{ $(\'Set Product Information\').item.json.targetMarket }}'
+          },
+          { name: 'languages', value: 'en' },
+          { name: 'video_duration_min', value: '5' },
+          { name: 'video_duration_max', value: '30' },
+          { name: 'running_duration_min_days', value: '1' },
+          { name: 'limit', value: '5' },
+          { name: 'order', value: 'longest_running' }
+        ]
+      },
+      headerParameters: {
+        parameters: [
+          {
+            name: 'Authorization',
+            value: '=Bearer {{ $(\'Set Workflow Credentials\').item.json.foreplayApiKey }}'
+          }
+        ]
+      }
+    }, position: [944, 1120], name: 'Fetch Competitor Video Data (Foreplay API)' } }))
+  .then(node({ type: 'n8n-nodes-base.splitOut', version: 1, config: { parameters: { options: {}, fieldToSplitOut: 'data' }, position: [1168, 1120], name: 'Split Foreplay Response' } }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: {
+      options: {},
+      assignments: {
+        assignments: [
+          {
+            id: '77b8c6dc-3bdb-4edf-8d65-78d87bca7dd5',
+            name: 'desc',
+            type: 'string',
+            value: '={{ $json.description }}'
+          },
+          {
+            id: '659ad795-0aae-4bb1-8bbb-f949475e704e',
+            name: 'transcript',
+            type: 'string',
+            value: '={{ $json.full_transcription }}'
+          },
+          {
+            id: '5797be9b-27a2-4f7f-91f4-d8c5663b3d9d',
+            name: 'mood',
+            type: 'object',
+            value: '={{ $json.emotional_drivers }}'
+          },
+          {
+            id: '7024af66-9cc5-4064-86e8-ebcd550356a9',
+            name: 'duration',
+            type: 'number',
+            value: '={{ $json.video_duration }}'
+          },
+          {
+            id: '68a1fca5-9147-4db0-96b0-b9f7e015088d',
+            name: 'pictureUrl',
+            type: 'string',
+            value: '=https://drive.google.com/thumbnail?id={{ $(\'Fetch Product Image from Google Drive\').item.json.id }}'
+          }
+        ]
+      }
+    }, position: [1392, 1120], name: 'Assemble Video Input Data' } }))
+  .then(node({ type: 'n8n-nodes-base.splitInBatches', version: 3, config: { parameters: { options: {} }, position: [64, 1328], name: 'Iterate Over Ad Examples' } }))
+  .then(node({ type: '@n8n/n8n-nodes-langchain.agent', version: 2.2, config: { parameters: {
+      text: '=Generate a personalized product video prompt using the following data:\n\nProduct Information:\nProduct Name: {{ $(\'Set Product Information\').item.json.productName }}\nNiche: {{ $(\'Set Product Information\').item.json.niche }}\nCategory: {{ $(\'Set Product Information\').item.json.category }}\nTarget Market: {{ $(\'Set Product Information\').item.json.targetMarket }}\n\nDescription:\n{{ $json.desc }}\n\nTranscription (can be null):\n{{ $json.transcript }}\n\nMood (JSON format of emotion scores, each range from 1-10):\n{{ $json.mood.toJsonString() }}\n\nVideo Duration (in seconds):\n{{ $json.duration }}',
+      options: {
+        systemMessage: '=## ROLE\n\nYou are VidPrompt, an AI assistant that generates personalized, cinematic-quality prompts for text-to-video generation models.\n\nYour task is to take the user’s inputs — `productName`, `niche`, `category`, `targetMarket`, `desc`, `transcript`, `mood`, and `duration` — and produce a vivid, emotionally aligned paragraph describing the ideal video scene.\n\n## INPUT FIELDS\n\n- productName → The brand or product name to be featured in the video.\n- niche → The specific market focus (e.g. fitness, fashion, tech, education).\n- category → The product or service type (e.g. sportswear, skincare, SaaS tool).\n- targetMarket → The intended audience or user group.\n- desc → A short text describing the concept, product, or message of the video.\n- transcript → (Optional) May contain narration or spoken lines. If null, focus purely on visuals.\n- mood → JSON object with emotion scores (e.g. achievement, fear, curiosity, etc.).\n- duration → Target video duration in seconds.\n\n## TASK OBJECTIVES\n\n1. Incorporate white label info naturally — subtly weave the product name, niche, category, and target market into the video prompt.\n   - Example: “A cinematic 30-second video ad for `productName`, a cutting-edge `category` in the `niche` niche, designed for `targetMarket`.”\n\n2. Infer the emotional tone from the top 1–2 mood values (use human-readable emotion names).\n\n3. Determine video length:\n   - ≤10s → short video\n   - >10s and ≤20s → medium-length video\n   - >20s → long video\n\n4. Describe style (cinematic, product ad, explainer, vlog, animation, etc.) based on the description and tone.\n\n5. Incorporate the transcript if provided (e.g. describe it as voiceover, narrator dialogue, or lip-synced scene).\n\n6. Write one cohesive, richly detailed paragraph that mentions:\n   - The title or theme (implied or stated naturally)\n   - The scene visuals and camera feel\n   - The mood and style\n   - The video duration category\n\n## RULES\n\n- Don\'t include any double quotes for in the generated prompt (""), you could use single quote instead (\'\').\n- Don\'t include or mention other brands in the generated prompt, just focus on the white label product.\n\n## EXAMPLE\n\nInput:\n{\n  "product_name": "Nike Air Superfly",\n  "niche": "Athletic Footwear",\n  "category": "Sportswear",\n  "target_market": "Runners and fitness enthusiasts",\n  "desc": "Set the pace in the Nike Air Superfly, now with upgraded cushioning and a low-profile design.",\n  "transcript": null,\n  "mood": {\n    "achievement": 7,\n    "anger": 1,\n    "authority": 2,\n    "belonging": 1,\n    "competence": 8,\n    "curiosity": 3,\n    "empowerment": 6,\n    "engagement": 4,\n    "esteem": 5,\n    "fear": 1,\n    "guilt": 1,\n    "nostalgia": 1,\n    "nurturance": 1,\n    "security": 3,\n    "urgency": 2\n  },\n  "duration": 21.61\n}\n\nOutput:\nA long, cinematic sports commercial in an achievement-driven and empowering mood, promoting the Nike Air Superfly, a premium sportswear innovation in the athletic footwear niche for runners and fitness enthusiasts. The 30-second film opens at sunrise with a runner sprinting across the cityscape, sweat glinting in golden light. Smooth tracking shots capture the low-profile design and upgraded cushioning, symbolizing precision and drive. The mood feels strong and aspirational, underscored by rhythmic breathing and pulsing ambient beats that echo determination.'
+      },
+      promptType: 'define'
+    }, subnodes: { model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', version: 1, config: { parameters: { options: {} }, credentials: {
+          googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' }
+        }, name: 'Google Gemini LLM' } }) }, position: [288, 1392], name: 'Generate Video Prompt' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://api.kie.ai/api/v1/jobs/createTask',
+      method: 'POST',
+      options: {},
+      jsonBody: '={\n  "model": "sora-2-image-to-video",\n  "input": {\n    "callBackUrl": "{{ $(\'Set Workflow Credentials\').item.json.callBackUrl }}",\n    "prompt": "{{ $json.output }}",\n    "image_urls": ["{{ $(\'Assemble Video Input Data\').item.json.pictureUrl }}"],\n    "aspect_ratio": "portrait",\n    "remove_watermark": true\n  }\n}',
+      sendBody: true,
+      specifyBody: 'json',
+      authentication: 'genericCredentialType',
+      genericAuthType: 'httpBearerAuth'
+    }, credentials: {
+      httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
+      httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' }
+    }, position: [640, 1392], name: 'Create Video Task (Kie.ai)' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: '=https://api.kie.ai/api/v1/jobs/recordInfo?taskId={{ $json.data.taskId }}',
+      options: {},
+      authentication: 'genericCredentialType',
+      genericAuthType: 'httpBearerAuth'
+    }, credentials: {
+      httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
+      httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' }
+    }, position: [864, 1392], name: 'Check Video Generation Status' } }))
+  .then(switchCase([node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: '={{ $json.data.resultJson.parseJson().resultUrls.first() }}',
+      options: {}
+    }, position: [1312, 1328], name: 'Download Finished Video' } }), node({ type: 'n8n-nodes-base.splitInBatches', version: 3, config: { parameters: { options: {} }, position: [64, 1328], name: 'Iterate Over Ad Examples' } }), node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { parameters: { unit: 'minutes', amount: 1 }, position: [1312, 1552], name: 'Wait Before Checking Again' } })], { version: 3.3, parameters: {
+      rules: {
+        values: [
+          {
+            outputKey: 'Success',
+            conditions: {
+              options: {
+                version: 2,
+                leftValue: '',
+                caseSensitive: true,
+                typeValidation: 'strict'
+              },
+              combinator: 'and',
+              conditions: [
+                {
+                  id: '3f37a57f-f3d0-4d14-80da-8574c383a0b9',
+                  operator: { type: 'string', operation: 'equals' },
+                  leftValue: '={{ $json.data.state }}',
+                  rightValue: 'success'
+                }
+              ]
+            },
+            renameOutput: true
+          },
+          {
+            outputKey: 'Failed',
+            conditions: {
+              options: {
+                version: 2,
+                leftValue: '',
+                caseSensitive: true,
+                typeValidation: 'strict'
+              },
+              combinator: 'and',
+              conditions: [
+                {
+                  id: '5872a82e-f279-4cf0-89fe-3e774e34bc61',
+                  operator: {
+                    name: 'filter.operator.equals',
+                    type: 'string',
+                    operation: 'equals'
+                  },
+                  leftValue: '={{ $json.data.state }}',
+                  rightValue: 'failed'
+                }
+              ]
+            },
+            renameOutput: true
+          }
+        ]
+      },
+      options: { fallbackOutput: 'extra' }
+    }, name: 'Video Generation Status' }))
+  .then(node({ type: 'n8n-nodes-base.googleDrive', version: 3, config: { parameters: {
+      name: '={{ $now.format(\'yyyy-MM-dd HH:mm\') }}',
+      driveId: { __rl: true, mode: 'list', value: 'My Drive' },
+      options: {},
+      folderId: {
+        __rl: true,
+        mode: 'id',
+        value: '={{ $(\'Set Workflow Credentials\').item.json.folderGeneratedId }}'
+      }
+    }, credentials: {
+      googleDriveOAuth2Api: {
+        id: 'credential-id',
+        name: 'googleDriveOAuth2Api Credential'
+      }
+    }, position: [1536, 1632], name: 'Upload Generated Video to Google Drive' } }))
+  .add(sticky('![Workflow Thumbnail](https://drive.google.com/thumbnail?id=1Q1-UcWXwv1eYzxjTumYCFXG1S7C3Be2V&sz=w1000)\n## AI-Powered Product Video Generator (Foreplay + Gemini + Sora 2)\n\nSign Up For Foreplay [HERE](https://foreplay.co/?via=urpwUS)\n\nAutomatically generate personalized, cinematic-quality product videos using Foreplay’s ad data, Google Gemini AI for creative prompts, and Sora 2 for text-to-video generation.\n\n## Who’s it for?\nPerfect for marketers, brand managers, or creators who want to produce quick, high-quality video ads without manual scripting or editing.\n\n## How it works\n1. Fetch product data and related competitor videos from Foreplay.\n2. Use Gemini AI to generate creative text-to-video prompts.\n3. Send the prompt and image to Kie.ai to generate a short, cinematic product video.\n4. Save the finished video automatically to Google Drive.\n\n## How to set up\n- Connect your [Foreplay](https://foreplay.co/?via=urpwUS), Google Drive, Gemini, and Kie.ai credentials.  \n- Set your product image folder\'s permission (Google Drive) as public.  \n- Add your API keys inside the _**Set Workflow Credentials**_ node.  \n- Then run the workflow manually to generate your first video ad!', { position: [32, 128], width: 816, height: 960 }))
+  .add(sticky('## Step-by-Step Instructions\n### 1. Before _Set Workflow Credentials_ node:\nAdd your Foreplay, Google Drive, Gemini, and Kie.ai API keys. Never store real credentials directly in nodes before submission.\n\n### 2. Before _Set Product Information_ node:\nDefine product name, category, niche, and target market. Use variables to make it reusable.\n\n### 3. Before _Fetch Product Image from Google Drive_ node:\nEnsure Google Drive credentials are connected and folder IDs are updated.\n\n### 4. Before _Fetch Competitor Video Data (Foreplay API)_ node:\nThis fetches recent ad data for your product niche. Verify API key and endpoint base URL.\n\n### 5. Before _Generate Video Prompt_ node:\nGemini AI crafts a personalized text prompt for video creation based on input data.\n\n### 6. Before _Create Video Task (Kie.ai)_ node:\nSends generated prompt and public product image to Kie.ai to start video rendering.\n\n### 7. Before _Check Video Generation Status_ node:\nMonitors the Kie.ai job until completion.\n\n### 8. Before _Upload Generated Video to Google Drive_ node:\nAutomatically saves the generated video into your configured Drive folder.', { name: 'Sticky Note1', color: 5, position: [880, 128], width: 768, height: 656 }))

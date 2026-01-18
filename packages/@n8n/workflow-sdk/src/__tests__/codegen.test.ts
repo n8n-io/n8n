@@ -222,6 +222,33 @@ describe('generateWorkflowCode', () => {
 		expect(code).toContain("\\'quotes\\'");
 		expect(code).toContain('\\n');
 	});
+
+	it('should generate code starting with return keyword', () => {
+		const json: WorkflowJSON = {
+			id: 'test-return',
+			name: 'Test Return',
+			nodes: [],
+			connections: {},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toMatch(/^return workflow\(/);
+		expect(code).not.toContain('const wf =');
+	});
+
+	it('should not end with semicolon', () => {
+		const json: WorkflowJSON = {
+			id: 'test-no-semi',
+			name: 'Test No Semicolon',
+			nodes: [],
+			connections: {},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code.trim()).not.toMatch(/;$/);
+	});
 });
 
 // =============================================================================

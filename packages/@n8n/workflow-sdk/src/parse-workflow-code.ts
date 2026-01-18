@@ -32,9 +32,8 @@ import type { WorkflowJSON } from './types/base';
  * // parsed should match originalJson
  */
 export function parseWorkflowCode(code: string): WorkflowJSON {
-	// Transform the generated code to be executable
-	// Replace `const wf = ...` with `return ...` to capture the workflow
-	const executableCode = code.replace(/const\s+wf\s*=\s*/, 'return ');
+	// The generated code already starts with `return workflow(...)` so it's directly executable
+	const executableCode = code;
 
 	// Create a function that takes our SDK functions and returns the workflow
 	// eslint-disable-next-line @typescript-eslint/no-implied-eval

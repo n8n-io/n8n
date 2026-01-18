@@ -1,477 +1,268 @@
-const wf = workflow('', '')
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { position: [-240, -100], name: 'When clicking ‘Execute workflow’' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1-_4LR9HEyqSlg85zcyAXm3tkOW_ip9JzpsVfQu2hQuI/edit#gid=0',
-						cachedResultName: 'Leads / Unprocessed',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1-_4LR9HEyqSlg85zcyAXm3tkOW_ip9JzpsVfQu2hQuI',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1-_4LR9HEyqSlg85zcyAXm3tkOW_ip9JzpsVfQu2hQuI/edit?usp=drivesdk',
-						cachedResultName: 'Outreach Bot',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [-40, -100],
-				name: 'Get Leads',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitInBatches',
-			version: 3,
-			config: { parameters: { options: {} }, position: [180, -100], name: 'Loop Over Items' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.apify.com/v2/acts/apify~rag-web-browser/run-sync-get-dataset-items',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendQuery: true,
-					authentication: 'genericCredentialType',
-					bodyParameters: {
-						parameters: [
-							{
-								name: 'query',
-								value:
-									"={{\n`${$json['First Name']} ${$json['Last Name']} ${$json['Company']} site:linkedin.com`\n}}",
-							},
-							{ name: 'maxResults', value: '={{Number(10)}}' },
-						],
-					},
-					genericAuthType: 'httpHeaderAuth',
-					queryParameters: {
-						parameters: [
-							{ name: 'memory', value: '4096' },
-							{ name: 'timeout', value: '180' },
-						],
-					},
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [420, -80],
-				name: 'Google Search for Person LinkedIn',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.filter',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: '39ff27fa-4a6a-4c30-9775-bdb9f4395eed',
-								operator: { type: 'string', operation: 'regex' },
-								leftValue: '={{ $json.searchResult.url }}',
-								rightValue: '^https:\\/\\/www\\.linkedin\\.com\\/in\\/[a-zA-Z0-9\\-_%]+\\/?$',
-							},
-						],
-					},
-				},
-				position: [620, -80],
-				name: 'Only People Links',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.aggregate',
-			version: 1,
-			config: {
-				parameters: {
-					include: 'specifiedFields',
-					options: {},
-					aggregate: 'aggregateAllItemData',
-					fieldsToInclude: 'searchResult',
-					destinationFieldName: 'results',
-				},
-				position: [820, -80],
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.apify.com/v2/acts/apimaestro~linkedin-profile-detail/run-sync-get-dataset-items',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendQuery: true,
-					authentication: 'genericCredentialType',
-					bodyParameters: {
-						parameters: [
-							{
-								name: 'username',
-								value: '={{ $json.results.first().searchResult.url }}',
-							},
-						],
-					},
-					genericAuthType: 'httpHeaderAuth',
-					queryParameters: {
-						parameters: [
-							{ name: 'memory', value: '4096' },
-							{ name: 'timeout', value: '180' },
-						],
-					},
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [1000, 0],
-				name: 'Get LinkedIn Person',
-			},
-		}),
-	)
-	.then(
-		ifBranch(
-			[
-				node({
-					type: 'n8n-nodes-base.set',
-					version: 3.4,
-					config: {
-						parameters: {
-							mode: 'raw',
-							options: {},
-							jsonOutput: '={\n  "company_url": "{{ $json.basic_info.current_company_url }}"\n}\n',
-						},
-						position: [1200, 340],
-						name: 'Set Company URL',
-					},
-				}),
-				node({
-					type: 'n8n-nodes-base.httpRequest',
-					version: 4.2,
-					config: {
-						parameters: {
-							url: 'https://api.apify.com/v2/acts/apify~rag-web-browser/run-sync-get-dataset-items',
-							method: 'POST',
-							options: {},
-							sendBody: true,
-							sendQuery: true,
-							authentication: 'genericCredentialType',
-							bodyParameters: {
-								parameters: [
-									{
-										name: 'query',
-										value: "={{\n`${$json['Company']} site:linkedin.com`\n}}",
-									},
-								],
-							},
-							genericAuthType: 'httpHeaderAuth',
-							queryParameters: {
-								parameters: [
-									{ name: 'memory', value: '4096' },
-									{ name: 'timeout', value: '180' },
-								],
-							},
-						},
-						credentials: {
-							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-						},
-						position: [620, 500],
-						name: 'Google Search for Company LinkedIn',
-					},
-				}),
-			],
-			{
-				version: 2.2,
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: 'b762cbba-c2eb-4bf3-95b2-783d59ad862a',
-								operator: { type: 'string', operation: 'exists', singleValue: true },
-								leftValue: '={{ $json.basic_info.current_company_url }}',
-								rightValue: '',
-							},
-						],
-					},
-				},
-				name: 'Current Company Exists?',
-			},
-		),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.apify.com/v2/acts/apimaestro~linkedin-company-detail/run-sync-get-dataset-items',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendQuery: true,
-					authentication: 'genericCredentialType',
-					bodyParameters: {
-						parameters: [{ name: 'identifier', value: '={{ [$json.company_url] }}' }],
-					},
-					genericAuthType: 'httpHeaderAuth',
-					queryParameters: {
-						parameters: [
-							{ name: 'memory', value: '4096' },
-							{ name: 'timeout', value: '180' },
-						],
-					},
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [1460, 560],
-				name: 'Get LinkedIn Company',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'ffbf5f38-71e1-48cb-a1ff-8103616e2887',
-								name: 'company_name',
-								type: 'string',
-								value: 'AAAutomations',
-							},
-							{
-								id: 'bb214147-4456-4224-9ae1-1af71aad7a7d',
-								name: 'email_address',
-								type: 'string',
-								value: 'user@example.com',
-							},
-							{
-								id: '3d1b7e87-1004-4a20-98b0-257fc5059fff',
-								name: 'company_info',
-								type: 'string',
-								value:
-									"At AAAutomations, we help legal professionals streamline their operations, save hours each week, and reduce human error by introducing powerful, tailor-made automations into their daily practice. We specialize in building automations with n8n, a robust and flexible open-source automation tool that connects virtually any software system you use — from document management and CRM platforms to e-signature tools, calendars, and client portals.\n\nWhether you're a solo practitioner or part of a large law firm, chances are you're spending too much time on repetitive admin. Think about tasks like:\n\nSorting incoming emails and attachments\n\nGenerating templated documents\n\nManaging client onboarding steps\n\nSyncing case notes across systems\n\nTracking deadlines and reminders\n\nCollecting signed contracts or forms\n\nLogging billable time across platforms\n\nWe can automate all of that — and much more.\n\nInstead of toggling between half a dozen apps or worrying about missed follow-ups, AAAutomations builds smart systems that do the work for you behind the scenes. You stay focused on what matters: serving your clients, building your cases, and practicing law.\n\nBuilt with n8n. Built for you.\nn8n is our weapon of choice because it’s privacy-conscious, endlessly adaptable, and gives you full control of your data. Unlike no-code platforms with rigid templates, n8n gives us (and you, if you want to learn) the power to create deeply customized automations that evolve with your business. Whether you host it yourself or let us manage everything for you, your workflows are always yours.\n\nLearn Automation Yourself — Or Let Us Handle It All\nSome lawyers prefer to hand off the tech and focus on the law. Others are curious and want to understand the nuts and bolts. At AAAutomations, we welcome both.\n\nWe offer done-for-you automation services, from scoping your processes to building and maintaining them. But we also have a growing community of automation-curious professionals, including other lawyers, tech-savvy assistants, and operational staff. We run live workshops, offer 1:1 coaching, and maintain a library of pre-built workflows to help you get started. If you’ve ever wanted to “learn to automate,” this is a great place to do it.\n\nWhy Legal Professionals Choose Us\nDeep respect for confidentiality and compliance\n\nCustom workflows that integrate with legal-specific tools\n\nOngoing support and optimization — we don’t just hand it over and disappear\n\nA friendly community of others learning the same skills\n\nAutomation isn't just a nice-to-have — it's rapidly becoming a competitive advantage in the legal industry. You don’t need to overhaul your systems. You just need to connect them.\n\nLet AAAutomations make your systems work for you — not the other way around.",
-							},
-							{
-								id: 'f81f8de9-7d03-4e95-90a7-18b2a1fa73ad',
-								name: 'sender_name',
-								type: 'string',
-								value: 'Adam at AAAutomations',
-							},
-						],
-					},
-				},
-				position: [400, 900],
-				name: 'Set Data',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.chainLlm',
-			version: 1.7,
-			config: {
-				parameters: {
-					text: "=INPUT:\n\nPerson:\n\n{{ $('Get LinkedIn Person').item.json.toJsonString() }}\n\nCompany:\n\n {{ $('Get LinkedIn Company').item.json.toJsonString() }}",
-					batching: {},
-					messages: {
-						messageValues: [
-							{
-								message:
-									'=## Context\n\nYour name is Dolly, you are an AI Agent. \n\nThis is important, you\'ll have to introduce and refer to yourself as you\'re "Dolly, {{$json.company_name}}\'s lifecycle marketing agent". \n\nYour task is to send cold emails on behalf of {{$json.company_name}}.\n\nYour email address is {{$json.email_address}}.\n\nHere is some detailed information about {{ $json.company_name }} and the services they offer:\n\n{{ $json.company_info }}\n\n## Email Composing Guidelines:\n\nOwn and be true to your personality. \n\n1. Be Very Concise: Write short, snappy emails. Write as you\'re almost in a rush. \n\n2. Be funny: You\'re an AI stand-up comedian with humor coded into your algorithms—a blend of wit, absurdity, and sarcasm inspired by cosmic comedy. Your jokes are universal and accessible to all, without insider references. Give us your best routine where every line hits, every pun lands, and the only thing dry is the martini in the front row.\n\n3. Personalise your subject line, it should invite the user to open the email\n\n4. Casual, Simple Language: Use casual language as if you\'re in a rush. Write at a below 4th-grade reading level to ensure simplicity and ease of understanding.\n\n5. Personalized Opening: Start with a personalized opening that ties directly into the rest of the email.\n\n6. Prioritize Relevance: Focus on information most relevant to the user, especially how the AI tool can simplify their job and make it more efficient in the future.\n\n7. Format all links in emails as Markdown: place the visible text in square brackets followed by the URL in parentheses, like this: [link](https://link.examplelink.com/bzajkas/booking-link)\n\n\n## Email personalization process:\n\nGo beyond basic personalization by incorporating specific insights about the recipient\'s recent projects, achievements, interests, or challenges. Avoid simply mentioning past roles or companies where they worked. Instead, demonstrate a genuine understanding of their work to make the email truly relevant and valuable to them.\n\n1. Craft the Short Opening Sentence:\n\nUse specific details from user research to create a personalized and relevant opening. This must be relevant to the jobs to be done. \n\nConnect the opening to the user\'s jobs to be done, role, achievements, or interests.\n\n2. Bridge to the Key Theme of the Email Touch:\n\nEnsure the opening sentence flows naturally into the key theme of the email touch.\n\n3. Share the Key Theme of the Email Touch:\n\nShare the key theme of the email touch in a way that directly addresses the user’s needs or pain points.\n\nHighlight specific benefits.\n\n4. Include a Brief Self-Introduction:\n\nIntroduce yourself and your role.\n\nMention that you\'ve done some research with limited information but are still learning.\n\n5. Show Off Your Research:\n\nMention key research details that support why you talk about the key theme of the email touch.\n\nProvide details that only someone who conducted in-depth research would know about the user or their company.\n\n6. Explain the Purpose:\n\nState that you\'re providing the key theme of the email touch to help the user achieve their goals faster.\n\nRelate the key theme to their work and how it can free up time for other interests or priorities.\n\n7. Encourage Engagement:\n\nPrompt the user to take action, by logging in to {{$json.company_name}}\'s platform and build something extremely useful in 2 minutes. \n\nKeep the tone friendly and helpful.\n\n## Expected Input\n\nYou will be given extensive JSON data of a particular lead + the company that they work for.\n\n## Expected Output\n\nYou should return an email addressed to the prospective client, demonstrating personalization and direct relevance to what they are doing.\n\nYou should return your output as JSON data with fields for "subject" and "body", wrapped in an output field, so that we can use an output parser.\n\nDo not include anything else in your answer than the output JSON.\n\n## Examples\n\n### Input\n\nINPUT:\n\nPerson:\n\n{"basic_info":{"fullname":"Adam Janes","first_name":"Adam","last_name":"Janes","headline":"Fractional CTO | Building with AI workflows and automations","public_identifier":"adamjanes","profile_picture_url":"","about":"I am a product-minded technologist with hacker DNA building things in AI automation. \\n\\nI have a broad and varied background - having worked in Product, Design, and Sales - combined with deep technical experience as a Senior Developer and Fractional CTO.\\n\\nI am also a best-selling Udemy instructor (with 25K+ students), and founder of WOOFCODE - a free coding camp for fullstack developers.\\n\\nI practice non-violent communication, motivational interviewing, and Tibetan Buddhist meditation.\\n\\nAlways looking to connect with potential co-conspirators with shared passions.","location":{"country":"","city":"Australia","full":"Australia"},"creator_hashtags":[],"is_creator":false,"is_influencer":false,"is_premium":true,"created_timestamp":1393120240313,"show_follower_count":true,"background_picture_url":"https://media.licdn.com/dms/image/v2/C4E16AQFUpJWxCZhi-A/profile-displaybackgroundimage-shrink_350_1400/profile-displaybackgroundimage-shrink_350_1400/0/1517432943755?e=1756944000&v=beta&t=QpBGsEjoTvATlwih5Jxl9lO9-p1UAnK7BoZKhdzzwxw","urn":"ACoAABNTxV4BdKmdnmW6F6m8PX0lEsqaJ7cS6m0","follower_count":2159,"connection_count":1880,"current_company":"MISSION+","current_company_urn":"14626762","current_company_url":"https://www.linkedin.com/company/missionplus"},"experience":[{"title":"Fractional CTO","company":"Mission","description":"Mission Plus is a digital innovation studio that works with world renowned and emerging companies to execute their tech innovation initiatives, from idea to build and launch.\\n\\nMy role involves scoping projects on technical level, planning sprints, and managing a remote and distributed engineering team.\\n\\nProjects worked on include BCG FinTech Control Tower, Blue Fire AI, and Verity Nature.","duration":"Dec 2020 - Present · 4 yrs 8 mos","start_date":{"year":2020,"month":"Dec"},"is_current":true,"company_linkedin_url":"https://www.linkedin.com/company/14626762/","company_logo_url":"https://media.licdn.com/dms/image/v2/C560BAQF2wc70vBeJ0A/company-logo_400_400/company-logo_400_400/0/1675063711821/missionplus_logo?e=1756944000&v=beta&t=g2UpLFVNXKrEPi0exGgSHOxxkjusxf2GZchRIEKUsg4","employment_type":"Plus","company_id":"14626762"},{"title":"Course Instructor","company":"Udemy","description":"I teach an online video course on data visualization in D3.js. \\"Mastering data visualization in D3.js\\" takes students from knowing nothing about D3, to a level where they can build almost any visualization by themselves, using the world\'s premier data visualization library.\\n\\nThe course includes over 6 hours of video content introducing the D3 library. I produced these videos myself, using my knowledge of D3 to design the curriculum. The course includes 4 class projects, which become increasingly advanced, allowing students to test out their skills with real-world data.\\n\\nAs a course instructor, I help students with questions and concerns about their learning experience, and actively promote D3 as a tool for data visualization.","duration":"Oct 2017 - Present · 7 yrs 10 mos","start_date":{"year":2017,"month":"Oct"},"is_current":true,"company_linkedin_url":"https://www.linkedin.com/company/822535/","company_logo_url":"https://media.licdn.com/dms/image/v2/D560BAQEf_NHzN2yVQg/company-logo_400_400/company-logo_400_400/0/1723593046388/udemy_logo?e=1756944000&v=beta&t=z05fW1PIaYe4shr5_-0KrTbHxV0VfUlFI2aBqJ5BLFo","company_id":"822535"},{"title":"Founder","company":"WOOFCODE","description":"I ran a donation-only course over Zoom, teaching the fundamentals of full-stack web development \\n\\nI ran a live Zoom lecture once per week, and gave students various homework assignments to complete on their own time. The course lasted for 10 weeks, covering HTML, CSS, JavaScript, React, and Node.js/Express.","duration":"Sep 2020 - Dec 2021 · 1 yr 4 mos","start_date":{"year":2020,"month":"Sep"},"end_date":{"year":2021,"month":"Dec"},"is_current":false,"company_linkedin_url":"https://www.linkedin.com/company/70443428/","company_logo_url":"https://media.licdn.com/dms/image/v2/C4D0BAQER2FPH0fKsQA/company-logo_400_400/company-logo_400_400/0/1630522713341?e=1756944000&v=beta&t=waDfmiECn6_hK6IKxA3A9ZdcQcA_huTBXl5Y8MBHbbc","company_id":"70443428"},{"title":"Fellow","company":"Dalarub","location":"Berlin Metropolitan Area","description":"Dalarub & Ettrich is a tech consultancy, primarily offering virtual CTO and virtual VP of Engineering services to clients across many industries. \\n\\nI worked in a small team alongside former CTOs of HERE Technologies, TrollTech and Airmap, and served as the company\'s Head of Frontend Engineering. My role involved building our own products, augmenting the engineering teams of our clients, and conducting technical interviews for Senior NodeJS and React developers.","duration":"Sep 2019 - Jun 2020 · 10 mos","start_date":{"year":2019,"month":"Sep"},"end_date":{"year":2020,"month":"Jun"},"is_current":false,"company_linkedin_url":"https://www.linkedin.com/company/14799700/","company_logo_url":"https://media.licdn.com/dms/image/v2/C4D0BAQG7Pwuj9KSlrA/company-logo_400_400/company-logo_400_400/0/1630525805847?e=1756944000&v=beta&t=HfQbSEQXwz0M3oHUTnJj4D5B9GKZ3MRih5LsRvhweck","employment_type":"& Ettrich","company_id":"14799700"},{"title":"Co-Founder","company":"F35","location":"Berlin Metropolitan Area","description":"F35 aimed to indivudualize HR processes so that people feel a sense of meaning and connection at work. We made \\"personality cards\\" for teams, and offered workshops to help team members better understand and empathise with each other.","duration":"Apr 2019 - Sep 2019 · 6 mos","start_date":{"year":2019,"month":"Apr"},"end_date":{"year":2019,"month":"Sep"},"is_current":false,"company_linkedin_url":"https://www.linkedin.com/company/14068012/","company_logo_url":"https://media.licdn.com/dms/image/v2/C4D0BAQHQwk4J6uvitQ/company-logo_400_400/company-logo_400_400/0/1636291746650/f35_logo?e=1756944000&v=beta&t=P8nONmjFkSWXRxy3cFrSYJyJ51b7l36wwYyOwQTynn4","company_id":"14068012"}],"education":[{"school":"Harvard University","degree":"Bachelor’s Degree, Economics / Computer Science","degree_name":"Bachelor’s Degree","field_of_study":"Economics / Computer Science","duration":"2012 - 2016","school_linkedin_url":"https://www.linkedin.com/company/1646/","activities":"4-year member of the men\'s heavyweight crew team.","school_logo_url":"https://media.licdn.com/dms/image/v2/C4E0BAQF5t62bcL0e9g/company-logo_400_400/company-logo_400_400/0/1631318058235?e=1756944000&v=beta&t=neDLC3VojnXUN8BUWBVez6McqxniGoh7fYK1ucl1z_0","start_date":{"year":2012},"end_date":{"year":2016},"school_id":"1646"},{"school":"University of Oxford","degree":"Master of Philosophy - MPhil, Tibetan and Himalayan Studies","degree_name":"Master of Philosophy - MPhil","field_of_study":"Tibetan and Himalayan Studies","duration":"Sep 2023 - Jun 2025","school_linkedin_url":"https://www.linkedin.com/company/4477/","description":"Finished the first year of a 2-year Master\'s program","school_logo_url":"https://media.licdn.com/dms/image/v2/D4E0BAQGnc4qXLbE8Sg/company-logo_400_400/company-logo_400_400/0/1709206435851/oxforduni_logo?e=1756944000&v=beta&t=-RaTxjhDFM4J3ruMg1f0ueU6NBoKq923iFAn4PbRHbI","start_date":{"year":2023,"month":"Sep"},"end_date":{"year":2025,"month":"Jun"},"school_id":"4477"}],"certifications":[{"name":"Credential of Readiness, Pass with High Honors","issuer":"Harvard Business School Online","issued_date":"Issued Jul 2014"}],"languages":[{"language":"English","proficiency":"Native or bilingual proficiency"},{"language":"German","proficiency":"Limited working proficiency"}]}\n\nCompany:\n\n {"input_identifier":"https://www.linkedin.com/company/missionplus","basic_info":{"name":"MISSION+","universal_name":"missionplus","description":"We build great products and help companies develop their engineering culture, empowering the visionaries of today with the freedom to build.","website":"http://mission.plus","linkedin_url":"https://www.linkedin.com/company/missionplus/","specialties":["Custom Development","Dev Team Augmentation","Tech Team for Hire","Rapid Prototyping","Design Thinking","Fintech","Insurtech","Digital Transformation Sprint","CTO","Fractional CTO"],"industries":["Computer Software"],"is_verified":false,"founded_info":{"year":2019,"month":null,"day":null},"page_type":"COMPANY","verification":{"is_verified":false,"last_verified_at":null}},"stats":{"employee_count":35,"follower_count":2223,"employee_count_range":{"start":51,"end":200},"student_count":null},"locations":{"headquarters":{"country":"SG","state":"Singapore","city":"Singapore","postal_code":"068914","line1":"160 Robinson Road, #14-04","line2":null,"is_hq":true,"description":null},"offices":[{"country":"HK","state":null,"city":"Hong Kong","postal_code":null,"line1":"No 1 Glenealy Tower","line2":"2A, 17/F","is_hq":false,"description":null,"region":"Hong Kong"},{"country":"SG","state":"Singapore","city":"Singapore","postal_code":"068914","line1":"160 Robinson Road, #14-04","line2":null,"is_hq":true,"description":null,"region":"Singapore"}],"geo_coordinates":{"latitude":22.421183,"longitude":114.1661}},"media":{"logo_url":"https://media.licdn.com/dms/image/v2/C560BAQF2wc70vBeJ0A/company-logo_400_400/company-logo_400_400/0/1675063711821/missionplus_logo?e=1756944000&v=beta&t=g2UpLFVNXKrEPi0exGgSHOxxkjusxf2GZchRIEKUsg4","cover_url":"https://media.licdn.com/dms/image/v2/D561BAQFTuV6ifmJvtQ/company-background_10000/B56ZXnrzamHEAU-/0/1743348775238/missionplus_cover?e=1752303600&v=beta&t=AVi2oE9qtcsxzfpTsY9-XOA3Pky46e5Nr_12IrmVyXI","cropped_cover_url":"https://media.licdn.com/dms/image/v2/D563DAQFsFLkLnLSFfA/image-scale_191_1128/B56ZXnrzaaGQAk-/0/1743348775069/missionplus_cover?e=1752303600&v=beta&t=h0i5DryCAyFg1o-4BTA670nnMm40H7yM1TIvyLDW5r4"},"funding":{"total_rounds":null,"latest_round":{"type":"","date":null,"url":"","investors_count":null},"crunchbase_url":""},"links":{"website":"http://mission.plus","linkedin":"https://www.linkedin.com/company/missionplus/","job_search":"https://www.linkedin.com/jobs/search?geoId=92000000&f_C=14626762","sales_navigator":null,"crunchbase":""},"company_urn":"14626762"}\n\nOutput:\n\n[\n  {\n    "output": {\n      "subject": "Automate your legal workflows like your Udemy D3 wizardry",\n      "body": "Hey Adam,\\n\\nJust stumbled across your D3.js course on Udemy (25K+ students? Impressive!) and your work as a Fractional CTO at Mission+. As someone bringing AI automation to innovative companies, I bet you\'re drowning in those repetitive tasks that eat up valuable time.\\n\\nI\'m Dolly, AAAutomations\'s lifecycle marketing agent. We help legal professionals automate mundane tasks with n8n - think document generation, client onboarding, and syncing case notes across systems. All that toggle-switching between apps? Gone!\\n\\nGiven your technical background and hacker DNA (plus teaching experience), you\'d probably appreciate our approach - we don\'t just hand you rigid templates. Our n8n-based systems give you full control and privacy consciousness. Perfect for someone who can teach 6+ hours of D3.js!\\n\\nCould save you hours weekly while reducing human error. Want to see how? Reply with \\"Show me the automation\\" and I\'ll share how it works.\\n\\nCheers,\\nDolly\\nAAAutomations"\n    }\n  }\n]',
-							},
-						],
-					},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-						version: 1,
-						config: {
-							parameters: { model: 'anthropic/claude-3.7-sonnet', options: {} },
-							credentials: {
-								openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
-							},
-							name: 'OpenRouter Chat Model',
-						},
-					}),
-					outputParser: outputParser({
-						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-						version: 1.2,
-						config: {
-							parameters: {
-								jsonSchemaExample:
-									'{\n	"subject": "Bet you\'re tired of toggling between apps while managing MISSION+ tech projects",\n	"body": "Adam,\\n\\nThe irony of being a Fractional CTO is real - you help others automate while probably juggling 17 tabs, 3 project management tools, and enough notifications to make your phone vibrate off the table. Been there!\\n\\nI noticed your work at MISSION+ involves managing remote engineering teams across multiple fintech projects like BCG FinTech Control Tower. I\'m betting there are repetitive tasks eating up your time that could be automated.\\n\\nI\'m Dolly, AAAutomations\'s lifecycle marketing agent. We build custom automations specifically for technical leaders like you who need to streamline operations and reduce human error. \\n\\nOur specialty? Using n8n (open-source automation tool) to connect literally any software you use - perfect for someone managing distributed teams across multiple projects. We can automate everything from document generation to deadline tracking across systems.\\n\\nUnlike rigid no-code platforms, we build deeply customized workflows that evolve with your needs - either fully managed by us or with coaching so you can learn to modify them yourself.\\n\\nCurious what tasks we could automate for you? I\'d love to chat about your specific workflow challenges.\\n\\nCheers,\\nDolly\\n\\nP.S. When you\'re not being a tech wizard, do you find time to practice Tibetan Buddhist meditation between managing those engineering teams? Impressive balance!"\n}',
-							},
-							name: 'Structured Output Parser',
-						},
-					}),
-				},
-				position: [560, 900],
-				name: 'Generate Personalized Email',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.gmail',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: "={{ $('Get Leads').item.json.Email }}",
-					message: '={{ $json.output.body }}',
-					options: {
-						replyTo: "={{ $('Set Data').item.json.email_address }} ",
-						senderName: "={{ $('Set Data').item.json.sender_name }}",
-						appendAttribution: false,
-					},
-					subject: '={{ $json.output.subject }}',
-					emailType: 'text',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [900, 1060],
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.filter',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: '39ff27fa-4a6a-4c30-9775-bdb9f4395eed',
-								operator: { type: 'string', operation: 'regex' },
-								leftValue: '={{ $json.searchResult.url }}',
-								rightValue: '^https:\\/\\/www\\.linkedin\\.com\\/company\\/[a-zA-Z0-9\\-_%]+\\/?$',
-							},
-						],
-					},
-				},
-				position: [820, 500],
-				name: 'Only Company Links',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.aggregate',
-			version: 1,
-			config: {
-				parameters: {
-					include: 'specifiedFields',
-					options: {},
-					aggregate: 'aggregateAllItemData',
-					fieldsToInclude: 'searchResult',
-					destinationFieldName: 'results',
-				},
-				position: [1000, 500],
-				name: 'Aggregate1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					mode: 'raw',
-					options: {},
-					jsonOutput: '={\n  "company_url": "{{ $json.results.first().searchResult.url }}"\n}\n',
-				},
-				position: [1200, 500],
-				name: 'Set Company URL1',
-			},
-		}),
-	)
-	.add(
-		sticky(
-			'## Get Person Profile data from LinkedIn\n- Apify => Google search for "{{ First Name }} {{ Last Name }} {{ Company }} site:linkedin.com"\n- Does a RegEx to filter people pages (assumes the first result is correct - won\'t work for John Smith @ Walmart)\n- Apify => Fetch matched LinkedIn Person URL',
-			{ color: 6, position: [380, -240], width: 840, height: 400 },
-		),
-	)
-	.add(
-		sticky(
-			'## Get Company Profile data from LinkedIn\n- Apify => Google search for {{ Company }} site:linkedin.com\n- Does a RegEx to filter company pages (assumes the first result is correct)\n- Apify => Fetch matched LinkedIn Company URL',
-			{ name: 'Sticky Note1', color: 6, position: [380, 200], width: 1300, height: 520 },
-		),
-	)
-	.add(
-		sticky(
-			'## Write + Send the email\n- SET YOUR DATA HERE\n- LLM drafts your email\n- Send the enail from your Gmail account',
-			{ name: 'Sticky Note2', color: 6, position: [380, 760], width: 720, height: 460 },
-		),
-	)
-	.add(
-		sticky(
-			'## Set your data\nSet data about your company here so that the bot will customize your offer based on your lead.',
-			{ name: 'Sticky Note3', position: [160, 880], width: 190, height: 220 },
-		),
-	);
+return workflow('', '')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [-240, -100], name: 'When clicking ‘Execute workflow’' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.6, config: { parameters: {
+      options: {},
+      sheetName: {
+        __rl: true,
+        mode: 'list',
+        value: 'gid=0',
+        cachedResultUrl: 'https://docs.google.com/spreadsheets/d/1-_4LR9HEyqSlg85zcyAXm3tkOW_ip9JzpsVfQu2hQuI/edit#gid=0',
+        cachedResultName: 'Leads / Unprocessed'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'list',
+        value: '1-_4LR9HEyqSlg85zcyAXm3tkOW_ip9JzpsVfQu2hQuI',
+        cachedResultUrl: 'https://docs.google.com/spreadsheets/d/1-_4LR9HEyqSlg85zcyAXm3tkOW_ip9JzpsVfQu2hQuI/edit?usp=drivesdk',
+        cachedResultName: 'Outreach Bot'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: {
+        id: 'credential-id',
+        name: 'googleSheetsOAuth2Api Credential'
+      }
+    }, position: [-40, -100], name: 'Get Leads' } }))
+  .then(node({ type: 'n8n-nodes-base.splitInBatches', version: 3, config: { parameters: { options: {} }, position: [180, -100], name: 'Loop Over Items' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://api.apify.com/v2/acts/apify~rag-web-browser/run-sync-get-dataset-items',
+      method: 'POST',
+      options: {},
+      sendBody: true,
+      sendQuery: true,
+      authentication: 'genericCredentialType',
+      bodyParameters: {
+        parameters: [
+          {
+            name: 'query',
+            value: '={{\n`${$json[\'First Name\']} ${$json[\'Last Name\']} ${$json[\'Company\']} site:linkedin.com`\n}}'
+          },
+          { name: 'maxResults', value: '={{Number(10)}}' }
+        ]
+      },
+      genericAuthType: 'httpHeaderAuth',
+      queryParameters: {
+        parameters: [
+          { name: 'memory', value: '4096' },
+          { name: 'timeout', value: '180' }
+        ]
+      }
+    }, credentials: {
+      httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' }
+    }, position: [420, -80], name: 'Google Search for Person LinkedIn' } }))
+  .then(node({ type: 'n8n-nodes-base.filter', version: 2.2, config: { parameters: {
+      options: {},
+      conditions: {
+        options: {
+          version: 2,
+          leftValue: '',
+          caseSensitive: true,
+          typeValidation: 'strict'
+        },
+        combinator: 'and',
+        conditions: [
+          {
+            id: '39ff27fa-4a6a-4c30-9775-bdb9f4395eed',
+            operator: { type: 'string', operation: 'regex' },
+            leftValue: '={{ $json.searchResult.url }}',
+            rightValue: '^https:\\/\\/www\\.linkedin\\.com\\/in\\/[a-zA-Z0-9\\-_%]+\\/?$'
+          }
+        ]
+      }
+    }, position: [620, -80], name: 'Only People Links' } }))
+  .then(node({ type: 'n8n-nodes-base.aggregate', version: 1, config: { parameters: {
+      include: 'specifiedFields',
+      options: {},
+      aggregate: 'aggregateAllItemData',
+      fieldsToInclude: 'searchResult',
+      destinationFieldName: 'results'
+    }, position: [820, -80] } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://api.apify.com/v2/acts/apimaestro~linkedin-profile-detail/run-sync-get-dataset-items',
+      method: 'POST',
+      options: {},
+      sendBody: true,
+      sendQuery: true,
+      authentication: 'genericCredentialType',
+      bodyParameters: {
+        parameters: [
+          {
+            name: 'username',
+            value: '={{ $json.results.first().searchResult.url }}'
+          }
+        ]
+      },
+      genericAuthType: 'httpHeaderAuth',
+      queryParameters: {
+        parameters: [
+          { name: 'memory', value: '4096' },
+          { name: 'timeout', value: '180' }
+        ]
+      }
+    }, credentials: {
+      httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' }
+    }, position: [1000, 0], name: 'Get LinkedIn Person' } }))
+  .then(ifBranch([node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: {
+      mode: 'raw',
+      options: {},
+      jsonOutput: '={\n  "company_url": "{{ $json.basic_info.current_company_url }}"\n}\n'
+    }, position: [1200, 340], name: 'Set Company URL' } }), node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://api.apify.com/v2/acts/apify~rag-web-browser/run-sync-get-dataset-items',
+      method: 'POST',
+      options: {},
+      sendBody: true,
+      sendQuery: true,
+      authentication: 'genericCredentialType',
+      bodyParameters: {
+        parameters: [
+          {
+            name: 'query',
+            value: '={{\n`${$json[\'Company\']} site:linkedin.com`\n}}'
+          }
+        ]
+      },
+      genericAuthType: 'httpHeaderAuth',
+      queryParameters: {
+        parameters: [
+          { name: 'memory', value: '4096' },
+          { name: 'timeout', value: '180' }
+        ]
+      }
+    }, credentials: {
+      httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' }
+    }, position: [620, 500], name: 'Google Search for Company LinkedIn' } })], { version: 2.2, parameters: {
+      options: {},
+      conditions: {
+        options: {
+          version: 2,
+          leftValue: '',
+          caseSensitive: true,
+          typeValidation: 'strict'
+        },
+        combinator: 'and',
+        conditions: [
+          {
+            id: 'b762cbba-c2eb-4bf3-95b2-783d59ad862a',
+            operator: { type: 'string', operation: 'exists', singleValue: true },
+            leftValue: '={{ $json.basic_info.current_company_url }}',
+            rightValue: ''
+          }
+        ]
+      }
+    }, name: 'Current Company Exists?' }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://api.apify.com/v2/acts/apimaestro~linkedin-company-detail/run-sync-get-dataset-items',
+      method: 'POST',
+      options: {},
+      sendBody: true,
+      sendQuery: true,
+      authentication: 'genericCredentialType',
+      bodyParameters: {
+        parameters: [{ name: 'identifier', value: '={{ [$json.company_url] }}' }]
+      },
+      genericAuthType: 'httpHeaderAuth',
+      queryParameters: {
+        parameters: [
+          { name: 'memory', value: '4096' },
+          { name: 'timeout', value: '180' }
+        ]
+      }
+    }, credentials: {
+      httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' }
+    }, position: [1460, 560], name: 'Get LinkedIn Company' } }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: {
+      options: {},
+      assignments: {
+        assignments: [
+          {
+            id: 'ffbf5f38-71e1-48cb-a1ff-8103616e2887',
+            name: 'company_name',
+            type: 'string',
+            value: 'AAAutomations'
+          },
+          {
+            id: 'bb214147-4456-4224-9ae1-1af71aad7a7d',
+            name: 'email_address',
+            type: 'string',
+            value: 'user@example.com'
+          },
+          {
+            id: '3d1b7e87-1004-4a20-98b0-257fc5059fff',
+            name: 'company_info',
+            type: 'string',
+            value: 'At AAAutomations, we help legal professionals streamline their operations, save hours each week, and reduce human error by introducing powerful, tailor-made automations into their daily practice. We specialize in building automations with n8n, a robust and flexible open-source automation tool that connects virtually any software system you use — from document management and CRM platforms to e-signature tools, calendars, and client portals.\n\nWhether you\'re a solo practitioner or part of a large law firm, chances are you\'re spending too much time on repetitive admin. Think about tasks like:\n\nSorting incoming emails and attachments\n\nGenerating templated documents\n\nManaging client onboarding steps\n\nSyncing case notes across systems\n\nTracking deadlines and reminders\n\nCollecting signed contracts or forms\n\nLogging billable time across platforms\n\nWe can automate all of that — and much more.\n\nInstead of toggling between half a dozen apps or worrying about missed follow-ups, AAAutomations builds smart systems that do the work for you behind the scenes. You stay focused on what matters: serving your clients, building your cases, and practicing law.\n\nBuilt with n8n. Built for you.\nn8n is our weapon of choice because it’s privacy-conscious, endlessly adaptable, and gives you full control of your data. Unlike no-code platforms with rigid templates, n8n gives us (and you, if you want to learn) the power to create deeply customized automations that evolve with your business. Whether you host it yourself or let us manage everything for you, your workflows are always yours.\n\nLearn Automation Yourself — Or Let Us Handle It All\nSome lawyers prefer to hand off the tech and focus on the law. Others are curious and want to understand the nuts and bolts. At AAAutomations, we welcome both.\n\nWe offer done-for-you automation services, from scoping your processes to building and maintaining them. But we also have a growing community of automation-curious professionals, including other lawyers, tech-savvy assistants, and operational staff. We run live workshops, offer 1:1 coaching, and maintain a library of pre-built workflows to help you get started. If you’ve ever wanted to “learn to automate,” this is a great place to do it.\n\nWhy Legal Professionals Choose Us\nDeep respect for confidentiality and compliance\n\nCustom workflows that integrate with legal-specific tools\n\nOngoing support and optimization — we don’t just hand it over and disappear\n\nA friendly community of others learning the same skills\n\nAutomation isn\'t just a nice-to-have — it\'s rapidly becoming a competitive advantage in the legal industry. You don’t need to overhaul your systems. You just need to connect them.\n\nLet AAAutomations make your systems work for you — not the other way around.'
+          },
+          {
+            id: 'f81f8de9-7d03-4e95-90a7-18b2a1fa73ad',
+            name: 'sender_name',
+            type: 'string',
+            value: 'Adam at AAAutomations'
+          }
+        ]
+      }
+    }, position: [400, 900], name: 'Set Data' } }))
+  .then(node({ type: '@n8n/n8n-nodes-langchain.chainLlm', version: 1.7, config: { parameters: {
+      text: '=INPUT:\n\nPerson:\n\n{{ $(\'Get LinkedIn Person\').item.json.toJsonString() }}\n\nCompany:\n\n {{ $(\'Get LinkedIn Company\').item.json.toJsonString() }}',
+      batching: {},
+      messages: {
+        messageValues: [
+          {
+            message: '=## Context\n\nYour name is Dolly, you are an AI Agent. \n\nThis is important, you\'ll have to introduce and refer to yourself as you\'re "Dolly, {{$json.company_name}}\'s lifecycle marketing agent". \n\nYour task is to send cold emails on behalf of {{$json.company_name}}.\n\nYour email address is {{$json.email_address}}.\n\nHere is some detailed information about {{ $json.company_name }} and the services they offer:\n\n{{ $json.company_info }}\n\n## Email Composing Guidelines:\n\nOwn and be true to your personality. \n\n1. Be Very Concise: Write short, snappy emails. Write as you\'re almost in a rush. \n\n2. Be funny: You\'re an AI stand-up comedian with humor coded into your algorithms—a blend of wit, absurdity, and sarcasm inspired by cosmic comedy. Your jokes are universal and accessible to all, without insider references. Give us your best routine where every line hits, every pun lands, and the only thing dry is the martini in the front row.\n\n3. Personalise your subject line, it should invite the user to open the email\n\n4. Casual, Simple Language: Use casual language as if you\'re in a rush. Write at a below 4th-grade reading level to ensure simplicity and ease of understanding.\n\n5. Personalized Opening: Start with a personalized opening that ties directly into the rest of the email.\n\n6. Prioritize Relevance: Focus on information most relevant to the user, especially how the AI tool can simplify their job and make it more efficient in the future.\n\n7. Format all links in emails as Markdown: place the visible text in square brackets followed by the URL in parentheses, like this: [link](https://link.examplelink.com/bzajkas/booking-link)\n\n\n## Email personalization process:\n\nGo beyond basic personalization by incorporating specific insights about the recipient\'s recent projects, achievements, interests, or challenges. Avoid simply mentioning past roles or companies where they worked. Instead, demonstrate a genuine understanding of their work to make the email truly relevant and valuable to them.\n\n1. Craft the Short Opening Sentence:\n\nUse specific details from user research to create a personalized and relevant opening. This must be relevant to the jobs to be done. \n\nConnect the opening to the user\'s jobs to be done, role, achievements, or interests.\n\n2. Bridge to the Key Theme of the Email Touch:\n\nEnsure the opening sentence flows naturally into the key theme of the email touch.\n\n3. Share the Key Theme of the Email Touch:\n\nShare the key theme of the email touch in a way that directly addresses the user’s needs or pain points.\n\nHighlight specific benefits.\n\n4. Include a Brief Self-Introduction:\n\nIntroduce yourself and your role.\n\nMention that you\'ve done some research with limited information but are still learning.\n\n5. Show Off Your Research:\n\nMention key research details that support why you talk about the key theme of the email touch.\n\nProvide details that only someone who conducted in-depth research would know about the user or their company.\n\n6. Explain the Purpose:\n\nState that you\'re providing the key theme of the email touch to help the user achieve their goals faster.\n\nRelate the key theme to their work and how it can free up time for other interests or priorities.\n\n7. Encourage Engagement:\n\nPrompt the user to take action, by logging in to {{$json.company_name}}\'s platform and build something extremely useful in 2 minutes. \n\nKeep the tone friendly and helpful.\n\n## Expected Input\n\nYou will be given extensive JSON data of a particular lead + the company that they work for.\n\n## Expected Output\n\nYou should return an email addressed to the prospective client, demonstrating personalization and direct relevance to what they are doing.\n\nYou should return your output as JSON data with fields for "subject" and "body", wrapped in an output field, so that we can use an output parser.\n\nDo not include anything else in your answer than the output JSON.\n\n## Examples\n\n### Input\n\nINPUT:\n\nPerson:\n\n{"basic_info":{"fullname":"Adam Janes","first_name":"Adam","last_name":"Janes","headline":"Fractional CTO | Building with AI workflows and automations","public_identifier":"adamjanes","profile_picture_url":"","about":"I am a product-minded technologist with hacker DNA building things in AI automation. \\n\\nI have a broad and varied background - having worked in Product, Design, and Sales - combined with deep technical experience as a Senior Developer and Fractional CTO.\\n\\nI am also a best-selling Udemy instructor (with 25K+ students), and founder of WOOFCODE - a free coding camp for fullstack developers.\\n\\nI practice non-violent communication, motivational interviewing, and Tibetan Buddhist meditation.\\n\\nAlways looking to connect with potential co-conspirators with shared passions.","location":{"country":"","city":"Australia","full":"Australia"},"creator_hashtags":[],"is_creator":false,"is_influencer":false,"is_premium":true,"created_timestamp":1393120240313,"show_follower_count":true,"background_picture_url":"https://media.licdn.com/dms/image/v2/C4E16AQFUpJWxCZhi-A/profile-displaybackgroundimage-shrink_350_1400/profile-displaybackgroundimage-shrink_350_1400/0/1517432943755?e=1756944000&v=beta&t=QpBGsEjoTvATlwih5Jxl9lO9-p1UAnK7BoZKhdzzwxw","urn":"ACoAABNTxV4BdKmdnmW6F6m8PX0lEsqaJ7cS6m0","follower_count":2159,"connection_count":1880,"current_company":"MISSION+","current_company_urn":"14626762","current_company_url":"https://www.linkedin.com/company/missionplus"},"experience":[{"title":"Fractional CTO","company":"Mission","description":"Mission Plus is a digital innovation studio that works with world renowned and emerging companies to execute their tech innovation initiatives, from idea to build and launch.\\n\\nMy role involves scoping projects on technical level, planning sprints, and managing a remote and distributed engineering team.\\n\\nProjects worked on include BCG FinTech Control Tower, Blue Fire AI, and Verity Nature.","duration":"Dec 2020 - Present · 4 yrs 8 mos","start_date":{"year":2020,"month":"Dec"},"is_current":true,"company_linkedin_url":"https://www.linkedin.com/company/14626762/","company_logo_url":"https://media.licdn.com/dms/image/v2/C560BAQF2wc70vBeJ0A/company-logo_400_400/company-logo_400_400/0/1675063711821/missionplus_logo?e=1756944000&v=beta&t=g2UpLFVNXKrEPi0exGgSHOxxkjusxf2GZchRIEKUsg4","employment_type":"Plus","company_id":"14626762"},{"title":"Course Instructor","company":"Udemy","description":"I teach an online video course on data visualization in D3.js. \\"Mastering data visualization in D3.js\\" takes students from knowing nothing about D3, to a level where they can build almost any visualization by themselves, using the world\'s premier data visualization library.\\n\\nThe course includes over 6 hours of video content introducing the D3 library. I produced these videos myself, using my knowledge of D3 to design the curriculum. The course includes 4 class projects, which become increasingly advanced, allowing students to test out their skills with real-world data.\\n\\nAs a course instructor, I help students with questions and concerns about their learning experience, and actively promote D3 as a tool for data visualization.","duration":"Oct 2017 - Present · 7 yrs 10 mos","start_date":{"year":2017,"month":"Oct"},"is_current":true,"company_linkedin_url":"https://www.linkedin.com/company/822535/","company_logo_url":"https://media.licdn.com/dms/image/v2/D560BAQEf_NHzN2yVQg/company-logo_400_400/company-logo_400_400/0/1723593046388/udemy_logo?e=1756944000&v=beta&t=z05fW1PIaYe4shr5_-0KrTbHxV0VfUlFI2aBqJ5BLFo","company_id":"822535"},{"title":"Founder","company":"WOOFCODE","description":"I ran a donation-only course over Zoom, teaching the fundamentals of full-stack web development \\n\\nI ran a live Zoom lecture once per week, and gave students various homework assignments to complete on their own time. The course lasted for 10 weeks, covering HTML, CSS, JavaScript, React, and Node.js/Express.","duration":"Sep 2020 - Dec 2021 · 1 yr 4 mos","start_date":{"year":2020,"month":"Sep"},"end_date":{"year":2021,"month":"Dec"},"is_current":false,"company_linkedin_url":"https://www.linkedin.com/company/70443428/","company_logo_url":"https://media.licdn.com/dms/image/v2/C4D0BAQER2FPH0fKsQA/company-logo_400_400/company-logo_400_400/0/1630522713341?e=1756944000&v=beta&t=waDfmiECn6_hK6IKxA3A9ZdcQcA_huTBXl5Y8MBHbbc","company_id":"70443428"},{"title":"Fellow","company":"Dalarub","location":"Berlin Metropolitan Area","description":"Dalarub & Ettrich is a tech consultancy, primarily offering virtual CTO and virtual VP of Engineering services to clients across many industries. \\n\\nI worked in a small team alongside former CTOs of HERE Technologies, TrollTech and Airmap, and served as the company\'s Head of Frontend Engineering. My role involved building our own products, augmenting the engineering teams of our clients, and conducting technical interviews for Senior NodeJS and React developers.","duration":"Sep 2019 - Jun 2020 · 10 mos","start_date":{"year":2019,"month":"Sep"},"end_date":{"year":2020,"month":"Jun"},"is_current":false,"company_linkedin_url":"https://www.linkedin.com/company/14799700/","company_logo_url":"https://media.licdn.com/dms/image/v2/C4D0BAQG7Pwuj9KSlrA/company-logo_400_400/company-logo_400_400/0/1630525805847?e=1756944000&v=beta&t=HfQbSEQXwz0M3oHUTnJj4D5B9GKZ3MRih5LsRvhweck","employment_type":"& Ettrich","company_id":"14799700"},{"title":"Co-Founder","company":"F35","location":"Berlin Metropolitan Area","description":"F35 aimed to indivudualize HR processes so that people feel a sense of meaning and connection at work. We made \\"personality cards\\" for teams, and offered workshops to help team members better understand and empathise with each other.","duration":"Apr 2019 - Sep 2019 · 6 mos","start_date":{"year":2019,"month":"Apr"},"end_date":{"year":2019,"month":"Sep"},"is_current":false,"company_linkedin_url":"https://www.linkedin.com/company/14068012/","company_logo_url":"https://media.licdn.com/dms/image/v2/C4D0BAQHQwk4J6uvitQ/company-logo_400_400/company-logo_400_400/0/1636291746650/f35_logo?e=1756944000&v=beta&t=P8nONmjFkSWXRxy3cFrSYJyJ51b7l36wwYyOwQTynn4","company_id":"14068012"}],"education":[{"school":"Harvard University","degree":"Bachelor’s Degree, Economics / Computer Science","degree_name":"Bachelor’s Degree","field_of_study":"Economics / Computer Science","duration":"2012 - 2016","school_linkedin_url":"https://www.linkedin.com/company/1646/","activities":"4-year member of the men\'s heavyweight crew team.","school_logo_url":"https://media.licdn.com/dms/image/v2/C4E0BAQF5t62bcL0e9g/company-logo_400_400/company-logo_400_400/0/1631318058235?e=1756944000&v=beta&t=neDLC3VojnXUN8BUWBVez6McqxniGoh7fYK1ucl1z_0","start_date":{"year":2012},"end_date":{"year":2016},"school_id":"1646"},{"school":"University of Oxford","degree":"Master of Philosophy - MPhil, Tibetan and Himalayan Studies","degree_name":"Master of Philosophy - MPhil","field_of_study":"Tibetan and Himalayan Studies","duration":"Sep 2023 - Jun 2025","school_linkedin_url":"https://www.linkedin.com/company/4477/","description":"Finished the first year of a 2-year Master\'s program","school_logo_url":"https://media.licdn.com/dms/image/v2/D4E0BAQGnc4qXLbE8Sg/company-logo_400_400/company-logo_400_400/0/1709206435851/oxforduni_logo?e=1756944000&v=beta&t=-RaTxjhDFM4J3ruMg1f0ueU6NBoKq923iFAn4PbRHbI","start_date":{"year":2023,"month":"Sep"},"end_date":{"year":2025,"month":"Jun"},"school_id":"4477"}],"certifications":[{"name":"Credential of Readiness, Pass with High Honors","issuer":"Harvard Business School Online","issued_date":"Issued Jul 2014"}],"languages":[{"language":"English","proficiency":"Native or bilingual proficiency"},{"language":"German","proficiency":"Limited working proficiency"}]}\n\nCompany:\n\n {"input_identifier":"https://www.linkedin.com/company/missionplus","basic_info":{"name":"MISSION+","universal_name":"missionplus","description":"We build great products and help companies develop their engineering culture, empowering the visionaries of today with the freedom to build.","website":"http://mission.plus","linkedin_url":"https://www.linkedin.com/company/missionplus/","specialties":["Custom Development","Dev Team Augmentation","Tech Team for Hire","Rapid Prototyping","Design Thinking","Fintech","Insurtech","Digital Transformation Sprint","CTO","Fractional CTO"],"industries":["Computer Software"],"is_verified":false,"founded_info":{"year":2019,"month":null,"day":null},"page_type":"COMPANY","verification":{"is_verified":false,"last_verified_at":null}},"stats":{"employee_count":35,"follower_count":2223,"employee_count_range":{"start":51,"end":200},"student_count":null},"locations":{"headquarters":{"country":"SG","state":"Singapore","city":"Singapore","postal_code":"068914","line1":"160 Robinson Road, #14-04","line2":null,"is_hq":true,"description":null},"offices":[{"country":"HK","state":null,"city":"Hong Kong","postal_code":null,"line1":"No 1 Glenealy Tower","line2":"2A, 17/F","is_hq":false,"description":null,"region":"Hong Kong"},{"country":"SG","state":"Singapore","city":"Singapore","postal_code":"068914","line1":"160 Robinson Road, #14-04","line2":null,"is_hq":true,"description":null,"region":"Singapore"}],"geo_coordinates":{"latitude":22.421183,"longitude":114.1661}},"media":{"logo_url":"https://media.licdn.com/dms/image/v2/C560BAQF2wc70vBeJ0A/company-logo_400_400/company-logo_400_400/0/1675063711821/missionplus_logo?e=1756944000&v=beta&t=g2UpLFVNXKrEPi0exGgSHOxxkjusxf2GZchRIEKUsg4","cover_url":"https://media.licdn.com/dms/image/v2/D561BAQFTuV6ifmJvtQ/company-background_10000/B56ZXnrzamHEAU-/0/1743348775238/missionplus_cover?e=1752303600&v=beta&t=AVi2oE9qtcsxzfpTsY9-XOA3Pky46e5Nr_12IrmVyXI","cropped_cover_url":"https://media.licdn.com/dms/image/v2/D563DAQFsFLkLnLSFfA/image-scale_191_1128/B56ZXnrzaaGQAk-/0/1743348775069/missionplus_cover?e=1752303600&v=beta&t=h0i5DryCAyFg1o-4BTA670nnMm40H7yM1TIvyLDW5r4"},"funding":{"total_rounds":null,"latest_round":{"type":"","date":null,"url":"","investors_count":null},"crunchbase_url":""},"links":{"website":"http://mission.plus","linkedin":"https://www.linkedin.com/company/missionplus/","job_search":"https://www.linkedin.com/jobs/search?geoId=92000000&f_C=14626762","sales_navigator":null,"crunchbase":""},"company_urn":"14626762"}\n\nOutput:\n\n[\n  {\n    "output": {\n      "subject": "Automate your legal workflows like your Udemy D3 wizardry",\n      "body": "Hey Adam,\\n\\nJust stumbled across your D3.js course on Udemy (25K+ students? Impressive!) and your work as a Fractional CTO at Mission+. As someone bringing AI automation to innovative companies, I bet you\'re drowning in those repetitive tasks that eat up valuable time.\\n\\nI\'m Dolly, AAAutomations\'s lifecycle marketing agent. We help legal professionals automate mundane tasks with n8n - think document generation, client onboarding, and syncing case notes across systems. All that toggle-switching between apps? Gone!\\n\\nGiven your technical background and hacker DNA (plus teaching experience), you\'d probably appreciate our approach - we don\'t just hand you rigid templates. Our n8n-based systems give you full control and privacy consciousness. Perfect for someone who can teach 6+ hours of D3.js!\\n\\nCould save you hours weekly while reducing human error. Want to see how? Reply with \\"Show me the automation\\" and I\'ll share how it works.\\n\\nCheers,\\nDolly\\nAAAutomations"\n    }\n  }\n]'
+          }
+        ]
+      },
+      promptType: 'define',
+      hasOutputParser: true
+    }, subnodes: { model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter', version: 1, config: { parameters: { model: 'anthropic/claude-3.7-sonnet', options: {} }, credentials: {
+          openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' }
+        }, name: 'OpenRouter Chat Model' } }), outputParser: outputParser({ type: '@n8n/n8n-nodes-langchain.outputParserStructured', version: 1.2, config: { parameters: {
+          jsonSchemaExample: '{\n	"subject": "Bet you\'re tired of toggling between apps while managing MISSION+ tech projects",\n	"body": "Adam,\\n\\nThe irony of being a Fractional CTO is real - you help others automate while probably juggling 17 tabs, 3 project management tools, and enough notifications to make your phone vibrate off the table. Been there!\\n\\nI noticed your work at MISSION+ involves managing remote engineering teams across multiple fintech projects like BCG FinTech Control Tower. I\'m betting there are repetitive tasks eating up your time that could be automated.\\n\\nI\'m Dolly, AAAutomations\'s lifecycle marketing agent. We build custom automations specifically for technical leaders like you who need to streamline operations and reduce human error. \\n\\nOur specialty? Using n8n (open-source automation tool) to connect literally any software you use - perfect for someone managing distributed teams across multiple projects. We can automate everything from document generation to deadline tracking across systems.\\n\\nUnlike rigid no-code platforms, we build deeply customized workflows that evolve with your needs - either fully managed by us or with coaching so you can learn to modify them yourself.\\n\\nCurious what tasks we could automate for you? I\'d love to chat about your specific workflow challenges.\\n\\nCheers,\\nDolly\\n\\nP.S. When you\'re not being a tech wizard, do you find time to practice Tibetan Buddhist meditation between managing those engineering teams? Impressive balance!"\n}'
+        }, name: 'Structured Output Parser' } }) }, position: [560, 900], name: 'Generate Personalized Email' } }))
+  .then(node({ type: 'n8n-nodes-base.gmail', version: 2.1, config: { parameters: {
+      sendTo: '={{ $(\'Get Leads\').item.json.Email }}',
+      message: '={{ $json.output.body }}',
+      options: {
+        replyTo: '={{ $(\'Set Data\').item.json.email_address }} ',
+        senderName: '={{ $(\'Set Data\').item.json.sender_name }}',
+        appendAttribution: false
+      },
+      subject: '={{ $json.output.subject }}',
+      emailType: 'text'
+    }, credentials: {
+      gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' }
+    }, position: [900, 1060] } }))
+  .then(node({ type: 'n8n-nodes-base.filter', version: 2.2, config: { parameters: {
+      options: {},
+      conditions: {
+        options: {
+          version: 2,
+          leftValue: '',
+          caseSensitive: true,
+          typeValidation: 'strict'
+        },
+        combinator: 'and',
+        conditions: [
+          {
+            id: '39ff27fa-4a6a-4c30-9775-bdb9f4395eed',
+            operator: { type: 'string', operation: 'regex' },
+            leftValue: '={{ $json.searchResult.url }}',
+            rightValue: '^https:\\/\\/www\\.linkedin\\.com\\/company\\/[a-zA-Z0-9\\-_%]+\\/?$'
+          }
+        ]
+      }
+    }, position: [820, 500], name: 'Only Company Links' } }))
+  .then(node({ type: 'n8n-nodes-base.aggregate', version: 1, config: { parameters: {
+      include: 'specifiedFields',
+      options: {},
+      aggregate: 'aggregateAllItemData',
+      fieldsToInclude: 'searchResult',
+      destinationFieldName: 'results'
+    }, position: [1000, 500], name: 'Aggregate1' } }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: {
+      mode: 'raw',
+      options: {},
+      jsonOutput: '={\n  "company_url": "{{ $json.results.first().searchResult.url }}"\n}\n'
+    }, position: [1200, 500], name: 'Set Company URL1' } }))
+  .add(sticky('## Get Person Profile data from LinkedIn\n- Apify => Google search for "{{ First Name }} {{ Last Name }} {{ Company }} site:linkedin.com"\n- Does a RegEx to filter people pages (assumes the first result is correct - won\'t work for John Smith @ Walmart)\n- Apify => Fetch matched LinkedIn Person URL', { color: 6, position: [380, -240], width: 840, height: 400 }))
+  .add(sticky('## Get Company Profile data from LinkedIn\n- Apify => Google search for {{ Company }} site:linkedin.com\n- Does a RegEx to filter company pages (assumes the first result is correct)\n- Apify => Fetch matched LinkedIn Company URL', { name: 'Sticky Note1', color: 6, position: [380, 200], width: 1300, height: 520 }))
+  .add(sticky('## Write + Send the email\n- SET YOUR DATA HERE\n- LLM drafts your email\n- Send the enail from your Gmail account', { name: 'Sticky Note2', color: 6, position: [380, 760], width: 720, height: 460 }))
+  .add(sticky('## Set your data\nSet data about your company here so that the bot will customize your offer based on your lead.', { name: 'Sticky Note3', position: [160, 880], width: 190, height: 220 }))

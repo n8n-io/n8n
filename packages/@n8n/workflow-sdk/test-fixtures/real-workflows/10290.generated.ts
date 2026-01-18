@@ -1,177 +1,25 @@
-const wf = workflow(
-	'',
-	'Track & Query expenses via Telegram (voice,text) to Google Sheets using AI',
-	{ executionOrder: 'v1' },
-)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.telegramTrigger',
-			version: 1.2,
-			config: { position: [1136, 624], name: 'Telegram Input' },
-		}),
-	)
-	.then(
-		switchCase(
-			[
-				node({
-					type: 'n8n-nodes-base.switch',
-					version: 3.3,
-					config: { position: [1392, 720], name: 'Check Voice Quality' },
-				}),
-				node({
-					type: 'n8n-nodes-base.telegram',
-					version: 1.2,
-					config: { position: [1424, 1248], name: 'Send Processing Notification (Text)' },
-				}),
-			],
-			{ version: 3.3, name: 'Route by Message Type' },
-		),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: { position: [1600, 592], name: 'Send Processing Notification (Voice)' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: { position: [1600, 848], name: '🎙️ Download Voice File' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: { position: [1792, 848], name: 'Upload to AssemblyAI' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: { position: [1952, 784], name: 'Start Transcription' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [2128, 848], name: 'Wait for Transcription' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: { position: [2304, 784], name: 'Get Transcription Result' },
-		}),
-	)
-	.then(
-		ifBranch(
-			[
-				node({
-					type: 'n8n-nodes-base.googleSheets',
-					version: 4.7,
-					config: { position: [2784, 1248], name: 'Read Transaction History' },
-				}),
-				node({
-					type: 'n8n-nodes-base.wait',
-					version: 1.1,
-					config: { position: [2128, 848], name: 'Wait for Transcription' },
-				}),
-			],
-			{ version: 2.2, name: 'Check Transcription Status' },
-		),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: { position: [2992, 880], name: 'Calculate Starting Balance' },
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2.2,
-			config: {
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: { name: 'GPT-4.1 Mini Model' },
-					}),
-					memory: memory({
-						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-						version: 1.3,
-						config: { name: 'Conversation Memory' },
-					}),
-					tools: [
-						tool({
-							type: 'n8n-nodes-base.googleSheetsTool',
-							version: 4.7,
-							config: { name: 'Read Sheet for Queries' },
-						}),
-						tool({
-							type: 'n8n-nodes-base.gmailTool',
-							version: 2.1,
-							config: { name: 'Send Low Balance Alert' },
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleSheetsTool',
-							version: 4.7,
-							config: { name: 'Append Transaction to Sheet' },
-						}),
-					],
-				},
-				position: [3248, 880],
-				name: 'AI Expense Analyzer',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: { position: [3920, 1152], name: 'Generate Voice Response' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: { position: [4256, 1008], name: 'Send Voice to Telegram' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: { position: [4272, 1280], name: 'Send Text to Telegram' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: { position: [3920, 704], name: 'Track API Costs' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: { position: [4208, 704], name: 'Log Cost to Sheet' },
-		}),
-	)
-	.add(sticky('', { position: [1040, 400] }))
-	.add(sticky('', { name: 'Sticky Note1', position: [1344, 400] }))
-	.add(sticky('', { name: 'Sticky Note2', position: [1344, 1104] }))
-	.add(sticky('', { name: 'Sticky Note3', position: [2656, 400] }))
-	.add(sticky('', { name: 'Sticky Note4', position: [3792, 400] }))
-	.add(sticky('', { name: 'Sticky Note5', position: [3824, 944] }))
-	.add(sticky('', { name: 'Sticky Note6', position: [3824, 608] }))
-	.add(sticky('', { name: 'Sticky Note7' }));
+return workflow('', 'Track & Query expenses via Telegram (voice,text) to Google Sheets using AI', { executionOrder: 'v1' })
+  .add(trigger({ type: 'n8n-nodes-base.telegramTrigger', version: 1.2, config: { position: [1136, 624], name: 'Telegram Input' } }))
+  .then(switchCase([node({ type: 'n8n-nodes-base.switch', version: 3.3, config: { position: [1392, 720], name: 'Check Voice Quality' } }), node({ type: 'n8n-nodes-base.telegram', version: 1.2, config: { position: [1424, 1248], name: 'Send Processing Notification (Text)' } })], { version: 3.3, name: 'Route by Message Type' }))
+  .add(node({ type: 'n8n-nodes-base.telegram', version: 1.2, config: { position: [1600, 592], name: 'Send Processing Notification (Voice)' } }))
+  .add(node({ type: 'n8n-nodes-base.telegram', version: 1.2, config: { position: [1600, 848], name: '🎙️ Download Voice File' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { position: [1792, 848], name: 'Upload to AssemblyAI' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { position: [1952, 784], name: 'Start Transcription' } }))
+  .then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [2128, 848], name: 'Wait for Transcription' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { position: [2304, 784], name: 'Get Transcription Result' } }))
+  .then(ifBranch([node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { position: [2784, 1248], name: 'Read Transaction History' } }), node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [2128, 848], name: 'Wait for Transcription' } })], { version: 2.2, name: 'Check Transcription Status' }))
+  .then(node({ type: 'n8n-nodes-base.code', version: 2, config: { position: [2992, 880], name: 'Calculate Starting Balance' } }))
+  .then(node({ type: '@n8n/n8n-nodes-langchain.agent', version: 2.2, config: { subnodes: { model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2, config: { name: 'GPT-4.1 Mini Model' } }), memory: memory({ type: '@n8n/n8n-nodes-langchain.memoryBufferWindow', version: 1.3, config: { name: 'Conversation Memory' } }), tools: [tool({ type: 'n8n-nodes-base.googleSheetsTool', version: 4.7, config: { name: 'Read Sheet for Queries' } }), tool({ type: 'n8n-nodes-base.gmailTool', version: 2.1, config: { name: 'Send Low Balance Alert' } }), tool({ type: 'n8n-nodes-base.googleSheetsTool', version: 4.7, config: { name: 'Append Transaction to Sheet' } })] }, position: [3248, 880], name: 'AI Expense Analyzer' } }))
+  .add(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { position: [3920, 1152], name: 'Generate Voice Response' } }))
+  .add(node({ type: 'n8n-nodes-base.telegram', version: 1.2, config: { position: [4256, 1008], name: 'Send Voice to Telegram' } }))
+  .add(node({ type: 'n8n-nodes-base.telegram', version: 1.2, config: { position: [4272, 1280], name: 'Send Text to Telegram' } }))
+  .add(node({ type: 'n8n-nodes-base.code', version: 2, config: { position: [3920, 704], name: 'Track API Costs' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { position: [4208, 704], name: 'Log Cost to Sheet' } }))
+  .add(sticky('', { position: [1040, 400] }))
+  .add(sticky('', { name: 'Sticky Note1', position: [1344, 400] }))
+  .add(sticky('', { name: 'Sticky Note2', position: [1344, 1104] }))
+  .add(sticky('', { name: 'Sticky Note3', position: [2656, 400] }))
+  .add(sticky('', { name: 'Sticky Note4', position: [3792, 400] }))
+  .add(sticky('', { name: 'Sticky Note5', position: [3824, 944] }))
+  .add(sticky('', { name: 'Sticky Note6', position: [3824, 608] }))
+  .add(sticky('', { name: 'Sticky Note7' }))

@@ -866,6 +866,67 @@ export type MergeFn = <TBranches extends NodeInstance<string, string, unknown>[]
 ) => MergeComposite<TBranches>;
 
 /**
+ * Configuration for IF branch
+ */
+export interface IfBranchConfig extends NodeConfig {
+	/** Node version (defaults to 2.3) */
+	version?: number | string;
+	/** Node ID (auto-generated if omitted) */
+	id?: string;
+}
+
+/**
+ * Creates an IF branching composite for conditional execution
+ *
+ * @example
+ * ```typescript
+ * workflow('id', 'Test')
+ *   .add(trigger)
+ *   .then(ifBranch([truePath, falsePath], {
+ *     name: 'Check Value',
+ *     parameters: { conditions: { conditions: [...] } },
+ *   }))
+ *   .toJSON();
+ * ```
+ */
+export type IfBranchFn = (
+	branches: [
+		NodeInstance<string, string, unknown> | null,
+		NodeInstance<string, string, unknown> | null,
+	],
+	config?: IfBranchConfig,
+) => IfBranchComposite;
+
+/**
+ * Configuration for Switch case
+ */
+export interface SwitchCaseConfig extends NodeConfig {
+	/** Node version (defaults to 3.4) */
+	version?: number | string;
+	/** Node ID (auto-generated if omitted) */
+	id?: string;
+}
+
+/**
+ * Creates a Switch case composite for multi-way branching
+ *
+ * @example
+ * ```typescript
+ * workflow('id', 'Test')
+ *   .add(trigger)
+ *   .then(switchCase([case0, case1, case2, fallback], {
+ *     name: 'Route by Type',
+ *     parameters: { mode: 'rules', rules: { ... } },
+ *   }))
+ *   .toJSON();
+ * ```
+ */
+export type SwitchCaseFn = (
+	cases: NodeInstance<string, string, unknown>[],
+	config?: SwitchCaseConfig,
+) => SwitchCaseComposite;
+
+/**
  * Creates a split in batches builder for processing items in chunks
  *
  * @example

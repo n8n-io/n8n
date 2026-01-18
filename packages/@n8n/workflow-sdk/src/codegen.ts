@@ -288,7 +288,7 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 
 	// Generate workflow declaration
 	lines.push(
-		`const wf = workflow('${escapeString(json.id)}', '${escapeString(json.name)}'${settingsStr})`,
+		`return workflow('${escapeString(json.id)}', '${escapeString(json.name)}'${settingsStr})`,
 	);
 
 	// Track which nodes have been added
@@ -357,9 +357,6 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 	for (const stickyInfo of stickyNotes) {
 		lines.push(`  .add(${generateStickyCall(stickyInfo.node)})`);
 	}
-
-	// Close workflow declaration
-	lines.push(';');
 
 	return lines.join('\n');
 }

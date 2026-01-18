@@ -1,4313 +1,3548 @@
-const wf = workflow(
-	'ZtcCMj69WUhc1BHs',
-	'Generate product images with NanoBanana Pro to Veo videos and Blotato - vide 2 ok',
-	{ availableInMCP: false, executionOrder: 'v1' },
-)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.scheduleTrigger',
-			version: 1.3,
-			config: { parameters: { rule: { interval: [{}] } }, position: [80, 1664] },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: '',
-						cachedResultUrl: '',
-						cachedResultName: '',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [288, 1664],
-				name: 'Search new image',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'id-1',
-								name: 'image_url',
-								type: 'string',
-								value: '={{ $json.image_contactsheet }}',
-							},
-						],
-					},
-				},
-				position: [496, 1664],
-				name: 'Set Image URL',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.3,
-			config: {
-				parameters: {
-					url: '={{ $json.image_url }}',
-					options: { response: { response: { responseFormat: 'file' } } },
-				},
-				position: [704, 1664],
-				name: 'Download Image',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.editImage',
-			version: 1,
-			config: { parameters: { operation: 'information' }, position: [1008, 1664] },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.editImage',
-			version: 1,
-			config: {
-				parameters: {
-					width: '={{ Math.floor($json.size.width / 3) }}',
-					height: '={{ Math.floor($json.size.height / 2) }}',
-					options: {},
-					operation: 'crop',
-				},
-				position: [1456, 1184],
-				name: 'Crop Top Left',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					name: '={{ \n  "image_top_left_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
-					driveId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
-					},
-					options: {},
-					folderId: { __rl: true, mode: 'id', value: '=' },
-				},
-				credentials: {
-					googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' },
-				},
-				position: [1744, 1184],
-				name: 'Upload to Google Drive',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							new_image_1: '={{ $json.webContentLink }}',
-							image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-						},
-						schema: [
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'description_all',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'description_all',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_nanobanana',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_nanobanana',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_contactsheet',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'image_contactsheet',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_1',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'new_image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_4',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_4',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_5',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_5',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_6',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_6',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'number',
-								display: true,
-								removed: true,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['image_contactsheet'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [1952, 1184],
-				name: 'Update url image_top_left',
-			},
-		}),
-	)
-	.then(
-		merge(
-			[
-				node({
-					type: 'n8n-nodes-base.googleSheets',
-					version: 4.7,
-					config: {
-						parameters: {
-							columns: {
-								value: {
-									new_image_1: '={{ $json.webContentLink }}',
-									image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-								},
-								schema: [
-									{
-										id: 'status',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'status',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'description_all',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'description_all',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_nanobanana',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_nanobanana',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_contactsheet',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'image_contactsheet',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_1',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'new_image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'row_number',
-										type: 'number',
-										display: true,
-										removed: true,
-										readOnly: true,
-										required: false,
-										displayName: 'row_number',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-								],
-								mappingMode: 'defineBelow',
-								matchingColumns: ['image_contactsheet'],
-								attemptToConvertTypes: false,
-								convertFieldsToString: false,
-							},
-							options: {},
-							operation: 'update',
-							sheetName: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-							},
-							documentId: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-							},
-						},
-						credentials: {
-							googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-						},
-						position: [1952, 1184],
-						name: 'Update url image_top_left',
-					},
-				}),
-				node({
-					type: 'n8n-nodes-base.googleSheets',
-					version: 4.7,
-					config: {
-						parameters: {
-							columns: {
-								value: {
-									new_image_2: '={{ $json.webContentLink }}',
-									image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-								},
-								schema: [
-									{
-										id: 'status',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'status',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'description_all',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'description_all',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_nanobanana',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_nanobanana',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_contactsheet',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'image_contactsheet',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_2',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'new_image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'row_number',
-										type: 'number',
-										display: true,
-										removed: true,
-										readOnly: true,
-										required: false,
-										displayName: 'row_number',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-								],
-								mappingMode: 'defineBelow',
-								matchingColumns: ['image_contactsheet'],
-								attemptToConvertTypes: false,
-								convertFieldsToString: false,
-							},
-							options: {},
-							operation: 'update',
-							sheetName: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-							},
-							documentId: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-							},
-						},
-						credentials: {
-							googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-						},
-						position: [1952, 1376],
-						name: 'Update url image_top_center',
-					},
-				}),
-			],
-			{
-				version: 3.2,
-				parameters: {
-					mode: 'combine',
-					options: {},
-					combineBy: 'combineByPosition',
-				},
-				name: 'Merge1',
-			},
-		),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://fal.run/fal-ai/veo3.1/first-last-frame-to-video',
-					method: 'POST',
-					options: {
-						timeout: 600000,
-						response: { response: { responseFormat: 'json' } },
-					},
-					jsonBody:
-						'={\n  "prompt": "The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.",\n  "first_frame_url": "{{ $json.new_image_1 }}",\n  "last_frame_url": "{{ $json.new_image_2 }}",\n  "aspect_ratio": "auto",\n  "duration": "4s",\n  "resolution": "720p",\n  "generate_audio": false,\n  "auto_fix": true\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{
-								name: 'Authorization',
-								value: '=<__PLACEHOLDER_VALUE__fal Key__>',
-							},
-							{ name: 'Content-Type', value: 'application/json' },
-						],
-					},
-				},
-				position: [2528, 1264],
-				name: 'Veo Generation',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1264] },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							video_1: '={{ $json.video.url }}',
-							image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-						},
-						schema: [
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'description_all',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'description_all',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_nanobanana',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_nanobanana',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_contactsheet',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'image_contactsheet',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_4',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_4',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_5',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_5',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_6',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_6',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_1',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'video_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_4',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_4',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_5',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_5',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_6',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_6',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'number',
-								display: true,
-								removed: true,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['image_contactsheet'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [3072, 1264],
-				name: 'Update video 1',
-			},
-		}),
-	)
-	.then(
-		merge(
-			[
-				node({
-					type: 'n8n-nodes-base.googleSheets',
-					version: 4.7,
-					config: {
-						parameters: {
-							columns: {
-								value: {
-									video_1: '={{ $json.video.url }}',
-									image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-								},
-								schema: [
-									{
-										id: 'status',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'status',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'description_all',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'description_all',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_nanobanana',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_nanobanana',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_contactsheet',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'image_contactsheet',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_1',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'video_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'row_number',
-										type: 'number',
-										display: true,
-										removed: true,
-										readOnly: true,
-										required: false,
-										displayName: 'row_number',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-								],
-								mappingMode: 'defineBelow',
-								matchingColumns: ['image_contactsheet'],
-								attemptToConvertTypes: false,
-								convertFieldsToString: false,
-							},
-							options: {},
-							operation: 'update',
-							sheetName: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-							},
-							documentId: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-							},
-						},
-						credentials: {
-							googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-						},
-						position: [3072, 1264],
-						name: 'Update video 1',
-					},
-				}),
-				node({
-					type: 'n8n-nodes-base.googleSheets',
-					version: 4.7,
-					config: {
-						parameters: {
-							columns: {
-								value: {
-									video_2: '={{ $json.video.url }}',
-									image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-								},
-								schema: [
-									{
-										id: 'status',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'status',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'description_all',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'description_all',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_nanobanana',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_nanobanana',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_contactsheet',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'image_contactsheet',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_2',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'video_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'row_number',
-										type: 'number',
-										display: true,
-										removed: true,
-										readOnly: true,
-										required: false,
-										displayName: 'row_number',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-								],
-								mappingMode: 'defineBelow',
-								matchingColumns: ['image_contactsheet'],
-								attemptToConvertTypes: false,
-								convertFieldsToString: false,
-							},
-							options: {},
-							operation: 'update',
-							sheetName: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-							},
-							documentId: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-							},
-						},
-						credentials: {
-							googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-						},
-						position: [3072, 1472],
-						name: 'Update video 2',
-					},
-				}),
-				node({
-					type: 'n8n-nodes-base.googleSheets',
-					version: 4.7,
-					config: {
-						parameters: {
-							columns: {
-								value: {
-									video_3: '={{ $json.video.url }}',
-									image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-								},
-								schema: [
-									{
-										id: 'status',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'status',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'description_all',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'description_all',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_nanobanana',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_nanobanana',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_contactsheet',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'image_contactsheet',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_3',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'video_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'row_number',
-										type: 'number',
-										display: true,
-										removed: true,
-										readOnly: true,
-										required: false,
-										displayName: 'row_number',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-								],
-								mappingMode: 'defineBelow',
-								matchingColumns: ['image_contactsheet'],
-								attemptToConvertTypes: false,
-								convertFieldsToString: false,
-							},
-							options: {},
-							operation: 'update',
-							sheetName: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-							},
-							documentId: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-							},
-						},
-						credentials: {
-							googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-						},
-						position: [3072, 1664],
-						name: 'Update video 3',
-					},
-				}),
-				node({
-					type: 'n8n-nodes-base.googleSheets',
-					version: 4.7,
-					config: {
-						parameters: {
-							columns: {
-								value: {
-									video_4: '={{ $json.video.url }}',
-									image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-								},
-								schema: [
-									{
-										id: 'status',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'status',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'description_all',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'description_all',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_nanobanana',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_nanobanana',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_contactsheet',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'image_contactsheet',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_4',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'video_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'row_number',
-										type: 'number',
-										display: true,
-										removed: true,
-										readOnly: true,
-										required: false,
-										displayName: 'row_number',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-								],
-								mappingMode: 'defineBelow',
-								matchingColumns: ['image_contactsheet'],
-								attemptToConvertTypes: false,
-								convertFieldsToString: false,
-							},
-							options: {},
-							operation: 'update',
-							sheetName: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-							},
-							documentId: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-							},
-						},
-						credentials: {
-							googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-						},
-						position: [3072, 1872],
-						name: 'Update video 4',
-					},
-				}),
-				node({
-					type: 'n8n-nodes-base.googleSheets',
-					version: 4.7,
-					config: {
-						parameters: {
-							columns: {
-								value: {
-									video_5: '={{ $json.video.url }}',
-									image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-								},
-								schema: [
-									{
-										id: 'status',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'status',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'description_all',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'description_all',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_nanobanana',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'image_nanobanana',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'image_contactsheet',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'image_contactsheet',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_5',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'new_image_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'new_image_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_1',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_1',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_2',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_2',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_3',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_3',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_4',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_4',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_5',
-										type: 'string',
-										display: true,
-										removed: false,
-										required: false,
-										displayName: 'video_5',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'video_6',
-										type: 'string',
-										display: true,
-										removed: true,
-										required: false,
-										displayName: 'video_6',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-									{
-										id: 'row_number',
-										type: 'number',
-										display: true,
-										removed: true,
-										readOnly: true,
-										required: false,
-										displayName: 'row_number',
-										defaultMatch: false,
-										canBeUsedToMatch: true,
-									},
-								],
-								mappingMode: 'defineBelow',
-								matchingColumns: ['image_contactsheet'],
-								attemptToConvertTypes: false,
-								convertFieldsToString: false,
-							},
-							options: {},
-							operation: 'update',
-							sheetName: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-							},
-							documentId: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-							},
-						},
-						credentials: {
-							googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-						},
-						position: [3072, 2080],
-						name: 'Update video 5',
-					},
-				}),
-			],
-			{
-				version: 3.2,
-				parameters: {
-					mode: 'combine',
-					options: {},
-					combineBy: 'combineByPosition',
-					numberInputs: 5,
-				},
-				name: 'Merge6',
-			},
-		),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://fal.run/fal-ai/ffmpeg-api/merge-videos',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "video_urls": [\n    "{{ $json.video_1 }}",\n    "{{ $json.video_2 }}",\n    "{{ $json.video_3 }}",\n    "{{ $json.video_4 }}",\n    "{{ $json.video_5 }}"\n  ],\n  "resolution": "landscape_16_9",\n  "output": {\n    "format": "mp4"\n  }\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{
-								name: 'Authorization',
-								value: '<__PLACEHOLDER_VALUE__fal Key__>',
-							},
-							{ name: 'Content-Type', value: 'application/json' },
-						],
-					},
-				},
-				position: [3616, 1664],
-				name: 'Merge 3 Videos',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: {
-				parameters: { unit: 'minutes', amount: 3 },
-				position: [3616, 1920],
-				name: 'Wait: Merge Process',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							status: 'done',
-							'Final video': '={{ $json.video.url }}',
-							image_contactsheet: "={{ $('Set Image URL').item.json.image_url }}",
-						},
-						schema: [
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'description_all',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'description_all',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_nanobanana',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_nanobanana',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_contactsheet',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'image_contactsheet',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_4',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_4',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_5',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_5',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_6',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_6',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_4',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_4',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_5',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_5',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_6',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'video_6',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Final video',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Final video',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'number',
-								display: true,
-								removed: true,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['image_contactsheet'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [3616, 2144],
-				name: 'Update URL Final video',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					mediaUrl: "={{ $json['Final video'] }}",
-					resource: 'media',
-				},
-				credentials: {
-					blotatoApi: { id: 'wozsYJYLfCZO37j8', name: 'Blotato account' },
-				},
-				position: [3856, 2144],
-				name: 'Upload Video to BLOTATO',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'youtube',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '8047',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/8047',
-						cachedResultName: 'DR FIRASS (Dr. Firas)',
-					},
-					postContentText: 'My new vidéo',
-					postContentMediaUrls: '={{ $json.url }}',
-					postCreateYoutubeOptionTitle: 'My new vidéo',
-					postCreateYoutubeOptionPrivacyStatus: 'private',
-					postCreateYoutubeOptionShouldNotifySubscribers: false,
-				},
-				credentials: {
-					blotatoApi: { id: 'wozsYJYLfCZO37j8', name: 'Blotato account' },
-				},
-				position: [4112, 2144],
-				name: 'Youtube',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.editImage',
-			version: 1,
-			config: {
-				parameters: {
-					width: '={{ Math.floor($json.size.width / 3) }}\n',
-					height: '={{ Math.floor($json.size.height / 2) }}\n',
-					options: {},
-					operation: 'crop',
-					positionX: '={{ Math.floor($json.size.width / 3) }}\n',
-				},
-				position: [1456, 1376],
-				name: 'Crop Top Center',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					name: '={{ \n  "image_top_center_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
-					driveId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
-					},
-					options: {},
-					folderId: { __rl: true, mode: 'id', value: '=' },
-				},
-				credentials: {
-					googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' },
-				},
-				position: [1744, 1376],
-				name: 'Upload to Google Drive1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.editImage',
-			version: 1,
-			config: {
-				parameters: {
-					width: '={{ Math.floor($json.size.width / 3) }}\n',
-					height: '={{ Math.floor($json.size.height / 2) }}\n',
-					options: {},
-					operation: 'crop',
-					positionX: '={{ Math.floor($json.size.width * 2 / 3) }}\n',
-				},
-				position: [1456, 1568],
-				name: 'Crop Top Right',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					name: '={{ \n  "image_top_right_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
-					driveId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
-					},
-					options: {},
-					folderId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
-					},
-				},
-				credentials: {
-					googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' },
-				},
-				position: [1744, 1568],
-				name: 'Upload to Google Drive2',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							new_image_3: '={{ $json.webContentLink }}',
-							image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-						},
-						schema: [
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'description_all',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'description_all',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_nanobanana',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_nanobanana',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_contactsheet',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'image_contactsheet',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_3',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'new_image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_4',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_4',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_5',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_5',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_6',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_6',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'number',
-								display: true,
-								removed: true,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['image_contactsheet'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [1952, 1568],
-				name: 'Update url image_top_right',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
-				parameters: {
-					mode: 'combine',
-					options: {},
-					combineBy: 'combineByPosition',
-				},
-				position: [2240, 1472],
-				name: 'Merge2',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://fal.run/fal-ai/veo3.1/first-last-frame-to-video',
-					method: 'POST',
-					options: {
-						timeout: 600000,
-						response: { response: { responseFormat: 'json' } },
-					},
-					jsonBody:
-						'={\n  "prompt": "The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement. Audio: soft cinematic ambient music, very subtle, calm pads, no vocals, low volume. Add gentle room tone.",\n  "first_frame_url": "{{ $json.new_image_2 }}",\n  "last_frame_url": "{{ $json.new_image_3 }}",\n  "aspect_ratio": "auto",\n  "duration": "4s",\n  "resolution": "720p",\n  "generate_audio": false,\n  "auto_fix": true\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{
-								name: 'Authorization',
-								value: '=<__PLACEHOLDER_VALUE__fal Key__>',
-							},
-							{ name: 'Content-Type', value: 'application/json' },
-						],
-					},
-				},
-				position: [2528, 1472],
-				name: 'Veo Generation1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1472], name: 'Wait1' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
-				parameters: {
-					mode: 'combine',
-					options: {},
-					combineBy: 'combineByPosition',
-				},
-				position: [2240, 1664],
-				name: 'Merge3',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://fal.run/fal-ai/veo3.1/first-last-frame-to-video',
-					method: 'POST',
-					options: {
-						timeout: 600000,
-						response: { response: { responseFormat: 'json' } },
-					},
-					jsonBody:
-						'={\n  "prompt": "The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.",\n  "first_frame_url": "{{ $json.new_image_3 }}",\n  "last_frame_url": "{{ $json.new_image_4 }}",\n  "aspect_ratio": "auto",\n  "duration": "4s",\n  "resolution": "720p",\n  "generate_audio": false,\n  "auto_fix": true\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{
-								name: 'Authorization',
-								value: '=<__PLACEHOLDER_VALUE__fal Key__>',
-							},
-							{ name: 'Content-Type', value: 'application/json' },
-						],
-					},
-				},
-				position: [2528, 1664],
-				name: 'Veo Generation2',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1664], name: 'Wait2' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.editImage',
-			version: 1,
-			config: {
-				parameters: {
-					width: '={{ Math.floor($json.size.width / 3) }}\n',
-					height: '={{ Math.floor($json.size.height / 2) }}\n',
-					options: {},
-					operation: 'crop',
-					positionY: '={{ Math.floor($json.size.height / 2) }}\n',
-				},
-				position: [1456, 1760],
-				name: 'Crop Bottom Left',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					name: '={{ \n  "image_bottom_left_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
-					driveId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
-					},
-					options: {},
-					folderId: { __rl: true, mode: 'id', value: '=' },
-				},
-				credentials: {
-					googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' },
-				},
-				position: [1744, 1760],
-				name: 'Upload to Google Drive3',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							new_image_4: '={{ $json.webContentLink }}',
-							image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-						},
-						schema: [
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'description_all',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'description_all',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_nanobanana',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_nanobanana',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_contactsheet',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'image_contactsheet',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_4',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'new_image_4',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_5',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_5',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_6',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_6',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'number',
-								display: true,
-								removed: true,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['image_contactsheet'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [1952, 1760],
-				name: 'Update url image_bottom_left',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
-				parameters: {
-					mode: 'combine',
-					options: {},
-					combineBy: 'combineByPosition',
-				},
-				position: [2240, 1872],
-				name: 'Merge4',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://fal.run/fal-ai/veo3.1/first-last-frame-to-video',
-					method: 'POST',
-					options: {
-						timeout: 600000,
-						response: { response: { responseFormat: 'json' } },
-					},
-					jsonBody:
-						'={\n  "prompt": "The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.",\n  "first_frame_url": "{{ $json.new_image_4 }}",\n  "last_frame_url": "{{ $json.new_image_5 }}",\n  "aspect_ratio": "auto",\n  "duration": "4s",\n  "resolution": "720p",\n  "generate_audio": false,\n  "auto_fix": true\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{
-								name: 'Authorization',
-								value: '=<__PLACEHOLDER_VALUE__fal Key__>',
-							},
-							{ name: 'Content-Type', value: 'application/json' },
-						],
-					},
-				},
-				position: [2528, 1872],
-				name: 'Veo Generation3',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1872], name: 'Wait3' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.editImage',
-			version: 1,
-			config: {
-				parameters: {
-					width: '={{ Math.floor($json.size.width / 3) }}\n',
-					height: '={{ Math.floor($json.size.height / 2) }}\n',
-					options: {},
-					operation: 'crop',
-					positionX: '={{ Math.floor($json.size.width / 3) }}\n',
-					positionY: '={{ Math.floor($json.size.height / 2) }}\n',
-				},
-				position: [1456, 1952],
-				name: 'Crop Bottom Center',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					name: '={{ \n  "image_bottom_center_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
-					driveId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
-					},
-					options: {},
-					folderId: { __rl: true, mode: 'id', value: '=' },
-				},
-				credentials: {
-					googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' },
-				},
-				position: [1744, 1952],
-				name: 'Upload to Google Drive4',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							new_image_5: '={{ $json.webContentLink }}',
-							image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-						},
-						schema: [
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'description_all',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'description_all',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_nanobanana',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_nanobanana',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_contactsheet',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'image_contactsheet',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_4',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_4',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_5',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'new_image_5',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_6',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_6',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'number',
-								display: true,
-								removed: true,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['image_contactsheet'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [1952, 1952],
-				name: 'Update url image_bottom_center',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
-				parameters: {
-					mode: 'combine',
-					options: {},
-					combineBy: 'combineByPosition',
-				},
-				position: [2240, 2080],
-				name: 'Merge5',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://fal.run/fal-ai/veo3.1/first-last-frame-to-video',
-					method: 'POST',
-					options: {
-						timeout: 600000,
-						response: { response: { responseFormat: 'json' } },
-					},
-					jsonBody:
-						'={\n  "prompt": "The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.",\n  "first_frame_url": "{{ $json.new_image_5 }}",\n  "last_frame_url": "{{ $json.new_image_6 }}",\n  "aspect_ratio": "auto",\n  "duration": "4s",\n  "resolution": "720p",\n  "generate_audio": false,\n  "auto_fix": true\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{
-								name: 'Authorization',
-								value: '=<__PLACEHOLDER_VALUE__fal Key__>',
-							},
-							{ name: 'Content-Type', value: 'application/json' },
-						],
-					},
-				},
-				position: [2528, 2080],
-				name: 'Veo Generation4',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 2080], name: 'Wait4' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.editImage',
-			version: 1,
-			config: {
-				parameters: {
-					width: '={{ Math.floor($json.size.width / 3) }}\n',
-					height: '={{ Math.floor($json.size.height / 2) }}\n',
-					options: {},
-					operation: 'crop',
-					positionX: '={{ Math.floor($json.size.width * 2 / 3) }}\n',
-					positionY: '={{ Math.floor($json.size.height / 2) }}\n',
-				},
-				position: [1456, 2144],
-				name: 'Crop Bottom Right',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					name: '={{ \n  "image_bottom_right_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
-					driveId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
-					},
-					options: {},
-					folderId: { __rl: true, mode: 'id', value: '=' },
-				},
-				credentials: {
-					googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' },
-				},
-				position: [1744, 2144],
-				name: 'Upload to Google Drive5',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							new_image_6: '={{ $json.webContentLink }}',
-							image_contactsheet: "={{ $('Set Image URL').first().json.image_url }}",
-						},
-						schema: [
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'description_all',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'description_all',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_nanobanana',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_nanobanana',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_contactsheet',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'image_contactsheet',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_4',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_4',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_5',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'new_image_5',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'new_image_6',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'new_image_6',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'number',
-								display: true,
-								removed: true,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['image_contactsheet'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [1952, 2144],
-				name: 'Update url image_bottom_right',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.formTrigger',
-			version: 2.4,
-			config: {
-				parameters: {
-					options: { buttonLabel: 'Analyze Images', appendAttribution: false },
-					formTitle: 'Upload 3 Images for Analysis',
-					formFields: {
-						values: [
-							{
-								fieldName: 'image1',
-								fieldType: 'file',
-								fieldLabel: 'Image 1',
-								multipleFiles: false,
-								requiredField: true,
-								acceptFileTypes: '.jpg, .jpeg, .png, .gif, .bmp, .webp',
-							},
-							{
-								fieldName: 'image2',
-								fieldType: 'file',
-								fieldLabel: 'Image 2',
-								multipleFiles: false,
-								requiredField: true,
-								acceptFileTypes: '.jpg, .jpeg, .png, .gif, .bmp, .webp',
-							},
-							{
-								fieldName: 'image3',
-								fieldType: 'file',
-								fieldLabel: 'Image 3',
-								multipleFiles: false,
-								requiredField: true,
-								acceptFileTypes: '.jpg, .jpeg, .png, .gif, .bmp, .webp',
-							},
-							{ fieldName: 'notes', fieldLabel: 'Optional Notes' },
-						],
-					},
-					formDescription: 'Please upload exactly 3 images for AI-powered analysis',
-				},
-				position: [944, 192],
-				name: 'Form Trigger (3 images)',
-			},
-		}),
-	)
-	.then(
-		ifBranch(
-			[
-				node({
-					type: 'n8n-nodes-base.set',
-					version: 3.4,
-					config: {
-						parameters: {
-							options: {},
-							assignments: {
-								assignments: [
-									{
-										id: 'id-1',
-										name: 'image0',
-										type: 'object',
-										value: '={{ $binary.image1 }}',
-									},
-									{
-										id: 'id-2',
-										name: 'image1',
-										type: 'object',
-										value: '={{ $binary.image2 }}',
-									},
-									{
-										id: 'id-3',
-										name: 'image2',
-										type: 'object',
-										value: '={{ $binary.image3 }}',
-									},
-								],
-							},
-							includeOtherFields: true,
-						},
-						position: [1392, 288],
-						name: 'Normalize binary names',
-					},
-				}),
-				node({
-					type: 'n8n-nodes-base.set',
-					version: 3.4,
-					config: {
-						parameters: {
-							options: {},
-							assignments: {
-								assignments: [
-									{
-										id: 'id-1',
-										name: 'error',
-										type: 'string',
-										value: 'Please upload 3 images (image1, image2, image3).',
-									},
-								],
-							},
-						},
-						position: [1392, 96],
-						name: 'Error Response - Missing Files',
-					},
-				}),
-			],
-			{
-				version: 2.3,
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							leftValue: '',
-							caseSensitive: false,
-							typeValidation: 'loose',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: 'id-1',
-								operator: { type: 'object', operation: 'exists' },
-								leftValue: '={{ $binary.image1 }}',
-							},
-							{
-								id: 'id-2',
-								operator: { type: 'object', operation: 'exists' },
-								leftValue: '={{ $binary.image2 }}',
-							},
-							{
-								id: 'id-3',
-								operator: { type: 'object', operation: 'exists' },
-								leftValue: '={{ $binary.image3 }}',
-							},
-						],
-					},
-				},
-				name: 'Validate inputs',
-			},
-		),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"const item = items[0];\n\nif (\n  !item.binary ||\n  !item.binary.image1 ||\n  !item.binary.image2 ||\n  !item.binary.image3\n) {\n  throw new Error('Missing binary images (expected image1, image2, image3)');\n}\n\nreturn [\n  {\n    json: { imageNumber: 1 },\n    binary: { image: item.binary.image1 }\n  },\n  {\n    json: { imageNumber: 2 },\n    binary: { image: item.binary.image2 }\n  },\n  {\n    json: { imageNumber: 3 },\n    binary: { image: item.binary.image3 }\n  }\n];\n",
-				},
-				position: [1616, 288],
-				name: 'Split images',
-			},
-		}),
-	)
-	.then(
-		merge(
-			[
-				node({
-					type: 'n8n-nodes-base.googleDrive',
-					version: 3,
-					config: {
-						parameters: {
-							name: '={{$binary.image.fileName}}\n',
-							driveId: {
-								__rl: true,
-								mode: 'id',
-								value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
-							},
-							options: {},
-							folderId: { __rl: true, mode: 'id', value: '=' },
-							inputDataFieldName: 'image',
-						},
-						credentials: {
-							googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' },
-						},
-						position: [1968, 64],
-						name: 'Upload file',
-					},
-				}),
-				node({
-					type: '@n8n/n8n-nodes-langchain.openAi',
-					version: 2.1,
-					config: {
-						parameters: {
-							text: 'Describe the image in detail. Include: objects, people, setting, actions, colors, and any text visible.',
-							modelId: { __rl: true, mode: 'id', value: 'gpt-4o' },
-							options: {},
-							resource: 'image',
-							inputType: 'base64',
-							operation: 'analyze',
-							binaryPropertyName: 'image',
-						},
-						credentials: {
-							openAiApi: { id: 'HUbsD20wv3CFr7gN', name: 'OpenAi account' },
-						},
-						position: [1968, 496],
-						name: 'OpenAI Vision – Image 1',
-					},
-				}),
-			],
-			{
-				version: 3.2,
-				parameters: {
-					mode: 'combine',
-					options: {},
-					combineBy: 'combineByPosition',
-				},
-			},
-		),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						'function extractOpenAIText(it) {\n  // Après Merge by position, OpenAI est sous la clé "0"\n  const openai = it.json?.["0"];\n\n  if (openai?.content && Array.isArray(openai.content)) {\n    const t = openai.content.map(x => x?.text).filter(Boolean).join("\\n");\n    if (t) return t;\n  }\n\n  // fallback (au cas où)\n  if (typeof openai?.text === "string" && openai.text.trim()) return openai.text.trim();\n\n  return null;\n}\n\nfunction extractDriveUrl(it) {\n  return it.json?.webContentLink || it.json?.webViewLink || null;\n}\n\nconst rows = items.map((it, idx) => ({\n  n: idx + 1,\n  desc: extractOpenAIText(it) || "No description",\n  url: extractDriveUrl(it) || "No link",\n}));\n\nreturn [{\n  json: {\n    image1Description: rows[0]?.desc || "No description",\n    image2Description: rows[1]?.desc || "No description",\n    image3Description: rows[2]?.desc || "No description",\n\n    image1Url: rows[0]?.url || "No link",\n    image2Url: rows[1]?.url || "No link",\n    image3Url: rows[2]?.url || "No link",\n    imageUrls: rows.map(r => r.url).filter(u => u && u !== "No link"),\n\n    allDescriptions: rows.map(r => `Image ${r.n}: ${r.desc}`).join("\\n\\n"),\n  }\n}];\n',
-				},
-				position: [2496, 288],
-				name: 'Aggregate descriptions',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: '=Your task is to create an image prompt following the system guidelines.  \nEnsure that the reference image is represented as **accurately as possible**, including all text elements.  \n\nUse the following inputs:  \n\n- **IMAGES’s description:**  \n{{ $json.allDescriptions }}',
-					options: {
-						systemMessage:
-							'=You output a prompt that is a variation of the prompt below. Follow this prompt exactly but just change:\n\n-the hand positioning based on what makes sense for the product\n-how the product is worn and where it is placed\n\neverything else stays the same\n\n***\n\nShow a high fashion studio photoshoot image of this reference character as a photorealistic model wearing the featured apparel and product, captured as a full body shot. The model looks slightly past the camera with a bored expression and raised eyebrows. One hand is lifted, with two fingers interacting with or touching the featured product in a natural, stylish way.\n\nThe setting is a clean studio environment with a solid color background that matches the primary color of the character. The featured product is intentionally prominent.\n\nThe image is shot from a low angle, looking up at the subject to emphasize presence and dominance.\n\nThe photo is captured on Fuji Velvia film using a 55mm prime lens with hard flash lighting. Light is concentrated on the subject and softly fades toward the edges of the frame. The image is intentionally overexposed, with visible film grain and heavy oversaturation. Skin appears shiny, almost oily, and the featured product shows harsh white reflections that highlight its surface and form.\n',
-					},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-								options: {},
-							},
-							credentials: {
-								openAiApi: { id: 'HUbsD20wv3CFr7gN', name: 'OpenAi account' },
-							},
-							name: 'LLM: OpenAI Chat',
-						},
-					}),
-					outputParser: outputParser({
-						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-						version: 1.3,
-						config: {
-							parameters: { jsonSchemaExample: '{\n	"image_prompt": "string"\n}' },
-							name: 'LLM: Structured Output Parser',
-						},
-					}),
-				},
-				position: [2704, 288],
-				name: 'Generate Image Prompt',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://queue.fal.run/fal-ai/nano-banana-pro/edit',
-					method: 'POST',
-					options: { response: { response: { responseFormat: 'json' } } },
-					jsonBody:
-						'={\n  "prompt": "{{ ($json.output.image_prompt || \'\').replace(/\\r?\\n/g, \' \').replace(/\\"/g, \'\\\\\\"\') }}",\n  "image_urls": {{ JSON.stringify($(\'Aggregate descriptions\').item.json.imageUrls) }},\n  "resolution": "1K",\n  "aspect_ratio": "16:9",\n  "output_format": "png"\n}\n',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{ name: 'Content-Type', value: 'application/json' },
-							{
-								name: 'Authorization',
-								value: '=<__PLACEHOLDER_VALUE__fal Key__>',
-							},
-						],
-					},
-				},
-				position: [3120, 288],
-				name: 'NanoBanana: Create Image',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: {
-				parameters: { unit: 'minutes', amount: 2 },
-				position: [3392, 288],
-				name: 'Wait for Image Edit',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: { url: '={{ $json.response_url }}', options: {} },
-				position: [3696, 288],
-				name: 'Download Edited Image',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							status: 'nano_done',
-							image_1: "={{ $('Aggregate descriptions').item.json.image1Url }}",
-							image_2: "={{ $('Aggregate descriptions').item.json.image2Url }}",
-							image_3: "={{ $('Aggregate descriptions').item.json.image3Url }}",
-							description_all: "={{ $('Aggregate descriptions').item.json.allDescriptions }}",
-							image_nanobanana: '={{ $json.images[0].url }}',
-						},
-						schema: [
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_1',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_2',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_3',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'description_all',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'description_all',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_nanobanana',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'image_nanobanana',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['id'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'append',
-					sheetName: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>\n',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [3936, 288],
-				name: 'Append row in sheet',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { position: [944, 896], name: 'When clicking ‘Execute workflow’' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: '',
-						cachedResultUrl: '',
-						cachedResultName: '',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [1456, 896],
-				name: 'Get image nanobanana',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '84d2672d-ec5e-44e9-986d-f707c2a90eb3',
-								name: 'contactSheetPrompt',
-								type: 'string',
-								value:
-									"Analyze the input image and silently inventory all fashion-critical details: the subject(s), exact wardrobe pieces, materials, colors, textures, accessories, hair, makeup, body proportions, environment, set geometry, light direction, and shadow quality. All wardrobe, styling, hair, makeup, lighting, environment, and color grade must remain 100% unchanged across all frames. Do not add or remove anything. Do not reinterpret materials or colors. Do not output any reasoning. Perfectly replicate the exact facial features of the model.  Face & Identity Preservation Rule Do NOT modify the face or head of the person in the original image. The subject must remain the exact same person, with no AI alteration to facial features, identity, proportions, or appearance. No face swap, no enhancement, no identity change.  Your visible output must be: One 2×3 contact sheet image (6 frames). Then a keyframe breakdown for each frame.  Each frame must represent a resting point after a dramatic camera move — only describe the final camera position and what the subject is doing, never the motion itself. The six frames must be spatially dynamic, non-linear, and visually distinct.  Required 6-Frame Shot List  High-Fashion Beauty Portrait (Close, Editorial, Intimate) Camera positioned very close to the subject's face, slightly above or slightly below eye level, using an elegant offset angle that enhances bone structure and highlights key wardrobe elements near the neckline. Shallow depth of field, flawless texture rendering, and a sculptural fashion-forward composition.  High-Angle Three-Quarter Frame Camera positioned overhead but off-center, capturing the subject from a diagonal downward angle. This frame should create strong shape abstraction and reveal wardrobe details from above.  Low-Angle Oblique Full-Body Frame Camera positioned low to the ground and angled obliquely toward the subject. This elongates the silhouette, emphasizes footwear, and creates a dramatic perspective distinct from Frames 1 and 2.  Side-On Compression Frame (Long Lens) Camera placed far to one side of the subject, using a tighter focal length to compress space. The subject appears in clean profile or near-profile, showcasing garment structure in a flattened, editorial manner.  Intimate Close Portrait From an Unexpected Height Camera positioned very close to the subject's face (or upper torso) but slightly above or below eye level. The angle should feel fashion-editorial, not conventional — offset, elegant, and expressive.  Extreme Detail Frame From a Non-Intuitive Angle Camera positioned extremely close to a wardrobe detail, accessory, or texture, but from an unusual spatial direction (e.g., from below, from behind, from the side of a neckline). This must be a striking, abstract, editorial detail frame.  Continuity & Technical Requirements  Maintain perfect wardrobe fidelity in every frame: exact garment type, silhouette, material, color, texture, stitching, accessories, closures, jewelry, shoes, hair, and makeup. Environment, textures, and lighting must remain consistent.  Depth of field shifts naturally with focal length (deep for distant shots, shallow for close/detail shots). Photoreal textures and physically plausible light behavior required. Frames must feel like different camera placements within the same scene, not different scenes.  All keyframes must share the exact same dimensions and 3:2 aspect ratio, and exactly 6 keyframes must be produced.  Maintain the exact visual style in all keyframes: shot on Fuji Velvia film with a hard flash, light concentrated on the subject and fading toward the edges. The image is overexposed, shows significant film grain, is oversaturated, with shiny (almost oily) skin and harsh white reflections on glasses frames.  Output Format  A) One mandatory 2×3 contact sheet image (6 frames)",
-							},
-						],
-					},
-				},
-				position: [1744, 896],
-				name: 'Edit Fields : contactSheetPrompt',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://queue.fal.run/fal-ai/nano-banana-pro/edit',
-					method: 'POST',
-					options: { response: { response: { responseFormat: 'json' } } },
-					jsonBody:
-						'={\n  "prompt": {{ JSON.stringify($json.contactSheetPrompt || \'\') }},\n  "image_urls": {{ JSON.stringify(\n    (() => {\n      const v = $(\'Get image nanobanana\').item.json.image_nanobanana;\n\n      // 1) déjà un array\n      if (Array.isArray(v)) return v;\n\n      // 2) string JSON "[...]" -> parse\n      if (typeof v === \'string\' && v.trim().startsWith(\'[\')) {\n        try { return JSON.parse(v); } catch (e) {}\n      }\n\n      // 3) string simple -> le mettre en array\n      if (typeof v === \'string\' && v.trim()) return [v.trim()];\n\n      // 4) fallback vide\n      return [];\n    })()\n  ) }},\n  "resolution": "1K",\n  "aspect_ratio": "3:2",\n  "output_format": "png"\n}\n',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{ name: 'Content-Type', value: 'application/json' },
-							{
-								name: 'Authorization',
-								value: '=key beee05d5-bab7-4be3-b268-5bf1bfeedefb:42a7be98a6b343f7a626878760ae547d',
-							},
-						],
-					},
-				},
-				position: [1952, 896],
-				name: 'NanoBanana: Contact Sheet',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: {
-				parameters: { unit: 'minutes', amount: 2 },
-				position: [2512, 896],
-				name: 'Wait for Image Edit1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: { url: '={{ $json.response_url }}', options: {} },
-				position: [2800, 896],
-				name: 'Download Edited Image1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							status: 'ContactSheet_done',
-							row_number: 0,
-							image_nanobanana: "={{ $('Get image nanobanana').item.json.image_nanobanana }}",
-							image_contactsheet: '={{ $json.images[0].url }}',
-						},
-						schema: [
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_1',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_1',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_2',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_2',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_3',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'image_3',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'description_all',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'description_all',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_nanobanana',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'image_nanobanana',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'image_contactsheet',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'image_contactsheet',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'number',
-								display: true,
-								removed: false,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['image_nanobanana'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' },
-				},
-				position: [3056, 896],
-				name: 'Update database',
-			},
-		}),
-	)
-	.add(
-		sticky(
-			'# Setup & Configuration Guide\n\n## Workflow Purpose\nThis workflow automates the creation of **AI-generated product images and videos**, starting from product images and ending with **automatic video publishing** on social platforms.\n\n---\n\n## Required Services & Credentials\n\n### 1. NanoBanana Pro (Product Image Generation)\n- API endpoint:  \n  👉 https://fal.ai/models/fal-ai/nano-banana-pro/edit/api\n- Create an account on **fal.ai**\n- Generate your API key\n- Add credentials in n8n: **HTTP Request / Bearer Token**\n- Used to:\n  - Generate high-quality product images\n  - Create marketing-ready visuals\n  - Apply Contact Sheet Prompting for visual variations\n- Recommended for high consistency and realism\n\n---\n\n### 2. Veo 3.1 (Video Generation)\n- API endpoint:  \n  👉 https://fal.ai/models/fal-ai/veo3.1/first-last-frame-to-video\n- Get access via **fal.ai**\n- Add credentials in n8n: **HTTP Request / Bearer Token**\n- Used to:\n  - Convert images into short AI-generated videos\n  - Control camera motion and pacing via prompts\n- Recommended aspect ratio: **16:9**\n\n---\n\n### 3. BLOTATO (Video Publishing)\n- Sign up at [BLOTATO](https://blotato.com/?ref=firas)\n- Get API credentials\n- Add credentials in n8n: **Blotato API**\n- Credential name: `Blotato account`\n- Connect your social accounts (YouTube, TikTok, Instagram, etc.)\n- Used to automatically publish the final videos',
-			{ width: 784, height: 1104 },
-		),
-	)
-	.add(
-		sticky(
-			'# Step 3 – Video Creation & Publishing (Veo 3.1 + Blotato)\n\n\n\n#  📘 Documentation  \n- Access detailed setup instructions, API config, platform connection guides, and workflow customization tips:\n📎 [Open the full documentation on Notion](https://automatisation.notion.site/Generate-product-images-with-NanoBanana-Pro-to-Veo-videos-and-Blotato-2dc3d6550fd980dc81adea10a5df6b28?source=copy_link)\n\n\n-  Credential name: `Google Sheets account` \n📎 **[Copy my Google Sheets ](https://docs.google.com/spreadsheets/d/130hio-ntnPCZbGzmp1R3ROHXSpKQBUC0I_iM0uQPPi4/copy)** \n',
-			{ name: 'Sticky Note3', color: 7, position: [0, 1168], width: 4336, height: 1168 },
-		),
-	)
-	.add(
-		sticky('# Step 1 –  Product Image Creation – NanoBanana Pro\n\n', {
-			name: 'Sticky Note1',
-			color: 5,
-			position: [848, 0],
-			width: 3488,
-			height: 688,
-		}),
-	)
-	.add(
-		sticky('# Step 2 – Contact Sheet Prompting Technique\n', {
-			name: 'Sticky Note2',
-			color: 7,
-			position: [848, 752],
-			width: 3488,
-			height: 352,
-		}),
-	);
+return workflow('ZtcCMj69WUhc1BHs', 'Generate product images with NanoBanana Pro to Veo videos and Blotato - vide 2 ok', { availableInMCP: false, executionOrder: 'v1' })
+  .add(trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.3, config: { parameters: { rule: { interval: [{}] } }, position: [80, 1664] } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      sheetName: {
+        __rl: true,
+        mode: 'list',
+        value: '',
+        cachedResultUrl: '',
+        cachedResultName: ''
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [288, 1664], name: 'Search new image' } }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: {
+      options: {},
+      assignments: {
+        assignments: [
+          {
+            id: 'id-1',
+            name: 'image_url',
+            type: 'string',
+            value: '={{ $json.image_contactsheet }}'
+          }
+        ]
+      }
+    }, position: [496, 1664], name: 'Set Image URL' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { parameters: {
+      url: '={{ $json.image_url }}',
+      options: { response: { response: { responseFormat: 'file' } } }
+    }, position: [704, 1664], name: 'Download Image' } }))
+  .then(node({ type: 'n8n-nodes-base.editImage', version: 1, config: { parameters: { operation: 'information' }, position: [1008, 1664] } }))
+  .add(node({ type: 'n8n-nodes-base.editImage', version: 1, config: { parameters: {
+      width: '={{ Math.floor($json.size.width / 3) }}',
+      height: '={{ Math.floor($json.size.height / 2) }}',
+      options: {},
+      operation: 'crop'
+    }, position: [1456, 1184], name: 'Crop Top Left' } }))
+  .then(node({ type: 'n8n-nodes-base.googleDrive', version: 3, config: { parameters: {
+      name: '={{ \n  "image_top_left_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
+      driveId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>'
+      },
+      options: {},
+      folderId: { __rl: true, mode: 'id', value: '=' }
+    }, credentials: {
+      googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' }
+    }, position: [1744, 1184], name: 'Upload to Google Drive' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          new_image_1: '={{ $json.webContentLink }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [1952, 1184], name: 'Update url image_top_left' } }))
+  .then(merge([node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          new_image_1: '={{ $json.webContentLink }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [1952, 1184], name: 'Update url image_top_left' } }), node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          new_image_2: '={{ $json.webContentLink }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [1952, 1376], name: 'Update url image_top_center' } })], { version: 3.2, parameters: {
+      mode: 'combine',
+      options: {},
+      combineBy: 'combineByPosition'
+    }, name: 'Merge1' }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://fal.run/fal-ai/veo3.1/first-last-frame-to-video',
+      method: 'POST',
+      options: {
+        timeout: 600000,
+        response: { response: { responseFormat: 'json' } }
+      },
+      jsonBody: '={\n  "prompt": "The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.",\n  "first_frame_url": "{{ $json.new_image_1 }}",\n  "last_frame_url": "{{ $json.new_image_2 }}",\n  "aspect_ratio": "auto",\n  "duration": "4s",\n  "resolution": "720p",\n  "generate_audio": false,\n  "auto_fix": true\n}',
+      sendBody: true,
+      sendHeaders: true,
+      specifyBody: 'json',
+      headerParameters: {
+        parameters: [
+          {
+            name: 'Authorization',
+            value: '=<__PLACEHOLDER_VALUE__fal Key__>'
+          },
+          { name: 'Content-Type', value: 'application/json' }
+        ]
+      }
+    }, position: [2528, 1264], name: 'Veo Generation' } }))
+  .then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1264] } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          video_1: '={{ $json.video.url }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_1',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'video_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [3072, 1264], name: 'Update video 1' } }))
+  .then(merge([node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          video_1: '={{ $json.video.url }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_1',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'video_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [3072, 1264], name: 'Update video 1' } }), node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          video_2: '={{ $json.video.url }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_2',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'video_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [3072, 1472], name: 'Update video 2' } }), node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          video_3: '={{ $json.video.url }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_3',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'video_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [3072, 1664], name: 'Update video 3' } }), node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          video_4: '={{ $json.video.url }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_4',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'video_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [3072, 1872], name: 'Update video 4' } }), node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          video_5: '={{ $json.video.url }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_5',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'video_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [3072, 2080], name: 'Update video 5' } })], { version: 3.2, parameters: {
+      mode: 'combine',
+      options: {},
+      combineBy: 'combineByPosition',
+      numberInputs: 5
+    }, name: 'Merge6' }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://fal.run/fal-ai/ffmpeg-api/merge-videos',
+      method: 'POST',
+      options: {},
+      jsonBody: '={\n  "video_urls": [\n    "{{ $json.video_1 }}",\n    "{{ $json.video_2 }}",\n    "{{ $json.video_3 }}",\n    "{{ $json.video_4 }}",\n    "{{ $json.video_5 }}"\n  ],\n  "resolution": "landscape_16_9",\n  "output": {\n    "format": "mp4"\n  }\n}',
+      sendBody: true,
+      sendHeaders: true,
+      specifyBody: 'json',
+      headerParameters: {
+        parameters: [
+          {
+            name: 'Authorization',
+            value: '<__PLACEHOLDER_VALUE__fal Key__>'
+          },
+          { name: 'Content-Type', value: 'application/json' }
+        ]
+      }
+    }, position: [3616, 1664], name: 'Merge 3 Videos' } }))
+  .then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { parameters: { unit: 'minutes', amount: 3 }, position: [3616, 1920], name: 'Wait: Merge Process' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          status: 'done',
+          'Final video': '={{ $json.video.url }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').item.json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'video_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'video_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'Final video',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'Final video',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [3616, 2144], name: 'Update URL Final video' } }))
+  .then(node({ type: '@blotato/n8n-nodes-blotato.blotato', version: 2, config: { parameters: {
+      mediaUrl: '={{ $json[\'Final video\'] }}',
+      resource: 'media'
+    }, credentials: {
+      blotatoApi: { id: 'wozsYJYLfCZO37j8', name: 'Blotato account' }
+    }, position: [3856, 2144], name: 'Upload Video to BLOTATO' } }))
+  .then(node({ type: '@blotato/n8n-nodes-blotato.blotato', version: 2, config: { parameters: {
+      options: {},
+      platform: 'youtube',
+      accountId: {
+        __rl: true,
+        mode: 'list',
+        value: '8047',
+        cachedResultUrl: 'https://backend.blotato.com/v2/accounts/8047',
+        cachedResultName: 'DR FIRASS (Dr. Firas)'
+      },
+      postContentText: 'My new vidéo',
+      postContentMediaUrls: '={{ $json.url }}',
+      postCreateYoutubeOptionTitle: 'My new vidéo',
+      postCreateYoutubeOptionPrivacyStatus: 'private',
+      postCreateYoutubeOptionShouldNotifySubscribers: false
+    }, credentials: {
+      blotatoApi: { id: 'wozsYJYLfCZO37j8', name: 'Blotato account' }
+    }, position: [4112, 2144], name: 'Youtube' } }))
+  .add(node({ type: 'n8n-nodes-base.editImage', version: 1, config: { parameters: {
+      width: '={{ Math.floor($json.size.width / 3) }}\n',
+      height: '={{ Math.floor($json.size.height / 2) }}\n',
+      options: {},
+      operation: 'crop',
+      positionX: '={{ Math.floor($json.size.width / 3) }}\n'
+    }, position: [1456, 1376], name: 'Crop Top Center' } }))
+  .then(node({ type: 'n8n-nodes-base.googleDrive', version: 3, config: { parameters: {
+      name: '={{ \n  "image_top_center_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
+      driveId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>'
+      },
+      options: {},
+      folderId: { __rl: true, mode: 'id', value: '=' }
+    }, credentials: {
+      googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' }
+    }, position: [1744, 1376], name: 'Upload to Google Drive1' } }))
+  .add(node({ type: 'n8n-nodes-base.editImage', version: 1, config: { parameters: {
+      width: '={{ Math.floor($json.size.width / 3) }}\n',
+      height: '={{ Math.floor($json.size.height / 2) }}\n',
+      options: {},
+      operation: 'crop',
+      positionX: '={{ Math.floor($json.size.width * 2 / 3) }}\n'
+    }, position: [1456, 1568], name: 'Crop Top Right' } }))
+  .then(node({ type: 'n8n-nodes-base.googleDrive', version: 3, config: { parameters: {
+      name: '={{ \n  "image_top_right_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
+      driveId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>'
+      },
+      options: {},
+      folderId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>'
+      }
+    }, credentials: {
+      googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' }
+    }, position: [1744, 1568], name: 'Upload to Google Drive2' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          new_image_3: '={{ $json.webContentLink }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [1952, 1568], name: 'Update url image_top_right' } }))
+  .add(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { parameters: {
+      mode: 'combine',
+      options: {},
+      combineBy: 'combineByPosition'
+    }, position: [2240, 1472], name: 'Merge2' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://fal.run/fal-ai/veo3.1/first-last-frame-to-video',
+      method: 'POST',
+      options: {
+        timeout: 600000,
+        response: { response: { responseFormat: 'json' } }
+      },
+      jsonBody: '={\n  "prompt": "The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement. Audio: soft cinematic ambient music, very subtle, calm pads, no vocals, low volume. Add gentle room tone.",\n  "first_frame_url": "{{ $json.new_image_2 }}",\n  "last_frame_url": "{{ $json.new_image_3 }}",\n  "aspect_ratio": "auto",\n  "duration": "4s",\n  "resolution": "720p",\n  "generate_audio": false,\n  "auto_fix": true\n}',
+      sendBody: true,
+      sendHeaders: true,
+      specifyBody: 'json',
+      headerParameters: {
+        parameters: [
+          {
+            name: 'Authorization',
+            value: '=<__PLACEHOLDER_VALUE__fal Key__>'
+          },
+          { name: 'Content-Type', value: 'application/json' }
+        ]
+      }
+    }, position: [2528, 1472], name: 'Veo Generation1' } }))
+  .then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1472], name: 'Wait1' } }))
+  .add(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { parameters: {
+      mode: 'combine',
+      options: {},
+      combineBy: 'combineByPosition'
+    }, position: [2240, 1664], name: 'Merge3' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://fal.run/fal-ai/veo3.1/first-last-frame-to-video',
+      method: 'POST',
+      options: {
+        timeout: 600000,
+        response: { response: { responseFormat: 'json' } }
+      },
+      jsonBody: '={\n  "prompt": "The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.",\n  "first_frame_url": "{{ $json.new_image_3 }}",\n  "last_frame_url": "{{ $json.new_image_4 }}",\n  "aspect_ratio": "auto",\n  "duration": "4s",\n  "resolution": "720p",\n  "generate_audio": false,\n  "auto_fix": true\n}',
+      sendBody: true,
+      sendHeaders: true,
+      specifyBody: 'json',
+      headerParameters: {
+        parameters: [
+          {
+            name: 'Authorization',
+            value: '=<__PLACEHOLDER_VALUE__fal Key__>'
+          },
+          { name: 'Content-Type', value: 'application/json' }
+        ]
+      }
+    }, position: [2528, 1664], name: 'Veo Generation2' } }))
+  .then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1664], name: 'Wait2' } }))
+  .add(node({ type: 'n8n-nodes-base.editImage', version: 1, config: { parameters: {
+      width: '={{ Math.floor($json.size.width / 3) }}\n',
+      height: '={{ Math.floor($json.size.height / 2) }}\n',
+      options: {},
+      operation: 'crop',
+      positionY: '={{ Math.floor($json.size.height / 2) }}\n'
+    }, position: [1456, 1760], name: 'Crop Bottom Left' } }))
+  .then(node({ type: 'n8n-nodes-base.googleDrive', version: 3, config: { parameters: {
+      name: '={{ \n  "image_bottom_left_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
+      driveId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>'
+      },
+      options: {},
+      folderId: { __rl: true, mode: 'id', value: '=' }
+    }, credentials: {
+      googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' }
+    }, position: [1744, 1760], name: 'Upload to Google Drive3' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          new_image_4: '={{ $json.webContentLink }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [1952, 1760], name: 'Update url image_bottom_left' } }))
+  .add(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { parameters: {
+      mode: 'combine',
+      options: {},
+      combineBy: 'combineByPosition'
+    }, position: [2240, 1872], name: 'Merge4' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://fal.run/fal-ai/veo3.1/first-last-frame-to-video',
+      method: 'POST',
+      options: {
+        timeout: 600000,
+        response: { response: { responseFormat: 'json' } }
+      },
+      jsonBody: '={\n  "prompt": "The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.",\n  "first_frame_url": "{{ $json.new_image_4 }}",\n  "last_frame_url": "{{ $json.new_image_5 }}",\n  "aspect_ratio": "auto",\n  "duration": "4s",\n  "resolution": "720p",\n  "generate_audio": false,\n  "auto_fix": true\n}',
+      sendBody: true,
+      sendHeaders: true,
+      specifyBody: 'json',
+      headerParameters: {
+        parameters: [
+          {
+            name: 'Authorization',
+            value: '=<__PLACEHOLDER_VALUE__fal Key__>'
+          },
+          { name: 'Content-Type', value: 'application/json' }
+        ]
+      }
+    }, position: [2528, 1872], name: 'Veo Generation3' } }))
+  .then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1872], name: 'Wait3' } }))
+  .add(node({ type: 'n8n-nodes-base.editImage', version: 1, config: { parameters: {
+      width: '={{ Math.floor($json.size.width / 3) }}\n',
+      height: '={{ Math.floor($json.size.height / 2) }}\n',
+      options: {},
+      operation: 'crop',
+      positionX: '={{ Math.floor($json.size.width / 3) }}\n',
+      positionY: '={{ Math.floor($json.size.height / 2) }}\n'
+    }, position: [1456, 1952], name: 'Crop Bottom Center' } }))
+  .then(node({ type: 'n8n-nodes-base.googleDrive', version: 3, config: { parameters: {
+      name: '={{ \n  "image_bottom_center_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
+      driveId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>'
+      },
+      options: {},
+      folderId: { __rl: true, mode: 'id', value: '=' }
+    }, credentials: {
+      googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' }
+    }, position: [1744, 1952], name: 'Upload to Google Drive4' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          new_image_5: '={{ $json.webContentLink }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [1952, 1952], name: 'Update url image_bottom_center' } }))
+  .add(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { parameters: {
+      mode: 'combine',
+      options: {},
+      combineBy: 'combineByPosition'
+    }, position: [2240, 2080], name: 'Merge5' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://fal.run/fal-ai/veo3.1/first-last-frame-to-video',
+      method: 'POST',
+      options: {
+        timeout: 600000,
+        response: { response: { responseFormat: 'json' } }
+      },
+      jsonBody: '={\n  "prompt": "The camera very slowly and smoothly lowers on a boom. The subject barely moves, and is extremely deliberate and thoughtful in movement.",\n  "first_frame_url": "{{ $json.new_image_5 }}",\n  "last_frame_url": "{{ $json.new_image_6 }}",\n  "aspect_ratio": "auto",\n  "duration": "4s",\n  "resolution": "720p",\n  "generate_audio": false,\n  "auto_fix": true\n}',
+      sendBody: true,
+      sendHeaders: true,
+      specifyBody: 'json',
+      headerParameters: {
+        parameters: [
+          {
+            name: 'Authorization',
+            value: '=<__PLACEHOLDER_VALUE__fal Key__>'
+          },
+          { name: 'Content-Type', value: 'application/json' }
+        ]
+      }
+    }, position: [2528, 2080], name: 'Veo Generation4' } }))
+  .then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 2080], name: 'Wait4' } }))
+  .add(node({ type: 'n8n-nodes-base.editImage', version: 1, config: { parameters: {
+      width: '={{ Math.floor($json.size.width / 3) }}\n',
+      height: '={{ Math.floor($json.size.height / 2) }}\n',
+      options: {},
+      operation: 'crop',
+      positionX: '={{ Math.floor($json.size.width * 2 / 3) }}\n',
+      positionY: '={{ Math.floor($json.size.height / 2) }}\n'
+    }, position: [1456, 2144], name: 'Crop Bottom Right' } }))
+  .then(node({ type: 'n8n-nodes-base.googleDrive', version: 3, config: { parameters: {
+      name: '={{ \n  "image_bottom_right_" +\n  new Date().toISOString()\n    .slice(0,19)\n    .replace("T", "_")\n    .replace(/:/g, "-")\n}}.png',
+      driveId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>'
+      },
+      options: {},
+      folderId: { __rl: true, mode: 'id', value: '=' }
+    }, credentials: {
+      googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' }
+    }, position: [1744, 2144], name: 'Upload to Google Drive5' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          new_image_6: '={{ $json.webContentLink }}',
+          image_contactsheet: '={{ $(\'Set Image URL\').first().json.image_url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_4',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_4',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_5',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'new_image_5',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'new_image_6',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'new_image_6',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: true,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_contactsheet'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [1952, 2144], name: 'Update url image_bottom_right' } }))
+  .add(trigger({ type: 'n8n-nodes-base.formTrigger', version: 2.4, config: { parameters: {
+      options: { buttonLabel: 'Analyze Images', appendAttribution: false },
+      formTitle: 'Upload 3 Images for Analysis',
+      formFields: {
+        values: [
+          {
+            fieldName: 'image1',
+            fieldType: 'file',
+            fieldLabel: 'Image 1',
+            multipleFiles: false,
+            requiredField: true,
+            acceptFileTypes: '.jpg, .jpeg, .png, .gif, .bmp, .webp'
+          },
+          {
+            fieldName: 'image2',
+            fieldType: 'file',
+            fieldLabel: 'Image 2',
+            multipleFiles: false,
+            requiredField: true,
+            acceptFileTypes: '.jpg, .jpeg, .png, .gif, .bmp, .webp'
+          },
+          {
+            fieldName: 'image3',
+            fieldType: 'file',
+            fieldLabel: 'Image 3',
+            multipleFiles: false,
+            requiredField: true,
+            acceptFileTypes: '.jpg, .jpeg, .png, .gif, .bmp, .webp'
+          },
+          { fieldName: 'notes', fieldLabel: 'Optional Notes' }
+        ]
+      },
+      formDescription: 'Please upload exactly 3 images for AI-powered analysis'
+    }, position: [944, 192], name: 'Form Trigger (3 images)' } }))
+  .then(ifBranch([node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: {
+      options: {},
+      assignments: {
+        assignments: [
+          {
+            id: 'id-1',
+            name: 'image0',
+            type: 'object',
+            value: '={{ $binary.image1 }}'
+          },
+          {
+            id: 'id-2',
+            name: 'image1',
+            type: 'object',
+            value: '={{ $binary.image2 }}'
+          },
+          {
+            id: 'id-3',
+            name: 'image2',
+            type: 'object',
+            value: '={{ $binary.image3 }}'
+          }
+        ]
+      },
+      includeOtherFields: true
+    }, position: [1392, 288], name: 'Normalize binary names' } }), node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: {
+      options: {},
+      assignments: {
+        assignments: [
+          {
+            id: 'id-1',
+            name: 'error',
+            type: 'string',
+            value: 'Please upload 3 images (image1, image2, image3).'
+          }
+        ]
+      }
+    }, position: [1392, 96], name: 'Error Response - Missing Files' } })], { version: 2.3, parameters: {
+      options: {},
+      conditions: {
+        options: {
+          leftValue: '',
+          caseSensitive: false,
+          typeValidation: 'loose'
+        },
+        combinator: 'and',
+        conditions: [
+          {
+            id: 'id-1',
+            operator: { type: 'object', operation: 'exists' },
+            leftValue: '={{ $binary.image1 }}'
+          },
+          {
+            id: 'id-2',
+            operator: { type: 'object', operation: 'exists' },
+            leftValue: '={{ $binary.image2 }}'
+          },
+          {
+            id: 'id-3',
+            operator: { type: 'object', operation: 'exists' },
+            leftValue: '={{ $binary.image3 }}'
+          }
+        ]
+      }
+    }, name: 'Validate inputs' }))
+  .then(node({ type: 'n8n-nodes-base.code', version: 2, config: { parameters: {
+      jsCode: 'const item = items[0];\n\nif (\n  !item.binary ||\n  !item.binary.image1 ||\n  !item.binary.image2 ||\n  !item.binary.image3\n) {\n  throw new Error(\'Missing binary images (expected image1, image2, image3)\');\n}\n\nreturn [\n  {\n    json: { imageNumber: 1 },\n    binary: { image: item.binary.image1 }\n  },\n  {\n    json: { imageNumber: 2 },\n    binary: { image: item.binary.image2 }\n  },\n  {\n    json: { imageNumber: 3 },\n    binary: { image: item.binary.image3 }\n  }\n];\n'
+    }, position: [1616, 288], name: 'Split images' } }))
+  .then(merge([node({ type: 'n8n-nodes-base.googleDrive', version: 3, config: { parameters: {
+      name: '={{$binary.image.fileName}}\n',
+      driveId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>'
+      },
+      options: {},
+      folderId: { __rl: true, mode: 'id', value: '=' },
+      inputDataFieldName: 'image'
+    }, credentials: {
+      googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' }
+    }, position: [1968, 64], name: 'Upload file' } }), node({ type: '@n8n/n8n-nodes-langchain.openAi', version: 2.1, config: { parameters: {
+      text: 'Describe the image in detail. Include: objects, people, setting, actions, colors, and any text visible.',
+      modelId: { __rl: true, mode: 'id', value: 'gpt-4o' },
+      options: {},
+      resource: 'image',
+      inputType: 'base64',
+      operation: 'analyze',
+      binaryPropertyName: 'image'
+    }, credentials: {
+      openAiApi: { id: 'HUbsD20wv3CFr7gN', name: 'OpenAi account' }
+    }, position: [1968, 496], name: 'OpenAI Vision – Image 1' } })], { version: 3.2, parameters: {
+      mode: 'combine',
+      options: {},
+      combineBy: 'combineByPosition'
+    } }))
+  .then(node({ type: 'n8n-nodes-base.code', version: 2, config: { parameters: {
+      jsCode: 'function extractOpenAIText(it) {\n  // Après Merge by position, OpenAI est sous la clé "0"\n  const openai = it.json?.["0"];\n\n  if (openai?.content && Array.isArray(openai.content)) {\n    const t = openai.content.map(x => x?.text).filter(Boolean).join("\\n");\n    if (t) return t;\n  }\n\n  // fallback (au cas où)\n  if (typeof openai?.text === "string" && openai.text.trim()) return openai.text.trim();\n\n  return null;\n}\n\nfunction extractDriveUrl(it) {\n  return it.json?.webContentLink || it.json?.webViewLink || null;\n}\n\nconst rows = items.map((it, idx) => ({\n  n: idx + 1,\n  desc: extractOpenAIText(it) || "No description",\n  url: extractDriveUrl(it) || "No link",\n}));\n\nreturn [{\n  json: {\n    image1Description: rows[0]?.desc || "No description",\n    image2Description: rows[1]?.desc || "No description",\n    image3Description: rows[2]?.desc || "No description",\n\n    image1Url: rows[0]?.url || "No link",\n    image2Url: rows[1]?.url || "No link",\n    image3Url: rows[2]?.url || "No link",\n    imageUrls: rows.map(r => r.url).filter(u => u && u !== "No link"),\n\n    allDescriptions: rows.map(r => `Image ${r.n}: ${r.desc}`).join("\\n\\n"),\n  }\n}];\n'
+    }, position: [2496, 288], name: 'Aggregate descriptions' } }))
+  .then(node({ type: '@n8n/n8n-nodes-langchain.agent', version: 2.2, config: { parameters: {
+      text: '=Your task is to create an image prompt following the system guidelines.  \nEnsure that the reference image is represented as **accurately as possible**, including all text elements.  \n\nUse the following inputs:  \n\n- **IMAGES’s description:**  \n{{ $json.allDescriptions }}',
+      options: {
+        systemMessage: '=You output a prompt that is a variation of the prompt below. Follow this prompt exactly but just change:\n\n-the hand positioning based on what makes sense for the product\n-how the product is worn and where it is placed\n\neverything else stays the same\n\n***\n\nShow a high fashion studio photoshoot image of this reference character as a photorealistic model wearing the featured apparel and product, captured as a full body shot. The model looks slightly past the camera with a bored expression and raised eyebrows. One hand is lifted, with two fingers interacting with or touching the featured product in a natural, stylish way.\n\nThe setting is a clean studio environment with a solid color background that matches the primary color of the character. The featured product is intentionally prominent.\n\nThe image is shot from a low angle, looking up at the subject to emphasize presence and dominance.\n\nThe photo is captured on Fuji Velvia film using a 55mm prime lens with hard flash lighting. Light is concentrated on the subject and softly fades toward the edges of the frame. The image is intentionally overexposed, with visible film grain and heavy oversaturation. Skin appears shiny, almost oily, and the featured product shows harsh white reflections that highlight its surface and form.\n'
+      },
+      promptType: 'define',
+      hasOutputParser: true
+    }, subnodes: { model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2, config: { parameters: {
+          model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+          options: {}
+        }, credentials: {
+          openAiApi: { id: 'HUbsD20wv3CFr7gN', name: 'OpenAi account' }
+        }, name: 'LLM: OpenAI Chat' } }), outputParser: outputParser({ type: '@n8n/n8n-nodes-langchain.outputParserStructured', version: 1.3, config: { parameters: { jsonSchemaExample: '{\n	"image_prompt": "string"\n}' }, name: 'LLM: Structured Output Parser' } }) }, position: [2704, 288], name: 'Generate Image Prompt' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://queue.fal.run/fal-ai/nano-banana-pro/edit',
+      method: 'POST',
+      options: { response: { response: { responseFormat: 'json' } } },
+      jsonBody: '={\n  "prompt": "{{ ($json.output.image_prompt || \'\').replace(/\\r?\\n/g, \' \').replace(/\\"/g, \'\\\\\\"\') }}",\n  "image_urls": {{ JSON.stringify($(\'Aggregate descriptions\').item.json.imageUrls) }},\n  "resolution": "1K",\n  "aspect_ratio": "16:9",\n  "output_format": "png"\n}\n',
+      sendBody: true,
+      sendHeaders: true,
+      specifyBody: 'json',
+      headerParameters: {
+        parameters: [
+          { name: 'Content-Type', value: 'application/json' },
+          {
+            name: 'Authorization',
+            value: '=<__PLACEHOLDER_VALUE__fal Key__>'
+          }
+        ]
+      }
+    }, position: [3120, 288], name: 'NanoBanana: Create Image' } }))
+  .then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { parameters: { unit: 'minutes', amount: 2 }, position: [3392, 288], name: 'Wait for Image Edit' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: { url: '={{ $json.response_url }}', options: {} }, position: [3696, 288], name: 'Download Edited Image' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          status: 'nano_done',
+          image_1: '={{ $(\'Aggregate descriptions\').item.json.image1Url }}',
+          image_2: '={{ $(\'Aggregate descriptions\').item.json.image2Url }}',
+          image_3: '={{ $(\'Aggregate descriptions\').item.json.image3Url }}',
+          description_all: '={{ $(\'Aggregate descriptions\').item.json.allDescriptions }}',
+          image_nanobanana: '={{ $json.images[0].url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['id'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'append',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>\n'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [3936, 288], name: 'Append row in sheet' } }))
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [944, 896], name: 'When clicking ‘Execute workflow’' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      sheetName: {
+        __rl: true,
+        mode: 'list',
+        value: '',
+        cachedResultUrl: '',
+        cachedResultName: ''
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [1456, 896], name: 'Get image nanobanana' } }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: {
+      options: {},
+      assignments: {
+        assignments: [
+          {
+            id: '84d2672d-ec5e-44e9-986d-f707c2a90eb3',
+            name: 'contactSheetPrompt',
+            type: 'string',
+            value: 'Analyze the input image and silently inventory all fashion-critical details: the subject(s), exact wardrobe pieces, materials, colors, textures, accessories, hair, makeup, body proportions, environment, set geometry, light direction, and shadow quality. All wardrobe, styling, hair, makeup, lighting, environment, and color grade must remain 100% unchanged across all frames. Do not add or remove anything. Do not reinterpret materials or colors. Do not output any reasoning. Perfectly replicate the exact facial features of the model.  Face & Identity Preservation Rule Do NOT modify the face or head of the person in the original image. The subject must remain the exact same person, with no AI alteration to facial features, identity, proportions, or appearance. No face swap, no enhancement, no identity change.  Your visible output must be: One 2×3 contact sheet image (6 frames). Then a keyframe breakdown for each frame.  Each frame must represent a resting point after a dramatic camera move — only describe the final camera position and what the subject is doing, never the motion itself. The six frames must be spatially dynamic, non-linear, and visually distinct.  Required 6-Frame Shot List  High-Fashion Beauty Portrait (Close, Editorial, Intimate) Camera positioned very close to the subject\'s face, slightly above or slightly below eye level, using an elegant offset angle that enhances bone structure and highlights key wardrobe elements near the neckline. Shallow depth of field, flawless texture rendering, and a sculptural fashion-forward composition.  High-Angle Three-Quarter Frame Camera positioned overhead but off-center, capturing the subject from a diagonal downward angle. This frame should create strong shape abstraction and reveal wardrobe details from above.  Low-Angle Oblique Full-Body Frame Camera positioned low to the ground and angled obliquely toward the subject. This elongates the silhouette, emphasizes footwear, and creates a dramatic perspective distinct from Frames 1 and 2.  Side-On Compression Frame (Long Lens) Camera placed far to one side of the subject, using a tighter focal length to compress space. The subject appears in clean profile or near-profile, showcasing garment structure in a flattened, editorial manner.  Intimate Close Portrait From an Unexpected Height Camera positioned very close to the subject\'s face (or upper torso) but slightly above or below eye level. The angle should feel fashion-editorial, not conventional — offset, elegant, and expressive.  Extreme Detail Frame From a Non-Intuitive Angle Camera positioned extremely close to a wardrobe detail, accessory, or texture, but from an unusual spatial direction (e.g., from below, from behind, from the side of a neckline). This must be a striking, abstract, editorial detail frame.  Continuity & Technical Requirements  Maintain perfect wardrobe fidelity in every frame: exact garment type, silhouette, material, color, texture, stitching, accessories, closures, jewelry, shoes, hair, and makeup. Environment, textures, and lighting must remain consistent.  Depth of field shifts naturally with focal length (deep for distant shots, shallow for close/detail shots). Photoreal textures and physically plausible light behavior required. Frames must feel like different camera placements within the same scene, not different scenes.  All keyframes must share the exact same dimensions and 3:2 aspect ratio, and exactly 6 keyframes must be produced.  Maintain the exact visual style in all keyframes: shot on Fuji Velvia film with a hard flash, light concentrated on the subject and fading toward the edges. The image is overexposed, shows significant film grain, is oversaturated, with shiny (almost oily) skin and harsh white reflections on glasses frames.  Output Format  A) One mandatory 2×3 contact sheet image (6 frames)'
+          }
+        ]
+      }
+    }, position: [1744, 896], name: 'Edit Fields : contactSheetPrompt' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {
+      url: 'https://queue.fal.run/fal-ai/nano-banana-pro/edit',
+      method: 'POST',
+      options: { response: { response: { responseFormat: 'json' } } },
+      jsonBody: '={\n  "prompt": {{ JSON.stringify($json.contactSheetPrompt || \'\') }},\n  "image_urls": {{ JSON.stringify(\n    (() => {\n      const v = $(\'Get image nanobanana\').item.json.image_nanobanana;\n\n      // 1) déjà un array\n      if (Array.isArray(v)) return v;\n\n      // 2) string JSON "[...]" -> parse\n      if (typeof v === \'string\' && v.trim().startsWith(\'[\')) {\n        try { return JSON.parse(v); } catch (e) {}\n      }\n\n      // 3) string simple -> le mettre en array\n      if (typeof v === \'string\' && v.trim()) return [v.trim()];\n\n      // 4) fallback vide\n      return [];\n    })()\n  ) }},\n  "resolution": "1K",\n  "aspect_ratio": "3:2",\n  "output_format": "png"\n}\n',
+      sendBody: true,
+      sendHeaders: true,
+      specifyBody: 'json',
+      headerParameters: {
+        parameters: [
+          { name: 'Content-Type', value: 'application/json' },
+          {
+            name: 'Authorization',
+            value: '=key beee05d5-bab7-4be3-b268-5bf1bfeedefb:42a7be98a6b343f7a626878760ae547d'
+          }
+        ]
+      }
+    }, position: [1952, 896], name: 'NanoBanana: Contact Sheet' } }))
+  .then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { parameters: { unit: 'minutes', amount: 2 }, position: [2512, 896], name: 'Wait for Image Edit1' } }))
+  .then(node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: { url: '={{ $json.response_url }}', options: {} }, position: [2800, 896], name: 'Download Edited Image1' } }))
+  .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { parameters: {
+      columns: {
+        value: {
+          status: 'ContactSheet_done',
+          row_number: 0,
+          image_nanobanana: '={{ $(\'Get image nanobanana\').item.json.image_nanobanana }}',
+          image_contactsheet: '={{ $json.images[0].url }}'
+        },
+        schema: [
+          {
+            id: 'status',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'status',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_1',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_1',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_2',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_2',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_3',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'image_3',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'description_all',
+            type: 'string',
+            display: true,
+            removed: true,
+            required: false,
+            displayName: 'description_all',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_nanobanana',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_nanobanana',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'image_contactsheet',
+            type: 'string',
+            display: true,
+            removed: false,
+            required: false,
+            displayName: 'image_contactsheet',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          },
+          {
+            id: 'row_number',
+            type: 'number',
+            display: true,
+            removed: false,
+            readOnly: true,
+            required: false,
+            displayName: 'row_number',
+            defaultMatch: false,
+            canBeUsedToMatch: true
+          }
+        ],
+        mappingMode: 'defineBelow',
+        matchingColumns: ['image_nanobanana'],
+        attemptToConvertTypes: false,
+        convertFieldsToString: false
+      },
+      options: {},
+      operation: 'update',
+      sheetName: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Sheet Tab Name__>'
+      },
+      documentId: {
+        __rl: true,
+        mode: 'id',
+        value: '=<__PLACEHOLDER_VALUE__Google Sheets Document ID__>'
+      }
+    }, credentials: {
+      googleSheetsOAuth2Api: { id: 'YlIXFU6zUDsqwmRG', name: 'Google Sheets account' }
+    }, position: [3056, 896], name: 'Update database' } }))
+  .add(sticky('# Setup & Configuration Guide\n\n## Workflow Purpose\nThis workflow automates the creation of **AI-generated product images and videos**, starting from product images and ending with **automatic video publishing** on social platforms.\n\n---\n\n## Required Services & Credentials\n\n### 1. NanoBanana Pro (Product Image Generation)\n- API endpoint:  \n  👉 https://fal.ai/models/fal-ai/nano-banana-pro/edit/api\n- Create an account on **fal.ai**\n- Generate your API key\n- Add credentials in n8n: **HTTP Request / Bearer Token**\n- Used to:\n  - Generate high-quality product images\n  - Create marketing-ready visuals\n  - Apply Contact Sheet Prompting for visual variations\n- Recommended for high consistency and realism\n\n---\n\n### 2. Veo 3.1 (Video Generation)\n- API endpoint:  \n  👉 https://fal.ai/models/fal-ai/veo3.1/first-last-frame-to-video\n- Get access via **fal.ai**\n- Add credentials in n8n: **HTTP Request / Bearer Token**\n- Used to:\n  - Convert images into short AI-generated videos\n  - Control camera motion and pacing via prompts\n- Recommended aspect ratio: **16:9**\n\n---\n\n### 3. BLOTATO (Video Publishing)\n- Sign up at [BLOTATO](https://blotato.com/?ref=firas)\n- Get API credentials\n- Add credentials in n8n: **Blotato API**\n- Credential name: `Blotato account`\n- Connect your social accounts (YouTube, TikTok, Instagram, etc.)\n- Used to automatically publish the final videos', { width: 784, height: 1104 }))
+  .add(sticky('# Step 3 – Video Creation & Publishing (Veo 3.1 + Blotato)\n\n\n\n#  📘 Documentation  \n- Access detailed setup instructions, API config, platform connection guides, and workflow customization tips:\n📎 [Open the full documentation on Notion](https://automatisation.notion.site/Generate-product-images-with-NanoBanana-Pro-to-Veo-videos-and-Blotato-2dc3d6550fd980dc81adea10a5df6b28?source=copy_link)\n\n\n-  Credential name: `Google Sheets account` \n📎 **[Copy my Google Sheets ](https://docs.google.com/spreadsheets/d/130hio-ntnPCZbGzmp1R3ROHXSpKQBUC0I_iM0uQPPi4/copy)** \n', { name: 'Sticky Note3', color: 7, position: [0, 1168], width: 4336, height: 1168 }))
+  .add(sticky('# Step 1 –  Product Image Creation – NanoBanana Pro\n\n', { name: 'Sticky Note1', color: 5, position: [848, 0], width: 3488, height: 688 }))
+  .add(sticky('# Step 2 – Contact Sheet Prompting Technique\n', { name: 'Sticky Note2', color: 7, position: [848, 752], width: 3488, height: 352 }))

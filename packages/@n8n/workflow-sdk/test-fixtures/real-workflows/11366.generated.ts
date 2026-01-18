@@ -1,137 +1,24 @@
-const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOrder: 'v1' })
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.telegramTrigger',
-			version: 1.2,
-			config: { position: [-240, 192] },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: { position: [80, 192], name: 'Code in JavaScript' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.3,
-			config: { position: [400, 0], name: '15 min' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { position: [608, 0], name: 'Edit Fields' },
-		}),
-	)
-	.then(
-		merge(
-			[
-				node({
-					type: 'n8n-nodes-base.set',
-					version: 3.4,
-					config: { position: [608, 0], name: 'Edit Fields' },
-				}),
-				node({
-					type: 'n8n-nodes-base.set',
-					version: 3.4,
-					config: { position: [608, 192], name: 'Edit Fields1' },
-				}),
-				node({
-					type: 'n8n-nodes-base.set',
-					version: 3.4,
-					config: { position: [608, 400], name: 'Edit Fields2' },
-				}),
-			],
-			{ version: 3.2 },
-		),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: { position: [1312, 192], name: 'Combine candlestick' },
-		}),
-	)
-	.then(
-		merge(
-			[
-				node({
-					type: 'n8n-nodes-base.code',
-					version: 2,
-					config: { position: [1312, 192], name: 'Combine candlestick' },
-				}),
-				node({
-					type: '@n8n/n8n-nodes-langchain.googleGemini',
-					version: 1,
-					config: { position: [1072, 704], name: 'News sentiment Analyzer' },
-				}),
-			],
-			{ version: 3.2, name: 'Merge1' },
-		),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 3,
-			config: {
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-						version: 1,
-						config: { name: 'Google Gemini Chat Model1' },
-					}),
-				},
-				position: [2064, 464],
-				name: 'Crypto Agent',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: { position: [2464, 464], name: 'Send a text message' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.3,
-			config: { position: [400, 192], name: '1 hour' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.3,
-			config: { position: [400, 400], name: '1 day' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.3,
-			config: { position: [512, 704], name: 'News' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: { position: [768, 704], name: 'Filtering News' },
-		}),
-	)
-	.add(sticky('', { position: [368, -256] }))
-	.add(sticky('', { name: 'Sticky Note1', position: [368, 656] }))
-	.add(sticky('', { name: 'Sticky Note2', position: [1024, 656] }))
-	.add(sticky('', { name: 'Sticky Note3', position: [2000, 192] }))
-	.add(sticky('', { name: 'Sticky Note4', position: [2368, 192] }))
-	.add(sticky('', { name: 'Sticky Note5', position: [-304, -16] }))
-	.add(sticky('', { name: 'Sticky Note6', position: [1056, -16] }))
-	.add(sticky('', { name: 'Sticky Note7', position: [720, 656] }))
-	.add(sticky('', { name: 'Sticky Note8', position: [1600, 288] }))
-	.add(sticky('', { name: 'Sticky Note9', position: [-1552, -48] }));
+return workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOrder: 'v1' })
+  .add(trigger({ type: 'n8n-nodes-base.telegramTrigger', version: 1.2, config: { position: [-240, 192] } }))
+  .then(node({ type: 'n8n-nodes-base.code', version: 2, config: { position: [80, 192], name: 'Code in JavaScript' } }))
+  .add(node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { position: [400, 0], name: '15 min' } }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { position: [608, 0], name: 'Edit Fields' } }))
+  .then(merge([node({ type: 'n8n-nodes-base.set', version: 3.4, config: { position: [608, 0], name: 'Edit Fields' } }), node({ type: 'n8n-nodes-base.set', version: 3.4, config: { position: [608, 192], name: 'Edit Fields1' } }), node({ type: 'n8n-nodes-base.set', version: 3.4, config: { position: [608, 400], name: 'Edit Fields2' } })], { version: 3.2 }))
+  .then(node({ type: 'n8n-nodes-base.code', version: 2, config: { position: [1312, 192], name: 'Combine candlestick' } }))
+  .then(merge([node({ type: 'n8n-nodes-base.code', version: 2, config: { position: [1312, 192], name: 'Combine candlestick' } }), node({ type: '@n8n/n8n-nodes-langchain.googleGemini', version: 1, config: { position: [1072, 704], name: 'News sentiment Analyzer' } })], { version: 3.2, name: 'Merge1' }))
+  .then(node({ type: '@n8n/n8n-nodes-langchain.agent', version: 3, config: { subnodes: { model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', version: 1, config: { name: 'Google Gemini Chat Model1' } }) }, position: [2064, 464], name: 'Crypto Agent' } }))
+  .then(node({ type: 'n8n-nodes-base.telegram', version: 1.2, config: { position: [2464, 464], name: 'Send a text message' } }))
+  .add(node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { position: [400, 192], name: '1 hour' } }))
+  .add(node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { position: [400, 400], name: '1 day' } }))
+  .add(node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { position: [512, 704], name: 'News' } }))
+  .then(node({ type: 'n8n-nodes-base.code', version: 2, config: { position: [768, 704], name: 'Filtering News' } }))
+  .add(sticky('', { position: [368, -256] }))
+  .add(sticky('', { name: 'Sticky Note1', position: [368, 656] }))
+  .add(sticky('', { name: 'Sticky Note2', position: [1024, 656] }))
+  .add(sticky('', { name: 'Sticky Note3', position: [2000, 192] }))
+  .add(sticky('', { name: 'Sticky Note4', position: [2368, 192] }))
+  .add(sticky('', { name: 'Sticky Note5', position: [-304, -16] }))
+  .add(sticky('', { name: 'Sticky Note6', position: [1056, -16] }))
+  .add(sticky('', { name: 'Sticky Note7', position: [720, 656] }))
+  .add(sticky('', { name: 'Sticky Note8', position: [1600, 288] }))
+  .add(sticky('', { name: 'Sticky Note9', position: [-1552, -48] }))
