@@ -36,25 +36,38 @@ import {
 } from '@n8n/workflow-sdk';
 ```
 
-### `workflow(name: string, settings?)`
+### `workflow(name: string, config?)`
 
-Creates a new workflow builder with optional settings.
+Creates a new workflow builder with optional configuration.
 
 ```typescript
 const wf = workflow('My Workflow');
 
-// Or with settings
+// With ID (for updating existing workflows)
 const wf = workflow('My Workflow', {
-  timezone: 'America/New_York',
-  errorWorkflow: 'error-handler-workflow-id',
-  saveDataErrorExecution: 'all',
-  saveDataSuccessExecution: 'none',
-  saveManualExecutions: true,
-  saveExecutionProgress: true,
-  executionTimeout: 3600,
-  executionOrder: 'v1',
+  id: 'abc123'
+});
+
+// With settings
+const wf = workflow('My Workflow', {
+  id: 'abc123',
+  settings: {
+    timezone: 'America/New_York',
+    errorWorkflow: 'error-handler-workflow-id',
+    saveDataErrorExecution: 'all',
+    saveDataSuccessExecution: 'none',
+    saveManualExecutions: true,
+    saveExecutionProgress: true,
+    executionTimeout: 3600,
+    executionOrder: 'v1',
+  }
 });
 ```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Workflow ID (for updates/references) |
+| `settings` | `object` | Workflow execution settings |
 
 ### `node(type, version, config)`
 
@@ -222,31 +235,34 @@ Required subnodes are enforced by the type system.
 
 ## Workflow Settings
 
-Workflow-level settings control execution behavior:
+Workflow-level settings control execution behavior. Settings are nested under `config.settings`:
 
 ```typescript
 const wf = workflow('My Workflow', {
-  // Timezone for date/time operations
-  timezone: 'America/New_York',  // or 'DEFAULT' to use instance default
+  id: 'workflow-123',
+  settings: {
+    // Timezone for date/time operations
+    timezone: 'America/New_York',  // or 'DEFAULT' to use instance default
 
-  // Error handling
-  errorWorkflow: 'workflow-id',  // Workflow to run on error
+    // Error handling
+    errorWorkflow: 'workflow-id',  // Workflow to run on error
 
-  // Execution data retention
-  saveDataErrorExecution: 'all' | 'none' | 'DEFAULT',
-  saveDataSuccessExecution: 'all' | 'none' | 'DEFAULT',
-  saveManualExecutions: true | false | 'DEFAULT',
-  saveExecutionProgress: true | false | 'DEFAULT',
+    // Execution data retention
+    saveDataErrorExecution: 'all' | 'none' | 'DEFAULT',
+    saveDataSuccessExecution: 'all' | 'none' | 'DEFAULT',
+    saveManualExecutions: true | false | 'DEFAULT',
+    saveExecutionProgress: true | false | 'DEFAULT',
 
-  // Execution limits
-  executionTimeout: 3600,  // Seconds, -1 for no timeout
+    // Execution limits
+    executionTimeout: 3600,  // Seconds, -1 for no timeout
 
-  // Execution order (v1 is breadth-first, v0 is legacy)
-  executionOrder: 'v1' | 'v0',
+    // Execution order (v1 is breadth-first, v0 is legacy)
+    executionOrder: 'v1' | 'v0',
 
-  // Caller restrictions (for sub-workflow execution)
-  callerPolicy: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner',
-  callerIds: 'workflow-id-1,workflow-id-2',  // When policy is 'workflowsFromAList'
+    // Caller restrictions (for sub-workflow execution)
+    callerPolicy: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner',
+    callerIds: 'workflow-id-1,workflow-id-2',  // When policy is 'workflowsFromAList'
+  }
 });
 ```
 
