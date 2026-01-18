@@ -8,18 +8,27 @@
  * POC with extensive debug logging for development.
  */
 
+import { inspect } from 'node:util';
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import type { NodeTypeParser } from '../utils/node-type-parser';
 
 /**
  * Debug logging helper for search tool
+ * Uses util.inspect for terminal-friendly output with full depth
  */
 function debugLog(message: string, data?: Record<string, unknown>): void {
 	const timestamp = new Date().toISOString();
 	const prefix = `[ONE-SHOT-AGENT][${timestamp}][SEARCH_TOOL]`;
 	if (data) {
-		console.log(`${prefix} ${message}`, JSON.stringify(data, null, 2));
+		const formatted = inspect(data, {
+			depth: null,
+			colors: true,
+			maxStringLength: null,
+			maxArrayLength: null,
+			breakLength: 120,
+		});
+		console.log(`${prefix} ${message}\n${formatted}`);
 	} else {
 		console.log(`${prefix} ${message}`);
 	}

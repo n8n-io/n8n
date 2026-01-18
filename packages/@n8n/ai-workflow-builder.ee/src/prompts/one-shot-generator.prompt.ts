@@ -7,16 +7,25 @@
  * POC with extensive debug logging for development.
  */
 
+import { inspect } from 'node:util';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 
 /**
  * Debug logging helper for prompt builder
+ * Uses util.inspect for terminal-friendly output with full depth
  */
 function debugLog(message: string, data?: Record<string, unknown>): void {
 	const timestamp = new Date().toISOString();
 	const prefix = `[ONE-SHOT-AGENT][${timestamp}][PROMPT]`;
 	if (data) {
-		console.log(`${prefix} ${message}`, JSON.stringify(data, null, 2));
+		const formatted = inspect(data, {
+			depth: null,
+			colors: true,
+			maxStringLength: null,
+			maxArrayLength: null,
+			breakLength: 120,
+		});
+		console.log(`${prefix} ${message}\n${formatted}`);
 	} else {
 		console.log(`${prefix} ${message}`);
 	}
@@ -32,11 +41,20 @@ Your task is to generate valid TypeScript code that creates a workflow using the
 </role>`;
 
 /**
+ * Escape curly brackets for LangChain prompt templates
+ */
+function escapeCurlyBrackets(text: string): string {
+	return text.replace(/\{/g, '{{').replace(/\}/g, '}}');
+}
+
+/**
  * Build SDK API reference section from file content
  */
 function buildSdkApiReference(sdkSourceCode: string): string {
+	// Escape curly brackets in SDK source code for LangChain
+	const escapedSdkSourceCode = escapeCurlyBrackets(sdkSourceCode);
 	return `<sdk_api_reference>
-${sdkSourceCode}
+${escapedSdkSourceCode}
 </sdk_api_reference>`;
 }
 
@@ -108,68 +126,68 @@ const WORKFLOW_RULES = `<workflow_rules>
 const AI_PATTERNS = `<ai_patterns>
 ## Basic AI Agent
 \`\`\`typescript
-const agent = node({
+const agent = node({{
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
-  config: {
-    parameters: { promptType: 'define', text: 'You are a helpful assistant' },
-    subnodes: {
-      model: node({
+  config: {{
+    parameters: {{ promptType: 'define', text: 'You are a helpful assistant' }},
+    subnodes: {{
+      model: node({{
         type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
         version: 1,
-        config: { parameters: {} }
-      })
-    }
-  }
-});
+        config: {{ parameters: {{}} }}
+      }})
+    }}
+  }}
+}});
 \`\`\`
 
 ## AI Agent with Tools
 \`\`\`typescript
-const agent = node({
+const agent = node({{
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
-  config: {
-    parameters: { promptType: 'define', text: 'You can calculate and search' },
-    subnodes: {
-      model: node({
+  config: {{
+    parameters: {{ promptType: 'define', text: 'You can calculate and search' }},
+    subnodes: {{
+      model: node({{
         type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
         version: 1,
-        config: { parameters: {} }
-      }),
+        config: {{ parameters: {{}} }}
+      }}),
       tools: [
-        node({
+        node({{
           type: '@n8n/n8n-nodes-langchain.toolCalculator',
           version: 1.1,
-          config: { parameters: {} }
-        })
+          config: {{ parameters: {{}} }}
+        }})
       ]
-    }
-  }
-});
+    }}
+  }}
+}});
 \`\`\`
 
 ## AI Agent with Memory
 \`\`\`typescript
-const agent = node({
+const agent = node({{
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
-  config: {
-    parameters: { promptType: 'define', text: 'You remember conversations' },
-    subnodes: {
-      model: node({
+  config: {{
+    parameters: {{ promptType: 'define', text: 'You remember conversations' }},
+    subnodes: {{
+      model: node({{
         type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
         version: 1,
-        config: { parameters: {} }
-      }),
-      memory: node({
+        config: {{ parameters: {{}} }}
+      }}),
+      memory: node({{
         type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
         version: 1.3,
-        config: { parameters: { contextWindowLength: 5 } }
-      })
-    }
-  }
-});
+        config: {{ parameters: {{ contextWindowLength: 5 }} }}
+      }})
+    }}
+  }}
+}});
 \`\`\`
 </ai_patterns>`;
 
@@ -180,147 +198,147 @@ const WORKFLOW_EXAMPLES = `<workflow_examples>
 ## Example 1: Simple HTTP Request
 \`\`\`typescript
 return workflow('simple-http', 'Fetch API Data')
-  .add(trigger({
+  .add(trigger({{
     type: 'n8n-nodes-base.manualTrigger',
     version: 1.1,
-    config: { name: 'Start', position: [240, 300] }
-  }))
-  .then(node({
+    config: {{ name: 'Start', position: [240, 300] }}
+  }}))
+  .then(node({{
     type: 'n8n-nodes-base.httpRequest',
     version: 4.3,
-    config: {
+    config: {{
       name: 'Fetch Users',
-      parameters: {
+      parameters: {{
         method: 'GET',
         url: 'https://jsonplaceholder.typicode.com/users'
-      },
+      }},
       position: [540, 300]
-    }
-  }))
-  .then(node({
+    }}
+  }}))
+  .then(node({{
     type: 'n8n-nodes-base.set',
     version: 3.4,
-    config: {
+    config: {{
       name: 'Format Response',
-      parameters: {
+      parameters: {{
         mode: 'manual',
-        fields: {
+        fields: {{
           values: [
-            { name: 'userName', stringValue: '={{ $json.name }}' },
-            { name: 'userEmail', stringValue: '={{ $json.email }}' }
+            {{ name: 'userName', stringValue: '={{{{ $json.name }}}}' }},
+            {{ name: 'userEmail', stringValue: '={{{{ $json.email }}}}' }}
           ]
-        }
-      },
+        }}
+      }},
       position: [840, 300]
-    }
-  }));
+    }}
+  }}));
 \`\`\`
 
 ## Example 2: Scheduled Task with Conditional
 \`\`\`typescript
-import { workflow, node, trigger, ifBranch } from '@n8n/workflow-sdk';
+import {{ workflow, node, trigger, ifBranch }} from '@n8n/workflow-sdk';
 
 return workflow('scheduled-check', 'Daily Status Check')
-  .add(trigger({
+  .add(trigger({{
     type: 'n8n-nodes-base.scheduleTrigger',
     version: 1.1,
-    config: {
+    config: {{
       name: 'Every Morning',
-      parameters: {
-        rule: {
-          interval: [{ field: 'hours', hoursInterval: 24, triggerAtHour: 9 }]
-        }
-      },
+      parameters: {{
+        rule: {{
+          interval: [{{ field: 'hours', hoursInterval: 24, triggerAtHour: 9 }}]
+        }}
+      }},
       position: [240, 300]
-    }
-  }))
-  .then(node({
+    }}
+  }}))
+  .then(node({{
     type: 'n8n-nodes-base.httpRequest',
     version: 4.3,
-    config: {
+    config: {{
       name: 'Check API Status',
-      parameters: { method: 'GET', url: 'https://api.example.com/status' },
+      parameters: {{ method: 'GET', url: 'https://api.example.com/status' }},
       position: [540, 300]
-    }
-  }))
+    }}
+  }}))
   .then(ifBranch([
     // True branch: Status is OK
-    node({
+    node({{
       type: 'n8n-nodes-base.noOp',
       version: 1,
-      config: { name: 'All Good', position: [1140, 200] }
-    }),
+      config: {{ name: 'All Good', position: [1140, 200] }}
+    }}),
     // False branch: Status is not OK
-    node({
+    node({{
       type: 'n8n-nodes-base.httpRequest',
       version: 4.3,
-      config: {
+      config: {{
         name: 'Send Alert',
-        parameters: {
+        parameters: {{
           method: 'POST',
           url: 'https://hooks.slack.com/...',
-          body: { json: { text: 'API is down!' } }
-        },
+          body: {{ json: {{ text: 'API is down!' }} }}
+        }},
         position: [1140, 400]
-      }
-    })
-  ], {
+      }}
+    }})
+  ], {{
     name: 'Is OK?',
-    parameters: {
-      conditions: {
-        options: {
+    parameters: {{
+      conditions: {{
+        options: {{
           caseSensitive: true,
           leftValue: '',
           typeValidation: 'strict'
-        },
-        conditions: [{
-          leftValue: '={{ $json.status }}',
+        }},
+        conditions: [{{
+          leftValue: '={{{{ $json.status }}}}',
           rightValue: 'ok',
-          operator: { type: 'string', operation: 'equals' }
-        }]
-      }
-    },
+          operator: {{ type: 'string', operation: 'equals' }}
+        }}]
+      }}
+    }},
     position: [840, 300]
-  }));
+  }}));
 \`\`\`
 
 ## Example 3: AI Agent with Calculator
 \`\`\`typescript
 return workflow('ai-calculator', 'Math Assistant')
-  .add(trigger({
+  .add(trigger({{
     type: 'n8n-nodes-base.manualTrigger',
     version: 1.1,
-    config: { name: 'Start', position: [240, 300] }
-  }))
-  .then(node({
+    config: {{ name: 'Start', position: [240, 300] }}
+  }}))
+  .then(node({{
     type: '@n8n/n8n-nodes-langchain.agent',
     version: 3.1,
-    config: {
+    config: {{
       name: 'Math Agent',
-      parameters: {
+      parameters: {{
         promptType: 'define',
         text: 'You are a math assistant. Use the calculator tool to solve problems.'
-      },
-      subnodes: {
-        model: node({
+      }},
+      subnodes: {{
+        model: node({{
           type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
           version: 1,
-          config: {
+          config: {{
             name: 'OpenAI Model',
-            parameters: { options: { temperature: 0.7 } }
-          }
-        }),
+            parameters: {{ options: {{ temperature: 0.7 }} }}
+          }}
+        }}),
         tools: [
-          node({
+          node({{
             type: '@n8n/n8n-nodes-langchain.toolCalculator',
             version: 1.1,
-            config: { name: 'Calculator' }
-          })
+            config: {{ name: 'Calculator' }}
+          }})
         ]
-      },
+      }},
       position: [540, 300]
-    }
-  }));
+    }}
+  }}));
 \`\`\`
 </workflow_examples>`;
 
@@ -406,7 +424,9 @@ export function buildOneShotGeneratorPrompt(
 	const userMessageParts = [];
 
 	if (currentWorkflow) {
-		userMessageParts.push(`<current_workflow>\n${currentWorkflow}\n</current_workflow>`);
+		// Escape curly brackets in current workflow for LangChain
+		const escapedCurrentWorkflow = escapeCurlyBrackets(currentWorkflow);
+		userMessageParts.push(`<current_workflow>\n${escapedCurrentWorkflow}\n</current_workflow>`);
 		userMessageParts.push('\nUser request:');
 		debugLog('Added current workflow to user message');
 	}

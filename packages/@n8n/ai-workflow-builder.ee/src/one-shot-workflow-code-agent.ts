@@ -9,6 +9,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { inspect } from 'node:util';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -26,12 +27,20 @@ import type { ChatPayload } from './workflow-builder-agent';
 
 /**
  * Debug logging helper - logs to console with timestamp and prefix
+ * Uses util.inspect for terminal-friendly output with full depth
  */
 function debugLog(context: string, message: string, data?: Record<string, unknown>): void {
 	const timestamp = new Date().toISOString();
 	const prefix = `[ONE-SHOT-AGENT][${timestamp}][${context}]`;
 	if (data) {
-		console.log(`${prefix} ${message}`, JSON.stringify(data, null, 2));
+		const formatted = inspect(data, {
+			depth: null, // Full depth
+			colors: true, // Terminal colors
+			maxStringLength: null, // No string truncation
+			maxArrayLength: null, // No array truncation
+			breakLength: 120, // Line wrap at 120 chars
+		});
+		console.log(`${prefix} ${message}\n${formatted}`);
 	} else {
 		console.log(`${prefix} ${message}`);
 	}
@@ -388,9 +397,7 @@ export class OneShotWorkflowCodeAgent {
 		});
 
 		// Log raw result
-		debugLog('GENERATE_CODE', 'Raw LLM result', {
-			result: JSON.stringify(result, null, 2).substring(0, 2000),
-		});
+		debugLog('GENERATE_CODE', 'Raw LLM result', { result });
 
 		// The structured output should match our schema
 		debugLog('GENERATE_CODE', 'Parsing result with Zod schema...');
