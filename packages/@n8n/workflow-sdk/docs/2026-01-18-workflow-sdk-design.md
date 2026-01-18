@@ -151,7 +151,7 @@ const wf = workflow('My Workflow')
 
 Sticky notes are added to the workflow but don't participate in the node chain.
 
-### `splitInBatches(version, config)`
+### `splitInBatches(config)`
 
 Creates a Split In Batches node with semantic `.done()` and `.each()` methods for the two output branches.
 
@@ -159,7 +159,7 @@ Creates a Split In Batches node with semantic `.done()` and `.each()` methods fo
 wf.add(trigger(...))
   .then(generateItems)
   .then(
-    splitInBatches('v3', { parameters: { batchSize: 10 } })
+    splitInBatches({ parameters: { batchSize: 10 } })
       .done().then(finalizeNode)
       .each().then(processNode).loop()  // Explicit loop-back
   );
@@ -169,7 +169,8 @@ wf.add(trigger(...))
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
-| `version` | `string` | Yes | Node version (e.g., `'v3'`) |
+| `config.version` | `number \| string` | No | Node version (defaults to `3`) |
+| `config.id` | `string` | No | Node ID (auto-generated if omitted) |
 | `config.parameters` | `object` | No | Node parameters (batchSize, options) |
 | `config.name` | `string` | No | Custom node name |
 | `config.position` | `[x, y]` | No | Canvas position |
@@ -202,7 +203,7 @@ const finalReport = node('n8n-nodes-base.set', 'v3.4', {
 wf.add(trigger(...))
   .then(generateItems)
   .then(
-    splitInBatches('v3', { parameters: { batchSize: 5 } })
+    splitInBatches({ parameters: { batchSize: 5 } })
       .done().then(finalReport)
       .each().then(initOnce).then(processItem).loop()
   );

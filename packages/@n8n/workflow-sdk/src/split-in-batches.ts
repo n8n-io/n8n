@@ -3,6 +3,7 @@ import type {
 	NodeInstance,
 	NodeConfig,
 	SplitInBatchesBuilder,
+	SplitInBatchesConfig,
 	SplitInBatchesDoneChain,
 	SplitInBatchesEachChain,
 	DeclaredConnection,
@@ -20,17 +21,24 @@ class SplitInBatchesNodeInstance
 	readonly id: string;
 	readonly name: string;
 
-	constructor(version: string, config: NodeConfig = {}) {
-		this.version = version;
-		this.id = uuid();
+	constructor(config: SplitInBatchesConfig = {}) {
+		this.version = config.version != null ? String(config.version) : '3';
+		this.id = config.id ?? uuid();
 		this.name = config.name ?? 'Split In Batches';
-		this.config = config;
+		this.config = {
+			...config,
+			parameters: config.parameters,
+		};
 	}
 
 	update(
 		config: Partial<NodeConfig>,
 	): NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown> {
-		return new SplitInBatchesNodeInstance(this.version, { ...this.config, ...config });
+		return new SplitInBatchesNodeInstance({
+			...this.config,
+			...config,
+			version: this.version,
+		} as SplitInBatchesConfig);
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
@@ -125,8 +133,8 @@ class SplitInBatchesBuilderImpl implements SplitInBatchesBuilder<unknown> {
 	_eachNodes: NodeInstance<string, string, unknown>[] = [];
 	_hasLoop = false;
 
-	constructor(version: string, config: NodeConfig = {}) {
-		this.sibNode = new SplitInBatchesNodeInstance(version, config);
+	constructor(config: SplitInBatchesConfig = {}) {
+		this.sibNode = new SplitInBatchesNodeInstance(config);
 	}
 
 	done(): SplitInBatchesDoneChain<unknown> {
@@ -174,8 +182,7 @@ class SplitInBatchesBuilderImpl implements SplitInBatchesBuilder<unknown> {
  * - Output 0 (.done()): Executes when all batches are processed
  * - Output 1 (.each()): Executes for each batch, can .loop() back
  *
- * @param version - Node version (e.g., 'v3')
- * @param config - Node configuration including batchSize parameter
+ * @param config - Node configuration including version, id, name, and batchSize parameter
  * @returns A split in batches builder for configuring the loop
  *
  * @example
@@ -184,10 +191,13 @@ class SplitInBatchesBuilderImpl implements SplitInBatchesBuilder<unknown> {
  *   .add(trigger(...))
  *   .then(generateItems)
  *   .then(
- *     splitInBatches('v3', { parameters: { batchSize: 10 } })
+ *     splitInBatches({ parameters: { batchSize: 10 } })
  *       .done().then(finalizeNode)
  *       .each().then(processNode).loop()
  *   );
+ *
+ * // With explicit version:
+ * splitInBatches({ version: 2, parameters: { batchSize: 5 } })
  *
  * // This creates:
  * // generateItems -> splitInBatches
@@ -196,11 +206,8 @@ class SplitInBatchesBuilderImpl implements SplitInBatchesBuilder<unknown> {
  * //                              ↑────────┘ (loop)
  * ```
  */
-export function splitInBatches(
-	version: string,
-	config: NodeConfig = {},
-): SplitInBatchesBuilder<unknown> {
-	return new SplitInBatchesBuilderImpl(version, config);
+export function splitInBatches(config: SplitInBatchesConfig = {}): SplitInBatchesBuilder<unknown> {
+	return new SplitInBatchesBuilderImpl(config);
 }
 
 /**

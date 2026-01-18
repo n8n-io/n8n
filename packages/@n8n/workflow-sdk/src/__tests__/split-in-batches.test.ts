@@ -5,14 +5,14 @@ import { node, trigger } from '../node-builder';
 describe('Split In Batches', () => {
 	describe('splitInBatches()', () => {
 		it('should create a split in batches builder', () => {
-			const sib = splitInBatches('v3', {
+			const sib = splitInBatches({
 				parameters: { batchSize: 10 },
 			});
 			expect(sib).toBeDefined();
 		});
 
 		it('should support .done() for completed processing', () => {
-			const sib = splitInBatches('v3', {
+			const sib = splitInBatches({
 				parameters: { batchSize: 10 },
 			});
 			const doneChain = sib.done();
@@ -20,11 +20,26 @@ describe('Split In Batches', () => {
 		});
 
 		it('should support .each() for batch processing', () => {
-			const sib = splitInBatches('v3', {
+			const sib = splitInBatches({
 				parameters: { batchSize: 10 },
 			});
 			const eachChain = sib.each();
 			expect(eachChain).toBeDefined();
+		});
+
+		it('should support explicit version', () => {
+			const sib = splitInBatches({
+				version: 2,
+				parameters: { batchSize: 5 },
+			});
+			expect(sib.sibNode.version).toBe('2');
+		});
+
+		it('should default to version 3', () => {
+			const sib = splitInBatches({
+				parameters: { batchSize: 10 },
+			});
+			expect(sib.sibNode.version).toBe('3');
 		});
 	});
 
@@ -51,7 +66,7 @@ describe('Split In Batches', () => {
 				.add(t)
 				.then(generateItems)
 				.then(
-					splitInBatches('v3', { parameters: { batchSize: 10 } })
+					splitInBatches({ parameters: { batchSize: 10 } })
 						.done()
 						.then(finalizeNode)
 						.each()

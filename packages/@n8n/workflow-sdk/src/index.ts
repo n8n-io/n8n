@@ -67,12 +67,9 @@ export type {
 	SwitchCaseFn,
 	SwitchCaseConfig,
 	SplitInBatchesFn,
+	SplitInBatchesConfig,
 	RunOnceForAllItemsFn,
 	RunOnceForEachItemFn,
-	// Type helpers for generated types
-	ExtractNodeParams,
-	ExtractNodeCredentials,
-	ExtractNodeVersion,
 	// n8n-workflow type duplicates (self-contained in SDK)
 	GenericValue,
 	IDataObject,

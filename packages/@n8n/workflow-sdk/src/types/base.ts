@@ -1,7 +1,3 @@
-// =============================================================================
-// Duplicates from n8n-workflow (to avoid external dependency in SDK types)
-// =============================================================================
-
 /**
  * Generic value type for data objects
  * Duplicate of n8n-workflow GenericValue
@@ -498,6 +494,8 @@ export interface SwitchCaseComposite {
  * Split in batches builder for loop constructs
  */
 export interface SplitInBatchesBuilder<TOutput = unknown> {
+	/** The split in batches node instance */
+	readonly sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
 	/** Chain from output 0 (all items processed) */
 	done(): SplitInBatchesDoneChain<TOutput>;
 	/** Chain from output 1 (current batch) */
@@ -927,6 +925,16 @@ export type SwitchCaseFn = (
 ) => SwitchCaseComposite;
 
 /**
+ * Configuration for Split in Batches
+ */
+export interface SplitInBatchesConfig extends NodeConfig {
+	/** Node version (defaults to 3) */
+	version?: number | string;
+	/** Node ID (auto-generated if omitted) */
+	id?: string;
+}
+
+/**
  * Creates a split in batches builder for processing items in chunks
  *
  * @example
@@ -934,16 +942,13 @@ export type SwitchCaseFn = (
  * workflow('id', 'Test')
  *   .add(trigger(...))
  *   .then(
- *     splitInBatches('v3', { parameters: { batchSize: 10 } })
+ *     splitInBatches({ parameters: { batchSize: 10 } })
  *       .done().then(finalizeNode)
  *       .each().then(processNode).loop()
  *   );
  * ```
  */
-export type SplitInBatchesFn = (
-	version: string,
-	config?: NodeConfig,
-) => SplitInBatchesBuilder<unknown>;
+export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder<unknown>;
 
 /**
  * Creates a code helper for executing once with access to all items
@@ -981,40 +986,3 @@ export type RunOnceForAllItemsFn = <T = unknown>(
 export type RunOnceForEachItemFn = <T = unknown>(
 	fn: (ctx: EachItemContext) => { json: T } | null,
 ) => CodeResult<T>;
-
-// =============================================================================
-// Type Helpers for Generated Node Types
-// =============================================================================
-
-/**
- * Extract parameter types from a node type
- *
- * @example
- * ```typescript
- * import type { CodeNode, ExtractNodeParams } from '@n8n/workflow-sdk';
- * type CodeParams = ExtractNodeParams<CodeNode>; // CodeV2Params
- * ```
- */
-export type ExtractNodeParams<T> = T extends NodeInput<string, number, infer P> ? P : never;
-
-/**
- * Extract credential types from a node type
- *
- * @example
- * ```typescript
- * import type { HttpRequestNode, ExtractNodeCredentials } from '@n8n/workflow-sdk';
- * type HttpCreds = ExtractNodeCredentials<HttpRequestNode>;
- * ```
- */
-export type ExtractNodeCredentials<T> = T extends { credentials?: infer C } ? C : never;
-
-/**
- * Extract version from a node type
- *
- * @example
- * ```typescript
- * import type { CodeNode, ExtractNodeVersion } from '@n8n/workflow-sdk';
- * type CodeVersion = ExtractNodeVersion<CodeNode>; // 1 | 2
- * ```
- */
-export type ExtractNodeVersion<T> = T extends NodeInput<string, infer V, unknown> ? V : never;
