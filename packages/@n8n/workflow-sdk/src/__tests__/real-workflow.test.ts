@@ -1,9 +1,26 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { workflow } from '../workflow-builder';
+import { generateWorkflowCode } from '../codegen';
 import type { WorkflowJSON } from '../types/base';
 
 const FIXTURES_DIR = path.resolve(__dirname, '../../test-fixtures/real-workflows');
+
+/**
+ * Writes a .generated.ts file next to the original JSON fixture.
+ * These files are gitignored and provide a TypeScript SDK representation
+ * of each workflow for inspection/debugging.
+ */
+function writeGeneratedTsFile(id: string, json: WorkflowJSON): void {
+	try {
+		const code = generateWorkflowCode(json);
+		const generatedPath = path.join(FIXTURES_DIR, `${id}.generated.ts`);
+		fs.writeFileSync(generatedPath, code, 'utf-8');
+	} catch (error) {
+		// Don't fail the test if code generation fails - just log it
+		console.warn(`Failed to generate TS for workflow ${id}:`, error);
+	}
+}
 
 interface TestWorkflow {
 	id: string;
@@ -58,6 +75,9 @@ describe('Real Workflow Round-Trip', () => {
 
 				// Export back to JSON
 				const exported = wf.toJSON();
+
+				// Generate TypeScript SDK representation (gitignored)
+				writeGeneratedTsFile(id, json);
 
 				// Verify node count matches
 				expect(exported.nodes.length).toBe(json.nodes.length);

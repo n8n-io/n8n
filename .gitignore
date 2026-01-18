@@ -48,3 +48,6 @@ packages/cli/src/commands/export/outputs
 *.bak
 .data
 .data/
+
+# workflow-sdk generated test fixtures
+*.generated.ts
