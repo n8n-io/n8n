@@ -6,6 +6,7 @@ import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 import { ApplicationError } from '@n8n/errors';
 
 import { Code } from '../Code.node';
+import { PythonTaskRunnerSandbox } from '../PythonTaskRunnerSandbox';
 import { ValidationError } from '../ValidationError';
 
 describe('Test Code Node', () => {
@@ -140,6 +141,32 @@ describe('Code Node unit test', () => {
 					}
 				}),
 			);
+		});
+	});
+
+	describe('python language routing', () => {
+		it('should route legacy `python` language to native Python runner', async () => {
+			const pythonThisArg = mock<IExecuteFunctions>({
+				getNode: () => mock({ typeVersion: 2 }),
+				helpers: { normalizeItems },
+				getMode: () => 'manual',
+				getRunnerStatus: () => ({ available: true }),
+			});
+			pythonThisArg.getWorkflowDataProxy.mockReturnValue(workflowDataProxy);
+			pythonThisArg.getNodeParameter.calledWith('language', 0).mockReturnValue('python');
+			pythonThisArg.getNodeParameter.calledWith('mode', 0).mockReturnValue('runOnceForAllItems');
+			pythonThisArg.getNodeParameter.calledWith('pythonCode', 0).mockReturnValue('return []');
+			pythonThisArg.getInputData.mockReturnValue([{ json: {} }]);
+
+			const runSpy = jest
+				.spyOn(PythonTaskRunnerSandbox.prototype, 'runUsingIncomingItems')
+				.mockResolvedValue([]);
+
+			await node.execute.call(pythonThisArg);
+
+			expect(runSpy).toHaveBeenCalled();
+
+			runSpy.mockRestore();
 		});
 	});
 });
