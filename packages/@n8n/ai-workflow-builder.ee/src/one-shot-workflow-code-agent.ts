@@ -1,8 +1,8 @@
 /**
  * One-Shot Workflow Code Agent
  *
- * Generates complete workflows in a single LLM call using TypeScript SDK format.
- * Replaces the complex multi-agent system with a simpler, faster approach.
+ * Generates complete workflows using TypeScript SDK format with an agentic loop
+ * that handles tool calls for node discovery before producing the final workflow.
  *
  * POC with extensive debug logging for development.
  */
@@ -11,6 +11,9 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { inspect } from 'node:util';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import type { StructuredToolInterface } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
@@ -22,8 +25,16 @@ import { NodeTypeParser } from './utils/node-type-parser';
 import { buildOneShotGeneratorPrompt } from './prompts/one-shot-generator.prompt';
 import { createOneShotNodeSearchTool } from './tools/one-shot-node-search.tool';
 import { createOneShotNodeGetTool } from './tools/one-shot-node-get.tool';
-import type { StreamOutput, AgentMessageChunk, WorkflowUpdateChunk } from './types/streaming';
+import type {
+	StreamOutput,
+	AgentMessageChunk,
+	WorkflowUpdateChunk,
+	ToolProgressChunk,
+} from './types/streaming';
 import type { ChatPayload } from './workflow-builder-agent';
+
+/** Maximum iterations for the agentic loop to prevent infinite loops */
+const MAX_AGENT_ITERATIONS = 10;
 
 /**
  * Debug logging helper - logs to console with timestamp and prefix
@@ -65,14 +76,9 @@ function readSdkSourceFile(): string {
  * Structured output schema for the LLM response
  */
 const WorkflowCodeOutputSchema = z.object({
-	reasoning: z.string().describe('Brief explanation of workflow design decisions'),
 	workflowCode: z
 		.string()
 		.describe("Complete TypeScript SDK code starting with 'return workflow(...)'"),
-	warnings: z
-		.array(z.string())
-		.optional()
-		.describe('Potential issues or limitations to warn the user about'),
 });
 
 type WorkflowCodeOutput = z.infer<typeof WorkflowCodeOutputSchema>;
@@ -94,8 +100,8 @@ export interface OneShotWorkflowCodeAgentConfig {
  *
  * Generates workflows by:
  * 1. Building a comprehensive system prompt with node docs
- * 2. Making a single LLM call with structured output
- * 3. Parsing the TypeScript code to WorkflowJSON
+ * 2. Running an agentic loop that handles tool calls for node discovery
+ * 3. Parsing the final TypeScript code to WorkflowJSON
  * 4. Validating and streaming the result
  */
 export class OneShotWorkflowCodeAgent {
@@ -103,6 +109,8 @@ export class OneShotWorkflowCodeAgent {
 	private nodeTypeParser: NodeTypeParser;
 	private logger?: Logger;
 	private sdkSourceCode: string;
+	private tools: StructuredToolInterface[];
+	private toolsMap: Map<string, StructuredToolInterface>;
 
 	constructor(config: OneShotWorkflowCodeAgentConfig) {
 		debugLog('CONSTRUCTOR', 'Initializing OneShotWorkflowCodeAgent...', {
@@ -113,13 +121,22 @@ export class OneShotWorkflowCodeAgent {
 		this.nodeTypeParser = new NodeTypeParser(config.nodeTypes);
 		this.logger = config.logger;
 		this.sdkSourceCode = readSdkSourceFile();
+
+		// Create tools
+		const searchTool = createOneShotNodeSearchTool(this.nodeTypeParser);
+		const getTool = createOneShotNodeGetTool();
+		this.tools = [searchTool, getTool];
+		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));
+
 		debugLog('CONSTRUCTOR', 'OneShotWorkflowCodeAgent initialized', {
 			sdkSourceCodeLength: this.sdkSourceCode.length,
+			toolNames: this.tools.map((t) => t.name),
 		});
 	}
 
 	/**
 	 * Main chat method - generates workflow and streams output
+	 * Implements an agentic loop that handles tool calls for node discovery
 	 */
 	async *chat(
 		payload: ChatPayload,
@@ -142,18 +159,6 @@ export class OneShotWorkflowCodeAgent {
 				messageLength: payload.message.length,
 			});
 
-			// Stream reasoning message
-			debugLog('CHAT', 'Streaming initial "Generating workflow..." message');
-			yield {
-				messages: [
-					{
-						role: 'assistant',
-						type: 'message',
-						text: 'Generating workflow...',
-					} as AgentMessageChunk,
-				],
-			};
-
 			// Build prompt with current workflow context if available
 			debugLog('CHAT', 'Building prompt...');
 			const currentWorkflowCode = payload.workflowContext?.currentWorkflow
@@ -170,58 +175,130 @@ export class OneShotWorkflowCodeAgent {
 			const prompt = this.buildPrompt(currentWorkflowCode);
 			debugLog('CHAT', 'Prompt built successfully');
 
-			// Bind tools to LLM and structure the output
+			// Bind tools to LLM
 			debugLog('CHAT', 'Binding tools to LLM...');
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const llmWithTools = this.bindTools(this.llm) as any;
+			if (!this.llm.bindTools) {
+				throw new Error('LLM does not support bindTools - cannot use tools for node discovery');
+			}
+			const llmWithTools = this.llm.bindTools(this.tools);
 			debugLog('CHAT', 'Tools bound to LLM');
 
-			// Structure the output
-			debugLog('CHAT', 'Adding structured output to LLM...');
-			const structuredLlm =
-				llmWithTools.withStructuredOutput?.(WorkflowCodeOutputSchema, {
-					name: 'generate_workflow',
-				}) ?? llmWithTools;
-			debugLog('CHAT', 'Structured output configured', {
-				hasWithStructuredOutput: !!llmWithTools.withStructuredOutput,
+			// Format initial messages
+			debugLog('CHAT', 'Formatting initial messages...');
+			const formattedMessages = await prompt.formatMessages({ userMessage: payload.message });
+			const messages: BaseMessage[] = [...formattedMessages];
+			debugLog('CHAT', 'Initial messages formatted', {
+				messageCount: messages.length,
 			});
 
-			// Generate workflow code
-			debugLog('CHAT', 'Calling generateWorkflowCode...');
-			const llmStartTime = Date.now();
-			const result = await this.generateWorkflowCode(
-				structuredLlm,
-				prompt,
-				payload.message,
-				abortSignal,
-			);
-			const llmDuration = Date.now() - llmStartTime;
-			debugLog('CHAT', 'LLM generation complete', {
-				llmDurationMs: llmDuration,
-				reasoningLength: result.reasoning?.length ?? 0,
-				workflowCodeLength: result.workflowCode.length,
-				warningsCount: result.warnings?.length ?? 0,
-			});
+			// Run agentic loop
+			debugLog('CHAT', 'Starting agentic loop...');
+			let iteration = 0;
+			let finalResult: WorkflowCodeOutput | null = null;
 
-			// Stream reasoning
-			if (result.reasoning) {
-				debugLog('CHAT', 'Streaming reasoning', { reasoning: result.reasoning });
-				yield {
-					messages: [
-						{
-							role: 'assistant',
-							type: 'message',
-							text: result.reasoning,
-						} as AgentMessageChunk,
-					],
-				};
+			while (iteration < MAX_AGENT_ITERATIONS) {
+				iteration++;
+				debugLog('CHAT', `========== ITERATION ${iteration} ==========`);
+
+				// Check for abort
+				if (abortSignal?.aborted) {
+					debugLog('CHAT', 'Abort signal received');
+					throw new Error('Aborted');
+				}
+
+				// Invoke LLM
+				debugLog('CHAT', 'Invoking LLM...');
+				const llmStartTime = Date.now();
+				const response = await llmWithTools.invoke(messages, { signal: abortSignal });
+				const llmDuration = Date.now() - llmStartTime;
+				debugLog('CHAT', 'LLM response received', {
+					llmDurationMs: llmDuration,
+					responseId: response.id,
+					hasToolCalls: response.tool_calls && response.tool_calls.length > 0,
+					toolCallCount: response.tool_calls?.length ?? 0,
+				});
+
+				// Extract text content from response
+				const textContent = this.extractTextContent(response);
+				if (textContent) {
+					debugLog('CHAT', 'Streaming text response', { textContent });
+					yield {
+						messages: [
+							{
+								role: 'assistant',
+								type: 'message',
+								text: textContent,
+							} as AgentMessageChunk,
+						],
+					};
+				}
+
+				// Add AI message to history
+				messages.push(response);
+
+				// Check if there are tool calls
+				if (response.tool_calls && response.tool_calls.length > 0) {
+					debugLog('CHAT', 'Processing tool calls...', {
+						toolCalls: response.tool_calls.map((tc) => ({
+							name: tc.name,
+							id: tc.id ?? 'unknown',
+						})),
+					});
+
+					// Execute tool calls and stream progress
+					for (const toolCall of response.tool_calls) {
+						// Skip tool calls without an ID (shouldn't happen but handle gracefully)
+						if (!toolCall.id) {
+							debugLog('CHAT', 'Skipping tool call without ID', { name: toolCall.name });
+							continue;
+						}
+						yield* this.executeToolCall(
+							{ name: toolCall.name, args: toolCall.args, id: toolCall.id },
+							messages,
+						);
+					}
+				} else {
+					// No tool calls - try to parse as final response
+					debugLog('CHAT', 'No tool calls, attempting to parse final response...');
+					finalResult = this.parseStructuredOutput(response);
+
+					if (finalResult) {
+						debugLog('CHAT', 'Final result parsed successfully', {
+							workflowCodeLength: finalResult.workflowCode.length,
+						});
+						break;
+					} else {
+						debugLog(
+							'CHAT',
+							'Could not parse structured output, continuing loop for another response...',
+						);
+						// Add a follow-up message to encourage structured output
+						messages.push(
+							new HumanMessage(
+								'Please provide your response as a JSON object with a workflowCode field containing the complete TypeScript SDK code.',
+							),
+						);
+					}
+				}
 			}
+
+			if (!finalResult) {
+				throw new Error(
+					`Failed to generate workflow after ${MAX_AGENT_ITERATIONS} iterations. The agent may be stuck in a tool-calling loop.`,
+				);
+			}
+
+			const llmDuration = Date.now() - startTime;
+			debugLog('CHAT', 'Agentic loop complete', {
+				iterations: iteration,
+				totalLlmDurationMs: llmDuration,
+			});
 
 			// Parse and validate
 			debugLog('CHAT', 'Parsing and validating workflow code...');
-			debugLog('CHAT', 'Raw workflow code from LLM:', { workflowCode: result.workflowCode });
+			debugLog('CHAT', 'Raw workflow code from LLM:', { workflowCode: finalResult.workflowCode });
 			const parseStartTime = Date.now();
-			const workflow = await this.parseAndValidate(result.workflowCode);
+			const workflow = await this.parseAndValidate(finalResult.workflowCode);
 			const parseDuration = Date.now() - parseStartTime;
 			debugLog('CHAT', 'Workflow parsed and validated', {
 				parseDurationMs: parseDuration,
@@ -235,7 +312,7 @@ export class OneShotWorkflowCodeAgent {
 			this.logger?.info('One-shot agent generated workflow', {
 				userId,
 				nodeCount: workflow.nodes.length,
-				warnings: result.warnings?.length || 0,
+				iterations: iteration,
 			});
 
 			// Stream workflow update
@@ -250,26 +327,13 @@ export class OneShotWorkflowCodeAgent {
 				],
 			};
 
-			// Stream warnings if any
-			if (result.warnings && result.warnings.length > 0) {
-				debugLog('CHAT', 'Streaming warnings', { warnings: result.warnings });
-				yield {
-					messages: [
-						{
-							role: 'assistant',
-							type: 'message',
-							text: `\n\nWarnings:\n${result.warnings.map((w) => `- ${w}`).join('\n')}`,
-						} as AgentMessageChunk,
-					],
-				};
-			}
-
 			const totalDuration = Date.now() - startTime;
 			debugLog('CHAT', '========== CHAT COMPLETE ==========', {
 				totalDurationMs: totalDuration,
 				llmDurationMs: llmDuration,
 				parseDurationMs: parseDuration,
 				nodeCount: workflow.nodes.length,
+				iterations: iteration,
 			});
 		} catch (error) {
 			const totalDuration = Date.now() - startTime;
@@ -298,6 +362,169 @@ export class OneShotWorkflowCodeAgent {
 	}
 
 	/**
+	 * Extract text content from an AI message
+	 */
+	private extractTextContent(message: AIMessage): string | null {
+		// Content can be a string or an array of content blocks
+		if (typeof message.content === 'string') {
+			return message.content || null;
+		}
+
+		if (Array.isArray(message.content)) {
+			const textParts = message.content
+				.filter(
+					(block): block is { type: 'text'; text: string } =>
+						typeof block === 'object' && block !== null && 'type' in block && block.type === 'text',
+				)
+				.map((block) => block.text);
+
+			return textParts.length > 0 ? textParts.join('\n') : null;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Execute a tool call and yield progress updates
+	 */
+	private async *executeToolCall(
+		toolCall: { name: string; args: Record<string, unknown>; id: string },
+		messages: BaseMessage[],
+	): AsyncGenerator<StreamOutput, void, unknown> {
+		debugLog('TOOL_CALL', `Executing tool: ${toolCall.name}`, {
+			toolCallId: toolCall.id,
+			args: toolCall.args,
+		});
+
+		// Stream tool progress
+		yield {
+			messages: [
+				{
+					type: 'tool',
+					toolName: toolCall.name,
+					status: 'running',
+					args: toolCall.args,
+				} as ToolProgressChunk,
+			],
+		};
+
+		const tool = this.toolsMap.get(toolCall.name);
+		if (!tool) {
+			const errorMessage = `Tool '${toolCall.name}' not found`;
+			debugLog('TOOL_CALL', errorMessage);
+			messages.push(
+				new ToolMessage({
+					tool_call_id: toolCall.id,
+					content: errorMessage,
+				}),
+			);
+			return;
+		}
+
+		try {
+			const toolStartTime = Date.now();
+			const result = await tool.invoke(toolCall.args);
+			const toolDuration = Date.now() - toolStartTime;
+
+			debugLog('TOOL_CALL', `Tool ${toolCall.name} completed`, {
+				toolDurationMs: toolDuration,
+				resultLength: typeof result === 'string' ? result.length : JSON.stringify(result).length,
+				resultPreview:
+					typeof result === 'string'
+						? result.substring(0, 200)
+						: JSON.stringify(result).substring(0, 200),
+			});
+
+			// Add tool result to messages
+			messages.push(
+				new ToolMessage({
+					tool_call_id: toolCall.id,
+					content: typeof result === 'string' ? result : JSON.stringify(result),
+				}),
+			);
+
+			// Stream tool completion
+			yield {
+				messages: [
+					{
+						type: 'tool',
+						toolName: toolCall.name,
+						status: 'completed',
+					} as ToolProgressChunk,
+				],
+			};
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			debugLog('TOOL_CALL', `Tool ${toolCall.name} failed`, { error: errorMessage });
+
+			messages.push(
+				new ToolMessage({
+					tool_call_id: toolCall.id,
+					content: `Error: ${errorMessage}`,
+				}),
+			);
+
+			yield {
+				messages: [
+					{
+						type: 'tool',
+						toolName: toolCall.name,
+						status: 'error',
+						error: errorMessage,
+					} as ToolProgressChunk,
+				],
+			};
+		}
+	}
+
+	/**
+	 * Parse structured output from an AI message
+	 * Returns null if the message doesn't contain valid structured output
+	 */
+	private parseStructuredOutput(message: AIMessage): WorkflowCodeOutput | null {
+		const content = this.extractTextContent(message);
+		if (!content) {
+			debugLog('PARSE_OUTPUT', 'No text content to parse');
+			return null;
+		}
+
+		debugLog('PARSE_OUTPUT', 'Attempting to parse structured output', {
+			contentLength: content.length,
+			contentPreview: content.substring(0, 500),
+		});
+
+		// Try to extract JSON from the content
+		// Look for JSON in code blocks or raw JSON
+		const jsonMatch =
+			content.match(/```json\s*([\s\S]*?)\s*```/) ||
+			content.match(/```\s*([\s\S]*?)\s*```/) ||
+			content.match(/(\{[\s\S]*"workflowCode"[\s\S]*\})/);
+
+		if (!jsonMatch) {
+			debugLog('PARSE_OUTPUT', 'No JSON found in content');
+			return null;
+		}
+
+		try {
+			const jsonStr = jsonMatch[1].trim();
+			const parsed = JSON.parse(jsonStr) as unknown;
+
+			// Validate with Zod schema
+			const result = WorkflowCodeOutputSchema.parse(parsed);
+			debugLog('PARSE_OUTPUT', 'Successfully parsed structured output', {
+				workflowCodeLength: result.workflowCode.length,
+			});
+
+			return result;
+		} catch (error) {
+			debugLog('PARSE_OUTPUT', 'Failed to parse JSON', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
+	/**
 	 * Build the system prompt with node IDs and SDK reference
 	 */
 	private buildPrompt(currentWorkflow?: string) {
@@ -319,103 +546,6 @@ export class OneShotWorkflowCodeAgent {
 		const prompt = buildOneShotGeneratorPrompt(nodeIds, this.sdkSourceCode, currentWorkflow);
 		debugLog('BUILD_PROMPT', 'Prompt template built');
 		return prompt;
-	}
-
-	/**
-	 * Bind search and get tools to the LLM
-	 */
-	private bindTools(llm: BaseChatModel): unknown {
-		debugLog('BIND_TOOLS', 'Creating search and get tools...');
-		const searchTool = createOneShotNodeSearchTool(this.nodeTypeParser);
-		const getTool = createOneShotNodeGetTool();
-		debugLog('BIND_TOOLS', 'Tools created', {
-			searchToolName: searchTool.name,
-			getToolName: getTool.name,
-		});
-
-		// bindTools returns a Runnable, not BaseChatModel
-		// Check if bindTools exists (it should for ChatAnthropic)
-		if (llm.bindTools) {
-			debugLog('BIND_TOOLS', 'LLM supports bindTools, binding tools...');
-			const result = llm.bindTools([searchTool, getTool]);
-			debugLog('BIND_TOOLS', 'Tools bound successfully');
-			return result;
-		}
-
-		// Fallback if bindTools is not available
-		debugLog('BIND_TOOLS', 'WARNING: LLM does not support bindTools, returning LLM without tools');
-		return llm;
-	}
-
-	/**
-	 * Generate workflow code using structured output
-	 */
-	private async generateWorkflowCode(
-		structuredLlm: unknown, // Runnable with structured output
-		prompt: unknown,
-		userMessage: string,
-		abortSignal?: AbortSignal,
-	): Promise<WorkflowCodeOutput> {
-		debugLog('GENERATE_CODE', 'Formatting messages from prompt template...');
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const messages = await (prompt as any).formatMessages({ userMessage });
-		debugLog('GENERATE_CODE', 'Messages formatted', {
-			messageCount: messages.length,
-			messageSizes: messages.map((m: { content: string }) => ({
-				role: m.constructor.name,
-				contentLength: typeof m.content === 'string' ? m.content.length : 'non-string',
-			})),
-		});
-
-		// Log first message (system prompt) preview
-		if (messages.length > 0 && typeof messages[0].content === 'string') {
-			debugLog('GENERATE_CODE', 'System prompt preview (first 1000 chars)', {
-				systemPromptPreview: messages[0].content.substring(0, 1000),
-			});
-		}
-
-		// Log user message
-		if (messages.length > 1 && typeof messages[1].content === 'string') {
-			debugLog('GENERATE_CODE', 'User message', {
-				userMessage: messages[1].content,
-			});
-		}
-
-		this.logger?.debug('Invoking LLM for workflow generation', {
-			messageCount: messages.length,
-		});
-
-		debugLog('GENERATE_CODE', 'Invoking LLM...');
-		const invokeStartTime = Date.now();
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = await (structuredLlm as any).invoke(messages, { signal: abortSignal });
-		const invokeDuration = Date.now() - invokeStartTime;
-		debugLog('GENERATE_CODE', 'LLM invocation complete', {
-			invokeDurationMs: invokeDuration,
-			resultType: typeof result,
-			resultKeys: result && typeof result === 'object' ? Object.keys(result) : [],
-		});
-
-		// Log raw result
-		debugLog('GENERATE_CODE', 'Raw LLM result', { result });
-
-		// The structured output should match our schema
-		debugLog('GENERATE_CODE', 'Parsing result with Zod schema...');
-		const output = WorkflowCodeOutputSchema.parse(result);
-		debugLog('GENERATE_CODE', 'Result parsed successfully', {
-			reasoningLength: output.reasoning.length,
-			workflowCodeLength: output.workflowCode.length,
-			warningsCount: output.warnings?.length ?? 0,
-			reasoning: output.reasoning,
-			warnings: output.warnings,
-		});
-
-		this.logger?.debug('Generated WorkflowCode', {
-			codeLength: output.workflowCode.length,
-			hasWarnings: !!output.warnings?.length,
-		});
-
-		return output;
 	}
 
 	/**

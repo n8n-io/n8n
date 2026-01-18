@@ -712,3 +712,128 @@ describe('generateWorkflowCode with AI subnodes', () => {
 		});
 	});
 });
+
+describe('parseWorkflowCode with splitInBatches', () => {
+	it('should parse code that uses splitInBatches() function', () => {
+		// This is the type of code the LLM might generate using splitInBatches
+		const code = `return workflow('test-sib', 'Split In Batches Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [0, 0] } }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: { assignments: { assignments: [{ name: 'items', type: 'array', value: '[1,2,3,4,5]' }] } }, position: [200, 0], name: 'Generate Items' } }))
+  .then(
+    splitInBatches({ parameters: { batchSize: 2 } })
+      .done().then(node({ type: 'n8n-nodes-base.noOp', version: 1, config: { position: [600, 0], name: 'Done Processing' } }))
+      .each().then(node({ type: 'n8n-nodes-base.noOp', version: 1, config: { position: [600, 200], name: 'Process Batch' } })).loop()
+  )`;
+
+		// This should NOT throw "splitInBatches is not defined"
+		const workflow = parseWorkflowCode(code);
+
+		expect(workflow.id).toBe('test-sib');
+		expect(workflow.name).toBe('Split In Batches Test');
+		expect(workflow.nodes.length).toBeGreaterThan(0);
+
+		// Should have the Split In Batches node
+		const sibNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.splitInBatches');
+		expect(sibNode).toBeDefined();
+	});
+
+	it('should parse splitInBatches code that ends with .loop().done().then() chain', () => {
+		// This code ends with .done().then() chain, which returns a DoneChainImpl
+		// instead of SplitInBatchesBuilderImpl - the workflow builder must handle both
+		const code = `return workflow('IH8D5PUFd8JhwyZP8Ng0g', 'My workflow 15')
+  .add(trigger({
+    type: 'n8n-nodes-base.scheduleTrigger',
+    version: 1.3,
+    config: {
+      name: 'Every Night at 8pm',
+      parameters: {
+        rule: {
+          interval: [{
+            field: 'hours',
+            hoursInterval: 24,
+            triggerAtHour: 20
+          }]
+        }
+      },
+      position: [240, 300]
+    }
+  }))
+  .then(node({
+    type: 'n8n-nodes-base.httpRequest',
+    version: 4.3,
+    config: {
+      name: 'Fetch AI News from NewsAPI',
+      parameters: {
+        method: 'GET',
+        url: 'https://newsapi.org/v2/everything'
+      },
+      position: [540, 300]
+    }
+  }))
+  .then(node({
+    type: 'n8n-nodes-base.code',
+    version: 2,
+    config: {
+      name: 'Extract Top 5 Articles',
+      parameters: {
+        mode: 'runOnceForAllItems',
+        jsCode: 'return [];'
+      },
+      position: [840, 300]
+    }
+  }))
+  .then(splitInBatches({
+    parameters: { batchSize: 1 },
+    name: 'Process Each Article',
+    position: [1140, 300]
+  })
+    .each()
+    .then(node({
+      type: 'n8n-nodes-base.set',
+      version: 3.4,
+      config: {
+        name: 'Process Item',
+        parameters: { mode: 'manual' },
+        position: [1440, 200]
+      }
+    }))
+    .loop()
+    .done()
+    .then(node({
+      type: 'n8n-nodes-base.code',
+      version: 2,
+      config: {
+        name: 'Prepare Message',
+        parameters: { mode: 'runOnceForAllItems', jsCode: 'return [];' },
+        position: [2040, 300]
+      }
+    }))
+    .then(node({
+      type: 'n8n-nodes-base.set',
+      version: 3.4,
+      config: {
+        name: 'Final Output',
+        parameters: { mode: 'manual' },
+        position: [2340, 300]
+      }
+    }))
+  )`;
+
+		// This should NOT throw "Cannot read properties of undefined (reading 'subnodes')"
+		const workflow = parseWorkflowCode(code);
+
+		expect(workflow.id).toBe('IH8D5PUFd8JhwyZP8Ng0g');
+		expect(workflow.name).toBe('My workflow 15');
+
+		// Should have the Split In Batches node
+		const sibNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.splitInBatches');
+		expect(sibNode).toBeDefined();
+		expect(sibNode?.name).toBe('Process Each Article');
+
+		// Should have both done chain and each chain nodes
+		const prepareMessage = workflow.nodes.find((n) => n.name === 'Prepare Message');
+		const processItem = workflow.nodes.find((n) => n.name === 'Process Item');
+		expect(prepareMessage).toBeDefined();
+		expect(processItem).toBeDefined();
+	});
+});

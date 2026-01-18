@@ -70,7 +70,7 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 				return `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Description: ${node.description}`;
 			});
 
-			const response = `Found ${results.length} nodes matching "${input.query}":\n\n${resultLines.join('\n\n')}\n\nUse get_node to see the full TypeScript type definition for any of these nodes.`;
+			const response = `Found ${results.length} nodes matching "${input.query}":\n\n${resultLines.join('\n\n')}\n\nUse get_nodes to see the full TypeScript type definitions for these nodes.`;
 			debugLog('Returning response', {
 				responseLength: response.length,
 				responsePreview: response.substring(0, 500),

@@ -18,6 +18,7 @@ import {
 import { merge as mergeFn } from './merge';
 import { ifBranch as ifBranchFn } from './if-branch';
 import { switchCase as switchCaseFn } from './switch-case';
+import { splitInBatches as splitInBatchesFn } from './split-in-batches';
 import type { WorkflowJSON } from './types/base';
 
 /**
@@ -54,6 +55,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		'merge',
 		'ifBranch',
 		'switchCase',
+		'splitInBatches',
 		executableCode,
 	);
 
@@ -75,6 +77,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		mergeFn,
 		ifBranchFn,
 		switchCaseFn,
+		splitInBatchesFn,
 	);
 
 	// Return the JSON representation

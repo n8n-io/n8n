@@ -107,63 +107,106 @@ function getNodeFilePath(nodeId: string): string | null {
 }
 
 /**
+ * Get the type definition for a single node ID
+ */
+function getNodeTypeDefinition(nodeId: string): {
+	nodeId: string;
+	content: string;
+	error?: string;
+} {
+	debugLog('Getting type definition for node', { nodeId });
+
+	const filePath = getNodeFilePath(nodeId);
+
+	if (!filePath) {
+		return {
+			nodeId,
+			content: '',
+			error: `Node type '${nodeId}' not found. Use search_node to find the correct node ID.`,
+		};
+	}
+
+	try {
+		const readStartTime = Date.now();
+		const content = readFileSync(filePath, 'utf-8');
+		const readDuration = Date.now() - readStartTime;
+
+		debugLog('File read successfully', {
+			nodeId,
+			filePath,
+			readDurationMs: readDuration,
+			contentLength: content.length,
+		});
+
+		return { nodeId, content };
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		debugLog('Error reading file', {
+			nodeId,
+			filePath,
+			error: errorMessage,
+		});
+		return {
+			nodeId,
+			content: '',
+			error: `Error reading node definition for '${nodeId}': ${errorMessage}`,
+		};
+	}
+}
+
+/**
  * Create the simplified node get tool for one-shot agent
+ * Accepts a list of node IDs and returns all type definitions in a single call
  */
 export function createOneShotNodeGetTool() {
-	debugLog('Creating get_node tool');
+	debugLog('Creating get_nodes tool');
 
 	return tool(
-		async (input: { nodeId: string }) => {
-			debugLog('========== GET_NODE TOOL INVOKED ==========');
-			debugLog('Input', { nodeId: input.nodeId });
+		async (input: { nodeIds: string[] }) => {
+			debugLog('========== GET_NODES TOOL INVOKED ==========');
+			debugLog('Input', { nodeIds: input.nodeIds, count: input.nodeIds.length });
 
-			const filePath = getNodeFilePath(input.nodeId);
+			const results: string[] = [];
+			const errors: string[] = [];
 
-			if (!filePath) {
-				const response = `Node type '${input.nodeId}' not found. Use search_node to find the correct node ID.`;
-				debugLog('Node not found, returning error response', { nodeId: input.nodeId, response });
-				debugLog('========== GET_NODE TOOL COMPLETE (NOT FOUND) ==========');
-				return response;
+			for (const nodeId of input.nodeIds) {
+				const result = getNodeTypeDefinition(nodeId);
+				if (result.error) {
+					errors.push(result.error);
+				} else {
+					results.push(`## ${nodeId}\n\n\`\`\`typescript\n${result.content}\n\`\`\``);
+				}
 			}
 
-			try {
-				debugLog('Reading file', { filePath });
-				const readStartTime = Date.now();
-				const content = readFileSync(filePath, 'utf-8');
-				const readDuration = Date.now() - readStartTime;
+			let response = '';
 
-				debugLog('File read successfully', {
-					filePath,
-					readDurationMs: readDuration,
-					contentLength: content.length,
-					contentPreview: content.substring(0, 500),
-				});
-
-				const response = `TypeScript type definition for ${input.nodeId}:\n\n\`\`\`typescript\n${content}\n\`\`\``;
-				debugLog('Returning response', {
-					responseLength: response.length,
-				});
-				debugLog('========== GET_NODE TOOL COMPLETE ==========');
-
-				return response;
-			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-				debugLog('Error reading file', {
-					filePath,
-					error: errorMessage,
-					errorStack: error instanceof Error ? error.stack : undefined,
-				});
-				const response = `Error reading node definition for '${input.nodeId}': ${errorMessage}`;
-				debugLog('========== GET_NODE TOOL COMPLETE (ERROR) ==========');
-				return response;
+			if (results.length > 0) {
+				response += `# TypeScript Type Definitions\n\n${results.join('\n\n---\n\n')}`;
 			}
+
+			if (errors.length > 0) {
+				response += `\n\n# Errors\n\n${errors.join('\n')}`;
+			}
+
+			debugLog('Returning response', {
+				successCount: results.length,
+				errorCount: errors.length,
+				responseLength: response.length,
+			});
+			debugLog('========== GET_NODES TOOL COMPLETE ==========');
+
+			return response;
 		},
 		{
-			name: 'get_node',
+			name: 'get_nodes',
 			description:
-				'Get the full TypeScript type definition for a specific node. Returns the complete type information including parameters, credentials, and node type variants. Use this to understand exactly how to configure a node.',
+				'Get the full TypeScript type definitions for one or more nodes. Returns the complete type information including parameters, credentials, and node type variants. ALWAYS call this with ALL node types you plan to use BEFORE generating workflow code.',
 			schema: z.object({
-				nodeId: z.string().describe('The node ID (e.g., "n8n-nodes-base.httpRequest")'),
+				nodeIds: z
+					.array(z.string())
+					.describe(
+						'Array of node IDs to get definitions for (e.g., ["n8n-nodes-base.httpRequest", "n8n-nodes-base.set"])',
+					),
 			}),
 		},
 	);

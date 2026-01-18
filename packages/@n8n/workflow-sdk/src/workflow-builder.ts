@@ -308,16 +308,58 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Check if value is a SplitInBatchesBuilder
+	 * Check if value is a SplitInBatchesBuilder or a chain (DoneChain/EachChain) from one
 	 */
 	private isSplitInBatchesBuilder(value: unknown): boolean {
-		return (
-			value !== null &&
-			typeof value === 'object' &&
-			'sibNode' in value &&
-			'_doneNodes' in value &&
-			'_eachNodes' in value
-		);
+		if (value === null || typeof value !== 'object') return false;
+
+		// Direct builder check
+		if ('sibNode' in value && '_doneNodes' in value && '_eachNodes' in value) {
+			return true;
+		}
+
+		// Check if it's a DoneChain or EachChain with a _parent that's a builder
+		if ('_parent' in value && '_nodes' in value) {
+			const parent = (value as { _parent: unknown })._parent;
+			return (
+				parent !== null &&
+				typeof parent === 'object' &&
+				'sibNode' in parent &&
+				'_doneNodes' in parent &&
+				'_eachNodes' in parent
+			);
+		}
+
+		return false;
+	}
+
+	/**
+	 * Extract the SplitInBatchesBuilder from a value (handles both direct builder and chains)
+	 */
+	private extractSplitInBatchesBuilder(value: unknown): {
+		sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
+		_doneNodes: NodeInstance<string, string, unknown>[];
+		_eachNodes: NodeInstance<string, string, unknown>[];
+		_hasLoop: boolean;
+	} {
+		// Direct builder
+		if ('sibNode' in (value as object)) {
+			return value as {
+				sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
+				_doneNodes: NodeInstance<string, string, unknown>[];
+				_eachNodes: NodeInstance<string, string, unknown>[];
+				_hasLoop: boolean;
+			};
+		}
+
+		// Chain with _parent - extract the parent builder
+		const chain = value as { _parent: unknown };
+		return chain._parent as {
+			sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
+			_doneNodes: NodeInstance<string, string, unknown>[];
+			_eachNodes: NodeInstance<string, string, unknown>[];
+			_hasLoop: boolean;
+		};
 	}
 
 	/**
@@ -645,13 +687,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * Handle split in batches builder
 	 */
 	private handleSplitInBatches(sibBuilder: unknown): WorkflowBuilder {
-		// Cast to access internal properties
-		const builder = sibBuilder as {
-			sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
-			_doneNodes: NodeInstance<string, string, unknown>[];
-			_eachNodes: NodeInstance<string, string, unknown>[];
-			_hasLoop: boolean;
-		};
+		// Extract builder from direct builder or chain (DoneChain/EachChain)
+		const builder = this.extractSplitInBatchesBuilder(sibBuilder);
 
 		const newNodes = new Map(this._nodes);
 

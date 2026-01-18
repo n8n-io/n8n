@@ -236,8 +236,6 @@ return workflow('simple-http', 'Fetch API Data')
 
 ## Example 2: Scheduled Task with Conditional
 \`\`\`typescript
-import {{ workflow, node, trigger, ifBranch }} from '@n8n/workflow-sdk';
-
 return workflow('scheduled-check', 'Daily Status Check')
   .add(trigger({{
     type: 'n8n-nodes-base.scheduleTrigger',
@@ -343,14 +341,47 @@ return workflow('ai-calculator', 'Math Assistant')
 </workflow_examples>`;
 
 /**
+ * Mandatory workflow for tool usage
+ */
+const MANDATORY_WORKFLOW = `<mandatory_workflow>
+## REQUIRED STEPS - You MUST follow this workflow:
+
+### Step 1: Identify all node types you will use
+Before writing any code, list ALL node types (including trigger nodes, action nodes, and AI subnodes) that your workflow will need.
+
+### Step 2: Call get_nodes with ALL node types
+**THIS IS MANDATORY** - You MUST call the get_nodes tool with an array of ALL node types BEFORE generating code.
+
+Example:
+\`\`\`
+get_nodes({{ nodeIds: ["n8n-nodes-base.manualTrigger", "n8n-nodes-base.httpRequest", "n8n-nodes-base.set"] }})
+\`\`\`
+
+This gives you the exact TypeScript type definitions so you know:
+- The correct version numbers
+- All available parameters
+- Required vs optional fields
+- Credential requirements
+
+### Step 3: Generate workflow code
+Only AFTER receiving the type definitions, generate the workflow code using the exact parameter names and structures from the type definitions.
+
+**DO NOT skip Step 2!** Guessing parameter names or versions will result in invalid workflows.
+</mandatory_workflow>`;
+
+/**
  * Output format instructions
  */
 const OUTPUT_FORMAT = `<output_format>
-Generate your response with:
+Generate your response as a JSON object with a single field:
 
-1. **reasoning**: Brief explanation of your design decisions (2-3 sentences)
-2. **workflowCode**: Complete TypeScript code starting with \`return workflow(...)\`
-3. **warnings**: (optional) Any potential issues or limitations
+\`\`\`json
+{{
+  "workflowCode": "return workflow(...)"
+}}
+\`\`\`
+
+The **workflowCode** field must contain complete TypeScript code starting with \`return workflow(...)\`.
 
 The code will be automatically parsed and validated. Make sure:
 - All node types are valid (use search_node if unsure)
@@ -406,6 +437,7 @@ export function buildOneShotGeneratorPrompt(
 		WORKFLOW_RULES,
 		AI_PATTERNS,
 		WORKFLOW_EXAMPLES,
+		MANDATORY_WORKFLOW,
 		OUTPUT_FORMAT,
 	].join('\n\n');
 
@@ -417,6 +449,7 @@ export function buildOneShotGeneratorPrompt(
 		workflowRulesLength: WORKFLOW_RULES.length,
 		aiPatternsLength: AI_PATTERNS.length,
 		workflowExamplesLength: WORKFLOW_EXAMPLES.length,
+		mandatoryWorkflowLength: MANDATORY_WORKFLOW.length,
 		outputFormatLength: OUTPUT_FORMAT.length,
 	});
 
