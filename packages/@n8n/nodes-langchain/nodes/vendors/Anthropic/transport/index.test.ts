@@ -264,4 +264,53 @@ describe('Anthropic transport', () => {
 			},
 		);
 	});
+
+	it('should include prompt-caching beta when enableAnthropicBetas.promptCaching is true', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({});
+
+		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages', {
+			enableAnthropicBetas: {
+				promptCaching: true,
+			},
+		});
+
+		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'anthropicApi',
+			{
+				method: 'POST',
+				url: 'https://api.anthropic.com/v1/messages',
+				json: true,
+				headers: {
+					'anthropic-version': '2023-06-01',
+					'anthropic-beta': 'files-api-2025-04-14,prompt-caching-2024-07-31',
+				},
+			},
+		);
+	});
+
+	it('should include all beta features when all are enabled', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({});
+
+		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages', {
+			enableAnthropicBetas: {
+				promptTools: true,
+				codeExecution: true,
+				promptCaching: true,
+			},
+		});
+
+		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'anthropicApi',
+			{
+				method: 'POST',
+				url: 'https://api.anthropic.com/v1/messages',
+				json: true,
+				headers: {
+					'anthropic-version': '2023-06-01',
+					'anthropic-beta':
+						'files-api-2025-04-14,prompt-tools-2025-04-02,code-execution-2025-05-22,prompt-caching-2024-07-31',
+				},
+			},
+		);
+	});
 });
