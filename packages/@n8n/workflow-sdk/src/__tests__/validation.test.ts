@@ -5,9 +5,11 @@ import { node, trigger } from '../node-builder';
 describe('Validation', () => {
 	describe('validateWorkflow()', () => {
 		it('should validate a workflow with a trigger', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				parameters: { url: 'https://example.com' },
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { parameters: { url: 'https://example.com' } },
 			});
 			const wf = workflow('test-id', 'Test Workflow').add(t).then(n);
 
@@ -17,8 +19,10 @@ describe('Validation', () => {
 		});
 
 		it('should warn when workflow has no trigger', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				parameters: { url: 'https://example.com' },
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { parameters: { url: 'https://example.com' } },
 			});
 			const wf = workflow('test-id', 'Test Workflow').add(n);
 
@@ -27,9 +31,17 @@ describe('Validation', () => {
 		});
 
 		it('should warn about disconnected nodes', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
-			const connected = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'Connected' });
-			const disconnected = node('n8n-nodes-base.set', 'v3', { name: 'Disconnected' });
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const connected = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Connected' },
+			});
+			const disconnected = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Disconnected' },
+			});
 
 			// Add disconnected without .then() - it won't be connected
 			const wf = workflow('test-id', 'Test Workflow').add(t).then(connected).add(disconnected);
@@ -39,10 +51,12 @@ describe('Validation', () => {
 		});
 
 		it('should validate required parameters if specified', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
 			// HTTP Request without URL should potentially warn
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				parameters: {}, // Missing url
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { parameters: {} }, // Missing url
 			});
 			const wf = workflow('test-id', 'Test Workflow').add(t).then(n);
 

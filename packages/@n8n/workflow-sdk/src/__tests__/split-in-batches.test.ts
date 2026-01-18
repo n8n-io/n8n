@@ -30,10 +30,22 @@ describe('Split In Batches', () => {
 
 	describe('workflow integration', () => {
 		it('should integrate splitInBatches with workflow builder', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
-			const generateItems = node('n8n-nodes-base.set', 'v3', { name: 'Generate Items' });
-			const processNode = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'Process Batch' });
-			const finalizeNode = node('n8n-nodes-base.set', 'v3', { name: 'Finalize' });
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const generateItems = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Generate Items' },
+			});
+			const processNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Process Batch' },
+			});
+			const finalizeNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Finalize' },
+			});
 
 			const wf = workflow('test-id', 'Test')
 				.add(t)

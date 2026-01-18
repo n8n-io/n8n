@@ -9,6 +9,8 @@ export type {
 	NodeInstance,
 	TriggerInstance,
 	NodeConfig,
+	NodeInput,
+	TriggerInput,
 	SubnodeConfig,
 	CredentialReference,
 	OnError,
@@ -48,6 +50,10 @@ export type {
 	SplitInBatchesFn,
 	RunOnceForAllItemsFn,
 	RunOnceForEachItemFn,
+	// Type helpers for generated types
+	ExtractNodeParams,
+	ExtractNodeCredentials,
+	ExtractNodeVersion,
 	// n8n-workflow type duplicates (self-contained in SDK)
 	GenericValue,
 	IDataObject,
@@ -56,6 +62,9 @@ export type {
 	INodeConnections,
 	IConnections,
 } from './types/base';
+
+// Generated node types
+export * from './types/generated';
 
 // Workflow builder
 export { workflow } from './workflow-builder';

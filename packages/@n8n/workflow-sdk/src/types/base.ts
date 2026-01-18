@@ -560,36 +560,90 @@ export interface CodeResult<T> {
 export type WorkflowFn = WorkflowBuilderStatic;
 
 /**
+ * Input shape for node factory function (object signature)
+ * Matches the generated node type structure (e.g., LcAgentV31Node)
+ */
+export interface NodeInput<
+	TType extends string = string,
+	TVersion extends number = number,
+	TParams = unknown,
+> {
+	/** Node type (e.g., 'n8n-nodes-base.httpRequest') */
+	type: TType;
+	/** Node version (e.g., 4.2) */
+	version: TVersion;
+	/** Node configuration */
+	config: NodeConfig<TParams>;
+}
+
+/**
+ * Input shape for trigger factory function (object signature)
+ */
+export interface TriggerInput<
+	TType extends string = string,
+	TVersion extends number = number,
+	TParams = unknown,
+> {
+	/** Trigger type (e.g., 'n8n-nodes-base.scheduleTrigger') */
+	type: TType;
+	/** Trigger version (e.g., 1.1) */
+	version: TVersion;
+	/** Trigger configuration */
+	config: NodeConfig<TParams>;
+}
+
+/**
  * Creates a node instance
+ *
+ * For type-safe usage, use with generated node types from './types/generated'.
+ * The AllNodeTypes union provides autocomplete for all known node types.
  *
  * @example
  * ```typescript
- * const httpNode = node('n8n-nodes-base.httpRequest', 'v4.2', {
- *   parameters: { url: 'https://api.example.com', method: 'GET' }
+ * import { node, trigger } from '@n8n/workflow-sdk';
+ * import type { AllNodeTypes, LcAgentV31Node } from '@n8n/workflow-sdk';
+ *
+ * // Type-safe with AllNodeTypes constraint
+ * const agent = node({
+ *   type: '@n8n/n8n-nodes-langchain.agent',
+ *   version: 3.1,
+ *   config: { parameters: { promptType: 'auto', text: 'Hello' } }
+ * } satisfies AllNodeTypes);
+ *
+ * // Or with specific node type
+ * const agent = node({
+ *   type: '@n8n/n8n-nodes-langchain.agent',
+ *   version: 3.1,
+ *   config: { parameters: { promptType: 'auto', text: 'Hello' } }
+ * } satisfies LcAgentV31Node);
+ *
+ * // Generic usage (no type checking on parameters)
+ * const httpNode = node({
+ *   type: 'n8n-nodes-base.httpRequest',
+ *   version: 4.2,
+ *   config: { parameters: { url: 'https://api.example.com' } }
  * });
  * ```
  */
-export type NodeFn = <TType extends string, TVersion extends string, TOutput = unknown>(
-	type: TType,
-	version: TVersion,
-	config: NodeConfig,
-) => NodeInstance<TType, TVersion, TOutput>;
+export type NodeFn = <TNode extends NodeInput>(
+	input: TNode,
+) => NodeInstance<TNode['type'], `${TNode['version']}`, unknown>;
 
 /**
  * Creates a trigger node instance
  *
  * @example
  * ```typescript
- * const schedule = trigger('n8n-nodes-base.scheduleTrigger', 'v1.1', {
- *   parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } }
+ * const schedule = trigger({
+ *   type: 'n8n-nodes-base.scheduleTrigger',
+ *   version: 1.1,
+ *   config: { parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } } }
  * });
  * ```
  */
-export type TriggerFn = <TType extends string, TVersion extends string, TOutput = unknown>(
-	type: TType,
-	version: TVersion,
-	config: NodeConfig,
-) => TriggerInstance<TType, TVersion, TOutput>;
+export type TriggerFn = <TTrigger extends TriggerInput>(
+	input: TTrigger,
+) => TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown>;
 
 /**
  * Creates a sticky note for workflow documentation

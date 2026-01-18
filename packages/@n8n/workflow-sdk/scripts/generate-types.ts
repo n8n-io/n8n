@@ -1020,6 +1020,22 @@ export function generateIndexFile(nodes: NodeTypeDescription[]): string {
 		byPackage.get(pkg)!.push(node);
 	}
 
+	// Import all node types for use in AllNodeTypes union (must be at top)
+	// (export * re-exports but doesn't bring into scope)
+	lines.push('// Import node types for AllNodeTypes union');
+	const sortedNodes = [...nodes].sort((a, b) => a.name.localeCompare(b.name));
+	for (const [pkg, pkgNodes] of byPackage) {
+		const sortedPkgNodes = pkgNodes.sort((a, b) => a.name.localeCompare(b.name));
+		// Import each node type from its file
+		for (const node of sortedPkgNodes) {
+			const fileName = nodeNameToFileName(node.name);
+			const prefix = getPackagePrefix(node.name);
+			const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
+			lines.push(`import type { ${nodeName}Node } from './nodes/${pkg}/${fileName}';`);
+		}
+	}
+	lines.push('');
+
 	// Generate exports by package
 	for (const [pkg, pkgNodes] of byPackage) {
 		lines.push(`// ${pkg}`);
@@ -1030,8 +1046,8 @@ export function generateIndexFile(nodes: NodeTypeDescription[]): string {
 		lines.push('');
 	}
 
-	// Generate KnownNodeType union
-	lines.push('// Combined type union');
+	// Generate KnownNodeType union (string literal union of all node type names)
+	lines.push('// Combined type union of node type strings');
 	lines.push('export type KnownNodeType =');
 	for (let i = 0; i < nodes.length; i++) {
 		const prefix = i === 0 ? '\t| ' : '\t| ';
@@ -1040,15 +1056,17 @@ export function generateIndexFile(nodes: NodeTypeDescription[]): string {
 	lines.push('\t;');
 	lines.push('');
 
-	// Generate NodeTypeMap for type-safe node creation
-	lines.push('// Node type map for type inference');
-	lines.push('export interface NodeTypeMap {');
-	for (const node of nodes.sort((a, b) => a.name.localeCompare(b.name))) {
+	// Generate AllNodeTypes union (union of all *Node types for use with NodeFn)
+	lines.push('// Union of all node input types for type-safe node() function');
+	lines.push('export type AllNodeTypes =');
+	for (let i = 0; i < sortedNodes.length; i++) {
+		const node = sortedNodes[i];
 		const prefix = getPackagePrefix(node.name);
 		const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
-		lines.push(`\t'${node.name}': ${nodeName}Node;`);
+		const unionPrefix = i === 0 ? '\t| ' : '\t| ';
+		lines.push(`${unionPrefix}${nodeName}Node`);
 	}
-	lines.push('}');
+	lines.push('\t;');
 
 	return lines.join('\n');
 }

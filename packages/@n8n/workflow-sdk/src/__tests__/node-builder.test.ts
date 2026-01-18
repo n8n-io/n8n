@@ -1,16 +1,51 @@
 import { node, trigger, sticky, placeholder } from '../node-builder';
+import type { LcAgentV31Node } from '../types/generated';
 
 describe('Node Builder', () => {
 	describe('node()', () => {
-		it('should create a node with type and version', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {});
+		it('should create a node from object with type, version, and config', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { parameters: { url: 'https://api.example.com' } },
+			});
 			expect(n.type).toBe('n8n-nodes-base.httpRequest');
-			expect(n.version).toBe('v4.2');
+			expect(n.version).toBe('4.2');
+			expect(n.config.parameters).toEqual({ url: 'https://api.example.com' });
+		});
+
+		it('should work with generated node types', () => {
+			// Using satisfies to validate against generated type
+			const agentNode = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 3.1,
+				config: {
+					parameters: {
+						promptType: 'auto',
+						text: 'Hello',
+					},
+				},
+			} satisfies LcAgentV31Node);
+			expect(agentNode.type).toBe('@n8n/n8n-nodes-langchain.agent');
+			expect(agentNode.version).toBe('3.1');
+		});
+
+		it('should support integer versions', () => {
+			const n = node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: {},
+			});
+			expect(n.version).toBe('2');
 		});
 
 		it('should create a node with parameters', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				parameters: { url: 'https://api.example.com', method: 'GET' },
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					parameters: { url: 'https://api.example.com', method: 'GET' },
+				},
 			});
 			expect(n.config.parameters).toEqual({
 				url: 'https://api.example.com',
@@ -19,8 +54,12 @@ describe('Node Builder', () => {
 		});
 
 		it('should create a node with credentials', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				credentials: { httpBasicAuth: { name: 'My Creds', id: '123' } },
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					credentials: { httpBasicAuth: { name: 'My Creds', id: '123' } },
+				},
 			});
 			expect(n.config.credentials).toEqual({
 				httpBasicAuth: { name: 'My Creds', id: '123' },
@@ -28,11 +67,15 @@ describe('Node Builder', () => {
 		});
 
 		it('should create a node with execution options', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				parameters: { url: 'https://api.example.com' },
-				onError: 'continueErrorOutput',
-				retryOnFail: true,
-				executeOnce: true,
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					parameters: { url: 'https://api.example.com' },
+					onError: 'continueErrorOutput',
+					retryOnFail: true,
+					executeOnce: true,
+				},
 			});
 			expect(n.config.onError).toBe('continueErrorOutput');
 			expect(n.config.retryOnFail).toBe(true);
@@ -40,51 +83,63 @@ describe('Node Builder', () => {
 		});
 
 		it('should auto-generate a unique ID', () => {
-			const n1 = node('n8n-nodes-base.httpRequest', 'v4.2', {});
-			const n2 = node('n8n-nodes-base.httpRequest', 'v4.2', {});
+			const n1 = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const n2 = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
 			expect(n1.id).toBeDefined();
 			expect(n2.id).toBeDefined();
 			expect(n1.id).not.toBe(n2.id);
 		});
 
 		it('should auto-generate a name from type if not provided', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {});
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
 			expect(n.name).toBe('HTTP Request');
 		});
 
 		it('should use custom name if provided', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				name: 'Fetch API Data',
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch API Data' },
 			});
 			expect(n.name).toBe('Fetch API Data');
 		});
 
 		it('should support position', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				position: [100, 200],
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { position: [100, 200] },
 			});
 			expect(n.config.position).toEqual([100, 200]);
 		});
 
 		it('should support disabled state', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				disabled: true,
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { disabled: true },
 			});
 			expect(n.config.disabled).toBe(true);
 		});
 
 		it('should support notes', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				notes: 'This fetches user data',
-				notesInFlow: true,
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					notes: 'This fetches user data',
+					notesInFlow: true,
+				},
 			});
 			expect(n.config.notes).toBe('This fetches user data');
 			expect(n.config.notesInFlow).toBe(true);
 		});
 
 		it('should support update() to modify configuration', () => {
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				parameters: { url: 'https://old-url.com' },
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { parameters: { url: 'https://old-url.com' } },
 			});
 			const updated = n.update({
 				parameters: { url: 'https://new-url.com' },
@@ -96,16 +151,31 @@ describe('Node Builder', () => {
 	});
 
 	describe('trigger()', () => {
-		it('should create a trigger node with isTrigger marker', () => {
-			const t = trigger('n8n-nodes-base.scheduleTrigger', 'v1.1', {
-				parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } },
+		it('should create a trigger from object with type, version, and config', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.1,
+				config: {
+					parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } },
+				},
 			});
 			expect(t.type).toBe('n8n-nodes-base.scheduleTrigger');
+			expect(t.version).toBe('1.1');
+			expect(t.isTrigger).toBe(true);
+		});
+
+		it('should support integer versions', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.webhookTrigger',
+				version: 2,
+				config: {},
+			});
+			expect(t.version).toBe('2');
 			expect(t.isTrigger).toBe(true);
 		});
 
 		it('should auto-generate name for trigger', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
 			expect(t.name).toBe('Webhook Trigger');
 		});
 	});
@@ -149,20 +219,32 @@ describe('Node Builder', () => {
 
 	describe('AI nodes with subnodes', () => {
 		it('should create an AI node with subnodes', () => {
-			const modelNode = node('n8n-nodes-langchain.lmChatOpenAi', 'v1', {
-				parameters: { model: 'gpt-4' },
+			const modelNode = node({
+				type: 'n8n-nodes-langchain.lmChatOpenAi',
+				version: 1,
+				config: { parameters: { model: 'gpt-4' } },
 			});
-			const memoryNode = node('n8n-nodes-langchain.memoryBufferWindow', 'v1', {
-				parameters: { windowSize: 5 },
+			const memoryNode = node({
+				type: 'n8n-nodes-langchain.memoryBufferWindow',
+				version: 1,
+				config: { parameters: { windowSize: 5 } },
 			});
-			const toolNode = node('n8n-nodes-langchain.toolCalculator', 'v1', {});
+			const toolNode = node({
+				type: 'n8n-nodes-langchain.toolCalculator',
+				version: 1,
+				config: {},
+			});
 
-			const agentNode = node('n8n-nodes-langchain.agent', 'v1.6', {
-				parameters: { text: '={{ $json.prompt }}' },
-				subnodes: {
-					model: modelNode,
-					memory: memoryNode,
-					tools: [toolNode],
+			const agentNode = node({
+				type: 'n8n-nodes-langchain.agent',
+				version: 1.6,
+				config: {
+					parameters: { text: '={{ $json.prompt }}' },
+					subnodes: {
+						model: modelNode,
+						memory: memoryNode,
+						tools: [toolNode],
+					},
 				},
 			});
 
@@ -175,14 +257,20 @@ describe('Node Builder', () => {
 		});
 
 		it('should create an AI node with output parser', () => {
-			const parserNode = node('n8n-nodes-langchain.outputParserStructured', 'v1.3', {
-				parameters: { schemaType: 'manual', inputSchema: '{}' },
+			const parserNode = node({
+				type: 'n8n-nodes-langchain.outputParserStructured',
+				version: 1.3,
+				config: { parameters: { schemaType: 'manual', inputSchema: '{}' } },
 			});
 
-			const chainNode = node('n8n-nodes-langchain.chainLlm', 'v1', {
-				parameters: {},
-				subnodes: {
-					outputParser: parserNode,
+			const chainNode = node({
+				type: 'n8n-nodes-langchain.chainLlm',
+				version: 1,
+				config: {
+					parameters: {},
+					subnodes: {
+						outputParser: parserNode,
+					},
 				},
 			});
 

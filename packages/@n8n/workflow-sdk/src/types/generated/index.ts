@@ -10,6 +10,512 @@
  * @generated
  */
 
+// Import node types for AllNodeTypes union
+import type { ActionNetworkNode } from './nodes/n8n-nodes-base/actionNetwork';
+import type { ActiveCampaignNode } from './nodes/n8n-nodes-base/activeCampaign';
+import type { ActiveCampaignTriggerNode } from './nodes/n8n-nodes-base/activeCampaignTrigger';
+import type { AcuitySchedulingTriggerNode } from './nodes/n8n-nodes-base/acuitySchedulingTrigger';
+import type { AdaloNode } from './nodes/n8n-nodes-base/adalo';
+import type { AffinityNode } from './nodes/n8n-nodes-base/affinity';
+import type { AffinityTriggerNode } from './nodes/n8n-nodes-base/affinityTrigger';
+import type { AggregateNode } from './nodes/n8n-nodes-base/aggregate';
+import type { AgileCrmNode } from './nodes/n8n-nodes-base/agileCrm';
+import type { AirtableNode } from './nodes/n8n-nodes-base/airtable';
+import type { AirtableTriggerNode } from './nodes/n8n-nodes-base/airtableTrigger';
+import type { AirtopNode } from './nodes/n8n-nodes-base/airtop';
+import type { AiTransformNode } from './nodes/n8n-nodes-base/aiTransform';
+import type { AmqpNode } from './nodes/n8n-nodes-base/amqp';
+import type { AmqpTriggerNode } from './nodes/n8n-nodes-base/amqpTrigger';
+import type { ApiTemplateIoNode } from './nodes/n8n-nodes-base/apiTemplateIo';
+import type { AsanaNode } from './nodes/n8n-nodes-base/asana';
+import type { AsanaTriggerNode } from './nodes/n8n-nodes-base/asanaTrigger';
+import type { AutopilotNode } from './nodes/n8n-nodes-base/autopilot';
+import type { AutopilotTriggerNode } from './nodes/n8n-nodes-base/autopilotTrigger';
+import type { AwsCertificateManagerNode } from './nodes/n8n-nodes-base/awsCertificateManager';
+import type { AwsCognitoNode } from './nodes/n8n-nodes-base/awsCognito';
+import type { AwsComprehendNode } from './nodes/n8n-nodes-base/awsComprehend';
+import type { AwsDynamoDbNode } from './nodes/n8n-nodes-base/awsDynamoDb';
+import type { AwsElbNode } from './nodes/n8n-nodes-base/awsElb';
+import type { AwsIamNode } from './nodes/n8n-nodes-base/awsIam';
+import type { AwsLambdaNode } from './nodes/n8n-nodes-base/awsLambda';
+import type { AwsRekognitionNode } from './nodes/n8n-nodes-base/awsRekognition';
+import type { AwsS3Node } from './nodes/n8n-nodes-base/awsS3';
+import type { AwsSesNode } from './nodes/n8n-nodes-base/awsSes';
+import type { AwsSnsNode } from './nodes/n8n-nodes-base/awsSns';
+import type { AwsSnsTriggerNode } from './nodes/n8n-nodes-base/awsSnsTrigger';
+import type { AwsSqsNode } from './nodes/n8n-nodes-base/awsSqs';
+import type { AwsTextractNode } from './nodes/n8n-nodes-base/awsTextract';
+import type { AwsTranscribeNode } from './nodes/n8n-nodes-base/awsTranscribe';
+import type { AzureCosmosDbNode } from './nodes/n8n-nodes-base/azureCosmosDb';
+import type { AzureStorageNode } from './nodes/n8n-nodes-base/azureStorage';
+import type { BambooHrNode } from './nodes/n8n-nodes-base/bambooHr';
+import type { BannerbearNode } from './nodes/n8n-nodes-base/bannerbear';
+import type { BaserowNode } from './nodes/n8n-nodes-base/baserow';
+import type { BeeminderNode } from './nodes/n8n-nodes-base/beeminder';
+import type { BitbucketTriggerNode } from './nodes/n8n-nodes-base/bitbucketTrigger';
+import type { BitlyNode } from './nodes/n8n-nodes-base/bitly';
+import type { BitwardenNode } from './nodes/n8n-nodes-base/bitwarden';
+import type { BoxNode } from './nodes/n8n-nodes-base/box';
+import type { BoxTriggerNode } from './nodes/n8n-nodes-base/boxTrigger';
+import type { BrandfetchNode } from './nodes/n8n-nodes-base/Brandfetch';
+import type { BubbleNode } from './nodes/n8n-nodes-base/bubble';
+import type { CalendlyTriggerNode } from './nodes/n8n-nodes-base/calendlyTrigger';
+import type { CalTriggerNode } from './nodes/n8n-nodes-base/calTrigger';
+import type { ChargebeeNode } from './nodes/n8n-nodes-base/chargebee';
+import type { ChargebeeTriggerNode } from './nodes/n8n-nodes-base/chargebeeTrigger';
+import type { CircleCiNode } from './nodes/n8n-nodes-base/circleCi';
+import type { CiscoWebexNode } from './nodes/n8n-nodes-base/ciscoWebex';
+import type { CiscoWebexTriggerNode } from './nodes/n8n-nodes-base/ciscoWebexTrigger';
+import type { CitrixAdcNode } from './nodes/n8n-nodes-base/citrixAdc';
+import type { ClearbitNode } from './nodes/n8n-nodes-base/clearbit';
+import type { ClickUpNode } from './nodes/n8n-nodes-base/clickUp';
+import type { ClickUpTriggerNode } from './nodes/n8n-nodes-base/clickUpTrigger';
+import type { ClockifyNode } from './nodes/n8n-nodes-base/clockify';
+import type { ClockifyTriggerNode } from './nodes/n8n-nodes-base/clockifyTrigger';
+import type { CloudflareNode } from './nodes/n8n-nodes-base/cloudflare';
+import type { CockpitNode } from './nodes/n8n-nodes-base/cockpit';
+import type { CodaNode } from './nodes/n8n-nodes-base/coda';
+import type { CodeNode } from './nodes/n8n-nodes-base/code';
+import type { CoinGeckoNode } from './nodes/n8n-nodes-base/coinGecko';
+import type { CompareDatasetsNode } from './nodes/n8n-nodes-base/compareDatasets';
+import type { CompressionNode } from './nodes/n8n-nodes-base/compression';
+import type { ContentfulNode } from './nodes/n8n-nodes-base/contentful';
+import type { ConvertKitNode } from './nodes/n8n-nodes-base/convertKit';
+import type { ConvertKitTriggerNode } from './nodes/n8n-nodes-base/convertKitTrigger';
+import type { ConvertToFileNode } from './nodes/n8n-nodes-base/convertToFile';
+import type { CopperNode } from './nodes/n8n-nodes-base/copper';
+import type { CopperTriggerNode } from './nodes/n8n-nodes-base/copperTrigger';
+import type { CortexNode } from './nodes/n8n-nodes-base/cortex';
+import type { CrateDbNode } from './nodes/n8n-nodes-base/crateDb';
+import type { CryptoNode } from './nodes/n8n-nodes-base/crypto';
+import type { CustomerIoNode } from './nodes/n8n-nodes-base/customerIo';
+import type { CustomerIoTriggerNode } from './nodes/n8n-nodes-base/customerIoTrigger';
+import type { DataTableNode } from './nodes/n8n-nodes-base/dataTable';
+import type { DateTimeNode } from './nodes/n8n-nodes-base/dateTime';
+import type { DebugHelperNode } from './nodes/n8n-nodes-base/debugHelper';
+import type { DeepLNode } from './nodes/n8n-nodes-base/deepL';
+import type { DemioNode } from './nodes/n8n-nodes-base/demio';
+import type { DhlNode } from './nodes/n8n-nodes-base/dhl';
+import type { DiscordNode } from './nodes/n8n-nodes-base/discord';
+import type { DiscourseNode } from './nodes/n8n-nodes-base/discourse';
+import type { DisqusNode } from './nodes/n8n-nodes-base/disqus';
+import type { DriftNode } from './nodes/n8n-nodes-base/drift';
+import type { DropboxNode } from './nodes/n8n-nodes-base/dropbox';
+import type { DropcontactNode } from './nodes/n8n-nodes-base/dropcontact';
+import type { E2eTestNode } from './nodes/n8n-nodes-base/e2eTest';
+import type { EditImageNode } from './nodes/n8n-nodes-base/editImage';
+import type { EgoiNode } from './nodes/n8n-nodes-base/egoi';
+import type { ElasticsearchNode } from './nodes/n8n-nodes-base/elasticsearch';
+import type { ElasticSecurityNode } from './nodes/n8n-nodes-base/elasticSecurity';
+import type { EmailReadImapNode } from './nodes/n8n-nodes-base/emailReadImap';
+import type { EmailSendNode } from './nodes/n8n-nodes-base/emailSend';
+import type { EmeliaNode } from './nodes/n8n-nodes-base/emelia';
+import type { EmeliaTriggerNode } from './nodes/n8n-nodes-base/emeliaTrigger';
+import type { ErpNextNode } from './nodes/n8n-nodes-base/erpNext';
+import type { ErrorTriggerNode } from './nodes/n8n-nodes-base/errorTrigger';
+import type { EvaluationNode } from './nodes/n8n-nodes-base/evaluation';
+import type { EvaluationTriggerNode } from './nodes/n8n-nodes-base/evaluationTrigger';
+import type { EventbriteTriggerNode } from './nodes/n8n-nodes-base/eventbriteTrigger';
+import type { ExecuteCommandNode } from './nodes/n8n-nodes-base/executeCommand';
+import type { ExecuteWorkflowNode } from './nodes/n8n-nodes-base/executeWorkflow';
+import type { ExecuteWorkflowTriggerNode } from './nodes/n8n-nodes-base/executeWorkflowTrigger';
+import type { ExecutionDataNode } from './nodes/n8n-nodes-base/executionData';
+import type { ExtractFromFileNode } from './nodes/n8n-nodes-base/extractFromFile';
+import type { FacebookGraphApiNode } from './nodes/n8n-nodes-base/facebookGraphApi';
+import type { FacebookLeadAdsTriggerNode } from './nodes/n8n-nodes-base/facebookLeadAdsTrigger';
+import type { FacebookTriggerNode } from './nodes/n8n-nodes-base/facebookTrigger';
+import type { FigmaTriggerNode } from './nodes/n8n-nodes-base/figmaTrigger';
+import type { FilemakerNode } from './nodes/n8n-nodes-base/filemaker';
+import type { FilterNode } from './nodes/n8n-nodes-base/filter';
+import type { FlowNode } from './nodes/n8n-nodes-base/flow';
+import type { FlowTriggerNode } from './nodes/n8n-nodes-base/flowTrigger';
+import type { FormNode } from './nodes/n8n-nodes-base/form';
+import type { FormIoTriggerNode } from './nodes/n8n-nodes-base/formIoTrigger';
+import type { FormstackTriggerNode } from './nodes/n8n-nodes-base/formstackTrigger';
+import type { FormTriggerNode } from './nodes/n8n-nodes-base/formTrigger';
+import type { FreshdeskNode } from './nodes/n8n-nodes-base/freshdesk';
+import type { FreshserviceNode } from './nodes/n8n-nodes-base/freshservice';
+import type { FreshworksCrmNode } from './nodes/n8n-nodes-base/freshworksCrm';
+import type { FtpNode } from './nodes/n8n-nodes-base/ftp';
+import type { GetResponseNode } from './nodes/n8n-nodes-base/getResponse';
+import type { GetResponseTriggerNode } from './nodes/n8n-nodes-base/getResponseTrigger';
+import type { GhostNode } from './nodes/n8n-nodes-base/ghost';
+import type { GitNode } from './nodes/n8n-nodes-base/git';
+import type { GithubNode } from './nodes/n8n-nodes-base/github';
+import type { GithubTriggerNode } from './nodes/n8n-nodes-base/githubTrigger';
+import type { GitlabNode } from './nodes/n8n-nodes-base/gitlab';
+import type { GitlabTriggerNode } from './nodes/n8n-nodes-base/gitlabTrigger';
+import type { GmailNode } from './nodes/n8n-nodes-base/gmail';
+import type { GmailTriggerNode } from './nodes/n8n-nodes-base/gmailTrigger';
+import type { GongNode } from './nodes/n8n-nodes-base/gong';
+import type { GoogleAdsNode } from './nodes/n8n-nodes-base/googleAds';
+import type { GoogleAnalyticsNode } from './nodes/n8n-nodes-base/googleAnalytics';
+import type { GoogleBigQueryNode } from './nodes/n8n-nodes-base/googleBigQuery';
+import type { GoogleBooksNode } from './nodes/n8n-nodes-base/googleBooks';
+import type { GoogleBusinessProfileNode } from './nodes/n8n-nodes-base/googleBusinessProfile';
+import type { GoogleBusinessProfileTriggerNode } from './nodes/n8n-nodes-base/googleBusinessProfileTrigger';
+import type { GoogleCalendarNode } from './nodes/n8n-nodes-base/googleCalendar';
+import type { GoogleCalendarTriggerNode } from './nodes/n8n-nodes-base/googleCalendarTrigger';
+import type { GoogleChatNode } from './nodes/n8n-nodes-base/googleChat';
+import type { GoogleCloudNaturalLanguageNode } from './nodes/n8n-nodes-base/googleCloudNaturalLanguage';
+import type { GoogleCloudStorageNode } from './nodes/n8n-nodes-base/googleCloudStorage';
+import type { GoogleContactsNode } from './nodes/n8n-nodes-base/googleContacts';
+import type { GoogleDocsNode } from './nodes/n8n-nodes-base/googleDocs';
+import type { GoogleDriveNode } from './nodes/n8n-nodes-base/googleDrive';
+import type { GoogleDriveTriggerNode } from './nodes/n8n-nodes-base/googleDriveTrigger';
+import type { GoogleFirebaseCloudFirestoreNode } from './nodes/n8n-nodes-base/googleFirebaseCloudFirestore';
+import type { GoogleFirebaseRealtimeDatabaseNode } from './nodes/n8n-nodes-base/googleFirebaseRealtimeDatabase';
+import type { GooglePerspectiveNode } from './nodes/n8n-nodes-base/googlePerspective';
+import type { GoogleSheetsNode } from './nodes/n8n-nodes-base/googleSheets';
+import type { GoogleSheetsTriggerNode } from './nodes/n8n-nodes-base/googleSheetsTrigger';
+import type { GoogleSlidesNode } from './nodes/n8n-nodes-base/googleSlides';
+import type { GoogleTasksNode } from './nodes/n8n-nodes-base/googleTasks';
+import type { GoogleTranslateNode } from './nodes/n8n-nodes-base/googleTranslate';
+import type { GotifyNode } from './nodes/n8n-nodes-base/gotify';
+import type { GoToWebinarNode } from './nodes/n8n-nodes-base/goToWebinar';
+import type { GrafanaNode } from './nodes/n8n-nodes-base/grafana';
+import type { GraphqlNode } from './nodes/n8n-nodes-base/graphql';
+import type { GristNode } from './nodes/n8n-nodes-base/grist';
+import type { GSuiteAdminNode } from './nodes/n8n-nodes-base/gSuiteAdmin';
+import type { GumroadTriggerNode } from './nodes/n8n-nodes-base/gumroadTrigger';
+import type { HackerNewsNode } from './nodes/n8n-nodes-base/hackerNews';
+import type { HaloPSANode } from './nodes/n8n-nodes-base/haloPSA';
+import type { HarvestNode } from './nodes/n8n-nodes-base/harvest';
+import type { HelpScoutNode } from './nodes/n8n-nodes-base/helpScout';
+import type { HelpScoutTriggerNode } from './nodes/n8n-nodes-base/helpScoutTrigger';
+import type { HighLevelNode } from './nodes/n8n-nodes-base/highLevel';
+import type { HomeAssistantNode } from './nodes/n8n-nodes-base/homeAssistant';
+import type { HtmlNode } from './nodes/n8n-nodes-base/html';
+import type { HttpRequestNode } from './nodes/n8n-nodes-base/httpRequest';
+import type { HubspotNode } from './nodes/n8n-nodes-base/hubspot';
+import type { HubspotTriggerNode } from './nodes/n8n-nodes-base/hubspotTrigger';
+import type { HumanticAiNode } from './nodes/n8n-nodes-base/humanticAi';
+import type { HunterNode } from './nodes/n8n-nodes-base/hunter';
+import type { IfNode } from './nodes/n8n-nodes-base/if';
+import type { IntercomNode } from './nodes/n8n-nodes-base/intercom';
+import type { InvoiceNinjaNode } from './nodes/n8n-nodes-base/invoiceNinja';
+import type { InvoiceNinjaTriggerNode } from './nodes/n8n-nodes-base/invoiceNinjaTrigger';
+import type { IterableNode } from './nodes/n8n-nodes-base/iterable';
+import type { JenkinsNode } from './nodes/n8n-nodes-base/jenkins';
+import type { JinaAiNode } from './nodes/n8n-nodes-base/jinaAi';
+import type { JiraNode } from './nodes/n8n-nodes-base/jira';
+import type { JiraTriggerNode } from './nodes/n8n-nodes-base/jiraTrigger';
+import type { JotFormTriggerNode } from './nodes/n8n-nodes-base/jotFormTrigger';
+import type { JwtNode } from './nodes/n8n-nodes-base/jwt';
+import type { KafkaNode } from './nodes/n8n-nodes-base/kafka';
+import type { KafkaTriggerNode } from './nodes/n8n-nodes-base/kafkaTrigger';
+import type { KeapNode } from './nodes/n8n-nodes-base/keap';
+import type { KeapTriggerNode } from './nodes/n8n-nodes-base/keapTrigger';
+import type { KoBoToolboxNode } from './nodes/n8n-nodes-base/koBoToolbox';
+import type { KoBoToolboxTriggerNode } from './nodes/n8n-nodes-base/koBoToolboxTrigger';
+import type { LdapNode } from './nodes/n8n-nodes-base/ldap';
+import type { LemlistNode } from './nodes/n8n-nodes-base/lemlist';
+import type { LemlistTriggerNode } from './nodes/n8n-nodes-base/lemlistTrigger';
+import type { LimitNode } from './nodes/n8n-nodes-base/limit';
+import type { LineNode } from './nodes/n8n-nodes-base/line';
+import type { LinearNode } from './nodes/n8n-nodes-base/linear';
+import type { LinearTriggerNode } from './nodes/n8n-nodes-base/linearTrigger';
+import type { LingvaNexNode } from './nodes/n8n-nodes-base/lingvaNex';
+import type { LinkedInNode } from './nodes/n8n-nodes-base/linkedIn';
+import type { LocalFileTriggerNode } from './nodes/n8n-nodes-base/localFileTrigger';
+import type { LoneScaleNode } from './nodes/n8n-nodes-base/loneScale';
+import type { LoneScaleTriggerNode } from './nodes/n8n-nodes-base/loneScaleTrigger';
+import type { Magento2Node } from './nodes/n8n-nodes-base/magento2';
+import type { MailcheckNode } from './nodes/n8n-nodes-base/mailcheck';
+import type { MailchimpNode } from './nodes/n8n-nodes-base/mailchimp';
+import type { MailchimpTriggerNode } from './nodes/n8n-nodes-base/mailchimpTrigger';
+import type { MailerLiteNode } from './nodes/n8n-nodes-base/mailerLite';
+import type { MailerLiteTriggerNode } from './nodes/n8n-nodes-base/mailerLiteTrigger';
+import type { MailgunNode } from './nodes/n8n-nodes-base/mailgun';
+import type { MailjetNode } from './nodes/n8n-nodes-base/mailjet';
+import type { MailjetTriggerNode } from './nodes/n8n-nodes-base/mailjetTrigger';
+import type { MandrillNode } from './nodes/n8n-nodes-base/mandrill';
+import type { ManualTriggerNode } from './nodes/n8n-nodes-base/manualTrigger';
+import type { MarkdownNode } from './nodes/n8n-nodes-base/markdown';
+import type { MarketstackNode } from './nodes/n8n-nodes-base/marketstack';
+import type { MatrixNode } from './nodes/n8n-nodes-base/matrix';
+import type { MattermostNode } from './nodes/n8n-nodes-base/mattermost';
+import type { MauticNode } from './nodes/n8n-nodes-base/mautic';
+import type { MauticTriggerNode } from './nodes/n8n-nodes-base/mauticTrigger';
+import type { MediumNode } from './nodes/n8n-nodes-base/medium';
+import type { MergeNode } from './nodes/n8n-nodes-base/merge';
+import type { MessageBirdNode } from './nodes/n8n-nodes-base/messageBird';
+import type { MetabaseNode } from './nodes/n8n-nodes-base/metabase';
+import type { MicrosoftDynamicsCrmNode } from './nodes/n8n-nodes-base/microsoftDynamicsCrm';
+import type { MicrosoftEntraNode } from './nodes/n8n-nodes-base/microsoftEntra';
+import type { MicrosoftExcelNode } from './nodes/n8n-nodes-base/microsoftExcel';
+import type { MicrosoftGraphSecurityNode } from './nodes/n8n-nodes-base/microsoftGraphSecurity';
+import type { MicrosoftOneDriveNode } from './nodes/n8n-nodes-base/microsoftOneDrive';
+import type { MicrosoftOneDriveTriggerNode } from './nodes/n8n-nodes-base/microsoftOneDriveTrigger';
+import type { MicrosoftOutlookNode } from './nodes/n8n-nodes-base/microsoftOutlook';
+import type { MicrosoftOutlookTriggerNode } from './nodes/n8n-nodes-base/microsoftOutlookTrigger';
+import type { MicrosoftSharePointNode } from './nodes/n8n-nodes-base/microsoftSharePoint';
+import type { MicrosoftSqlNode } from './nodes/n8n-nodes-base/microsoftSql';
+import type { MicrosoftTeamsNode } from './nodes/n8n-nodes-base/microsoftTeams';
+import type { MicrosoftTeamsTriggerNode } from './nodes/n8n-nodes-base/microsoftTeamsTrigger';
+import type { MicrosoftToDoNode } from './nodes/n8n-nodes-base/microsoftToDo';
+import type { MindeeNode } from './nodes/n8n-nodes-base/mindee';
+import type { MispNode } from './nodes/n8n-nodes-base/misp';
+import type { MistralAiNode } from './nodes/n8n-nodes-base/mistralAi';
+import type { MoceanNode } from './nodes/n8n-nodes-base/mocean';
+import type { MondayComNode } from './nodes/n8n-nodes-base/mondayCom';
+import type { MongoDbNode } from './nodes/n8n-nodes-base/mongoDb';
+import type { MonicaCrmNode } from './nodes/n8n-nodes-base/monicaCrm';
+import type { MqttNode } from './nodes/n8n-nodes-base/mqtt';
+import type { MqttTriggerNode } from './nodes/n8n-nodes-base/mqttTrigger';
+import type { Msg91Node } from './nodes/n8n-nodes-base/msg91';
+import type { MySqlNode } from './nodes/n8n-nodes-base/mySql';
+import type { N8nNode } from './nodes/n8n-nodes-base/n8n';
+import type { N8nTrainingCustomerDatastoreNode } from './nodes/n8n-nodes-base/n8nTrainingCustomerDatastore';
+import type { N8nTrainingCustomerMessengerNode } from './nodes/n8n-nodes-base/n8nTrainingCustomerMessenger';
+import type { N8nTriggerNode } from './nodes/n8n-nodes-base/n8nTrigger';
+import type { NasaNode } from './nodes/n8n-nodes-base/nasa';
+import type { NetlifyNode } from './nodes/n8n-nodes-base/netlify';
+import type { NetlifyTriggerNode } from './nodes/n8n-nodes-base/netlifyTrigger';
+import type { NextCloudNode } from './nodes/n8n-nodes-base/nextCloud';
+import type { NocoDbNode } from './nodes/n8n-nodes-base/nocoDb';
+import type { NoOpNode } from './nodes/n8n-nodes-base/noOp';
+import type { NotionNode } from './nodes/n8n-nodes-base/notion';
+import type { NotionTriggerNode } from './nodes/n8n-nodes-base/notionTrigger';
+import type { NpmNode } from './nodes/n8n-nodes-base/npm';
+import type { OdooNode } from './nodes/n8n-nodes-base/odoo';
+import type { OktaNode } from './nodes/n8n-nodes-base/okta';
+import type { OneSimpleApiNode } from './nodes/n8n-nodes-base/oneSimpleApi';
+import type { OnfleetNode } from './nodes/n8n-nodes-base/onfleet';
+import type { OnfleetTriggerNode } from './nodes/n8n-nodes-base/onfleetTrigger';
+import type { OpenThesaurusNode } from './nodes/n8n-nodes-base/openThesaurus';
+import type { OpenWeatherMapNode } from './nodes/n8n-nodes-base/openWeatherMap';
+import type { OracleDatabaseNode } from './nodes/n8n-nodes-base/oracleDatabase';
+import type { OuraNode } from './nodes/n8n-nodes-base/oura';
+import type { PaddleNode } from './nodes/n8n-nodes-base/paddle';
+import type { PagerDutyNode } from './nodes/n8n-nodes-base/pagerDuty';
+import type { PayPalNode } from './nodes/n8n-nodes-base/payPal';
+import type { PayPalTriggerNode } from './nodes/n8n-nodes-base/payPalTrigger';
+import type { PeekalinkNode } from './nodes/n8n-nodes-base/peekalink';
+import type { PerplexityNode } from './nodes/n8n-nodes-base/perplexity';
+import type { PhantombusterNode } from './nodes/n8n-nodes-base/phantombuster';
+import type { PhilipsHueNode } from './nodes/n8n-nodes-base/philipsHue';
+import type { PipedriveNode } from './nodes/n8n-nodes-base/pipedrive';
+import type { PipedriveTriggerNode } from './nodes/n8n-nodes-base/pipedriveTrigger';
+import type { PlivoNode } from './nodes/n8n-nodes-base/plivo';
+import type { PostBinNode } from './nodes/n8n-nodes-base/postBin';
+import type { PostgresNode } from './nodes/n8n-nodes-base/postgres';
+import type { PostgresTriggerNode } from './nodes/n8n-nodes-base/postgresTrigger';
+import type { PostHogNode } from './nodes/n8n-nodes-base/postHog';
+import type { PostmarkTriggerNode } from './nodes/n8n-nodes-base/postmarkTrigger';
+import type { ProfitWellNode } from './nodes/n8n-nodes-base/profitWell';
+import type { PushbulletNode } from './nodes/n8n-nodes-base/pushbullet';
+import type { PushcutNode } from './nodes/n8n-nodes-base/pushcut';
+import type { PushcutTriggerNode } from './nodes/n8n-nodes-base/pushcutTrigger';
+import type { PushoverNode } from './nodes/n8n-nodes-base/pushover';
+import type { QuestDbNode } from './nodes/n8n-nodes-base/questDb';
+import type { QuickbaseNode } from './nodes/n8n-nodes-base/quickbase';
+import type { QuickbooksNode } from './nodes/n8n-nodes-base/quickbooks';
+import type { QuickChartNode } from './nodes/n8n-nodes-base/quickChart';
+import type { RabbitmqNode } from './nodes/n8n-nodes-base/rabbitmq';
+import type { RabbitmqTriggerNode } from './nodes/n8n-nodes-base/rabbitmqTrigger';
+import type { RaindropNode } from './nodes/n8n-nodes-base/raindrop';
+import type { ReadWriteFileNode } from './nodes/n8n-nodes-base/readWriteFile';
+import type { RedditNode } from './nodes/n8n-nodes-base/reddit';
+import type { RedisNode } from './nodes/n8n-nodes-base/redis';
+import type { RedisTriggerNode } from './nodes/n8n-nodes-base/redisTrigger';
+import type { RemoveDuplicatesNode } from './nodes/n8n-nodes-base/removeDuplicates';
+import type { RenameKeysNode } from './nodes/n8n-nodes-base/renameKeys';
+import type { RespondToWebhookNode } from './nodes/n8n-nodes-base/respondToWebhook';
+import type { RocketchatNode } from './nodes/n8n-nodes-base/rocketchat';
+import type { RssFeedReadNode } from './nodes/n8n-nodes-base/rssFeedRead';
+import type { RssFeedReadTriggerNode } from './nodes/n8n-nodes-base/rssFeedReadTrigger';
+import type { RundeckNode } from './nodes/n8n-nodes-base/rundeck';
+import type { S3Node } from './nodes/n8n-nodes-base/s3';
+import type { SalesforceNode } from './nodes/n8n-nodes-base/salesforce';
+import type { SalesforceTriggerNode } from './nodes/n8n-nodes-base/salesforceTrigger';
+import type { SalesmateNode } from './nodes/n8n-nodes-base/salesmate';
+import type { ScheduleTriggerNode } from './nodes/n8n-nodes-base/scheduleTrigger';
+import type { SeaTableNode } from './nodes/n8n-nodes-base/seaTable';
+import type { SeaTableTriggerNode } from './nodes/n8n-nodes-base/seaTableTrigger';
+import type { SecurityScorecardNode } from './nodes/n8n-nodes-base/securityScorecard';
+import type { SegmentNode } from './nodes/n8n-nodes-base/segment';
+import type { SendGridNode } from './nodes/n8n-nodes-base/sendGrid';
+import type { SendInBlueNode } from './nodes/n8n-nodes-base/sendInBlue';
+import type { SendInBlueTriggerNode } from './nodes/n8n-nodes-base/sendInBlueTrigger';
+import type { SendyNode } from './nodes/n8n-nodes-base/sendy';
+import type { SentryIoNode } from './nodes/n8n-nodes-base/sentryIo';
+import type { ServiceNowNode } from './nodes/n8n-nodes-base/serviceNow';
+import type { SetNode } from './nodes/n8n-nodes-base/set';
+import type { ShopifyNode } from './nodes/n8n-nodes-base/shopify';
+import type { ShopifyTriggerNode } from './nodes/n8n-nodes-base/shopifyTrigger';
+import type { Signl4Node } from './nodes/n8n-nodes-base/signl4';
+import type { SlackNode } from './nodes/n8n-nodes-base/slack';
+import type { SlackTriggerNode } from './nodes/n8n-nodes-base/slackTrigger';
+import type { Sms77Node } from './nodes/n8n-nodes-base/sms77';
+import type { SnowflakeNode } from './nodes/n8n-nodes-base/snowflake';
+import type { SortNode } from './nodes/n8n-nodes-base/sort';
+import type { SplitInBatchesNode } from './nodes/n8n-nodes-base/splitInBatches';
+import type { SplitOutNode } from './nodes/n8n-nodes-base/splitOut';
+import type { SplunkNode } from './nodes/n8n-nodes-base/splunk';
+import type { SpotifyNode } from './nodes/n8n-nodes-base/spotify';
+import type { SseTriggerNode } from './nodes/n8n-nodes-base/sseTrigger';
+import type { SshNode } from './nodes/n8n-nodes-base/ssh';
+import type { StackbyNode } from './nodes/n8n-nodes-base/stackby';
+import type { StickyNoteNode } from './nodes/n8n-nodes-base/stickyNote';
+import type { StopAndErrorNode } from './nodes/n8n-nodes-base/stopAndError';
+import type { StoryblokNode } from './nodes/n8n-nodes-base/storyblok';
+import type { StrapiNode } from './nodes/n8n-nodes-base/strapi';
+import type { StravaNode } from './nodes/n8n-nodes-base/strava';
+import type { StravaTriggerNode } from './nodes/n8n-nodes-base/stravaTrigger';
+import type { StripeNode } from './nodes/n8n-nodes-base/stripe';
+import type { StripeTriggerNode } from './nodes/n8n-nodes-base/stripeTrigger';
+import type { SummarizeNode } from './nodes/n8n-nodes-base/summarize';
+import type { SupabaseNode } from './nodes/n8n-nodes-base/supabase';
+import type { SurveyMonkeyTriggerNode } from './nodes/n8n-nodes-base/surveyMonkeyTrigger';
+import type { SwitchNode } from './nodes/n8n-nodes-base/switch';
+import type { SyncroMspNode } from './nodes/n8n-nodes-base/syncroMsp';
+import type { TaigaNode } from './nodes/n8n-nodes-base/taiga';
+import type { TaigaTriggerNode } from './nodes/n8n-nodes-base/taigaTrigger';
+import type { TapfiliateNode } from './nodes/n8n-nodes-base/tapfiliate';
+import type { TelegramNode } from './nodes/n8n-nodes-base/telegram';
+import type { TelegramTriggerNode } from './nodes/n8n-nodes-base/telegramTrigger';
+import type { TheHiveNode } from './nodes/n8n-nodes-base/theHive';
+import type { TheHiveProjectNode } from './nodes/n8n-nodes-base/theHiveProject';
+import type { TheHiveProjectTriggerNode } from './nodes/n8n-nodes-base/theHiveProjectTrigger';
+import type { TheHiveTriggerNode } from './nodes/n8n-nodes-base/theHiveTrigger';
+import type { TimeSavedNode } from './nodes/n8n-nodes-base/timeSaved';
+import type { TimescaleDbNode } from './nodes/n8n-nodes-base/timescaleDb';
+import type { TodoistNode } from './nodes/n8n-nodes-base/todoist';
+import type { TogglTriggerNode } from './nodes/n8n-nodes-base/togglTrigger';
+import type { TotpNode } from './nodes/n8n-nodes-base/totp';
+import type { TravisCiNode } from './nodes/n8n-nodes-base/travisCi';
+import type { TrelloNode } from './nodes/n8n-nodes-base/trello';
+import type { TrelloTriggerNode } from './nodes/n8n-nodes-base/trelloTrigger';
+import type { TwakeNode } from './nodes/n8n-nodes-base/twake';
+import type { TwilioNode } from './nodes/n8n-nodes-base/twilio';
+import type { TwilioTriggerNode } from './nodes/n8n-nodes-base/twilioTrigger';
+import type { TwistNode } from './nodes/n8n-nodes-base/twist';
+import type { TwitterNode } from './nodes/n8n-nodes-base/twitter';
+import type { TypeformTriggerNode } from './nodes/n8n-nodes-base/typeformTrigger';
+import type { UnleashedSoftwareNode } from './nodes/n8n-nodes-base/unleashedSoftware';
+import type { UpleadNode } from './nodes/n8n-nodes-base/uplead';
+import type { UprocNode } from './nodes/n8n-nodes-base/uproc';
+import type { UptimeRobotNode } from './nodes/n8n-nodes-base/uptimeRobot';
+import type { UrlScanIoNode } from './nodes/n8n-nodes-base/urlScanIo';
+import type { VenafiTlsProtectCloudNode } from './nodes/n8n-nodes-base/venafiTlsProtectCloud';
+import type { VenafiTlsProtectCloudTriggerNode } from './nodes/n8n-nodes-base/venafiTlsProtectCloudTrigger';
+import type { VenafiTlsProtectDatacenterNode } from './nodes/n8n-nodes-base/venafiTlsProtectDatacenter';
+import type { VeroNode } from './nodes/n8n-nodes-base/vero';
+import type { VonageNode } from './nodes/n8n-nodes-base/vonage';
+import type { WaitNode } from './nodes/n8n-nodes-base/wait';
+import type { WebflowNode } from './nodes/n8n-nodes-base/webflow';
+import type { WebflowTriggerNode } from './nodes/n8n-nodes-base/webflowTrigger';
+import type { WebhookNode } from './nodes/n8n-nodes-base/webhook';
+import type { WekanNode } from './nodes/n8n-nodes-base/wekan';
+import type { WhatsAppNode } from './nodes/n8n-nodes-base/whatsApp';
+import type { WhatsAppTriggerNode } from './nodes/n8n-nodes-base/whatsAppTrigger';
+import type { WiseNode } from './nodes/n8n-nodes-base/wise';
+import type { WiseTriggerNode } from './nodes/n8n-nodes-base/wiseTrigger';
+import type { WooCommerceNode } from './nodes/n8n-nodes-base/wooCommerce';
+import type { WooCommerceTriggerNode } from './nodes/n8n-nodes-base/wooCommerceTrigger';
+import type { WordpressNode } from './nodes/n8n-nodes-base/wordpress';
+import type { WorkableTriggerNode } from './nodes/n8n-nodes-base/workableTrigger';
+import type { WufooTriggerNode } from './nodes/n8n-nodes-base/wufooTrigger';
+import type { XeroNode } from './nodes/n8n-nodes-base/xero';
+import type { XmlNode } from './nodes/n8n-nodes-base/xml';
+import type { YourlsNode } from './nodes/n8n-nodes-base/yourls';
+import type { YouTubeNode } from './nodes/n8n-nodes-base/youTube';
+import type { ZammadNode } from './nodes/n8n-nodes-base/zammad';
+import type { ZendeskNode } from './nodes/n8n-nodes-base/zendesk';
+import type { ZendeskTriggerNode } from './nodes/n8n-nodes-base/zendeskTrigger';
+import type { ZohoCrmNode } from './nodes/n8n-nodes-base/zohoCrm';
+import type { ZoomNode } from './nodes/n8n-nodes-base/zoom';
+import type { ZulipNode } from './nodes/n8n-nodes-base/zulip';
+import type { LcAgentNode } from './nodes/n8n-nodes-langchain/agent';
+import type { LcAgentToolNode } from './nodes/n8n-nodes-langchain/agentTool';
+import type { LcAnthropicNode } from './nodes/n8n-nodes-langchain/anthropic';
+import type { LcChainLlmNode } from './nodes/n8n-nodes-langchain/chainLlm';
+import type { LcChainRetrievalQaNode } from './nodes/n8n-nodes-langchain/chainRetrievalQa';
+import type { LcChainSummarizationNode } from './nodes/n8n-nodes-langchain/chainSummarization';
+import type { LcChatNode } from './nodes/n8n-nodes-langchain/chat';
+import type { LcChatTriggerNode } from './nodes/n8n-nodes-langchain/chatTrigger';
+import type { LcCodeNode } from './nodes/n8n-nodes-langchain/code';
+import type { LcDocumentDefaultDataLoaderNode } from './nodes/n8n-nodes-langchain/documentDefaultDataLoader';
+import type { LcEmbeddingsAwsBedrockNode } from './nodes/n8n-nodes-langchain/embeddingsAwsBedrock';
+import type { LcEmbeddingsAzureOpenAiNode } from './nodes/n8n-nodes-langchain/embeddingsAzureOpenAi';
+import type { LcEmbeddingsCohereNode } from './nodes/n8n-nodes-langchain/embeddingsCohere';
+import type { LcEmbeddingsGoogleGeminiNode } from './nodes/n8n-nodes-langchain/embeddingsGoogleGemini';
+import type { LcEmbeddingsGoogleVertexNode } from './nodes/n8n-nodes-langchain/embeddingsGoogleVertex';
+import type { LcEmbeddingsHuggingFaceInferenceNode } from './nodes/n8n-nodes-langchain/embeddingsHuggingFaceInference';
+import type { LcEmbeddingsLemonadeNode } from './nodes/n8n-nodes-langchain/embeddingsLemonade';
+import type { LcEmbeddingsMistralCloudNode } from './nodes/n8n-nodes-langchain/embeddingsMistralCloud';
+import type { LcEmbeddingsOllamaNode } from './nodes/n8n-nodes-langchain/embeddingsOllama';
+import type { LcEmbeddingsOpenAiNode } from './nodes/n8n-nodes-langchain/embeddingsOpenAi';
+import type { LcGoogleGeminiNode } from './nodes/n8n-nodes-langchain/googleGemini';
+import type { LcGuardrailsNode } from './nodes/n8n-nodes-langchain/guardrails';
+import type { LcInformationExtractorNode } from './nodes/n8n-nodes-langchain/informationExtractor';
+import type { LcLmChatAnthropicNode } from './nodes/n8n-nodes-langchain/lmChatAnthropic';
+import type { LcLmChatAwsBedrockNode } from './nodes/n8n-nodes-langchain/lmChatAwsBedrock';
+import type { LcLmChatAzureOpenAiNode } from './nodes/n8n-nodes-langchain/lmChatAzureOpenAi';
+import type { LcLmChatCohereNode } from './nodes/n8n-nodes-langchain/lmChatCohere';
+import type { LcLmChatDeepSeekNode } from './nodes/n8n-nodes-langchain/lmChatDeepSeek';
+import type { LcLmChatGoogleGeminiNode } from './nodes/n8n-nodes-langchain/lmChatGoogleGemini';
+import type { LcLmChatGoogleVertexNode } from './nodes/n8n-nodes-langchain/lmChatGoogleVertex';
+import type { LcLmChatGroqNode } from './nodes/n8n-nodes-langchain/lmChatGroq';
+import type { LcLmChatLemonadeNode } from './nodes/n8n-nodes-langchain/lmChatLemonade';
+import type { LcLmChatMistralCloudNode } from './nodes/n8n-nodes-langchain/lmChatMistralCloud';
+import type { LcLmChatOllamaNode } from './nodes/n8n-nodes-langchain/lmChatOllama';
+import type { LcLmChatOpenAiNode } from './nodes/n8n-nodes-langchain/lmChatOpenAi';
+import type { LcLmChatOpenRouterNode } from './nodes/n8n-nodes-langchain/lmChatOpenRouter';
+import type { LcLmChatVercelAiGatewayNode } from './nodes/n8n-nodes-langchain/lmChatVercelAiGateway';
+import type { LcLmChatXAiGrokNode } from './nodes/n8n-nodes-langchain/lmChatXAiGrok';
+import type { LcLmCohereNode } from './nodes/n8n-nodes-langchain/lmCohere';
+import type { LcLmLemonadeNode } from './nodes/n8n-nodes-langchain/lmLemonade';
+import type { LcLmOllamaNode } from './nodes/n8n-nodes-langchain/lmOllama';
+import type { LcLmOpenHuggingFaceInferenceNode } from './nodes/n8n-nodes-langchain/lmOpenHuggingFaceInference';
+import type { LcMcpClientNode } from './nodes/n8n-nodes-langchain/mcpClient';
+import type { LcMcpClientToolNode } from './nodes/n8n-nodes-langchain/mcpClientTool';
+import type { LcMcpTriggerNode } from './nodes/n8n-nodes-langchain/mcpTrigger';
+import type { LcMemoryBufferWindowNode } from './nodes/n8n-nodes-langchain/memoryBufferWindow';
+import type { LcMemoryManagerNode } from './nodes/n8n-nodes-langchain/memoryManager';
+import type { LcMemoryMongoDbChatNode } from './nodes/n8n-nodes-langchain/memoryMongoDbChat';
+import type { LcMemoryMotorheadNode } from './nodes/n8n-nodes-langchain/memoryMotorhead';
+import type { LcMemoryPostgresChatNode } from './nodes/n8n-nodes-langchain/memoryPostgresChat';
+import type { LcMemoryRedisChatNode } from './nodes/n8n-nodes-langchain/memoryRedisChat';
+import type { LcMemoryXataNode } from './nodes/n8n-nodes-langchain/memoryXata';
+import type { LcModelSelectorNode } from './nodes/n8n-nodes-langchain/modelSelector';
+import type { LcOllamaNode } from './nodes/n8n-nodes-langchain/ollama';
+import type { LcOpenAiNode } from './nodes/n8n-nodes-langchain/openAi';
+import type { LcOutputParserAutofixingNode } from './nodes/n8n-nodes-langchain/outputParserAutofixing';
+import type { LcOutputParserItemListNode } from './nodes/n8n-nodes-langchain/outputParserItemList';
+import type { LcOutputParserStructuredNode } from './nodes/n8n-nodes-langchain/outputParserStructured';
+import type { LcRerankerCohereNode } from './nodes/n8n-nodes-langchain/rerankerCohere';
+import type { LcRetrieverContextualCompressionNode } from './nodes/n8n-nodes-langchain/retrieverContextualCompression';
+import type { LcRetrieverMultiQueryNode } from './nodes/n8n-nodes-langchain/retrieverMultiQuery';
+import type { LcRetrieverVectorStoreNode } from './nodes/n8n-nodes-langchain/retrieverVectorStore';
+import type { LcRetrieverWorkflowNode } from './nodes/n8n-nodes-langchain/retrieverWorkflow';
+import type { LcSentimentAnalysisNode } from './nodes/n8n-nodes-langchain/sentimentAnalysis';
+import type { LcTextClassifierNode } from './nodes/n8n-nodes-langchain/textClassifier';
+import type { LcTextSplitterCharacterTextSplitterNode } from './nodes/n8n-nodes-langchain/textSplitterCharacterTextSplitter';
+import type { LcTextSplitterRecursiveCharacterTextSplitterNode } from './nodes/n8n-nodes-langchain/textSplitterRecursiveCharacterTextSplitter';
+import type { LcTextSplitterTokenSplitterNode } from './nodes/n8n-nodes-langchain/textSplitterTokenSplitter';
+import type { LcToolCalculatorNode } from './nodes/n8n-nodes-langchain/toolCalculator';
+import type { LcToolCodeNode } from './nodes/n8n-nodes-langchain/toolCode';
+import type { LcToolSearXngNode } from './nodes/n8n-nodes-langchain/toolSearXng';
+import type { LcToolSerpApiNode } from './nodes/n8n-nodes-langchain/toolSerpApi';
+import type { LcToolThinkNode } from './nodes/n8n-nodes-langchain/toolThink';
+import type { LcToolVectorStoreNode } from './nodes/n8n-nodes-langchain/toolVectorStore';
+import type { LcToolWikipediaNode } from './nodes/n8n-nodes-langchain/toolWikipedia';
+import type { LcToolWolframAlphaNode } from './nodes/n8n-nodes-langchain/toolWolframAlpha';
+import type { LcToolWorkflowNode } from './nodes/n8n-nodes-langchain/toolWorkflow';
+import type { LcVectorStoreAzureAISearchNode } from './nodes/n8n-nodes-langchain/vectorStoreAzureAISearch';
+import type { LcVectorStoreInMemoryNode } from './nodes/n8n-nodes-langchain/vectorStoreInMemory';
+import type { LcVectorStoreMilvusNode } from './nodes/n8n-nodes-langchain/vectorStoreMilvus';
+import type { LcVectorStoreMongoDBAtlasNode } from './nodes/n8n-nodes-langchain/vectorStoreMongoDBAtlas';
+import type { LcVectorStorePGVectorNode } from './nodes/n8n-nodes-langchain/vectorStorePGVector';
+import type { LcVectorStorePineconeNode } from './nodes/n8n-nodes-langchain/vectorStorePinecone';
+import type { LcVectorStoreQdrantNode } from './nodes/n8n-nodes-langchain/vectorStoreQdrant';
+import type { LcVectorStoreRedisNode } from './nodes/n8n-nodes-langchain/vectorStoreRedis';
+import type { LcVectorStoreSupabaseNode } from './nodes/n8n-nodes-langchain/vectorStoreSupabase';
+import type { LcVectorStoreWeaviateNode } from './nodes/n8n-nodes-langchain/vectorStoreWeaviate';
+import type { LcVectorStoreZepNode } from './nodes/n8n-nodes-langchain/vectorStoreZep';
+
 // n8n-nodes-base
 export * from './nodes/n8n-nodes-base/actionNetwork';
 export * from './nodes/n8n-nodes-base/activeCampaign';
@@ -518,7 +1024,7 @@ export * from './nodes/n8n-nodes-langchain/vectorStoreSupabase';
 export * from './nodes/n8n-nodes-langchain/vectorStoreWeaviate';
 export * from './nodes/n8n-nodes-langchain/vectorStoreZep';
 
-// Combined type union
+// Combined type union of node type strings
 export type KnownNodeType =
 	| 'n8n-nodes-base.actionNetwork'
 	| 'n8n-nodes-base.activeCampaign'
@@ -1025,510 +1531,509 @@ export type KnownNodeType =
 	| '@n8n/n8n-nodes-langchain.modelSelector'
 	| '@n8n/n8n-nodes-langchain.guardrails';
 
-// Node type map for type inference
-export interface NodeTypeMap {
-	'@n8n/n8n-nodes-langchain.agent': LcAgentNode;
-	'@n8n/n8n-nodes-langchain.agentTool': LcAgentToolNode;
-	'@n8n/n8n-nodes-langchain.anthropic': LcAnthropicNode;
-	'@n8n/n8n-nodes-langchain.chainLlm': LcChainLlmNode;
-	'@n8n/n8n-nodes-langchain.chainRetrievalQa': LcChainRetrievalQaNode;
-	'@n8n/n8n-nodes-langchain.chainSummarization': LcChainSummarizationNode;
-	'@n8n/n8n-nodes-langchain.chat': LcChatNode;
-	'@n8n/n8n-nodes-langchain.chatTrigger': LcChatTriggerNode;
-	'@n8n/n8n-nodes-langchain.code': LcCodeNode;
-	'@n8n/n8n-nodes-langchain.documentDefaultDataLoader': LcDocumentDefaultDataLoaderNode;
-	'@n8n/n8n-nodes-langchain.embeddingsAwsBedrock': LcEmbeddingsAwsBedrockNode;
-	'@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi': LcEmbeddingsAzureOpenAiNode;
-	'@n8n/n8n-nodes-langchain.embeddingsCohere': LcEmbeddingsCohereNode;
-	'@n8n/n8n-nodes-langchain.embeddingsGoogleGemini': LcEmbeddingsGoogleGeminiNode;
-	'@n8n/n8n-nodes-langchain.embeddingsGoogleVertex': LcEmbeddingsGoogleVertexNode;
-	'@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference': LcEmbeddingsHuggingFaceInferenceNode;
-	'@n8n/n8n-nodes-langchain.embeddingsLemonade': LcEmbeddingsLemonadeNode;
-	'@n8n/n8n-nodes-langchain.embeddingsMistralCloud': LcEmbeddingsMistralCloudNode;
-	'@n8n/n8n-nodes-langchain.embeddingsOllama': LcEmbeddingsOllamaNode;
-	'@n8n/n8n-nodes-langchain.embeddingsOpenAi': LcEmbeddingsOpenAiNode;
-	'@n8n/n8n-nodes-langchain.googleGemini': LcGoogleGeminiNode;
-	'@n8n/n8n-nodes-langchain.guardrails': LcGuardrailsNode;
-	'@n8n/n8n-nodes-langchain.informationExtractor': LcInformationExtractorNode;
-	'@n8n/n8n-nodes-langchain.lmChatAnthropic': LcLmChatAnthropicNode;
-	'@n8n/n8n-nodes-langchain.lmChatAwsBedrock': LcLmChatAwsBedrockNode;
-	'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi': LcLmChatAzureOpenAiNode;
-	'@n8n/n8n-nodes-langchain.lmChatCohere': LcLmChatCohereNode;
-	'@n8n/n8n-nodes-langchain.lmChatDeepSeek': LcLmChatDeepSeekNode;
-	'@n8n/n8n-nodes-langchain.lmChatGoogleGemini': LcLmChatGoogleGeminiNode;
-	'@n8n/n8n-nodes-langchain.lmChatGoogleVertex': LcLmChatGoogleVertexNode;
-	'@n8n/n8n-nodes-langchain.lmChatGroq': LcLmChatGroqNode;
-	'@n8n/n8n-nodes-langchain.lmChatLemonade': LcLmChatLemonadeNode;
-	'@n8n/n8n-nodes-langchain.lmChatMistralCloud': LcLmChatMistralCloudNode;
-	'@n8n/n8n-nodes-langchain.lmChatOllama': LcLmChatOllamaNode;
-	'@n8n/n8n-nodes-langchain.lmChatOpenAi': LcLmChatOpenAiNode;
-	'@n8n/n8n-nodes-langchain.lmChatOpenRouter': LcLmChatOpenRouterNode;
-	'@n8n/n8n-nodes-langchain.lmChatVercelAiGateway': LcLmChatVercelAiGatewayNode;
-	'@n8n/n8n-nodes-langchain.lmChatXAiGrok': LcLmChatXAiGrokNode;
-	'@n8n/n8n-nodes-langchain.lmCohere': LcLmCohereNode;
-	'@n8n/n8n-nodes-langchain.lmLemonade': LcLmLemonadeNode;
-	'@n8n/n8n-nodes-langchain.lmOllama': LcLmOllamaNode;
-	'@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference': LcLmOpenHuggingFaceInferenceNode;
-	'@n8n/n8n-nodes-langchain.mcpClient': LcMcpClientNode;
-	'@n8n/n8n-nodes-langchain.mcpClientTool': LcMcpClientToolNode;
-	'@n8n/n8n-nodes-langchain.mcpTrigger': LcMcpTriggerNode;
-	'@n8n/n8n-nodes-langchain.memoryBufferWindow': LcMemoryBufferWindowNode;
-	'@n8n/n8n-nodes-langchain.memoryManager': LcMemoryManagerNode;
-	'@n8n/n8n-nodes-langchain.memoryMongoDbChat': LcMemoryMongoDbChatNode;
-	'@n8n/n8n-nodes-langchain.memoryMotorhead': LcMemoryMotorheadNode;
-	'@n8n/n8n-nodes-langchain.memoryPostgresChat': LcMemoryPostgresChatNode;
-	'@n8n/n8n-nodes-langchain.memoryRedisChat': LcMemoryRedisChatNode;
-	'@n8n/n8n-nodes-langchain.memoryXata': LcMemoryXataNode;
-	'@n8n/n8n-nodes-langchain.modelSelector': LcModelSelectorNode;
-	'@n8n/n8n-nodes-langchain.ollama': LcOllamaNode;
-	'@n8n/n8n-nodes-langchain.openAi': LcOpenAiNode;
-	'@n8n/n8n-nodes-langchain.outputParserAutofixing': LcOutputParserAutofixingNode;
-	'@n8n/n8n-nodes-langchain.outputParserItemList': LcOutputParserItemListNode;
-	'@n8n/n8n-nodes-langchain.outputParserStructured': LcOutputParserStructuredNode;
-	'@n8n/n8n-nodes-langchain.rerankerCohere': LcRerankerCohereNode;
-	'@n8n/n8n-nodes-langchain.retrieverContextualCompression': LcRetrieverContextualCompressionNode;
-	'@n8n/n8n-nodes-langchain.retrieverMultiQuery': LcRetrieverMultiQueryNode;
-	'@n8n/n8n-nodes-langchain.retrieverVectorStore': LcRetrieverVectorStoreNode;
-	'@n8n/n8n-nodes-langchain.retrieverWorkflow': LcRetrieverWorkflowNode;
-	'@n8n/n8n-nodes-langchain.sentimentAnalysis': LcSentimentAnalysisNode;
-	'@n8n/n8n-nodes-langchain.textClassifier': LcTextClassifierNode;
-	'@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter': LcTextSplitterCharacterTextSplitterNode;
-	'@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter': LcTextSplitterRecursiveCharacterTextSplitterNode;
-	'@n8n/n8n-nodes-langchain.textSplitterTokenSplitter': LcTextSplitterTokenSplitterNode;
-	'@n8n/n8n-nodes-langchain.toolCalculator': LcToolCalculatorNode;
-	'@n8n/n8n-nodes-langchain.toolCode': LcToolCodeNode;
-	'@n8n/n8n-nodes-langchain.toolSearXng': LcToolSearXngNode;
-	'@n8n/n8n-nodes-langchain.toolSerpApi': LcToolSerpApiNode;
-	'@n8n/n8n-nodes-langchain.toolThink': LcToolThinkNode;
-	'@n8n/n8n-nodes-langchain.toolVectorStore': LcToolVectorStoreNode;
-	'@n8n/n8n-nodes-langchain.toolWikipedia': LcToolWikipediaNode;
-	'@n8n/n8n-nodes-langchain.toolWolframAlpha': LcToolWolframAlphaNode;
-	'@n8n/n8n-nodes-langchain.toolWorkflow': LcToolWorkflowNode;
-	'@n8n/n8n-nodes-langchain.vectorStoreAzureAISearch': LcVectorStoreAzureAISearchNode;
-	'@n8n/n8n-nodes-langchain.vectorStoreInMemory': LcVectorStoreInMemoryNode;
-	'@n8n/n8n-nodes-langchain.vectorStoreMilvus': LcVectorStoreMilvusNode;
-	'@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas': LcVectorStoreMongoDBAtlasNode;
-	'@n8n/n8n-nodes-langchain.vectorStorePGVector': LcVectorStorePGVectorNode;
-	'@n8n/n8n-nodes-langchain.vectorStorePinecone': LcVectorStorePineconeNode;
-	'@n8n/n8n-nodes-langchain.vectorStoreQdrant': LcVectorStoreQdrantNode;
-	'@n8n/n8n-nodes-langchain.vectorStoreRedis': LcVectorStoreRedisNode;
-	'@n8n/n8n-nodes-langchain.vectorStoreSupabase': LcVectorStoreSupabaseNode;
-	'@n8n/n8n-nodes-langchain.vectorStoreWeaviate': LcVectorStoreWeaviateNode;
-	'@n8n/n8n-nodes-langchain.vectorStoreZep': LcVectorStoreZepNode;
-	'n8n-nodes-base.actionNetwork': ActionNetworkNode;
-	'n8n-nodes-base.activeCampaign': ActiveCampaignNode;
-	'n8n-nodes-base.activeCampaignTrigger': ActiveCampaignTriggerNode;
-	'n8n-nodes-base.acuitySchedulingTrigger': AcuitySchedulingTriggerNode;
-	'n8n-nodes-base.adalo': AdaloNode;
-	'n8n-nodes-base.affinity': AffinityNode;
-	'n8n-nodes-base.affinityTrigger': AffinityTriggerNode;
-	'n8n-nodes-base.aggregate': AggregateNode;
-	'n8n-nodes-base.agileCrm': AgileCrmNode;
-	'n8n-nodes-base.airtable': AirtableNode;
-	'n8n-nodes-base.airtableTrigger': AirtableTriggerNode;
-	'n8n-nodes-base.airtop': AirtopNode;
-	'n8n-nodes-base.aiTransform': AiTransformNode;
-	'n8n-nodes-base.amqp': AmqpNode;
-	'n8n-nodes-base.amqpTrigger': AmqpTriggerNode;
-	'n8n-nodes-base.apiTemplateIo': ApiTemplateIoNode;
-	'n8n-nodes-base.asana': AsanaNode;
-	'n8n-nodes-base.asanaTrigger': AsanaTriggerNode;
-	'n8n-nodes-base.autopilot': AutopilotNode;
-	'n8n-nodes-base.autopilotTrigger': AutopilotTriggerNode;
-	'n8n-nodes-base.awsCertificateManager': AwsCertificateManagerNode;
-	'n8n-nodes-base.awsCognito': AwsCognitoNode;
-	'n8n-nodes-base.awsComprehend': AwsComprehendNode;
-	'n8n-nodes-base.awsDynamoDb': AwsDynamoDbNode;
-	'n8n-nodes-base.awsElb': AwsElbNode;
-	'n8n-nodes-base.awsIam': AwsIamNode;
-	'n8n-nodes-base.awsLambda': AwsLambdaNode;
-	'n8n-nodes-base.awsRekognition': AwsRekognitionNode;
-	'n8n-nodes-base.awsS3': AwsS3Node;
-	'n8n-nodes-base.awsSes': AwsSesNode;
-	'n8n-nodes-base.awsSns': AwsSnsNode;
-	'n8n-nodes-base.awsSnsTrigger': AwsSnsTriggerNode;
-	'n8n-nodes-base.awsSqs': AwsSqsNode;
-	'n8n-nodes-base.awsTextract': AwsTextractNode;
-	'n8n-nodes-base.awsTranscribe': AwsTranscribeNode;
-	'n8n-nodes-base.azureCosmosDb': AzureCosmosDbNode;
-	'n8n-nodes-base.azureStorage': AzureStorageNode;
-	'n8n-nodes-base.bambooHr': BambooHrNode;
-	'n8n-nodes-base.bannerbear': BannerbearNode;
-	'n8n-nodes-base.baserow': BaserowNode;
-	'n8n-nodes-base.beeminder': BeeminderNode;
-	'n8n-nodes-base.bitbucketTrigger': BitbucketTriggerNode;
-	'n8n-nodes-base.bitly': BitlyNode;
-	'n8n-nodes-base.bitwarden': BitwardenNode;
-	'n8n-nodes-base.box': BoxNode;
-	'n8n-nodes-base.boxTrigger': BoxTriggerNode;
-	'n8n-nodes-base.Brandfetch': BrandfetchNode;
-	'n8n-nodes-base.bubble': BubbleNode;
-	'n8n-nodes-base.calendlyTrigger': CalendlyTriggerNode;
-	'n8n-nodes-base.calTrigger': CalTriggerNode;
-	'n8n-nodes-base.chargebee': ChargebeeNode;
-	'n8n-nodes-base.chargebeeTrigger': ChargebeeTriggerNode;
-	'n8n-nodes-base.circleCi': CircleCiNode;
-	'n8n-nodes-base.ciscoWebex': CiscoWebexNode;
-	'n8n-nodes-base.ciscoWebexTrigger': CiscoWebexTriggerNode;
-	'n8n-nodes-base.citrixAdc': CitrixAdcNode;
-	'n8n-nodes-base.clearbit': ClearbitNode;
-	'n8n-nodes-base.clickUp': ClickUpNode;
-	'n8n-nodes-base.clickUpTrigger': ClickUpTriggerNode;
-	'n8n-nodes-base.clockify': ClockifyNode;
-	'n8n-nodes-base.clockifyTrigger': ClockifyTriggerNode;
-	'n8n-nodes-base.cloudflare': CloudflareNode;
-	'n8n-nodes-base.cockpit': CockpitNode;
-	'n8n-nodes-base.coda': CodaNode;
-	'n8n-nodes-base.code': CodeNode;
-	'n8n-nodes-base.coinGecko': CoinGeckoNode;
-	'n8n-nodes-base.compareDatasets': CompareDatasetsNode;
-	'n8n-nodes-base.compression': CompressionNode;
-	'n8n-nodes-base.contentful': ContentfulNode;
-	'n8n-nodes-base.convertKit': ConvertKitNode;
-	'n8n-nodes-base.convertKitTrigger': ConvertKitTriggerNode;
-	'n8n-nodes-base.convertToFile': ConvertToFileNode;
-	'n8n-nodes-base.copper': CopperNode;
-	'n8n-nodes-base.copperTrigger': CopperTriggerNode;
-	'n8n-nodes-base.cortex': CortexNode;
-	'n8n-nodes-base.crateDb': CrateDbNode;
-	'n8n-nodes-base.crypto': CryptoNode;
-	'n8n-nodes-base.customerIo': CustomerIoNode;
-	'n8n-nodes-base.customerIoTrigger': CustomerIoTriggerNode;
-	'n8n-nodes-base.dataTable': DataTableNode;
-	'n8n-nodes-base.dateTime': DateTimeNode;
-	'n8n-nodes-base.debugHelper': DebugHelperNode;
-	'n8n-nodes-base.deepL': DeepLNode;
-	'n8n-nodes-base.demio': DemioNode;
-	'n8n-nodes-base.dhl': DhlNode;
-	'n8n-nodes-base.discord': DiscordNode;
-	'n8n-nodes-base.discourse': DiscourseNode;
-	'n8n-nodes-base.disqus': DisqusNode;
-	'n8n-nodes-base.drift': DriftNode;
-	'n8n-nodes-base.dropbox': DropboxNode;
-	'n8n-nodes-base.dropcontact': DropcontactNode;
-	'n8n-nodes-base.e2eTest': E2eTestNode;
-	'n8n-nodes-base.editImage': EditImageNode;
-	'n8n-nodes-base.egoi': EgoiNode;
-	'n8n-nodes-base.elasticsearch': ElasticsearchNode;
-	'n8n-nodes-base.elasticSecurity': ElasticSecurityNode;
-	'n8n-nodes-base.emailReadImap': EmailReadImapNode;
-	'n8n-nodes-base.emailSend': EmailSendNode;
-	'n8n-nodes-base.emelia': EmeliaNode;
-	'n8n-nodes-base.emeliaTrigger': EmeliaTriggerNode;
-	'n8n-nodes-base.erpNext': ErpNextNode;
-	'n8n-nodes-base.errorTrigger': ErrorTriggerNode;
-	'n8n-nodes-base.evaluation': EvaluationNode;
-	'n8n-nodes-base.evaluationTrigger': EvaluationTriggerNode;
-	'n8n-nodes-base.eventbriteTrigger': EventbriteTriggerNode;
-	'n8n-nodes-base.executeCommand': ExecuteCommandNode;
-	'n8n-nodes-base.executeWorkflow': ExecuteWorkflowNode;
-	'n8n-nodes-base.executeWorkflowTrigger': ExecuteWorkflowTriggerNode;
-	'n8n-nodes-base.executionData': ExecutionDataNode;
-	'n8n-nodes-base.extractFromFile': ExtractFromFileNode;
-	'n8n-nodes-base.facebookGraphApi': FacebookGraphApiNode;
-	'n8n-nodes-base.facebookLeadAdsTrigger': FacebookLeadAdsTriggerNode;
-	'n8n-nodes-base.facebookTrigger': FacebookTriggerNode;
-	'n8n-nodes-base.figmaTrigger': FigmaTriggerNode;
-	'n8n-nodes-base.filemaker': FilemakerNode;
-	'n8n-nodes-base.filter': FilterNode;
-	'n8n-nodes-base.flow': FlowNode;
-	'n8n-nodes-base.flowTrigger': FlowTriggerNode;
-	'n8n-nodes-base.form': FormNode;
-	'n8n-nodes-base.formIoTrigger': FormIoTriggerNode;
-	'n8n-nodes-base.formstackTrigger': FormstackTriggerNode;
-	'n8n-nodes-base.formTrigger': FormTriggerNode;
-	'n8n-nodes-base.freshdesk': FreshdeskNode;
-	'n8n-nodes-base.freshservice': FreshserviceNode;
-	'n8n-nodes-base.freshworksCrm': FreshworksCrmNode;
-	'n8n-nodes-base.ftp': FtpNode;
-	'n8n-nodes-base.getResponse': GetResponseNode;
-	'n8n-nodes-base.getResponseTrigger': GetResponseTriggerNode;
-	'n8n-nodes-base.ghost': GhostNode;
-	'n8n-nodes-base.git': GitNode;
-	'n8n-nodes-base.github': GithubNode;
-	'n8n-nodes-base.githubTrigger': GithubTriggerNode;
-	'n8n-nodes-base.gitlab': GitlabNode;
-	'n8n-nodes-base.gitlabTrigger': GitlabTriggerNode;
-	'n8n-nodes-base.gmail': GmailNode;
-	'n8n-nodes-base.gmailTrigger': GmailTriggerNode;
-	'n8n-nodes-base.gong': GongNode;
-	'n8n-nodes-base.googleAds': GoogleAdsNode;
-	'n8n-nodes-base.googleAnalytics': GoogleAnalyticsNode;
-	'n8n-nodes-base.googleBigQuery': GoogleBigQueryNode;
-	'n8n-nodes-base.googleBooks': GoogleBooksNode;
-	'n8n-nodes-base.googleBusinessProfile': GoogleBusinessProfileNode;
-	'n8n-nodes-base.googleBusinessProfileTrigger': GoogleBusinessProfileTriggerNode;
-	'n8n-nodes-base.googleCalendar': GoogleCalendarNode;
-	'n8n-nodes-base.googleCalendarTrigger': GoogleCalendarTriggerNode;
-	'n8n-nodes-base.googleChat': GoogleChatNode;
-	'n8n-nodes-base.googleCloudNaturalLanguage': GoogleCloudNaturalLanguageNode;
-	'n8n-nodes-base.googleCloudStorage': GoogleCloudStorageNode;
-	'n8n-nodes-base.googleContacts': GoogleContactsNode;
-	'n8n-nodes-base.googleDocs': GoogleDocsNode;
-	'n8n-nodes-base.googleDrive': GoogleDriveNode;
-	'n8n-nodes-base.googleDriveTrigger': GoogleDriveTriggerNode;
-	'n8n-nodes-base.googleFirebaseCloudFirestore': GoogleFirebaseCloudFirestoreNode;
-	'n8n-nodes-base.googleFirebaseRealtimeDatabase': GoogleFirebaseRealtimeDatabaseNode;
-	'n8n-nodes-base.googlePerspective': GooglePerspectiveNode;
-	'n8n-nodes-base.googleSheets': GoogleSheetsNode;
-	'n8n-nodes-base.googleSheetsTrigger': GoogleSheetsTriggerNode;
-	'n8n-nodes-base.googleSlides': GoogleSlidesNode;
-	'n8n-nodes-base.googleTasks': GoogleTasksNode;
-	'n8n-nodes-base.googleTranslate': GoogleTranslateNode;
-	'n8n-nodes-base.gotify': GotifyNode;
-	'n8n-nodes-base.goToWebinar': GoToWebinarNode;
-	'n8n-nodes-base.grafana': GrafanaNode;
-	'n8n-nodes-base.graphql': GraphqlNode;
-	'n8n-nodes-base.grist': GristNode;
-	'n8n-nodes-base.gSuiteAdmin': GSuiteAdminNode;
-	'n8n-nodes-base.gumroadTrigger': GumroadTriggerNode;
-	'n8n-nodes-base.hackerNews': HackerNewsNode;
-	'n8n-nodes-base.haloPSA': HaloPSANode;
-	'n8n-nodes-base.harvest': HarvestNode;
-	'n8n-nodes-base.helpScout': HelpScoutNode;
-	'n8n-nodes-base.helpScoutTrigger': HelpScoutTriggerNode;
-	'n8n-nodes-base.highLevel': HighLevelNode;
-	'n8n-nodes-base.homeAssistant': HomeAssistantNode;
-	'n8n-nodes-base.html': HtmlNode;
-	'n8n-nodes-base.httpRequest': HttpRequestNode;
-	'n8n-nodes-base.hubspot': HubspotNode;
-	'n8n-nodes-base.hubspotTrigger': HubspotTriggerNode;
-	'n8n-nodes-base.humanticAi': HumanticAiNode;
-	'n8n-nodes-base.hunter': HunterNode;
-	'n8n-nodes-base.if': IfNode;
-	'n8n-nodes-base.intercom': IntercomNode;
-	'n8n-nodes-base.invoiceNinja': InvoiceNinjaNode;
-	'n8n-nodes-base.invoiceNinjaTrigger': InvoiceNinjaTriggerNode;
-	'n8n-nodes-base.iterable': IterableNode;
-	'n8n-nodes-base.jenkins': JenkinsNode;
-	'n8n-nodes-base.jinaAi': JinaAiNode;
-	'n8n-nodes-base.jira': JiraNode;
-	'n8n-nodes-base.jiraTrigger': JiraTriggerNode;
-	'n8n-nodes-base.jotFormTrigger': JotFormTriggerNode;
-	'n8n-nodes-base.jwt': JwtNode;
-	'n8n-nodes-base.kafka': KafkaNode;
-	'n8n-nodes-base.kafkaTrigger': KafkaTriggerNode;
-	'n8n-nodes-base.keap': KeapNode;
-	'n8n-nodes-base.keapTrigger': KeapTriggerNode;
-	'n8n-nodes-base.koBoToolbox': KoBoToolboxNode;
-	'n8n-nodes-base.koBoToolboxTrigger': KoBoToolboxTriggerNode;
-	'n8n-nodes-base.ldap': LdapNode;
-	'n8n-nodes-base.lemlist': LemlistNode;
-	'n8n-nodes-base.lemlistTrigger': LemlistTriggerNode;
-	'n8n-nodes-base.limit': LimitNode;
-	'n8n-nodes-base.line': LineNode;
-	'n8n-nodes-base.linear': LinearNode;
-	'n8n-nodes-base.linearTrigger': LinearTriggerNode;
-	'n8n-nodes-base.lingvaNex': LingvaNexNode;
-	'n8n-nodes-base.linkedIn': LinkedInNode;
-	'n8n-nodes-base.localFileTrigger': LocalFileTriggerNode;
-	'n8n-nodes-base.loneScale': LoneScaleNode;
-	'n8n-nodes-base.loneScaleTrigger': LoneScaleTriggerNode;
-	'n8n-nodes-base.magento2': Magento2Node;
-	'n8n-nodes-base.mailcheck': MailcheckNode;
-	'n8n-nodes-base.mailchimp': MailchimpNode;
-	'n8n-nodes-base.mailchimpTrigger': MailchimpTriggerNode;
-	'n8n-nodes-base.mailerLite': MailerLiteNode;
-	'n8n-nodes-base.mailerLiteTrigger': MailerLiteTriggerNode;
-	'n8n-nodes-base.mailgun': MailgunNode;
-	'n8n-nodes-base.mailjet': MailjetNode;
-	'n8n-nodes-base.mailjetTrigger': MailjetTriggerNode;
-	'n8n-nodes-base.mandrill': MandrillNode;
-	'n8n-nodes-base.manualTrigger': ManualTriggerNode;
-	'n8n-nodes-base.markdown': MarkdownNode;
-	'n8n-nodes-base.marketstack': MarketstackNode;
-	'n8n-nodes-base.matrix': MatrixNode;
-	'n8n-nodes-base.mattermost': MattermostNode;
-	'n8n-nodes-base.mautic': MauticNode;
-	'n8n-nodes-base.mauticTrigger': MauticTriggerNode;
-	'n8n-nodes-base.medium': MediumNode;
-	'n8n-nodes-base.merge': MergeNode;
-	'n8n-nodes-base.messageBird': MessageBirdNode;
-	'n8n-nodes-base.metabase': MetabaseNode;
-	'n8n-nodes-base.microsoftDynamicsCrm': MicrosoftDynamicsCrmNode;
-	'n8n-nodes-base.microsoftEntra': MicrosoftEntraNode;
-	'n8n-nodes-base.microsoftExcel': MicrosoftExcelNode;
-	'n8n-nodes-base.microsoftGraphSecurity': MicrosoftGraphSecurityNode;
-	'n8n-nodes-base.microsoftOneDrive': MicrosoftOneDriveNode;
-	'n8n-nodes-base.microsoftOneDriveTrigger': MicrosoftOneDriveTriggerNode;
-	'n8n-nodes-base.microsoftOutlook': MicrosoftOutlookNode;
-	'n8n-nodes-base.microsoftOutlookTrigger': MicrosoftOutlookTriggerNode;
-	'n8n-nodes-base.microsoftSharePoint': MicrosoftSharePointNode;
-	'n8n-nodes-base.microsoftSql': MicrosoftSqlNode;
-	'n8n-nodes-base.microsoftTeams': MicrosoftTeamsNode;
-	'n8n-nodes-base.microsoftTeamsTrigger': MicrosoftTeamsTriggerNode;
-	'n8n-nodes-base.microsoftToDo': MicrosoftToDoNode;
-	'n8n-nodes-base.mindee': MindeeNode;
-	'n8n-nodes-base.misp': MispNode;
-	'n8n-nodes-base.mistralAi': MistralAiNode;
-	'n8n-nodes-base.mocean': MoceanNode;
-	'n8n-nodes-base.mondayCom': MondayComNode;
-	'n8n-nodes-base.mongoDb': MongoDbNode;
-	'n8n-nodes-base.monicaCrm': MonicaCrmNode;
-	'n8n-nodes-base.mqtt': MqttNode;
-	'n8n-nodes-base.mqttTrigger': MqttTriggerNode;
-	'n8n-nodes-base.msg91': Msg91Node;
-	'n8n-nodes-base.mySql': MySqlNode;
-	'n8n-nodes-base.n8n': N8nNode;
-	'n8n-nodes-base.n8nTrainingCustomerDatastore': N8nTrainingCustomerDatastoreNode;
-	'n8n-nodes-base.n8nTrainingCustomerMessenger': N8nTrainingCustomerMessengerNode;
-	'n8n-nodes-base.n8nTrigger': N8nTriggerNode;
-	'n8n-nodes-base.nasa': NasaNode;
-	'n8n-nodes-base.netlify': NetlifyNode;
-	'n8n-nodes-base.netlifyTrigger': NetlifyTriggerNode;
-	'n8n-nodes-base.nextCloud': NextCloudNode;
-	'n8n-nodes-base.nocoDb': NocoDbNode;
-	'n8n-nodes-base.noOp': NoOpNode;
-	'n8n-nodes-base.notion': NotionNode;
-	'n8n-nodes-base.notionTrigger': NotionTriggerNode;
-	'n8n-nodes-base.npm': NpmNode;
-	'n8n-nodes-base.odoo': OdooNode;
-	'n8n-nodes-base.okta': OktaNode;
-	'n8n-nodes-base.oneSimpleApi': OneSimpleApiNode;
-	'n8n-nodes-base.onfleet': OnfleetNode;
-	'n8n-nodes-base.onfleetTrigger': OnfleetTriggerNode;
-	'n8n-nodes-base.openThesaurus': OpenThesaurusNode;
-	'n8n-nodes-base.openWeatherMap': OpenWeatherMapNode;
-	'n8n-nodes-base.oracleDatabase': OracleDatabaseNode;
-	'n8n-nodes-base.oura': OuraNode;
-	'n8n-nodes-base.paddle': PaddleNode;
-	'n8n-nodes-base.pagerDuty': PagerDutyNode;
-	'n8n-nodes-base.payPal': PayPalNode;
-	'n8n-nodes-base.payPalTrigger': PayPalTriggerNode;
-	'n8n-nodes-base.peekalink': PeekalinkNode;
-	'n8n-nodes-base.perplexity': PerplexityNode;
-	'n8n-nodes-base.phantombuster': PhantombusterNode;
-	'n8n-nodes-base.philipsHue': PhilipsHueNode;
-	'n8n-nodes-base.pipedrive': PipedriveNode;
-	'n8n-nodes-base.pipedriveTrigger': PipedriveTriggerNode;
-	'n8n-nodes-base.plivo': PlivoNode;
-	'n8n-nodes-base.postBin': PostBinNode;
-	'n8n-nodes-base.postgres': PostgresNode;
-	'n8n-nodes-base.postgresTrigger': PostgresTriggerNode;
-	'n8n-nodes-base.postHog': PostHogNode;
-	'n8n-nodes-base.postmarkTrigger': PostmarkTriggerNode;
-	'n8n-nodes-base.profitWell': ProfitWellNode;
-	'n8n-nodes-base.pushbullet': PushbulletNode;
-	'n8n-nodes-base.pushcut': PushcutNode;
-	'n8n-nodes-base.pushcutTrigger': PushcutTriggerNode;
-	'n8n-nodes-base.pushover': PushoverNode;
-	'n8n-nodes-base.questDb': QuestDbNode;
-	'n8n-nodes-base.quickbase': QuickbaseNode;
-	'n8n-nodes-base.quickbooks': QuickbooksNode;
-	'n8n-nodes-base.quickChart': QuickChartNode;
-	'n8n-nodes-base.rabbitmq': RabbitmqNode;
-	'n8n-nodes-base.rabbitmqTrigger': RabbitmqTriggerNode;
-	'n8n-nodes-base.raindrop': RaindropNode;
-	'n8n-nodes-base.readWriteFile': ReadWriteFileNode;
-	'n8n-nodes-base.reddit': RedditNode;
-	'n8n-nodes-base.redis': RedisNode;
-	'n8n-nodes-base.redisTrigger': RedisTriggerNode;
-	'n8n-nodes-base.removeDuplicates': RemoveDuplicatesNode;
-	'n8n-nodes-base.renameKeys': RenameKeysNode;
-	'n8n-nodes-base.respondToWebhook': RespondToWebhookNode;
-	'n8n-nodes-base.rocketchat': RocketchatNode;
-	'n8n-nodes-base.rssFeedRead': RssFeedReadNode;
-	'n8n-nodes-base.rssFeedReadTrigger': RssFeedReadTriggerNode;
-	'n8n-nodes-base.rundeck': RundeckNode;
-	'n8n-nodes-base.s3': S3Node;
-	'n8n-nodes-base.salesforce': SalesforceNode;
-	'n8n-nodes-base.salesforceTrigger': SalesforceTriggerNode;
-	'n8n-nodes-base.salesmate': SalesmateNode;
-	'n8n-nodes-base.scheduleTrigger': ScheduleTriggerNode;
-	'n8n-nodes-base.seaTable': SeaTableNode;
-	'n8n-nodes-base.seaTableTrigger': SeaTableTriggerNode;
-	'n8n-nodes-base.securityScorecard': SecurityScorecardNode;
-	'n8n-nodes-base.segment': SegmentNode;
-	'n8n-nodes-base.sendGrid': SendGridNode;
-	'n8n-nodes-base.sendInBlue': SendInBlueNode;
-	'n8n-nodes-base.sendInBlueTrigger': SendInBlueTriggerNode;
-	'n8n-nodes-base.sendy': SendyNode;
-	'n8n-nodes-base.sentryIo': SentryIoNode;
-	'n8n-nodes-base.serviceNow': ServiceNowNode;
-	'n8n-nodes-base.set': SetNode;
-	'n8n-nodes-base.shopify': ShopifyNode;
-	'n8n-nodes-base.shopifyTrigger': ShopifyTriggerNode;
-	'n8n-nodes-base.signl4': Signl4Node;
-	'n8n-nodes-base.slack': SlackNode;
-	'n8n-nodes-base.slackTrigger': SlackTriggerNode;
-	'n8n-nodes-base.sms77': Sms77Node;
-	'n8n-nodes-base.snowflake': SnowflakeNode;
-	'n8n-nodes-base.sort': SortNode;
-	'n8n-nodes-base.splitInBatches': SplitInBatchesNode;
-	'n8n-nodes-base.splitOut': SplitOutNode;
-	'n8n-nodes-base.splunk': SplunkNode;
-	'n8n-nodes-base.spotify': SpotifyNode;
-	'n8n-nodes-base.sseTrigger': SseTriggerNode;
-	'n8n-nodes-base.ssh': SshNode;
-	'n8n-nodes-base.stackby': StackbyNode;
-	'n8n-nodes-base.stickyNote': StickyNoteNode;
-	'n8n-nodes-base.stopAndError': StopAndErrorNode;
-	'n8n-nodes-base.storyblok': StoryblokNode;
-	'n8n-nodes-base.strapi': StrapiNode;
-	'n8n-nodes-base.strava': StravaNode;
-	'n8n-nodes-base.stravaTrigger': StravaTriggerNode;
-	'n8n-nodes-base.stripe': StripeNode;
-	'n8n-nodes-base.stripeTrigger': StripeTriggerNode;
-	'n8n-nodes-base.summarize': SummarizeNode;
-	'n8n-nodes-base.supabase': SupabaseNode;
-	'n8n-nodes-base.surveyMonkeyTrigger': SurveyMonkeyTriggerNode;
-	'n8n-nodes-base.switch': SwitchNode;
-	'n8n-nodes-base.syncroMsp': SyncroMspNode;
-	'n8n-nodes-base.taiga': TaigaNode;
-	'n8n-nodes-base.taigaTrigger': TaigaTriggerNode;
-	'n8n-nodes-base.tapfiliate': TapfiliateNode;
-	'n8n-nodes-base.telegram': TelegramNode;
-	'n8n-nodes-base.telegramTrigger': TelegramTriggerNode;
-	'n8n-nodes-base.theHive': TheHiveNode;
-	'n8n-nodes-base.theHiveProject': TheHiveProjectNode;
-	'n8n-nodes-base.theHiveProjectTrigger': TheHiveProjectTriggerNode;
-	'n8n-nodes-base.theHiveTrigger': TheHiveTriggerNode;
-	'n8n-nodes-base.timeSaved': TimeSavedNode;
-	'n8n-nodes-base.timescaleDb': TimescaleDbNode;
-	'n8n-nodes-base.todoist': TodoistNode;
-	'n8n-nodes-base.togglTrigger': TogglTriggerNode;
-	'n8n-nodes-base.totp': TotpNode;
-	'n8n-nodes-base.travisCi': TravisCiNode;
-	'n8n-nodes-base.trello': TrelloNode;
-	'n8n-nodes-base.trelloTrigger': TrelloTriggerNode;
-	'n8n-nodes-base.twake': TwakeNode;
-	'n8n-nodes-base.twilio': TwilioNode;
-	'n8n-nodes-base.twilioTrigger': TwilioTriggerNode;
-	'n8n-nodes-base.twist': TwistNode;
-	'n8n-nodes-base.twitter': TwitterNode;
-	'n8n-nodes-base.typeformTrigger': TypeformTriggerNode;
-	'n8n-nodes-base.unleashedSoftware': UnleashedSoftwareNode;
-	'n8n-nodes-base.uplead': UpleadNode;
-	'n8n-nodes-base.uproc': UprocNode;
-	'n8n-nodes-base.uptimeRobot': UptimeRobotNode;
-	'n8n-nodes-base.urlScanIo': UrlScanIoNode;
-	'n8n-nodes-base.venafiTlsProtectCloud': VenafiTlsProtectCloudNode;
-	'n8n-nodes-base.venafiTlsProtectCloudTrigger': VenafiTlsProtectCloudTriggerNode;
-	'n8n-nodes-base.venafiTlsProtectDatacenter': VenafiTlsProtectDatacenterNode;
-	'n8n-nodes-base.vero': VeroNode;
-	'n8n-nodes-base.vonage': VonageNode;
-	'n8n-nodes-base.wait': WaitNode;
-	'n8n-nodes-base.webflow': WebflowNode;
-	'n8n-nodes-base.webflowTrigger': WebflowTriggerNode;
-	'n8n-nodes-base.webhook': WebhookNode;
-	'n8n-nodes-base.wekan': WekanNode;
-	'n8n-nodes-base.whatsApp': WhatsAppNode;
-	'n8n-nodes-base.whatsAppTrigger': WhatsAppTriggerNode;
-	'n8n-nodes-base.wise': WiseNode;
-	'n8n-nodes-base.wiseTrigger': WiseTriggerNode;
-	'n8n-nodes-base.wooCommerce': WooCommerceNode;
-	'n8n-nodes-base.wooCommerceTrigger': WooCommerceTriggerNode;
-	'n8n-nodes-base.wordpress': WordpressNode;
-	'n8n-nodes-base.workableTrigger': WorkableTriggerNode;
-	'n8n-nodes-base.wufooTrigger': WufooTriggerNode;
-	'n8n-nodes-base.xero': XeroNode;
-	'n8n-nodes-base.xml': XmlNode;
-	'n8n-nodes-base.yourls': YourlsNode;
-	'n8n-nodes-base.youTube': YouTubeNode;
-	'n8n-nodes-base.zammad': ZammadNode;
-	'n8n-nodes-base.zendesk': ZendeskNode;
-	'n8n-nodes-base.zendeskTrigger': ZendeskTriggerNode;
-	'n8n-nodes-base.zohoCrm': ZohoCrmNode;
-	'n8n-nodes-base.zoom': ZoomNode;
-	'n8n-nodes-base.zulip': ZulipNode;
-}
+// Union of all node input types for type-safe node() function
+export type AllNodeTypes =
+	| LcAgentNode
+	| LcAgentToolNode
+	| LcAnthropicNode
+	| LcChainLlmNode
+	| LcChainRetrievalQaNode
+	| LcChainSummarizationNode
+	| LcChatNode
+	| LcChatTriggerNode
+	| LcCodeNode
+	| LcDocumentDefaultDataLoaderNode
+	| LcEmbeddingsAwsBedrockNode
+	| LcEmbeddingsAzureOpenAiNode
+	| LcEmbeddingsCohereNode
+	| LcEmbeddingsGoogleGeminiNode
+	| LcEmbeddingsGoogleVertexNode
+	| LcEmbeddingsHuggingFaceInferenceNode
+	| LcEmbeddingsLemonadeNode
+	| LcEmbeddingsMistralCloudNode
+	| LcEmbeddingsOllamaNode
+	| LcEmbeddingsOpenAiNode
+	| LcGoogleGeminiNode
+	| LcGuardrailsNode
+	| LcInformationExtractorNode
+	| LcLmChatAnthropicNode
+	| LcLmChatAwsBedrockNode
+	| LcLmChatAzureOpenAiNode
+	| LcLmChatCohereNode
+	| LcLmChatDeepSeekNode
+	| LcLmChatGoogleGeminiNode
+	| LcLmChatGoogleVertexNode
+	| LcLmChatGroqNode
+	| LcLmChatLemonadeNode
+	| LcLmChatMistralCloudNode
+	| LcLmChatOllamaNode
+	| LcLmChatOpenAiNode
+	| LcLmChatOpenRouterNode
+	| LcLmChatVercelAiGatewayNode
+	| LcLmChatXAiGrokNode
+	| LcLmCohereNode
+	| LcLmLemonadeNode
+	| LcLmOllamaNode
+	| LcLmOpenHuggingFaceInferenceNode
+	| LcMcpClientNode
+	| LcMcpClientToolNode
+	| LcMcpTriggerNode
+	| LcMemoryBufferWindowNode
+	| LcMemoryManagerNode
+	| LcMemoryMongoDbChatNode
+	| LcMemoryMotorheadNode
+	| LcMemoryPostgresChatNode
+	| LcMemoryRedisChatNode
+	| LcMemoryXataNode
+	| LcModelSelectorNode
+	| LcOllamaNode
+	| LcOpenAiNode
+	| LcOutputParserAutofixingNode
+	| LcOutputParserItemListNode
+	| LcOutputParserStructuredNode
+	| LcRerankerCohereNode
+	| LcRetrieverContextualCompressionNode
+	| LcRetrieverMultiQueryNode
+	| LcRetrieverVectorStoreNode
+	| LcRetrieverWorkflowNode
+	| LcSentimentAnalysisNode
+	| LcTextClassifierNode
+	| LcTextSplitterCharacterTextSplitterNode
+	| LcTextSplitterRecursiveCharacterTextSplitterNode
+	| LcTextSplitterTokenSplitterNode
+	| LcToolCalculatorNode
+	| LcToolCodeNode
+	| LcToolSearXngNode
+	| LcToolSerpApiNode
+	| LcToolThinkNode
+	| LcToolVectorStoreNode
+	| LcToolWikipediaNode
+	| LcToolWolframAlphaNode
+	| LcToolWorkflowNode
+	| LcVectorStoreAzureAISearchNode
+	| LcVectorStoreInMemoryNode
+	| LcVectorStoreMilvusNode
+	| LcVectorStoreMongoDBAtlasNode
+	| LcVectorStorePGVectorNode
+	| LcVectorStorePineconeNode
+	| LcVectorStoreQdrantNode
+	| LcVectorStoreRedisNode
+	| LcVectorStoreSupabaseNode
+	| LcVectorStoreWeaviateNode
+	| LcVectorStoreZepNode
+	| ActionNetworkNode
+	| ActiveCampaignNode
+	| ActiveCampaignTriggerNode
+	| AcuitySchedulingTriggerNode
+	| AdaloNode
+	| AffinityNode
+	| AffinityTriggerNode
+	| AggregateNode
+	| AgileCrmNode
+	| AirtableNode
+	| AirtableTriggerNode
+	| AirtopNode
+	| AiTransformNode
+	| AmqpNode
+	| AmqpTriggerNode
+	| ApiTemplateIoNode
+	| AsanaNode
+	| AsanaTriggerNode
+	| AutopilotNode
+	| AutopilotTriggerNode
+	| AwsCertificateManagerNode
+	| AwsCognitoNode
+	| AwsComprehendNode
+	| AwsDynamoDbNode
+	| AwsElbNode
+	| AwsIamNode
+	| AwsLambdaNode
+	| AwsRekognitionNode
+	| AwsS3Node
+	| AwsSesNode
+	| AwsSnsNode
+	| AwsSnsTriggerNode
+	| AwsSqsNode
+	| AwsTextractNode
+	| AwsTranscribeNode
+	| AzureCosmosDbNode
+	| AzureStorageNode
+	| BambooHrNode
+	| BannerbearNode
+	| BaserowNode
+	| BeeminderNode
+	| BitbucketTriggerNode
+	| BitlyNode
+	| BitwardenNode
+	| BoxNode
+	| BoxTriggerNode
+	| BrandfetchNode
+	| BubbleNode
+	| CalendlyTriggerNode
+	| CalTriggerNode
+	| ChargebeeNode
+	| ChargebeeTriggerNode
+	| CircleCiNode
+	| CiscoWebexNode
+	| CiscoWebexTriggerNode
+	| CitrixAdcNode
+	| ClearbitNode
+	| ClickUpNode
+	| ClickUpTriggerNode
+	| ClockifyNode
+	| ClockifyTriggerNode
+	| CloudflareNode
+	| CockpitNode
+	| CodaNode
+	| CodeNode
+	| CoinGeckoNode
+	| CompareDatasetsNode
+	| CompressionNode
+	| ContentfulNode
+	| ConvertKitNode
+	| ConvertKitTriggerNode
+	| ConvertToFileNode
+	| CopperNode
+	| CopperTriggerNode
+	| CortexNode
+	| CrateDbNode
+	| CryptoNode
+	| CustomerIoNode
+	| CustomerIoTriggerNode
+	| DataTableNode
+	| DateTimeNode
+	| DebugHelperNode
+	| DeepLNode
+	| DemioNode
+	| DhlNode
+	| DiscordNode
+	| DiscourseNode
+	| DisqusNode
+	| DriftNode
+	| DropboxNode
+	| DropcontactNode
+	| E2eTestNode
+	| EditImageNode
+	| EgoiNode
+	| ElasticsearchNode
+	| ElasticSecurityNode
+	| EmailReadImapNode
+	| EmailSendNode
+	| EmeliaNode
+	| EmeliaTriggerNode
+	| ErpNextNode
+	| ErrorTriggerNode
+	| EvaluationNode
+	| EvaluationTriggerNode
+	| EventbriteTriggerNode
+	| ExecuteCommandNode
+	| ExecuteWorkflowNode
+	| ExecuteWorkflowTriggerNode
+	| ExecutionDataNode
+	| ExtractFromFileNode
+	| FacebookGraphApiNode
+	| FacebookLeadAdsTriggerNode
+	| FacebookTriggerNode
+	| FigmaTriggerNode
+	| FilemakerNode
+	| FilterNode
+	| FlowNode
+	| FlowTriggerNode
+	| FormNode
+	| FormIoTriggerNode
+	| FormstackTriggerNode
+	| FormTriggerNode
+	| FreshdeskNode
+	| FreshserviceNode
+	| FreshworksCrmNode
+	| FtpNode
+	| GetResponseNode
+	| GetResponseTriggerNode
+	| GhostNode
+	| GitNode
+	| GithubNode
+	| GithubTriggerNode
+	| GitlabNode
+	| GitlabTriggerNode
+	| GmailNode
+	| GmailTriggerNode
+	| GongNode
+	| GoogleAdsNode
+	| GoogleAnalyticsNode
+	| GoogleBigQueryNode
+	| GoogleBooksNode
+	| GoogleBusinessProfileNode
+	| GoogleBusinessProfileTriggerNode
+	| GoogleCalendarNode
+	| GoogleCalendarTriggerNode
+	| GoogleChatNode
+	| GoogleCloudNaturalLanguageNode
+	| GoogleCloudStorageNode
+	| GoogleContactsNode
+	| GoogleDocsNode
+	| GoogleDriveNode
+	| GoogleDriveTriggerNode
+	| GoogleFirebaseCloudFirestoreNode
+	| GoogleFirebaseRealtimeDatabaseNode
+	| GooglePerspectiveNode
+	| GoogleSheetsNode
+	| GoogleSheetsTriggerNode
+	| GoogleSlidesNode
+	| GoogleTasksNode
+	| GoogleTranslateNode
+	| GotifyNode
+	| GoToWebinarNode
+	| GrafanaNode
+	| GraphqlNode
+	| GristNode
+	| GSuiteAdminNode
+	| GumroadTriggerNode
+	| HackerNewsNode
+	| HaloPSANode
+	| HarvestNode
+	| HelpScoutNode
+	| HelpScoutTriggerNode
+	| HighLevelNode
+	| HomeAssistantNode
+	| HtmlNode
+	| HttpRequestNode
+	| HubspotNode
+	| HubspotTriggerNode
+	| HumanticAiNode
+	| HunterNode
+	| IfNode
+	| IntercomNode
+	| InvoiceNinjaNode
+	| InvoiceNinjaTriggerNode
+	| IterableNode
+	| JenkinsNode
+	| JinaAiNode
+	| JiraNode
+	| JiraTriggerNode
+	| JotFormTriggerNode
+	| JwtNode
+	| KafkaNode
+	| KafkaTriggerNode
+	| KeapNode
+	| KeapTriggerNode
+	| KoBoToolboxNode
+	| KoBoToolboxTriggerNode
+	| LdapNode
+	| LemlistNode
+	| LemlistTriggerNode
+	| LimitNode
+	| LineNode
+	| LinearNode
+	| LinearTriggerNode
+	| LingvaNexNode
+	| LinkedInNode
+	| LocalFileTriggerNode
+	| LoneScaleNode
+	| LoneScaleTriggerNode
+	| Magento2Node
+	| MailcheckNode
+	| MailchimpNode
+	| MailchimpTriggerNode
+	| MailerLiteNode
+	| MailerLiteTriggerNode
+	| MailgunNode
+	| MailjetNode
+	| MailjetTriggerNode
+	| MandrillNode
+	| ManualTriggerNode
+	| MarkdownNode
+	| MarketstackNode
+	| MatrixNode
+	| MattermostNode
+	| MauticNode
+	| MauticTriggerNode
+	| MediumNode
+	| MergeNode
+	| MessageBirdNode
+	| MetabaseNode
+	| MicrosoftDynamicsCrmNode
+	| MicrosoftEntraNode
+	| MicrosoftExcelNode
+	| MicrosoftGraphSecurityNode
+	| MicrosoftOneDriveNode
+	| MicrosoftOneDriveTriggerNode
+	| MicrosoftOutlookNode
+	| MicrosoftOutlookTriggerNode
+	| MicrosoftSharePointNode
+	| MicrosoftSqlNode
+	| MicrosoftTeamsNode
+	| MicrosoftTeamsTriggerNode
+	| MicrosoftToDoNode
+	| MindeeNode
+	| MispNode
+	| MistralAiNode
+	| MoceanNode
+	| MondayComNode
+	| MongoDbNode
+	| MonicaCrmNode
+	| MqttNode
+	| MqttTriggerNode
+	| Msg91Node
+	| MySqlNode
+	| N8nNode
+	| N8nTrainingCustomerDatastoreNode
+	| N8nTrainingCustomerMessengerNode
+	| N8nTriggerNode
+	| NasaNode
+	| NetlifyNode
+	| NetlifyTriggerNode
+	| NextCloudNode
+	| NocoDbNode
+	| NoOpNode
+	| NotionNode
+	| NotionTriggerNode
+	| NpmNode
+	| OdooNode
+	| OktaNode
+	| OneSimpleApiNode
+	| OnfleetNode
+	| OnfleetTriggerNode
+	| OpenThesaurusNode
+	| OpenWeatherMapNode
+	| OracleDatabaseNode
+	| OuraNode
+	| PaddleNode
+	| PagerDutyNode
+	| PayPalNode
+	| PayPalTriggerNode
+	| PeekalinkNode
+	| PerplexityNode
+	| PhantombusterNode
+	| PhilipsHueNode
+	| PipedriveNode
+	| PipedriveTriggerNode
+	| PlivoNode
+	| PostBinNode
+	| PostgresNode
+	| PostgresTriggerNode
+	| PostHogNode
+	| PostmarkTriggerNode
+	| ProfitWellNode
+	| PushbulletNode
+	| PushcutNode
+	| PushcutTriggerNode
+	| PushoverNode
+	| QuestDbNode
+	| QuickbaseNode
+	| QuickbooksNode
+	| QuickChartNode
+	| RabbitmqNode
+	| RabbitmqTriggerNode
+	| RaindropNode
+	| ReadWriteFileNode
+	| RedditNode
+	| RedisNode
+	| RedisTriggerNode
+	| RemoveDuplicatesNode
+	| RenameKeysNode
+	| RespondToWebhookNode
+	| RocketchatNode
+	| RssFeedReadNode
+	| RssFeedReadTriggerNode
+	| RundeckNode
+	| S3Node
+	| SalesforceNode
+	| SalesforceTriggerNode
+	| SalesmateNode
+	| ScheduleTriggerNode
+	| SeaTableNode
+	| SeaTableTriggerNode
+	| SecurityScorecardNode
+	| SegmentNode
+	| SendGridNode
+	| SendInBlueNode
+	| SendInBlueTriggerNode
+	| SendyNode
+	| SentryIoNode
+	| ServiceNowNode
+	| SetNode
+	| ShopifyNode
+	| ShopifyTriggerNode
+	| Signl4Node
+	| SlackNode
+	| SlackTriggerNode
+	| Sms77Node
+	| SnowflakeNode
+	| SortNode
+	| SplitInBatchesNode
+	| SplitOutNode
+	| SplunkNode
+	| SpotifyNode
+	| SseTriggerNode
+	| SshNode
+	| StackbyNode
+	| StickyNoteNode
+	| StopAndErrorNode
+	| StoryblokNode
+	| StrapiNode
+	| StravaNode
+	| StravaTriggerNode
+	| StripeNode
+	| StripeTriggerNode
+	| SummarizeNode
+	| SupabaseNode
+	| SurveyMonkeyTriggerNode
+	| SwitchNode
+	| SyncroMspNode
+	| TaigaNode
+	| TaigaTriggerNode
+	| TapfiliateNode
+	| TelegramNode
+	| TelegramTriggerNode
+	| TheHiveNode
+	| TheHiveProjectNode
+	| TheHiveProjectTriggerNode
+	| TheHiveTriggerNode
+	| TimeSavedNode
+	| TimescaleDbNode
+	| TodoistNode
+	| TogglTriggerNode
+	| TotpNode
+	| TravisCiNode
+	| TrelloNode
+	| TrelloTriggerNode
+	| TwakeNode
+	| TwilioNode
+	| TwilioTriggerNode
+	| TwistNode
+	| TwitterNode
+	| TypeformTriggerNode
+	| UnleashedSoftwareNode
+	| UpleadNode
+	| UprocNode
+	| UptimeRobotNode
+	| UrlScanIoNode
+	| VenafiTlsProtectCloudNode
+	| VenafiTlsProtectCloudTriggerNode
+	| VenafiTlsProtectDatacenterNode
+	| VeroNode
+	| VonageNode
+	| WaitNode
+	| WebflowNode
+	| WebflowTriggerNode
+	| WebhookNode
+	| WekanNode
+	| WhatsAppNode
+	| WhatsAppTriggerNode
+	| WiseNode
+	| WiseTriggerNode
+	| WooCommerceNode
+	| WooCommerceTriggerNode
+	| WordpressNode
+	| WorkableTriggerNode
+	| WufooTriggerNode
+	| XeroNode
+	| XmlNode
+	| YourlsNode
+	| YouTubeNode
+	| ZammadNode
+	| ZendeskNode
+	| ZendeskTriggerNode
+	| ZohoCrmNode
+	| ZoomNode
+	| ZulipNode;

@@ -3,6 +3,8 @@ import type {
 	NodeInstance,
 	TriggerInstance,
 	NodeConfig,
+	NodeInput,
+	TriggerInput,
 	StickyNoteConfig,
 	PlaceholderValue,
 } from './types/base';
@@ -79,49 +81,65 @@ class TriggerInstanceImpl<TType extends string, TVersion extends string, TOutput
 /**
  * Create a node instance
  *
- * @param type - Node type (e.g., 'n8n-nodes-base.httpRequest')
- * @param version - Node version (e.g., 'v4.2')
- * @param config - Node configuration
+ * @param input - Node input with type, version, and config
  * @returns A configured node instance
  *
  * @example
  * ```typescript
- * const httpNode = node('n8n-nodes-base.httpRequest', 'v4.2', {
- *   parameters: { url: 'https://api.example.com', method: 'GET' },
- *   credentials: { httpBasicAuth: { name: 'My Creds', id: '123' } },
- *   onError: 'continueErrorOutput'
+ * // With generated types (recommended)
+ * import { LcAgentV31Node } from './types/generated';
+ * const agent = node({
+ *   type: '@n8n/n8n-nodes-langchain.agent',
+ *   version: 3.1,
+ *   config: { parameters: { promptType: 'auto', text: 'Hello' } }
+ * } satisfies LcAgentV31Node);
+ *
+ * // Generic usage
+ * const httpNode = node({
+ *   type: 'n8n-nodes-base.httpRequest',
+ *   version: 4.2,
+ *   config: {
+ *     parameters: { url: 'https://api.example.com', method: 'GET' },
+ *     credentials: { httpBasicAuth: { name: 'My Creds', id: '123' } }
+ *   }
  * });
  * ```
  */
-export function node<TType extends string, TVersion extends string, TOutput = unknown>(
-	type: TType,
-	version: TVersion,
-	config: NodeConfig,
-): NodeInstance<TType, TVersion, TOutput> {
-	return new NodeInstanceImpl<TType, TVersion, TOutput>(type, version, config);
+export function node<TNode extends NodeInput>(
+	input: TNode,
+): NodeInstance<TNode['type'], `${TNode['version']}`, unknown> {
+	const versionStr = String(input.version) as `${TNode['version']}`;
+	return new NodeInstanceImpl<TNode['type'], `${TNode['version']}`, unknown>(
+		input.type,
+		versionStr,
+		input.config as NodeConfig,
+	);
 }
 
 /**
  * Create a trigger node instance
  *
- * @param type - Trigger node type (e.g., 'n8n-nodes-base.scheduleTrigger')
- * @param version - Node version (e.g., 'v1.1')
- * @param config - Node configuration
+ * @param input - Trigger input with type, version, and config
  * @returns A configured trigger node instance
  *
  * @example
  * ```typescript
- * const schedule = trigger('n8n-nodes-base.scheduleTrigger', 'v1.1', {
- *   parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } }
+ * const schedule = trigger({
+ *   type: 'n8n-nodes-base.scheduleTrigger',
+ *   version: 1.1,
+ *   config: { parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } } }
  * });
  * ```
  */
-export function trigger<TType extends string, TVersion extends string, TOutput = unknown>(
-	type: TType,
-	version: TVersion,
-	config: NodeConfig,
-): TriggerInstance<TType, TVersion, TOutput> {
-	return new TriggerInstanceImpl<TType, TVersion, TOutput>(type, version, config);
+export function trigger<TTrigger extends TriggerInput>(
+	input: TTrigger,
+): TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown> {
+	const versionStr = String(input.version) as `${TTrigger['version']}`;
+	return new TriggerInstanceImpl<TTrigger['type'], `${TTrigger['version']}`, unknown>(
+		input.type,
+		versionStr,
+		input.config as NodeConfig,
+	);
 }
 
 /**

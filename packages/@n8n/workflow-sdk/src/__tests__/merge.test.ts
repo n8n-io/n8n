@@ -5,13 +5,21 @@ import { node, trigger } from '../node-builder';
 describe('Merge', () => {
 	describe('merge()', () => {
 		it('should create a merge composite with branches', () => {
-			const api1 = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				name: 'API 1',
-				parameters: { url: 'https://api1.example.com' },
+			const api1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'API 1',
+					parameters: { url: 'https://api1.example.com' },
+				},
 			});
-			const api2 = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				name: 'API 2',
-				parameters: { url: 'https://api2.example.com' },
+			const api2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'API 2',
+					parameters: { url: 'https://api2.example.com' },
+				},
 			});
 
 			const m = merge([api1, api2]);
@@ -21,24 +29,48 @@ describe('Merge', () => {
 		});
 
 		it('should support combine mode', () => {
-			const api1 = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'API 1' });
-			const api2 = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'API 2' });
+			const api1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'API 1' },
+			});
+			const api2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'API 2' },
+			});
 
 			const m = merge([api1, api2], { mode: 'combine' });
 			expect(m.mode).toBe('combine');
 		});
 
 		it('should support multiplex mode', () => {
-			const api1 = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'API 1' });
-			const api2 = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'API 2' });
+			const api1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'API 1' },
+			});
+			const api2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'API 2' },
+			});
 
 			const m = merge([api1, api2], { mode: 'multiplex' });
 			expect(m.mode).toBe('multiplex');
 		});
 
 		it('should support chooseBranch mode', () => {
-			const api1 = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'API 1' });
-			const api2 = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'API 2' });
+			const api1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'API 1' },
+			});
+			const api2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'API 2' },
+			});
 
 			const m = merge([api1, api2], { mode: 'chooseBranch' });
 			expect(m.mode).toBe('chooseBranch');
@@ -47,16 +79,28 @@ describe('Merge', () => {
 
 	describe('workflow integration', () => {
 		it('should integrate merge with workflow builder', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
-			const api1 = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				name: 'API 1',
-				parameters: { url: 'https://api1.example.com' },
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const api1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'API 1',
+					parameters: { url: 'https://api1.example.com' },
+				},
 			});
-			const api2 = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				name: 'API 2',
-				parameters: { url: 'https://api2.example.com' },
+			const api2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'API 2',
+					parameters: { url: 'https://api2.example.com' },
+				},
 			});
-			const processResults = node('n8n-nodes-base.set', 'v3', { name: 'Process Results' });
+			const processResults = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Process Results' },
+			});
 
 			const wf = workflow('test-id', 'Test')
 				.add(t)
@@ -81,10 +125,22 @@ describe('Merge', () => {
 		});
 
 		it('should support three branches merging', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
-			const api1 = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'API 1' });
-			const api2 = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'API 2' });
-			const api3 = node('n8n-nodes-base.httpRequest', 'v4.2', { name: 'API 3' });
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const api1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'API 1' },
+			});
+			const api2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'API 2' },
+			});
+			const api3 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'API 3' },
+			});
 
 			const wf = workflow('test-id', 'Test')
 				.add(t)

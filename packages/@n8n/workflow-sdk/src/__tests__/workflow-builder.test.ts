@@ -22,8 +22,10 @@ describe('Workflow Builder', () => {
 
 	describe('.add()', () => {
 		it('should add a trigger node to the workflow', () => {
-			const t = trigger('n8n-nodes-base.scheduleTrigger', 'v1.1', {
-				parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } },
+			const t = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.1,
+				config: { parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } } },
 			});
 			const wf = workflow('test-id', 'Test Workflow').add(t);
 			const json = wf.toJSON();
@@ -32,8 +34,8 @@ describe('Workflow Builder', () => {
 		});
 
 		it('should add multiple nodes', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {});
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
 			const wf = workflow('test-id', 'Test Workflow').add(t).add(n);
 			const json = wf.toJSON();
 			expect(json.nodes).toHaveLength(2);
@@ -42,9 +44,9 @@ describe('Workflow Builder', () => {
 
 	describe('.then()', () => {
 		it('should chain nodes with connections', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
-			const n1 = node('n8n-nodes-base.httpRequest', 'v4.2', {});
-			const n2 = node('n8n-nodes-base.set', 'v3', {});
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const n1 = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const n2 = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
 
 			const wf = workflow('test-id', 'Test Workflow').add(t).then(n1).then(n2);
 
@@ -64,12 +66,22 @@ describe('Workflow Builder', () => {
 
 	describe('.output()', () => {
 		it('should select output branch by index', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
-			const ifNode = node('n8n-nodes-base.if', 'v2', {
-				parameters: { conditions: { boolean: [{ value1: true }] } },
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { parameters: { conditions: { boolean: [{ value1: true }] } } },
 			});
-			const trueHandler = node('n8n-nodes-base.noOp', 'v1', { name: 'True Branch' });
-			const falseHandler = node('n8n-nodes-base.noOp', 'v1', { name: 'False Branch' });
+			const trueHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True Branch' },
+			});
+			const falseHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False Branch' },
+			});
 
 			const wf = workflow('test-id', 'Test Workflow')
 				.add(t)
@@ -115,7 +127,11 @@ describe('Workflow Builder', () => {
 
 	describe('.getNode()', () => {
 		it('should retrieve node by name', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', { name: 'My Trigger' });
+			const t = trigger({
+				type: 'n8n-nodes-base.webhookTrigger',
+				version: 1,
+				config: { name: 'My Trigger' },
+			});
 			const wf = workflow('test-id', 'Test Workflow').add(t);
 			const found = wf.getNode('My Trigger');
 			expect(found).toBeDefined();
@@ -131,9 +147,11 @@ describe('Workflow Builder', () => {
 
 	describe('.toJSON()', () => {
 		it('should export complete workflow JSON', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {
-				parameters: { url: 'https://example.com' },
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { parameters: { url: 'https://example.com' } },
 			});
 			const wf = workflow('test-id', 'Test Workflow', {
 				timezone: 'UTC',
@@ -151,8 +169,10 @@ describe('Workflow Builder', () => {
 		});
 
 		it('should include node positions', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {
-				position: [100, 200],
+			const t = trigger({
+				type: 'n8n-nodes-base.webhookTrigger',
+				version: 1,
+				config: { position: [100, 200] },
 			});
 			const wf = workflow('test-id', 'Test').add(t);
 			const json = wf.toJSON();
@@ -160,8 +180,8 @@ describe('Workflow Builder', () => {
 		});
 
 		it('should auto-position nodes when position not specified', () => {
-			const t = trigger('n8n-nodes-base.webhookTrigger', 'v1', {});
-			const n = node('n8n-nodes-base.httpRequest', 'v4.2', {});
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
 			const wf = workflow('test-id', 'Test').add(t).then(n);
 			const json = wf.toJSON();
 			// Both nodes should have positions assigned
@@ -230,7 +250,7 @@ describe('Workflow Builder', () => {
 			expect(httpNode).toBeDefined();
 
 			// Add another node
-			const newNode = node('n8n-nodes-base.set', 'v3', {});
+			const newNode = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
 			const updatedWf = wf.then(newNode);
 			const exported = updatedWf.toJSON();
 			expect(exported.nodes).toHaveLength(2);
@@ -239,24 +259,40 @@ describe('Workflow Builder', () => {
 
 	describe('AI nodes with subnodes', () => {
 		it('should include subnodes in exported JSON', () => {
-			const modelNode = node('n8n-nodes-langchain.lmChatOpenAi', 'v1', {
-				parameters: { model: 'gpt-4' },
+			const modelNode = node({
+				type: 'n8n-nodes-langchain.lmChatOpenAi',
+				version: 1,
+				config: { parameters: { model: 'gpt-4' } },
 			});
-			const memoryNode = node('n8n-nodes-langchain.memoryBufferWindow', 'v1', {
-				parameters: { windowSize: 5 },
+			const memoryNode = node({
+				type: 'n8n-nodes-langchain.memoryBufferWindow',
+				version: 1,
+				config: { parameters: { windowSize: 5 } },
 			});
-			const toolNode = node('n8n-nodes-langchain.toolCalculator', 'v1', {});
+			const toolNode = node({
+				type: 'n8n-nodes-langchain.toolCalculator',
+				version: 1,
+				config: {},
+			});
 
-			const agentNode = node('n8n-nodes-langchain.agent', 'v1.6', {
-				parameters: { text: '={{ $json.prompt }}' },
-				subnodes: {
-					model: modelNode,
-					memory: memoryNode,
-					tools: [toolNode],
+			const agentNode = node({
+				type: 'n8n-nodes-langchain.agent',
+				version: 1.6,
+				config: {
+					parameters: { text: '={{ $json.prompt }}' },
+					subnodes: {
+						model: modelNode,
+						memory: memoryNode,
+						tools: [toolNode],
+					},
 				},
 			});
 
-			const triggerNode = trigger('n8n-nodes-base.manualTrigger', 'v1', {});
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: {},
+			});
 
 			const wf = workflow('ai-test', 'AI Agent Test').add(triggerNode).then(agentNode);
 
@@ -275,18 +311,28 @@ describe('Workflow Builder', () => {
 		});
 
 		it('should create AI connections for subnodes', () => {
-			const modelNode = node('n8n-nodes-langchain.lmChatOpenAi', 'v1', {
-				parameters: { model: 'gpt-4' },
+			const modelNode = node({
+				type: 'n8n-nodes-langchain.lmChatOpenAi',
+				version: 1,
+				config: { parameters: { model: 'gpt-4' } },
 			});
 
-			const agentNode = node('n8n-nodes-langchain.agent', 'v1.6', {
-				parameters: {},
-				subnodes: {
-					model: modelNode,
+			const agentNode = node({
+				type: 'n8n-nodes-langchain.agent',
+				version: 1.6,
+				config: {
+					parameters: {},
+					subnodes: {
+						model: modelNode,
+					},
 				},
 			});
 
-			const triggerNode = trigger('n8n-nodes-base.manualTrigger', 'v1', {});
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: {},
+			});
 
 			const wf = workflow('ai-test', 'AI Agent Test').add(triggerNode).then(agentNode);
 
