@@ -3,6 +3,8 @@
  *
  * Generates complete workflows in a single LLM call using TypeScript SDK format.
  * Replaces the complex multi-agent system with a simpler, faster approach.
+ *
+ * POC with extensive debug logging for development.
  */
 
 import { readFileSync } from 'node:fs';
@@ -23,14 +25,31 @@ import type { StreamOutput, AgentMessageChunk, WorkflowUpdateChunk } from './typ
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**
+ * Debug logging helper - logs to console with timestamp and prefix
+ */
+function debugLog(context: string, message: string, data?: Record<string, unknown>): void {
+	const timestamp = new Date().toISOString();
+	const prefix = `[ONE-SHOT-AGENT][${timestamp}][${context}]`;
+	if (data) {
+		console.log(`${prefix} ${message}`, JSON.stringify(data, null, 2));
+	} else {
+		console.log(`${prefix} ${message}`);
+	}
+}
+
+/**
  * Read the SDK types/base.ts source file for the prompt.
  * Resolves the path relative to the workflow-sdk package.
  */
 function readSdkSourceFile(): string {
+	debugLog('INIT', 'Reading SDK source file...');
 	// Resolve path to workflow-sdk package
 	const workflowSdkPath = dirname(require.resolve('@n8n/workflow-sdk/package.json'));
 	const baseTsPath = join(workflowSdkPath, 'src', 'types', 'base.ts');
-	return readFileSync(baseTsPath, 'utf-8');
+	debugLog('INIT', 'SDK source file path', { workflowSdkPath, baseTsPath });
+	const content = readFileSync(baseTsPath, 'utf-8');
+	debugLog('INIT', 'SDK source file loaded', { contentLength: content.length });
+	return content;
 }
 
 /**
@@ -77,10 +96,17 @@ export class OneShotWorkflowCodeAgent {
 	private sdkSourceCode: string;
 
 	constructor(config: OneShotWorkflowCodeAgentConfig) {
+		debugLog('CONSTRUCTOR', 'Initializing OneShotWorkflowCodeAgent...', {
+			nodeTypesCount: config.nodeTypes.length,
+			hasLogger: !!config.logger,
+		});
 		this.llm = config.llm;
 		this.nodeTypeParser = new NodeTypeParser(config.nodeTypes);
 		this.logger = config.logger;
 		this.sdkSourceCode = readSdkSourceFile();
+		debugLog('CONSTRUCTOR', 'OneShotWorkflowCodeAgent initialized', {
+			sdkSourceCodeLength: this.sdkSourceCode.length,
+		});
 	}
 
 	/**
@@ -91,6 +117,16 @@ export class OneShotWorkflowCodeAgent {
 		userId: string,
 		abortSignal?: AbortSignal,
 	): AsyncGenerator<StreamOutput, void, unknown> {
+		const startTime = Date.now();
+		debugLog('CHAT', '========== STARTING CHAT ==========');
+		debugLog('CHAT', 'Input payload', {
+			userId,
+			messageLength: payload.message.length,
+			message: payload.message,
+			hasWorkflowContext: !!payload.workflowContext,
+			hasCurrentWorkflow: !!payload.workflowContext?.currentWorkflow,
+		});
+
 		try {
 			this.logger?.debug('One-shot agent starting', {
 				userId,
@@ -98,6 +134,7 @@ export class OneShotWorkflowCodeAgent {
 			});
 
 			// Stream reasoning message
+			debugLog('CHAT', 'Streaming initial "Generating workflow..." message');
 			yield {
 				messages: [
 					{
@@ -109,32 +146,57 @@ export class OneShotWorkflowCodeAgent {
 			};
 
 			// Build prompt with current workflow context if available
+			debugLog('CHAT', 'Building prompt...');
 			const currentWorkflowCode = payload.workflowContext?.currentWorkflow
 				? this.workflowToCode(payload.workflowContext.currentWorkflow)
 				: undefined;
 
+			if (currentWorkflowCode) {
+				debugLog('CHAT', 'Current workflow context provided', {
+					currentWorkflowCodeLength: currentWorkflowCode.length,
+					currentWorkflowCodePreview: currentWorkflowCode.substring(0, 500),
+				});
+			}
+
 			const prompt = this.buildPrompt(currentWorkflowCode);
+			debugLog('CHAT', 'Prompt built successfully');
 
 			// Bind tools to LLM and structure the output
+			debugLog('CHAT', 'Binding tools to LLM...');
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const llmWithTools = this.bindTools(this.llm) as any;
+			debugLog('CHAT', 'Tools bound to LLM');
 
 			// Structure the output
+			debugLog('CHAT', 'Adding structured output to LLM...');
 			const structuredLlm =
 				llmWithTools.withStructuredOutput?.(WorkflowCodeOutputSchema, {
 					name: 'generate_workflow',
 				}) ?? llmWithTools;
+			debugLog('CHAT', 'Structured output configured', {
+				hasWithStructuredOutput: !!llmWithTools.withStructuredOutput,
+			});
 
 			// Generate workflow code
+			debugLog('CHAT', 'Calling generateWorkflowCode...');
+			const llmStartTime = Date.now();
 			const result = await this.generateWorkflowCode(
 				structuredLlm,
 				prompt,
 				payload.message,
 				abortSignal,
 			);
+			const llmDuration = Date.now() - llmStartTime;
+			debugLog('CHAT', 'LLM generation complete', {
+				llmDurationMs: llmDuration,
+				reasoningLength: result.reasoning?.length ?? 0,
+				workflowCodeLength: result.workflowCode.length,
+				warningsCount: result.warnings?.length ?? 0,
+			});
 
 			// Stream reasoning
 			if (result.reasoning) {
+				debugLog('CHAT', 'Streaming reasoning', { reasoning: result.reasoning });
 				yield {
 					messages: [
 						{
@@ -147,7 +209,18 @@ export class OneShotWorkflowCodeAgent {
 			}
 
 			// Parse and validate
+			debugLog('CHAT', 'Parsing and validating workflow code...');
+			debugLog('CHAT', 'Raw workflow code from LLM:', { workflowCode: result.workflowCode });
+			const parseStartTime = Date.now();
 			const workflow = await this.parseAndValidate(result.workflowCode);
+			const parseDuration = Date.now() - parseStartTime;
+			debugLog('CHAT', 'Workflow parsed and validated', {
+				parseDurationMs: parseDuration,
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+				nodeCount: workflow.nodes.length,
+				nodeTypes: workflow.nodes.map((n) => n.type),
+			});
 
 			// Log success
 			this.logger?.info('One-shot agent generated workflow', {
@@ -157,6 +230,7 @@ export class OneShotWorkflowCodeAgent {
 			});
 
 			// Stream workflow update
+			debugLog('CHAT', 'Streaming workflow update');
 			yield {
 				messages: [
 					{
@@ -169,6 +243,7 @@ export class OneShotWorkflowCodeAgent {
 
 			// Stream warnings if any
 			if (result.warnings && result.warnings.length > 0) {
+				debugLog('CHAT', 'Streaming warnings', { warnings: result.warnings });
 				yield {
 					messages: [
 						{
@@ -179,7 +254,22 @@ export class OneShotWorkflowCodeAgent {
 					],
 				};
 			}
+
+			const totalDuration = Date.now() - startTime;
+			debugLog('CHAT', '========== CHAT COMPLETE ==========', {
+				totalDurationMs: totalDuration,
+				llmDurationMs: llmDuration,
+				parseDurationMs: parseDuration,
+				nodeCount: workflow.nodes.length,
+			});
 		} catch (error) {
+			const totalDuration = Date.now() - startTime;
+			debugLog('CHAT', '========== CHAT FAILED ==========', {
+				totalDurationMs: totalDuration,
+				errorMessage: error instanceof Error ? error.message : String(error),
+				errorStack: error instanceof Error ? error.stack : undefined,
+			});
+
 			this.logger?.error('One-shot agent failed', {
 				userId,
 				error: error instanceof Error ? error.message : String(error),
@@ -202,24 +292,49 @@ export class OneShotWorkflowCodeAgent {
 	 * Build the system prompt with node IDs and SDK reference
 	 */
 	private buildPrompt(currentWorkflow?: string) {
+		debugLog('BUILD_PROMPT', 'Getting node IDs by category...');
 		const nodeIds = this.nodeTypeParser.getNodeIdsByCategory();
-		return buildOneShotGeneratorPrompt(nodeIds, this.sdkSourceCode, currentWorkflow);
+		debugLog('BUILD_PROMPT', 'Node IDs retrieved', {
+			triggerCount: nodeIds.triggers.length,
+			coreCount: nodeIds.core.length,
+			aiCount: nodeIds.ai.length,
+			otherCount: nodeIds.other.length,
+			triggersPreview: nodeIds.triggers.slice(0, 5),
+			corePreview: nodeIds.core.slice(0, 5),
+			aiPreview: nodeIds.ai.slice(0, 5),
+		});
+		debugLog('BUILD_PROMPT', 'Building prompt template...', {
+			hasCurrentWorkflow: !!currentWorkflow,
+			sdkSourceCodeLength: this.sdkSourceCode.length,
+		});
+		const prompt = buildOneShotGeneratorPrompt(nodeIds, this.sdkSourceCode, currentWorkflow);
+		debugLog('BUILD_PROMPT', 'Prompt template built');
+		return prompt;
 	}
 
 	/**
 	 * Bind search and get tools to the LLM
 	 */
 	private bindTools(llm: BaseChatModel): unknown {
+		debugLog('BIND_TOOLS', 'Creating search and get tools...');
 		const searchTool = createOneShotNodeSearchTool(this.nodeTypeParser);
 		const getTool = createOneShotNodeGetTool();
+		debugLog('BIND_TOOLS', 'Tools created', {
+			searchToolName: searchTool.name,
+			getToolName: getTool.name,
+		});
 
 		// bindTools returns a Runnable, not BaseChatModel
 		// Check if bindTools exists (it should for ChatAnthropic)
 		if (llm.bindTools) {
-			return llm.bindTools([searchTool, getTool]);
+			debugLog('BIND_TOOLS', 'LLM supports bindTools, binding tools...');
+			const result = llm.bindTools([searchTool, getTool]);
+			debugLog('BIND_TOOLS', 'Tools bound successfully');
+			return result;
 		}
 
 		// Fallback if bindTools is not available
+		debugLog('BIND_TOOLS', 'WARNING: LLM does not support bindTools, returning LLM without tools');
 		return llm;
 	}
 
@@ -227,21 +342,66 @@ export class OneShotWorkflowCodeAgent {
 	 * Generate workflow code using structured output
 	 */
 	private async generateWorkflowCode(
-		structuredLlm: any, // Runnable with structured output
-		prompt: any,
+		structuredLlm: unknown, // Runnable with structured output
+		prompt: unknown,
 		userMessage: string,
 		abortSignal?: AbortSignal,
 	): Promise<WorkflowCodeOutput> {
-		const messages = await prompt.formatMessages({ userMessage });
+		debugLog('GENERATE_CODE', 'Formatting messages from prompt template...');
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const messages = await (prompt as any).formatMessages({ userMessage });
+		debugLog('GENERATE_CODE', 'Messages formatted', {
+			messageCount: messages.length,
+			messageSizes: messages.map((m: { content: string }) => ({
+				role: m.constructor.name,
+				contentLength: typeof m.content === 'string' ? m.content.length : 'non-string',
+			})),
+		});
+
+		// Log first message (system prompt) preview
+		if (messages.length > 0 && typeof messages[0].content === 'string') {
+			debugLog('GENERATE_CODE', 'System prompt preview (first 1000 chars)', {
+				systemPromptPreview: messages[0].content.substring(0, 1000),
+			});
+		}
+
+		// Log user message
+		if (messages.length > 1 && typeof messages[1].content === 'string') {
+			debugLog('GENERATE_CODE', 'User message', {
+				userMessage: messages[1].content,
+			});
+		}
 
 		this.logger?.debug('Invoking LLM for workflow generation', {
 			messageCount: messages.length,
 		});
 
-		const result = await structuredLlm.invoke(messages, { signal: abortSignal });
+		debugLog('GENERATE_CODE', 'Invoking LLM...');
+		const invokeStartTime = Date.now();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const result = await (structuredLlm as any).invoke(messages, { signal: abortSignal });
+		const invokeDuration = Date.now() - invokeStartTime;
+		debugLog('GENERATE_CODE', 'LLM invocation complete', {
+			invokeDurationMs: invokeDuration,
+			resultType: typeof result,
+			resultKeys: result && typeof result === 'object' ? Object.keys(result) : [],
+		});
+
+		// Log raw result
+		debugLog('GENERATE_CODE', 'Raw LLM result', {
+			result: JSON.stringify(result, null, 2).substring(0, 2000),
+		});
 
 		// The structured output should match our schema
+		debugLog('GENERATE_CODE', 'Parsing result with Zod schema...');
 		const output = WorkflowCodeOutputSchema.parse(result);
+		debugLog('GENERATE_CODE', 'Result parsed successfully', {
+			reasoningLength: output.reasoning.length,
+			workflowCodeLength: output.workflowCode.length,
+			warningsCount: output.warnings?.length ?? 0,
+			reasoning: output.reasoning,
+			warnings: output.warnings,
+		});
 
 		this.logger?.debug('Generated WorkflowCode', {
 			codeLength: output.workflowCode.length,
@@ -255,10 +415,44 @@ export class OneShotWorkflowCodeAgent {
 	 * Parse TypeScript code to WorkflowJSON and validate
 	 */
 	private async parseAndValidate(code: string): Promise<WorkflowJSON> {
+		debugLog('PARSE_VALIDATE', '========== PARSING WORKFLOW CODE ==========');
+		debugLog('PARSE_VALIDATE', 'Input code', {
+			codeLength: code.length,
+			codePreview: code.substring(0, 500),
+			codeEnd: code.substring(Math.max(0, code.length - 500)),
+		});
+
 		try {
 			// Parse the TypeScript code
 			this.logger?.debug('Parsing WorkflowCode', { codeLength: code.length });
+			debugLog('PARSE_VALIDATE', 'Calling parseWorkflowCode...');
+			const parseStartTime = Date.now();
 			const workflow = parseWorkflowCode(code);
+			const parseDuration = Date.now() - parseStartTime;
+
+			debugLog('PARSE_VALIDATE', 'Workflow parsed successfully', {
+				parseDurationMs: parseDuration,
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+				nodeCount: workflow.nodes.length,
+				connectionCount: Object.keys(workflow.connections).length,
+			});
+
+			// Log each node
+			debugLog('PARSE_VALIDATE', 'Parsed nodes', {
+				nodes: workflow.nodes.map((n) => ({
+					id: n.id,
+					name: n.name,
+					type: n.type,
+					position: n.position,
+					parametersKeys: n.parameters ? Object.keys(n.parameters) : [],
+				})),
+			});
+
+			// Log connections
+			debugLog('PARSE_VALIDATE', 'Parsed connections', {
+				connections: workflow.connections,
+			});
 
 			this.logger?.debug('Parsed workflow', {
 				id: workflow.id,
@@ -267,24 +461,59 @@ export class OneShotWorkflowCodeAgent {
 			});
 
 			// Validate (but don't fail on warnings)
+			debugLog('PARSE_VALIDATE', 'Validating workflow...');
+			const validateStartTime = Date.now();
 			const validationResult = validateWorkflow(workflow);
+			const validateDuration = Date.now() - validateStartTime;
+
+			debugLog('PARSE_VALIDATE', 'Validation complete', {
+				validateDurationMs: validateDuration,
+				isValid: validationResult.valid,
+				errorCount: validationResult.errors.length,
+				warningCount: validationResult.warnings.length,
+			});
 
 			if (validationResult.errors.length > 0) {
+				debugLog('PARSE_VALIDATE', 'VALIDATION ERRORS', {
+					errors: validationResult.errors.map((e: { message: string; code?: string }) => ({
+						message: e.message,
+						code: e.code,
+					})),
+				});
 				this.logger?.warn('Workflow validation errors', {
-					errors: validationResult.errors.map((e: any) => e.message),
+					errors: validationResult.errors.map((e: { message: string }) => e.message),
 				});
 			}
 
 			if (validationResult.warnings.length > 0) {
+				debugLog('PARSE_VALIDATE', 'VALIDATION WARNINGS', {
+					warnings: validationResult.warnings.map((w: { message: string; code?: string }) => ({
+						message: w.message,
+						code: w.code,
+					})),
+				});
 				this.logger?.info('Workflow validation warnings', {
-					warnings: validationResult.warnings.map((w: any) => w.message),
+					warnings: validationResult.warnings.map((w: { message: string }) => w.message),
 				});
 			}
+
+			// Log full workflow JSON
+			debugLog('PARSE_VALIDATE', 'Final workflow JSON', {
+				workflow: JSON.stringify(workflow, null, 2),
+			});
+
+			debugLog('PARSE_VALIDATE', '========== PARSING COMPLETE ==========');
 
 			// Always return the workflow, even with validation issues
 			// The frontend can handle warnings, and errors are often false positives
 			return workflow;
 		} catch (error) {
+			debugLog('PARSE_VALIDATE', '========== PARSING FAILED ==========', {
+				errorMessage: error instanceof Error ? error.message : String(error),
+				errorStack: error instanceof Error ? error.stack : undefined,
+				code: code,
+			});
+
 			this.logger?.error('Failed to parse WorkflowCode', {
 				error: error instanceof Error ? error.message : String(error),
 				code: code.substring(0, 500), // Log first 500 chars
@@ -300,9 +529,17 @@ export class OneShotWorkflowCodeAgent {
 	/**
 	 * Convert partial workflow JSON to TypeScript code (for context)
 	 */
-	private workflowToCode(workflow: Partial<any>): string {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	private workflowToCode(workflow: Partial<Record<string, unknown>>): string {
+		debugLog('WORKFLOW_TO_CODE', 'Converting workflow to code', {
+			workflowKeys: Object.keys(workflow),
+		});
 		// For now, just stringify the workflow
 		// In the future, could use generateWorkflowCode from workflow-sdk
-		return JSON.stringify(workflow, null, 2);
+		const code = JSON.stringify(workflow, null, 2);
+		debugLog('WORKFLOW_TO_CODE', 'Workflow converted', {
+			codeLength: code.length,
+		});
+		return code;
 	}
 }

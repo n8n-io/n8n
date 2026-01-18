@@ -3,6 +3,8 @@
  *
  * Returns the full TypeScript type definition for a specific node
  * from the generated workflow-sdk types.
+ *
+ * POC with extensive debug logging for development.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -11,11 +13,26 @@ import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 
 /**
+ * Debug logging helper for get tool
+ */
+function debugLog(message: string, data?: Record<string, unknown>): void {
+	const timestamp = new Date().toISOString();
+	const prefix = `[ONE-SHOT-AGENT][${timestamp}][GET_TOOL]`;
+	if (data) {
+		console.log(`${prefix} ${message}`, JSON.stringify(data, null, 2));
+	} else {
+		console.log(`${prefix} ${message}`);
+	}
+}
+
+/**
  * Get the path to the generated nodes directory
  */
 function getGeneratedNodesPath(): string {
 	const workflowSdkPath = dirname(require.resolve('@n8n/workflow-sdk/package.json'));
-	return join(workflowSdkPath, 'src', 'types', 'generated', 'nodes');
+	const nodesPath = join(workflowSdkPath, 'src', 'types', 'generated', 'nodes');
+	debugLog('Generated nodes path', { workflowSdkPath, nodesPath });
+	return nodesPath;
 }
 
 /**
@@ -25,24 +42,36 @@ function getGeneratedNodesPath(): string {
  *   "@n8n/n8n-nodes-langchain.agent" -> { package: "n8n-nodes-langchain", nodeName: "agent" }
  */
 function parseNodeId(nodeId: string): { packageName: string; nodeName: string } | null {
+	debugLog('Parsing node ID', { nodeId });
+
 	// Handle @n8n/ prefixed packages (langchain)
 	if (nodeId.startsWith('@n8n/')) {
 		const withoutPrefix = nodeId.slice(5); // Remove "@n8n/"
 		const dotIndex = withoutPrefix.indexOf('.');
-		if (dotIndex === -1) return null;
-		return {
+		if (dotIndex === -1) {
+			debugLog('Failed to parse @n8n/ prefixed node ID - no dot found', { nodeId, withoutPrefix });
+			return null;
+		}
+		const result = {
 			packageName: withoutPrefix.slice(0, dotIndex),
 			nodeName: withoutPrefix.slice(dotIndex + 1),
 		};
+		debugLog('Parsed @n8n/ prefixed node ID', { nodeId, ...result });
+		return result;
 	}
 
 	// Handle regular packages
 	const dotIndex = nodeId.indexOf('.');
-	if (dotIndex === -1) return null;
-	return {
+	if (dotIndex === -1) {
+		debugLog('Failed to parse node ID - no dot found', { nodeId });
+		return null;
+	}
+	const result = {
 		packageName: nodeId.slice(0, dotIndex),
 		nodeName: nodeId.slice(dotIndex + 1),
 	};
+	debugLog('Parsed regular node ID', { nodeId, ...result });
+	return result;
 }
 
 /**
@@ -50,12 +79,18 @@ function parseNodeId(nodeId: string): { packageName: string; nodeName: string } 
  */
 function getNodeFilePath(nodeId: string): string | null {
 	const parsed = parseNodeId(nodeId);
-	if (!parsed) return null;
+	if (!parsed) {
+		debugLog('Could not get file path - parsing failed', { nodeId });
+		return null;
+	}
 
 	const nodesPath = getGeneratedNodesPath();
 	const filePath = join(nodesPath, parsed.packageName, `${parsed.nodeName}.ts`);
 
+	debugLog('Checking file path', { nodeId, filePath, exists: existsSync(filePath) });
+
 	if (!existsSync(filePath)) {
+		debugLog('File does not exist', { filePath });
 		return null;
 	}
 
@@ -66,19 +101,52 @@ function getNodeFilePath(nodeId: string): string | null {
  * Create the simplified node get tool for one-shot agent
  */
 export function createOneShotNodeGetTool() {
+	debugLog('Creating get_node tool');
+
 	return tool(
 		async (input: { nodeId: string }) => {
+			debugLog('========== GET_NODE TOOL INVOKED ==========');
+			debugLog('Input', { nodeId: input.nodeId });
+
 			const filePath = getNodeFilePath(input.nodeId);
 
 			if (!filePath) {
-				return `Node type '${input.nodeId}' not found. Use search_node to find the correct node ID.`;
+				const response = `Node type '${input.nodeId}' not found. Use search_node to find the correct node ID.`;
+				debugLog('Node not found, returning error response', { nodeId: input.nodeId, response });
+				debugLog('========== GET_NODE TOOL COMPLETE (NOT FOUND) ==========');
+				return response;
 			}
 
 			try {
+				debugLog('Reading file', { filePath });
+				const readStartTime = Date.now();
 				const content = readFileSync(filePath, 'utf-8');
-				return `TypeScript type definition for ${input.nodeId}:\n\n\`\`\`typescript\n${content}\n\`\`\``;
+				const readDuration = Date.now() - readStartTime;
+
+				debugLog('File read successfully', {
+					filePath,
+					readDurationMs: readDuration,
+					contentLength: content.length,
+					contentPreview: content.substring(0, 500),
+				});
+
+				const response = `TypeScript type definition for ${input.nodeId}:\n\n\`\`\`typescript\n${content}\n\`\`\``;
+				debugLog('Returning response', {
+					responseLength: response.length,
+				});
+				debugLog('========== GET_NODE TOOL COMPLETE ==========');
+
+				return response;
 			} catch (error) {
-				return `Error reading node definition for '${input.nodeId}': ${error instanceof Error ? error.message : 'Unknown error'}`;
+				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+				debugLog('Error reading file', {
+					filePath,
+					error: errorMessage,
+					errorStack: error instanceof Error ? error.stack : undefined,
+				});
+				const response = `Error reading node definition for '${input.nodeId}': ${errorMessage}`;
+				debugLog('========== GET_NODE TOOL COMPLETE (ERROR) ==========');
+				return response;
 			}
 		},
 		{

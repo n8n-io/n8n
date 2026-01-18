@@ -3,9 +3,24 @@
  *
  * System prompt for the one-shot agent that generates complete workflows
  * in TypeScript SDK format in a single pass.
+ *
+ * POC with extensive debug logging for development.
  */
 
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+
+/**
+ * Debug logging helper for prompt builder
+ */
+function debugLog(message: string, data?: Record<string, unknown>): void {
+	const timestamp = new Date().toISOString();
+	const prefix = `[ONE-SHOT-AGENT][${timestamp}][PROMPT]`;
+	if (data) {
+		console.log(`${prefix} ${message}`, JSON.stringify(data, null, 2));
+	} else {
+		console.log(`${prefix} ${message}`);
+	}
+}
 
 /**
  * Role and capabilities of the agent
@@ -338,8 +353,33 @@ export function buildOneShotGeneratorPrompt(
 	sdkSourceCode: string,
 	currentWorkflow?: string,
 ): ChatPromptTemplate {
+	debugLog('========== BUILDING PROMPT ==========');
+	debugLog('Input node counts', {
+		triggersCount: nodeIds.triggers.length,
+		coreCount: nodeIds.core.length,
+		aiCount: nodeIds.ai.length,
+		otherCount: nodeIds.other.length,
+	});
+	debugLog('SDK source code', {
+		sdkSourceCodeLength: sdkSourceCode.length,
+		sdkSourceCodePreview: sdkSourceCode.substring(0, 300),
+	});
+	debugLog('Current workflow', {
+		hasCurrentWorkflow: !!currentWorkflow,
+		currentWorkflowLength: currentWorkflow?.length ?? 0,
+	});
+
+	debugLog('Building available nodes section...');
 	const availableNodesSection = buildAvailableNodesSection(nodeIds);
+	debugLog('Available nodes section built', {
+		sectionLength: availableNodesSection.length,
+	});
+
+	debugLog('Building SDK API reference section...');
 	const sdkApiReference = buildSdkApiReference(sdkSourceCode);
+	debugLog('SDK API reference section built', {
+		sectionLength: sdkApiReference.length,
+	});
 
 	const systemMessage = [
 		ROLE,
@@ -351,20 +391,42 @@ export function buildOneShotGeneratorPrompt(
 		OUTPUT_FORMAT,
 	].join('\n\n');
 
+	debugLog('System message assembled', {
+		totalLength: systemMessage.length,
+		roleLength: ROLE.length,
+		sdkApiReferenceLength: sdkApiReference.length,
+		availableNodesSectionLength: availableNodesSection.length,
+		workflowRulesLength: WORKFLOW_RULES.length,
+		aiPatternsLength: AI_PATTERNS.length,
+		workflowExamplesLength: WORKFLOW_EXAMPLES.length,
+		outputFormatLength: OUTPUT_FORMAT.length,
+	});
+
 	// User message template
 	const userMessageParts = [];
 
 	if (currentWorkflow) {
 		userMessageParts.push(`<current_workflow>\n${currentWorkflow}\n</current_workflow>`);
 		userMessageParts.push('\nUser request:');
+		debugLog('Added current workflow to user message');
 	}
 
 	userMessageParts.push('{userMessage}');
 
+	const userMessageTemplate = userMessageParts.join('\n');
+	debugLog('User message template', {
+		template: userMessageTemplate,
+	});
+
 	const template = ChatPromptTemplate.fromMessages([
 		['system', systemMessage],
-		['human', userMessageParts.join('\n')],
+		['human', userMessageTemplate],
 	]);
+
+	debugLog('========== PROMPT BUILD COMPLETE ==========', {
+		systemMessageLength: systemMessage.length,
+		userMessageTemplateLength: userMessageTemplate.length,
+	});
 
 	return template;
 }
