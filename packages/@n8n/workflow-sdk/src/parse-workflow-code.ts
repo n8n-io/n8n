@@ -37,7 +37,7 @@ const N8N_RUNTIME_VARIABLES = [
  *
  * Also handles $('NodeName') function call syntax.
  */
-function escapeN8nVariables(code: string): string {
+function escapeN8nVariablesInTemplateLiterals(code: string): string {
 	let result = code;
 
 	// Escape known n8n variables: ${$today...} -> \${$today...}
@@ -55,6 +55,179 @@ function escapeN8nVariables(code: string): string {
 	// This matches ${$( followed by anything (not preceded by backslash)
 	result = result.replace(/(?<!\\)\$\{\$\(/g, '\\${$(');
 
+	return result;
+}
+
+/**
+ * Read a double-quoted string from code starting at position `start`.
+ * Returns the string content and the new position after the closing quote.
+ */
+function readDoubleQuotedString(code: string, start: number): [string, number] {
+	let result = '"';
+	let i = start + 1;
+	while (i < code.length) {
+		if (code[i] === '\\' && i + 1 < code.length) {
+			result += code[i] + code[i + 1];
+			i += 2;
+		} else if (code[i] === '"') {
+			result += '"';
+			i++;
+			break;
+		} else {
+			result += code[i];
+			i++;
+		}
+	}
+	return [result, i];
+}
+
+/**
+ * Read a template literal from code starting at position `start`.
+ * Returns the content and the new position after the closing backtick.
+ */
+function readTemplateLiteral(code: string, start: number): [string, number] {
+	let result = '`';
+	let i = start + 1;
+	let depth = 0;
+	while (i < code.length) {
+		if (code[i] === '\\' && i + 1 < code.length) {
+			result += code[i] + code[i + 1];
+			i += 2;
+		} else if (code[i] === '$' && i + 1 < code.length && code[i + 1] === '{') {
+			result += '${';
+			i += 2;
+			depth++;
+		} else if (code[i] === '}' && depth > 0) {
+			result += '}';
+			i++;
+			depth--;
+		} else if (code[i] === '`' && depth === 0) {
+			result += '`';
+			i++;
+			break;
+		} else {
+			result += code[i];
+			i++;
+		}
+	}
+	return [result, i];
+}
+
+/**
+ * Read a single-quoted string from code starting at position `start`,
+ * escaping any $('NodeName') patterns that would break JavaScript parsing.
+ *
+ * The problem: When AI generates code like `'={{ $('Node Name').item.json.field }}'`,
+ * the inner single quotes in `$('Node Name')` break the outer single-quoted string.
+ * JavaScript sees: `'={{ $('` as a complete string, then `Node` as an identifier (error).
+ *
+ * The fix: Escape the inner quotes to `$('Node Name')` -> `$(\'Node Name\')`.
+ */
+function readAndFixSingleQuotedString(code: string, start: number): [string, number] {
+	let result = "'";
+	let i = start + 1;
+
+	while (i < code.length) {
+		// Handle escape sequences
+		if (code[i] === '\\' && i + 1 < code.length) {
+			result += code[i] + code[i + 1];
+			i += 2;
+			continue;
+		}
+
+		// Check for problematic unescaped $(' pattern
+		if (code[i] === '$' && code[i + 1] === '(' && code[i + 2] === "'") {
+			// Found $(' - escape the opening quote and find the matching ')
+			result += "$(\\'";
+			i += 3;
+
+			// Find the closing ')
+			while (i < code.length) {
+				if (code[i] === '\\' && i + 1 < code.length) {
+					result += code[i] + code[i + 1];
+					i += 2;
+				} else if (code[i] === "'" && code[i + 1] === ')') {
+					result += "\\')";
+					i += 2;
+					break;
+				} else {
+					result += code[i];
+					i++;
+				}
+			}
+			continue;
+		}
+
+		// Closing quote (that's not part of $('...'))
+		if (code[i] === "'") {
+			result += "'";
+			i++;
+			break;
+		}
+
+		// Regular character
+		result += code[i];
+		i++;
+	}
+
+	return [result, i];
+}
+
+/**
+ * Escape $('NodeName') patterns inside single-quoted strings.
+ *
+ * This handles the case where AI-generated code contains expressions like:
+ *   value: '={{ $('Lead Generation Form').item.json.fullName }}'
+ *
+ * Which should be:
+ *   value: '={{ $(\'Lead Generation Form\').item.json.fullName }}'
+ */
+function escapeNodeReferencesInSingleQuotedStrings(code: string): string {
+	let result = '';
+	let i = 0;
+
+	while (i < code.length) {
+		// Handle double-quoted strings - copy as-is (no escaping needed)
+		if (code[i] === '"') {
+			const [str, newI] = readDoubleQuotedString(code, i);
+			result += str;
+			i = newI;
+			continue;
+		}
+
+		// Handle template literals - copy as-is (no escaping needed)
+		if (code[i] === '`') {
+			const [str, newI] = readTemplateLiteral(code, i);
+			result += str;
+			i = newI;
+			continue;
+		}
+
+		// Handle single-quoted strings - escape $('...') patterns
+		if (code[i] === "'") {
+			const [str, newI] = readAndFixSingleQuotedString(code, i);
+			result += str;
+			i = newI;
+			continue;
+		}
+
+		// Regular character outside strings
+		result += code[i];
+		i++;
+	}
+
+	return result;
+}
+
+/**
+ * Combined preprocessing: escape both node references in single-quoted strings
+ * and n8n runtime variables in template literals.
+ */
+function escapeN8nVariables(code: string): string {
+	// First, fix node references in single-quoted strings
+	let result = escapeNodeReferencesInSingleQuotedStrings(code);
+	// Then, escape n8n runtime variables in template literals
+	result = escapeN8nVariablesInTemplateLiterals(result);
 	return result;
 }
 import { node as nodeFn, trigger as triggerFn, sticky as stickyFn } from './node-builder';

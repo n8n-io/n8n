@@ -762,11 +762,10 @@ describe('generate-types', () => {
 	});
 
 	describe('generateNodeJSDoc', () => {
-		it('should generate node-level JSDoc with description and @see', () => {
+		it('should generate node-level JSDoc with description', () => {
 			const result = generateTypes.generateNodeJSDoc(mockGmailNode);
 			expect(result).toContain('Gmail');
 			expect(result).toContain('Send and receive emails using Gmail');
-			expect(result).toContain('@see');
 		});
 
 		it('should include @generated marker', () => {

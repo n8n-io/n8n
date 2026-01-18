@@ -317,6 +317,120 @@ describe('parseWorkflowCode', () => {
 		expect(parsedJson.connections['IF']!.main[0]![0]!.node).toBe('True Branch');
 		expect(parsedJson.connections['IF']!.main[1]![0]!.node).toBe('False Branch');
 	});
+
+	describe('escapes node references in single-quoted strings', () => {
+		it('should parse code with unescaped $() node references', () => {
+			// This code has unescaped single quotes inside single-quoted strings
+			// The parser should automatically escape them
+			const codeWithUnescapedQuotes = `
+return workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'manual',
+      assignments: {
+        assignments: [
+          {
+            id: 'test',
+            name: 'value',
+            value: '={{ $('Manual Trigger').item.json.data }}',
+            type: 'string'
+          }
+        ]
+      }
+    }
+  } }))
+`;
+			// This should not throw a syntax error
+			const parsedJson = parseWorkflowCode(codeWithUnescapedQuotes);
+			expect(parsedJson.id).toBe('test-id');
+			expect(parsedJson.nodes).toHaveLength(2);
+
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect(setNode).toBeDefined();
+			// The expression should be preserved with the node reference
+			const assignments = (setNode?.parameters as Record<string, unknown>)?.assignments as Record<
+				string,
+				unknown
+			>;
+			const assignmentList = assignments?.assignments as Array<Record<string, unknown>>;
+			expect(assignmentList?.[0]?.value).toBe("={{ $('Manual Trigger').item.json.data }}");
+		});
+
+		it('should handle multiple node references in the same string', () => {
+			const code = `
+return workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Node A').item.json.a + $('Node B').item.json.b }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Node A').item.json.a + $('Node B').item.json.b }}",
+			);
+		});
+
+		it('should not double-escape already escaped quotes', () => {
+			// Code with already-escaped quotes should not be double-escaped
+			const codeWithEscapedQuotes = `
+return workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $(\\'Properly Escaped\\').item.json.data }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(codeWithEscapedQuotes);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Properly Escaped').item.json.data }}",
+			);
+		});
+
+		it('should preserve double-quoted strings unchanged', () => {
+			// Node references in double-quoted strings don't need escaping
+			const code = `
+return workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: "={{ $('Node Name').item.json.data }}"
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Node Name').item.json.data }}",
+			);
+		});
+
+		it('should handle node names with spaces and special characters', () => {
+			const code = `
+return workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Lead Generation Form').item.json.fullName }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Lead Generation Form').item.json.fullName }}",
+			);
+		});
+	});
 });
 
 describe('Codegen Roundtrip with Real Workflows', () => {
