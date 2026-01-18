@@ -25,10 +25,14 @@ A TypeScript SDK for programmatically creating, modifying, and serializing n8n w
 
 ## Public API
 
-The SDK exports three functions:
-
 ```typescript
-import { workflow, node, trigger } from '@n8n/workflow-sdk';
+import {
+  workflow,
+  node,
+  trigger,
+  runOnceForAllItems,
+  runOnceForEachItem
+} from '@n8n/workflow-sdk';
 ```
 
 ### `workflow(name: string, settings?)`
@@ -327,55 +331,141 @@ wf.add(trigger(...))
 
 ## Code Node
 
-The Code node has special typing considerations due to its two execution modes and dynamic output.
+The Code node uses typed helper functions that provide mode-specific context and enforce return types.
 
-### Modes
+### Helper Functions
 
-**`runOnceForAllItems`** - Receives all input items, returns array of items:
+```typescript
+import { workflow, node, trigger, runOnceForAllItems, runOnceForEachItem } from '@n8n/workflow-sdk';
+```
+
+**`runOnceForAllItems<T>`** - Receives all items, returns array:
 
 ```typescript
 node('n8n-nodes-base.code', 'v2', {
   parameters: {
-    mode: 'runOnceForAllItems',
-    language: 'javaScript',
-    jsCode: `
-      const items = $input.all();
+    jsCode: runOnceForAllItems<{ total: number }>((ctx) => {
+      const items = ctx.$input.all();
       return items.map(item => ({
         json: { total: item.json.price * item.json.quantity }
       }));
-    `
-  },
-  outputType: { total: number }  // optional, defaults to unknown
+    })
+  }
+  // outputType inferred from generic
 })
 ```
 
-**`runOnceForEachItem`** - Receives one item, returns one item (or null to skip):
+**`runOnceForEachItem<T>`** - Receives one item, returns one (or null to skip):
 
 ```typescript
 node('n8n-nodes-base.code', 'v2', {
   parameters: {
-    mode: 'runOnceForEachItem',
-    language: 'javaScript',
-    jsCode: `
-      if ($input.item.json.price < 10) return null; // skip item
+    jsCode: runOnceForEachItem<{ label: string }>((ctx) => {
+      if (ctx.$input.item.json.price < 10) return null;
       return {
-        json: {
-          label: $input.item.json.name.toUpperCase(),
-          value: $input.item.json.price
-        }
+        json: { label: ctx.$input.item.json.name.toUpperCase() }
       };
-    `
-  },
-  outputType: { label: string; value: number }
+    })
+  }
 })
 ```
 
-### Languages
+### Context Object
 
-Both JavaScript and Python are supported:
+The `ctx` parameter provides typed access to n8n's execution context:
+
+**Both modes:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `ctx.$env.VAR_NAME` | `string` | Environment variables |
+| `ctx.$vars.name` | `unknown` | Workflow variables |
+| `ctx.$secrets.provider.key` | `string` | External secrets |
+| `ctx.$now` | `DateTime` | Current DateTime (Luxon) |
+| `ctx.$today` | `DateTime` | Today's date |
+| `ctx.$runIndex` | `number` | Current run index |
+| `ctx.$execution.id` | `string` | Execution ID |
+| `ctx.$execution.mode` | `'test' \| 'production'` | Execution mode |
+| `ctx.$execution.resumeUrl` | `string` | Resume URL |
+| `ctx.$workflow.id` | `string` | Workflow ID |
+| `ctx.$workflow.name` | `string` | Workflow name |
+| `ctx.$workflow.active` | `boolean` | Active status |
+| `ctx.$('nodeName')` | typed | Reference other node's output |
+| `ctx.$jmespath(data, expr)` | `unknown` | JMESPath query |
+
+**`runOnceForAllItems` only:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `ctx.$input.all()` | `INodeExecutionData[]` | All input items |
+| `ctx.$input.first()` | `INodeExecutionData` | First item |
+| `ctx.$input.last()` | `INodeExecutionData` | Last item |
+| `ctx.$input.itemMatching(i)` | `INodeExecutionData` | Item at index |
+
+**`runOnceForEachItem` only:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `ctx.$input.item` | `INodeExecutionData` | Current item |
+| `ctx.$itemIndex` | `number` | Current item index |
+
+### Type Safety
+
+The helper functions enforce:
+1. **Context methods** - Only mode-appropriate methods available
+2. **Return type** - Must match generic `T` (or `null` for each-item mode)
+3. **Output inference** - Downstream nodes get typed `json` from generic
 
 ```typescript
-// Python example
+// TypeScript errors:
+runOnceForAllItems<{ sum: number }>((ctx) => {
+  ctx.$input.item;          // ✗ Error: doesn't exist in all-items mode
+  return [{ json: { wrong: 'field' } }];  // ✗ Error: doesn't match { sum: number }
+})
+
+runOnceForEachItem<{ label: string }>((ctx) => {
+  ctx.$input.all();         // ✗ Error: doesn't exist in each-item mode
+})
+```
+
+### Unknown Output
+
+Omit the generic when output schema isn't known:
+
+```typescript
+node('n8n-nodes-base.code', 'v2', {
+  parameters: {
+    jsCode: runOnceForAllItems((ctx) => {
+      return ctx.$input.all();  // Returns unknown
+    })
+  }
+})
+```
+
+### Serialization
+
+The function body is extracted and `ctx.` prefixes are stripped:
+
+```typescript
+// SDK
+runOnceForAllItems<{ sum: number }>((ctx) => {
+  const total = ctx.$input.all().reduce((acc, i) => acc + i.json.value, 0);
+  return [{ json: { sum: total } }];
+})
+
+// Serializes to JSON:
+{
+  "mode": "runOnceForAllItems",
+  "language": "javaScript",
+  "jsCode": "const total = $input.all().reduce((acc, i) => acc + i.json.value, 0);\nreturn [{ json: { sum: total } }];"
+}
+```
+
+### Python
+
+Python code uses string parameters (no type-safe helper):
+
+```typescript
 node('n8n-nodes-base.code', 'v2', {
   parameters: {
     mode: 'runOnceForAllItems',
@@ -384,29 +474,9 @@ node('n8n-nodes-base.code', 'v2', {
       return [{"json": {"sum": sum(item["json"]["value"] for item in _items)}}]
     `
   },
-  outputType: { sum: number }
+  outputType: { sum: number }  // explicit for Python
 })
 ```
-
-### Output Typing
-
-The `outputType` parameter is optional:
-
-- **Specified** → downstream `$('codeNode').item.json` is typed
-- **Omitted** → downstream gets `unknown`
-
-```typescript
-// Unknown output - when schema isn't known at design time
-node('n8n-nodes-base.code', 'v2', {
-  parameters: {
-    mode: 'runOnceForAllItems',
-    jsCode: `return $input.all().map(i => ({ json: transform(i.json) }));`
-  }
-  // no outputType - downstream types are unknown
-})
-```
-
-The mode affects execution semantics (all items vs each item) but both modes produce items for downstream nodes.
 
 ---
 
