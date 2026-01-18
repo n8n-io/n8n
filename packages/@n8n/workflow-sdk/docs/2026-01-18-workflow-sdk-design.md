@@ -411,7 +411,7 @@ The `$` parameter in expression functions provides typed access to:
 | Property | Description |
 |----------|-------------|
 | `$.json` | Current item's JSON data (typed from upstream) |
-| `$.binary` | Current item's binary data |
+| `$.binary` | Current item's binary data (keyed by field name) |
 | `$.input.first()` | First input item |
 | `$.input.all()` | All input items |
 | `$.input.item` | Current item |
@@ -431,50 +431,51 @@ The `$` parameter in expression functions provides typed access to:
 
 ### Binary Data
 
-Binary data (files, images, etc.) is accessed via `$.binary`:
+`$.binary` provides access to binary file data attached to items:
 
 ```typescript
-// Access binary from current item
-node('n8n-nodes-base.httpRequest', 'v4.2', {
+node('n8n-nodes-base.extractFromFile', 'v1', {
   parameters: {
-    method: 'POST',
-    url: 'https://api.example.com/upload',
-    sendBody: true,
-    bodyParameters: {
-      parameters: [{
-        name: 'file',
-        value: $ => $.binary.data.data  // Base64-encoded binary
-      }]
+    operation: 'binaryToPropery',
+    binaryPropertyName: $ => `{{ ${$.binary}.keys()[0] }}`
+  }
+})
+
+node('n8n-nodes-base.set', 'v3.4', {
+  parameters: {
+    assignments: {
+      assignments: [
+        {
+          name: 'path',
+          type: 'string',
+          value: $ => `{{ ${$.binary}[${$.binary}.keys()[0]].directory }}{{ ${$.binary}[${$.binary}.keys()[0]].fileName }}`
+        }
+      ]
     }
   }
 })
 ```
 
-**Binary data structure:**
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `data` | `string` | Base64-encoded content or storage mode ID |
-| `mimeType` | `string` | Content type (e.g., `'application/pdf'`) |
-| `fileName` | `string?` | Original filename |
-| `fileExtension` | `string?` | File extension |
-| `fileSize` | `string?` | Human-readable size (e.g., `'1.2 MB'`) |
-
-**Referencing binary from other nodes:**
+**Binary object structure:**
 
 ```typescript
-// Reference binary from a specific node
-node('n8n-nodes-base.httpRequest', 'v4.2', {
-  parameters: {
-    url: 'https://api.example.com/upload',
-    sendBody: true,
-    contentType: 'binaryData',
-    inputDataFieldName: $ => $('Read File').binary.file.data
+$binary: {
+  [fieldName: string]: {
+    fileName: string;      // e.g., "image.png"
+    directory?: string;    // e.g., "uploads/"
+    mimeType: string;      // e.g., "image/png"
+    fileExtension: string; // e.g., "png"
+    fileSize: string;      // Size in bytes
+    data: string;          // Base64 encoded data
   }
-})
+}
 ```
 
-**Nodes outputting binary data** (like Read Binary File, HTTP Request with binary response) include binary in their output alongside JSON.
+**Common patterns:**
+- `$binary.keys()` - Get all binary field names
+- `$binary.keys()[0]` - Get first binary field name
+- `$binary[fieldName].fileName` - Get file name
+- `$binary[fieldName].directory` - Get directory path
 
 ### Output Schemas
 
