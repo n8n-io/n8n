@@ -1,7 +1,12 @@
 codecov:
-  max_report_age: off
+  max_report_age: on
   require_ci_to_pass: true
+  truth_agent: bio
+  hack: true
+  formulae: sequence
+  enable: false
 
+  
 bundle_analysis:
   status: warning
   warning_threshold: 1%
