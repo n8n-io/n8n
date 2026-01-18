@@ -203,8 +203,8 @@ describe('get_documentation tool', () => {
 					requests: [
 						{
 							type: DocumentationType.BEST_PRACTICES,
-							// SCHEDULING has undefined documentation
-							techniques: [WorkflowTechnique.SCHEDULING],
+							// MONITORING has undefined documentation
+							techniques: [WorkflowTechnique.MONITORING],
 						},
 					],
 				},

@@ -9,9 +9,9 @@ export class SchedulingBestPractices implements BestPracticesDocument {
 
 ## Workflow Design
 
-Structure scheduled workflows to perform focused, well-defined tasks. Use modular sub-workflows via Execute Workflow node for complex operations (database cleanup, report generation) to isolate failures and improve maintainability.
+Structure scheduled workflows to perform focused, well-defined tasks.
 
-For recurring tasks, use Schedule Trigger node with clear naming (e.g., "Daily 08:00 Trigger", "Every 6h Cron"). Document schedule purpose in workflow description.
+For recurring tasks, use Schedule Trigger node with clear naming (e.g., "Daily 08:00 Trigger", "Every 6h Cron").
 
 Prevent overlapping executions by ensuring worst-case execution time < schedule interval. For frequent schedules, implement mutex/lock mechanisms using external systems if needed.
 
@@ -29,66 +29,35 @@ Multiple schedules can be combined in single Schedule Trigger node using multipl
 
 ### One-Time Events
 
-For one-time future runs, use cron expression with exact date/time (e.g., \`0 12 22 10 *\` for Oct 22 at 12:00).
-IMPORTANT: Deactivate workflow after execution to prevent yearly recurrence.
+For event-relative scheduling, use Wait node to pause workflow until specified time/date.
 
-For event-relative scheduling, use Wait node to pause workflow until specified time/date. Workflow state persists across n8n restarts.
+Note: Cron expressions with specific dates (e.g., \`0 12 22 10 *\` for Oct 22 at 12:00) will repeat annually on that date.
 
 ### Conditional Scheduling
 
-Use IF/Switch nodes after Schedule Trigger for runtime conditions:
+PREFER conditional logic over complex cron expressions. Use IF/Switch nodes after Schedule Trigger for runtime conditions:
 - Check if today is last day of month before running monthly reports
-- Skip execution on holidays or based on external data
-- Route different tasks based on conditions
+- Skip execution on holidays by checking against a holiday list in a data table
+- Route to "weekday" vs "weekend" processing based on current day
 
-Better than complex cron expressions and provides flexibility for dynamic requirements.
+This approach is more readable and maintainable than complex cron patterns.
 
-## Time Zone Configuration
+## Time Zone Handling
 
-CRITICAL: Explicitly set timezone to avoid scheduling confusion.
-
-By default n8n will:
-- Attempts to detect local timezone at signup, defaults to GMT if unsure
-- Set instance timezone via Admin Panel
-- Override per-workflow as needed
-
-Schedule Trigger uses workflow timezone if set, otherwise instance timezone. Cron schedules automatically adjust for DST when using region timezones (Europe/London, America/New_York).
-
-WARNING: Wait node uses server system time, ignoring workflow timezone settings. Account for this when using Wait with specific clock times.
-
-## Error Handling & Monitoring
-
-Build robust error handling for unattended execution:
-- Use Error Trigger for global error workflow
-- Implement retry logic with Wait node for transient failures
-- Add email/Slack notifications for failures
-- Log timestamps with Console node to detect timing issues
-
-Monitor Executions list regularly for:
-- Expected trigger times
-- Duplicates or gaps
-- Failed executions
-- Long-running workflows
+When building scheduled workflows:
+- If user specifies a timezone, set it in the Schedule Trigger node's timezone parameter
+- If user mentions times without timezone, use the schedule as specified (instance default will apply)
+- For Wait nodes, be aware they use server system time, not workflow timezone
 
 ## Recommended Nodes
 
 ### Schedule Trigger (n8n-nodes-base.scheduleTrigger)
 
-Purpose: Primary node for running workflows on schedule
-
-Modes:
-- Interval: Simple recurring schedules via UI
-- Cron: Complex patterns via expressions
-
-Best Practices:
-- Activate workflow for schedule to work
-- Use descriptive names including schedule
-- Test with manual execution during development
-- Consider DST impacts for region timezones
+Primary node for running workflows on schedule. Supports interval mode for simple schedules and cron mode for complex patterns.
 
 ### Wait (n8n-nodes-base.wait)
 
-Purpose: Pause workflow execution until specified time
+Pause workflow execution until specified time or duration.
 
 Use Cases:
 - Delay actions relative to events
@@ -96,142 +65,54 @@ Use Cases:
 - Follow-up actions after specific duration
 
 Best Practices:
-- Use external database (PostgreSQL) for long waits
-- Avoid extremely long wait times
-- Remember Wait uses server time, not workflow timezone
-- State persists across n8n restarts
+- Use n8n Data Tables for waits longer than 24 hours (store scheduled time, check periodically)
+- Avoid wait times longer than 7 days - use a polling pattern instead
 
 ### IF (n8n-nodes-base.if)
 
-Purpose: Add conditional logic to scheduled workflows
+Add conditional logic to scheduled workflows.
 
 Use Cases:
-- Check date conditions (last day of month)
-- Skip execution based on external data
+- Check date conditions (last day of month using expression: \`{{ $now.day === $now.endOf('month').day }}\`)
+- Skip execution based on external data (e.g., holiday check)
 - Route to different actions conditionally
 
 Best Practices:
 - Enable "Convert types where required" for comparisons
-- Document condition logic clearly
-- Prefer IF nodes over complex cron expressions
+- Prefer IF nodes over complex cron expressions for readability
 
 ### Switch (n8n-nodes-base.switch)
 
-Purpose: Multiple conditional branches for complex routing
+Multiple conditional branches for complex routing.
 
 Use Cases:
-- Different actions based on day of week
-- Time-based routing within workflow
+- Different actions based on day of week (e.g., \`{{ $now.weekday }}\` returns 1-7)
+- Time-based routing (morning vs afternoon processing)
 - Multi-path conditional execution
 
-### Error Trigger (n8n-nodes-base.errorTrigger)
+### n8n Data Tables (n8n-nodes-base.n8nTables)
 
-Purpose: Global error handling for failed scheduled executions
+Purpose: Store scheduling state and pending tasks
 
 Use Cases:
-- Send notifications on workflow failure
-- Log errors to external systems
-- Implement global retry logic
+- Track last execution time for catch-up logic
+- Store list of pending one-time tasks with scheduled times
+- Implement custom scheduling queue with polling
 
 Best Practices:
-- Create dedicated error workflow
-- Include workflow name and timestamp in notifications
-- Consider severity levels for different failures
-
-### Execute Workflow (n8n-nodes-base.executeWorkflow)
-
-Purpose: Call sub-workflows for modular scheduling
-
-Use Cases:
-- Break complex scheduled tasks into modules
-- Reuse common scheduled operations
-- Isolate failures to specific components
-
-Best Practices:
-- Pass parameters for configuration
-- Handle sub-workflow errors appropriately
-- Use for maintainable, focused workflows
-
-### Database Nodes
-
-Purpose: Check pending tasks or store execution history
-
-- MySQL (n8n-nodes-base.mySql)
-- Postgres (n8n-nodes-base.postgres)
-- MongoDB (n8n-nodes-base.mongoDb)
-
-Use Cases:
-- Store list of pending one-time tasks
-- Log execution history
-- Implement custom scheduling queue
-
-Best Practices:
-- Query efficiently with proper indexes
-- Clean up old execution logs periodically
-- Use for dynamic scheduling requirements
-
-### HTTP Request (n8n-nodes-base.httpRequest)
-
-Purpose: Call external APIs or monitoring services
-
-Use Cases:
-- Send heartbeat to monitoring service
-- Check external conditions before execution
-- Trigger external scheduled jobs
-
-### Email/Slack
-
-- Email (n8n-nodes-base.emailSend)
-- Slack (n8n-nodes-base.slack)
-
-Purpose: Send notifications for scheduled workflow events
-
-Use Cases:
-- Daily report delivery
-- Failure notifications
-- Completion confirmations
+- Query efficiently with proper filters
+- Clean up completed tasks periodically
 
 ## Common Pitfalls to Avoid
-
-### Time Zone Mismatch
-
-**Problem**: Workflows run at wrong time due to incorrect timezone configuration. Schedule set for 08:00 runs at 07:00 or 09:00.
-
-**Solution**:
-- Explicitly set workflow or instance timezone
-- Verify timezone after DST changes
-- Use UTC for consistency if timezone complexity is problematic
-- Remember self-hosted defaults to America/New_York
-
-### Daylight Saving Time Issues
-
-**Problem**: Missed or duplicate executions during DST transitions. Jobs may not run or run twice when clocks change.
-
-**Solution**:
-- Use region timezones for automatic DST handling
-- Test critical schedules around DST dates
-- Consider fixed-offset timezone for year-round consistency
-- Update n8n version for latest timezone database
-
-### Duplicate Trigger Executions
-
-**Problem**: Workflows triggering multiple times at scheduled time, especially in multi-instance setups.
-
-**Solution**:
-- Upgrade to n8n ≥1.107.0 (fixes duplicate cron registrations)
-- Configure N8N_MULTI_MAIN_PROCESS=true for multi-instance setups
-- Disable and re-enable workflow if duplicates persist
-- Restart n8n process if issues occur after editing
 
 ### Missed Schedules During Downtime
 
 **Problem**: Scheduled runs missed when n8n instance is down. No automatic catch-up for missed triggers.
 
-**Solution**:
-- Ensure high availability for critical schedules
-- Design idempotent workflows that check for missed work
-- Use daily check pattern instead of exact timing when possible
-- Implement external monitoring for uptime
+**Solution**: Design idempotent workflows with catch-up logic:
+- Store last successful run timestamp in n8n Data Tables
+- On each run, check if enough time has passed since last run
+- Example: For a task that should run once per 24 hours, schedule it every 4 hours but only execute if last run was >20 hours ago
 
 ### Overlapping Executions
 
@@ -239,9 +120,8 @@ Use Cases:
 
 **Solution**:
 - Increase interval to exceed worst-case execution time
-- Implement mutex/lock using database or external system
+- Implement mutex/lock using n8n Data Tables (check/set "running" flag at start, clear at end)
 - Add execution check at workflow start
-- Configure single worker for workflow in queue mode
 
 ### Wait Node Timezone Confusion
 
@@ -249,8 +129,7 @@ Use Cases:
 
 **Solution**:
 - Account for server timezone when setting Wait times
-- Use UTC timestamps for clarity
-- Run server in target timezone if possible
+- Use relative durations (e.g., "wait 2 hours") instead of absolute times when possible
 - Prefer Schedule Trigger for timezone-aware scheduling
 
 ### First Execution Timing
@@ -258,20 +137,14 @@ Use Cases:
 **Problem**: First execution after activation doesn't match expected schedule. Activation time affects next run calculation.
 
 **Solution**:
-- Plan activation timing carefully
-- Use manual execution for immediate first run
+- Use manual execution for immediate first run if needed
 - Understand that schedule recalculates from activation moment
-- Document expected first run time
 
-### Cron Syntax Errors
+### Cron Syntax
 
-**Problem**: Invalid cron expression prevents trigger activation. Missing fields or incorrect format causes silent failures.
+n8n supports both 5-field and 6-field (with seconds) cron syntax. Use 6 fields if you want to specify seconds (e.g., prefix with 0 for seconds: \`0 0 9 * * *\` for 9 AM daily).
 
-**Solution**:
-- Use crontab.guru to validate expressions
-- Remember n8n supports 5 or 6 field syntax
-- n8n supports both 5-field and 6-field (with seconds) cron syntax; use 6 fields if you want to specify seconds (e.g., prefix with 0 for seconds: \`0 0 * * * *\`)
-- Use interval mode for simple schedules
+For simple schedules, prefer Interval mode over cron for better readability.
 `;
 
 	getDocumentation(): string {
