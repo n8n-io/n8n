@@ -2,6 +2,7 @@
  * Item List Output Parser Node Types
  *
  * Return the results as separate items
+ * @subnodeType ai_outputParser
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/outputparseritemlist/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

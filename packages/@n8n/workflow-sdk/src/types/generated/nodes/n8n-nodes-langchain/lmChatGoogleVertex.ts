@@ -2,6 +2,7 @@
  * Google Vertex Chat Model Node Types
  *
  * Chat Model Google Vertex
+ * @subnodeType ai_languageModel
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/lmchatgooglevertex/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

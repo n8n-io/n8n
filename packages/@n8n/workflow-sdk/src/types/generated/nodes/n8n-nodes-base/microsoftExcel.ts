@@ -205,11 +205,13 @@ export type MicrosoftExcelV22WorksheetUpsertConfig = {
 	useRange?: boolean | Expression<boolean>;
 	/**
 	 * The sheet range to read the data from specified using a A1-style notation, has to be specific e.g A1:B5, generic ranges like A:B are not supported. Leave blank to use whole used range in the sheet.
+	 * @hint First row must contain column names
 	 */
 	range?: string | Expression<string>;
 	dataMode?: 'autoMap' | 'define' | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @hint Used to find the correct row to update. Doesn't get changed.
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;
@@ -227,6 +229,7 @@ export type MicrosoftExcelV22WorksheetClearConfig = {
 	useRange?: boolean | Expression<boolean>;
 	/**
 	 * The sheet range that would be cleared, specified using a A1-style notation
+	 * @hint Leave blank for entire worksheet
 	 */
 	range?: string | Expression<string>;
 };
@@ -266,15 +269,18 @@ export type MicrosoftExcelV22WorksheetReadRowsConfig = {
 	useRange?: boolean | Expression<boolean>;
 	/**
 	 * The sheet range to read the data from specified using a A1-style notation, has to be specific e.g A1:B5, generic ranges like A:B are not supported
+	 * @hint Leave blank to return entire sheet
 	 */
 	range?: string | Expression<string>;
 	/**
 	 * Relative to selected 'Range', first row index is 0
+	 * @hint Index of the row which contains the column names
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
 	/**
 	 * Relative to selected 'Range', first row index is 0
+	 * @hint Index of first row which contains the actual data
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
@@ -290,6 +296,7 @@ export type MicrosoftExcelV22WorksheetUpdateConfig = {
 	useRange?: boolean | Expression<boolean>;
 	/**
 	 * The sheet range to read the data from specified using a A1-style notation, has to be specific e.g A1:B5, generic ranges like A:B are not supported. Leave blank to use whole used range in the sheet.
+	 * @hint First row must contain column names
 	 */
 	range?: string | Expression<string>;
 	dataMode?: 'autoMap' | 'define' | 'raw' | Expression<string>;
@@ -299,6 +306,7 @@ export type MicrosoftExcelV22WorksheetUpdateConfig = {
 	data: IDataObject | string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @hint Used to find the correct row to update. Doesn't get changed.
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;

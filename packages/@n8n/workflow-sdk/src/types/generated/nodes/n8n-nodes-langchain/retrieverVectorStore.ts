@@ -2,6 +2,7 @@
  * Vector Store Retriever Node Types
  *
  * Use a Vector Store as Retriever
+ * @subnodeType ai_retriever
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/retrievervectorstore/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

@@ -29,6 +29,7 @@ export type GoogleAnalyticsV2ReportGetConfig = {
 	propertyType?: 'ga4' | 'universal' | Expression<string>;
 	/**
 	 * The Property of Google Analytics
+	 * @hint If this doesn't work, try changing the 'Property Type' field above
 	 * @default {"mode":"list","value":""}
 	 */
 	propertyId: ResourceLocatorValue;
@@ -71,6 +72,7 @@ export type GoogleAnalyticsV2ReportGetConfig = {
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * The View of Google Analytics
+	 * @hint If this doesn't work, try changing the 'Property Type' field above
 	 * @default {"mode":"list","value":""}
 	 */
 	viewId: ResourceLocatorValue;
@@ -92,6 +94,7 @@ export type GoogleAnalyticsV2UserActivitySearchConfig = {
 	operation: 'search';
 	/**
 	 * The view from Google Analytics. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @hint If there's nothing here, try changing the 'Property type' field above
 	 */
 	viewId: string | Expression<string>;
 	/**

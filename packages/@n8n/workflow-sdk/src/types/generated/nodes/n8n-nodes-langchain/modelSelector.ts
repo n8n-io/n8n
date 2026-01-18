@@ -2,6 +2,7 @@
  * Model Selector Node Types
  *
  * Use this node to select one of the connected models to this node based on workflow data
+ * @subnodeType ai_languageModel
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/modelselector/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

@@ -2,6 +2,7 @@
  * Embeddings Lemonade Node Types
  *
  * Use Lemonade Embeddings
+ * @subnodeType ai_embedding
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/embeddingslemonade/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

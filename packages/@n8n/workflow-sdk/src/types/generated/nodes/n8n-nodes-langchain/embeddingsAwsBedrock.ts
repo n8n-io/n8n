@@ -2,6 +2,7 @@
  * Embeddings AWS Bedrock Node Types
  *
  * Use Embeddings AWS Bedrock
+ * @subnodeType ai_embedding
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/embeddingsawsbedrock/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

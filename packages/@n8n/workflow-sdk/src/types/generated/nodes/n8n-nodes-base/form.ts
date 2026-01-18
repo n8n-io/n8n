@@ -56,6 +56,7 @@ export interface FormV25Params {
 	responseText?: string | Expression<string>;
 	/**
 	 * Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab
+	 * @hint The name of the input field containing the binary file data to be returned
 	 * @default data
 	 */
 	inputDataFieldName?: string | Expression<string>;

@@ -2,6 +2,7 @@
  * Embeddings Google Gemini Node Types
  *
  * Use Google Gemini Embeddings
+ * @subnodeType ai_embedding
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/embeddingsgooglegemini/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

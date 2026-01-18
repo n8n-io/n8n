@@ -45,14 +45,17 @@ export interface RemoveDuplicatesV2Params {
 		| Expression<string>;
 	/**
 	 * Use an input field (or a combination of fields) that has a unique ID value
+	 * @hint The input field value to compare between items
 	 */
 	dedupeValue: string | Expression<string>;
 	/**
 	 * Use an input field (or a combination of fields) that has an incremental value
+	 * @hint The input field value to compare between items, an incremental value is expected
 	 */
 	incrementalDedupeValue?: number | Expression<number>;
 	/**
 	 * Use an input field that has a date value in ISO format
+	 * @hint The input field value to compare between items, a date is expected
 	 */
 	dateDedupeValue?: string | Expression<string>;
 	/**

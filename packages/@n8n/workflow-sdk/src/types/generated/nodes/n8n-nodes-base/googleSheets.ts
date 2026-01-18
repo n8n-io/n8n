@@ -50,6 +50,7 @@ export type GoogleSheetsV47SheetAppendOrUpdateConfig = {
 	dataMode?: 'autoMapInputData' | 'defineBelow' | 'nothing' | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @hint Used to find the correct row to update. Doesn't get changed.
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;
@@ -168,6 +169,7 @@ export type GoogleSheetsV47SheetUpdateConfig = {
 	dataMode?: 'autoMapInputData' | 'defineBelow' | 'nothing' | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @hint Used to find the correct row to update. Doesn't get changed.
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;

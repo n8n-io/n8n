@@ -85,6 +85,7 @@ export type MicrosoftEntraV1GroupGetAllConfig = {
 	limit?: number | Expression<number>;
 	/**
 	 * &lt;a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter"&gt;Query parameter&lt;/a&gt; to filter results by
+	 * @hint If empty, all the groups will be returned
 	 */
 	filter?: string | Expression<string>;
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;

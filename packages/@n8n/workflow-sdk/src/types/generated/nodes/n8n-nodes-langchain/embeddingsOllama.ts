@@ -2,6 +2,7 @@
  * Embeddings Ollama Node Types
  *
  * Use Ollama Embeddings
+ * @subnodeType ai_embedding
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/embeddingsollama/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

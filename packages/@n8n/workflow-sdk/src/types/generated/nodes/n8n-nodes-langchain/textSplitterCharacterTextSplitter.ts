@@ -2,6 +2,7 @@
  * Character Text Splitter Node Types
  *
  * Split text into chunks by characters
+ * @subnodeType ai_textSplitter
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/textsplittercharactertextsplitter/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

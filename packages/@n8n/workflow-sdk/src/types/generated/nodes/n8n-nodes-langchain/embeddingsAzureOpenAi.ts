@@ -2,6 +2,7 @@
  * Embeddings Azure OpenAI Node Types
  *
  * Use Embeddings Azure OpenAI
+ * @subnodeType ai_embedding
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/embeddingsazureopenai/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

@@ -36,6 +36,7 @@ export type MistralAiV1DocumentExtractTextConfig = {
 	inputType: 'binary' | 'url' | Expression<string>;
 	/**
 	 * Name of the input binary field that contains the file to process
+	 * @hint Uploaded document files must not exceed 50 MB in size and should be no longer than 1,000 pages.
 	 * @default data
 	 */
 	binaryProperty: string | Expression<string>;

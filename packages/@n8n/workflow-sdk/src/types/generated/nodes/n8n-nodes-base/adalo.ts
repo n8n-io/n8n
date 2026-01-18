@@ -20,6 +20,7 @@ export interface AdaloV1Params {
 	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | Expression<string>;
 	/**
 	 * Open your Adalo application and click on the three buttons beside the collection name, then select API Documentation
+	 * @hint You can find information about app's collections on https://app.adalo.com/apps/&lt;strong&gt;your-app-id&lt;/strong&gt;/api-docs
 	 */
 	collectionId: string | Expression<string>;
 	rowId: string | Expression<string>;

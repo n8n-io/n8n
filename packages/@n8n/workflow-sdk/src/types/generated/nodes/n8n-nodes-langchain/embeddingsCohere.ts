@@ -2,6 +2,7 @@
  * Embeddings Cohere Node Types
  *
  * Use Cohere Embeddings
+ * @subnodeType ai_embedding
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/embeddingscohere/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

@@ -2,6 +2,7 @@
  * Embeddings Hugging Face Inference Node Types
  *
  * Use HuggingFace Inference Embeddings
+ * @subnodeType ai_embedding
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/embeddingshuggingfaceinference/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

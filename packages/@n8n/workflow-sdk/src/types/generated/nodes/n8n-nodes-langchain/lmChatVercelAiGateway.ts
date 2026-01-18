@@ -2,6 +2,7 @@
  * Vercel AI Gateway Chat Model Node Types
  *
  * For advanced usage with an AI chain via Vercel AI Gateway
+ * @subnodeType ai_languageModel
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/lmchatvercelaigateway/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

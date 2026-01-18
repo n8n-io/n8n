@@ -2,6 +2,7 @@
  * Token Splitter Node Types
  *
  * Split text into chunks by tokens
+ * @subnodeType ai_textSplitter
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/textsplittertokensplitter/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

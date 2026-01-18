@@ -2,6 +2,7 @@
  * Structured Output Parser Node Types
  *
  * Return data in a defined JSON format
+ * @subnodeType ai_outputParser
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/outputparserstructured/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
@@ -32,6 +33,7 @@ export interface LcOutputParserStructuredV13Params {
 	jsonSchemaExample?: IDataObject | string | Expression<string>;
 	/**
  * Schema to use for the function
+ * @hint Use &lt;a target="_blank" href="https://json-schema.org/"&gt;JSON Schema&lt;/a&gt; format (&lt;a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html"&gt;examples&lt;/a&gt;). $refs syntax is currently not supported.
  * @default {
 	"type": "object",
 	"properties": {
@@ -78,6 +80,7 @@ export interface LcOutputParserStructuredV13Params {
 	customizeRetryPrompt?: boolean | Expression<boolean>;
 	/**
  * Prompt template used for fixing the output. Uses placeholders: "{instructions}" for parsing rules, "{completion}" for the failed attempt, and "{error}" for the validation error message.
+ * @hint Should include "{error}", "{instructions}", and "{completion}" placeholders
  * @default Instructions:
 --------------
 {instructions}

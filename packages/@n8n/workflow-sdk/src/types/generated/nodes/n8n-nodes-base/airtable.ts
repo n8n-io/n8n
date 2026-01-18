@@ -103,6 +103,7 @@ export type AirtableV21RecordSearchConfig = {
 	table: string | Expression<string>;
 	/**
 	 * The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response. &lt;a href="https://support.airtable.com/docs/formula-field-reference" target="_blank"&gt;More info&lt;/a&gt;.
+	 * @hint If empty, all the records will be returned
 	 */
 	filterByFormula?: string | Expression<string>;
 	/**

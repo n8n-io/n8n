@@ -76,6 +76,7 @@ export interface FacebookGraphApiV1Params {
 	sendBinaryData: boolean | Expression<boolean>;
 	/**
 	 * For Form-Data Multipart, they can be provided in the format: &lt;code&gt;"sendKey1:binaryProperty1,sendKey2:binaryProperty2&lt;/code&gt;
+	 * @hint The name of the input binary field containing the file to be uploaded
 	 */
 	binaryPropertyName?: string | Expression<string>;
 	options?: Record<string, unknown>;

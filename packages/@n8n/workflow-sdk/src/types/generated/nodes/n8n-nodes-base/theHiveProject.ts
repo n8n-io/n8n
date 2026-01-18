@@ -378,6 +378,7 @@ export type TheHiveProjectV1QueryExecuteQueryConfig = {
 	operation: 'executeQuery';
 	/**
  * Search for objects with filtering and sorting capabilities
+ * @hint The query should be an array of operations with the required selection and optional filtering, sorting, and pagination. See &lt;a href="https://docs.strangebee.com/thehive/api-docs/#operation/Query%20API" target="_blank"&gt;Query API&lt;/a&gt; for more information.
  * @default =[
   {
     "_name": "listOrganisation"

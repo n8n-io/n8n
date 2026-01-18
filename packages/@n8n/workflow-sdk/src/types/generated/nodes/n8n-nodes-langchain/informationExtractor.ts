@@ -36,6 +36,7 @@ export interface LcInformationExtractorV12Params {
 	jsonSchemaExample?: IDataObject | string | Expression<string>;
 	/**
  * Schema to use for the function
+ * @hint Use &lt;a target="_blank" href="https://json-schema.org/"&gt;JSON Schema&lt;/a&gt; format (&lt;a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html"&gt;examples&lt;/a&gt;). $refs syntax is currently not supported.
  * @default {
 	"type": "object",
 	"properties": {

@@ -2,6 +2,7 @@
  * Contextual Compression Retriever Node Types
  *
  * Enhances document similarity search by contextual compression.
+ * @subnodeType ai_retriever
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/retrievercontextualcompression/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

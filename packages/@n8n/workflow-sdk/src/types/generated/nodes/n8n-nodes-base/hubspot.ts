@@ -119,6 +119,7 @@ export type HubspotV22ContactDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * This is not a contact's email but a number like 1485
+	 * @hint To lookup a user by their email, use the Search operation
 	 * @default {"mode":"list","value":""}
 	 */
 	contactId: ResourceLocatorValue;
@@ -130,6 +131,7 @@ export type HubspotV22ContactGetConfig = {
 	operation: 'get';
 	/**
 	 * This is not a contact's email but a number like 1485
+	 * @hint To lookup a user by their email, use the Search operation
 	 * @default {"mode":"list","value":""}
 	 */
 	contactId: ResourceLocatorValue;

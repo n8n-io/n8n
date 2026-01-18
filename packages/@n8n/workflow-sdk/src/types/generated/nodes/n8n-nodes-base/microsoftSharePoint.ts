@@ -70,6 +70,7 @@ export type MicrosoftSharePointV1FileUpdateConfig = {
 	changeFileContent: boolean | Expression<boolean>;
 	/**
 	 * Find the name of input field containing the binary data to update the file with in the Input panel on the left, in the Binary tab
+	 * @hint The name of the input field containing the binary file data to update the file with
 	 */
 	fileContents: string | Expression<string>;
 	requestOptions?: Record<string, unknown>;
@@ -95,6 +96,7 @@ export type MicrosoftSharePointV1FileUploadConfig = {
 	fileName: string | Expression<string>;
 	/**
 	 * Find the name of input field containing the binary data to upload in the Input panel on the left, in the Binary tab
+	 * @hint The name of the input field containing the binary file data to upload
 	 */
 	fileContents: string | Expression<string>;
 	requestOptions?: Record<string, unknown>;
@@ -197,6 +199,7 @@ export type MicrosoftSharePointV1ItemGetAllConfig = {
 	list: ResourceLocatorValue;
 	/**
 	 * The formula will be evaluated for each record. &lt;a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter"&gt;More info&lt;/a&gt;.
+	 * @hint If empty, all the items will be returned
 	 */
 	filter?: string | Expression<string>;
 	/**

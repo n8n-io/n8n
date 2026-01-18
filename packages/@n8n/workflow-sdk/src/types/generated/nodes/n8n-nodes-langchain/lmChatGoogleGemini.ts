@@ -2,6 +2,7 @@
  * Google Gemini Chat Model Node Types
  *
  * Chat Model Google Gemini
+ * @subnodeType ai_languageModel
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/lmchatgooglegemini/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

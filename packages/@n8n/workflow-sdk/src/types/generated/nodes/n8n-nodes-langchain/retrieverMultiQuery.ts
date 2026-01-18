@@ -2,6 +2,7 @@
  * MultiQuery Retriever Node Types
  *
  * Automates prompt tuning, generates diverse queries and expands document pool for enhanced retrieval.
+ * @subnodeType ai_retriever
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/retrievermultiquery/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

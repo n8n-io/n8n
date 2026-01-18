@@ -25,6 +25,7 @@ export interface ExecuteWorkflowV13Params {
 	source?: 'database' | 'localFile' | 'parameter' | 'url' | Expression<string>;
 	/**
 	 * Note on using an expression here: if this node is set to run once with all items, they will all be sent to the &lt;em&gt;same&lt;/em&gt; workflow. That workflow's ID will be calculated by evaluating the expression for the &lt;strong&gt;first input item&lt;/strong&gt;.
+	 * @hint Can be found in the URL of the workflow
 	 */
 	workflowId: string | Expression<string>;
 	/**

@@ -27,6 +27,7 @@ export type LcOllamaV1ImageAnalyzeConfig = {
 	inputType?: 'binary' | 'url' | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the image(s), separate multiple field names with commas
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;

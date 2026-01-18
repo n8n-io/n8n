@@ -82,6 +82,7 @@ export type HttpRequestV43NoneConfig = {
 	responseType?: 'json' | 'html' | 'text' | Expression<string>;
 	/**
 	 * Specify the name of the field in the response containing the data
+	 * @hint leave blank to use whole response
 	 */
 	dataField?: string | Expression<string>;
 	/**
@@ -100,6 +101,7 @@ export type HttpRequestV43NoneConfig = {
 	cssSelector?: string | Expression<string>;
 	/**
 	 * Whether to return only content of html elements, stripping html tags and attributes
+	 * @hint Uses less tokens and may be easier for model to understand
 	 * @default false
 	 */
 	onlyContent?: boolean | Expression<boolean>;
@@ -178,6 +180,7 @@ export type HttpRequestV43PredefinedCredentialTypeConfig = {
 	responseType?: 'json' | 'html' | 'text' | Expression<string>;
 	/**
 	 * Specify the name of the field in the response containing the data
+	 * @hint leave blank to use whole response
 	 */
 	dataField?: string | Expression<string>;
 	/**
@@ -196,6 +199,7 @@ export type HttpRequestV43PredefinedCredentialTypeConfig = {
 	cssSelector?: string | Expression<string>;
 	/**
 	 * Whether to return only content of html elements, stripping html tags and attributes
+	 * @hint Uses less tokens and may be easier for model to understand
 	 * @default false
 	 */
 	onlyContent?: boolean | Expression<boolean>;
@@ -274,6 +278,7 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 	responseType?: 'json' | 'html' | 'text' | Expression<string>;
 	/**
 	 * Specify the name of the field in the response containing the data
+	 * @hint leave blank to use whole response
 	 */
 	dataField?: string | Expression<string>;
 	/**
@@ -292,6 +297,7 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 	cssSelector?: string | Expression<string>;
 	/**
 	 * Whether to return only content of html elements, stripping html tags and attributes
+	 * @hint Uses less tokens and may be easier for model to understand
 	 * @default false
 	 */
 	onlyContent?: boolean | Expression<boolean>;
@@ -355,6 +361,7 @@ export type HttpRequestV2NoneConfig = {
 	sendBinaryData?: boolean | Expression<boolean>;
 	/**
 	 * For Form-Data Multipart, they can be provided in the format: &lt;code&gt;"sendKey1:binaryProperty1,sendKey2:binaryProperty2&lt;/code&gt;
+	 * @hint The name of the input binary field containing the file to be uploaded
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
@@ -435,6 +442,7 @@ export type HttpRequestV2PredefinedCredentialTypeConfig = {
 	sendBinaryData?: boolean | Expression<boolean>;
 	/**
 	 * For Form-Data Multipart, they can be provided in the format: &lt;code&gt;"sendKey1:binaryProperty1,sendKey2:binaryProperty2&lt;/code&gt;
+	 * @hint The name of the input binary field containing the file to be uploaded
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
@@ -515,6 +523,7 @@ export type HttpRequestV2GenericCredentialTypeConfig = {
 	sendBinaryData?: boolean | Expression<boolean>;
 	/**
 	 * For Form-Data Multipart, they can be provided in the format: &lt;code&gt;"sendKey1:binaryProperty1,sendKey2:binaryProperty2&lt;/code&gt;
+	 * @hint The name of the input binary field containing the file to be uploaded
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
@@ -611,6 +620,7 @@ export interface HttpRequestV1Params {
 	sendBinaryData?: boolean | Expression<boolean>;
 	/**
 	 * For Form-Data Multipart, they can be provided in the format: &lt;code&gt;"sendKey1:binaryProperty1,sendKey2:binaryProperty2&lt;/code&gt;
+	 * @hint The name of the input binary field containing the file to be uploaded
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;

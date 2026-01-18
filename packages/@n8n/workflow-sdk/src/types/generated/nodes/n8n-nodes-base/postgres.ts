@@ -57,6 +57,7 @@ export interface PostgresV26Params {
 	options?: Record<string, unknown>;
 	/**
 	 * The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.
+	 * @hint Consider using query parameters to prevent SQL injection attacks. Add them in the options below
 	 */
 	query: string | Expression<string>;
 	/**
@@ -79,6 +80,7 @@ export interface PostgresV26Params {
 	sort?: Record<string, unknown>;
 	/**
 	 * The column to compare when finding the rows to update. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/" target="_blank"&gt;expression&lt;/a&gt;.
+	 * @hint The column to use when matching rows in Postgres to the input items of this node. Usually an ID.
 	 */
 	columnToMatchOn: string | Expression<string>;
 	/**

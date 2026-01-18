@@ -29,6 +29,7 @@ export type MongoDbV12SearchIndexesCreateSearchIndexConfig = {
 	indexNameRequired: string | Expression<string>;
 	/**
 	 * The search index definition
+	 * @hint Learn more about search index definitions &lt;a href="https://www.mongodb.com/docs/atlas/atlas-search/index-definitions/"&gt;here&lt;/a&gt;
 	 * @default {}
 	 */
 	indexDefinition: IDataObject | string | Expression<string>;
@@ -78,6 +79,7 @@ export type MongoDbV12SearchIndexesUpdateSearchIndexConfig = {
 	indexNameRequired: string | Expression<string>;
 	/**
 	 * The search index definition
+	 * @hint Learn more about search index definitions &lt;a href="https://www.mongodb.com/docs/atlas/atlas-search/index-definitions/"&gt;here&lt;/a&gt;
 	 * @default {}
 	 */
 	indexDefinition: IDataObject | string | Expression<string>;
@@ -93,6 +95,7 @@ export type MongoDbV12DocumentAggregateConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * MongoDB aggregation pipeline query in JSON format
+	 * @hint Learn more about aggregation pipeline &lt;a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/"&gt;here&lt;/a&gt;
 	 */
 	query: IDataObject | string | Expression<string>;
 };

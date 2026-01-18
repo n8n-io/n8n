@@ -18,6 +18,7 @@ import type { Expression, NodeConfig } from '../../../base';
 export interface SplitOutV1Params {
 	/**
 	 * The name of the input fields to break out into separate items. Separate multiple field names by commas. For binary data, use $binary.
+	 * @hint Use $binary to split out the input item by binary data
 	 */
 	fieldToSplitOut: string | Expression<string>;
 	/**

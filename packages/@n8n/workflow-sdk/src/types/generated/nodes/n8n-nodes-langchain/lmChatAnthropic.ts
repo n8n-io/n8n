@@ -2,6 +2,7 @@
  * Anthropic Chat Model Node Types
  *
  * Language Model Anthropic
+ * @subnodeType ai_languageModel
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/lmchatanthropic/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

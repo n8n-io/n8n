@@ -309,6 +309,7 @@ export type TelegramV12MessageSendAnimationConfig = {
 	binaryData: boolean | Expression<boolean>;
 	/**
 	 * Name of the binary property that contains the data to upload
+	 * @hint The name of the input binary field containing the file to be written
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
@@ -358,6 +359,7 @@ export type TelegramV12MessageSendAudioConfig = {
 	binaryData: boolean | Expression<boolean>;
 	/**
 	 * Name of the binary property that contains the data to upload
+	 * @hint The name of the input binary field containing the file to be written
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
@@ -446,6 +448,7 @@ export type TelegramV12MessageSendDocumentConfig = {
 	binaryData: boolean | Expression<boolean>;
 	/**
 	 * Name of the binary property that contains the data to upload
+	 * @hint The name of the input binary field containing the file to be written
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
@@ -638,6 +641,7 @@ export type TelegramV12MessageSendPhotoConfig = {
 	binaryData: boolean | Expression<boolean>;
 	/**
 	 * Name of the binary property that contains the data to upload
+	 * @hint The name of the input binary field containing the file to be written
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
@@ -687,6 +691,7 @@ export type TelegramV12MessageSendStickerConfig = {
 	binaryData: boolean | Expression<boolean>;
 	/**
 	 * Name of the binary property that contains the data to upload
+	 * @hint The name of the input binary field containing the file to be written
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
@@ -736,6 +741,7 @@ export type TelegramV12MessageSendVideoConfig = {
 	binaryData: boolean | Expression<boolean>;
 	/**
 	 * Name of the binary property that contains the data to upload
+	 * @hint The name of the input binary field containing the file to be written
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;

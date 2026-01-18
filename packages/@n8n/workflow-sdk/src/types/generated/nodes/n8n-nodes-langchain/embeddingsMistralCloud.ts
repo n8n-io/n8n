@@ -2,6 +2,7 @@
  * Embeddings Mistral Cloud Node Types
  *
  * Use Embeddings Mistral Cloud
+ * @subnodeType ai_embedding
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/embeddingsmistralcloud/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

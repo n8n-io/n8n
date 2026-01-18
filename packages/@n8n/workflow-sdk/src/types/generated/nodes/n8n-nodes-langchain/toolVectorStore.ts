@@ -2,6 +2,7 @@
  * Vector Store Question Answer Tool Node Types
  *
  * Answer questions with a vector store
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/toolvectorstore/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

@@ -26,6 +26,7 @@ export type WhatsAppV11MessageSendConfig = {
 	phoneNumberId: string | Expression<string>;
 	/**
 	 * Phone number of the recipient of the message
+	 * @hint When entering a phone number, make sure to include the country code
 	 */
 	recipientPhoneNumber: string | Expression<string>;
 	/**
@@ -83,6 +84,7 @@ export type WhatsAppV11MessageSendAndWaitConfig = {
 	phoneNumberId: string | Expression<string>;
 	/**
 	 * Phone number of the recipient of the message
+	 * @hint When entering a phone number, make sure to include the country code
 	 */
 	recipientPhoneNumber: string | Expression<string>;
 	message: string | Expression<string>;
@@ -104,6 +106,7 @@ export type WhatsAppV11MessageSendTemplateConfig = {
 	phoneNumberId: string | Expression<string>;
 	/**
 	 * Phone number of the recipient of the message
+	 * @hint When entering a phone number, make sure to include the country code
 	 */
 	recipientPhoneNumber: string | Expression<string>;
 	/**

@@ -2,6 +2,7 @@
  * Lemonade Model Node Types
  *
  * Language Model Lemonade
+ * @subnodeType ai_languageModel
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/lmlemonade/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

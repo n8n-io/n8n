@@ -52,6 +52,7 @@ export interface OracleDatabaseV1Params {
 	options?: Record<string, unknown>;
 	/**
 	 * The SQL statement to execute. You can use n8n expressions and positional parameters like :1, :2, :3, or named parameters like :name, :ID, etc to refer to the 'Bind Variable Placeholder Values' set in options below.
+	 * @hint Consider using bind parameters to prevent SQL injection attacks. Add them in the options below
 	 */
 	query: string | Expression<string>;
 	columns: string | Expression<string>;

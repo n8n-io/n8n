@@ -79,6 +79,7 @@ export type HighLevelV2OpportunityCreateConfig = {
 	pipelineId?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @hint There can only be one opportunity for each contact
 	 */
 	contactId: string | Expression<string>;
 	name: string | Expression<string>;
@@ -325,6 +326,7 @@ export type HighLevelV1OpportunityCreateConfig = {
 	stageId: string | Expression<string>;
 	/**
 	 * Either Email, Phone or Contact ID
+	 * @hint There can only be one opportunity for each contact.
 	 */
 	contactIdentifier: string | Expression<string>;
 	title: string | Expression<string>;

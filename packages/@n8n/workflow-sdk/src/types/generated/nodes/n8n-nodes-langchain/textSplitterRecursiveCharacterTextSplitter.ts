@@ -2,6 +2,7 @@
  * Recursive Character Text Splitter Node Types
  *
  * Split text into chunks by characters recursively, recommended for most use cases
+ * @subnodeType ai_textSplitter
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/textsplitterrecursivecharactertextsplitter/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

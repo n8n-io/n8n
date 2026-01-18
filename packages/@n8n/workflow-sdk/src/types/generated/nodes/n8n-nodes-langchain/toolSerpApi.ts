@@ -2,6 +2,7 @@
  * SerpApi (Google Search) Node Types
  *
  * Search in Google using SerpAPI
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/toolserpapi/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

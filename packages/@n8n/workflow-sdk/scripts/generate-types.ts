@@ -95,6 +95,7 @@ export interface NodeProperty {
 	displayName: string;
 	type: string;
 	description?: string;
+	hint?: string;
 	default?: unknown;
 	required?: boolean;
 	options?: Array<{ name: string; value: string | number | boolean; description?: string }>;
@@ -492,6 +493,12 @@ export function generatePropertyJSDoc(prop: NodeProperty): string {
 		.replace(/</g, '&lt;')
 		.replace(/>/g, '&gt;');
 	lines.push(` * ${safeDescription}`);
+
+	// Hint - additional guidance for users
+	if (prop.hint) {
+		const safeHint = prop.hint.replace(/\*\//g, '*\\/').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		lines.push(` * @hint ${safeHint}`);
+	}
 
 	// Default value
 	if (prop.default !== undefined && prop.default !== null && prop.default !== '') {

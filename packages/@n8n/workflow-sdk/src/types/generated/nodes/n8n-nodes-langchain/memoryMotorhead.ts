@@ -2,6 +2,7 @@
  * Motorhead Node Types
  *
  * Use Motorhead Memory
+ * @subnodeType ai_memory
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/memorymotorhead/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

@@ -31,6 +31,7 @@ export type LcGoogleGeminiV11AudioAnalyzeConfig = {
 	audioUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the audio(s), seperate multiple field names with commas
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -54,6 +55,7 @@ export type LcGoogleGeminiV11AudioTranscribeConfig = {
 	audioUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the audio(s), seperate multiple field names with commas
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -78,6 +80,7 @@ export type LcGoogleGeminiV11DocumentAnalyzeConfig = {
 	documentUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the document(s), seperate multiple field names with commas
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -148,6 +151,7 @@ export type LcGoogleGeminiV11FileSearchUploadToStoreConfig = {
 	fileUrl?: string | Expression<string>;
 	/**
 	 * Name of the binary property which contains the file
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -166,6 +170,7 @@ export type LcGoogleGeminiV11ImageAnalyzeConfig = {
 	imageUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the image(s), separate multiple field names with commas
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -217,6 +222,7 @@ export type LcGoogleGeminiV11FileUploadConfig = {
 	fileUrl?: string | Expression<string>;
 	/**
 	 * Name of the binary property which contains the file
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -255,6 +261,7 @@ export type LcGoogleGeminiV11VideoAnalyzeConfig = {
 	videoUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the video(s), seperate multiple field names with commas
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;

@@ -104,6 +104,7 @@ export type AzureCosmosDbV1ItemCreateConfig = {
 	container: ResourceLocatorValue;
 	/**
  * The item contents as a JSON object
+ * @hint The item requires an ID and partition key value if a custom key is set
  * @default {
 	"id": "replace_with_new_document_id"
 }
@@ -190,6 +191,7 @@ export type AzureCosmosDbV1ItemQueryConfig = {
 	container: ResourceLocatorValue;
 	/**
 	 * The SQL query to execute. Use $1, $2, $3, etc., to reference the 'Query Parameters' set in the options below.
+	 * @hint Consider using query parameters to prevent SQL injection attacks. Add them in the options below.
 	 */
 	query: string | Expression<string>;
 	/**

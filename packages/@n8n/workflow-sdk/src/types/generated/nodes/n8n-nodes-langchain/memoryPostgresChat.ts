@@ -2,6 +2,7 @@
  * Postgres Chat Memory Node Types
  *
  * Stores the chat history in Postgres table.
+ * @subnodeType ai_memory
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/memorypostgreschat/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

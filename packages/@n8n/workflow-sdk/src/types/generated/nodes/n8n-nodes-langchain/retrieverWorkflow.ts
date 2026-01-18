@@ -2,6 +2,7 @@
  * Workflow Retriever Node Types
  *
  * Use an n8n Workflow as Retriever
+ * @subnodeType ai_retriever
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/retrieverworkflow/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

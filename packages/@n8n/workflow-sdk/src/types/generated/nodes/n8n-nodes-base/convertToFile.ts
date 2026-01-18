@@ -42,6 +42,7 @@ export interface ConvertToFileV11Params {
 	start: string | Expression<string>;
 	/**
 	 * Date and time at which the event ends. (For all-day events, the time will be ignored.).
+	 * @hint If not set, will be equal to the start date
 	 */
 	end: string | Expression<string>;
 	/**

@@ -2,6 +2,7 @@
  * Default Data Loader Node Types
  *
  * Load data from previous step in the workflow
+ * @subnodeType ai_document
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/documentdefaultdataloader/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

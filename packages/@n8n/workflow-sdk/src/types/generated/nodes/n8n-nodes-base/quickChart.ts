@@ -38,6 +38,7 @@ export interface QuickChartV1Params {
 	data: IDataObject | string | Expression<string>;
 	/**
 	 * The binary data will be displayed in the Output panel on the right, under the Binary tab
+	 * @hint The name of the output field to put the binary file data in
 	 * @default data
 	 */
 	output: string | Expression<string>;

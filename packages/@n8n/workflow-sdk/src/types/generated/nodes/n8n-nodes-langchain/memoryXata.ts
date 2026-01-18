@@ -2,6 +2,7 @@
  * Xata Node Types
  *
  * Use Xata Memory
+ * @subnodeType ai_memory
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/memoryxata/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

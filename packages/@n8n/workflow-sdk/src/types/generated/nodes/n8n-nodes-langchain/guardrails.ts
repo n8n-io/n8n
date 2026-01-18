@@ -26,6 +26,7 @@ export interface LcGuardrailsV2Params {
 	customizeSystemMessage?: boolean | Expression<boolean>;
 	/**
  * The system message used by the guardrail to enforce thresholds and JSON output according to schema
+ * @hint This message is appended after prompts defined by guardrails
  * @default Only respond with the json object and nothing else.
 
 **IMPORTANT:**
@@ -62,6 +63,7 @@ export interface LcGuardrailsV1Params {
 	customizeSystemMessage?: boolean | Expression<boolean>;
 	/**
  * The system message used by the guardrail to enforce thresholds and JSON output according to schema
+ * @hint This message is appended after prompts defined by guardrails
  * @default Only respond with the json object and nothing else.
 
 **IMPORTANT:**

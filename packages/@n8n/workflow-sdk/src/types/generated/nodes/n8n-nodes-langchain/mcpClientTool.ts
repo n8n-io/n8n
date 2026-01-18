@@ -2,6 +2,7 @@
  * MCP Client Tool Node Types
  *
  * Connect tools from an MCP Server
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/mcpclienttool/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

@@ -2,6 +2,7 @@
  * Cohere Model Node Types
  *
  * Language Model Cohere
+ * @subnodeType ai_languageModel
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/lmcohere/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

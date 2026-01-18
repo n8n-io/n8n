@@ -47,6 +47,7 @@ export interface MySqlV25Params {
 	options?: Record<string, unknown>;
 	/**
 	 * The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.
+	 * @hint Consider using query parameters to prevent SQL injection attacks. Add them in the options below
 	 */
 	query: string | Expression<string>;
 	/**
@@ -68,6 +69,7 @@ export interface MySqlV25Params {
 	sort?: Record<string, unknown>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/" target="_blank"&gt;expression&lt;/a&gt;
+	 * @hint Used to find the correct row to update. Doesn't get changed.
 	 */
 	columnToMatchOn: string | Expression<string>;
 	/**

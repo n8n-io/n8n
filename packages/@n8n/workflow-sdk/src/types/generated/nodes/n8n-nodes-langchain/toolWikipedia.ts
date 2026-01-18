@@ -2,6 +2,7 @@
  * Wikipedia Node Types
  *
  * Search in Wikipedia
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/toolwikipedia/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

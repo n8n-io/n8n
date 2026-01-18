@@ -2,6 +2,7 @@
  * Wolfram|Alpha Node Types
  *
  * Connects to WolframAlpha's computational intelligence engine.
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/toolwolframalpha/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

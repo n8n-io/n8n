@@ -2,6 +2,7 @@
  * Hugging Face Inference Model Node Types
  *
  * Language Model HuggingFaceInference
+ * @subnodeType ai_languageModel
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/lmopenhuggingfaceinference/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

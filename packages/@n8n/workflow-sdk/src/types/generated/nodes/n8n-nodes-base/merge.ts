@@ -41,6 +41,7 @@ export type MergeV32CombineConfig = {
 	advanced?: boolean | Expression<boolean>;
 	/**
 	 * Specify the fields to use for matching input items
+	 * @hint Drag or type the input field name
 	 */
 	fieldsToMatchString?: string | Expression<string>;
 	/**
@@ -77,6 +78,7 @@ export type MergeV32CombineBySqlConfig = {
 	numberInputs?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Expression<number>;
 	/**
 	 * Input data available as tables with corresponding number, e.g. input1, input2
+	 * @hint Supports &lt;a href="https://github.com/alasql/alasql/wiki/Supported-SQL-statements" target="_blank"&gt;most&lt;/a&gt; of the SQL-99 language
 	 * @default SELECT * FROM input1 LEFT JOIN input2 ON input1.name = input2.id
 	 */
 	query: string | Expression<string>;
@@ -148,10 +150,12 @@ export type MergeV1KeepKeyMatchesConfig = {
 	mode: 'keepKeyMatches';
 	/**
 	 * Name of property which decides which items to merge of input 1
+	 * @hint The name of the field as text (e.g. “id”)
 	 */
 	propertyName1: string | Expression<string>;
 	/**
 	 * Name of property which decides which items to merge of input 2
+	 * @hint The name of the field as text (e.g. “id”)
 	 */
 	propertyName2: string | Expression<string>;
 };
@@ -171,10 +175,12 @@ export type MergeV1MergeByKeyConfig = {
 	mode: 'mergeByKey';
 	/**
 	 * Name of property which decides which items to merge of input 1
+	 * @hint The name of the field as text (e.g. “id”)
 	 */
 	propertyName1: string | Expression<string>;
 	/**
 	 * Name of property which decides which items to merge of input 2
+	 * @hint The name of the field as text (e.g. “id”)
 	 */
 	propertyName2: string | Expression<string>;
 	/**
@@ -204,10 +210,12 @@ export type MergeV1RemoveKeyMatchesConfig = {
 	mode: 'removeKeyMatches';
 	/**
 	 * Name of property which decides which items to merge of input 1
+	 * @hint The name of the field as text (e.g. “id”)
 	 */
 	propertyName1: string | Expression<string>;
 	/**
 	 * Name of property which decides which items to merge of input 2
+	 * @hint The name of the field as text (e.g. “id”)
 	 */
 	propertyName2: string | Expression<string>;
 };

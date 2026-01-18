@@ -20,6 +20,7 @@ interface NodeProperty {
 	displayName: string;
 	type: string;
 	description?: string;
+	hint?: string;
 	default?: unknown;
 	required?: boolean;
 	options?: Array<{ name: string; value: string | number | boolean; description?: string }>;
@@ -614,6 +615,35 @@ describe('generate-types', () => {
 			// Should have valid JSDoc structure
 			expect(result).toContain('/**');
 			expect(result).toContain('*/');
+		});
+
+		it('should include hint in JSDoc when provided', () => {
+			const prop: NodeProperty = {
+				name: 'limit',
+				displayName: 'Limit',
+				type: 'number',
+				description: 'Max number of results to return',
+				hint: 'If empty, all the records will be returned',
+				default: 50,
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			// Should include hint with @hint tag
+			expect(result).toContain('@hint If empty, all the records will be returned');
+		});
+
+		it('should escape HTML in hint text', () => {
+			const prop: NodeProperty = {
+				name: 'schema',
+				displayName: 'Schema',
+				type: 'string',
+				description: 'Output schema',
+				hint: 'Generate one at <a href="https://example.com">Example</a>',
+				default: '',
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			// Should escape HTML in hint
+			expect(result).toContain('@hint');
+			expect(result).toContain('&lt;a href=');
 		});
 	});
 

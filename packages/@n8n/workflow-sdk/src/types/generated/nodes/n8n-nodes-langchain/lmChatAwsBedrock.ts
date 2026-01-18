@@ -2,6 +2,7 @@
  * AWS Bedrock Chat Model Node Types
  *
  * Language Model AWS Bedrock
+ * @subnodeType ai_languageModel
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/lmchatawsbedrock/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

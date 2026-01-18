@@ -37,6 +37,7 @@ export type SwitchV34ExpressionConfig = {
 	numberOutputs?: number | Expression<number>;
 	/**
 	 * The output index to send the input item to. Use an expression to calculate which input item should be routed to which output. The expression must return a number.
+	 * @hint The index to route the item to, starts at 0
 	 * @default ={{}}
 	 */
 	output?: number | Expression<number>;

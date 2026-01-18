@@ -2,6 +2,7 @@
  * xAI Grok Chat Model Node Types
  *
  * For advanced usage with an AI chain
+ * @subnodeType ai_languageModel
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/lmchatxaigrok/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

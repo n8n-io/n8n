@@ -19,6 +19,7 @@ export interface CompressionV11Params {
 	operation?: 'compress' | 'decompress' | Expression<string>;
 	/**
 	 * To process more than one file, use a comma-separated list of the binary fields names
+	 * @hint The name of the input binary field(s) containing the file(s) to be compressed
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;

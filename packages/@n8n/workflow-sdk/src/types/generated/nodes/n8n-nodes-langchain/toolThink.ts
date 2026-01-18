@@ -2,6 +2,7 @@
  * Think Tool Node Types
  *
  * Invite the AI agent to do some thinking
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/toolthink/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

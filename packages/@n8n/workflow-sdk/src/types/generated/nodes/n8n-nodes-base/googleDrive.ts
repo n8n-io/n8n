@@ -148,6 +148,7 @@ export type GoogleDriveV3FileUpdateConfig = {
 	changeFileContent?: boolean | Expression<boolean>;
 	/**
 	 * Find the name of input field containing the binary data to update the file in the Input panel on the left, in the Binary tab
+	 * @hint The name of the input field containing the binary file data to update the file
 	 * @default data
 	 */
 	inputDataFieldName?: string | Expression<string>;
@@ -164,6 +165,7 @@ export type GoogleDriveV3FileUploadConfig = {
 	operation: 'upload';
 	/**
 	 * Find the name of input field containing the binary data to update the file in the Input panel on the left, in the Binary tab
+	 * @hint The name of the input field containing the binary file data to update the file
 	 * @default data
 	 */
 	inputDataFieldName: string | Expression<string>;
@@ -357,6 +359,7 @@ export type GoogleDriveV2DriveDeleteConfig = {
 	options?: Record<string, unknown>;
 	/**
 	 * The ID of the drive
+	 * @hint The Google Drive drive to operate on
 	 * @default {"mode":"list","value":""}
 	 */
 	driveId: ResourceLocatorValue;
@@ -369,6 +372,7 @@ export type GoogleDriveV2DriveGetConfig = {
 	options?: Record<string, unknown>;
 	/**
 	 * The ID of the drive
+	 * @hint The Google Drive drive to operate on
 	 * @default {"mode":"list","value":""}
 	 */
 	driveId: ResourceLocatorValue;
@@ -398,6 +402,7 @@ export type GoogleDriveV2DriveUpdateConfig = {
 	options?: Record<string, unknown>;
 	/**
 	 * The ID of the drive
+	 * @hint The Google Drive drive to operate on
 	 * @default {"mode":"list","value":""}
 	 */
 	driveId: ResourceLocatorValue;

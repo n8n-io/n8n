@@ -391,6 +391,7 @@ export type SlackV24MessagePostConfig = {
 	text: string | Expression<string>;
 	/**
 	 * Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks. To create blocks, use &lt;a target='_blank' href='https://app.slack.com/block-kit-builder'&gt;Slack's Block Kit Builder&lt;/a&gt;
+	 * @hint To create blocks, use &lt;a target='_blank' href='https://app.slack.com/block-kit-builder'&gt;Slack's Block Kit Builder&lt;/a&gt;
 	 */
 	blocksUi: string | Expression<string>;
 	attachments?: Record<string, unknown>;
@@ -439,6 +440,7 @@ export type SlackV24MessageUpdateConfig = {
 	messageType?: 'text' | 'block' | 'attachment' | Expression<string>;
 	/**
 	 * Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks. To create blocks, use &lt;a target='_blank' href='https://app.slack.com/block-kit-builder'&gt;Slack's Block Kit Builder&lt;/a&gt;
+	 * @hint To create blocks, use &lt;a target='_blank' href='https://app.slack.com/block-kit-builder'&gt;Slack's Block Kit Builder&lt;/a&gt;
 	 */
 	blocksUi: string | Expression<string>;
 	/**

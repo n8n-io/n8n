@@ -22,10 +22,12 @@ export interface AmqpTriggerV1Params {
 	sink?: string | Expression<string>;
 	/**
 	 * Leave empty for non-durable topic subscriptions or queues
+	 * @hint for durable/persistent topic subscriptions
 	 */
 	clientname?: string | Expression<string>;
 	/**
 	 * Leave empty for non-durable topic subscriptions or queues
+	 * @hint for durable/persistent topic subscriptions
 	 */
 	subscription?: string | Expression<string>;
 	options?: Record<string, unknown>;

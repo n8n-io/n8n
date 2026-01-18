@@ -64,6 +64,7 @@ export type LcOpenAiV21ImageAnalyzeConfig = {
 	imageUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary property which contains the image(s)
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -111,6 +112,7 @@ export type LcOpenAiV21ImageEditConfig = {
 	images?: Record<string, unknown>;
 	/**
 	 * Name of the binary property which contains the image. It should be a square png file less than 4MB.
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -177,6 +179,7 @@ export type LcOpenAiV21AudioTranscribeConfig = {
 	operation: 'transcribe';
 	/**
 	 * Name of the binary property which contains the audio file in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -189,6 +192,7 @@ export type LcOpenAiV21AudioTranslateConfig = {
 	operation: 'translate';
 	/**
 	 * Name of the binary property which contains the audio file in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -215,6 +219,7 @@ export type LcOpenAiV21FileUploadConfig = {
 	operation: 'upload';
 	/**
 	 * Name of the binary property which contains the file. The size of individual files can be a maximum of 512 MB or 2 million tokens for Assistants.
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -334,6 +339,7 @@ export type LcOpenAiV18AssistantCreateConfig = {
 	knowledgeRetrieval?: boolean | Expression<boolean>;
 	/**
 	 * The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant. You can use expression to pass file IDs as an array or comma-separated string.
+	 * @hint Add more files by using the 'Upload a File' operation
 	 * @default []
 	 */
 	file_ids?: string[];
@@ -376,6 +382,7 @@ export type LcOpenAiV18AssistantMessageConfig = {
 	memory?: 'connector' | 'threadId' | Expression<string>;
 	/**
 	 * The ID of the thread to continue, a new thread will be created if not specified
+	 * @hint If the thread ID is empty or undefined a new thread will be created and included in the response
 	 */
 	threadId?: string | Expression<string>;
 	/**
@@ -446,6 +453,7 @@ export type LcOpenAiV18ImageAnalyzeConfig = {
 	imageUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary property which contains the image(s)
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -496,6 +504,7 @@ export type LcOpenAiV18AudioTranscribeConfig = {
 	operation: 'transcribe';
 	/**
 	 * Name of the binary property which contains the audio file in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -508,6 +517,7 @@ export type LcOpenAiV18AudioTranslateConfig = {
 	operation: 'translate';
 	/**
 	 * Name of the binary property which contains the audio file in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -534,6 +544,7 @@ export type LcOpenAiV18FileUploadConfig = {
 	operation: 'upload';
 	/**
 	 * Name of the binary property which contains the file. The size of individual files can be a maximum of 512 MB or 2 million tokens for Assistants.
+	 * @hint The name of the input field containing the binary file data to be processed
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;

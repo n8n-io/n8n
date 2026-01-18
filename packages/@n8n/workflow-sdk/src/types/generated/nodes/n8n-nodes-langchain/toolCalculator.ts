@@ -2,6 +2,7 @@
  * Calculator Node Types
  *
  * Make it easier for AI agents to perform arithmetic
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/toolcalculator/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

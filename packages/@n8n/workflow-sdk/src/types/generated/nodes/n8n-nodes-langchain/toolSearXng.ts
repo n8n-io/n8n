@@ -2,6 +2,7 @@
  * SearXNG Node Types
  *
  * Search in SearXNG
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/toolsearxng/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

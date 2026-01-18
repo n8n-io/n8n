@@ -2,6 +2,7 @@
  * Simple Memory Node Types
  *
  * Stores in n8n memory, so no credentials required
+ * @subnodeType ai_memory
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/memorybufferwindow/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

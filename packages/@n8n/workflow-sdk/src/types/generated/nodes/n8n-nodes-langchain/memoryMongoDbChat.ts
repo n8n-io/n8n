@@ -2,6 +2,7 @@
  * MongoDB Chat Memory Node Types
  *
  * Stores the chat history in MongoDB collection.
+ * @subnodeType ai_memory
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/memorymongodbchat/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

@@ -2,6 +2,7 @@
  * Call n8n Workflow Tool Node Types
  *
  * Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/toolworkflow/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
@@ -55,6 +56,7 @@ export interface LcToolWorkflowV13Params {
 	source?: 'database' | 'parameter' | Expression<string>;
 	/**
 	 * The workflow to execute
+	 * @hint Can be found in the URL of the workflow
 	 */
 	workflowId: string | Expression<string>;
 	/**
@@ -73,6 +75,7 @@ export interface LcToolWorkflowV13Params {
 	workflowJson: IDataObject | string | Expression<string>;
 	/**
 	 * Where to find the data that this tool should return. n8n will look in the output of the last-executed node of the workflow for a field with this name, and return its value.
+	 * @hint The field in the last-executed node of the workflow that contains the response
 	 * @default response
 	 */
 	responsePropertyName: string | Expression<string>;
@@ -100,6 +103,7 @@ export interface LcToolWorkflowV13Params {
 	jsonSchemaExample?: IDataObject | string | Expression<string>;
 	/**
  * Schema to use for the function
+ * @hint Use &lt;a target="_blank" href="https://json-schema.org/"&gt;JSON Schema&lt;/a&gt; format (&lt;a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html"&gt;examples&lt;/a&gt;). $refs syntax is currently not supported.
  * @default {
 "type": "object",
 "properties": {

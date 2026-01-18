@@ -2,6 +2,7 @@
  * Redis Chat Memory Node Types
  *
  * Stores the chat history in Redis.
+ * @subnodeType ai_memory
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/memoryredischat/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

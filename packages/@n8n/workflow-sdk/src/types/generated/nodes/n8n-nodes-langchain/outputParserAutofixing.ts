@@ -2,6 +2,7 @@
  * Auto-fixing Output Parser Node Types
  *
  * Deprecated, use structured output parser
+ * @subnodeType ai_outputParser
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/outputparserautofixing/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.

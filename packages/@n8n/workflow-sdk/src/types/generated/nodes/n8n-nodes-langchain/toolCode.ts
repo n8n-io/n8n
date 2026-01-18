@@ -2,6 +2,7 @@
  * Code Tool Node Types
  *
  * Write a tool in JS or Python
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/toolcode/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
@@ -22,12 +23,14 @@ export interface LcToolCodeV13Params {
 	language?: 'javaScript' | 'python' | Expression<string>;
 	/**
  * E.g. Converts any text to uppercase
+ * @hint You can access the input the tool receives via the input property "query". The returned value should be a single string.
  * @default // Example: convert the incoming query to uppercase and return it
 return query.toUpperCase()
  */
 	jsCode?: string | Expression<string>;
 	/**
  * E.g. Converts any text to uppercase
+ * @hint You can access the input the tool receives via the input property "_query". The returned value should be a single string.
  * @default # Example: convert the incoming query to uppercase and return it
 return _query.upper()
  */
@@ -51,6 +54,7 @@ return _query.upper()
 	jsonSchemaExample?: IDataObject | string | Expression<string>;
 	/**
  * Schema to use for the function
+ * @hint Use &lt;a target="_blank" href="https://json-schema.org/"&gt;JSON Schema&lt;/a&gt; format (&lt;a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html"&gt;examples&lt;/a&gt;). $refs syntax is currently not supported.
  * @default {
 "type": "object",
 "properties": {

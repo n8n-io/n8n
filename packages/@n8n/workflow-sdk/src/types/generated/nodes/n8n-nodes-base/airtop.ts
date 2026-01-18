@@ -66,6 +66,7 @@ export type AirtopV11ExtractionQueryConfig = {
 	url: string | Expression<string>;
 	/**
 	 * The name of the Airtop profile to load or create
+	 * @hint &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Learn more&lt;/a&gt; about Airtop profiles
 	 */
 	profileName?: string | Expression<string>;
 	/**
@@ -105,6 +106,7 @@ export type AirtopV11ExtractionGetPaginatedConfig = {
 	url: string | Expression<string>;
 	/**
 	 * The name of the Airtop profile to load or create
+	 * @hint &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Learn more&lt;/a&gt; about Airtop profiles
 	 */
 	profileName?: string | Expression<string>;
 	/**
@@ -144,6 +146,7 @@ export type AirtopV11ExtractionScrapeConfig = {
 	url: string | Expression<string>;
 	/**
 	 * The name of the Airtop profile to load or create
+	 * @hint &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Learn more&lt;/a&gt; about Airtop profiles
 	 */
 	profileName?: string | Expression<string>;
 	/**
@@ -428,6 +431,7 @@ export type AirtopV11SessionCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the Airtop profile to load or create
+	 * @hint &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Learn more&lt;/a&gt; about Airtop profiles
 	 */
 	profileName?: string | Expression<string>;
 	/**
@@ -473,6 +477,7 @@ export type AirtopV11SessionSaveConfig = {
 	sessionId: string | Expression<string>;
 	/**
 	 * The name of the &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Profile&lt;/a&gt; to save
+	 * @hint Name of the profile you want to save. Must consist only of alphanumeric characters and hyphens "-"
 	 */
 	profileName: string | Expression<string>;
 };

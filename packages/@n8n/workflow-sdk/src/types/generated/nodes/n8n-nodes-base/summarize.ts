@@ -19,6 +19,7 @@ export interface SummarizeV11Params {
 	fieldsToSummarize?: Record<string, unknown>;
 	/**
 	 * The name of the input fields that you want to split the summary by
+	 * @hint Enter the name of the fields as text (separated by commas)
 	 */
 	fieldsToSplitBy?: string | Expression<string>;
 	options?: Record<string, unknown>;

@@ -2,6 +2,7 @@
  * AI Agent Tool Node Types
  *
  * Generates an action plan and executes it. Can use external tools.
+ * @subnodeType ai_tool
  * @see https://docs.n8n.io/integrations/builtin/app-nodes/agenttool/
  *
  * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
