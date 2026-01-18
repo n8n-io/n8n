@@ -21,15 +21,18 @@ export type JenkinsV1BuildGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Name of the job. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["build"], operation: ["getAll"] }
 	 */
 	job: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["build"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["build"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -47,6 +50,7 @@ export type JenkinsV1InstanceQuietDownConfig = {
 	operation: 'quietDown';
 	/**
 	 * Freeform reason for quiet down mode
+	 * @displayOptions.show { resource: ["instance"], operation: ["quietDown"] }
 	 */
 	reason?: string | Expression<string>;
 };
@@ -81,10 +85,12 @@ export type JenkinsV1JobCopyConfig = {
 	operation: 'copy';
 	/**
 	 * Name of the job. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["job"], operation: ["trigger", "triggerParams", "copy"] }
 	 */
 	job: string | Expression<string>;
 	/**
 	 * Name of the new Jenkins job
+	 * @displayOptions.show { resource: ["job"], operation: ["copy", "create"] }
 	 */
 	newJob: string | Expression<string>;
 };
@@ -95,10 +101,12 @@ export type JenkinsV1JobCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the new Jenkins job
+	 * @displayOptions.show { resource: ["job"], operation: ["copy", "create"] }
 	 */
 	newJob: string | Expression<string>;
 	/**
 	 * XML of Jenkins config
+	 * @displayOptions.show { resource: ["job"], operation: ["create"] }
 	 */
 	xml: string | Expression<string>;
 };
@@ -109,6 +117,7 @@ export type JenkinsV1JobTriggerConfig = {
 	operation: 'trigger';
 	/**
 	 * Name of the job. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["job"], operation: ["trigger", "triggerParams", "copy"] }
 	 */
 	job: string | Expression<string>;
 };
@@ -119,14 +128,23 @@ export type JenkinsV1JobTriggerParamsConfig = {
 	operation: 'triggerParams';
 	/**
 	 * Name of the job. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["job"], operation: ["trigger", "triggerParams", "copy"] }
 	 */
 	job: string | Expression<string>;
 	/**
 	 * Parameters for Jenkins job
+	 * @displayOptions.show { resource: ["job"], operation: ["triggerParams"] }
 	 * @default {}
 	 */
 	param: {
-		params?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		params?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
+			name?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 

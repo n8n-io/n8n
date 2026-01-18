@@ -19,6 +19,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../base'
 export interface LcMemoryRedisChatV15Params {
 	/**
 	 * The key to use to store the memory in the workflow data
+	 * @displayOptions.show { @version: [1] }
 	 * @default chat_history
 	 */
 	sessionKey?: string | Expression<string>;

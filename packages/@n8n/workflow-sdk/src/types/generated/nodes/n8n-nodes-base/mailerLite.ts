@@ -21,6 +21,7 @@ export type MailerLiteV2SubscriberCreateConfig = {
 	operation: 'create';
 	/**
 	 * Email of new subscriber
+	 * @displayOptions.show { resource: ["subscriber"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -32,6 +33,7 @@ export type MailerLiteV2SubscriberGetConfig = {
 	operation: 'get';
 	/**
 	 * Email of subscriber to get
+	 * @displayOptions.show { resource: ["subscriber"], operation: ["get"] }
 	 */
 	subscriberId: string | Expression<string>;
 };
@@ -42,11 +44,13 @@ export type MailerLiteV2SubscriberGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["subscriber"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["subscriber"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -59,6 +63,7 @@ export type MailerLiteV2SubscriberUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Email of subscriber
+	 * @displayOptions.show { resource: ["subscriber"], operation: ["update"] }
 	 */
 	subscriberId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -76,6 +81,7 @@ export type MailerLiteV1SubscriberCreateConfig = {
 	operation: 'create';
 	/**
 	 * Email of new subscriber
+	 * @displayOptions.show { resource: ["subscriber"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -87,6 +93,7 @@ export type MailerLiteV1SubscriberGetConfig = {
 	operation: 'get';
 	/**
 	 * Email of subscriber to get
+	 * @displayOptions.show { resource: ["subscriber"], operation: ["get"] }
 	 */
 	subscriberId: string | Expression<string>;
 };
@@ -97,11 +104,13 @@ export type MailerLiteV1SubscriberGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["subscriber"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["subscriber"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -114,6 +123,7 @@ export type MailerLiteV1SubscriberUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Email of subscriber
+	 * @displayOptions.show { resource: ["subscriber"], operation: ["update"] }
 	 */
 	subscriberId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

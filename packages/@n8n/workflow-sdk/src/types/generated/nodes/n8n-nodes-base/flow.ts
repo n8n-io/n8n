@@ -21,10 +21,12 @@ export type FlowV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * Create resources under the given workspace
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	workspaceId: string | Expression<string>;
 	/**
 	 * The title of the task
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -36,6 +38,7 @@ export type FlowV1TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Create resources under the given workspace
+	 * @displayOptions.show { resource: ["task"], operation: ["update"] }
 	 */
 	workspaceId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -56,11 +59,13 @@ export type FlowV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

@@ -21,6 +21,7 @@ export type HomeAssistantV1CameraProxyGetScreenshotConfig = {
 	operation: 'getScreenshot';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getScreenshot"], resource: ["cameraProxy"] }
 	 */
 	cameraEntityId: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
@@ -44,10 +45,18 @@ export type HomeAssistantV1EventCreateConfig = {
 	operation: 'create';
 	/**
 	 * The Entity ID for which an event will be created
+	 * @displayOptions.show { operation: ["create"], resource: ["event"] }
 	 */
 	eventType: string | Expression<string>;
 	eventAttributes?: {
-		attributes?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		attributes?: Array<{
+			/** Name of the attribute
+			 */
+			name?: string | Expression<string>;
+			/** Value of the attribute
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -57,11 +66,13 @@ export type HomeAssistantV1EventGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["event"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["event"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -86,14 +97,23 @@ export type HomeAssistantV1ServiceCallConfig = {
 	operation: 'call';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["service"], operation: ["call"] }
 	 */
 	domain: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["service"], operation: ["call"] }
 	 */
 	service: string | Expression<string>;
 	serviceAttributes?: {
-		attributes?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		attributes?: Array<{
+			/** Name of the field
+			 */
+			name?: string | Expression<string>;
+			/** Value of the field
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -103,11 +123,13 @@ export type HomeAssistantV1ServiceGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["service"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["service"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -119,11 +141,19 @@ export type HomeAssistantV1StateUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * The entity ID for which a state will be created. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["upsert"], resource: ["state"] }
 	 */
 	entityId: string | Expression<string>;
 	state: string | Expression<string>;
 	stateAttributes?: {
-		attributes?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		attributes?: Array<{
+			/** Name of the attribute
+			 */
+			name?: string | Expression<string>;
+			/** Value of the attribute
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -133,6 +163,7 @@ export type HomeAssistantV1StateGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["get"], resource: ["state"] }
 	 */
 	entityId: string | Expression<string>;
 };
@@ -143,11 +174,13 @@ export type HomeAssistantV1StateGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["state"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["state"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -159,6 +192,7 @@ export type HomeAssistantV1TemplateCreateConfig = {
 	operation: 'create';
 	/**
 	 * Render a Home Assistant template. &lt;a href="https://www.home-assistant.io/docs/configuration/templating/"&gt;See template docs for more information.&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["template"], operation: ["create"] }
 	 */
 	template: string | Expression<string>;
 };

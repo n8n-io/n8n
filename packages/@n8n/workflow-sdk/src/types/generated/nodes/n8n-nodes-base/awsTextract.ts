@@ -20,11 +20,13 @@ export interface AwsTextractV1Params {
 	operation?: 'analyzeExpense' | Expression<string>;
 	/**
 	 * The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.
+	 * @displayOptions.show { operation: ["analyzeExpense"] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { operation: ["analyzeExpense"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;

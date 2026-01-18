@@ -33,11 +33,13 @@ export type GongV1CallGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["call"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["call"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -60,11 +62,13 @@ export type GongV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

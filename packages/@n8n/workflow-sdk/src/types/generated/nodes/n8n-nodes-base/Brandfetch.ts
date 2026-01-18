@@ -23,12 +23,14 @@ export interface BrandfetchV1Params {
 	domain: string | Expression<string>;
 	/**
 	 * Name of the binary property to which to write the data of the read file
+	 * @displayOptions.show { operation: ["logo"] }
 	 * @default false
 	 */
 	download: boolean | Expression<boolean>;
 	imageTypes: Array<'icon' | 'logo'>;
 	/**
 	 * The image format in which the logo should be returned as
+	 * @displayOptions.show { operation: ["logo"], download: [true] }
 	 * @default ["png"]
 	 */
 	imageFormats: Array<'png' | 'svg'>;

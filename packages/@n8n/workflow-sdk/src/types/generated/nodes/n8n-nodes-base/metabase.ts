@@ -52,6 +52,7 @@ export type MetabaseV1DatabasesGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["databases"], operation: ["getAll"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;

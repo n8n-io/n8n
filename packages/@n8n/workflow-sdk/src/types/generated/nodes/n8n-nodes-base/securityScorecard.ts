@@ -21,15 +21,18 @@ export type SecurityScorecardV1CompanyGetFactorConfig = {
 	operation: 'getFactor';
 	/**
 	 * Primary identifier of a company or scorecard, i.e. domain.
+	 * @displayOptions.show { resource: ["company"], operation: ["getScorecard", "getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"] }
 	 */
 	scorecardIdentifier: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -42,20 +45,24 @@ export type SecurityScorecardV1CompanyGetFactorHistoricalConfig = {
 	operation: 'getFactorHistorical';
 	/**
 	 * Primary identifier of a company or scorecard, i.e. domain.
+	 * @displayOptions.show { resource: ["company"], operation: ["getScorecard", "getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"] }
 	 */
 	scorecardIdentifier: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["company"], operation: ["getFactorHistorical", "getHistoricalScore"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -68,20 +75,24 @@ export type SecurityScorecardV1CompanyGetHistoricalScoreConfig = {
 	operation: 'getHistoricalScore';
 	/**
 	 * Primary identifier of a company or scorecard, i.e. domain.
+	 * @displayOptions.show { resource: ["company"], operation: ["getScorecard", "getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"] }
 	 */
 	scorecardIdentifier: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["company"], operation: ["getFactorHistorical", "getHistoricalScore"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -94,6 +105,7 @@ export type SecurityScorecardV1CompanyGetScorecardConfig = {
 	operation: 'getScorecard';
 	/**
 	 * Primary identifier of a company or scorecard, i.e. domain.
+	 * @displayOptions.show { resource: ["company"], operation: ["getScorecard", "getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"] }
 	 */
 	scorecardIdentifier: string | Expression<string>;
 };
@@ -104,20 +116,24 @@ export type SecurityScorecardV1CompanyGetScorePlanConfig = {
 	operation: 'getScorePlan';
 	/**
 	 * Primary identifier of a company or scorecard, i.e. domain.
+	 * @displayOptions.show { resource: ["company"], operation: ["getScorecard", "getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"] }
 	 */
 	scorecardIdentifier: string | Expression<string>;
 	/**
 	 * Score target
+	 * @displayOptions.show { resource: ["company"], operation: ["getScorePlan"] }
 	 * @default 0
 	 */
 	score: number | Expression<number>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getFactor", "getFactorHistorical", "getHistoricalScore", "getScorePlan"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -130,16 +146,19 @@ export type SecurityScorecardV1IndustryGetFactorConfig = {
 	industry: 'food' | 'healthcare' | 'manofacturing' | 'retail' | 'technology' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["industry"], operation: ["getFactor", "getFactorHistorical"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["industry"], operation: ["getFactor", "getFactorHistorical"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["industry"], operation: ["getFactor", "getFactorHistorical"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -152,16 +171,19 @@ export type SecurityScorecardV1IndustryGetFactorHistoricalConfig = {
 	industry: 'food' | 'healthcare' | 'manofacturing' | 'retail' | 'technology' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["industry"], operation: ["getFactor", "getFactorHistorical"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["industry"], operation: ["getFactor", "getFactorHistorical"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["industry"], operation: ["getFactor", "getFactorHistorical"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -183,6 +205,7 @@ export type SecurityScorecardV1InviteCreateConfig = {
 	lastName: string | Expression<string>;
 	/**
 	 * Message for the invitee
+	 * @displayOptions.show { resource: ["invite"], operation: ["create"] }
 	 */
 	message: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -194,6 +217,7 @@ export type SecurityScorecardV1PortfolioCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the portfolio
+	 * @displayOptions.show { resource: ["portfolio"], operation: ["create", "update"] }
 	 */
 	name: string | Expression<string>;
 	description?: string | Expression<string>;
@@ -213,11 +237,13 @@ export type SecurityScorecardV1PortfolioGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["portfolio"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["portfolio"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -230,6 +256,7 @@ export type SecurityScorecardV1PortfolioUpdateConfig = {
 	portfolioId: string | Expression<string>;
 	/**
 	 * Name of the portfolio
+	 * @displayOptions.show { resource: ["portfolio"], operation: ["create", "update"] }
 	 */
 	name: string | Expression<string>;
 	description?: string | Expression<string>;
@@ -243,6 +270,7 @@ export type SecurityScorecardV1PortfolioCompanyAddConfig = {
 	portfolioId: string | Expression<string>;
 	/**
 	 * Company's domain name
+	 * @displayOptions.show { resource: ["portfolioCompany"], operation: ["add", "remove"] }
 	 */
 	domain: string | Expression<string>;
 };
@@ -254,11 +282,13 @@ export type SecurityScorecardV1PortfolioCompanyGetAllConfig = {
 	portfolioId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["portfolioCompany"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["portfolioCompany"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -272,6 +302,7 @@ export type SecurityScorecardV1PortfolioCompanyRemoveConfig = {
 	portfolioId: string | Expression<string>;
 	/**
 	 * Company's domain name
+	 * @displayOptions.show { resource: ["portfolioCompany"], operation: ["add", "remove"] }
 	 */
 	domain: string | Expression<string>;
 };
@@ -282,6 +313,7 @@ export type SecurityScorecardV1ReportDownloadConfig = {
 	operation: 'download';
 	/**
 	 * URL to a generated report
+	 * @displayOptions.show { resource: ["report"], operation: ["download"] }
 	 */
 	url: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
@@ -303,6 +335,7 @@ export type SecurityScorecardV1ReportGenerateConfig = {
 		| Expression<string>;
 	/**
 	 * Primary identifier of a company or scorecard, i.e. domain.
+	 * @displayOptions.show { resource: ["report"], operation: ["generate"], report: ["detailed", "events-json", "full-scorecard-json", "issues", "partnership", "scorecard-footprint", "summary"] }
 	 */
 	scorecardIdentifier: string | Expression<string>;
 	portfolioId: string | Expression<string>;
@@ -317,11 +350,13 @@ export type SecurityScorecardV1ReportGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["report"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["report"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

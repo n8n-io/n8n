@@ -21,15 +21,18 @@ export type MarketstackV1EndOfDayDataGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * One or multiple comma-separated stock symbols (tickers) to retrieve, e.g. &lt;code&gt;AAPL&lt;/code&gt; or &lt;code&gt;AAPL,MSFT&lt;/code&gt;
+	 * @displayOptions.show { resource: ["endOfDayData"], operation: ["getAll"] }
 	 */
 	symbols: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["endOfDayData"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["endOfDayData"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -42,6 +45,7 @@ export type MarketstackV1ExchangeGetConfig = {
 	operation: 'get';
 	/**
 	 * Stock exchange to retrieve, specified by &lt;a href="https://en.wikipedia.org/wiki/Market_Identifier_Code"&gt;Market Identifier Code&lt;/a&gt;, e.g. &lt;code&gt;XNAS&lt;/code&gt;
+	 * @displayOptions.show { resource: ["exchange"], operation: ["get"] }
 	 */
 	exchange: string | Expression<string>;
 };
@@ -52,6 +56,7 @@ export type MarketstackV1TickerGetConfig = {
 	operation: 'get';
 	/**
 	 * Stock symbol (ticker) to retrieve, e.g. &lt;code&gt;AAPL&lt;/code&gt;
+	 * @displayOptions.show { resource: ["ticker"], operation: ["get"] }
 	 */
 	symbol: string | Expression<string>;
 };

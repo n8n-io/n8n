@@ -38,6 +38,7 @@ export type LinearV11IssueCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["issue"], operation: ["create"] }
 	 */
 	teamId: string | Expression<string>;
 	title: string | Expression<string>;
@@ -64,11 +65,13 @@ export type LinearV11IssueGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["issue"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["issue"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

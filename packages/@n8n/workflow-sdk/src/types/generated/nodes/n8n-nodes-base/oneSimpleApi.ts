@@ -21,6 +21,7 @@ export type OneSimpleApiV1InformationExchangeRateConfig = {
 	operation: 'exchangeRate';
 	/**
 	 * Value to convert
+	 * @displayOptions.show { operation: ["exchangeRate"], resource: ["information"] }
 	 */
 	value: string | Expression<string>;
 	fromCurrency: string | Expression<string>;
@@ -33,6 +34,7 @@ export type OneSimpleApiV1InformationImageMetadataConfig = {
 	operation: 'imageMetadata';
 	/**
 	 * Image to get metadata from
+	 * @displayOptions.show { operation: ["imageMetadata"], resource: ["information"] }
 	 */
 	link: string | Expression<string>;
 };
@@ -43,6 +45,7 @@ export type OneSimpleApiV1SocialProfileInstagramProfileConfig = {
 	operation: 'instagramProfile';
 	/**
 	 * Profile name to get details of
+	 * @displayOptions.show { operation: ["instagramProfile"], resource: ["socialProfile"] }
 	 */
 	profileName: string | Expression<string>;
 };
@@ -53,6 +56,7 @@ export type OneSimpleApiV1SocialProfileSpotifyArtistProfileConfig = {
 	operation: 'spotifyArtistProfile';
 	/**
 	 * Artist name to get details for
+	 * @displayOptions.show { operation: ["spotifyArtistProfile"], resource: ["socialProfile"] }
 	 */
 	artistName: string | Expression<string>;
 };
@@ -63,6 +67,7 @@ export type OneSimpleApiV1UtilityExpandURLConfig = {
 	operation: 'expandURL';
 	/**
 	 * URL to unshorten
+	 * @displayOptions.show { operation: ["expandURL"], resource: ["utility"] }
 	 */
 	link: string | Expression<string>;
 };
@@ -73,15 +78,18 @@ export type OneSimpleApiV1UtilityQrCodeConfig = {
 	operation: 'qrCode';
 	/**
 	 * The text that should be turned into a QR code - like a website URL
+	 * @displayOptions.show { operation: ["qrCode"], resource: ["utility"] }
 	 */
 	message: string | Expression<string>;
 	/**
 	 * Whether to download the QR code or return a link to it
+	 * @displayOptions.show { operation: ["qrCode"], resource: ["utility"] }
 	 * @default false
 	 */
 	download: boolean | Expression<boolean>;
 	/**
 	 * The name of the output field to put the binary file data in
+	 * @displayOptions.show { operation: ["qrCode"], resource: ["utility"], download: [true] }
 	 * @default data
 	 */
 	output: string | Expression<string>;
@@ -101,15 +109,18 @@ export type OneSimpleApiV1WebsitePdfConfig = {
 	operation: 'pdf';
 	/**
 	 * Link to webpage to convert
+	 * @displayOptions.show { operation: ["pdf"], resource: ["website"] }
 	 */
 	link: string | Expression<string>;
 	/**
 	 * Whether to download the PDF or return a link to it
+	 * @displayOptions.show { operation: ["pdf"], resource: ["website"] }
 	 * @default false
 	 */
 	download: boolean | Expression<boolean>;
 	/**
 	 * The name of the output field to put the binary file data in
+	 * @displayOptions.show { operation: ["pdf"], resource: ["website"], download: [true] }
 	 * @default data
 	 */
 	output: string | Expression<string>;
@@ -122,6 +133,7 @@ export type OneSimpleApiV1WebsiteSeoConfig = {
 	operation: 'seo';
 	/**
 	 * Webpage to get SEO information for
+	 * @displayOptions.show { operation: ["seo"], resource: ["website"] }
 	 */
 	link: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -133,15 +145,18 @@ export type OneSimpleApiV1WebsiteScreenshotConfig = {
 	operation: 'screenshot';
 	/**
 	 * Link to webpage to convert
+	 * @displayOptions.show { operation: ["screenshot"], resource: ["website"] }
 	 */
 	link: string | Expression<string>;
 	/**
 	 * Whether to download the screenshot or return a link to it
+	 * @displayOptions.show { operation: ["screenshot"], resource: ["website"] }
 	 * @default false
 	 */
 	download: boolean | Expression<boolean>;
 	/**
 	 * The name of the output field to put the binary file data in
+	 * @displayOptions.show { operation: ["screenshot"], resource: ["website"], download: [true] }
 	 * @default data
 	 */
 	output: string | Expression<string>;

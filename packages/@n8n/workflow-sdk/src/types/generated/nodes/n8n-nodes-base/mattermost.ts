@@ -21,10 +21,12 @@ export type MattermostV1ChannelAddUserConfig = {
 	operation: 'addUser';
 	/**
 	 * The ID of the channel to invite user to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["addUser"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 	/**
 	 * The ID of the user to invite into channel. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["addUser"], resource: ["channel"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -35,18 +37,22 @@ export type MattermostV1ChannelCreateConfig = {
 	operation: 'create';
 	/**
 	 * The Mattermost Team. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["channel"] }
 	 */
 	teamId: string | Expression<string>;
 	/**
 	 * The non-unique UI name for the channel
+	 * @displayOptions.show { operation: ["create"], resource: ["channel"] }
 	 */
 	displayName: string | Expression<string>;
 	/**
 	 * The unique handle for the channel, will be present in the channel URL
+	 * @displayOptions.show { operation: ["create"], resource: ["channel"] }
 	 */
 	channel: string | Expression<string>;
 	/**
 	 * The type of channel to create
+	 * @displayOptions.show { operation: ["create"], resource: ["channel"] }
 	 * @default public
 	 */
 	type?: 'private' | 'public' | Expression<string>;
@@ -58,6 +64,7 @@ export type MattermostV1ChannelDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the channel to soft delete. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["delete"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 };
@@ -68,24 +75,29 @@ export type MattermostV1ChannelMembersConfig = {
 	operation: 'members';
 	/**
 	 * The Mattermost Team. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["members"], resource: ["channel"] }
 	 */
 	teamId: string | Expression<string>;
 	/**
 	 * The Mattermost Team. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["members"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 	/**
 	 * By default the response only contain the ID of the user. If this option gets activated, it will resolve the user automatically.
+	 * @displayOptions.show { resource: ["channel"], operation: ["members"] }
 	 * @default true
 	 */
 	resolveData?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["members"], resource: ["channel"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["members"], resource: ["channel"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -97,6 +109,7 @@ export type MattermostV1ChannelRestoreConfig = {
 	operation: 'restore';
 	/**
 	 * The ID of the channel to restore
+	 * @displayOptions.show { operation: ["restore"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 };
@@ -107,19 +120,23 @@ export type MattermostV1ChannelSearchConfig = {
 	operation: 'search';
 	/**
 	 * The Mattermost Team. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["search"], resource: ["channel"] }
 	 */
 	teamId: string | Expression<string>;
 	/**
 	 * The search term for Channels in a Team
+	 * @displayOptions.show { operation: ["search"], resource: ["channel"] }
 	 */
 	term: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["search"], resource: ["channel"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["search"], resource: ["channel"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -131,6 +148,7 @@ export type MattermostV1ChannelStatisticsConfig = {
 	operation: 'statistics';
 	/**
 	 * The ID of the channel to get the statistics from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["statistics"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 };
@@ -141,6 +159,7 @@ export type MattermostV1MessageDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the post to delete
+	 * @displayOptions.show { resource: ["message"], operation: ["delete"] }
 	 */
 	postId: string | Expression<string>;
 };
@@ -151,19 +170,23 @@ export type MattermostV1MessagePostConfig = {
 	operation: 'post';
 	/**
 	 * The ID of the channel to post to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["post"], resource: ["message"] }
 	 */
 	channelId: string | Expression<string>;
 	/**
 	 * The text to send
+	 * @displayOptions.show { operation: ["post"], resource: ["message"] }
 	 */
 	message?: string | Expression<string>;
 	/**
 	 * The attachment to add
+	 * @displayOptions.show { operation: ["post"], resource: ["message"] }
 	 * @default {}
 	 */
 	attachments?: Record<string, unknown>;
 	/**
 	 * Other options to set
+	 * @displayOptions.show { operation: ["post"], resource: ["message"] }
 	 * @default {}
 	 */
 	otherOptions?: Record<string, unknown>;
@@ -175,14 +198,17 @@ export type MattermostV1MessagePostEphemeralConfig = {
 	operation: 'postEphemeral';
 	/**
 	 * ID of the user to send the ephemeral message to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["postEphemeral"], resource: ["message"] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * ID of the channel to send the ephemeral message in. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["postEphemeral"], resource: ["message"] }
 	 */
 	channelId: string | Expression<string>;
 	/**
 	 * Text to send in the ephemeral message
+	 * @displayOptions.show { operation: ["postEphemeral"], resource: ["message"] }
 	 */
 	message?: string | Expression<string>;
 };
@@ -193,14 +219,17 @@ export type MattermostV1ReactionCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the user sending the reaction. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["reaction"], operation: ["create"] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * ID of the post to react to. Obtainable from the post link: &lt;code&gt;https://mattermost.internal.n8n.io/[server]/pl/[postId]&lt;/code&gt;
+	 * @displayOptions.show { resource: ["reaction"], operation: ["create"] }
 	 */
 	postId: string | Expression<string>;
 	/**
 	 * Emoji to use for this reaction
+	 * @displayOptions.show { resource: ["reaction"], operation: ["create"] }
 	 */
 	emojiName: string | Expression<string>;
 };
@@ -211,14 +240,17 @@ export type MattermostV1ReactionDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the user whose reaction to delete. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["reaction"], operation: ["delete"] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * ID of the post whose reaction to delete. Obtainable from the post link: &lt;code&gt;https://mattermost.internal.n8n.io/[server]/pl/[postId]&lt;/code&gt;
+	 * @displayOptions.show { resource: ["reaction"], operation: ["delete"] }
 	 */
 	postId: string | Expression<string>;
 	/**
 	 * Name of the emoji to delete
+	 * @displayOptions.show { resource: ["reaction"], operation: ["delete"] }
 	 */
 	emojiName: string | Expression<string>;
 };
@@ -229,15 +261,18 @@ export type MattermostV1ReactionGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * One or more (comma-separated) posts to retrieve reactions from
+	 * @displayOptions.show { resource: ["reaction"], operation: ["getAll"] }
 	 */
 	postId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["reaction"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["reaction"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -253,6 +288,7 @@ export type MattermostV1UserCreateConfig = {
 	email?: string | Expression<string>;
 	/**
 	 * The password used for email authentication
+	 * @displayOptions.show { resource: ["user"], operation: ["create"], authService: ["email"] }
 	 */
 	password?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -264,6 +300,7 @@ export type MattermostV1UserDeactiveConfig = {
 	operation: 'deactive';
 	/**
 	 * User GUID
+	 * @displayOptions.show { resource: ["user"], operation: ["deactive"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -274,6 +311,7 @@ export type MattermostV1UserGetByEmailConfig = {
 	operation: 'getByEmail';
 	/**
 	 * User's email
+	 * @displayOptions.show { resource: ["user"], operation: ["getByEmail"] }
 	 */
 	email: string | Expression<string>;
 };
@@ -284,6 +322,7 @@ export type MattermostV1UserGetByIdConfig = {
 	operation: 'getById';
 	/**
 	 * User's ID
+	 * @displayOptions.show { resource: ["user"], operation: ["getById"] }
 	 */
 	userIds: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -295,11 +334,13 @@ export type MattermostV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -312,10 +353,12 @@ export type MattermostV1UserInviteConfig = {
 	operation: 'invite';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["user"], operation: ["invite"] }
 	 */
 	teamId: string | Expression<string>;
 	/**
 	 * User's email. Multiple emails can be set separated by comma.
+	 * @displayOptions.show { resource: ["user"], operation: ["invite"] }
 	 */
 	emails: string | Expression<string>;
 };

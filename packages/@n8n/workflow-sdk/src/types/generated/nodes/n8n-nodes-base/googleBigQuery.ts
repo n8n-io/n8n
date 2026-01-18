@@ -24,6 +24,7 @@ export interface GoogleBigQueryV21Params {
 	operation?: 'executeQuery' | 'insert' | Expression<string>;
 	/**
 	 * Projects to which you have been granted any project role
+	 * @displayOptions.show { resource: ["database"], operation: ["executeQuery", "insert"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	projectId: ResourceLocatorValue;
@@ -31,17 +32,24 @@ export interface GoogleBigQueryV21Params {
 	tableId: ResourceLocatorValue;
 	/**
 	 * SQL query to execute, you can find more information &lt;a href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank"&gt;here&lt;/a&gt;. Standard SQL syntax used by default, but you can also use Legacy SQL syntax by using optinon 'Use Legacy SQL'.
+	 * @displayOptions.show { resource: ["database"], operation: ["executeQuery"] }
+	 * @displayOptions.hide { /options.useLegacySql: [true] }
 	 */
 	sqlQuery?: string | Expression<string>;
 	options?: Record<string, unknown>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { resource: ["database"], operation: ["insert"] }
 	 * @default autoMap
 	 */
 	dataMode?: 'autoMap' | 'define' | Expression<string>;
 	fieldsUi?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			fieldId?: string | Expression<string>;
+			/** Field Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -53,18 +61,22 @@ export type GoogleBigQueryV1RecordCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the project to create the record in. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["record"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * ID of the dataset to create the record in. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["record"] }
 	 */
 	datasetId: string | Expression<string>;
 	/**
 	 * ID of the table to create the record in. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["record"] }
 	 */
 	tableId: string | Expression<string>;
 	/**
 	 * Comma-separated list of the item properties to use as columns
+	 * @displayOptions.show { resource: ["record"], operation: ["create"] }
 	 */
 	columns: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -76,28 +88,34 @@ export type GoogleBigQueryV1RecordGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * ID of the project to retrieve all rows from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["record"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * ID of the dataset to retrieve all rows from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["record"] }
 	 */
 	datasetId: string | Expression<string>;
 	/**
 	 * ID of the table to retrieve all rows from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["record"] }
 	 */
 	tableId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["record"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["record"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["record"], operation: ["getAll"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;

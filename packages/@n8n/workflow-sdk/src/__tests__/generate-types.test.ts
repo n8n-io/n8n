@@ -696,6 +696,69 @@ describe('generate-types', () => {
 			expect(result).toContain('@hint');
 			expect(result).toContain('&lt;a href=');
 		});
+
+		it('should include displayOptions.show in JSDoc when provided', () => {
+			const prop: NodeProperty = {
+				name: 'jsCode',
+				displayName: 'JavaScript Code',
+				type: 'string',
+				description: 'JavaScript code to execute',
+				default: '',
+				displayOptions: {
+					show: {
+						language: ['javaScript'],
+						mode: ['runOnceForAllItems'],
+					},
+				},
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			// Should include @displayOptions.show tag with conditions
+			expect(result).toContain('@displayOptions.show');
+			expect(result).toContain('language: ["javaScript"]');
+			expect(result).toContain('mode: ["runOnceForAllItems"]');
+		});
+
+		it('should include displayOptions.hide in JSDoc when provided', () => {
+			const prop: NodeProperty = {
+				name: 'advancedField',
+				displayName: 'Advanced Field',
+				type: 'string',
+				description: 'An advanced field',
+				default: '',
+				displayOptions: {
+					hide: {
+						mode: ['simple'],
+					},
+				},
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			// Should include @displayOptions.hide tag with conditions
+			expect(result).toContain('@displayOptions.hide');
+			expect(result).toContain('mode: ["simple"]');
+		});
+
+		it('should include both show and hide displayOptions when both provided', () => {
+			const prop: NodeProperty = {
+				name: 'complexField',
+				displayName: 'Complex Field',
+				type: 'string',
+				description: 'A complex conditional field',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: ['contact', 'deal'],
+					},
+					hide: {
+						operation: ['delete'],
+					},
+				},
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			expect(result).toContain('@displayOptions.show');
+			expect(result).toContain('resource: ["contact", "deal"]');
+			expect(result).toContain('@displayOptions.hide');
+			expect(result).toContain('operation: ["delete"]');
+		});
 	});
 
 	describe('generateNodeJSDoc', () => {

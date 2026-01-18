@@ -46,11 +46,13 @@ export type InvoiceNinjaV2BankTransactionGetAllConfig = {
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["bank_transaction"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["bank_transaction"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -64,6 +66,7 @@ export type InvoiceNinjaV2BankTransactionMatchPaymentConfig = {
 	bankTransactionId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["bank_transaction"], operation: ["matchPayment"] }
 	 */
 	paymentId?: string | Expression<string>;
 };
@@ -76,29 +79,61 @@ export type InvoiceNinjaV2ClientCreateConfig = {
 	additionalFields?: Record<string, unknown>;
 	billingAddressUi?: {
 		billingAddressValue?: {
+			/** Street Address
+			 */
 			streetAddress?: string | Expression<string>;
+			/** Apt/Suite
+			 */
 			aptSuite?: string | Expression<string>;
+			/** City
+			 */
 			city?: string | Expression<string>;
+			/** State
+			 */
 			state?: string | Expression<string>;
+			/** Postal Code
+			 */
 			postalCode?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			countryCode?: string | Expression<string>;
 		};
 	};
 	contactsUi?: {
 		contacstValues?: Array<{
+			/** First Name
+			 */
 			firstName?: string | Expression<string>;
+			/** Last Name
+			 */
 			lastName?: string | Expression<string>;
+			/** Email
+			 */
 			email?: string | Expression<string>;
+			/** Phone
+			 */
 			phone?: string | Expression<string>;
 		}>;
 	};
 	shippingAddressUi?: {
 		shippingAddressValue?: {
+			/** Street Address
+			 */
 			streetAddress?: string | Expression<string>;
+			/** Apt/Suite
+			 */
 			aptSuite?: string | Expression<string>;
+			/** City
+			 */
 			city?: string | Expression<string>;
+			/** State
+			 */
 			state?: string | Expression<string>;
+			/** Postal Code
+			 */
 			postalCode?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			countryCode?: string | Expression<string>;
 		};
 	};
@@ -128,11 +163,13 @@ export type InvoiceNinjaV2ClientGetAllConfig = {
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["client"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["client"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -170,11 +207,13 @@ export type InvoiceNinjaV2ExpenseGetAllConfig = {
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["expense"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["expense"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -188,13 +227,33 @@ export type InvoiceNinjaV2InvoiceCreateConfig = {
 	additionalFields?: Record<string, unknown>;
 	invoiceItemsUi?: {
 		invoiceItemsValues?: Array<{
+			/** Cost
+			 * @default 0
+			 */
 			cost?: number | Expression<number>;
+			/** Description
+			 */
 			description?: string | Expression<string>;
+			/** Service
+			 */
 			service?: string | Expression<string>;
+			/** Hours
+			 * @default 0
+			 */
 			hours?: number | Expression<number>;
+			/** Tax Name 1
+			 */
 			taxName1?: string | Expression<string>;
+			/** Tax Name 2
+			 */
 			taxName2?: string | Expression<string>;
+			/** Tax Rate 1
+			 * @default 0
+			 */
 			taxRate1?: number | Expression<number>;
+			/** Tax Rate 2
+			 * @default 0
+			 */
 			taxRate2?: number | Expression<number>;
 		}>;
 	};
@@ -232,11 +291,13 @@ export type InvoiceNinjaV2InvoiceGetAllConfig = {
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["invoice"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["invoice"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -250,6 +311,7 @@ export type InvoiceNinjaV2PaymentCreateConfig = {
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["create"], resource: ["payment"] }
 	 */
 	invoice?: string | Expression<string>;
 	amount?: number | Expression<number>;
@@ -280,11 +342,13 @@ export type InvoiceNinjaV2PaymentGetAllConfig = {
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["payment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["payment"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -299,13 +363,33 @@ export type InvoiceNinjaV2QuoteCreateConfig = {
 	additionalFields?: Record<string, unknown>;
 	invoiceItemsUi?: {
 		invoiceItemsValues?: Array<{
+			/** Cost
+			 * @default 0
+			 */
 			cost?: number | Expression<number>;
+			/** Description
+			 */
 			description?: string | Expression<string>;
+			/** Service
+			 */
 			service?: string | Expression<string>;
+			/** Hours
+			 * @default 0
+			 */
 			hours?: number | Expression<number>;
+			/** Tax Name 1
+			 */
 			taxName1?: string | Expression<string>;
+			/** Tax Name 2
+			 */
 			taxName2?: string | Expression<string>;
+			/** Tax Rate 1
+			 * @default 0
+			 */
 			taxRate1?: number | Expression<number>;
+			/** Tax Rate 2
+			 * @default 0
+			 */
 			taxRate2?: number | Expression<number>;
 		}>;
 	};
@@ -343,11 +427,13 @@ export type InvoiceNinjaV2QuoteGetAllConfig = {
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["quote"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["quote"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -362,8 +448,15 @@ export type InvoiceNinjaV2TaskCreateConfig = {
 	additionalFields?: Record<string, unknown>;
 	timeLogsUi?: {
 		timeLogsValues?: Array<{
+			/** Start Date
+			 */
 			startDate?: string | Expression<string>;
+			/** End Date
+			 */
 			endDate?: string | Expression<string>;
+			/** Duration (Hours)
+			 * @default 0
+			 */
 			duration?: number | Expression<number>;
 		}>;
 	};
@@ -393,11 +486,13 @@ export type InvoiceNinjaV2TaskGetAllConfig = {
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

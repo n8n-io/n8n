@@ -26,21 +26,28 @@ export type SupabaseV1RowCreateConfig = {
 	useCustomSchema?: boolean | Expression<boolean>;
 	/**
 	 * Name of database schema to use for table
+	 * @displayOptions.show { useCustomSchema: [true] }
 	 * @default public
 	 */
 	schema?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"], operation: ["create", "delete", "get", "getAll", "update"] }
 	 */
 	tableId: string | Expression<string>;
 	dataToSend?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { resource: ["row"], operation: ["create", "update"], dataToSend: ["autoMapInputData"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			fieldId?: string | Expression<string>;
+			/** Field Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -57,22 +64,29 @@ export type SupabaseV1RowDeleteConfig = {
 	useCustomSchema?: boolean | Expression<boolean>;
 	/**
 	 * Name of database schema to use for table
+	 * @displayOptions.show { useCustomSchema: [true] }
 	 * @default public
 	 */
 	schema?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"], operation: ["create", "delete", "get", "getAll", "update"] }
 	 */
 	tableId: string | Expression<string>;
 	filterType?: 'manual' | 'string' | Expression<string>;
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
 	/**
 	 * Filter to decide which rows get deleted
+	 * @displayOptions.show { resource: ["row"], operation: ["delete"], filterType: ["manual"] }
 	 * @default {}
 	 */
 	filters?: {
 		conditions?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			keyName?: string | Expression<string>;
+			/** Condition
+			 */
 			condition?:
 				| 'eq'
 				| 'fullText'
@@ -85,7 +99,12 @@ export type SupabaseV1RowDeleteConfig = {
 				| 'like'
 				| 'neq'
 				| Expression<string>;
+			/** Search Function
+			 * @displayOptions.show { condition: ["fullText"] }
+			 */
 			searchFunction?: 'fts' | 'plfts' | 'phfts' | 'wfts' | Expression<string>;
+			/** Field Value
+			 */
 			keyValue?: string | Expression<string>;
 		}>;
 	};
@@ -103,16 +122,22 @@ export type SupabaseV1RowGetConfig = {
 	useCustomSchema?: boolean | Expression<boolean>;
 	/**
 	 * Name of database schema to use for table
+	 * @displayOptions.show { useCustomSchema: [true] }
 	 * @default public
 	 */
 	schema?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"], operation: ["create", "delete", "get", "getAll", "update"] }
 	 */
 	tableId: string | Expression<string>;
 	filters?: {
 		conditions?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			keyName?: string | Expression<string>;
+			/** Value
+			 */
 			keyValue?: string | Expression<string>;
 		}>;
 	};
@@ -129,20 +154,24 @@ export type SupabaseV1RowGetAllConfig = {
 	useCustomSchema?: boolean | Expression<boolean>;
 	/**
 	 * Name of database schema to use for table
+	 * @displayOptions.show { useCustomSchema: [true] }
 	 * @default public
 	 */
 	schema?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"], operation: ["create", "delete", "get", "getAll", "update"] }
 	 */
 	tableId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["row"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["row"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -150,11 +179,16 @@ export type SupabaseV1RowGetAllConfig = {
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
 	/**
 	 * Filter to decide which rows get retrieved
+	 * @displayOptions.show { resource: ["row"], operation: ["getAll"], filterType: ["manual"] }
 	 * @default {}
 	 */
 	filters?: {
 		conditions?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			keyName?: string | Expression<string>;
+			/** Condition
+			 */
 			condition?:
 				| 'eq'
 				| 'fullText'
@@ -167,7 +201,12 @@ export type SupabaseV1RowGetAllConfig = {
 				| 'like'
 				| 'neq'
 				| Expression<string>;
+			/** Search Function
+			 * @displayOptions.show { condition: ["fullText"] }
+			 */
 			searchFunction?: 'fts' | 'plfts' | 'phfts' | 'wfts' | Expression<string>;
+			/** Field Value
+			 */
 			keyValue?: string | Expression<string>;
 		}>;
 	};
@@ -185,22 +224,29 @@ export type SupabaseV1RowUpdateConfig = {
 	useCustomSchema?: boolean | Expression<boolean>;
 	/**
 	 * Name of database schema to use for table
+	 * @displayOptions.show { useCustomSchema: [true] }
 	 * @default public
 	 */
 	schema?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"], operation: ["create", "delete", "get", "getAll", "update"] }
 	 */
 	tableId: string | Expression<string>;
 	filterType?: 'manual' | 'string' | Expression<string>;
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
 	/**
 	 * Filter to decide which rows get updated
+	 * @displayOptions.show { resource: ["row"], operation: ["update"], filterType: ["manual"] }
 	 * @default {}
 	 */
 	filters?: {
 		conditions?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			keyName?: string | Expression<string>;
+			/** Condition
+			 */
 			condition?:
 				| 'eq'
 				| 'fullText'
@@ -213,7 +259,12 @@ export type SupabaseV1RowUpdateConfig = {
 				| 'like'
 				| 'neq'
 				| Expression<string>;
+			/** Search Function
+			 * @displayOptions.show { condition: ["fullText"] }
+			 */
 			searchFunction?: 'fts' | 'plfts' | 'phfts' | 'wfts' | Expression<string>;
+			/** Field Value
+			 */
 			keyValue?: string | Expression<string>;
 		}>;
 	};
@@ -221,11 +272,16 @@ export type SupabaseV1RowUpdateConfig = {
 	dataToSend?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { resource: ["row"], operation: ["create", "update"], dataToSend: ["autoMapInputData"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			fieldId?: string | Expression<string>;
+			/** Field Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};

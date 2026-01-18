@@ -21,7 +21,14 @@ export interface RenameKeysV1Params {
 	 * @default {}
 	 */
 	keys?: {
-		key?: Array<{ currentKey?: string | Expression<string>; newKey?: string | Expression<string> }>;
+		key?: Array<{
+			/** The current name of the key. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".
+			 */
+			currentKey?: string | Expression<string>;
+			/** The name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".
+			 */
+			newKey?: string | Expression<string>;
+		}>;
 	};
 	additionalOptions?: Record<string, unknown>;
 }

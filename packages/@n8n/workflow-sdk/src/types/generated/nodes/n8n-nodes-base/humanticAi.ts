@@ -21,10 +21,12 @@ export type HumanticAiV1ProfileCreateConfig = {
 	operation: 'create';
 	/**
 	 * The LinkedIn profile URL or email ID for creating a Humantic profile. If you are sending the resume, this should be a unique string.
+	 * @displayOptions.show { operation: ["create"], resource: ["profile"] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * Whether to send a resume for a resume based analysis
+	 * @displayOptions.show { operation: ["create"], resource: ["profile"] }
 	 * @default false
 	 */
 	sendResume?: boolean | Expression<boolean>;
@@ -37,6 +39,7 @@ export type HumanticAiV1ProfileGetConfig = {
 	operation: 'get';
 	/**
 	 * This value is the same as the User ID that was provided when the analysis was created. This could be a LinkedIn URL, email ID, or a unique string in case of resume based analysis.
+	 * @displayOptions.show { operation: ["get"], resource: ["profile"] }
 	 */
 	userId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -48,15 +51,18 @@ export type HumanticAiV1ProfileUpdateConfig = {
 	operation: 'update';
 	/**
 	 * This value is the same as the User ID that was provided when the analysis was created. Currently only supported for profiles created using LinkedIn URL.
+	 * @displayOptions.show { operation: ["update"], resource: ["profile"] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * Whether to send a resume for a resume of the user
+	 * @displayOptions.show { operation: ["update"], resource: ["profile"] }
 	 * @default false
 	 */
 	sendResume?: boolean | Expression<boolean>;
 	/**
 	 * Additional text written by the user
+	 * @displayOptions.show { operation: ["update"], resource: ["profile"], sendResume: [false] }
 	 */
 	text?: string | Expression<string>;
 	binaryPropertyName?: string | Expression<string>;

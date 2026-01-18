@@ -20,6 +20,7 @@ export interface LocalFileTriggerV1Params {
 	path?: string | Expression<string>;
 	/**
 	 * The events to listen to
+	 * @displayOptions.show { triggerOn: ["folder"] }
 	 * @default []
 	 */
 	events: Array<'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir'>;

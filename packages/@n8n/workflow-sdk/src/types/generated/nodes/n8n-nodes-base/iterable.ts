@@ -21,6 +21,7 @@ export type IterableV1EventTrackConfig = {
 	operation: 'track';
 	/**
 	 * The name of the event to track
+	 * @displayOptions.show { resource: ["event"], operation: ["track"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -32,11 +33,13 @@ export type IterableV1UserUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Identifier to be used
+	 * @displayOptions.show { resource: ["user"], operation: ["upsert"] }
 	 */
 	identifier: 'email' | 'userId' | Expression<string>;
 	value: string | Expression<string>;
 	/**
 	 * Whether to create a new user if the idetifier does not exist
+	 * @displayOptions.show { resource: ["user"], operation: ["upsert"], identifier: ["userId"] }
 	 * @default true
 	 */
 	preferUserId: boolean | Expression<boolean>;
@@ -49,15 +52,18 @@ export type IterableV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Identifier to be used
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 * @default email
 	 */
 	by: 'email' | 'userId' | Expression<string>;
 	/**
 	 * Unique identifier for a particular user
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"], by: ["userId"] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * Email for a particular user
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"], by: ["email"] }
 	 */
 	email: string | Expression<string>;
 };
@@ -68,15 +74,18 @@ export type IterableV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * Identifier to be used
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 * @default email
 	 */
 	by: 'email' | 'userId' | Expression<string>;
 	/**
 	 * Unique identifier for a particular user
+	 * @displayOptions.show { resource: ["user"], operation: ["get"], by: ["userId"] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * Email for a particular user
+	 * @displayOptions.show { resource: ["user"], operation: ["get"], by: ["email"] }
 	 */
 	email: string | Expression<string>;
 };
@@ -87,10 +96,12 @@ export type IterableV1UserListAddConfig = {
 	operation: 'add';
 	/**
 	 * Identifier to be used. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["userList"], operation: ["add"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * Identifier to be used
+	 * @displayOptions.show { resource: ["userList"], operation: ["add"] }
 	 */
 	identifier: 'email' | 'userId' | Expression<string>;
 	value: string | Expression<string>;
@@ -102,10 +113,12 @@ export type IterableV1UserListRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * Identifier to be used. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["userList"], operation: ["remove"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * Identifier to be used
+	 * @displayOptions.show { resource: ["userList"], operation: ["remove"] }
 	 */
 	identifier: 'email' | 'userId' | Expression<string>;
 	value: string | Expression<string>;

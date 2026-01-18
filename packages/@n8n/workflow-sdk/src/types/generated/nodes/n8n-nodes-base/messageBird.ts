@@ -21,14 +21,17 @@ export type MessageBirdV1SmsSendConfig = {
 	operation: 'send';
 	/**
 	 * The number from which to send the message
+	 * @displayOptions.show { operation: ["send"], resource: ["sms"] }
 	 */
 	originator: string | Expression<string>;
 	/**
 	 * All recipients separated by commas
+	 * @displayOptions.show { operation: ["send"], resource: ["sms"] }
 	 */
 	recipients: string | Expression<string>;
 	/**
 	 * The message to be send
+	 * @displayOptions.show { operation: ["send"], resource: ["sms"] }
 	 */
 	message: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

@@ -28,16 +28,19 @@ export interface AwsRekognitionV1Params {
 		| Expression<string>;
 	/**
 	 * Whether the image to analyze should be taken from binary field
+	 * @displayOptions.show { operation: ["analyze"], resource: ["image"] }
 	 * @default false
 	 */
 	binaryData: boolean | Expression<boolean>;
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * Name of the S3 bucket
+	 * @displayOptions.show { operation: ["analyze"], resource: ["image"], binaryData: [false] }
 	 */
 	bucket: string | Expression<string>;
 	/**
 	 * S3 object key name
+	 * @displayOptions.show { operation: ["analyze"], resource: ["image"], binaryData: [false] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

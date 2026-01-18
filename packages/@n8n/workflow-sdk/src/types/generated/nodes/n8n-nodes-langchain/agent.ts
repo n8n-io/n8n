@@ -120,6 +120,7 @@ export type LcAgentV19SqlAgentConfig = {
 	text: string | Expression<string>;
 	/**
 	 * SQL database to connect to
+	 * @displayOptions.show { agent: ["sqlAgent"], @version: [{"_cnd":{"lt":1.4}}] }
 	 * @default sqlite
 	 */
 	dataSource?: 'mysql' | 'postgres' | 'sqlite' | Expression<string>;

@@ -28,6 +28,7 @@ export type PostBinV1BinGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for each bin
+	 * @displayOptions.show { resource: ["bin"], operation: ["get", "delete"] }
 	 */
 	binId: string | Expression<string>;
 	requestOptions?: Record<string, unknown>;
@@ -39,6 +40,7 @@ export type PostBinV1BinDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier for each bin
+	 * @displayOptions.show { resource: ["bin"], operation: ["get", "delete"] }
 	 */
 	binId: string | Expression<string>;
 	requestOptions?: Record<string, unknown>;
@@ -50,10 +52,12 @@ export type PostBinV1RequestGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for each bin
+	 * @displayOptions.show { resource: ["request"], operation: ["get", "removeFirst", "send"] }
 	 */
 	binId: string | Expression<string>;
 	/**
 	 * Unique identifier for each request
+	 * @displayOptions.show { resource: ["request"], operation: ["get"] }
 	 */
 	requestId: string | Expression<string>;
 	requestOptions?: Record<string, unknown>;
@@ -65,6 +69,7 @@ export type PostBinV1RequestRemoveFirstConfig = {
 	operation: 'removeFirst';
 	/**
 	 * Unique identifier for each bin
+	 * @displayOptions.show { resource: ["request"], operation: ["get", "removeFirst", "send"] }
 	 */
 	binId: string | Expression<string>;
 	requestOptions?: Record<string, unknown>;
@@ -76,6 +81,7 @@ export type PostBinV1RequestSendConfig = {
 	operation: 'send';
 	/**
 	 * Unique identifier for each bin
+	 * @displayOptions.show { resource: ["request"], operation: ["get", "removeFirst", "send"] }
 	 */
 	binId: string | Expression<string>;
 	binContent?: string | Expression<string>;

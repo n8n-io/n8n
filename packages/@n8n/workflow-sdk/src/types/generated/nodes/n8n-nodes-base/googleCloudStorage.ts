@@ -55,6 +55,7 @@ export type GoogleCloudStorageV1BucketGetAllConfig = {
 	projection?: 'full' | 'noAcl' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["bucket"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
@@ -82,12 +83,14 @@ export type GoogleCloudStorageV1ObjectCreateConfig = {
 	updateProjection?: 'full' | 'noAcl' | Expression<string>;
 	/**
 	 * Whether the data for creating a file should come from a binary field
+	 * @displayOptions.show { resource: ["object"], operation: ["create"] }
 	 * @default true
 	 */
 	createFromBinary?: boolean | Expression<boolean>;
 	createBinaryPropertyName?: string | Expression<string>;
 	/**
 	 * Content of the file to be uploaded
+	 * @displayOptions.show { resource: ["object"], operation: ["create"], createFromBinary: [false] }
 	 */
 	createContent?: string | Expression<string>;
 	createData?: Record<string, unknown>;
@@ -128,11 +131,13 @@ export type GoogleCloudStorageV1ObjectGetAllConfig = {
 	projection?: 'full' | 'noAcl' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["object"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["object"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	maxResults?: number | Expression<number>;

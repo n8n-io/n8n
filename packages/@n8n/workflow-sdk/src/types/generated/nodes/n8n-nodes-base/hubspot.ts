@@ -47,11 +47,13 @@ export type HubspotV22CompanyGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -64,11 +66,13 @@ export type HubspotV22CompanyGetRecentlyCreatedUpdatedConfig = {
 	operation: 'getRecentlyCreatedUpdated';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getRecentlyCreatedUpdated"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getRecentlyCreatedUpdated"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -81,15 +85,18 @@ export type HubspotV22CompanySearchByDomainConfig = {
 	operation: 'searchByDomain';
 	/**
 	 * The company's website domain to search for, like n8n.io
+	 * @displayOptions.show { resource: ["company"], operation: ["searchByDomain"] }
 	 */
 	domain: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["searchByDomain"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["searchByDomain"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -120,6 +127,7 @@ export type HubspotV22ContactDeleteConfig = {
 	/**
 	 * This is not a contact's email but a number like 1485
 	 * @hint To lookup a user by their email, use the Search operation
+	 * @displayOptions.show { resource: ["contact"], operation: ["delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	contactId: ResourceLocatorValue;
@@ -132,6 +140,7 @@ export type HubspotV22ContactGetConfig = {
 	/**
 	 * This is not a contact's email but a number like 1485
 	 * @hint To lookup a user by their email, use the Search operation
+	 * @displayOptions.show { resource: ["contact"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	contactId: ResourceLocatorValue;
@@ -144,11 +153,13 @@ export type HubspotV22ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -161,11 +172,13 @@ export type HubspotV22ContactGetRecentlyCreatedUpdatedConfig = {
 	operation: 'getRecentlyCreatedUpdated';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getRecentlyCreatedUpdated"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getRecentlyCreatedUpdated"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -178,24 +191,39 @@ export type HubspotV22ContactSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["search"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * When multiple filters are provided within a Filter Group, they will be combined using a logical AND operator. When multiple Filter Groups are provided, they will be combined using a logical OR operator. The system supports a maximum of three Filter Groups with up to three filters each. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["contact"], operation: ["search"] }
 	 * @default {}
 	 */
 	filterGroupsUi?: {
 		filterGroupsValues?: Array<{
+			/** Use filters to limit the results to only CRM objects with matching property values. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;.
+			 * @default {}
+			 */
 			filtersUi?: {
 				filterValues?: Array<{
+					/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+					 */
 					propertyName?: string | Expression<string>;
+					/** Type
+					 * @default ={{$parameter["&propertyName"].split("|")[1]}}
+					 */
 					type?: unknown;
+					/** Operator
+					 * @displayOptions.hide { type: ["number"] }
+					 * @default EQ
+					 */
 					operator?:
 						| 'CONTAINS_TOKEN'
 						| 'EQ'
@@ -203,6 +231,10 @@ export type HubspotV22ContactSearchConfig = {
 						| 'NOT_HAS_PROPERTY'
 						| 'NEQ'
 						| Expression<string>;
+					/** Operator
+					 * @displayOptions.show { type: ["number"] }
+					 * @default EQ
+					 */
 					operator?:
 						| 'CONTAINS_TOKEN'
 						| 'EQ'
@@ -214,6 +246,9 @@ export type HubspotV22ContactSearchConfig = {
 						| 'LTE'
 						| 'NEQ'
 						| Expression<string>;
+					/** Value
+					 * @displayOptions.hide { operator: ["HAS_PROPERTY", "NOT_HAS_PROPERTY"] }
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -246,6 +281,7 @@ export type HubspotV22DealCreateConfig = {
 	operation: 'create';
 	/**
 	 * The deal stage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"] }
 	 */
 	stage: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -272,11 +308,13 @@ export type HubspotV22DealGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["deal"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["deal"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -289,11 +327,13 @@ export type HubspotV22DealGetRecentlyCreatedUpdatedConfig = {
 	operation: 'getRecentlyCreatedUpdated';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["deal"], operation: ["getRecentlyCreatedUpdated"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["deal"], operation: ["getRecentlyCreatedUpdated"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -306,24 +346,39 @@ export type HubspotV22DealSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["deal"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["deal"], operation: ["search"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * When multiple filters are provided within a Filter Group, they will be combined using a logical AND operator. When multiple Filter Groups are provided, they will be combined using a logical OR operator. The system supports a maximum of three Filter Groups with up to three filters each. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["deal"], operation: ["search"] }
 	 * @default {}
 	 */
 	filterGroupsUi?: {
 		filterGroupsValues?: Array<{
+			/** Use filters to limit the results to only CRM objects with matching property values. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;.
+			 * @default {}
+			 */
 			filtersUi?: {
 				filterValues?: Array<{
+					/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+					 */
 					propertyName?: string | Expression<string>;
+					/** Type
+					 * @default ={{$parameter["&propertyName"].split("|")[1]}}
+					 */
 					type?: unknown;
+					/** Operator
+					 * @displayOptions.hide { type: ["number"] }
+					 * @default EQ
+					 */
 					operator?:
 						| 'CONTAINS_TOKEN'
 						| 'EQ'
@@ -331,6 +386,10 @@ export type HubspotV22DealSearchConfig = {
 						| 'NOT_HAS_PROPERTY'
 						| 'NEQ'
 						| Expression<string>;
+					/** Operator
+					 * @displayOptions.show { type: ["number"] }
+					 * @default EQ
+					 */
 					operator?:
 						| 'CONTAINS_TOKEN'
 						| 'EQ'
@@ -342,6 +401,9 @@ export type HubspotV22DealSearchConfig = {
 						| 'LTE'
 						| 'NEQ'
 						| Expression<string>;
+					/** Value
+					 * @displayOptions.hide { operator: ["HAS_PROPERTY", "NOT_HAS_PROPERTY"] }
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -365,6 +427,7 @@ export type HubspotV22EngagementCreateConfig = {
 	type: 'call' | 'email' | 'meeting' | 'task' | Expression<string>;
 	/**
 	 * The due date for the task
+	 * @displayOptions.show { resource: ["engagement"], operation: ["create"], type: ["task"], @version: [{"_cnd":{"gte":2.2}}] }
 	 */
 	dueDate: string | Expression<string>;
 	metadata?: Record<string, unknown>;
@@ -391,11 +454,13 @@ export type HubspotV22EngagementGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["engagement"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["engagement"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -407,10 +472,12 @@ export type HubspotV22TicketCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	pipelineId: string | Expression<string>;
 	/**
 	 * The stage ID of the pipeline the ticket is in; depends on Pipeline ID. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	stageId: string | Expression<string>;
 	ticketName: string | Expression<string>;
@@ -438,11 +505,13 @@ export type HubspotV22TicketGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -504,6 +573,7 @@ export type HubspotV1CompanyDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier for a particular company
+	 * @displayOptions.show { resource: ["company"], operation: ["delete"] }
 	 */
 	companyId: string | Expression<string>;
 };
@@ -514,6 +584,7 @@ export type HubspotV1CompanyGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for a particular company
+	 * @displayOptions.show { resource: ["company"], operation: ["get"] }
 	 */
 	companyId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -525,11 +596,13 @@ export type HubspotV1CompanyGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -542,11 +615,13 @@ export type HubspotV1CompanyGetRecentlyCreatedConfig = {
 	operation: 'getRecentlyCreated';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getRecentlyCreated", "getRecentlyModified"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getRecentlyCreated", "getRecentlyModified"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -558,11 +633,13 @@ export type HubspotV1CompanyGetRecentlyModifiedConfig = {
 	operation: 'getRecentlyModified';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getRecentlyCreated", "getRecentlyModified"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getRecentlyCreated", "getRecentlyModified"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -575,15 +652,18 @@ export type HubspotV1CompanySearchByDomainConfig = {
 	operation: 'searchByDomain';
 	/**
 	 * The company's website domain to search for, like n8n.io
+	 * @displayOptions.show { resource: ["company"], operation: ["searchByDomain"] }
 	 */
 	domain: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["searchByDomain"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["searchByDomain"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -596,6 +676,7 @@ export type HubspotV1CompanyUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for a particular company
+	 * @displayOptions.show { resource: ["company"], operation: ["update"] }
 	 */
 	companyId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -608,6 +689,7 @@ export type HubspotV1ContactUpsertConfig = {
 	email: string | Expression<string>;
 	/**
 	 * By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.
+	 * @displayOptions.show { resource: ["contact"], operation: ["upsert"] }
 	 * @default true
 	 */
 	resolveData?: boolean | Expression<boolean>;
@@ -620,6 +702,7 @@ export type HubspotV1ContactDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier for a particular contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["delete"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -630,6 +713,7 @@ export type HubspotV1ContactGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for a particular contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["get"] }
 	 */
 	contactId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -641,11 +725,13 @@ export type HubspotV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -658,11 +744,13 @@ export type HubspotV1ContactGetRecentlyCreatedUpdatedConfig = {
 	operation: 'getRecentlyCreatedUpdated';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getRecentlyCreatedUpdated"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getRecentlyCreatedUpdated"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -675,23 +763,34 @@ export type HubspotV1ContactSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["search"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["contact"], operation: ["search"] }
 	 * @default {}
 	 */
 	filterGroupsUi?: {
 		filterGroupsValues?: Array<{
+			/** Use filters to limit the results to only CRM objects with matching property values. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;.
+			 * @default {}
+			 */
 			filtersUi?: {
 				filterValues?: Array<{
+					/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+					 */
 					propertyName?: string | Expression<string>;
+					/** Operator
+					 * @default EQ
+					 */
 					operator?:
 						| 'CONTAINS_TOKEN'
 						| 'EQ'
@@ -703,6 +802,9 @@ export type HubspotV1ContactSearchConfig = {
 						| 'LTE'
 						| 'NEQ'
 						| Expression<string>;
+					/** Value
+					 * @displayOptions.hide { operator: ["HAS_PROPERTY", "NOT_HAS_PROPERTY"] }
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -735,6 +837,7 @@ export type HubspotV1DealCreateConfig = {
 	operation: 'create';
 	/**
 	 * The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"] }
 	 */
 	stage: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -746,6 +849,7 @@ export type HubspotV1DealDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier for a particular deal
+	 * @displayOptions.show { resource: ["deal"], operation: ["delete"] }
 	 */
 	dealId: string | Expression<string>;
 };
@@ -756,6 +860,7 @@ export type HubspotV1DealGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for a particular deal
+	 * @displayOptions.show { resource: ["deal"], operation: ["get"] }
 	 */
 	dealId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -767,11 +872,13 @@ export type HubspotV1DealGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["deal"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["deal"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -784,11 +891,13 @@ export type HubspotV1DealGetRecentlyCreatedConfig = {
 	operation: 'getRecentlyCreated';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["deal"], operation: ["getRecentlyCreated", "getRecentlyModified"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["deal"], operation: ["getRecentlyCreated", "getRecentlyModified"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -801,11 +910,13 @@ export type HubspotV1DealGetRecentlyModifiedConfig = {
 	operation: 'getRecentlyModified';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["deal"], operation: ["getRecentlyCreated", "getRecentlyModified"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["deal"], operation: ["getRecentlyCreated", "getRecentlyModified"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -818,23 +929,34 @@ export type HubspotV1DealSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["deal"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["deal"], operation: ["search"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["deal"], operation: ["search"] }
 	 * @default {}
 	 */
 	filterGroupsUi?: {
 		filterGroupsValues?: Array<{
+			/** Use filters to limit the results to only CRM objects with matching property values. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;.
+			 * @default {}
+			 */
 			filtersUi?: {
 				filterValues?: Array<{
+					/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+					 */
 					propertyName?: string | Expression<string>;
+					/** Operator
+					 * @default EQ
+					 */
 					operator?:
 						| 'CONTAINS_TOKEN'
 						| 'EQ'
@@ -846,6 +968,9 @@ export type HubspotV1DealSearchConfig = {
 						| 'LTE'
 						| 'NEQ'
 						| Expression<string>;
+					/** Value
+					 * @displayOptions.hide { operator: ["HAS_PROPERTY", "NOT_HAS_PROPERTY"] }
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -860,6 +985,7 @@ export type HubspotV1DealUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for a particular deal
+	 * @displayOptions.show { resource: ["deal"], operation: ["update"] }
 	 */
 	dealId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -880,6 +1006,7 @@ export type HubspotV1EngagementDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier for a particular engagement
+	 * @displayOptions.show { resource: ["engagement"], operation: ["get", "delete"] }
 	 */
 	engagementId: string | Expression<string>;
 };
@@ -890,6 +1017,7 @@ export type HubspotV1EngagementGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for a particular engagement
+	 * @displayOptions.show { resource: ["engagement"], operation: ["get", "delete"] }
 	 */
 	engagementId: string | Expression<string>;
 };
@@ -900,11 +1028,13 @@ export type HubspotV1EngagementGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["engagement"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["engagement"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -916,6 +1046,7 @@ export type HubspotV1FormGetFieldsConfig = {
 	operation: 'getFields';
 	/**
 	 * The ID of the form. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["form"], operation: ["getFields"] }
 	 */
 	formId: string | Expression<string>;
 };
@@ -926,36 +1057,75 @@ export type HubspotV1FormSubmitConfig = {
 	operation: 'submit';
 	/**
 	 * The ID of the form you're sending data to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["form"], operation: ["submit"] }
 	 */
 	formId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
 	contextUi?: {
 		contextValue?: {
+			/** Include this parameter and set it to the hubspotutk cookie value to enable cookie tracking on your submission
+			 */
 			hutk?: string | Expression<string>;
+			/** The IP address of the visitor filling out the form
+			 */
 			ipAddress?: string | Expression<string>;
+			/** The URI of the page the submission happened on
+			 */
 			pageUri?: string | Expression<string>;
+			/** The name or title of the page the submission happened on
+			 */
 			pageName?: string | Expression<string>;
+			/** The ID of a page created on the HubSpot CMS
+			 */
 			pageId?: string | Expression<string>;
+			/** If the form is for an account using the HubSpot Salesforce Integration, you can include the ID of a Salesforce campaign to add the contact to the specified campaign
+			 */
 			sfdcCampaignId?: string | Expression<string>;
+			/** If the form is for an account using the HubSpot GoToWebinar Integration, you can include the ID of a webinar to enroll the contact in that webinar when they submit the form
+			 */
 			goToWebinarWebinarKey?: string | Expression<string>;
 		};
 	};
 	lengalConsentUi?: {
 		lengalConsentValues?: {
+			/** Whether or not the visitor checked the Consent to process checkbox
+			 * @default false
+			 */
 			consentToProcess?: boolean | Expression<boolean>;
+			/** The text displayed to the visitor for the Consent to process checkbox
+			 */
 			text?: string | Expression<string>;
+			/** Communications
+			 * @default {}
+			 */
 			communicationsUi?: {
 				communicationValues?: Array<{
+					/** The ID of the specific subscription type. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+					 */
 					subscriptionTypeId?: string | Expression<string>;
+					/** Whether or not the visitor checked the checkbox for this subscription type
+					 * @default false
+					 */
 					value?: boolean | Expression<boolean>;
+					/** The text displayed to the visitor for this specific subscription checkbox
+					 */
 					text?: string | Expression<string>;
 				}>;
 			};
 		};
 		legitimateInterestValues?: {
+			/** The ID of the specific subscription type that this forms indicates interest to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			subscriptionTypeId?: string | Expression<string>;
+			/** This must be true when using the 'legitimateInterest' option, as it reflects the consent indicated by the visitor when submitting the form
+			 * @default false
+			 */
 			value?: boolean | Expression<boolean>;
+			/** The privacy text displayed to the visitor
+			 */
 			legalBasis?: 'CUSTOMER' | 'LEAD' | Expression<string>;
+			/** The privacy text displayed to the visitor
+			 */
 			text?: string | Expression<string>;
 		};
 	};
@@ -967,14 +1137,17 @@ export type HubspotV1TicketCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	pipelineId: string | Expression<string>;
 	/**
 	 * The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	stageId: string | Expression<string>;
 	/**
 	 * The ID of the pipeline the ticket is in
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	ticketName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -986,6 +1159,7 @@ export type HubspotV1TicketDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier for a particular ticket
+	 * @displayOptions.show { resource: ["ticket"], operation: ["delete"] }
 	 */
 	ticketId: string | Expression<string>;
 };
@@ -996,6 +1170,7 @@ export type HubspotV1TicketGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for a particular ticket
+	 * @displayOptions.show { resource: ["ticket"], operation: ["get"] }
 	 */
 	ticketId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -1007,11 +1182,13 @@ export type HubspotV1TicketGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -1024,6 +1201,7 @@ export type HubspotV1TicketUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for a particular ticket
+	 * @displayOptions.show { resource: ["ticket"], operation: ["update"] }
 	 */
 	ticketId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

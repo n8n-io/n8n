@@ -25,31 +25,53 @@ export type GitlabV1FileCreateConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The file path of the file. Has to contain the full path or leave it empty for root folder.
+	 * @displayOptions.show { resource: ["file"] }
+	 * @displayOptions.hide { operation: ["list"] }
 	 */
 	filePath?: string | Expression<string>;
 	/**
 	 * Whether the data to upload should be taken from binary field
+	 * @displayOptions.show { operation: ["create", "edit"], resource: ["file"] }
 	 * @default false
 	 */
 	binaryData: boolean | Expression<boolean>;
 	/**
 	 * The text content of the file
+	 * @displayOptions.show { binaryData: [false], operation: ["create", "edit"], resource: ["file"] }
 	 */
 	fileContent: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
 	commitMessage: string | Expression<string>;
 	/**
 	 * Name of the new branch to create. The commit is added to this branch.
+	 * @displayOptions.show { operation: ["create", "delete", "edit"], resource: ["file"] }
 	 */
 	branch: string | Expression<string>;
 	/**
 	 * Additional fields to add
+	 * @displayOptions.show { operation: ["create", "delete", "edit"], resource: ["file"] }
 	 * @default {}
 	 */
 	additionalParameters?: {
-		branchStart?: { branchStart?: string | Expression<string> };
-		author?: { name?: string | Expression<string>; email?: string | Expression<string> };
-		encoding?: { encoding?: string | Expression<string> };
+		branchStart?: {
+			/** Name of the base branch to create the new branch from
+			 */
+			branchStart?: string | Expression<string>;
+		};
+		author?: {
+			/** The name of the author of the commit
+			 */
+			name?: string | Expression<string>;
+			/** The email of the author of the commit
+			 */
+			email?: string | Expression<string>;
+		};
+		encoding?: {
+			/** Change encoding to base64. Default is text.
+			 * @default text
+			 */
+			encoding?: string | Expression<string>;
+		};
 	};
 };
 
@@ -63,21 +85,41 @@ export type GitlabV1FileDeleteConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The file path of the file. Has to contain the full path or leave it empty for root folder.
+	 * @displayOptions.show { resource: ["file"] }
+	 * @displayOptions.hide { operation: ["list"] }
 	 */
 	filePath?: string | Expression<string>;
 	commitMessage: string | Expression<string>;
 	/**
 	 * Name of the new branch to create. The commit is added to this branch.
+	 * @displayOptions.show { operation: ["create", "delete", "edit"], resource: ["file"] }
 	 */
 	branch: string | Expression<string>;
 	/**
 	 * Additional fields to add
+	 * @displayOptions.show { operation: ["create", "delete", "edit"], resource: ["file"] }
 	 * @default {}
 	 */
 	additionalParameters?: {
-		branchStart?: { branchStart?: string | Expression<string> };
-		author?: { name?: string | Expression<string>; email?: string | Expression<string> };
-		encoding?: { encoding?: string | Expression<string> };
+		branchStart?: {
+			/** Name of the base branch to create the new branch from
+			 */
+			branchStart?: string | Expression<string>;
+		};
+		author?: {
+			/** The name of the author of the commit
+			 */
+			name?: string | Expression<string>;
+			/** The email of the author of the commit
+			 */
+			email?: string | Expression<string>;
+		};
+		encoding?: {
+			/** Change encoding to base64. Default is text.
+			 * @default text
+			 */
+			encoding?: string | Expression<string>;
+		};
 	};
 };
 
@@ -91,31 +133,53 @@ export type GitlabV1FileEditConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The file path of the file. Has to contain the full path or leave it empty for root folder.
+	 * @displayOptions.show { resource: ["file"] }
+	 * @displayOptions.hide { operation: ["list"] }
 	 */
 	filePath?: string | Expression<string>;
 	/**
 	 * Whether the data to upload should be taken from binary field
+	 * @displayOptions.show { operation: ["create", "edit"], resource: ["file"] }
 	 * @default false
 	 */
 	binaryData: boolean | Expression<boolean>;
 	/**
 	 * The text content of the file
+	 * @displayOptions.show { binaryData: [false], operation: ["create", "edit"], resource: ["file"] }
 	 */
 	fileContent: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
 	commitMessage: string | Expression<string>;
 	/**
 	 * Name of the new branch to create. The commit is added to this branch.
+	 * @displayOptions.show { operation: ["create", "delete", "edit"], resource: ["file"] }
 	 */
 	branch: string | Expression<string>;
 	/**
 	 * Additional fields to add
+	 * @displayOptions.show { operation: ["create", "delete", "edit"], resource: ["file"] }
 	 * @default {}
 	 */
 	additionalParameters?: {
-		branchStart?: { branchStart?: string | Expression<string> };
-		author?: { name?: string | Expression<string>; email?: string | Expression<string> };
-		encoding?: { encoding?: string | Expression<string> };
+		branchStart?: {
+			/** Name of the base branch to create the new branch from
+			 */
+			branchStart?: string | Expression<string>;
+		};
+		author?: {
+			/** The name of the author of the commit
+			 */
+			name?: string | Expression<string>;
+			/** The email of the author of the commit
+			 */
+			email?: string | Expression<string>;
+		};
+		encoding?: {
+			/** Change encoding to base64. Default is text.
+			 * @default text
+			 */
+			encoding?: string | Expression<string>;
+		};
 	};
 };
 
@@ -129,16 +193,20 @@ export type GitlabV1FileGetConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The file path of the file. Has to contain the full path or leave it empty for root folder.
+	 * @displayOptions.show { resource: ["file"] }
+	 * @displayOptions.hide { operation: ["list"] }
 	 */
 	filePath?: string | Expression<string>;
 	/**
 	 * Whether to set the data of the file as binary property instead of returning the raw API response
+	 * @displayOptions.show { operation: ["get"], resource: ["file"] }
 	 * @default true
 	 */
 	asBinaryProperty?: boolean | Expression<boolean>;
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * Additional fields to add
+	 * @displayOptions.show { operation: ["get"], resource: ["file"] }
 	 * @default {}
 	 */
 	additionalParameters?: Record<string, unknown>;
@@ -154,25 +222,31 @@ export type GitlabV1FileListConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["release", "file", "repository"], operation: ["getAll", "list", "getIssues"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["release", "file", "repository"], operation: ["getAll", "list", "getIssues"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * The file path of the file. Has to contain the full path or leave it empty for root folder.
+	 * @displayOptions.show { resource: ["file"] }
+	 * @displayOptions.hide { operation: ["list"] }
 	 */
 	filePath?: string | Expression<string>;
 	/**
 	 * Page of results to display
+	 * @displayOptions.show { resource: ["file"], operation: ["list"], returnAll: [false] }
 	 * @default 1
 	 */
 	page?: number | Expression<number>;
 	/**
 	 * Additional fields to add
+	 * @displayOptions.show { resource: ["file"], operation: ["list"] }
 	 * @default {}
 	 */
 	additionalParameters?: Record<string, unknown>;
@@ -188,14 +262,17 @@ export type GitlabV1IssueCreateConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The title of the issue
+	 * @displayOptions.show { operation: ["create"], resource: ["issue"] }
 	 */
 	title: string | Expression<string>;
 	/**
 	 * The body of the issue
+	 * @displayOptions.show { operation: ["create"], resource: ["issue"] }
 	 */
 	body?: string | Expression<string>;
 	/**
 	 * Due Date for issue
+	 * @displayOptions.show { operation: ["create"], resource: ["issue"] }
 	 */
 	due_date?: string | Expression<string>;
 	labels?: Record<string, unknown>;
@@ -212,11 +289,13 @@ export type GitlabV1IssueCreateCommentConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The number of the issue on which to create the comment on
+	 * @displayOptions.show { operation: ["createComment"], resource: ["issue"] }
 	 * @default 0
 	 */
 	issueNumber: number | Expression<number>;
 	/**
 	 * The body of the comment
+	 * @displayOptions.show { operation: ["createComment"], resource: ["issue"] }
 	 */
 	body?: string | Expression<string>;
 };
@@ -231,6 +310,7 @@ export type GitlabV1IssueEditConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The number of the issue edit
+	 * @displayOptions.show { operation: ["edit"], resource: ["issue"] }
 	 * @default 0
 	 */
 	issueNumber: number | Expression<number>;
@@ -247,6 +327,7 @@ export type GitlabV1IssueGetConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The number of the issue get data of
+	 * @displayOptions.show { operation: ["get"], resource: ["issue"] }
 	 * @default 0
 	 */
 	issueNumber: number | Expression<number>;
@@ -262,11 +343,13 @@ export type GitlabV1IssueLockConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The number of the issue to lock
+	 * @displayOptions.show { operation: ["lock"], resource: ["issue"] }
 	 * @default 0
 	 */
 	issueNumber: number | Expression<number>;
 	/**
 	 * The reason to lock the issue
+	 * @displayOptions.show { operation: ["lock"], resource: ["issue"] }
 	 * @default resolved
 	 */
 	lockReason?: 'off-topic' | 'too heated' | 'resolved' | 'spam' | Expression<string>;
@@ -282,6 +365,7 @@ export type GitlabV1ReleaseCreateConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The tag of the release
+	 * @displayOptions.show { operation: ["create"], resource: ["release"] }
 	 */
 	releaseTag: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -297,10 +381,12 @@ export type GitlabV1ReleaseDeleteConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The ID or URL-encoded path of the project
+	 * @displayOptions.show { operation: ["delete", "get"], resource: ["release"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * The Git tag the release is associated with
+	 * @displayOptions.show { operation: ["delete", "get"], resource: ["release"] }
 	 */
 	tag_name: string | Expression<string>;
 };
@@ -315,10 +401,12 @@ export type GitlabV1ReleaseGetConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The ID or URL-encoded path of the project
+	 * @displayOptions.show { operation: ["delete", "get"], resource: ["release"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * The Git tag the release is associated with
+	 * @displayOptions.show { operation: ["delete", "get"], resource: ["release"] }
 	 */
 	tag_name: string | Expression<string>;
 };
@@ -333,15 +421,18 @@ export type GitlabV1ReleaseGetAllConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The ID or URL-encoded path of the project
+	 * @displayOptions.show { operation: ["getAll"], resource: ["release"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["release", "file", "repository"], operation: ["getAll", "list", "getIssues"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["release", "file", "repository"], operation: ["getAll", "list", "getIssues"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -358,10 +449,12 @@ export type GitlabV1ReleaseUpdateConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * The ID or URL-encoded path of the project
+	 * @displayOptions.show { operation: ["update"], resource: ["release"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * The Git tag the release is associated with
+	 * @displayOptions.show { operation: ["update"], resource: ["release"] }
 	 */
 	tag_name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -387,11 +480,13 @@ export type GitlabV1RepositoryGetIssuesConfig = {
 	owner: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["release", "file", "repository"], operation: ["getAll", "list", "getIssues"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["release", "file", "repository"], operation: ["getAll", "list", "getIssues"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;

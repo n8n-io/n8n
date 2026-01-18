@@ -20,6 +20,7 @@ export type UrlScanIoV1ScanGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the scan to retrieve
+	 * @displayOptions.show { resource: ["scan"], operation: ["get"] }
 	 */
 	scanId?: string | Expression<string>;
 };
@@ -29,11 +30,13 @@ export type UrlScanIoV1ScanGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["scan"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["scan"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -45,6 +48,7 @@ export type UrlScanIoV1ScanPerformConfig = {
 	operation: 'perform';
 	/**
 	 * URL to scan
+	 * @displayOptions.show { resource: ["scan"], operation: ["perform"] }
 	 */
 	url?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

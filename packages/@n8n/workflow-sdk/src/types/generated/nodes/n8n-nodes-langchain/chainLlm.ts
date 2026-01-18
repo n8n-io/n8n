@@ -22,20 +22,42 @@ export type LcChainLlmV19AutoConfig = {
 	text: string | Expression<string>;
 	messages?: {
 		messageValues?: Array<{
+			/** Type Name or ID
+			 * @default SystemMessagePromptTemplate
+			 */
 			type?:
 				| 'AIMessagePromptTemplate'
 				| 'SystemMessagePromptTemplate'
 				| 'HumanMessagePromptTemplate'
 				| Expression<string>;
+			/** Message Type
+			 * @displayOptions.show { type: ["HumanMessagePromptTemplate"] }
+			 * @default text
+			 */
 			messageType?: 'text' | 'imageBinary' | 'imageUrl' | Expression<string>;
+			/** The name of the field in the chain's input that contains the binary image file to be processed
+			 * @displayOptions.show { messageType: ["imageBinary"] }
+			 * @default data
+			 */
 			binaryImageDataKey?: string | Expression<string>;
+			/** URL to the image to be processed
+			 * @displayOptions.show { messageType: ["imageUrl"] }
+			 */
 			imageUrl?: string | Expression<string>;
+			/** Control how the model processes the image and generates its textual understanding
+			 * @displayOptions.show { type: ["HumanMessagePromptTemplate"], messageType: ["imageBinary", "imageUrl"] }
+			 * @default auto
+			 */
 			imageDetail?: 'auto' | 'low' | 'high' | Expression<string>;
+			/** Message
+			 * @displayOptions.hide { messageType: ["imageBinary", "imageUrl"] }
+			 */
 			message?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Batch processing options for rate limiting
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.7}}] }
 	 * @default {}
 	 */
 	batching?: Record<string, unknown>;
@@ -48,20 +70,42 @@ export type LcChainLlmV19GuardrailsConfig = {
 	text: string | Expression<string>;
 	messages?: {
 		messageValues?: Array<{
+			/** Type Name or ID
+			 * @default SystemMessagePromptTemplate
+			 */
 			type?:
 				| 'AIMessagePromptTemplate'
 				| 'SystemMessagePromptTemplate'
 				| 'HumanMessagePromptTemplate'
 				| Expression<string>;
+			/** Message Type
+			 * @displayOptions.show { type: ["HumanMessagePromptTemplate"] }
+			 * @default text
+			 */
 			messageType?: 'text' | 'imageBinary' | 'imageUrl' | Expression<string>;
+			/** The name of the field in the chain's input that contains the binary image file to be processed
+			 * @displayOptions.show { messageType: ["imageBinary"] }
+			 * @default data
+			 */
 			binaryImageDataKey?: string | Expression<string>;
+			/** URL to the image to be processed
+			 * @displayOptions.show { messageType: ["imageUrl"] }
+			 */
 			imageUrl?: string | Expression<string>;
+			/** Control how the model processes the image and generates its textual understanding
+			 * @displayOptions.show { type: ["HumanMessagePromptTemplate"], messageType: ["imageBinary", "imageUrl"] }
+			 * @default auto
+			 */
 			imageDetail?: 'auto' | 'low' | 'high' | Expression<string>;
+			/** Message
+			 * @displayOptions.hide { messageType: ["imageBinary", "imageUrl"] }
+			 */
 			message?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Batch processing options for rate limiting
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.7}}] }
 	 * @default {}
 	 */
 	batching?: Record<string, unknown>;
@@ -74,20 +118,42 @@ export type LcChainLlmV19DefineConfig = {
 	text: string | Expression<string>;
 	messages?: {
 		messageValues?: Array<{
+			/** Type Name or ID
+			 * @default SystemMessagePromptTemplate
+			 */
 			type?:
 				| 'AIMessagePromptTemplate'
 				| 'SystemMessagePromptTemplate'
 				| 'HumanMessagePromptTemplate'
 				| Expression<string>;
+			/** Message Type
+			 * @displayOptions.show { type: ["HumanMessagePromptTemplate"] }
+			 * @default text
+			 */
 			messageType?: 'text' | 'imageBinary' | 'imageUrl' | Expression<string>;
+			/** The name of the field in the chain's input that contains the binary image file to be processed
+			 * @displayOptions.show { messageType: ["imageBinary"] }
+			 * @default data
+			 */
 			binaryImageDataKey?: string | Expression<string>;
+			/** URL to the image to be processed
+			 * @displayOptions.show { messageType: ["imageUrl"] }
+			 */
 			imageUrl?: string | Expression<string>;
+			/** Control how the model processes the image and generates its textual understanding
+			 * @displayOptions.show { type: ["HumanMessagePromptTemplate"], messageType: ["imageBinary", "imageUrl"] }
+			 * @default auto
+			 */
 			imageDetail?: 'auto' | 'low' | 'high' | Expression<string>;
+			/** Message
+			 * @displayOptions.hide { messageType: ["imageBinary", "imageUrl"] }
+			 */
 			message?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Batch processing options for rate limiting
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.7}}] }
 	 * @default {}
 	 */
 	batching?: Record<string, unknown>;

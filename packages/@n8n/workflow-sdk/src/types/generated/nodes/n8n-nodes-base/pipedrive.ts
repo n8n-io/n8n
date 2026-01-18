@@ -21,15 +21,18 @@ export type PipedriveV1ActivityCreateConfig = {
 	operation: 'create';
 	/**
 	 * The subject of the activity to create
+	 * @displayOptions.show { operation: ["create"], resource: ["activity"] }
 	 */
 	subject: string | Expression<string>;
 	/**
 	 * Whether the activity is done or not
+	 * @displayOptions.show { operation: ["create"], resource: ["activity"] }
 	 * @default 0
 	 */
 	done?: '0' | '1' | Expression<string>;
 	/**
 	 * Type of the activity like "call", "meeting", etc
+	 * @displayOptions.show { operation: ["create"], resource: ["activity"] }
 	 */
 	type: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -41,6 +44,7 @@ export type PipedriveV1ActivityDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the activity to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["activity"] }
 	 * @default 0
 	 */
 	activityId: number | Expression<number>;
@@ -52,11 +56,13 @@ export type PipedriveV1ActivityGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the activity to get
+	 * @displayOptions.show { operation: ["get"], resource: ["activity"] }
 	 * @default 0
 	 */
 	activityId: number | Expression<number>;
 	/**
 	 * By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["get", "getAll"] }
 	 * @default false
 	 */
 	resolveProperties?: boolean | Expression<boolean>;
@@ -68,16 +74,19 @@ export type PipedriveV1ActivityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["get", "getAll"] }
 	 * @default false
 	 */
 	resolveProperties?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -90,12 +99,14 @@ export type PipedriveV1ActivityUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the activity to update
+	 * @displayOptions.show { operation: ["update"], resource: ["activity"] }
 	 * @default 0
 	 */
 	activityId: number | Expression<number>;
 	updateFields?: Record<string, unknown>;
 	/**
 	 * By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["update"] }
 	 * @default false
 	 */
 	encodeProperties?: boolean | Expression<boolean>;
@@ -107,20 +118,24 @@ export type PipedriveV1DealCreateConfig = {
 	operation: 'create';
 	/**
 	 * The title of the deal to create
+	 * @displayOptions.show { operation: ["create"], resource: ["deal"] }
 	 */
 	title: string | Expression<string>;
 	/**
 	 * Type of entity to link to this deal
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"] }
 	 * @default organization
 	 */
 	associateWith: 'organization' | 'person' | Expression<string>;
 	/**
 	 * ID of the organization this deal will be associated with
+	 * @displayOptions.show { operation: ["create"], resource: ["deal"], associateWith: ["organization"] }
 	 * @default 0
 	 */
 	org_id: number | Expression<number>;
 	/**
 	 * ID of the person this deal will be associated with
+	 * @displayOptions.show { operation: ["create"], resource: ["deal"], associateWith: ["person"] }
 	 * @default 0
 	 */
 	person_id?: number | Expression<number>;
@@ -133,6 +148,7 @@ export type PipedriveV1DealDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the deal to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["deal"] }
 	 * @default 0
 	 */
 	dealId: number | Expression<number>;
@@ -144,6 +160,7 @@ export type PipedriveV1DealDuplicateConfig = {
 	operation: 'duplicate';
 	/**
 	 * ID of the deal to duplicate
+	 * @displayOptions.show { operation: ["duplicate"], resource: ["deal"] }
 	 * @default 0
 	 */
 	dealId: number | Expression<number>;
@@ -155,11 +172,13 @@ export type PipedriveV1DealGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the deal to get
+	 * @displayOptions.show { operation: ["get"], resource: ["deal"] }
 	 * @default 0
 	 */
 	dealId: number | Expression<number>;
 	/**
 	 * By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["get", "getAll"] }
 	 * @default false
 	 */
 	resolveProperties?: boolean | Expression<boolean>;
@@ -171,16 +190,19 @@ export type PipedriveV1DealGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["get", "getAll"] }
 	 * @default false
 	 */
 	resolveProperties?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -193,20 +215,24 @@ export type PipedriveV1DealSearchConfig = {
 	operation: 'search';
 	/**
 	 * The search term to look for. Minimum 2 characters (or 1 if using exact_match).
+	 * @displayOptions.show { operation: ["search"], resource: ["deal"] }
 	 */
 	term: string | Expression<string>;
 	/**
 	 * Whether only full exact matches against the given term are returned. It is not case sensitive.
+	 * @displayOptions.show { operation: ["search"], resource: ["deal"] }
 	 * @default false
 	 */
 	exactMatch?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["search"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -219,12 +245,14 @@ export type PipedriveV1DealUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the deal to update
+	 * @displayOptions.show { operation: ["update"], resource: ["deal"] }
 	 * @default 0
 	 */
 	dealId: number | Expression<number>;
 	updateFields?: Record<string, unknown>;
 	/**
 	 * By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["update"] }
 	 * @default false
 	 */
 	encodeProperties?: boolean | Expression<boolean>;
@@ -236,16 +264,19 @@ export type PipedriveV1DealActivityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * The ID of the deal whose activity to retrieve. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["dealActivity"] }
 	 */
 	dealId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -257,19 +288,23 @@ export type PipedriveV1DealProductAddConfig = {
 	operation: 'add';
 	/**
 	 * The ID of the deal to add a product to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["add"], resource: ["dealProduct"] }
 	 */
 	dealId: string | Expression<string>;
 	/**
 	 * The ID of the product to add to a deal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["add"], resource: ["dealProduct"] }
 	 */
 	productId: string | Expression<string>;
 	/**
 	 * Price at which to add or update this product in a deal
+	 * @displayOptions.show { operation: ["add"], resource: ["dealProduct"] }
 	 * @default 0
 	 */
 	item_price: number | Expression<number>;
 	/**
 	 * How many items of this product to add/update in a deal
+	 * @displayOptions.show { operation: ["add"], resource: ["dealProduct"] }
 	 * @default 1
 	 */
 	quantity: number | Expression<number>;
@@ -282,15 +317,18 @@ export type PipedriveV1DealProductGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the deal whose products to retrieve. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["dealProduct"] }
 	 */
 	dealId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -302,10 +340,12 @@ export type PipedriveV1DealProductRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * The ID of the deal whose product to remove. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["remove"], resource: ["dealProduct"] }
 	 */
 	dealId: string | Expression<string>;
 	/**
 	 * ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["remove"], resource: ["dealProduct"] }
 	 */
 	productAttachmentId: string | Expression<string>;
 };
@@ -316,10 +356,12 @@ export type PipedriveV1DealProductUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the deal whose product to update. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["update"], resource: ["dealProduct"] }
 	 */
 	dealId: string | Expression<string>;
 	/**
 	 * ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["update"], resource: ["dealProduct"] }
 	 */
 	productAttachmentId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -339,6 +381,7 @@ export type PipedriveV1FileDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the file to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["file"] }
 	 * @default 0
 	 */
 	fileId: number | Expression<number>;
@@ -350,6 +393,7 @@ export type PipedriveV1FileDownloadConfig = {
 	operation: 'download';
 	/**
 	 * ID of the file to download
+	 * @displayOptions.show { operation: ["download"], resource: ["file"] }
 	 * @default 0
 	 */
 	fileId: number | Expression<number>;
@@ -362,6 +406,7 @@ export type PipedriveV1FileGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the file to get
+	 * @displayOptions.show { operation: ["get"], resource: ["file"] }
 	 * @default 0
 	 */
 	fileId: number | Expression<number>;
@@ -373,6 +418,7 @@ export type PipedriveV1FileUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the file to update
+	 * @displayOptions.show { operation: ["update"], resource: ["file"] }
 	 * @default 0
 	 */
 	fileId: number | Expression<number>;
@@ -385,20 +431,24 @@ export type PipedriveV1LeadCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the lead to create
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"] }
 	 */
 	title: string | Expression<string>;
 	/**
 	 * Type of entity to link to this lead
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"] }
 	 * @default organization
 	 */
 	associateWith: 'organization' | 'person' | Expression<string>;
 	/**
 	 * ID of the organization to link to this lead
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"], associateWith: ["organization"] }
 	 * @default 0
 	 */
 	organization_id: number | Expression<number>;
 	/**
 	 * ID of the person to link to this lead
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"], associateWith: ["person"] }
 	 * @default 0
 	 */
 	person_id: number | Expression<number>;
@@ -411,6 +461,7 @@ export type PipedriveV1LeadDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the lead to delete
+	 * @displayOptions.show { resource: ["lead"], operation: ["delete"] }
 	 */
 	leadId: string | Expression<string>;
 };
@@ -421,6 +472,7 @@ export type PipedriveV1LeadGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the lead to retrieve
+	 * @displayOptions.show { resource: ["lead"], operation: ["get"] }
 	 */
 	leadId: string | Expression<string>;
 };
@@ -431,11 +483,13 @@ export type PipedriveV1LeadGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -448,6 +502,7 @@ export type PipedriveV1LeadUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the lead to update
+	 * @displayOptions.show { resource: ["lead"], operation: ["update"] }
 	 */
 	leadId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -459,6 +514,7 @@ export type PipedriveV1NoteCreateConfig = {
 	operation: 'create';
 	/**
 	 * The content of the note to create
+	 * @displayOptions.show { operation: ["create"], resource: ["note"] }
 	 */
 	content: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -470,6 +526,7 @@ export type PipedriveV1NoteDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the note to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["note"] }
 	 * @default 0
 	 */
 	noteId: number | Expression<number>;
@@ -481,6 +538,7 @@ export type PipedriveV1NoteGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the note to get
+	 * @displayOptions.show { operation: ["get"], resource: ["note"] }
 	 * @default 0
 	 */
 	noteId: number | Expression<number>;
@@ -492,11 +550,13 @@ export type PipedriveV1NoteGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -509,6 +569,7 @@ export type PipedriveV1NoteUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the note to update
+	 * @displayOptions.show { operation: ["update"], resource: ["note"] }
 	 * @default 0
 	 */
 	noteId: number | Expression<number>;
@@ -521,6 +582,7 @@ export type PipedriveV1OrganizationCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the organization to create
+	 * @displayOptions.show { operation: ["create"], resource: ["organization"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -532,6 +594,7 @@ export type PipedriveV1OrganizationDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the organization to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["organization"] }
 	 * @default 0
 	 */
 	organizationId: number | Expression<number>;
@@ -543,11 +606,13 @@ export type PipedriveV1OrganizationGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the organization to get
+	 * @displayOptions.show { operation: ["get"], resource: ["organization"] }
 	 * @default 0
 	 */
 	organizationId: number | Expression<number>;
 	/**
 	 * By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["get", "getAll"] }
 	 * @default false
 	 */
 	resolveProperties?: boolean | Expression<boolean>;
@@ -559,16 +624,19 @@ export type PipedriveV1OrganizationGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["get", "getAll"] }
 	 * @default false
 	 */
 	resolveProperties?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -581,16 +649,19 @@ export type PipedriveV1OrganizationSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["search"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * The search term to look for. Minimum 2 characters (or 1 if using exact_match).
+	 * @displayOptions.show { operation: ["search"], resource: ["organization"] }
 	 */
 	term: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -602,11 +673,13 @@ export type PipedriveV1OrganizationUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the organization to create
+	 * @displayOptions.show { operation: ["update"], resource: ["organization"] }
 	 */
 	organizationId: number | Expression<number>;
 	updateFields?: Record<string, unknown>;
 	/**
 	 * By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["update"] }
 	 * @default false
 	 */
 	encodeProperties?: boolean | Expression<boolean>;
@@ -618,6 +691,7 @@ export type PipedriveV1PersonCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the person to create
+	 * @displayOptions.show { operation: ["create"], resource: ["person"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -629,6 +703,7 @@ export type PipedriveV1PersonDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the person to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["person"] }
 	 * @default 0
 	 */
 	personId: number | Expression<number>;
@@ -640,11 +715,13 @@ export type PipedriveV1PersonGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the person to get
+	 * @displayOptions.show { operation: ["get"], resource: ["person"] }
 	 * @default 0
 	 */
 	personId: number | Expression<number>;
 	/**
 	 * By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["get", "getAll"] }
 	 * @default false
 	 */
 	resolveProperties?: boolean | Expression<boolean>;
@@ -656,16 +733,19 @@ export type PipedriveV1PersonGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["get", "getAll"] }
 	 * @default false
 	 */
 	resolveProperties?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -678,16 +758,19 @@ export type PipedriveV1PersonSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["search"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * The search term to look for. Minimum 2 characters (or 1 if using exact_match).
+	 * @displayOptions.show { operation: ["search"], resource: ["person"] }
 	 */
 	term: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -699,16 +782,19 @@ export type PipedriveV1PersonUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the person to update
+	 * @displayOptions.show { operation: ["update"], resource: ["person"] }
 	 * @default 0
 	 */
 	personId: number | Expression<number>;
 	/**
 	 * The fields to update
+	 * @displayOptions.show { operation: ["update"], resource: ["person"] }
 	 * @default {}
 	 */
 	updateFields?: Record<string, unknown>;
 	/**
 	 * By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["update"] }
 	 * @default false
 	 */
 	encodeProperties?: boolean | Expression<boolean>;
@@ -720,16 +806,19 @@ export type PipedriveV1ProductGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.
+	 * @displayOptions.show { resource: ["activity", "deal", "organization", "person", "product"], operation: ["get", "getAll"] }
 	 * @default false
 	 */
 	resolveProperties?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

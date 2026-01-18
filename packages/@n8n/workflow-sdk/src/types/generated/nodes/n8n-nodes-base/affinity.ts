@@ -21,6 +21,7 @@ export type AffinityV1ListGetConfig = {
 	operation: 'get';
 	/**
 	 * The unique ID of the list object to be retrieved
+	 * @displayOptions.show { resource: ["list"], operation: ["get"] }
 	 */
 	listId: string | Expression<string>;
 };
@@ -31,11 +32,13 @@ export type AffinityV1ListGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -47,10 +50,12 @@ export type AffinityV1ListEntryCreateConfig = {
 	operation: 'create';
 	/**
 	 * The unique ID of the list whose list entries are to be retrieved. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["listEntry"], operation: ["create"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * The unique ID of the entity (person, organization, or opportunity) to add to this list
+	 * @displayOptions.show { resource: ["listEntry"], operation: ["create"] }
 	 */
 	entityId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -62,10 +67,12 @@ export type AffinityV1ListEntryDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The unique ID of the list that contains the specified list_entry_id. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["listEntry"], operation: ["delete"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * The unique ID of the list entry object to be deleted
+	 * @displayOptions.show { resource: ["listEntry"], operation: ["delete"] }
 	 */
 	listEntryId: string | Expression<string>;
 };
@@ -76,10 +83,12 @@ export type AffinityV1ListEntryGetConfig = {
 	operation: 'get';
 	/**
 	 * The unique ID of the list that contains the specified list_entry_id. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["listEntry"], operation: ["get"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * The unique ID of the list entry object to be retrieved
+	 * @displayOptions.show { resource: ["listEntry"], operation: ["get"] }
 	 */
 	listEntryId: string | Expression<string>;
 };
@@ -90,15 +99,18 @@ export type AffinityV1ListEntryGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The unique ID of the list whose list entries are to be retrieved. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["listEntry"], operation: ["getAll"] }
 	 */
 	listId?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["listEntry"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["listEntry"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -110,10 +122,12 @@ export type AffinityV1OrganizationCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the organization
+	 * @displayOptions.show { resource: ["organization"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * The domain name of the organization
+	 * @displayOptions.show { resource: ["organization"], operation: ["create"] }
 	 */
 	domain: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -125,6 +139,7 @@ export type AffinityV1OrganizationDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier for the organization
+	 * @displayOptions.show { resource: ["organization"], operation: ["delete"] }
 	 */
 	organizationId: string | Expression<string>;
 };
@@ -135,6 +150,7 @@ export type AffinityV1OrganizationGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the organization
+	 * @displayOptions.show { resource: ["organization"], operation: ["get"] }
 	 */
 	organizationId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -146,11 +162,13 @@ export type AffinityV1OrganizationGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["organization"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["organization"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -163,6 +181,7 @@ export type AffinityV1OrganizationUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for the organization
+	 * @displayOptions.show { resource: ["organization"], operation: ["update"] }
 	 */
 	organizationId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -174,15 +193,18 @@ export type AffinityV1PersonCreateConfig = {
 	operation: 'create';
 	/**
 	 * The first name of the person
+	 * @displayOptions.show { resource: ["person"], operation: ["create"] }
 	 */
 	firstName: string | Expression<string>;
 	/**
 	 * The last name of the person
+	 * @displayOptions.show { resource: ["person"], operation: ["create"] }
 	 */
 	lastName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * The email addresses of the person
+	 * @displayOptions.show { resource: ["person"], operation: ["create"] }
 	 * @default []
 	 */
 	emails?: string | Expression<string>;
@@ -194,6 +216,7 @@ export type AffinityV1PersonDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier for the person
+	 * @displayOptions.show { resource: ["person"], operation: ["delete"] }
 	 */
 	personId: string | Expression<string>;
 };
@@ -204,6 +227,7 @@ export type AffinityV1PersonGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the person
+	 * @displayOptions.show { resource: ["person"], operation: ["get"] }
 	 */
 	personId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -215,11 +239,13 @@ export type AffinityV1PersonGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["person"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["person"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -232,11 +258,13 @@ export type AffinityV1PersonUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for the person
+	 * @displayOptions.show { resource: ["person"], operation: ["update"] }
 	 */
 	personId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
 	/**
 	 * The email addresses of the person
+	 * @displayOptions.show { resource: ["person"], operation: ["update"] }
 	 * @default []
 	 */
 	emails?: string | Expression<string>;

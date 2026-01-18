@@ -20,6 +20,7 @@ export type CopperV1CompanyCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the company to create
+	 * @displayOptions.show { resource: ["company"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -30,6 +31,7 @@ export type CopperV1CompanyDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the company to delete
+	 * @displayOptions.show { resource: ["company"], operation: ["delete"] }
 	 */
 	companyId: string | Expression<string>;
 };
@@ -39,6 +41,7 @@ export type CopperV1CompanyGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the company to retrieve
+	 * @displayOptions.show { resource: ["company"], operation: ["get"] }
 	 */
 	companyId: string | Expression<string>;
 };
@@ -48,11 +51,13 @@ export type CopperV1CompanyGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -64,6 +69,7 @@ export type CopperV1CompanyUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the company to update
+	 * @displayOptions.show { resource: ["company"], operation: ["update"] }
 	 */
 	companyId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -74,11 +80,13 @@ export type CopperV1CustomerSourceGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["customerSource"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["customerSource"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -89,6 +97,7 @@ export type CopperV1LeadCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the lead to create
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -99,6 +108,7 @@ export type CopperV1LeadDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the lead to delete
+	 * @displayOptions.show { resource: ["lead"], operation: ["delete"] }
 	 */
 	leadId: string | Expression<string>;
 };
@@ -108,6 +118,7 @@ export type CopperV1LeadGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the lead to retrieve
+	 * @displayOptions.show { resource: ["lead"], operation: ["get"] }
 	 */
 	leadId: string | Expression<string>;
 };
@@ -117,11 +128,13 @@ export type CopperV1LeadGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["lead"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["lead"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -133,6 +146,7 @@ export type CopperV1LeadUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the lead to update
+	 * @displayOptions.show { resource: ["lead"], operation: ["update"] }
 	 */
 	leadId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -143,14 +157,17 @@ export type CopperV1OpportunityCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the opportunity to create
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * ID of the customer source that generated this opportunity
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create"] }
 	 */
 	customerSourceId?: string | Expression<string>;
 	/**
 	 * ID of the primary company associated with this opportunity
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create"] }
 	 */
 	primaryContactId?: string | Expression<string>;
 };
@@ -160,6 +177,7 @@ export type CopperV1OpportunityDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the opportunity to delete
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["delete"] }
 	 */
 	opportunityId: string | Expression<string>;
 };
@@ -169,6 +187,7 @@ export type CopperV1OpportunityGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the opportunity to retrieve
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["get"] }
 	 */
 	opportunityId: string | Expression<string>;
 };
@@ -178,11 +197,13 @@ export type CopperV1OpportunityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -194,6 +215,7 @@ export type CopperV1OpportunityUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the opportunity to update
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["update"] }
 	 */
 	opportunityId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -204,6 +226,7 @@ export type CopperV1PersonCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the person to create
+	 * @displayOptions.show { resource: ["person"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -214,6 +237,7 @@ export type CopperV1PersonDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the person to delete
+	 * @displayOptions.show { resource: ["person"], operation: ["delete"] }
 	 */
 	personId: string | Expression<string>;
 };
@@ -223,6 +247,7 @@ export type CopperV1PersonGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the person to retrieve
+	 * @displayOptions.show { resource: ["person"], operation: ["get"] }
 	 */
 	personId: string | Expression<string>;
 };
@@ -232,11 +257,13 @@ export type CopperV1PersonGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["person"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["person"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -248,6 +275,7 @@ export type CopperV1PersonUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the person to update
+	 * @displayOptions.show { resource: ["person"], operation: ["update"] }
 	 */
 	personId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -258,6 +286,7 @@ export type CopperV1ProjectCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the project to create
+	 * @displayOptions.show { resource: ["project"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -268,6 +297,7 @@ export type CopperV1ProjectDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the project to delete
+	 * @displayOptions.show { resource: ["project"], operation: ["delete"] }
 	 */
 	projectId: string | Expression<string>;
 };
@@ -277,6 +307,7 @@ export type CopperV1ProjectGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the project to retrieve
+	 * @displayOptions.show { resource: ["project"], operation: ["get"] }
 	 */
 	projectId: string | Expression<string>;
 };
@@ -286,11 +317,13 @@ export type CopperV1ProjectGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["project"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["project"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -302,6 +335,7 @@ export type CopperV1ProjectUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the project to update
+	 * @displayOptions.show { resource: ["project"], operation: ["update"] }
 	 */
 	projectId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -319,6 +353,7 @@ export type CopperV1TaskDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the task to delete
+	 * @displayOptions.show { resource: ["task"], operation: ["delete"] }
 	 */
 	taskId: string | Expression<string>;
 };
@@ -328,6 +363,7 @@ export type CopperV1TaskGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the task to retrieve
+	 * @displayOptions.show { resource: ["task"], operation: ["get"] }
 	 */
 	taskId: string | Expression<string>;
 };
@@ -337,11 +373,13 @@ export type CopperV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -353,6 +391,7 @@ export type CopperV1TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the task to update
+	 * @displayOptions.show { resource: ["task"], operation: ["update"] }
 	 */
 	taskId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -363,11 +402,13 @@ export type CopperV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;

@@ -22,20 +22,24 @@ export type AirtopV11AgentRunConfig = {
 	operation: 'run';
 	/**
 	 * Webhook URL to invoke the Airtop agent. Visit &lt;a href="https://portal.airtop.ai/agents" target="_blank"&gt;Airtop Agents&lt;/a&gt; for more information.
+	 * @displayOptions.show { resource: ["agent"], operation: ["run"] }
 	 */
 	webhookUrl: string | Expression<string>;
 	/**
 	 * Agent's input parameters in JSON format. Visit &lt;a href="https://portal.airtop.ai/agents" target="_blank"&gt;Airtop Agents&lt;/a&gt; for more information.
+	 * @displayOptions.show { resource: ["agent"], operation: ["run"] }
 	 * @default {}
 	 */
 	agentParameters: IDataObject | string | Expression<string>;
 	/**
 	 * Whether to wait for the agent to complete its execution
+	 * @displayOptions.show { resource: ["agent"], operation: ["run"] }
 	 * @default true
 	 */
 	awaitExecution?: boolean | Expression<boolean>;
 	/**
 	 * Timeout in seconds to wait for the agent to finish
+	 * @displayOptions.show { resource: ["agent"], operation: ["run"], awaitExecution: [true] }
 	 * @default 600
 	 */
 	timeout?: number | Expression<number>;
@@ -47,35 +51,42 @@ export type AirtopV11ExtractionQueryConfig = {
 	operation: 'query';
 	/**
 	 * Choose between creating a new session or using an existing one
+	 * @displayOptions.show { resource: ["extraction"], operation: ["getPaginated", "query", "scrape"] }
 	 * @default existing
 	 */
 	sessionMode?: 'new' | 'existing' | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["existing"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["existing"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * URL to load in the window
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["new"] }
 	 */
 	url: string | Expression<string>;
 	/**
 	 * The name of the Airtop profile to load or create
 	 * @hint &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Learn more&lt;/a&gt; about Airtop profiles
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["new"] }
 	 */
 	profileName?: string | Expression<string>;
 	/**
 	 * Whether to terminate the session after the operation is complete. When disabled, you must manually terminate the session. By default, idle sessions timeout after 10 minutes
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["new"] }
 	 * @default true
 	 */
 	autoTerminateSession?: boolean | Expression<boolean>;
 	/**
 	 * The prompt to query the page content
+	 * @displayOptions.show { resource: ["extraction"], operation: ["query"] }
 	 */
 	prompt: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -87,35 +98,42 @@ export type AirtopV11ExtractionGetPaginatedConfig = {
 	operation: 'getPaginated';
 	/**
 	 * Choose between creating a new session or using an existing one
+	 * @displayOptions.show { resource: ["extraction"], operation: ["getPaginated", "query", "scrape"] }
 	 * @default existing
 	 */
 	sessionMode?: 'new' | 'existing' | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["existing"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["existing"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * URL to load in the window
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["new"] }
 	 */
 	url: string | Expression<string>;
 	/**
 	 * The name of the Airtop profile to load or create
 	 * @hint &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Learn more&lt;/a&gt; about Airtop profiles
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["new"] }
 	 */
 	profileName?: string | Expression<string>;
 	/**
 	 * Whether to terminate the session after the operation is complete. When disabled, you must manually terminate the session. By default, idle sessions timeout after 10 minutes
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["new"] }
 	 * @default true
 	 */
 	autoTerminateSession?: boolean | Expression<boolean>;
 	/**
 	 * The prompt to extract data from the pages
+	 * @displayOptions.show { resource: ["extraction"], operation: ["getPaginated"] }
 	 */
 	prompt: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -127,30 +145,36 @@ export type AirtopV11ExtractionScrapeConfig = {
 	operation: 'scrape';
 	/**
 	 * Choose between creating a new session or using an existing one
+	 * @displayOptions.show { resource: ["extraction"], operation: ["getPaginated", "query", "scrape"] }
 	 * @default existing
 	 */
 	sessionMode?: 'new' | 'existing' | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["existing"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["existing"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * URL to load in the window
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["new"] }
 	 */
 	url: string | Expression<string>;
 	/**
 	 * The name of the Airtop profile to load or create
 	 * @hint &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Learn more&lt;/a&gt; about Airtop profiles
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["new"] }
 	 */
 	profileName?: string | Expression<string>;
 	/**
 	 * Whether to terminate the session after the operation is complete. When disabled, you must manually terminate the session. By default, idle sessions timeout after 10 minutes
+	 * @displayOptions.show { resource: ["extraction"], sessionMode: ["new"] }
 	 * @default true
 	 */
 	autoTerminateSession?: boolean | Expression<boolean>;
@@ -162,6 +186,7 @@ export type AirtopV11FileDeleteFileConfig = {
 	operation: 'deleteFile';
 	/**
 	 * ID of the file to delete
+	 * @displayOptions.show { resource: ["file"], operation: ["deleteFile"] }
 	 */
 	fileId: string | Expression<string>;
 };
@@ -172,10 +197,12 @@ export type AirtopV11FileGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the file to retrieve
+	 * @displayOptions.show { resource: ["file"], operation: ["get"] }
 	 */
 	fileId: string | Expression<string>;
 	/**
 	 * Whether to output the file in binary format if the file is ready for download
+	 * @displayOptions.show { resource: ["file"], operation: ["get"] }
 	 * @default false
 	 */
 	outputBinaryFile?: boolean | Expression<boolean>;
@@ -187,20 +214,24 @@ export type AirtopV11FileGetManyConfig = {
 	operation: 'getMany';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["file"], operation: ["getMany"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["file"], operation: ["getMany"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Comma-separated list of &lt;a href="https://docs.airtop.ai/api-reference/airtop-api/sessions/create" target="_blank"&gt;Session IDs&lt;/a&gt; to filter files by. When empty, all files from all sessions will be returned.
+	 * @displayOptions.show { resource: ["file"], operation: ["getMany"] }
 	 */
 	sessionIds?: string | Expression<string>;
 	/**
 	 * Whether to output one item containing all files or output each file as a separate item
+	 * @displayOptions.show { resource: ["file"], operation: ["getMany"] }
 	 * @default true
 	 */
 	outputSingleItem?: boolean | Expression<boolean>;
@@ -212,24 +243,29 @@ export type AirtopV11FileLoadConfig = {
 	operation: 'load';
 	/**
 	 * The session ID to load the file into
+	 * @displayOptions.show { resource: ["file"], operation: ["load"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The window ID to trigger the file input in
+	 * @displayOptions.show { resource: ["file"], operation: ["load"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * ID of the file to load into the session
+	 * @displayOptions.show { resource: ["file"], operation: ["load"] }
 	 */
 	fileId: string | Expression<string>;
 	/**
 	 * Optional description of the file input to interact with
+	 * @displayOptions.show { resource: ["file"], operation: ["load"] }
 	 */
 	elementDescription?: string | Expression<string>;
 	/**
 	 * Whether to include hidden elements in the interaction
+	 * @displayOptions.show { resource: ["file"], operation: ["load"] }
 	 * @default true
 	 */
 	includeHiddenElements?: boolean | Expression<boolean>;
@@ -241,48 +277,58 @@ export type AirtopV11FileUploadConfig = {
 	operation: 'upload';
 	/**
 	 * The session ID to load the file into
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The window ID to trigger the file input in
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * Name for the file to upload. For a session, all files loaded should have &lt;b&gt;unique names&lt;/b&gt;.
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 */
 	fileName: string | Expression<string>;
 	/**
 	 * Choose the type of file to upload. Defaults to 'Customer Upload'.
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default customer_upload
 	 */
 	fileType?: 'browser_download' | 'screenshot' | 'video' | 'customer_upload' | Expression<string>;
 	/**
 	 * Source of the file to upload
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default url
 	 */
 	source?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * Name of the binary property containing the file data
+	 * @displayOptions.show { source: ["binary"], resource: ["file"], operation: ["upload"] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * URL from where to fetch the file to upload
+	 * @displayOptions.show { source: ["url"], resource: ["file"], operation: ["upload"] }
 	 */
 	url: string | Expression<string>;
 	/**
 	 * Whether to automatically trigger the file input dialog in the current window. If disabled, the file will only be uploaded to the session without opening the file input dialog.
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default true
 	 */
 	triggerFileInputParameter?: boolean | Expression<boolean>;
 	/**
 	 * Optional description of the file input to interact with
+	 * @displayOptions.show { triggerFileInputParameter: [true], resource: ["file"], operation: ["upload"] }
 	 */
 	elementDescription?: string | Expression<string>;
 	/**
 	 * Whether to include hidden elements in the interaction
+	 * @displayOptions.show { triggerFileInputParameter: [true], resource: ["file"], operation: ["upload"] }
 	 * @default true
 	 */
 	includeHiddenElements?: boolean | Expression<boolean>;
@@ -294,20 +340,24 @@ export type AirtopV11InteractionClickConfig = {
 	operation: 'click';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["interaction"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["interaction"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * A specific description of the element to execute the interaction on
+	 * @displayOptions.show { resource: ["interaction"], operation: ["click"] }
 	 */
 	elementDescription: string | Expression<string>;
 	/**
 	 * The type of click to perform. Defaults to left click.
+	 * @displayOptions.show { resource: ["interaction"], operation: ["click"] }
 	 * @default click
 	 */
 	clickType?: 'click' | 'doubleClick' | 'rightClick' | Expression<string>;
@@ -320,16 +370,19 @@ export type AirtopV11InteractionFillConfig = {
 	operation: 'fill';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["interaction"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["interaction"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * The information to fill into the form written in natural language
+	 * @displayOptions.show { resource: ["interaction"], operation: ["fill"] }
 	 */
 	formData: string | Expression<string>;
 };
@@ -340,16 +393,19 @@ export type AirtopV11InteractionHoverConfig = {
 	operation: 'hover';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["interaction"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["interaction"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * A specific description of the element to execute the interaction on
+	 * @displayOptions.show { resource: ["interaction"], operation: ["hover"] }
 	 */
 	elementDescription: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -361,42 +417,60 @@ export type AirtopV11InteractionScrollConfig = {
 	operation: 'scroll';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["interaction"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["interaction"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * Choose the mode of scrolling
+	 * @displayOptions.show { resource: ["interaction"], operation: ["scroll"] }
 	 * @default automatic
 	 */
 	scrollingMode: 'automatic' | 'manual' | Expression<string>;
 	/**
 	 * A natural language description of the element to scroll to
+	 * @displayOptions.show { resource: ["interaction"], operation: ["scroll"], scrollingMode: ["automatic"] }
 	 */
 	scrollToElement: string | Expression<string>;
 	/**
 	 * The direction to scroll to. When 'Scroll By' is defined, 'Scroll To Edge' action will be executed first, then 'Scroll By' action.
+	 * @displayOptions.show { resource: ["interaction"], operation: ["scroll"], scrollingMode: ["manual"] }
 	 * @default {}
 	 */
 	scrollToEdge?: {
 		edgeValues?: {
+			/** Vertically
+			 */
 			yAxis?: '' | 'top' | 'bottom' | Expression<string>;
+			/** Horizontally
+			 */
 			xAxis?: '' | 'left' | 'right' | Expression<string>;
 		};
 	};
 	/**
 	 * The amount to scroll by. When 'Scroll To Edge' is defined, 'Scroll By' action will be executed after 'Scroll To Edge'.
+	 * @displayOptions.show { resource: ["interaction"], operation: ["scroll"], scrollingMode: ["manual"] }
 	 * @default {}
 	 */
 	scrollBy?: {
-		scrollValues?: { yAxis?: string | Expression<string>; xAxis?: string | Expression<string> };
+		scrollValues?: {
+			/** Vertically
+			 */
+			yAxis?: string | Expression<string>;
+			/** Horizontally
+			 */
+			xAxis?: string | Expression<string>;
+		};
 	};
 	/**
 	 * Scroll within an element on the page
+	 * @displayOptions.show { resource: ["interaction"], operation: ["scroll"] }
 	 */
 	scrollWithin?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -408,25 +482,30 @@ export type AirtopV11InteractionTypeConfig = {
 	operation: 'type';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["interaction"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["interaction"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * The text to type into the browser window
+	 * @displayOptions.show { resource: ["interaction"], operation: ["type"] }
 	 */
 	text: string | Expression<string>;
 	/**
 	 * Whether to press the Enter key after typing the text
+	 * @displayOptions.show { resource: ["interaction"], operation: ["type"] }
 	 * @default false
 	 */
 	pressEnterKey?: boolean | Expression<boolean>;
 	/**
 	 * A specific description of the element to execute the interaction on
+	 * @displayOptions.show { resource: ["interaction"], operation: ["type"] }
 	 */
 	elementDescription?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -439,35 +518,42 @@ export type AirtopV11SessionCreateConfig = {
 	/**
 	 * The name of the Airtop profile to load or create
 	 * @hint &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Learn more&lt;/a&gt; about Airtop profiles
+	 * @displayOptions.show { resource: ["session"], operation: ["create"] }
 	 */
 	profileName?: string | Expression<string>;
 	/**
 	 * Whether to automatically save the &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Airtop profile&lt;/a&gt; for this session upon termination
+	 * @displayOptions.show { resource: ["session"], operation: ["create"] }
 	 * @default false
 	 */
 	saveProfileOnTermination?: boolean | Expression<boolean>;
 	/**
 	 * Whether to record the browser session. &lt;a href="https://docs.airtop.ai/guides/how-to/recording-a-session" target="_blank"&gt;More details&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["session"], operation: ["create"] }
 	 * @default false
 	 */
 	record?: boolean | Expression<boolean>;
 	/**
 	 * Minutes to wait before the session is terminated due to inactivity
+	 * @displayOptions.show { resource: ["session"], operation: ["create"] }
 	 * @default 10
 	 */
 	timeoutMinutes?: number | Expression<number>;
 	/**
 	 * Choose how to configure the proxy for this session
+	 * @displayOptions.show { resource: ["session"], operation: ["create"] }
 	 * @default none
 	 */
 	proxy?: 'none' | 'integrated' | 'proxyUrl' | Expression<string>;
 	/**
 	 * The Airtop-provided configuration to use for the proxy
+	 * @displayOptions.show { resource: ["session"], operation: ["create"], proxy: ["integrated"] }
 	 * @default {"country":"US","sticky":true}
 	 */
 	proxyConfig?: Record<string, unknown>;
 	/**
 	 * The URL of the proxy to use
+	 * @displayOptions.show { resource: ["session"], operation: ["create"], proxy: ["proxyUrl"] }
 	 */
 	proxyUrl?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -479,12 +565,14 @@ export type AirtopV11SessionSaveConfig = {
 	operation: 'save';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["session"], operation: ["save"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The name of the &lt;a href="https://docs.airtop.ai/guides/how-to/saving-a-profile" target="_blank"&gt;Profile&lt;/a&gt; to save
 	 * @hint Name of the profile you want to save. Must consist only of alphanumeric characters and hyphens "-"
+	 * @displayOptions.show { resource: ["session"], operation: ["save"] }
 	 */
 	profileName: string | Expression<string>;
 };
@@ -495,6 +583,7 @@ export type AirtopV11SessionTerminateConfig = {
 	operation: 'terminate';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["session"], operation: ["terminate"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
@@ -506,6 +595,7 @@ export type AirtopV11SessionWaitForDownloadConfig = {
 	operation: 'waitForDownload';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["session"], operation: ["waitForDownload"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
@@ -518,11 +608,13 @@ export type AirtopV11WindowCloseConfig = {
 	operation: 'close';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["window"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["window"], operation: ["close", "takeScreenshot", "load", "getLiveView"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
@@ -534,29 +626,35 @@ export type AirtopV11WindowCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["window"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * Initial URL to load in the window. Defaults to https://www.google.com.
+	 * @displayOptions.show { resource: ["window"], operation: ["create"] }
 	 */
 	url?: string | Expression<string>;
 	/**
 	 * Whether to get the URL of the window's &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-live-view" target="_blank"&gt;Live View&lt;/a&gt;
+	 * @displayOptions.show { resource: ["window"], operation: ["create"] }
 	 * @default false
 	 */
 	getLiveView?: boolean | Expression<boolean>;
 	/**
 	 * Whether to include the navigation bar in the Live View. When enabled, the navigation bar will be visible allowing you to navigate between pages.
+	 * @displayOptions.show { resource: ["window"], operation: ["create"], getLiveView: [true] }
 	 * @default false
 	 */
 	includeNavigationBar?: boolean | Expression<boolean>;
 	/**
 	 * The screen resolution of the Live View. Setting a resolution will force the window to open at that specific size.
+	 * @displayOptions.show { resource: ["window"], operation: ["create"], getLiveView: [true] }
 	 */
 	screenResolution?: string | Expression<string>;
 	/**
 	 * Whether to disable the window from being resized in the Live View
+	 * @displayOptions.show { resource: ["window"], operation: ["create"], getLiveView: [true] }
 	 * @default false
 	 */
 	disableResize?: boolean | Expression<boolean>;
@@ -569,11 +667,13 @@ export type AirtopV11WindowGetLiveViewConfig = {
 	operation: 'getLiveView';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["window"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["window"], operation: ["close", "takeScreenshot", "load", "getLiveView"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
@@ -586,6 +686,7 @@ export type AirtopV11WindowListConfig = {
 	operation: 'list';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["window"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
@@ -597,16 +698,19 @@ export type AirtopV11WindowLoadConfig = {
 	operation: 'load';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["window"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["window"], operation: ["close", "takeScreenshot", "load", "getLiveView"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * URL to load in the window
+	 * @displayOptions.show { resource: ["window"], operation: ["load"] }
 	 */
 	url: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -618,16 +722,19 @@ export type AirtopV11WindowTakeScreenshotConfig = {
 	operation: 'takeScreenshot';
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session" target="_blank"&gt;Session&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["window"] }
 	 * @default ={{ $json["sessionId"] }}
 	 */
 	sessionId: string | Expression<string>;
 	/**
 	 * The ID of the &lt;a href="https://docs.airtop.ai/guides/how-to/creating-a-session#windows" target="_blank"&gt;Window&lt;/a&gt; to use
+	 * @displayOptions.show { resource: ["window"], operation: ["close", "takeScreenshot", "load", "getLiveView"] }
 	 * @default ={{ $json["windowId"] }}
 	 */
 	windowId: string | Expression<string>;
 	/**
 	 * Whether to output the image as a binary file instead of a base64 encoded string
+	 * @displayOptions.show { resource: ["window"], operation: ["takeScreenshot"] }
 	 * @default false
 	 */
 	outputImageAsBinary?: boolean | Expression<boolean>;

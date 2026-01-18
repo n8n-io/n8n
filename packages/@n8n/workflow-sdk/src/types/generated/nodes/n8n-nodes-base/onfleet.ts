@@ -21,14 +21,18 @@ export type OnfleetV1AdminCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the admin object for lookup
+	 * @displayOptions.show { resource: ["admin"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The administrator's name
+	 * @displayOptions.show { resource: ["admin"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * The administrator's email address
+	 * @displayOptions.show { resource: ["admin"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -40,6 +44,8 @@ export type OnfleetV1AdminDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the admin object for lookup
+	 * @displayOptions.show { resource: ["admin"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -50,15 +56,19 @@ export type OnfleetV1AdminGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the admin object for lookup
+	 * @displayOptions.show { resource: ["admin"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["admin"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["admin"], operation: ["getAll"], returnAll: [false] }
 	 * @default 64
 	 */
 	limit?: number | Expression<number>;
@@ -70,6 +80,8 @@ export type OnfleetV1AdminUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the admin object for lookup
+	 * @displayOptions.show { resource: ["admin"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -82,16 +94,19 @@ export type OnfleetV1ContainerAddTaskConfig = {
 	containerType: 'organizations' | 'teams' | 'workers' | Expression<string>;
 	/**
 	 * The object ID according to the container chosen
+	 * @displayOptions.show { resource: ["container"], operation: ["get", "addTask", "updateTask"] }
 	 */
 	containerId: string | Expression<string>;
 	type: -1 | 0 | 1 | Expression<number>;
 	/**
 	 * The index given indicates the position where the tasks are going to be inserted
+	 * @displayOptions.show { resource: ["container"], operation: ["addTask"], type: [1] }
 	 * @default 0
 	 */
 	index: number | Expression<number>;
 	/**
 	 * Task's ID that are going to be used
+	 * @displayOptions.show { resource: ["container"], operation: ["addTask", "updateTask"] }
 	 * @default []
 	 */
 	tasks: string | Expression<string>;
@@ -105,6 +120,7 @@ export type OnfleetV1ContainerGetConfig = {
 	containerType: 'organizations' | 'teams' | 'workers' | Expression<string>;
 	/**
 	 * The object ID according to the container chosen
+	 * @displayOptions.show { resource: ["container"], operation: ["get", "addTask", "updateTask"] }
 	 */
 	containerId: string | Expression<string>;
 };
@@ -115,10 +131,12 @@ export type OnfleetV1ContainerUpdateTaskConfig = {
 	operation: 'updateTask';
 	/**
 	 * The object ID according to the container chosen
+	 * @displayOptions.show { resource: ["container"], operation: ["get", "addTask", "updateTask"] }
 	 */
 	containerId: string | Expression<string>;
 	/**
 	 * Task's ID that are going to be used
+	 * @displayOptions.show { resource: ["container"], operation: ["addTask", "updateTask"] }
 	 * @default []
 	 */
 	tasks: string | Expression<string>;
@@ -131,31 +149,39 @@ export type OnfleetV1DestinationCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the destination object for lookup
+	 * @displayOptions.show { resource: ["destination"] }
+	 * @displayOptions.hide { operation: ["create"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether or not the address is specified in a single unparsed string
+	 * @displayOptions.show { resource: ["destination"], operation: ["create"] }
 	 * @default false
 	 */
 	unparsed: boolean | Expression<boolean>;
 	/**
 	 * The destination's street address details
+	 * @displayOptions.show { resource: ["destination"], operation: ["create"], unparsed: [true] }
 	 */
 	address: string | Expression<string>;
 	/**
 	 * The number component of this address, it may also contain letters
+	 * @displayOptions.show { resource: ["destination"], operation: ["create"], unparsed: [false] }
 	 */
 	addressNumber: string | Expression<string>;
 	/**
 	 * The name of the street
+	 * @displayOptions.show { resource: ["destination"], operation: ["create"], unparsed: [false] }
 	 */
 	addressStreet: string | Expression<string>;
 	/**
 	 * The name of the municipality
+	 * @displayOptions.show { resource: ["destination"], operation: ["create"], unparsed: [false] }
 	 */
 	addressCity: string | Expression<string>;
 	/**
 	 * The name of the country
+	 * @displayOptions.show { resource: ["destination"], operation: ["create"], unparsed: [false] }
 	 */
 	addressCountry: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -167,6 +193,8 @@ export type OnfleetV1DestinationGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the destination object for lookup
+	 * @displayOptions.show { resource: ["destination"] }
+	 * @displayOptions.hide { operation: ["create"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -177,20 +205,51 @@ export type OnfleetV1HubCreateConfig = {
 	operation: 'create';
 	/**
 	 * A name to identify the hub
+	 * @displayOptions.show { resource: ["hub"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	destination?: {
 		destinationProperties?: {
+			/** Whether or not the address is specified in a single unparsed string
+			 * @default false
+			 */
 			unparsed?: boolean | Expression<boolean>;
+			/** The destination's street address details
+			 * @displayOptions.show { unparsed: [true] }
+			 */
 			address?: string | Expression<string>;
+			/** The number component of this address, it may also contain letters
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressNumber?: string | Expression<string>;
+			/** The name of the street
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressStreet?: string | Expression<string>;
+			/** The name of the municipality
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressCity?: string | Expression<string>;
+			/** State
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressState?: string | Expression<string>;
+			/** The name of the country
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressCountry?: string | Expression<string>;
+			/** The postal or zip code
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressPostalCode?: string | Expression<string>;
+			/** A name associated with this address
+			 */
 			addressName?: string | Expression<string>;
+			/** The suite or apartment number, or any additional relevant information
+			 */
 			addressApartment?: string | Expression<string>;
+			/** Notes about the destination
+			 */
 			addressNotes?: string | Expression<string>;
 		};
 	};
@@ -203,11 +262,13 @@ export type OnfleetV1HubGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["hub"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["hub"], operation: ["getAll"], returnAll: [false] }
 	 * @default 64
 	 */
 	limit?: number | Expression<number>;
@@ -219,6 +280,7 @@ export type OnfleetV1HubUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the hub object for lookup
+	 * @displayOptions.show { resource: ["hub"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -236,6 +298,7 @@ export type OnfleetV1OrganizationGetDelegateeConfig = {
 	operation: 'getDelegatee';
 	/**
 	 * The ID of the delegatees for lookup
+	 * @displayOptions.show { resource: ["organization"], operation: ["getDelegatee"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -246,10 +309,12 @@ export type OnfleetV1RecipientCreateConfig = {
 	operation: 'create';
 	/**
 	 * The recipient's complete name
+	 * @displayOptions.show { resource: ["recipient"], operation: ["create"] }
 	 */
 	recipientName: string | Expression<string>;
 	/**
 	 * A unique, valid phone number as per the organization's country if there's no leading + sign. If a phone number has a leading + sign, it will disregard the organization's country setting.
+	 * @displayOptions.show { resource: ["recipient"], operation: ["create"] }
 	 */
 	recipientPhone: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -262,19 +327,23 @@ export type OnfleetV1RecipientGetConfig = {
 	operation: 'get';
 	/**
 	 * The variable that is used for looking up a recipient
+	 * @displayOptions.show { resource: ["recipient"], operation: ["get"] }
 	 * @default id
 	 */
 	getBy: 'id' | 'phone' | 'name' | Expression<string>;
 	/**
 	 * The ID of the recipient object for lookup
+	 * @displayOptions.show { resource: ["recipient"], operation: ["get"], getBy: ["id"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The name of the recipient for lookup
+	 * @displayOptions.show { resource: ["recipient"], operation: ["get"], getBy: ["name"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * The phone of the recipient for lookup
+	 * @displayOptions.show { resource: ["recipient"], operation: ["get"], getBy: ["phone"] }
 	 */
 	phone: string | Expression<string>;
 };
@@ -285,6 +354,7 @@ export type OnfleetV1RecipientUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the recipient object for lookup
+	 * @displayOptions.show { resource: ["recipient"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -296,6 +366,8 @@ export type OnfleetV1TaskCloneConfig = {
 	operation: 'clone';
 	/**
 	 * The ID of the task object for lookup
+	 * @displayOptions.show { resource: ["task"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 	overrideFields?: Record<string, unknown>;
@@ -307,10 +379,13 @@ export type OnfleetV1TaskCompleteConfig = {
 	operation: 'complete';
 	/**
 	 * The ID of the task object for lookup
+	 * @displayOptions.show { resource: ["task"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether the task's completion was successful
+	 * @displayOptions.show { resource: ["task"], operation: ["complete"] }
 	 * @default true
 	 */
 	success: boolean | Expression<boolean>;
@@ -323,20 +398,52 @@ export type OnfleetV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the task object for lookup
+	 * @displayOptions.show { resource: ["task"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 	destination: {
 		destinationProperties?: {
+			/** Whether or not the address is specified in a single unparsed string
+			 * @default false
+			 */
 			unparsed?: boolean | Expression<boolean>;
+			/** The destination's street address details
+			 * @displayOptions.show { unparsed: [true] }
+			 */
 			address?: string | Expression<string>;
+			/** The number component of this address, it may also contain letters
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressNumber?: string | Expression<string>;
+			/** The name of the street
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressStreet?: string | Expression<string>;
+			/** The name of the municipality
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressCity?: string | Expression<string>;
+			/** State
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressState?: string | Expression<string>;
+			/** The name of the country
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressCountry?: string | Expression<string>;
+			/** The postal or zip code
+			 * @displayOptions.show { unparsed: [false] }
+			 */
 			addressPostalCode?: string | Expression<string>;
+			/** A name associated with this address
+			 */
 			addressName?: string | Expression<string>;
+			/** The suite or apartment number, or any additional relevant information
+			 */
 			addressApartment?: string | Expression<string>;
+			/** Notes about the destination
+			 */
 			addressNotes?: string | Expression<string>;
 		};
 	};
@@ -349,6 +456,8 @@ export type OnfleetV1TaskDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the task object for lookup
+	 * @displayOptions.show { resource: ["task"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -359,6 +468,8 @@ export type OnfleetV1TaskGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the task object for lookup
+	 * @displayOptions.show { resource: ["task"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -369,15 +480,19 @@ export type OnfleetV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the task object for lookup
+	 * @displayOptions.show { resource: ["task"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], returnAll: [false] }
 	 * @default 64
 	 */
 	limit?: number | Expression<number>;
@@ -390,6 +505,8 @@ export type OnfleetV1TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the task object for lookup
+	 * @displayOptions.show { resource: ["task"] }
+	 * @displayOptions.hide { operation: ["create", "getAll"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -401,6 +518,7 @@ export type OnfleetV1TeamAutoDispatchConfig = {
 	operation: 'autoDispatch';
 	/**
 	 * The ID of the team object for lookup
+	 * @displayOptions.show { resource: ["team"], operation: ["get", "update", "delete", "getTimeEstimates", "autoDispatch"] }
 	 */
 	id: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -412,15 +530,18 @@ export type OnfleetV1TeamCreateConfig = {
 	operation: 'create';
 	/**
 	 * A unique name for the team
+	 * @displayOptions.show { resource: ["team"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * A list of workers. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["team"], operation: ["create"] }
 	 * @default []
 	 */
 	workers: string[];
 	/**
 	 * A list of managing administrators. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["team"], operation: ["create"] }
 	 * @default []
 	 */
 	managers: string[];
@@ -433,6 +554,7 @@ export type OnfleetV1TeamDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the team object for lookup
+	 * @displayOptions.show { resource: ["team"], operation: ["get", "update", "delete", "getTimeEstimates", "autoDispatch"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -443,6 +565,7 @@ export type OnfleetV1TeamGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the team object for lookup
+	 * @displayOptions.show { resource: ["team"], operation: ["get", "update", "delete", "getTimeEstimates", "autoDispatch"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -453,11 +576,13 @@ export type OnfleetV1TeamGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["team"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["team"], operation: ["getAll"], returnAll: [false] }
 	 * @default 64
 	 */
 	limit?: number | Expression<number>;
@@ -469,6 +594,7 @@ export type OnfleetV1TeamGetTimeEstimatesConfig = {
 	operation: 'getTimeEstimates';
 	/**
 	 * The ID of the team object for lookup
+	 * @displayOptions.show { resource: ["team"], operation: ["get", "update", "delete", "getTimeEstimates", "autoDispatch"] }
 	 */
 	id: string | Expression<string>;
 	filters?: Record<string, unknown>;
@@ -480,6 +606,7 @@ export type OnfleetV1TeamUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the team object for lookup
+	 * @displayOptions.show { resource: ["team"], operation: ["get", "update", "delete", "getTimeEstimates", "autoDispatch"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -491,14 +618,17 @@ export type OnfleetV1WorkerCreateConfig = {
 	operation: 'create';
 	/**
 	 * The worker's name
+	 * @displayOptions.show { resource: ["worker"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * A list of worker’s phone numbers
+	 * @displayOptions.show { resource: ["worker"], operation: ["create"] }
 	 */
 	phone: string | Expression<string>;
 	/**
 	 * One or more teams of which the worker is a member. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["worker"], operation: ["create"] }
 	 * @default []
 	 */
 	teams: string[];
@@ -511,6 +641,7 @@ export type OnfleetV1WorkerDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the worker object for lookup
+	 * @displayOptions.show { resource: ["worker"], operation: ["get", "getSchedule", "setSchedule", "update", "delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -521,6 +652,7 @@ export type OnfleetV1WorkerGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the worker object for lookup
+	 * @displayOptions.show { resource: ["worker"], operation: ["get", "getSchedule", "setSchedule", "update", "delete"] }
 	 */
 	id: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -532,26 +664,31 @@ export type OnfleetV1WorkerGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to search for only those workers who are currently within a certain target area
+	 * @displayOptions.show { resource: ["worker"], operation: ["getAll"] }
 	 * @default false
 	 */
 	byLocation: boolean | Expression<boolean>;
 	/**
 	 * The longitude component of the coordinate pair
+	 * @displayOptions.show { resource: ["worker"], operation: ["getAll"], byLocation: [true] }
 	 * @default 0
 	 */
 	longitude: number | Expression<number>;
 	/**
 	 * The latitude component of the coordinate pair
+	 * @displayOptions.show { resource: ["worker"], operation: ["getAll"], byLocation: [true] }
 	 * @default 0
 	 */
 	latitude: number | Expression<number>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["worker"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["worker"], operation: ["getAll"], returnAll: [false] }
 	 * @default 64
 	 */
 	limit?: number | Expression<number>;
@@ -565,6 +702,7 @@ export type OnfleetV1WorkerGetScheduleConfig = {
 	operation: 'getSchedule';
 	/**
 	 * The ID of the worker object for lookup
+	 * @displayOptions.show { resource: ["worker"], operation: ["get", "getSchedule", "setSchedule", "update", "delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -575,6 +713,7 @@ export type OnfleetV1WorkerUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the worker object for lookup
+	 * @displayOptions.show { resource: ["worker"], operation: ["get", "getSchedule", "setSchedule", "update", "delete"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

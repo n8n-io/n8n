@@ -24,11 +24,13 @@ export interface PipedriveTriggerV11Params {
 	incomingAuthentication?: 'basicAuth' | 'none' | Expression<string>;
 	/**
 	 * Type of action to receive notifications about
+	 * @displayOptions.hide { @version: [{"_cnd":{"gte":1.1}}] }
 	 * @default *
 	 */
 	action?: 'added' | '*' | 'deleted' | 'merged' | 'updated' | Expression<string>;
 	/**
 	 * Type of object to receive notifications about
+	 * @displayOptions.hide { @version: [{"_cnd":{"lte":1}}] }
 	 * @default *
 	 */
 	entity?:
@@ -46,6 +48,7 @@ export interface PipedriveTriggerV11Params {
 		| Expression<string>;
 	/**
 	 * Type of object to receive notifications about
+	 * @displayOptions.hide { @version: [{"_cnd":{"gte":1.1}}] }
 	 * @default *
 	 */
 	object?:

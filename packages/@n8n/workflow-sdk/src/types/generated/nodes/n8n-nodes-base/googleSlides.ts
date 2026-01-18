@@ -21,10 +21,12 @@ export type GoogleSlidesV2PageGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the presentation to retrieve. Found in the presentation URL: &lt;code&gt;https://docs.google.com/presentation/d/PRESENTATION_ID/edit&lt;/code&gt;
+	 * @displayOptions.show { resource: ["presentation", "page"], operation: ["get", "getThumbnail", "getSlides", "replaceText"] }
 	 */
 	presentationId: string | Expression<string>;
 	/**
 	 * ID of the page object to retrieve
+	 * @displayOptions.show { resource: ["page"], operation: ["get", "getThumbnail"] }
 	 */
 	pageObjectId: string | Expression<string>;
 };
@@ -35,14 +37,17 @@ export type GoogleSlidesV2PageGetThumbnailConfig = {
 	operation: 'getThumbnail';
 	/**
 	 * ID of the presentation to retrieve. Found in the presentation URL: &lt;code&gt;https://docs.google.com/presentation/d/PRESENTATION_ID/edit&lt;/code&gt;
+	 * @displayOptions.show { resource: ["presentation", "page"], operation: ["get", "getThumbnail", "getSlides", "replaceText"] }
 	 */
 	presentationId: string | Expression<string>;
 	/**
 	 * ID of the page object to retrieve
+	 * @displayOptions.show { resource: ["page"], operation: ["get", "getThumbnail"] }
 	 */
 	pageObjectId: string | Expression<string>;
 	/**
 	 * Name of the binary property to which to write the data of the read page
+	 * @displayOptions.show { resource: ["page"], operation: ["getThumbnail"] }
 	 * @default false
 	 */
 	download?: boolean | Expression<boolean>;
@@ -55,6 +60,7 @@ export type GoogleSlidesV2PresentationCreateConfig = {
 	operation: 'create';
 	/**
 	 * Title of the presentation to create
+	 * @displayOptions.show { resource: ["presentation"], operation: ["create"] }
 	 */
 	title: string | Expression<string>;
 };
@@ -65,6 +71,7 @@ export type GoogleSlidesV2PresentationGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the presentation to retrieve. Found in the presentation URL: &lt;code&gt;https://docs.google.com/presentation/d/PRESENTATION_ID/edit&lt;/code&gt;
+	 * @displayOptions.show { resource: ["presentation", "page"], operation: ["get", "getThumbnail", "getSlides", "replaceText"] }
 	 */
 	presentationId: string | Expression<string>;
 };
@@ -75,15 +82,18 @@ export type GoogleSlidesV2PresentationGetSlidesConfig = {
 	operation: 'getSlides';
 	/**
 	 * ID of the presentation to retrieve. Found in the presentation URL: &lt;code&gt;https://docs.google.com/presentation/d/PRESENTATION_ID/edit&lt;/code&gt;
+	 * @displayOptions.show { resource: ["presentation", "page"], operation: ["get", "getThumbnail", "getSlides", "replaceText"] }
 	 */
 	presentationId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getSlides"], resource: ["presentation"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getSlides"], resource: ["presentation"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -95,13 +105,24 @@ export type GoogleSlidesV2PresentationReplaceTextConfig = {
 	operation: 'replaceText';
 	/**
 	 * ID of the presentation to retrieve. Found in the presentation URL: &lt;code&gt;https://docs.google.com/presentation/d/PRESENTATION_ID/edit&lt;/code&gt;
+	 * @displayOptions.show { resource: ["presentation", "page"], operation: ["get", "getThumbnail", "getSlides", "replaceText"] }
 	 */
 	presentationId: string | Expression<string>;
 	textUi?: {
 		textValues?: Array<{
+			/** Whether the search should respect case. True : the search is case sensitive. False : the search is case insensitive.
+			 * @default false
+			 */
 			matchCase?: boolean | Expression<boolean>;
+			/** If non-empty, limits the matches to slide elements only on the given slides. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 * @default []
+			 */
 			pageObjectIds?: string[];
+			/** The text to search for in the slide
+			 */
 			text?: string | Expression<string>;
+			/** The text that will replace the matched text
+			 */
 			replaceText?: string | Expression<string>;
 		}>;
 	};

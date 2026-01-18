@@ -26,7 +26,18 @@ export interface LcModelSelectorV1Params {
 	 * Rules to map workflow data to specific models
 	 * @default {}
 	 */
-	rules?: { rule?: Array<{ modelIndex?: string | Expression<string>; conditions?: FilterValue }> };
+	rules?: {
+		rule?: Array<{
+			/** Choose model input from the list
+			 * @default 1
+			 */
+			modelIndex?: string | Expression<string>;
+			/** Conditions that must be met to select this model
+			 * @default {}
+			 */
+			conditions?: FilterValue;
+		}>;
+	};
 }
 
 // ===========================================================================

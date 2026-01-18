@@ -22,26 +22,31 @@ export type PaddleV1CouponCreateConfig = {
 	operation: 'create';
 	/**
 	 * Either product (valid for specified products or subscription plans) or checkout (valid for any checkout)
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"], jsonParameters: [false] }
 	 * @default checkout
 	 */
 	couponType?: 'checkout' | 'product' | Expression<string>;
 	/**
 	 * Comma-separated list of product IDs. Required if coupon_type is product. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"], couponType: ["product"], jsonParameters: [false] }
 	 * @default []
 	 */
 	productIds: string[];
 	/**
 	 * Either flat or percentage
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"], jsonParameters: [false] }
 	 * @default flat
 	 */
 	discountType?: 'flat' | 'percentage' | Expression<string>;
 	/**
 	 * Discount amount in currency
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"], discountType: ["flat"], jsonParameters: [false] }
 	 * @default 1
 	 */
 	discountAmount?: number | Expression<number>;
 	/**
 	 * The currency must match the balance currency specified in your account
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"], discountType: ["flat"], jsonParameters: [false] }
 	 * @default EUR
 	 */
 	currency?:
@@ -75,6 +80,7 @@ export type PaddleV1CouponCreateConfig = {
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Attributes in JSON form
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -86,15 +92,18 @@ export type PaddleV1CouponGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The specific product/subscription ID
+	 * @displayOptions.show { resource: ["coupon"], operation: ["getAll"] }
 	 */
 	productId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["coupon"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["coupon"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -106,20 +115,24 @@ export type PaddleV1CouponUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Either flat or percentage
+	 * @displayOptions.show { resource: ["coupon"], operation: ["update"], jsonParameters: [false] }
 	 * @default couponCode
 	 */
 	updateBy?: 'couponCode' | 'group' | Expression<string>;
 	/**
 	 * Identify the coupon to update
+	 * @displayOptions.show { resource: ["coupon"], operation: ["update"], updateBy: ["couponCode"], jsonParameters: [false] }
 	 */
 	couponCode?: string | Expression<string>;
 	/**
 	 * The name of the group of coupons you want to update
+	 * @displayOptions.show { resource: ["coupon"], operation: ["update"], updateBy: ["group"], jsonParameters: [false] }
 	 */
 	group?: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Attributes in JSON form
+	 * @displayOptions.show { resource: ["coupon"], operation: ["update"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -131,17 +144,20 @@ export type PaddleV1PaymentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["payment"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["payment"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Attributes in JSON form
+	 * @displayOptions.show { resource: ["payment"], operation: ["getAll"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -153,10 +169,12 @@ export type PaddleV1PaymentRescheduleConfig = {
 	operation: 'reschedule';
 	/**
 	 * The upcoming subscription payment ID. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["payment"], operation: ["reschedule"] }
 	 */
 	paymentId: string | Expression<string>;
 	/**
 	 * Date you want to move the payment to
+	 * @displayOptions.show { resource: ["payment"], operation: ["reschedule"] }
 	 */
 	date?: string | Expression<string>;
 };
@@ -167,6 +185,7 @@ export type PaddleV1PlanGetConfig = {
 	operation: 'get';
 	/**
 	 * Filter: The subscription plan ID
+	 * @displayOptions.show { resource: ["plan"], operation: ["get"] }
 	 */
 	planId: string | Expression<string>;
 };
@@ -177,11 +196,13 @@ export type PaddleV1PlanGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["plan"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["plan"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -193,11 +214,13 @@ export type PaddleV1ProductGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["product"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["product"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -209,17 +232,20 @@ export type PaddleV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit: number | Expression<number>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Attributes in JSON form
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

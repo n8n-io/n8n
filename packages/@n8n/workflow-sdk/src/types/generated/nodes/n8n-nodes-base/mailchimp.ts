@@ -22,6 +22,7 @@ export type MailchimpV1CampaignDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * List of Campaigns
+	 * @displayOptions.show { resource: ["campaign"], operation: ["send", "get", "delete", "replicate", "resend"] }
 	 */
 	campaignId: string | Expression<string>;
 };
@@ -32,6 +33,7 @@ export type MailchimpV1CampaignGetConfig = {
 	operation: 'get';
 	/**
 	 * List of Campaigns
+	 * @displayOptions.show { resource: ["campaign"], operation: ["send", "get", "delete", "replicate", "resend"] }
 	 */
 	campaignId: string | Expression<string>;
 };
@@ -42,11 +44,13 @@ export type MailchimpV1CampaignGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -59,6 +63,7 @@ export type MailchimpV1CampaignReplicateConfig = {
 	operation: 'replicate';
 	/**
 	 * List of Campaigns
+	 * @displayOptions.show { resource: ["campaign"], operation: ["send", "get", "delete", "replicate", "resend"] }
 	 */
 	campaignId: string | Expression<string>;
 };
@@ -69,6 +74,7 @@ export type MailchimpV1CampaignResendConfig = {
 	operation: 'resend';
 	/**
 	 * List of Campaigns
+	 * @displayOptions.show { resource: ["campaign"], operation: ["send", "get", "delete", "replicate", "resend"] }
 	 */
 	campaignId: string | Expression<string>;
 };
@@ -79,6 +85,7 @@ export type MailchimpV1CampaignSendConfig = {
 	operation: 'send';
 	/**
 	 * List of Campaigns
+	 * @displayOptions.show { resource: ["campaign"], operation: ["send", "get", "delete", "replicate", "resend"] }
 	 */
 	campaignId: string | Expression<string>;
 };
@@ -89,19 +96,23 @@ export type MailchimpV1ListGroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * List of lists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["listGroup"], operation: ["getAll"] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["listGroup"], operation: ["getAll"] }
 	 */
 	groupCategory: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["listGroup"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["listGroup"], operation: ["getAll"], returnAll: [false] }
 	 * @default 500
 	 */
 	limit?: number | Expression<number>;
@@ -113,14 +124,17 @@ export type MailchimpV1MemberCreateConfig = {
 	operation: 'create';
 	/**
 	 * List of lists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["member"], operation: ["create"] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * Email address for a subscriber
+	 * @displayOptions.show { resource: ["member"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	/**
 	 * Subscriber's current status
+	 * @displayOptions.show { resource: ["member"], operation: ["create"] }
 	 */
 	status:
 		| 'cleaned'
@@ -133,21 +147,31 @@ export type MailchimpV1MemberCreateConfig = {
 	options?: Record<string, unknown>;
 	/**
 	 * Subscriber location information.n
+	 * @displayOptions.show { resource: ["member"], operation: ["create"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	locationFieldsUi?: {
 		locationFieldsValues?: {
+			/** The location latitude
+			 */
 			latitude?: string | Expression<string>;
+			/** The location longitude
+			 */
 			longitude?: string | Expression<string>;
 		};
 	};
 	/**
 	 * An individual merge var and value for a member
+	 * @displayOptions.show { resource: ["member"], operation: ["create"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	mergeFieldsUi?: {
 		mergeFieldsValues?: Array<{
+			/** Merge Field name. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			name?: string | Expression<string>;
+			/** Merge field value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -155,8 +179,15 @@ export type MailchimpV1MemberCreateConfig = {
 	locationJson?: IDataObject | string | Expression<string>;
 	groupsUi?: {
 		groupsValues?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			categoryId?: string | Expression<string>;
+			/** Category Field ID
+			 */
 			categoryFieldId?: string | Expression<string>;
+			/** Value
+			 * @default false
+			 */
 			value?: boolean | Expression<boolean>;
 		}>;
 	};
@@ -169,10 +200,12 @@ export type MailchimpV1MemberDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * List of lists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["member"], operation: ["delete"] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * Member's email
+	 * @displayOptions.show { resource: ["member"], operation: ["delete"] }
 	 */
 	email: string | Expression<string>;
 };
@@ -183,10 +216,12 @@ export type MailchimpV1MemberGetConfig = {
 	operation: 'get';
 	/**
 	 * List of lists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["member"], operation: ["get"] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * Member's email
+	 * @displayOptions.show { resource: ["member"], operation: ["get"] }
 	 */
 	email: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -198,15 +233,18 @@ export type MailchimpV1MemberGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * List of lists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["member"], operation: ["getAll"] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["member"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["member"], operation: ["getAll"], returnAll: [false] }
 	 * @default 500
 	 */
 	limit?: number | Expression<number>;
@@ -219,10 +257,12 @@ export type MailchimpV1MemberUpdateConfig = {
 	operation: 'update';
 	/**
 	 * List of lists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["member"], operation: ["update"] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * Email address of the subscriber
+	 * @displayOptions.show { resource: ["member"], operation: ["update"] }
 	 */
 	email: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
@@ -238,10 +278,12 @@ export type MailchimpV1MemberTagCreateConfig = {
 	operation: 'create';
 	/**
 	 * List of lists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["memberTag"], operation: ["create", "delete"] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * Email address of the subscriber
+	 * @displayOptions.show { resource: ["memberTag"], operation: ["create", "delete"] }
 	 */
 	email: string | Expression<string>;
 	tags?: string | Expression<string>;
@@ -254,10 +296,12 @@ export type MailchimpV1MemberTagDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * List of lists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["memberTag"], operation: ["create", "delete"] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * Email address of the subscriber
+	 * @displayOptions.show { resource: ["memberTag"], operation: ["create", "delete"] }
 	 */
 	email: string | Expression<string>;
 	tags?: string | Expression<string>;

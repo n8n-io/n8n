@@ -17,11 +17,21 @@ import type { Expression, NodeConfig } from '../../../base';
 
 export interface CompareDatasetsV23Params {
 	mergeByFields?: {
-		values?: Array<{ field1?: string | Expression<string>; field2?: string | Expression<string> }>;
+		values?: Array<{
+			/** Input A Field
+			 * @hint  Enter the field name as text
+			 */
+			field1?: string | Expression<string>;
+			/** Input B Field
+			 * @hint  Enter the field name as text
+			 */
+			field2?: string | Expression<string>;
+		}>;
 	};
 	resolve?: 'preferInput1' | 'preferInput2' | 'mix' | 'includeBoth' | Expression<string>;
 	/**
 	 * Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.
+	 * @displayOptions.hide { @version: [1] }
 	 * @default false
 	 */
 	fuzzyCompare?: boolean | Expression<boolean>;

@@ -21,12 +21,14 @@ export interface LcGuardrailsV2Params {
 	guardrails?: Record<string, unknown>;
 	/**
 	 * Whether to customize the system message used by the guardrail to specify the output format
+	 * @displayOptions.show { /operation: ["classify"] }
 	 * @default false
 	 */
 	customizeSystemMessage?: boolean | Expression<boolean>;
 	/**
  * The system message used by the guardrail to enforce thresholds and JSON output according to schema
  * @hint This message is appended after prompts defined by guardrails
+ * @displayOptions.show { /customizeSystemMessage: [true] }
  * @default Only respond with the json object and nothing else.
 
 **IMPORTANT:**
@@ -58,12 +60,14 @@ export interface LcGuardrailsV1Params {
 	guardrails?: Record<string, unknown>;
 	/**
 	 * Whether to customize the system message used by the guardrail to specify the output format
+	 * @displayOptions.show { /operation: ["classify"] }
 	 * @default false
 	 */
 	customizeSystemMessage?: boolean | Expression<boolean>;
 	/**
  * The system message used by the guardrail to enforce thresholds and JSON output according to schema
  * @hint This message is appended after prompts defined by guardrails
+ * @displayOptions.show { /customizeSystemMessage: [true] }
  * @default Only respond with the json object and nothing else.
 
 **IMPORTANT:**

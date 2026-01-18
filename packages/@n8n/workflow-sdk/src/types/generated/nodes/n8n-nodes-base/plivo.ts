@@ -21,19 +21,23 @@ export type PlivoV1CallMakeConfig = {
 	operation: 'make';
 	/**
 	 * Caller ID for the call to make
+	 * @displayOptions.show { resource: ["call"], operation: ["make"] }
 	 */
 	from: string | Expression<string>;
 	/**
 	 * Phone number to make the call to
+	 * @displayOptions.show { resource: ["call"], operation: ["make"] }
 	 */
 	to: string | Expression<string>;
 	/**
 	 * HTTP verb to be used when invoking the Answer URL
+	 * @displayOptions.show { resource: ["call"], operation: ["make"] }
 	 * @default POST
 	 */
 	answer_method: 'GET' | 'POST' | Expression<string>;
 	/**
 	 * URL to be invoked by Plivo once the call is answered. It should return the XML to handle the call once answered.
+	 * @displayOptions.show { resource: ["call"], operation: ["make"] }
 	 */
 	answer_url: string | Expression<string>;
 };
@@ -44,18 +48,22 @@ export type PlivoV1MmsSendConfig = {
 	operation: 'send';
 	/**
 	 * Plivo Number to send the MMS from
+	 * @displayOptions.show { resource: ["mms"], operation: ["send"] }
 	 */
 	from: string | Expression<string>;
 	/**
 	 * Phone number to send the MMS to
+	 * @displayOptions.show { operation: ["send"], resource: ["mms"] }
 	 */
 	to: string | Expression<string>;
 	/**
 	 * Message to send
+	 * @displayOptions.show { resource: ["mms"], operation: ["send"] }
 	 */
 	message?: string | Expression<string>;
 	/**
 	 * Comma-separated list of media URLs of the files from your file server
+	 * @displayOptions.show { resource: ["mms"], operation: ["send"] }
 	 */
 	media_urls?: string | Expression<string>;
 };
@@ -66,14 +74,17 @@ export type PlivoV1SmsSendConfig = {
 	operation: 'send';
 	/**
 	 * Plivo Number to send the SMS from
+	 * @displayOptions.show { resource: ["sms"], operation: ["send"] }
 	 */
 	from: string | Expression<string>;
 	/**
 	 * Phone number to send the message to
+	 * @displayOptions.show { resource: ["sms"], operation: ["send"] }
 	 */
 	to: string | Expression<string>;
 	/**
 	 * Message to send
+	 * @displayOptions.show { operation: ["send"], resource: ["sms"] }
 	 */
 	message: string | Expression<string>;
 };

@@ -21,10 +21,12 @@ export type TwakeV1MessageSendConfig = {
 	operation: 'send';
 	/**
 	 * Channel's ID. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["send"] }
 	 */
 	channelId?: string | Expression<string>;
 	/**
 	 * Message content
+	 * @displayOptions.show { operation: ["send"] }
 	 */
 	content: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

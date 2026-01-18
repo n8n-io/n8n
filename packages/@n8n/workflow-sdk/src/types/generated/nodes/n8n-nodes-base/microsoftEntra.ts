@@ -25,20 +25,24 @@ export type MicrosoftEntraV1GroupCreateConfig = {
 	groupType?: 'Unified' | '' | Expression<string>;
 	/**
 	 * The name to display in the address book for the group
+	 * @displayOptions.show { resource: ["group"], operation: ["create"] }
 	 */
 	displayName: string | Expression<string>;
 	/**
 	 * The mail alias for the group. Only enter the local-part without the domain.
+	 * @displayOptions.show { resource: ["group"], operation: ["create"] }
 	 */
 	mailNickname: string | Expression<string>;
 	/**
 	 * Whether the group is mail-enabled
+	 * @displayOptions.show { resource: ["group"], operation: ["create"], groupType: ["Unified"] }
 	 * @default false
 	 */
 	mailEnabled: boolean | Expression<boolean>;
 	membershipType?: '' | 'DynamicMembership' | Expression<string>;
 	/**
 	 * Whether the group is a security group
+	 * @displayOptions.show { resource: ["group"], operation: ["create"], groupType: ["Unified"] }
 	 * @default true
 	 */
 	securityEnabled?: boolean | Expression<boolean>;
@@ -62,6 +66,7 @@ export type MicrosoftEntraV1GroupGetConfig = {
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { resource: ["group"], operation: ["get"], output: ["fields"] }
 	 * @default []
 	 */
 	fields?: string[];
@@ -75,22 +80,26 @@ export type MicrosoftEntraV1GroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * &lt;a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter"&gt;Query parameter&lt;/a&gt; to filter results by
 	 * @hint If empty, all the groups will be returned
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
 	 */
 	filter?: string | Expression<string>;
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"], output: ["fields"] }
 	 * @default []
 	 */
 	fields?: string[];
@@ -121,23 +130,28 @@ export type MicrosoftEntraV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * Whether the account is enabled
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 * @default true
 	 */
 	accountEnabled: boolean | Expression<boolean>;
 	/**
 	 * The name to display in the address book for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	displayName: string | Expression<string>;
 	/**
 	 * The user principal name (UPN)
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	userPrincipalName: string | Expression<string>;
 	/**
 	 * The mail alias for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	mailNickname: string | Expression<string>;
 	/**
 	 * The password for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	password: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -160,6 +174,7 @@ export type MicrosoftEntraV1UserGetConfig = {
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { resource: ["user"], operation: ["get"], output: ["fields"] }
 	 * @default []
 	 */
 	fields?: string[];
@@ -172,21 +187,25 @@ export type MicrosoftEntraV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * &lt;a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter"&gt;Query parameter&lt;/a&gt; to filter results by
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 */
 	filter?: string | Expression<string>;
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], output: ["fields"] }
 	 * @default []
 	 */
 	fields?: string[];

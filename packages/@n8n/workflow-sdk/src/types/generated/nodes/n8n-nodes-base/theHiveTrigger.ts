@@ -18,6 +18,7 @@ import type { NodeConfig } from '../../../base';
 export interface TheHiveTriggerV2Params {
 	/**
 	 * Events types
+	 * @displayOptions.show { @version: [1] }
 	 * @default []
 	 */
 	events: Array<

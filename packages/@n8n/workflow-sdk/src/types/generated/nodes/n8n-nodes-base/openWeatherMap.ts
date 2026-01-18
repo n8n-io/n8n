@@ -29,23 +29,28 @@ export interface OpenWeatherMapV1Params {
 	locationSelection?: 'cityName' | 'cityId' | 'coordinates' | 'zipCode' | Expression<string>;
 	/**
 	 * The name of the city to return the weather of
+	 * @displayOptions.show { locationSelection: ["cityName"] }
 	 */
 	cityName: string | Expression<string>;
 	/**
 	 * The ID of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.
+	 * @displayOptions.show { locationSelection: ["cityId"] }
 	 * @default 160001123
 	 */
 	cityId: number | Expression<number>;
 	/**
 	 * The latitude of the location to return the weather of
+	 * @displayOptions.show { locationSelection: ["coordinates"] }
 	 */
 	latitude: string | Expression<string>;
 	/**
 	 * The longitude of the location to return the weather of
+	 * @displayOptions.show { locationSelection: ["coordinates"] }
 	 */
 	longitude: string | Expression<string>;
 	/**
 	 * The ID of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/.
+	 * @displayOptions.show { locationSelection: ["zipCode"] }
 	 */
 	zipCode: string | Expression<string>;
 	/**

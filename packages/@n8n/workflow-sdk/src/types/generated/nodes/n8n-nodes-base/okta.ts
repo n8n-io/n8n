@@ -28,6 +28,7 @@ export type OktaV1UserCreateConfig = {
 	email: string | Expression<string>;
 	/**
 	 * Whether to activate the user and allow access to all assigned applications
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 * @default true
 	 */
 	activate?: boolean | Expression<boolean>;
@@ -41,11 +42,13 @@ export type OktaV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The user you want to operate on. Choose from the list, or specify an ID.
+	 * @displayOptions.show { resource: ["user"], operation: ["get", "update", "delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userId: ResourceLocatorValue;
 	/**
 	 * Whether to send a deactivation email to the administrator
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 * @default false
 	 */
 	sendEmail?: boolean | Expression<boolean>;
@@ -58,11 +61,13 @@ export type OktaV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * The user you want to operate on. Choose from the list, or specify an ID.
+	 * @displayOptions.show { resource: ["user"], operation: ["get", "update", "delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userId: ResourceLocatorValue;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["user"], operation: ["get", "getAll"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -76,16 +81,19 @@ export type OktaV1UserGetAllConfig = {
 	searchQuery?: string | Expression<string>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["user"], operation: ["get", "getAll"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -98,6 +106,7 @@ export type OktaV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The user you want to operate on. Choose from the list, or specify an ID.
+	 * @displayOptions.show { resource: ["user"], operation: ["get", "update", "delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userId: ResourceLocatorValue;

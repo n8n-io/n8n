@@ -22,10 +22,12 @@ export type VeroV1UserAddTagsConfig = {
 	operation: 'addTags';
 	/**
 	 * The unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["addTags"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Tags to add separated by ","
+	 * @displayOptions.show { resource: ["user"], operation: ["addTags"] }
 	 */
 	tags: string | Expression<string>;
 };
@@ -36,10 +38,12 @@ export type VeroV1UserAliasConfig = {
 	operation: 'alias';
 	/**
 	 * The old unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["alias"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The new unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["alias"] }
 	 */
 	newId: string | Expression<string>;
 };
@@ -50,22 +54,29 @@ export type VeroV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * The unique identifier of the customer
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	id: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * Key value pairs that represent the custom user properties you want to update
+	 * @displayOptions.show { resource: ["user"], operation: ["create"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	dataAttributesUi?: {
 		dataAttributesValues?: Array<{
+			/** Name of the property to set
+			 */
 			key?: string | Expression<string>;
+			/** Value of the property to set
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Key value pairs that represent the custom user properties you want to update
+	 * @displayOptions.show { resource: ["user"], operation: ["create"], jsonParameters: [true] }
 	 */
 	dataAttributesJson?: IDataObject | string | Expression<string>;
 };
@@ -76,6 +87,7 @@ export type VeroV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -86,6 +98,7 @@ export type VeroV1UserResubscribeConfig = {
 	operation: 'resubscribe';
 	/**
 	 * The unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["resubscribe"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -96,10 +109,12 @@ export type VeroV1UserRemoveTagsConfig = {
 	operation: 'removeTags';
 	/**
 	 * The unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["removeTags"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Tags to remove separated by ","
+	 * @displayOptions.show { resource: ["user"], operation: ["removeTags"] }
 	 */
 	tags: string | Expression<string>;
 };
@@ -110,6 +125,7 @@ export type VeroV1UserUnsubscribeConfig = {
 	operation: 'unsubscribe';
 	/**
 	 * The unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["unsubscribe"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -120,40 +136,54 @@ export type VeroV1EventTrackConfig = {
 	operation: 'track';
 	/**
 	 * The unique identifier of the customer
+	 * @displayOptions.show { resource: ["event"], operation: ["track"] }
 	 */
 	id: string | Expression<string>;
 	email: string | Expression<string>;
 	/**
 	 * The name of the event tracked
+	 * @displayOptions.show { resource: ["event"], operation: ["track"] }
 	 */
 	eventName: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Key value pairs that represent any properties you want to track with this event
+	 * @displayOptions.show { resource: ["event"], operation: ["track"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	dataAttributesUi?: {
 		dataAttributesValues?: Array<{
+			/** Name of the property to set
+			 */
 			key?: string | Expression<string>;
+			/** Value of the property to set
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Key value pairs that represent reserved, Vero-specific operators. Refer to the note on “deduplication” below.
+	 * @displayOptions.show { resource: ["event"], operation: ["track"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	extraAttributesUi?: {
 		extraAttributesValues?: Array<{
+			/** Name of the property to set
+			 */
 			key?: string | Expression<string>;
+			/** Value of the property to set
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Key value pairs that represent the custom user properties you want to update
+	 * @displayOptions.show { resource: ["event"], operation: ["track"], jsonParameters: [true] }
 	 */
 	dataAttributesJson?: IDataObject | string | Expression<string>;
 	/**
 	 * Key value pairs that represent reserved, Vero-specific operators. Refer to the note on “deduplication” below.
+	 * @displayOptions.show { resource: ["event"], operation: ["track"], jsonParameters: [true] }
 	 */
 	extraAttributesJson?: IDataObject | string | Expression<string>;
 };

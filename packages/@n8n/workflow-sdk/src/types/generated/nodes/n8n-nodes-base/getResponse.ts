@@ -22,6 +22,7 @@ export type GetResponseV1ContactCreateConfig = {
 	email?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["contact"], operation: ["create"] }
 	 */
 	campaignId?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -33,6 +34,7 @@ export type GetResponseV1ContactDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of contact to delete
+	 * @displayOptions.show { resource: ["contact"], operation: ["delete"] }
 	 */
 	contactId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -44,6 +46,7 @@ export type GetResponseV1ContactGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for a particular contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["get"] }
 	 */
 	contactId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -55,11 +58,13 @@ export type GetResponseV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -72,6 +77,7 @@ export type GetResponseV1ContactUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for a particular contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["update"] }
 	 */
 	contactId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

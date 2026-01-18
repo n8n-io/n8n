@@ -20,6 +20,9 @@ export interface GooglePerspectiveV1Params {
 	text: string | Expression<string>;
 	requestedAttributesUi: {
 		requestedAttributesValues?: Array<{
+			/** Attribute to analyze in the text. Details &lt;a href="https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages"&gt;here&lt;/a&gt;.
+			 * @default flirtation
+			 */
 			attributeName?:
 				| 'flirtation'
 				| 'identity_attack'
@@ -30,6 +33,9 @@ export interface GooglePerspectiveV1Params {
 				| 'threat'
 				| 'toxicity'
 				| Expression<string>;
+			/** Score above which to return results. At zero, all scores are returned.
+			 * @default 0
+			 */
 			scoreThreshold?: number | Expression<number>;
 		}>;
 	};

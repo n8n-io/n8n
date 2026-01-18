@@ -21,10 +21,12 @@ export type LoneScaleV1ListCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of your list
+	 * @displayOptions.show { operation: ["create"], resource: ["list"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Type of your list
+	 * @displayOptions.show { operation: ["create"], resource: ["list"] }
 	 * @default COMPANY
 	 */
 	type: 'COMPANY' | 'PEOPLE' | Expression<string>;
@@ -36,23 +38,28 @@ export type LoneScaleV1ItemAddConfig = {
 	operation: 'add';
 	/**
 	 * Type of your list
+	 * @displayOptions.show { resource: ["item"] }
 	 * @default PEOPLE
 	 */
 	type: 'COMPANY' | 'PEOPLE' | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["item"] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * Contact first name
+	 * @displayOptions.show { operation: ["add"], resource: ["item"], type: ["PEOPLE"] }
 	 */
 	first_name: string | Expression<string>;
 	/**
 	 * Contact last name
+	 * @displayOptions.show { operation: ["add"], resource: ["item"], type: ["PEOPLE"] }
 	 */
 	last_name: string | Expression<string>;
 	/**
 	 * Contact company name
+	 * @displayOptions.show { operation: ["add"], resource: ["item"], type: ["COMPANY"] }
 	 */
 	company_name?: string | Expression<string>;
 	peopleAdditionalFields?: Record<string, unknown>;

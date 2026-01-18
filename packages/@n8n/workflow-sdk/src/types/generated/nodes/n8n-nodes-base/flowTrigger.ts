@@ -22,10 +22,14 @@ export interface FlowTriggerV1Params {
 	resource?: 'list' | 'task' | Expression<string>;
 	/**
 	 * Lists IDs, perhaps known better as "Projects" separated by a comma (,)
+	 * @displayOptions.show { resource: ["list"] }
+	 * @displayOptions.hide { resource: ["task"] }
 	 */
 	listIds: string | Expression<string>;
 	/**
 	 * Task IDs separated by a comma (,)
+	 * @displayOptions.show { resource: ["task"] }
+	 * @displayOptions.hide { resource: ["list"] }
 	 */
 	taskIds: string | Expression<string>;
 }

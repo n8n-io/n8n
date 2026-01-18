@@ -23,6 +23,7 @@ export interface WebhookV21Params {
 	multipleMethods?: boolean | Expression<boolean>;
 	/**
 	 * The HTTP method to listen to
+	 * @displayOptions.show { multipleMethods: [false] }
 	 * @default GET
 	 */
 	httpMethod?: 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT' | Expression<string>;
@@ -37,16 +38,20 @@ export interface WebhookV21Params {
 	authentication?: 'basicAuth' | 'headerAuth' | 'jwtAuth' | 'none' | Expression<string>;
 	/**
 	 * When and how to respond to the webhook
+	 * @displayOptions.show { @version: [1, 1.1, 2] }
 	 * @default onReceived
 	 */
 	responseMode?: 'onReceived' | 'lastNode' | 'responseNode' | Expression<string>;
 	/**
 	 * The HTTP Response code to return
+	 * @displayOptions.show { @version: [1, 1.1] }
+	 * @displayOptions.hide { responseMode: ["responseNode"] }
 	 * @default 200
 	 */
 	responseCode?: number | Expression<number>;
 	/**
 	 * What data should be returned. If it should return all items as an array or only the first item as object.
+	 * @displayOptions.show { responseMode: ["lastNode"] }
 	 * @default firstEntryJson
 	 */
 	responseData?:
@@ -57,6 +62,7 @@ export interface WebhookV21Params {
 		| Expression<string>;
 	/**
 	 * Name of the binary property to return
+	 * @displayOptions.show { responseData: ["firstEntryBinary"] }
 	 * @default data
 	 */
 	responseBinaryPropertyName: string | Expression<string>;

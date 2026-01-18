@@ -20,14 +20,17 @@ export type LcMcpClientToolV12BearerAuthConfig = {
 	authentication: 'bearerAuth';
 	/**
 	 * SSE Endpoint of your MCP server
+	 * @displayOptions.show { @version: [1] }
 	 */
 	sseEndpoint: string | Expression<string>;
 	/**
 	 * Endpoint of your MCP server
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.1}}] }
 	 */
 	endpointUrl: string | Expression<string>;
 	/**
 	 * The transport used by your endpoint
+	 * @displayOptions.show { @version: [1.1] }
 	 * @default sse
 	 */
 	serverTransport?: 'httpStreamable' | 'sse' | Expression<string>;
@@ -38,11 +41,13 @@ export type LcMcpClientToolV12BearerAuthConfig = {
 	include?: 'all' | 'selected' | 'except' | Expression<string>;
 	/**
 	 * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { include: ["selected"] }
 	 * @default []
 	 */
 	includeTools?: string[];
 	/**
 	 * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { include: ["except"] }
 	 * @default []
 	 */
 	excludeTools?: string[];
@@ -57,14 +62,17 @@ export type LcMcpClientToolV12HeaderAuthConfig = {
 	authentication: 'headerAuth';
 	/**
 	 * SSE Endpoint of your MCP server
+	 * @displayOptions.show { @version: [1] }
 	 */
 	sseEndpoint: string | Expression<string>;
 	/**
 	 * Endpoint of your MCP server
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.1}}] }
 	 */
 	endpointUrl: string | Expression<string>;
 	/**
 	 * The transport used by your endpoint
+	 * @displayOptions.show { @version: [1.1] }
 	 * @default sse
 	 */
 	serverTransport?: 'httpStreamable' | 'sse' | Expression<string>;
@@ -75,11 +83,13 @@ export type LcMcpClientToolV12HeaderAuthConfig = {
 	include?: 'all' | 'selected' | 'except' | Expression<string>;
 	/**
 	 * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { include: ["selected"] }
 	 * @default []
 	 */
 	includeTools?: string[];
 	/**
 	 * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { include: ["except"] }
 	 * @default []
 	 */
 	excludeTools?: string[];
@@ -94,14 +104,17 @@ export type LcMcpClientToolV12NoneConfig = {
 	authentication: 'none';
 	/**
 	 * SSE Endpoint of your MCP server
+	 * @displayOptions.show { @version: [1] }
 	 */
 	sseEndpoint: string | Expression<string>;
 	/**
 	 * Endpoint of your MCP server
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.1}}] }
 	 */
 	endpointUrl: string | Expression<string>;
 	/**
 	 * The transport used by your endpoint
+	 * @displayOptions.show { @version: [1.1] }
 	 * @default sse
 	 */
 	serverTransport?: 'httpStreamable' | 'sse' | Expression<string>;
@@ -112,11 +125,13 @@ export type LcMcpClientToolV12NoneConfig = {
 	include?: 'all' | 'selected' | 'except' | Expression<string>;
 	/**
 	 * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { include: ["selected"] }
 	 * @default []
 	 */
 	includeTools?: string[];
 	/**
 	 * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { include: ["except"] }
 	 * @default []
 	 */
 	excludeTools?: string[];

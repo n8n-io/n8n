@@ -19,6 +19,7 @@ import type { Expression, NodeConfig } from '../../../base';
 export interface LcToolVectorStoreV11Params {
 	/**
 	 * Name of the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.
+	 * @displayOptions.show { @version: [1] }
 	 */
 	name?: string | Expression<string>;
 	/**

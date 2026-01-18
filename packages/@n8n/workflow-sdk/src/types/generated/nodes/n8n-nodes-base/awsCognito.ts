@@ -24,11 +24,13 @@ export type AwsCognitoV1GroupCreateConfig = {
 	operation: 'create';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["group"], operation: ["create"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * The name of the new group to create
+	 * @displayOptions.show { resource: ["group"], operation: ["create"] }
 	 */
 	newGroupName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -41,11 +43,13 @@ export type AwsCognitoV1GroupDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["group"], operation: ["delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Select the group you want to delete
+	 * @displayOptions.show { resource: ["group"], operation: ["delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	group: ResourceLocatorValue;
@@ -58,16 +62,19 @@ export type AwsCognitoV1GroupGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["group"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Select the group you want to retrieve
+	 * @displayOptions.show { resource: ["group"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	group: ResourceLocatorValue;
 	/**
 	 * Whether to include a list of users in the group
+	 * @displayOptions.show { resource: ["group"], operation: ["get"] }
 	 * @default false
 	 */
 	includeUsers?: boolean | Expression<boolean>;
@@ -80,21 +87,25 @@ export type AwsCognitoV1GroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["group"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
 	/**
 	 * Whether to include a list of users in the group
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
 	 * @default false
 	 */
 	includeUsers?: boolean | Expression<boolean>;
@@ -107,11 +118,13 @@ export type AwsCognitoV1GroupUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["group"], operation: ["update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Select the group you want to update
+	 * @displayOptions.show { resource: ["group"], operation: ["update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	group: ResourceLocatorValue;
@@ -125,16 +138,19 @@ export type AwsCognitoV1UserAddToGroupConfig = {
 	operation: 'addToGroup';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Select the user you want to add to the group
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	user: ResourceLocatorValue;
 	/**
 	 * Select the group you want to add the user to
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	group: ResourceLocatorValue;
@@ -147,11 +163,13 @@ export type AwsCognitoV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * Select the user pool to retrieve
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Depending on the user pool settings, this parameter requires the username, the email, or the phone number. No whitespace is allowed.
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	newUserName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -164,11 +182,13 @@ export type AwsCognitoV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Select the user you want to delete
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	user: ResourceLocatorValue;
@@ -181,16 +201,19 @@ export type AwsCognitoV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Select the user you want to retrieve
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	user: ResourceLocatorValue;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -203,26 +226,33 @@ export type AwsCognitoV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["user"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
 	filters?: {
 		filter?: {
+			/** The attribute to search for
+			 * @default email
+			 */
 			attribute?:
 				| 'cognito:user_status'
 				| 'email'
@@ -235,6 +265,8 @@ export type AwsCognitoV1UserGetAllConfig = {
 				| 'sub'
 				| 'username'
 				| Expression<string>;
+			/** The value of the attribute to search for
+			 */
 			value?: string | Expression<string>;
 		};
 	};
@@ -247,16 +279,19 @@ export type AwsCognitoV1UserRemoveFromGroupConfig = {
 	operation: 'removeFromGroup';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["user"], operation: ["removeFromGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Select the user you want to remove from the group
+	 * @displayOptions.show { resource: ["user"], operation: ["removeFromGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	user: ResourceLocatorValue;
 	/**
 	 * Select the group you want to remove the user from
+	 * @displayOptions.show { resource: ["user"], operation: ["removeFromGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	group: ResourceLocatorValue;
@@ -269,17 +304,26 @@ export type AwsCognitoV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Select the user pool to use
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	user: ResourceLocatorValue;
 	/**
 	 * Attributes to update for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 * @default {"attributes":[]}
 	 */
 	userAttributes: {
 		attributes?: Array<{
+			/** Attribute Type
+			 * @default standard
+			 */
 			attributeType?: 'standard' | 'custom' | Expression<string>;
+			/** Standard Attribute
+			 * @displayOptions.show { attributeType: ["standard"] }
+			 * @default address
+			 */
 			standardName?:
 				| 'address'
 				| 'birthdate'
@@ -299,7 +343,12 @@ export type AwsCognitoV1UserUpdateConfig = {
 				| 'website'
 				| 'zoneinfo'
 				| Expression<string>;
+			/** The name of the custom attribute (must start with "custom:")
+			 * @displayOptions.show { attributeType: ["custom"] }
+			 */
 			customName?: string | Expression<string>;
+			/** The value of the attribute
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -312,11 +361,13 @@ export type AwsCognitoV1UserPoolGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the user pool to retrieve
+	 * @displayOptions.show { resource: ["userPool"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userPool: ResourceLocatorValue;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["userPool"], operation: ["get"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;

@@ -23,10 +23,12 @@ export interface GoogleFirebaseRealtimeDatabaseV1Params {
 	operation: 'create' | 'delete' | 'get' | 'push' | 'update' | Expression<string>;
 	/**
 	 * Object path on database. Do not append .json.
+	 * @displayOptions.hide { operation: ["get"] }
 	 */
 	path: string | Expression<string>;
 	/**
 	 * Attributes to save
+	 * @displayOptions.show { operation: ["create", "push", "update"] }
 	 */
 	attributes: string | Expression<string>;
 }

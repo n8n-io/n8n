@@ -32,16 +32,19 @@ export interface SlackTriggerV1Params {
 	>;
 	/**
 	 * Whether to watch for the event in the whole workspace, rather than a specific channel
+	 * @displayOptions.show { trigger: ["any_event", "message", "reaction_added", "file_share", "app_mention"] }
 	 * @default false
 	 */
 	watchWorkspace?: boolean | Expression<boolean>;
 	/**
 	 * The Slack channel to listen to events from. Applies to events: Bot/App mention, File Shared, New Message Posted on Channel, Reaction Added.
+	 * @displayOptions.show { watchWorkspace: [false] }
 	 * @default {"mode":"list","value":""}
 	 */
 	channelId: ResourceLocatorValue;
 	/**
 	 * Whether to download the files and add it to the output
+	 * @displayOptions.show { trigger: ["any_event", "file_share"] }
 	 * @default false
 	 */
 	downloadFiles?: boolean | Expression<boolean>;

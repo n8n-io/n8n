@@ -28,6 +28,7 @@ export interface CiscoWebexTriggerV1Params {
 	event: 'created' | 'deleted' | 'updated' | 'all' | Expression<string>;
 	/**
 	 * By default the response only contain a reference to the data the user inputed. If this option gets activated, it will resolve the data automatically.
+	 * @displayOptions.show { resource: ["attachmentAction"] }
 	 * @default true
 	 */
 	resolveData?: boolean | Expression<boolean>;

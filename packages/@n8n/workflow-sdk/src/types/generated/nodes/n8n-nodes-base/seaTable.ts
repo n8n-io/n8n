@@ -21,38 +21,50 @@ export type SeaTableV2RowCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
+	 * @displayOptions.hide { operation: ["create", "list", "search"] }
 	 */
 	rowId: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { resource: ["row"], operation: ["create"] }
 	 * @default defineBelow
 	 */
 	fieldsToSend?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	/**
 	 * Whether to use the column default values to populate new rows during creation (only available for normal backend)
+	 * @displayOptions.show { bigdata: [false], resource: ["row"], operation: ["create"] }
 	 * @default false
 	 */
 	apply_default?: boolean | Expression<boolean>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { /fieldsToSend: ["autoMapInputData"], resource: ["row"], operation: ["create"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	/**
 	 * Add destination column with its value. Provide the value in this way. Date: YYYY-MM-DD or YYYY-MM-DD hh:mm. Duration: time in seconds. Checkbox: true, on or 1. Multi-Select: comma-separated list.
+	 * @displayOptions.show { /fieldsToSend: ["defineBelow"], resource: ["row"], operation: ["create"] }
 	 * @default {}
 	 */
 	columnsUi?: {
 		columnValues?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			columnName?: string | Expression<string>;
+			/** Column Value
+			 */
 			columnValue?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Whether write to Big Data backend (true) or not (false). True requires the activation of the Big Data backend in the base.
+	 * @displayOptions.show { resource: ["row"], operation: ["create"] }
 	 * @default false
 	 */
 	bigdata?: boolean | Expression<boolean>;
@@ -64,10 +76,13 @@ export type SeaTableV2RowRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
+	 * @displayOptions.hide { operation: ["create", "list", "search"] }
 	 */
 	rowId: string | Expression<string>;
 };
@@ -78,10 +93,13 @@ export type SeaTableV2RowGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
+	 * @displayOptions.hide { operation: ["create", "list", "search"] }
 	 */
 	rowId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -93,14 +111,18 @@ export type SeaTableV2RowListConfig = {
 	operation: 'list';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
+	 * @displayOptions.hide { operation: ["create", "list", "search"] }
 	 */
 	rowId: string | Expression<string>;
 	/**
 	 * The name of SeaTable view to access, or specify by using an expression. Provide it in the way "col.name:::col.type".
+	 * @displayOptions.show { resource: ["row"], operation: ["list"] }
 	 */
 	viewName?: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -112,10 +134,13 @@ export type SeaTableV2RowLockConfig = {
 	operation: 'lock';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
+	 * @displayOptions.hide { operation: ["create", "list", "search"] }
 	 */
 	rowId: string | Expression<string>;
 };
@@ -126,18 +151,23 @@ export type SeaTableV2RowSearchConfig = {
 	operation: 'search';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
+	 * @displayOptions.hide { operation: ["create", "list", "search"] }
 	 */
 	rowId: string | Expression<string>;
 	/**
 	 * Select the column to be searched. Not all column types are supported for search. Choose from the list, or specify a name using an &lt;a href="https://docs.n8n.io/code-examples/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["row"], operation: ["search"] }
 	 */
 	searchColumn: string | Expression<string>;
 	/**
 	 * What to look for?
+	 * @displayOptions.show { resource: ["row"], operation: ["search"] }
 	 */
 	searchTerm: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -149,10 +179,13 @@ export type SeaTableV2RowUnlockConfig = {
 	operation: 'unlock';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
+	 * @displayOptions.hide { operation: ["create", "list", "search"] }
 	 */
 	rowId: string | Expression<string>;
 };
@@ -163,28 +196,38 @@ export type SeaTableV2RowUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["row"] }
+	 * @displayOptions.hide { operation: ["create", "list", "search"] }
 	 */
 	rowId: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { resource: ["row"], operation: ["update"] }
 	 * @default defineBelow
 	 */
 	fieldsToSend?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { resource: ["row"], operation: ["update"], fieldsToSend: ["autoMapInputData"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	/**
 	 * Add destination column with its value. Provide the value in this way:Date: YYYY-MM-DD or YYYY-MM-DD hh:mmDuration: time in secondsCheckbox: true, on or 1Multi-Select: comma-separated list.
+	 * @displayOptions.show { resource: ["row"], operation: ["update"], fieldsToSend: ["defineBelow"] }
 	 * @default {}
 	 */
 	columnsUi?: {
 		columnValues?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			columnName?: string | Expression<string>;
+			/** Column Value
+			 */
 			columnValue?: string | Expression<string>;
 		}>;
 	};
@@ -208,6 +251,7 @@ export type SeaTableV2BaseCollaboratorConfig = {
 	operation: 'collaborator';
 	/**
 	 * SeaTable identifies users with a unique username like 244b43hr6fy54bb4afa2c2cb7369d244@auth.local. Get this username from an email or the name of a collaborator.
+	 * @displayOptions.show { resource: ["base"], operation: ["collaborator"] }
 	 */
 	searchString: string | Expression<string>;
 };
@@ -218,18 +262,22 @@ export type SeaTableV2LinkAddConfig = {
 	operation: 'add';
 	/**
 	 * Choose from the list, of specify by using an expression. Provide it in the way "table_name:::table_id".
+	 * @displayOptions.show { resource: ["link"], operation: ["add"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list of specify the Link Column by using an expression. You have to provide it in the way "column_name:::link_id:::other_table_id".
+	 * @displayOptions.show { resource: ["link"], operation: ["add"] }
 	 */
 	linkColumn: string | Expression<string>;
 	/**
 	 * Provide the row ID of table you selected
+	 * @displayOptions.show { resource: ["link"], operation: ["add"] }
 	 */
 	linkColumnSourceId: string | Expression<string>;
 	/**
 	 * Provide the row ID of table you want to link
+	 * @displayOptions.show { resource: ["link"], operation: ["add"] }
 	 */
 	linkColumnTargetId: string | Expression<string>;
 };
@@ -240,14 +288,17 @@ export type SeaTableV2LinkListConfig = {
 	operation: 'list';
 	/**
 	 * Choose from the list, of specify by using an expression. Provide it in the way "table_name:::table_id".
+	 * @displayOptions.show { resource: ["link"], operation: ["list"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list of specify the Link Column by using an expression. You have to provide it in the way "column_name:::link_id:::other_table_id:::column_key".
+	 * @displayOptions.show { resource: ["link"], operation: ["list"] }
 	 */
 	linkColumn: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["link"], operation: ["list"] }
 	 */
 	rowId: string | Expression<string>;
 };
@@ -258,18 +309,22 @@ export type SeaTableV2LinkRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * Choose from the list, of specify by using an expression. Provide it in the way "table_name:::table_id".
+	 * @displayOptions.show { resource: ["link"], operation: ["remove"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list of specify the Link Column by using an expression. You have to provide it in the way "column_name:::link_id:::other_table_id".
+	 * @displayOptions.show { resource: ["link"], operation: ["remove"] }
 	 */
 	linkColumn: string | Expression<string>;
 	/**
 	 * Provide the row ID of table you selected
+	 * @displayOptions.show { resource: ["link"], operation: ["remove"] }
 	 */
 	linkColumnSourceId: string | Expression<string>;
 	/**
 	 * Provide the row ID of table you want to link
+	 * @displayOptions.show { resource: ["link"], operation: ["remove"] }
 	 */
 	linkColumnTargetId: string | Expression<string>;
 };
@@ -287,18 +342,22 @@ export type SeaTableV2AssetUploadConfig = {
 	operation: 'upload';
 	/**
 	 * Choose from the list, or specify a name using an &lt;a href="https://docs.n8n.io/code-examples/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["asset"], operation: ["upload"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify the name using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["asset"], operation: ["upload"] }
 	 */
 	uploadColumn: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["asset"], operation: ["upload"] }
 	 */
 	rowId: string | Expression<string>;
 	/**
 	 * Name of the binary property which contains the data for the file to be written
+	 * @displayOptions.show { resource: ["asset"], operation: ["upload"] }
 	 * @default data
 	 */
 	dataPropertyName: string | Expression<string>;
@@ -332,39 +391,50 @@ export interface SeaTableV1Params {
 	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | Expression<string>;
 	/**
 	 * The name of SeaTable table to access. Choose from the list, or specify the name using an &lt;a href="https://docs.n8n.io/code-examples/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.hide { operation: ["get"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * The name of SeaTable table to access. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["get"] }
 	 */
 	tableId: string | Expression<string>;
 	rowId?: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { operation: ["create", "update"] }
 	 * @default defineBelow
 	 */
 	fieldsToSend?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { operation: ["create", "update"], fieldsToSend: ["autoMapInputData"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	/**
 	 * Add destination column with its value
+	 * @displayOptions.show { operation: ["create", "update"], fieldsToSend: ["defineBelow"] }
 	 * @default {}
 	 */
 	columnsUi?: {
 		columnValues?: Array<{
+			/** Choose from the list, or specify the name using an &lt;a href="https://docs.n8n.io/code-examples/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			columnName?: string | Expression<string>;
+			/** Column Value
+			 */
 			columnValue?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

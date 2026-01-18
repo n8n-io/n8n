@@ -21,19 +21,26 @@ export type CortexV1AnalyzerExecuteConfig = {
 	operation: 'execute';
 	/**
 	 * Choose the analyzer. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["analyzer"], operation: ["execute"] }
 	 */
 	analyzer: string | Expression<string>;
 	/**
 	 * Choose the observable type. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["analyzer"], operation: ["execute"] }
+	 * @displayOptions.hide { analyzer: [""] }
 	 */
 	observableType: string | Expression<string>;
 	/**
 	 * Enter the observable value
+	 * @displayOptions.show { resource: ["analyzer"], operation: ["execute"] }
+	 * @displayOptions.hide { observableType: ["file"], analyzer: [""] }
 	 */
 	observableValue: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * The TLP of the analyzed observable
+	 * @displayOptions.show { resource: ["analyzer"], operation: ["execute"] }
+	 * @displayOptions.hide { observableType: [""], analyzer: [""] }
 	 * @default 2
 	 */
 	tlp?: 0 | 1 | 2 | 3 | Expression<number>;
@@ -46,6 +53,7 @@ export type CortexV1JobGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the job
+	 * @displayOptions.show { resource: ["job"], operation: ["get", "report"] }
 	 */
 	jobId: string | Expression<string>;
 };
@@ -56,6 +64,7 @@ export type CortexV1JobReportConfig = {
 	operation: 'report';
 	/**
 	 * ID of the job
+	 * @displayOptions.show { resource: ["job"], operation: ["get", "report"] }
 	 */
 	jobId: string | Expression<string>;
 };
@@ -66,14 +75,17 @@ export type CortexV1ResponderExecuteConfig = {
 	operation: 'execute';
 	/**
 	 * Choose the responder. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["responder"] }
 	 */
 	responder: string | Expression<string>;
 	/**
 	 * Choose the Data type. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["responder"] }
 	 */
 	entityType: string | Expression<string>;
 	/**
 	 * Choose between providing JSON object or seperated attributes
+	 * @displayOptions.show { resource: ["responder"] }
 	 * @default false
 	 */
 	jsonObject?: boolean | Expression<boolean>;

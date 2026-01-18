@@ -27,14 +27,17 @@ export type UptimeRobotV1AlertContactCreateConfig = {
 	operation: 'create';
 	/**
 	 * The friendly name of the alert contact
+	 * @displayOptions.show { resource: ["alertContact"], operation: ["create"] }
 	 */
 	friendlyName: string | Expression<string>;
 	/**
 	 * The type of the alert contact
+	 * @displayOptions.show { resource: ["alertContact"], operation: ["create"] }
 	 */
 	type: 4 | 2 | 6 | 9 | 1 | 3 | 5 | Expression<number>;
 	/**
 	 * The correspondent value for the alert contact type
+	 * @displayOptions.show { resource: ["alertContact"], operation: ["create"] }
 	 */
 	value: string | Expression<string>;
 };
@@ -45,6 +48,7 @@ export type UptimeRobotV1AlertContactDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the alert contact
+	 * @displayOptions.show { resource: ["alertContact"], operation: ["delete", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -55,6 +59,7 @@ export type UptimeRobotV1AlertContactGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the alert contact
+	 * @displayOptions.show { resource: ["alertContact"], operation: ["delete", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -65,11 +70,13 @@ export type UptimeRobotV1AlertContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["alertContact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["alertContact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -82,6 +89,7 @@ export type UptimeRobotV1AlertContactUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the alert contact
+	 * @displayOptions.show { resource: ["alertContact"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -93,21 +101,25 @@ export type UptimeRobotV1MaintenanceWindowCreateConfig = {
 	operation: 'create';
 	/**
 	 * The maintenance window activation period (minutes)
+	 * @displayOptions.show { resource: ["maintenanceWindow"], operation: ["create"] }
 	 * @default 1
 	 */
 	duration: number | Expression<number>;
 	/**
 	 * The friendly name of the maintenance window
+	 * @displayOptions.show { resource: ["maintenanceWindow"], operation: ["create"] }
 	 */
 	friendlyName: string | Expression<string>;
 	/**
 	 * The type of the maintenance window
+	 * @displayOptions.show { resource: ["maintenanceWindow"], operation: ["create"] }
 	 */
 	type: 1 | 2 | 3 | 4 | Expression<number>;
 	weekDay?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | Expression<number>;
 	monthDay?: number | Expression<number>;
 	/**
 	 * The maintenance window start datetime
+	 * @displayOptions.show { resource: ["maintenanceWindow"], operation: ["create"] }
 	 */
 	start_time: string | Expression<string>;
 };
@@ -118,6 +130,7 @@ export type UptimeRobotV1MaintenanceWindowDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the maintenance window
+	 * @displayOptions.show { resource: ["maintenanceWindow"], operation: ["delete", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -128,6 +141,7 @@ export type UptimeRobotV1MaintenanceWindowGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the maintenance window
+	 * @displayOptions.show { resource: ["maintenanceWindow"], operation: ["delete", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -138,11 +152,13 @@ export type UptimeRobotV1MaintenanceWindowGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["maintenanceWindow"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["maintenanceWindow"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -155,10 +171,12 @@ export type UptimeRobotV1MaintenanceWindowUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the maintenance window
+	 * @displayOptions.show { resource: ["maintenanceWindow"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The maintenance window activation period (minutes)
+	 * @displayOptions.show { resource: ["maintenanceWindow"], operation: ["update"] }
 	 */
 	duration: number | Expression<number>;
 	updateFields?: Record<string, unknown>;
@@ -170,14 +188,17 @@ export type UptimeRobotV1MonitorCreateConfig = {
 	operation: 'create';
 	/**
 	 * The friendly name of the monitor
+	 * @displayOptions.show { resource: ["monitor"], operation: ["create"] }
 	 */
 	friendlyName: string | Expression<string>;
 	/**
 	 * The type of the monitor
+	 * @displayOptions.show { resource: ["monitor"], operation: ["create"] }
 	 */
 	type: 5 | 1 | 2 | 3 | 4 | Expression<number>;
 	/**
 	 * The URL/IP of the monitor
+	 * @displayOptions.show { resource: ["monitor"], operation: ["create"] }
 	 */
 	url: string | Expression<string>;
 };
@@ -188,6 +209,7 @@ export type UptimeRobotV1MonitorDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the monitor
+	 * @displayOptions.show { resource: ["monitor"], operation: ["delete", "reset", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -198,6 +220,7 @@ export type UptimeRobotV1MonitorGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the monitor
+	 * @displayOptions.show { resource: ["monitor"], operation: ["delete", "reset", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -208,11 +231,13 @@ export type UptimeRobotV1MonitorGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["monitor"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["monitor"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -225,6 +250,7 @@ export type UptimeRobotV1MonitorResetConfig = {
 	operation: 'reset';
 	/**
 	 * The ID of the monitor
+	 * @displayOptions.show { resource: ["monitor"], operation: ["delete", "reset", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -235,6 +261,7 @@ export type UptimeRobotV1MonitorUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the monitor
+	 * @displayOptions.show { resource: ["monitor"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -246,10 +273,12 @@ export type UptimeRobotV1PublicStatusPageCreateConfig = {
 	operation: 'create';
 	/**
 	 * The friendly name of the status page
+	 * @displayOptions.show { resource: ["publicStatusPage"], operation: ["create"] }
 	 */
 	friendlyName: string | Expression<string>;
 	/**
 	 * Monitor IDs to be displayed in status page (the values are separated with a dash (-) or 0 for all monitors)
+	 * @displayOptions.show { resource: ["publicStatusPage"], operation: ["create"] }
 	 */
 	monitors: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -261,6 +290,7 @@ export type UptimeRobotV1PublicStatusPageDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the public status page
+	 * @displayOptions.show { resource: ["publicStatusPage"], operation: ["delete", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -271,6 +301,7 @@ export type UptimeRobotV1PublicStatusPageGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the public status page
+	 * @displayOptions.show { resource: ["publicStatusPage"], operation: ["delete", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -281,11 +312,13 @@ export type UptimeRobotV1PublicStatusPageGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["publicStatusPage"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["publicStatusPage"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

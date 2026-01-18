@@ -21,6 +21,7 @@ export type AwsCertificateManagerV1CertificateDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * String that contains the ARN of the ACM certificate to be renewed. This must be of the form: arn:aws:acm:region:123456789012:certificate/12345678-1234-1234-1234-123456789012.
+	 * @displayOptions.show { resource: ["certificate"], operation: ["renew", "get", "delete", "getMetadata"] }
 	 */
 	certificateArn: string | Expression<string>;
 	bucketName: string | Expression<string>;
@@ -33,6 +34,7 @@ export type AwsCertificateManagerV1CertificateGetConfig = {
 	operation: 'get';
 	/**
 	 * String that contains the ARN of the ACM certificate to be renewed. This must be of the form: arn:aws:acm:region:123456789012:certificate/12345678-1234-1234-1234-123456789012.
+	 * @displayOptions.show { resource: ["certificate"], operation: ["renew", "get", "delete", "getMetadata"] }
 	 */
 	certificateArn: string | Expression<string>;
 };
@@ -43,11 +45,13 @@ export type AwsCertificateManagerV1CertificateGetManyConfig = {
 	operation: 'getMany';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getMany"], resource: ["certificate"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getMany"], resource: ["certificate"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -60,6 +64,7 @@ export type AwsCertificateManagerV1CertificateGetMetadataConfig = {
 	operation: 'getMetadata';
 	/**
 	 * String that contains the ARN of the ACM certificate to be renewed. This must be of the form: arn:aws:acm:region:123456789012:certificate/12345678-1234-1234-1234-123456789012.
+	 * @displayOptions.show { resource: ["certificate"], operation: ["renew", "get", "delete", "getMetadata"] }
 	 */
 	certificateArn: string | Expression<string>;
 };
@@ -70,6 +75,7 @@ export type AwsCertificateManagerV1CertificateRenewConfig = {
 	operation: 'renew';
 	/**
 	 * String that contains the ARN of the ACM certificate to be renewed. This must be of the form: arn:aws:acm:region:123456789012:certificate/12345678-1234-1234-1234-123456789012.
+	 * @displayOptions.show { resource: ["certificate"], operation: ["renew", "get", "delete", "getMetadata"] }
 	 */
 	certificateArn: string | Expression<string>;
 };

@@ -21,14 +21,17 @@ export type TapfiliateV1AffiliateCreateConfig = {
 	operation: 'create';
 	/**
 	 * The affiliate’s email
+	 * @displayOptions.show { operation: ["create"], resource: ["affiliate"] }
 	 */
 	email: string | Expression<string>;
 	/**
 	 * The affiliate’s firstname
+	 * @displayOptions.show { operation: ["create"], resource: ["affiliate"] }
 	 */
 	firstname: string | Expression<string>;
 	/**
 	 * The affiliate’s lastname
+	 * @displayOptions.show { operation: ["create"], resource: ["affiliate"] }
 	 */
 	lastname: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -40,6 +43,7 @@ export type TapfiliateV1AffiliateDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the affiliate
+	 * @displayOptions.show { resource: ["affiliate"], operation: ["delete"] }
 	 */
 	affiliateId: string | Expression<string>;
 };
@@ -50,6 +54,7 @@ export type TapfiliateV1AffiliateGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the affiliate
+	 * @displayOptions.show { resource: ["affiliate"], operation: ["get"] }
 	 */
 	affiliateId: string | Expression<string>;
 };
@@ -60,11 +65,13 @@ export type TapfiliateV1AffiliateGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["affiliate"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["affiliate"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -77,15 +84,21 @@ export type TapfiliateV1AffiliateMetadataAddConfig = {
 	operation: 'add';
 	/**
 	 * The ID of the affiliate
+	 * @displayOptions.show { resource: ["affiliateMetadata"], operation: ["add"] }
 	 */
 	affiliateId: string | Expression<string>;
 	/**
 	 * Meta data
+	 * @displayOptions.show { resource: ["affiliateMetadata"], operation: ["add"] }
 	 * @default {}
 	 */
 	metadataUi?: {
 		metadataValues?: Array<{
+			/** Name of the metadata key to add
+			 */
 			key?: string | Expression<string>;
+			/** Value to set for the metadata key
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -97,10 +110,12 @@ export type TapfiliateV1AffiliateMetadataRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * The ID of the affiliate
+	 * @displayOptions.show { resource: ["affiliateMetadata"], operation: ["remove"] }
 	 */
 	affiliateId: string | Expression<string>;
 	/**
 	 * Name of the metadata key to remove
+	 * @displayOptions.show { resource: ["affiliateMetadata"], operation: ["remove"] }
 	 */
 	key?: string | Expression<string>;
 };
@@ -111,14 +126,17 @@ export type TapfiliateV1AffiliateMetadataUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the affiliate
+	 * @displayOptions.show { resource: ["affiliateMetadata"], operation: ["update"] }
 	 */
 	affiliateId: string | Expression<string>;
 	/**
 	 * Name of the metadata key to update
+	 * @displayOptions.show { resource: ["affiliateMetadata"], operation: ["update"] }
 	 */
 	key?: string | Expression<string>;
 	/**
 	 * Value to set for the metadata key
+	 * @displayOptions.show { resource: ["affiliateMetadata"], operation: ["update"] }
 	 */
 	value?: string | Expression<string>;
 };
@@ -129,10 +147,12 @@ export type TapfiliateV1ProgramAffiliateAddConfig = {
 	operation: 'add';
 	/**
 	 * The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["add"], resource: ["programAffiliate"] }
 	 */
 	programId: string | Expression<string>;
 	/**
 	 * The ID of the affiliate
+	 * @displayOptions.show { resource: ["programAffiliate"], operation: ["add"] }
 	 */
 	affiliateId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -144,10 +164,12 @@ export type TapfiliateV1ProgramAffiliateApproveConfig = {
 	operation: 'approve';
 	/**
 	 * The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["approve"], resource: ["programAffiliate"] }
 	 */
 	programId?: string | Expression<string>;
 	/**
 	 * The ID of the affiliate
+	 * @displayOptions.show { resource: ["programAffiliate"], operation: ["approve"] }
 	 */
 	affiliateId?: string | Expression<string>;
 };
@@ -158,10 +180,12 @@ export type TapfiliateV1ProgramAffiliateDisapproveConfig = {
 	operation: 'disapprove';
 	/**
 	 * The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["disapprove"], resource: ["programAffiliate"] }
 	 */
 	programId?: string | Expression<string>;
 	/**
 	 * The ID of the affiliate
+	 * @displayOptions.show { resource: ["programAffiliate"], operation: ["disapprove"] }
 	 */
 	affiliateId?: string | Expression<string>;
 };
@@ -172,10 +196,12 @@ export type TapfiliateV1ProgramAffiliateGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["get"], resource: ["programAffiliate"] }
 	 */
 	programId: string | Expression<string>;
 	/**
 	 * The ID of the affiliate
+	 * @displayOptions.show { resource: ["programAffiliate"], operation: ["get"] }
 	 */
 	affiliateId: string | Expression<string>;
 };
@@ -186,15 +212,18 @@ export type TapfiliateV1ProgramAffiliateGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the Program to add the affiliate to. This ID can be found as part of the URL when viewing the program on the platform. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["programAffiliate"] }
 	 */
 	programId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["programAffiliate"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["programAffiliate"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

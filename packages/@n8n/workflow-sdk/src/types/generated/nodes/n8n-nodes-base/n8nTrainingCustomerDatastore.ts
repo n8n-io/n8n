@@ -19,11 +19,13 @@ export interface N8nTrainingCustomerDatastoreV1Params {
 	operation?: 'getOnePerson' | 'getAllPeople' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAllPeople"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAllPeople"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;

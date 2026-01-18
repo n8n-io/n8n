@@ -21,6 +21,7 @@ export type ConvertKitV1CustomFieldCreateConfig = {
 	operation: 'create';
 	/**
 	 * The label of the custom field
+	 * @displayOptions.show { resource: ["customField"], operation: ["update", "create"] }
 	 */
 	label: string | Expression<string>;
 };
@@ -31,6 +32,7 @@ export type ConvertKitV1CustomFieldDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of your custom field
+	 * @displayOptions.show { resource: ["customField"], operation: ["update", "delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -41,11 +43,13 @@ export type ConvertKitV1CustomFieldGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["customField"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["customField"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -57,10 +61,12 @@ export type ConvertKitV1CustomFieldUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of your custom field
+	 * @displayOptions.show { resource: ["customField"], operation: ["update", "delete"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The label of the custom field
+	 * @displayOptions.show { resource: ["customField"], operation: ["update", "create"] }
 	 */
 	label: string | Expression<string>;
 };
@@ -71,10 +77,12 @@ export type ConvertKitV1FormAddSubscriberConfig = {
 	operation: 'addSubscriber';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["form"], operation: ["addSubscriber", "getSubscriptions"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The subscriber's email address
+	 * @displayOptions.show { resource: ["form"], operation: ["addSubscriber"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -86,11 +94,13 @@ export type ConvertKitV1FormGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll", "getSubscriptions"], resource: ["form"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll", "getSubscriptions"], resource: ["form"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -102,20 +112,24 @@ export type ConvertKitV1FormGetSubscriptionsConfig = {
 	operation: 'getSubscriptions';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["form"], operation: ["addSubscriber", "getSubscriptions"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll", "getSubscriptions"], resource: ["form"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll", "getSubscriptions"], resource: ["form"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Receive only active subscribers or cancelled subscribers
+	 * @displayOptions.show { resource: ["form"], operation: ["getSubscriptions"] }
 	 * @default {}
 	 */
 	additionalFields?: Record<string, unknown>;
@@ -127,10 +141,12 @@ export type ConvertKitV1SequenceAddSubscriberConfig = {
 	operation: 'addSubscriber';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["sequence"], operation: ["addSubscriber", "getSubscriptions"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The subscriber's email address
+	 * @displayOptions.show { resource: ["sequence"], operation: ["addSubscriber"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -142,11 +158,13 @@ export type ConvertKitV1SequenceGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll", "getSubscriptions"], resource: ["sequence"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll", "getSubscriptions"], resource: ["sequence"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -158,20 +176,24 @@ export type ConvertKitV1SequenceGetSubscriptionsConfig = {
 	operation: 'getSubscriptions';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["sequence"], operation: ["addSubscriber", "getSubscriptions"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll", "getSubscriptions"], resource: ["sequence"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll", "getSubscriptions"], resource: ["sequence"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Receive only active subscribers or cancelled subscribers
+	 * @displayOptions.show { resource: ["sequence"], operation: ["getSubscriptions"] }
 	 * @default {}
 	 */
 	additionalFields?: Record<string, unknown>;
@@ -183,6 +205,7 @@ export type ConvertKitV1TagCreateConfig = {
 	operation: 'create';
 	/**
 	 * Tag name, multiple can be added separated by comma
+	 * @displayOptions.show { resource: ["tag"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -193,11 +216,13 @@ export type ConvertKitV1TagGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["tag"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["tag"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -209,10 +234,12 @@ export type ConvertKitV1TagSubscriberAddConfig = {
 	operation: 'add';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["tagSubscriber"], operation: ["add", "getAll", "delete"] }
 	 */
 	tagId: string | Expression<string>;
 	/**
 	 * Subscriber email address
+	 * @displayOptions.show { resource: ["tagSubscriber"], operation: ["add", "delete"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -224,20 +251,24 @@ export type ConvertKitV1TagSubscriberGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["tagSubscriber"], operation: ["add", "getAll", "delete"] }
 	 */
 	tagId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["tagSubscriber"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["tagSubscriber"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Receive only active subscribers or cancelled subscribers
+	 * @displayOptions.show { resource: ["tagSubscriber"], operation: ["getAll"] }
 	 * @default {}
 	 */
 	additionalFields?: Record<string, unknown>;
@@ -249,10 +280,12 @@ export type ConvertKitV1TagSubscriberDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["tagSubscriber"], operation: ["add", "getAll", "delete"] }
 	 */
 	tagId: string | Expression<string>;
 	/**
 	 * Subscriber email address
+	 * @displayOptions.show { resource: ["tagSubscriber"], operation: ["add", "delete"] }
 	 */
 	email: string | Expression<string>;
 };

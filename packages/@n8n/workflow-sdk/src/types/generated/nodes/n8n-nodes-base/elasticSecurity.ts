@@ -22,42 +22,51 @@ export type ElasticSecurityV1CaseCreateConfig = {
 	title: string | Expression<string>;
 	/**
 	 * Connectors allow you to send Elastic Security cases into other systems (only ServiceNow, Jira, or IBM Resilient). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["case"], operation: ["create"] }
 	 */
 	connectorId: string | Expression<string>;
 	connectorType: '.resilient' | '.jira' | '.servicenow' | Expression<string>;
 	/**
 	 * Type of the Jira issue to create for this case
+	 * @displayOptions.show { resource: ["case"], operation: ["create"], connectorType: [".jira"] }
 	 */
 	issueType: string | Expression<string>;
 	/**
 	 * Priority of the Jira issue to create for this case
+	 * @displayOptions.show { resource: ["case"], operation: ["create"], connectorType: [".jira"] }
 	 */
 	priority: string | Expression<string>;
 	/**
 	 * Urgency of the ServiceNow ITSM issue to create for this case
+	 * @displayOptions.show { resource: ["case"], operation: ["create"], connectorType: [".servicenow"] }
 	 * @default 1
 	 */
 	urgency: 1 | 2 | 3 | Expression<number>;
 	/**
 	 * Severity of the ServiceNow ITSM issue to create for this case
+	 * @displayOptions.show { resource: ["case"], operation: ["create"], connectorType: [".servicenow"] }
 	 * @default 1
 	 */
 	severity: 1 | 2 | 3 | Expression<number>;
 	/**
 	 * Impact of the ServiceNow ITSM issue to create for this case
+	 * @displayOptions.show { resource: ["case"], operation: ["create"], connectorType: [".servicenow"] }
 	 * @default 1
 	 */
 	impact: 1 | 2 | 3 | Expression<number>;
 	/**
 	 * Category of the ServiceNow ITSM issue to create for this case
+	 * @displayOptions.show { resource: ["case"], operation: ["create"], connectorType: [".servicenow"] }
 	 */
 	category: string | Expression<string>;
 	/**
 	 * Comma-separated list of numerical types of the IBM Resilient issue to create for this case
+	 * @displayOptions.show { resource: ["case"], operation: ["create"], connectorType: [".resilient"] }
 	 */
 	issueTypes: string | Expression<string>;
 	/**
 	 * Severity code of the IBM Resilient issue to create for this case
+	 * @displayOptions.show { resource: ["case"], operation: ["create"], connectorType: [".resilient"] }
 	 * @default 1
 	 */
 	severityCode: number | Expression<number>;
@@ -84,18 +93,26 @@ export type ElasticSecurityV1CaseGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["case"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["case"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	filters?: Record<string, unknown>;
 	sortOptions?: {
 		sortOptionsProperties?: {
+			/** Sort Key
+			 * @default createdAt
+			 */
 			sortField?: 'createdAt' | 'updatedAt' | Expression<string>;
+			/** Sort Order
+			 * @default asc
+			 */
 			sortOrder?: 'asc' | 'desc' | Expression<string>;
 		};
 	};
@@ -121,11 +138,13 @@ export type ElasticSecurityV1CaseCommentAddConfig = {
 	operation: 'add';
 	/**
 	 * ID of the case containing the comment to retrieve
+	 * @displayOptions.show { resource: ["caseComment"], operation: ["add"] }
 	 */
 	caseId: string | Expression<string>;
 	comment: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["caseComment"], operation: ["add"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -138,10 +157,12 @@ export type ElasticSecurityV1CaseCommentGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the case containing the comment to retrieve
+	 * @displayOptions.show { resource: ["caseComment"], operation: ["get"] }
 	 */
 	caseId: string | Expression<string>;
 	/**
 	 * ID of the case comment to retrieve
+	 * @displayOptions.show { resource: ["caseComment"], operation: ["get"] }
 	 */
 	commentId: string | Expression<string>;
 };
@@ -153,11 +174,13 @@ export type ElasticSecurityV1CaseCommentGetAllConfig = {
 	caseId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["caseComment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["caseComment"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -169,6 +192,7 @@ export type ElasticSecurityV1CaseCommentRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * ID of the case containing the comment to remove
+	 * @displayOptions.show { resource: ["caseComment"], operation: ["remove"] }
 	 */
 	caseId: string | Expression<string>;
 	commentId: string | Expression<string>;
@@ -180,15 +204,18 @@ export type ElasticSecurityV1CaseCommentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the case containing the comment to retrieve
+	 * @displayOptions.show { resource: ["caseComment"], operation: ["update"] }
 	 */
 	caseId: string | Expression<string>;
 	commentId: string | Expression<string>;
 	/**
 	 * Text to replace current comment message
+	 * @displayOptions.show { resource: ["caseComment"], operation: ["update"] }
 	 */
 	comment: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["caseComment"], operation: ["update"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -201,6 +228,7 @@ export type ElasticSecurityV1CaseTagAddConfig = {
 	caseId: string | Expression<string>;
 	/**
 	 * Tag to attach to the case. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["caseTag"], operation: ["add"] }
 	 */
 	tag: string | Expression<string>;
 };
@@ -212,6 +240,7 @@ export type ElasticSecurityV1CaseTagRemoveConfig = {
 	caseId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["caseTag"], operation: ["remove"] }
 	 */
 	tag: string | Expression<string>;
 };
@@ -222,43 +251,53 @@ export type ElasticSecurityV1ConnectorCreateConfig = {
 	operation: 'create';
 	/**
 	 * Connectors allow you to send Elastic Security cases into other systems (only ServiceNow, Jira, or IBM Resilient)
+	 * @displayOptions.show { resource: ["connector"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	connectorType: '.resilient' | '.jira' | '.servicenow' | Expression<string>;
 	/**
 	 * URL of the third-party instance
+	 * @displayOptions.show { resource: ["connector"], operation: ["create"] }
 	 */
 	apiUrl: string | Expression<string>;
 	/**
 	 * Jira-registered email
+	 * @displayOptions.show { resource: ["connector"], operation: ["create"], connectorType: [".jira"] }
 	 */
 	email: string | Expression<string>;
 	/**
 	 * Jira API token
+	 * @displayOptions.show { resource: ["connector"], operation: ["create"], connectorType: [".jira"] }
 	 */
 	apiToken: string | Expression<string>;
 	/**
 	 * Jira Project Key
+	 * @displayOptions.show { resource: ["connector"], operation: ["create"], connectorType: [".jira"] }
 	 */
 	projectKey: string | Expression<string>;
 	/**
 	 * ServiceNow ITSM username
+	 * @displayOptions.show { resource: ["connector"], operation: ["create"], connectorType: [".servicenow"] }
 	 */
 	username: string | Expression<string>;
 	/**
 	 * ServiceNow ITSM password
+	 * @displayOptions.show { resource: ["connector"], operation: ["create"], connectorType: [".servicenow"] }
 	 */
 	password: string | Expression<string>;
 	/**
 	 * IBM Resilient API key ID
+	 * @displayOptions.show { resource: ["connector"], operation: ["create"], connectorType: [".resilient"] }
 	 */
 	apiKeyId: string | Expression<string>;
 	/**
 	 * IBM Resilient API key secret
+	 * @displayOptions.show { resource: ["connector"], operation: ["create"], connectorType: [".resilient"] }
 	 */
 	apiKeySecret: string | Expression<string>;
 	/**
 	 * IBM Resilient organization ID
+	 * @displayOptions.show { resource: ["connector"], operation: ["create"], connectorType: [".resilient"] }
 	 */
 	orgId: string | Expression<string>;
 };

@@ -21,6 +21,7 @@ export type PushcutV1NotificationSendConfig = {
 	operation: 'send';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["notification"], operation: ["send"] }
 	 */
 	notificationName?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

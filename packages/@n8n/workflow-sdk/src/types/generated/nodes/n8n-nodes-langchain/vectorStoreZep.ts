@@ -22,20 +22,24 @@ export type LcVectorStoreZepV13LoadConfig = {
 	collectionName: string | Expression<string>;
 	/**
 	 * Search prompt to retrieve matching documents from the vector store using similarity-based ranking
+	 * @displayOptions.show { mode: ["load"] }
 	 */
 	prompt: string | Expression<string>;
 	/**
 	 * Number of top results to fetch from vector store
+	 * @displayOptions.show { mode: ["load", "retrieve-as-tool"] }
 	 * @default 4
 	 */
 	topK?: number | Expression<number>;
 	/**
 	 * Whether or not to include document metadata
+	 * @displayOptions.show { mode: ["load", "retrieve-as-tool"] }
 	 * @default true
 	 */
 	includeDocumentMetadata?: boolean | Expression<boolean>;
 	/**
 	 * Whether or not to rerank results
+	 * @displayOptions.show { mode: ["load", "retrieve", "retrieve-as-tool"] }
 	 * @default false
 	 */
 	useReranker?: boolean | Expression<boolean>;
@@ -49,6 +53,7 @@ export type LcVectorStoreZepV13InsertConfig = {
 	collectionName: string | Expression<string>;
 	/**
 	 * Number of documents to embed in a single batch
+	 * @displayOptions.show { mode: ["insert"], @version: [{"_cnd":{"gte":1.1}}] }
 	 * @default 200
 	 */
 	embeddingBatchSize?: number | Expression<number>;
@@ -62,6 +67,7 @@ export type LcVectorStoreZepV13RetrieveConfig = {
 	collectionName: string | Expression<string>;
 	/**
 	 * Whether or not to rerank results
+	 * @displayOptions.show { mode: ["load", "retrieve", "retrieve-as-tool"] }
 	 * @default false
 	 */
 	useReranker?: boolean | Expression<boolean>;
@@ -74,25 +80,30 @@ export type LcVectorStoreZepV13RetrieveAsToolConfig = {
 	ragStarterCallout?: unknown;
 	/**
 	 * Name of the vector store
+	 * @displayOptions.show { @version: [{"_cnd":{"lte":1.2}}], mode: ["retrieve-as-tool"] }
 	 */
 	toolName: string | Expression<string>;
 	/**
 	 * Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often
+	 * @displayOptions.show { mode: ["retrieve-as-tool"] }
 	 */
 	toolDescription: string | Expression<string>;
 	collectionName: string | Expression<string>;
 	/**
 	 * Number of top results to fetch from vector store
+	 * @displayOptions.show { mode: ["load", "retrieve-as-tool"] }
 	 * @default 4
 	 */
 	topK?: number | Expression<number>;
 	/**
 	 * Whether or not to include document metadata
+	 * @displayOptions.show { mode: ["load", "retrieve-as-tool"] }
 	 * @default true
 	 */
 	includeDocumentMetadata?: boolean | Expression<boolean>;
 	/**
 	 * Whether or not to rerank results
+	 * @displayOptions.show { mode: ["load", "retrieve", "retrieve-as-tool"] }
 	 * @default false
 	 */
 	useReranker?: boolean | Expression<boolean>;

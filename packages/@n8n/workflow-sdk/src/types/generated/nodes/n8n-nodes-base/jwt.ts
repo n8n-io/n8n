@@ -20,12 +20,14 @@ export interface JwtV1Params {
 	operation?: 'decode' | 'sign' | 'verify' | Expression<string>;
 	/**
 	 * Whether to use JSON to build the claims
+	 * @displayOptions.show { operation: ["sign"] }
 	 * @default false
 	 */
 	useJson?: boolean | Expression<boolean>;
 	claims?: Record<string, unknown>;
 	/**
  * Claims to add to the token in JSON format
+ * @displayOptions.show { operation: ["sign"], useJson: [true] }
  * @default {
   "my_field_1": "value 1",
   "my_field_2": "value 2"
@@ -35,6 +37,7 @@ export interface JwtV1Params {
 	claimsJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The token to verify or decode
+	 * @displayOptions.show { operation: ["verify", "decode"] }
 	 */
 	token: string | Expression<string>;
 	options?: Record<string, unknown>;

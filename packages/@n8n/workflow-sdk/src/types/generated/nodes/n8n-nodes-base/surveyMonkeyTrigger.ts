@@ -34,26 +34,32 @@ export interface SurveyMonkeyTriggerV1Params {
 		| Expression<string>;
 	/**
 	 * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { objectType: ["survey"] }
+	 * @displayOptions.hide { event: ["survey_created"] }
 	 * @default []
 	 */
 	surveyIds: string[];
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { objectType: ["collector"] }
 	 * @default []
 	 */
 	surveyId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { objectType: ["collector"] }
 	 * @default []
 	 */
 	collectorIds: string[];
 	/**
 	 * By default the webhook-data only contain the IDs. If this option gets activated, it will resolve the data automatically.
+	 * @displayOptions.show { event: ["response_completed"] }
 	 * @default true
 	 */
 	resolveData?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return only the answers of the form and not any of the other data
+	 * @displayOptions.show { resolveData: [true], event: ["response_completed"] }
 	 * @default true
 	 */
 	onlyAnswers?: boolean | Expression<boolean>;

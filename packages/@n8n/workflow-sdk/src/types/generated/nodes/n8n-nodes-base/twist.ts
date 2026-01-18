@@ -21,6 +21,7 @@ export type TwistV1ChannelArchiveConfig = {
 	operation: 'archive';
 	/**
 	 * The ID of the channel
+	 * @displayOptions.show { operation: ["archive", "delete", "get", "unarchive"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 };
@@ -31,10 +32,12 @@ export type TwistV1ChannelCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the workspace. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["channel"] }
 	 */
 	workspaceId: string | Expression<string>;
 	/**
 	 * The name of the channel
+	 * @displayOptions.show { operation: ["create"], resource: ["channel"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -46,6 +49,7 @@ export type TwistV1ChannelDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the channel
+	 * @displayOptions.show { operation: ["archive", "delete", "get", "unarchive"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 };
@@ -56,6 +60,7 @@ export type TwistV1ChannelGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the channel
+	 * @displayOptions.show { operation: ["archive", "delete", "get", "unarchive"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 };
@@ -66,15 +71,18 @@ export type TwistV1ChannelGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the workspace. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["channel"] }
 	 */
 	workspaceId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["channel"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["channel"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -87,6 +95,7 @@ export type TwistV1ChannelUnarchiveConfig = {
 	operation: 'unarchive';
 	/**
 	 * The ID of the channel
+	 * @displayOptions.show { operation: ["archive", "delete", "get", "unarchive"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 };
@@ -97,6 +106,7 @@ export type TwistV1ChannelUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the channel
+	 * @displayOptions.show { operation: ["update"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -108,10 +118,12 @@ export type TwistV1CommentCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the thread
+	 * @displayOptions.show { operation: ["create"], resource: ["comment"] }
 	 */
 	threadId: string | Expression<string>;
 	/**
 	 * The content of the comment
+	 * @displayOptions.show { operation: ["create"], resource: ["comment"] }
 	 */
 	content: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -123,6 +135,7 @@ export type TwistV1CommentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the comment
+	 * @displayOptions.show { operation: ["get", "delete"], resource: ["comment"] }
 	 */
 	commentId: string | Expression<string>;
 };
@@ -133,6 +146,7 @@ export type TwistV1CommentGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the comment
+	 * @displayOptions.show { operation: ["get", "delete"], resource: ["comment"] }
 	 */
 	commentId: string | Expression<string>;
 };
@@ -143,15 +157,18 @@ export type TwistV1CommentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the channel
+	 * @displayOptions.show { operation: ["getAll"], resource: ["comment"] }
 	 */
 	threadId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["comment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["comment"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -164,6 +181,7 @@ export type TwistV1CommentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the comment
+	 * @displayOptions.show { operation: ["update"], resource: ["comment"] }
 	 */
 	commentId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -175,18 +193,22 @@ export type TwistV1MessageConversationCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the workspace. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["messageConversation"] }
 	 */
 	workspaceId: string | Expression<string>;
 	/**
 	 * The ID of the conversation. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["messageConversation"] }
 	 */
 	conversationId: string | Expression<string>;
 	/**
 	 * The content of the new message. Mentions can be used as &lt;code&gt;[Name](twist-mention://user_id)&lt;/code&gt; for users or &lt;code&gt;[Group name](twist-group-mention://group_id)&lt;/code&gt; for groups.
+	 * @displayOptions.show { operation: ["create"], resource: ["messageConversation"] }
 	 */
 	content?: string | Expression<string>;
 	/**
 	 * Other options to set
+	 * @displayOptions.show { operation: ["create"], resource: ["messageConversation"] }
 	 * @default {}
 	 */
 	additionalFields?: Record<string, unknown>;
@@ -198,6 +220,7 @@ export type TwistV1MessageConversationDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the conversation message
+	 * @displayOptions.show { operation: ["delete", "get"], resource: ["messageConversation"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -208,6 +231,7 @@ export type TwistV1MessageConversationGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the conversation message
+	 * @displayOptions.show { operation: ["delete", "get"], resource: ["messageConversation"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -218,14 +242,17 @@ export type TwistV1MessageConversationGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the workspace. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["messageConversation"] }
 	 */
 	workspaceId: string | Expression<string>;
 	/**
 	 * The ID of the conversation. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["messageConversation"] }
 	 */
 	conversationId: string | Expression<string>;
 	/**
 	 * Other options to set
+	 * @displayOptions.show { operation: ["getAll"], resource: ["messageConversation"] }
 	 * @default {}
 	 */
 	additionalFields?: Record<string, unknown>;
@@ -237,10 +264,12 @@ export type TwistV1MessageConversationUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the conversation message
+	 * @displayOptions.show { operation: ["update"], resource: ["messageConversation"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Other options to set
+	 * @displayOptions.show { operation: ["update"], resource: ["messageConversation"] }
 	 * @default {}
 	 */
 	updateFields?: Record<string, unknown>;
@@ -252,14 +281,17 @@ export type TwistV1ThreadCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the channel
+	 * @displayOptions.show { operation: ["create"], resource: ["thread"] }
 	 */
 	channelId: string | Expression<string>;
 	/**
 	 * The title of the new thread (1 &lt; length &lt; 300)
+	 * @displayOptions.show { operation: ["create"], resource: ["thread"] }
 	 */
 	title: string | Expression<string>;
 	/**
 	 * The content of the thread
+	 * @displayOptions.show { operation: ["create"], resource: ["thread"] }
 	 */
 	content: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -271,6 +303,7 @@ export type TwistV1ThreadDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the thread
+	 * @displayOptions.show { operation: ["get", "delete"], resource: ["thread"] }
 	 */
 	threadId: string | Expression<string>;
 };
@@ -281,6 +314,7 @@ export type TwistV1ThreadGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the thread
+	 * @displayOptions.show { operation: ["get", "delete"], resource: ["thread"] }
 	 */
 	threadId: string | Expression<string>;
 };
@@ -291,15 +325,18 @@ export type TwistV1ThreadGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the channel
+	 * @displayOptions.show { operation: ["getAll"], resource: ["thread"] }
 	 */
 	channelId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["thread"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["thread"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -312,6 +349,7 @@ export type TwistV1ThreadUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the thread
+	 * @displayOptions.show { operation: ["update"], resource: ["thread"] }
 	 */
 	threadId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

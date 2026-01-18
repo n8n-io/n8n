@@ -24,15 +24,18 @@ export type GoogleCalendarV13CalendarAvailabilityConfig = {
 	operation: 'availability';
 	/**
 	 * Google Calendar to operate on
+	 * @displayOptions.show { resource: ["calendar"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	calendar: ResourceLocatorValue;
 	/**
 	 * Start of the interval
+	 * @displayOptions.show { operation: ["availability"], resource: ["calendar"], @version: [{"_cnd":{"lt":1.3}}] }
 	 */
 	timeMin: string | Expression<string>;
 	/**
 	 * End of the interval
+	 * @displayOptions.show { operation: ["availability"], resource: ["calendar"], @version: [{"_cnd":{"lt":1.3}}] }
 	 */
 	timeMax: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -44,26 +47,35 @@ export type GoogleCalendarV13EventCreateConfig = {
 	operation: 'create';
 	/**
 	 * Google Calendar to operate on
+	 * @displayOptions.show { resource: ["event"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	calendar: ResourceLocatorValue;
 	/**
 	 * Start time of the event
+	 * @displayOptions.show { operation: ["create"], resource: ["event"], @version: [{"_cnd":{"lt":1.3}}] }
 	 */
 	start: string | Expression<string>;
 	/**
 	 * End time of the event
+	 * @displayOptions.show { operation: ["create"], resource: ["event"], @version: [{"_cnd":{"lt":1.3}}] }
 	 */
 	end: string | Expression<string>;
 	useDefaultReminders?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * If the event doesn't use the default reminders, this lists the reminders specific to the event
+	 * @displayOptions.show { resource: ["event"], operation: ["create"], useDefaultReminders: [false] }
 	 * @default {}
 	 */
 	remindersUi?: {
 		remindersValues?: Array<{
+			/** Method
+			 */
 			method?: 'email' | 'popup' | Expression<string>;
+			/** Minutes Before
+			 * @default 0
+			 */
 			minutes?: number | Expression<number>;
 		}>;
 	};
@@ -75,6 +87,7 @@ export type GoogleCalendarV13EventDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Google Calendar to operate on
+	 * @displayOptions.show { resource: ["event"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	calendar: ResourceLocatorValue;
@@ -88,6 +101,7 @@ export type GoogleCalendarV13EventGetConfig = {
 	operation: 'get';
 	/**
 	 * Google Calendar to operate on
+	 * @displayOptions.show { resource: ["event"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	calendar: ResourceLocatorValue;
@@ -101,26 +115,31 @@ export type GoogleCalendarV13EventGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Google Calendar to operate on
+	 * @displayOptions.show { resource: ["event"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	calendar: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["event"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["event"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * At least some part of the event must be after this time, use &lt;a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank"&gt;expression&lt;/a&gt; to set a date, or switch to fixed mode to choose date from widget
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.3}}], operation: ["getAll"], resource: ["event"] }
 	 * @default ={{ $now }}
 	 */
 	timeMin?: string | Expression<string>;
 	/**
 	 * At least some part of the event must be before this time, use &lt;a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank"&gt;expression&lt;/a&gt; to set a date, or switch to fixed mode to choose date from widget
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.3}}], operation: ["getAll"], resource: ["event"] }
 	 * @default ={{ $now.plus({ week: 1 }) }}
 	 */
 	timeMax?: string | Expression<string>;
@@ -133,6 +152,7 @@ export type GoogleCalendarV13EventUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Google Calendar to operate on
+	 * @displayOptions.show { resource: ["event"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	calendar: ResourceLocatorValue;
@@ -142,11 +162,17 @@ export type GoogleCalendarV13EventUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 	/**
 	 * If the event doesn't use the default reminders, this lists the reminders specific to the event
+	 * @displayOptions.show { resource: ["event"], operation: ["update"], useDefaultReminders: [false] }
 	 * @default {}
 	 */
 	remindersUi?: {
 		remindersValues?: Array<{
+			/** Method
+			 */
 			method?: 'email' | 'popup' | Expression<string>;
+			/** Minutes Before
+			 * @default 0
+			 */
 			minutes?: number | Expression<number>;
 		}>;
 	};

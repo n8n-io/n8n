@@ -28,6 +28,7 @@ export type NetlifyV1DeployCreateConfig = {
 	operation: 'create';
 	/**
 	 * Enter the Site ID. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["deploy"], operation: ["get", "create", "getAll"] }
 	 */
 	siteId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -39,6 +40,7 @@ export type NetlifyV1DeployGetConfig = {
 	operation: 'get';
 	/**
 	 * Enter the Site ID. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["deploy"], operation: ["get", "create", "getAll"] }
 	 */
 	siteId: string | Expression<string>;
 	deployId: string | Expression<string>;
@@ -50,15 +52,18 @@ export type NetlifyV1DeployGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Enter the Site ID. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["deploy"], operation: ["get", "create", "getAll"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["deploy"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["deploy"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -84,11 +89,13 @@ export type NetlifyV1SiteGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["site"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["site"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

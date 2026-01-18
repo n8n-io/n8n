@@ -25,6 +25,7 @@ export type ContentfulV1AssetGetConfig = {
 	source?: 'deliveryApi' | 'previewApi' | Expression<string>;
 	/**
 	 * The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".
+	 * @displayOptions.show { resource: ["asset"], operation: ["get", "getAll"] }
 	 * @default master
 	 */
 	environmentId?: string | Expression<string>;
@@ -41,16 +42,19 @@ export type ContentfulV1AssetGetAllConfig = {
 	source?: 'deliveryApi' | 'previewApi' | Expression<string>;
 	/**
 	 * The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".
+	 * @displayOptions.show { resource: ["asset"], operation: ["get", "getAll"] }
 	 * @default master
 	 */
 	environmentId?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["asset"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["asset"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -67,6 +71,7 @@ export type ContentfulV1ContentTypeGetConfig = {
 	source?: 'deliveryApi' | 'previewApi' | Expression<string>;
 	/**
 	 * The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".
+	 * @displayOptions.show { resource: ["contentType"], operation: ["get"] }
 	 * @default master
 	 */
 	environmentId?: string | Expression<string>;
@@ -84,6 +89,7 @@ export type ContentfulV1EntryGetConfig = {
 	source?: 'deliveryApi' | 'previewApi' | Expression<string>;
 	/**
 	 * The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".
+	 * @displayOptions.show { resource: ["entry"], operation: ["get", "getAll"] }
 	 * @default master
 	 */
 	environmentId?: string | Expression<string>;
@@ -101,16 +107,19 @@ export type ContentfulV1EntryGetAllConfig = {
 	source?: 'deliveryApi' | 'previewApi' | Expression<string>;
 	/**
 	 * The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".
+	 * @displayOptions.show { resource: ["entry"], operation: ["get", "getAll"] }
 	 * @default master
 	 */
 	environmentId?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["entry"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["entry"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -127,16 +136,19 @@ export type ContentfulV1LocaleGetAllConfig = {
 	source?: 'deliveryApi' | 'previewApi' | Expression<string>;
 	/**
 	 * The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".
+	 * @displayOptions.show { resource: ["locale"], operation: ["get", "getAll"] }
 	 * @default master
 	 */
 	environmentId?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["locale"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["locale"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

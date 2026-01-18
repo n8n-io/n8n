@@ -21,14 +21,17 @@ export type MoceanV1SmsSendConfig = {
 	operation: 'send';
 	/**
 	 * Number to which to send the message
+	 * @displayOptions.show { operation: ["send"], resource: ["sms", "voice"] }
 	 */
 	from: string | Expression<string>;
 	/**
 	 * Number from which to send the message
+	 * @displayOptions.show { operation: ["send"], resource: ["sms", "voice"] }
 	 */
 	to: string | Expression<string>;
 	/**
 	 * Message to send
+	 * @displayOptions.show { operation: ["send"], resource: ["sms", "voice"] }
 	 */
 	message: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -40,15 +43,18 @@ export type MoceanV1VoiceSendConfig = {
 	operation: 'send';
 	/**
 	 * Number to which to send the message
+	 * @displayOptions.show { operation: ["send"], resource: ["sms", "voice"] }
 	 */
 	from: string | Expression<string>;
 	/**
 	 * Number from which to send the message
+	 * @displayOptions.show { operation: ["send"], resource: ["sms", "voice"] }
 	 */
 	to: string | Expression<string>;
 	language?: 'cmn-CN' | 'en-GB' | 'en-US' | 'ja-JP' | 'ko-KR' | Expression<string>;
 	/**
 	 * Message to send
+	 * @displayOptions.show { operation: ["send"], resource: ["sms", "voice"] }
 	 */
 	message: string | Expression<string>;
 };

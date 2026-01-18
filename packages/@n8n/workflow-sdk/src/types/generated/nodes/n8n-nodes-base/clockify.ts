@@ -21,6 +21,7 @@ export type ClockifyV1ClientCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of client being created
+	 * @displayOptions.show { resource: ["client"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -45,11 +46,13 @@ export type ClockifyV1ClientGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["client"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["client"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -71,6 +74,7 @@ export type ClockifyV1ProjectCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of project being created
+	 * @displayOptions.show { resource: ["project"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -96,11 +100,13 @@ export type ClockifyV1ProjectGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["project"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["project"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -121,6 +127,7 @@ export type ClockifyV1TagCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of tag being created
+	 * @displayOptions.show { resource: ["tag"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -138,11 +145,13 @@ export type ClockifyV1TagGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["tag"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["tag"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -163,10 +172,12 @@ export type ClockifyV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * Name of task to create
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -178,10 +189,12 @@ export type ClockifyV1TaskDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * ID of task to delete
+	 * @displayOptions.show { resource: ["task"], operation: ["delete"] }
 	 */
 	taskId: string | Expression<string>;
 };
@@ -192,10 +205,12 @@ export type ClockifyV1TaskGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * ID of task to get
+	 * @displayOptions.show { resource: ["task"], operation: ["get"] }
 	 */
 	taskId: string | Expression<string>;
 };
@@ -206,15 +221,18 @@ export type ClockifyV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -227,10 +245,12 @@ export type ClockifyV1TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * ID of task to update
+	 * @displayOptions.show { resource: ["task"], operation: ["update"] }
 	 */
 	taskId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -273,11 +293,13 @@ export type ClockifyV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["user"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["user"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -290,11 +312,13 @@ export type ClockifyV1WorkspaceGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["workspace"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["workspace"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

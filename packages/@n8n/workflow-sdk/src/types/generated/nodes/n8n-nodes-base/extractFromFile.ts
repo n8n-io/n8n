@@ -34,6 +34,7 @@ export interface ExtractFromFileV11Params {
 	options?: Record<string, unknown>;
 	/**
 	 * The name of the output field that will contain the extracted data
+	 * @displayOptions.show { operation: ["binaryToPropery", "fromJson", "text", "fromIcs", "xml"] }
 	 * @default data
 	 */
 	destinationKey: string | Expression<string>;

@@ -20,10 +20,12 @@ export type HighLevelV2ContactCreateConfig = {
 	operation: 'create';
 	/**
 	 * Email or Phone are required to create contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["create"] }
 	 */
 	email?: string | Expression<string>;
 	/**
 	 * Phone or Email are required to create contact. Phone number has to start with a valid &lt;a href="https://en.wikipedia.org/wiki/List_of_country_calling_codes"&gt;country code&lt;/a&gt; leading with + sign.
+	 * @displayOptions.show { resource: ["contact"], operation: ["create"] }
 	 */
 	phone?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -49,11 +51,13 @@ export type HighLevelV2ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -75,11 +79,13 @@ export type HighLevelV2OpportunityCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create"] }
 	 */
 	pipelineId?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
 	 * @hint There can only be one opportunity for each contact
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create"] }
 	 */
 	contactId: string | Expression<string>;
 	name: string | Expression<string>;
@@ -107,11 +113,13 @@ export type HighLevelV2OpportunityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -132,6 +140,7 @@ export type HighLevelV2TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * Contact the task belongs to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	contactId: string | Expression<string>;
 	title: string | Expression<string>;
@@ -146,6 +155,7 @@ export type HighLevelV2TaskDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Contact the task belongs to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["delete"] }
 	 */
 	contactId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -157,6 +167,7 @@ export type HighLevelV2TaskGetConfig = {
 	operation: 'get';
 	/**
 	 * Contact the task belongs to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["get"] }
 	 */
 	contactId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -168,15 +179,18 @@ export type HighLevelV2TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Contact the task belongs to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 */
 	contactId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -188,6 +202,7 @@ export type HighLevelV2TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Contact the task belongs to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["update"] }
 	 */
 	contactId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -203,6 +218,7 @@ export type HighLevelV2CalendarBookAppointmentConfig = {
 	contactId: string | Expression<string>;
 	/**
 	 * Example: 2021-06-23T03:30:00+05:30
+	 * @displayOptions.show { resource: ["calendar"], operation: ["bookAppointment"] }
 	 */
 	startTime: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -215,10 +231,12 @@ export type HighLevelV2CalendarGetFreeSlotsConfig = {
 	calendarId: string | Expression<string>;
 	/**
 	 * The start date for fetching free calendar slots. Example: 1548898600000.
+	 * @displayOptions.show { resource: ["calendar"], operation: ["getFreeSlots"] }
 	 */
 	startDate: number | Expression<number>;
 	/**
 	 * The end date for fetching free calendar slots. Example: 1601490599999.
+	 * @displayOptions.show { resource: ["calendar"], operation: ["getFreeSlots"] }
 	 */
 	endDate: number | Expression<number>;
 	additionalFields?: Record<string, unknown>;
@@ -249,10 +267,12 @@ export type HighLevelV1ContactCreateConfig = {
 	operation: 'create';
 	/**
 	 * Email or Phone are required to create contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["create"] }
 	 */
 	email?: string | Expression<string>;
 	/**
 	 * Phone or Email are required to create contact. Phone number has to start with a valid &lt;a href="https://en.wikipedia.org/wiki/List_of_country_calling_codes"&gt;country code&lt;/a&gt; leading with + sign.
+	 * @displayOptions.show { resource: ["contact"], operation: ["create"] }
 	 */
 	phone?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -278,11 +298,13 @@ export type HighLevelV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -296,10 +318,12 @@ export type HighLevelV1ContactLookupConfig = {
 	operation: 'lookup';
 	/**
 	 * Lookup Contact by Email. If Email is not found it will try to find a contact by phone.
+	 * @displayOptions.show { resource: ["contact"], operation: ["lookup"] }
 	 */
 	email?: string | Expression<string>;
 	/**
 	 * Lookup Contact by Phone. It will first try to find a contact by Email and than by Phone.
+	 * @displayOptions.show { resource: ["contact"], operation: ["lookup"] }
 	 */
 	phone?: string | Expression<string>;
 	requestOptions?: Record<string, unknown>;
@@ -318,15 +342,18 @@ export type HighLevelV1OpportunityCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "delete", "get", "getAll", "update"] }
 	 */
 	pipelineId?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create"] }
 	 */
 	stageId: string | Expression<string>;
 	/**
 	 * Either Email, Phone or Contact ID
 	 * @hint There can only be one opportunity for each contact.
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create"] }
 	 */
 	contactIdentifier: string | Expression<string>;
 	title: string | Expression<string>;
@@ -340,6 +367,7 @@ export type HighLevelV1OpportunityDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "delete", "get", "getAll", "update"] }
 	 */
 	pipelineId?: string | Expression<string>;
 	opportunityId: string | Expression<string>;
@@ -351,6 +379,7 @@ export type HighLevelV1OpportunityGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "delete", "get", "getAll", "update"] }
 	 */
 	pipelineId?: string | Expression<string>;
 	opportunityId: string | Expression<string>;
@@ -362,15 +391,18 @@ export type HighLevelV1OpportunityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "delete", "get", "getAll", "update"] }
 	 */
 	pipelineId?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -383,6 +415,7 @@ export type HighLevelV1OpportunityUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "delete", "get", "getAll", "update"] }
 	 */
 	pipelineId?: string | Expression<string>;
 	opportunityId: string | Expression<string>;
@@ -395,6 +428,7 @@ export type HighLevelV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * Contact the task belongs to
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	contactId: string | Expression<string>;
 	title: string | Expression<string>;
@@ -408,6 +442,7 @@ export type HighLevelV1TaskDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Contact the task belongs to
+	 * @displayOptions.show { resource: ["task"], operation: ["delete"] }
 	 */
 	contactId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -419,6 +454,7 @@ export type HighLevelV1TaskGetConfig = {
 	operation: 'get';
 	/**
 	 * Contact the task belongs to
+	 * @displayOptions.show { resource: ["task"], operation: ["get"] }
 	 */
 	contactId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -430,15 +466,18 @@ export type HighLevelV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Contact the task belongs to
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 */
 	contactId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -450,6 +489,7 @@ export type HighLevelV1TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Contact the task belongs to
+	 * @displayOptions.show { resource: ["task"], operation: ["update"] }
 	 */
 	contactId: string | Expression<string>;
 	taskId: string | Expression<string>;

@@ -21,10 +21,12 @@ export type YouTubeV1ChannelGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the channel
+	 * @displayOptions.show { operation: ["get"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 	/**
 	 * The fields parameter specifies a comma-separated list of one or more channel resource properties that the API response will include
+	 * @displayOptions.show { operation: ["get"], resource: ["channel"] }
 	 * @default ["*"]
 	 */
 	part: Array<
@@ -47,6 +49,7 @@ export type YouTubeV1ChannelGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The fields parameter specifies a comma-separated list of one or more channel resource properties that the API response will include
+	 * @displayOptions.show { operation: ["getAll"], resource: ["channel"] }
 	 * @default ["*"]
 	 */
 	part: Array<
@@ -63,11 +66,13 @@ export type YouTubeV1ChannelGetAllConfig = {
 	>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["channel"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["channel"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;
@@ -89,6 +94,7 @@ export type YouTubeV1ChannelUploadBannerConfig = {
 	operation: 'uploadBanner';
 	/**
 	 * ID of the channel
+	 * @displayOptions.show { operation: ["uploadBanner"], resource: ["channel"] }
 	 */
 	channelId: string | Expression<string>;
 	binaryProperty: string | Expression<string>;
@@ -100,6 +106,7 @@ export type YouTubeV1PlaylistCreateConfig = {
 	operation: 'create';
 	/**
 	 * The playlist's title
+	 * @displayOptions.show { operation: ["create"], resource: ["playlist"] }
 	 */
 	title: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -120,6 +127,7 @@ export type YouTubeV1PlaylistGetConfig = {
 	playlistId: string | Expression<string>;
 	/**
 	 * The fields parameter specifies a comma-separated list of one or more playlist resource properties that the API response will include
+	 * @displayOptions.show { operation: ["get"], resource: ["playlist"] }
 	 * @default ["*"]
 	 */
 	part: Array<'*' | 'contentDetails' | 'id' | 'localizations' | 'player' | 'snippet' | 'status'>;
@@ -132,16 +140,19 @@ export type YouTubeV1PlaylistGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The fields parameter specifies a comma-separated list of one or more playlist resource properties that the API response will include
+	 * @displayOptions.show { operation: ["getAll"], resource: ["playlist"] }
 	 * @default ["*"]
 	 */
 	part: Array<'*' | 'contentDetails' | 'id' | 'localizations' | 'player' | 'snippet' | 'status'>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["playlist"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["playlist"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;
@@ -155,10 +166,12 @@ export type YouTubeV1PlaylistUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The playlist's title
+	 * @displayOptions.show { operation: ["update"], resource: ["playlist"] }
 	 */
 	playlistId: string | Expression<string>;
 	/**
 	 * The playlist's title
+	 * @displayOptions.show { operation: ["update"], resource: ["playlist"] }
 	 */
 	title: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -170,6 +183,7 @@ export type YouTubeV1PlaylistItemAddConfig = {
 	operation: 'add';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["add"], resource: ["playlistItem"] }
 	 */
 	playlistId: string | Expression<string>;
 	videoId: string | Expression<string>;
@@ -191,6 +205,7 @@ export type YouTubeV1PlaylistItemGetConfig = {
 	playlistItemId: string | Expression<string>;
 	/**
 	 * The fields parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include
+	 * @displayOptions.show { operation: ["get"], resource: ["playlistItem"] }
 	 * @default ["*"]
 	 */
 	part: Array<'*' | 'contentDetails' | 'id' | 'snippet' | 'status'>;
@@ -203,20 +218,24 @@ export type YouTubeV1PlaylistItemGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getAll"], resource: ["playlistItem"] }
 	 */
 	playlistId: string | Expression<string>;
 	/**
 	 * The fields parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include
+	 * @displayOptions.show { operation: ["getAll"], resource: ["playlistItem"] }
 	 * @default ["*"]
 	 */
 	part: Array<'*' | 'contentDetails' | 'id' | 'snippet' | 'status'>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["playlistItem"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["playlistItem"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;
@@ -229,6 +248,7 @@ export type YouTubeV1VideoDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the video
+	 * @displayOptions.show { operation: ["delete"], resource: ["video"] }
 	 */
 	videoId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -241,6 +261,7 @@ export type YouTubeV1VideoGetConfig = {
 	videoId: string | Expression<string>;
 	/**
 	 * The fields parameter specifies a comma-separated list of one or more video resource properties that the API response will include
+	 * @displayOptions.show { operation: ["get"], resource: ["video"] }
 	 * @default ["*"]
 	 */
 	part: Array<
@@ -265,11 +286,13 @@ export type YouTubeV1VideoGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["video"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["video"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;
@@ -293,10 +316,12 @@ export type YouTubeV1VideoUpdateConfig = {
 	title: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["update"], resource: ["video"] }
 	 */
 	regionCode?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["update"], resource: ["video"] }
 	 */
 	categoryId?: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -309,10 +334,12 @@ export type YouTubeV1VideoUploadConfig = {
 	title: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["upload"], resource: ["video"] }
 	 */
 	regionCode?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["upload"], resource: ["video"] }
 	 */
 	categoryId?: string | Expression<string>;
 	binaryProperty: string | Expression<string>;
@@ -325,15 +352,18 @@ export type YouTubeV1VideoCategoryGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getAll"], resource: ["videoCategory"] }
 	 */
 	regionCode: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["videoCategory"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["videoCategory"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;

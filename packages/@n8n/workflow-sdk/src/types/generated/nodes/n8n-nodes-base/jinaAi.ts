@@ -21,10 +21,12 @@ export type JinaAiV1ReaderReadConfig = {
 	operation: 'read';
 	/**
 	 * The URL to fetch content from
+	 * @displayOptions.show { resource: ["reader"], operation: ["read"] }
 	 */
 	url: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["reader"], operation: ["read"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -39,6 +41,7 @@ export type JinaAiV1ReaderSearchConfig = {
 	searchQuery: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["reader"], operation: ["search"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -52,10 +55,12 @@ export type JinaAiV1ResearchDeepResearchConfig = {
 	operation: 'deepResearch';
 	/**
 	 * The topic or question for the AI to research
+	 * @displayOptions.show { resource: ["research"], operation: ["deepResearch"] }
 	 */
 	researchQuery: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["research"], operation: ["deepResearch"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;

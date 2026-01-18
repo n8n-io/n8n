@@ -25,6 +25,7 @@ export type LcChatTriggerV14HostedChatConfig = {
 	public?: boolean | Expression<boolean>;
 	/**
  * Default messages shown at the start of the chat, one per line
+ * @displayOptions.show { mode: ["hostedChat"], public: [true] }
  * @default Hi there! 👋
 My name is Nathan. How can I assist you today?
  */
@@ -36,15 +37,18 @@ My name is Nathan. How can I assist you today?
 	availableInChat?: boolean | Expression<boolean>;
 	/**
 	 * The icon of the agent on n8n Chat
+	 * @displayOptions.show { availableInChat: [true], @version: [{"_cnd":{"gte":1.2}}] }
 	 * @default {"type":"icon","value":"bot"}
 	 */
 	agentIcon?: unknown;
 	/**
 	 * The name of the agent on n8n Chat. Name of the workflow is used if left empty.
+	 * @displayOptions.show { availableInChat: [true], @version: [{"_cnd":{"gte":1.2}}] }
 	 */
 	agentName?: string | Expression<string>;
 	/**
 	 * The description of the agent on n8n Chat
+	 * @displayOptions.show { availableInChat: [true], @version: [{"_cnd":{"gte":1.2}}] }
 	 */
 	agentDescription?: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -65,15 +69,18 @@ export type LcChatTriggerV14WebhookConfig = {
 	availableInChat?: boolean | Expression<boolean>;
 	/**
 	 * The icon of the agent on n8n Chat
+	 * @displayOptions.show { availableInChat: [true], @version: [{"_cnd":{"gte":1.2}}] }
 	 * @default {"type":"icon","value":"bot"}
 	 */
 	agentIcon?: unknown;
 	/**
 	 * The name of the agent on n8n Chat. Name of the workflow is used if left empty.
+	 * @displayOptions.show { availableInChat: [true], @version: [{"_cnd":{"gte":1.2}}] }
 	 */
 	agentName?: string | Expression<string>;
 	/**
 	 * The description of the agent on n8n Chat
+	 * @displayOptions.show { availableInChat: [true], @version: [{"_cnd":{"gte":1.2}}] }
 	 */
 	agentDescription?: string | Expression<string>;
 	options?: Record<string, unknown>;

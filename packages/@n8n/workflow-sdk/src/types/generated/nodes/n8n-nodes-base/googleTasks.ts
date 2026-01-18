@@ -21,10 +21,12 @@ export type GoogleTasksV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["create"], resource: ["task"] }
 	 */
 	task: string | Expression<string>;
 	/**
 	 * Title of the task
+	 * @displayOptions.show { operation: ["create"], resource: ["task"] }
 	 */
 	title?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -36,6 +38,7 @@ export type GoogleTasksV1TaskDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["delete"], resource: ["task"] }
 	 */
 	task: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -47,6 +50,7 @@ export type GoogleTasksV1TaskGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["get"], resource: ["task"] }
 	 */
 	task: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -58,15 +62,18 @@ export type GoogleTasksV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"] }
 	 */
 	task: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -79,6 +86,7 @@ export type GoogleTasksV1TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["update"], resource: ["task"] }
 	 */
 	task: string | Expression<string>;
 	taskId: string | Expression<string>;

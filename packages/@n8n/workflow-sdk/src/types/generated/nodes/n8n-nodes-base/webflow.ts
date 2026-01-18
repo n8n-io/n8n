@@ -20,20 +20,27 @@ export type WebflowV2ItemCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the site containing the collection whose items to add to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["create"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * ID of the collection to add an item to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["create"] }
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * Whether the item should be published on the live site
+	 * @displayOptions.show { resource: ["item"], operation: ["create"] }
 	 * @default false
 	 */
 	live: boolean | Expression<boolean>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Field to set for the item to create. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			fieldId?: string | Expression<string>;
+			/** Value to set for the item to create
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -44,14 +51,17 @@ export type WebflowV2ItemDeleteItemConfig = {
 	operation: 'deleteItem';
 	/**
 	 * ID of the site containing the collection whose items to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["deleteItem"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * ID of the collection whose items to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["deleteItem"] }
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * ID of the item to operate on
+	 * @displayOptions.show { resource: ["item"], operation: ["deleteItem"] }
 	 */
 	itemId: string | Expression<string>;
 };
@@ -61,14 +71,17 @@ export type WebflowV2ItemGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the site containing the collection whose items to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["get"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * ID of the collection whose items to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["get"] }
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * ID of the item to operate on
+	 * @displayOptions.show { resource: ["item"], operation: ["get"] }
 	 */
 	itemId: string | Expression<string>;
 };
@@ -78,19 +91,23 @@ export type WebflowV2ItemGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * ID of the site containing the collection whose items to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * ID of the collection whose items to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["item"], operation: ["getAll"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -101,24 +118,32 @@ export type WebflowV2ItemUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the site containing the collection whose items to add to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * ID of the collection to add an item to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * ID of the item to update
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
 	 */
 	itemId: string | Expression<string>;
 	/**
 	 * Whether the item should be published on the live site
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
 	 * @default false
 	 */
 	live: boolean | Expression<boolean>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Field to set for the item to create. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			fieldId?: string | Expression<string>;
+			/** Value to set for the item to create
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -136,20 +161,27 @@ export type WebflowV1ItemCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the site containing the collection whose items to add to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["create"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * ID of the collection to add an item to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["create"] }
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * Whether the item should be published on the live site
+	 * @displayOptions.show { resource: ["item"], operation: ["create"] }
 	 * @default false
 	 */
 	live: boolean | Expression<boolean>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Field to set for the item to create. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			fieldId?: string | Expression<string>;
+			/** Value to set for the item to create
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -160,14 +192,17 @@ export type WebflowV1ItemDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the site containing the collection whose items to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["delete", "get"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * ID of the collection whose items to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["delete", "get"] }
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * ID of the item to operate on
+	 * @displayOptions.show { resource: ["item"], operation: ["delete", "get"] }
 	 */
 	itemId: string | Expression<string>;
 };
@@ -177,14 +212,17 @@ export type WebflowV1ItemGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the site containing the collection whose items to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["delete", "get"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * ID of the collection whose items to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["delete", "get"] }
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * ID of the item to operate on
+	 * @displayOptions.show { resource: ["item"], operation: ["delete", "get"] }
 	 */
 	itemId: string | Expression<string>;
 };
@@ -194,19 +232,23 @@ export type WebflowV1ItemGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * ID of the site containing the collection whose items to retrieve. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * ID of the collection whose items to retrieve. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -217,24 +259,32 @@ export type WebflowV1ItemUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the site containing the collection whose items to update. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
 	 */
 	siteId: string | Expression<string>;
 	/**
 	 * ID of the collection whose items to update. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * ID of the item to update
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
 	 */
 	itemId: string | Expression<string>;
 	/**
 	 * Whether the item should be published on the live site
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
 	 * @default false
 	 */
 	live: boolean | Expression<boolean>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Field to set for the item to update. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			fieldId?: string | Expression<string>;
+			/** Value to set for the item to update
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};

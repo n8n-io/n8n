@@ -32,31 +32,37 @@ export interface MicrosoftTeamsTriggerV1Params {
 		| Expression<string>;
 	/**
 	 * Whether to watch for the event in all the available teams
+	 * @displayOptions.show { event: ["newChannel", "newChannelMessage", "newTeamMember"] }
 	 * @default false
 	 */
 	watchAllTeams?: boolean | Expression<boolean>;
 	/**
 	 * Select a team from the list, enter an ID or a URL
+	 * @displayOptions.show { event: ["newChannel", "newChannelMessage", "newTeamMember"], watchAllTeams: [false] }
 	 * @default {"mode":"list","value":""}
 	 */
 	teamId: ResourceLocatorValue;
 	/**
 	 * Whether to watch for the event in all the available channels
+	 * @displayOptions.show { event: ["newChannelMessage"], watchAllTeams: [false] }
 	 * @default false
 	 */
 	watchAllChannels?: boolean | Expression<boolean>;
 	/**
 	 * Select a channel from the list, enter an ID or a URL
+	 * @displayOptions.show { event: ["newChannelMessage"], watchAllTeams: [false], watchAllChannels: [false] }
 	 * @default {"mode":"list","value":""}
 	 */
 	channelId: ResourceLocatorValue;
 	/**
 	 * Whether to watch for the event in all the available chats
+	 * @displayOptions.show { event: ["newChatMessage"] }
 	 * @default false
 	 */
 	watchAllChats?: boolean | Expression<boolean>;
 	/**
 	 * Select a chat from the list, enter an ID or a URL
+	 * @displayOptions.show { event: ["newChatMessage"], watchAllChats: [false] }
 	 * @default {"mode":"list","value":""}
 	 */
 	chatId: ResourceLocatorValue;

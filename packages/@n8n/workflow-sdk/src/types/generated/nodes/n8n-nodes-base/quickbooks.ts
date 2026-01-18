@@ -20,11 +20,13 @@ export type QuickbooksV1BillCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the vendor who the bill is for. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["bill"], operation: ["create"] }
 	 * @default []
 	 */
 	VendorRef: string | Expression<string>;
 	/**
 	 * Individual line item of a transaction
+	 * @displayOptions.show { resource: ["bill"], operation: ["create"] }
 	 * @default {}
 	 */
 	Line?: Record<string, unknown>;
@@ -36,6 +38,7 @@ export type QuickbooksV1BillDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the bill to delete
+	 * @displayOptions.show { resource: ["bill"], operation: ["delete"] }
 	 */
 	billId: string | Expression<string>;
 };
@@ -45,6 +48,7 @@ export type QuickbooksV1BillGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the bill to retrieve
+	 * @displayOptions.show { resource: ["bill"], operation: ["get"] }
 	 */
 	billId: string | Expression<string>;
 };
@@ -54,11 +58,13 @@ export type QuickbooksV1BillGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["bill"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["bill"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -70,6 +76,7 @@ export type QuickbooksV1BillUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the bill to update
+	 * @displayOptions.show { resource: ["bill"], operation: ["update"] }
 	 */
 	billId: string | Expression<string>;
 	updateFields: Record<string, unknown>;
@@ -80,6 +87,7 @@ export type QuickbooksV1CustomerCreateConfig = {
 	operation: 'create';
 	/**
 	 * The display name of the customer to create
+	 * @displayOptions.show { resource: ["customer"], operation: ["create"] }
 	 */
 	displayName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -90,6 +98,7 @@ export type QuickbooksV1CustomerGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the customer to retrieve
+	 * @displayOptions.show { resource: ["customer"], operation: ["get"] }
 	 */
 	customerId: string | Expression<string>;
 };
@@ -99,11 +108,13 @@ export type QuickbooksV1CustomerGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["customer"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["customer"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -115,6 +126,7 @@ export type QuickbooksV1CustomerUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the customer to update
+	 * @displayOptions.show { resource: ["customer"], operation: ["update"] }
 	 */
 	customerId: string | Expression<string>;
 	updateFields: Record<string, unknown>;
@@ -133,6 +145,7 @@ export type QuickbooksV1EmployeeGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the employee to retrieve
+	 * @displayOptions.show { resource: ["employee"], operation: ["get"] }
 	 */
 	employeeId: string | Expression<string>;
 };
@@ -142,11 +155,13 @@ export type QuickbooksV1EmployeeGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["employee"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["employee"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -158,6 +173,7 @@ export type QuickbooksV1EmployeeUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the employee to update
+	 * @displayOptions.show { resource: ["employee"], operation: ["update"] }
 	 */
 	employeeId: string | Expression<string>;
 	updateFields: Record<string, unknown>;
@@ -168,11 +184,13 @@ export type QuickbooksV1EstimateCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the customer who the estimate is for. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["estimate"], operation: ["create"] }
 	 * @default []
 	 */
 	CustomerRef: string | Expression<string>;
 	/**
 	 * Individual line item of a transaction
+	 * @displayOptions.show { resource: ["estimate"], operation: ["create"] }
 	 * @default {}
 	 */
 	Line?: Record<string, unknown>;
@@ -184,6 +202,7 @@ export type QuickbooksV1EstimateDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the estimate to delete
+	 * @displayOptions.show { resource: ["estimate"], operation: ["delete"] }
 	 */
 	estimateId: string | Expression<string>;
 };
@@ -193,16 +212,19 @@ export type QuickbooksV1EstimateGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the estimate to retrieve
+	 * @displayOptions.show { resource: ["estimate"], operation: ["get"] }
 	 */
 	estimateId: string | Expression<string>;
 	/**
 	 * Whether to download the estimate as a PDF file
+	 * @displayOptions.show { resource: ["estimate"], operation: ["get"] }
 	 * @default false
 	 */
 	download: boolean | Expression<boolean>;
 	binaryProperty: string | Expression<string>;
 	/**
 	 * Name of the file that will be downloaded
+	 * @displayOptions.show { resource: ["estimate"], operation: ["get"], download: [true] }
 	 */
 	fileName: string | Expression<string>;
 };
@@ -212,11 +234,13 @@ export type QuickbooksV1EstimateGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["estimate"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["estimate"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -228,10 +252,12 @@ export type QuickbooksV1EstimateSendConfig = {
 	operation: 'send';
 	/**
 	 * The ID of the estimate to send
+	 * @displayOptions.show { resource: ["estimate"], operation: ["send"] }
 	 */
 	estimateId: string | Expression<string>;
 	/**
 	 * The email of the recipient of the estimate
+	 * @displayOptions.show { resource: ["estimate"], operation: ["send"] }
 	 */
 	email: string | Expression<string>;
 };
@@ -241,6 +267,7 @@ export type QuickbooksV1EstimateUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the estimate to update
+	 * @displayOptions.show { resource: ["estimate"], operation: ["update"] }
 	 */
 	estimateId: string | Expression<string>;
 	updateFields: Record<string, unknown>;
@@ -251,11 +278,13 @@ export type QuickbooksV1InvoiceCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the customer who the invoice is for. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["invoice"], operation: ["create"] }
 	 * @default []
 	 */
 	CustomerRef: string | Expression<string>;
 	/**
 	 * Individual line item of a transaction
+	 * @displayOptions.show { resource: ["invoice"], operation: ["create"] }
 	 * @default {}
 	 */
 	Line?: Record<string, unknown>;
@@ -267,6 +296,7 @@ export type QuickbooksV1InvoiceDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the invoice to delete
+	 * @displayOptions.show { resource: ["invoice"], operation: ["delete"] }
 	 */
 	invoiceId: string | Expression<string>;
 };
@@ -276,16 +306,19 @@ export type QuickbooksV1InvoiceGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the invoice to retrieve
+	 * @displayOptions.show { resource: ["invoice"], operation: ["get"] }
 	 */
 	invoiceId: string | Expression<string>;
 	/**
 	 * Whether to download the invoice as a PDF file
+	 * @displayOptions.show { resource: ["invoice"], operation: ["get"] }
 	 * @default false
 	 */
 	download: boolean | Expression<boolean>;
 	binaryProperty: string | Expression<string>;
 	/**
 	 * Name of the file that will be downloaded
+	 * @displayOptions.show { resource: ["invoice"], operation: ["get"], download: [true] }
 	 */
 	fileName: string | Expression<string>;
 };
@@ -295,11 +328,13 @@ export type QuickbooksV1InvoiceGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["invoice"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["invoice"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -311,10 +346,12 @@ export type QuickbooksV1InvoiceSendConfig = {
 	operation: 'send';
 	/**
 	 * The ID of the invoice to send
+	 * @displayOptions.show { resource: ["invoice"], operation: ["send"] }
 	 */
 	invoiceId: string | Expression<string>;
 	/**
 	 * The email of the recipient of the invoice
+	 * @displayOptions.show { resource: ["invoice"], operation: ["send"] }
 	 */
 	email: string | Expression<string>;
 };
@@ -324,6 +361,7 @@ export type QuickbooksV1InvoiceUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the invoice to update
+	 * @displayOptions.show { resource: ["invoice"], operation: ["update"] }
 	 */
 	invoiceId: string | Expression<string>;
 	updateFields: Record<string, unknown>;
@@ -334,6 +372,7 @@ export type QuickbooksV1InvoiceVoidConfig = {
 	operation: 'void';
 	/**
 	 * The ID of the invoice to void
+	 * @displayOptions.show { resource: ["invoice"], operation: ["void"] }
 	 */
 	invoiceId: string | Expression<string>;
 };
@@ -343,6 +382,7 @@ export type QuickbooksV1ItemGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the item to retrieve
+	 * @displayOptions.show { resource: ["item"], operation: ["get"] }
 	 */
 	itemId: string | Expression<string>;
 };
@@ -352,11 +392,13 @@ export type QuickbooksV1ItemGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -368,11 +410,13 @@ export type QuickbooksV1PaymentCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the customer who the payment is for. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["payment"], operation: ["create"] }
 	 * @default []
 	 */
 	CustomerRef: string | Expression<string>;
 	/**
 	 * Total amount of the transaction
+	 * @displayOptions.show { resource: ["payment"], operation: ["create"] }
 	 * @default 0
 	 */
 	TotalAmt?: number | Expression<number>;
@@ -384,6 +428,7 @@ export type QuickbooksV1PaymentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the payment to delete
+	 * @displayOptions.show { resource: ["payment"], operation: ["delete"] }
 	 */
 	paymentId: string | Expression<string>;
 };
@@ -393,16 +438,19 @@ export type QuickbooksV1PaymentGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the payment to retrieve
+	 * @displayOptions.show { resource: ["payment"], operation: ["get"] }
 	 */
 	paymentId: string | Expression<string>;
 	/**
 	 * Whether to download estimate as PDF file
+	 * @displayOptions.show { resource: ["payment"], operation: ["get"] }
 	 * @default false
 	 */
 	download: boolean | Expression<boolean>;
 	binaryProperty: string | Expression<string>;
 	/**
 	 * Name of the file that will be downloaded
+	 * @displayOptions.show { resource: ["payment"], operation: ["get"], download: [true] }
 	 */
 	fileName: string | Expression<string>;
 };
@@ -412,11 +460,13 @@ export type QuickbooksV1PaymentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["payment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["payment"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -428,10 +478,12 @@ export type QuickbooksV1PaymentSendConfig = {
 	operation: 'send';
 	/**
 	 * The ID of the payment to send
+	 * @displayOptions.show { resource: ["payment"], operation: ["send"] }
 	 */
 	paymentId: string | Expression<string>;
 	/**
 	 * The email of the recipient of the payment
+	 * @displayOptions.show { resource: ["payment"], operation: ["send"] }
 	 */
 	email: string | Expression<string>;
 };
@@ -441,6 +493,7 @@ export type QuickbooksV1PaymentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the payment to update
+	 * @displayOptions.show { resource: ["payment"], operation: ["update"] }
 	 */
 	paymentId: string | Expression<string>;
 	updateFields: Record<string, unknown>;
@@ -451,6 +504,7 @@ export type QuickbooksV1PaymentVoidConfig = {
 	operation: 'void';
 	/**
 	 * The ID of the payment to void
+	 * @displayOptions.show { resource: ["payment"], operation: ["void"] }
 	 */
 	paymentId: string | Expression<string>;
 };
@@ -460,6 +514,7 @@ export type QuickbooksV1PurchaseGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the purchase to retrieve
+	 * @displayOptions.show { resource: ["purchase"], operation: ["get"] }
 	 */
 	purchaseId: string | Expression<string>;
 };
@@ -469,11 +524,13 @@ export type QuickbooksV1PurchaseGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["purchase"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["purchase"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -485,6 +542,7 @@ export type QuickbooksV1TransactionGetReportConfig = {
 	operation: 'getReport';
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["transaction"], operation: ["getReport"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -496,6 +554,7 @@ export type QuickbooksV1VendorCreateConfig = {
 	operation: 'create';
 	/**
 	 * The display name of the vendor to create
+	 * @displayOptions.show { resource: ["vendor"], operation: ["create"] }
 	 */
 	displayName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -506,6 +565,7 @@ export type QuickbooksV1VendorGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the vendor to retrieve
+	 * @displayOptions.show { resource: ["vendor"], operation: ["get"] }
 	 */
 	vendorId: string | Expression<string>;
 };
@@ -515,11 +575,13 @@ export type QuickbooksV1VendorGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["vendor"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["vendor"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -531,6 +593,7 @@ export type QuickbooksV1VendorUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the vendor to update
+	 * @displayOptions.show { resource: ["vendor"], operation: ["update"] }
 	 */
 	vendorId: string | Expression<string>;
 	updateFields: Record<string, unknown>;

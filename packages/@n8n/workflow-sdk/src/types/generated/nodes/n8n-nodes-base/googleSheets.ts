@@ -24,11 +24,17 @@ export type GoogleSheetsV47SpreadsheetCreateConfig = {
 	operation: 'create';
 	/**
 	 * The title of the spreadsheet
+	 * @displayOptions.show { resource: ["spreadsheet"], operation: ["create"] }
 	 */
 	title?: string | Expression<string>;
 	sheetsUi?: {
 		sheetValues?: Array<{
+			/** Title of the property to create
+			 */
 			title?: string | Expression<string>;
+			/** Whether the Sheet should be hidden in the UI
+			 * @default false
+			 */
 			hidden?: boolean | Expression<boolean>;
 		}>;
 	};
@@ -50,19 +56,30 @@ export type GoogleSheetsV47SheetAppendOrUpdateConfig = {
 	sheetName: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { resource: ["sheet"], operation: ["appendOrUpdate"], @version: [3] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 * @default defineBelow
 	 */
 	dataMode?: 'autoMapInputData' | 'defineBelow' | 'nothing' | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
 	 * @hint Used to find the correct row to update. Doesn't get changed.
+	 * @displayOptions.show { resource: ["sheet"], operation: ["appendOrUpdate"], @version: [3] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;
 	fieldsUi?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			column?: string | Expression<string>;
+			/** Column Name
+			 * @displayOptions.show { column: ["newColumn"] }
+			 */
 			columnName?: string | Expression<string>;
+			/** Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -78,12 +95,18 @@ export type GoogleSheetsV47SheetAppendConfig = {
 	sheetName: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { resource: ["sheet"], operation: ["append"], @version: [3] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 * @default defineBelow
 	 */
 	dataMode?: 'autoMapInputData' | 'defineBelow' | 'nothing' | Expression<string>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			fieldId?: string | Expression<string>;
+			/** Field Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -99,12 +122,16 @@ export type GoogleSheetsV47SheetClearConfig = {
 	sheetName: string | Expression<string>;
 	/**
 	 * What to clear
+	 * @displayOptions.show { resource: ["sheet"], operation: ["clear"] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 * @default wholeSheet
 	 */
 	clear?: 'wholeSheet' | 'specificRows' | 'specificColumns' | 'specificRange' | Expression<string>;
 	keepFirstRow?: boolean | Expression<boolean>;
 	/**
 	 * The row number to delete from, The first row is 1
+	 * @displayOptions.show { resource: ["sheet"], operation: ["clear"], clear: ["specificRows"] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 * @default 1
 	 */
 	startIndex?: number | Expression<number>;
@@ -112,6 +139,8 @@ export type GoogleSheetsV47SheetClearConfig = {
 	columnsToDelete?: number | Expression<number>;
 	/**
 	 * The table range to read from or to append data to. See the Google &lt;a href="https://developers.google.com/sheets/api/guides/values#writing"&gt;documentation&lt;/a&gt; for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"
+	 * @displayOptions.show { resource: ["sheet"], operation: ["clear"], clear: ["specificRange"] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 * @default A:F
 	 */
 	range: string | Expression<string>;
@@ -124,6 +153,7 @@ export type GoogleSheetsV47SheetCreateConfig = {
 	documentId: ResourceLocatorValue;
 	/**
 	 * The name of the sheet
+	 * @displayOptions.show { resource: ["sheet"], operation: ["create"] }
 	 * @default n8n-sheet
 	 */
 	title: string | Expression<string>;
@@ -146,11 +176,15 @@ export type GoogleSheetsV47SheetDeleteConfig = {
 	sheetName: string | Expression<string>;
 	/**
 	 * What to delete
+	 * @displayOptions.show { resource: ["sheet"], operation: ["delete"] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 * @default rows
 	 */
 	toDelete?: 'rows' | 'columns' | Expression<string>;
 	/**
 	 * The row number to delete from, The first row is 2
+	 * @displayOptions.show { resource: ["sheet"], operation: ["delete"], toDelete: ["rows"] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 * @default 2
 	 */
 	startIndex?: number | Expression<number>;
@@ -165,12 +199,19 @@ export type GoogleSheetsV47SheetReadConfig = {
 	sheetName: string | Expression<string>;
 	filtersUI?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			lookupColumn?: string | Expression<string>;
+			/** Value
+			 * @hint The column must have this value to be matched
+			 */
 			lookupValue?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * How to combine the conditions defined in "Filters": AND requires all conditions to be true, OR requires at least one condition to be true
+	 * @displayOptions.show { @version: [{"_cnd":{"lt":4.3}}], resource: ["sheet"], operation: ["read"] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 * @default OR
 	 */
 	combineFilters?: 'AND' | 'OR' | Expression<string>;
@@ -185,19 +226,30 @@ export type GoogleSheetsV47SheetUpdateConfig = {
 	sheetName: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { resource: ["sheet"], operation: ["update"], @version: [3] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 * @default defineBelow
 	 */
 	dataMode?: 'autoMapInputData' | 'defineBelow' | 'nothing' | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
 	 * @hint Used to find the correct row to update. Doesn't get changed.
+	 * @displayOptions.show { resource: ["sheet"], operation: ["update"], @version: [3] }
+	 * @displayOptions.hide { sheetName: [""] }
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;
 	fieldsUi?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			column?: string | Expression<string>;
+			/** Column Name
+			 * @displayOptions.show { column: ["newColumn"] }
+			 */
 			columnName?: string | Expression<string>;
+			/** Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -223,9 +275,17 @@ export type GoogleSheetsV2SpreadsheetCreateConfig = {
 	operation: 'create';
 	/**
 	 * The title of the spreadsheet
+	 * @displayOptions.show { resource: ["spreadsheet"], operation: ["create"] }
 	 */
 	title?: string | Expression<string>;
-	sheetsUi?: { sheetValues?: Array<{ propertiesUi?: Record<string, unknown> }> };
+	sheetsUi?: {
+		sheetValues?: Array<{
+			/** Sheet Properties
+			 * @default {}
+			 */
+			propertiesUi?: Record<string, unknown>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -235,20 +295,27 @@ export type GoogleSheetsV2SheetAppendConfig = {
 	operation: 'append';
 	/**
 	 * The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.
+	 * @displayOptions.show { resource: ["sheet"] }
 	 */
 	sheetId: string | Expression<string>;
 	/**
 	 * The table range to read from or to append data to. See the Google &lt;a href="https://developers.google.com/sheets/api/guides/values#writing"&gt;documentation&lt;/a&gt; for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["create", "delete", "remove"] }
 	 * @default A:F
 	 */
 	range: string | Expression<string>;
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["append", "create", "clear", "delete", "remove"], rawData: [true] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
 	/**
 	 * Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["clear", "create", "delete", "remove"], rawData: [true] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
@@ -261,20 +328,27 @@ export type GoogleSheetsV2SheetClearConfig = {
 	operation: 'clear';
 	/**
 	 * The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.
+	 * @displayOptions.show { resource: ["sheet"] }
 	 */
 	sheetId: string | Expression<string>;
 	/**
 	 * The table range to read from or to append data to. See the Google &lt;a href="https://developers.google.com/sheets/api/guides/values#writing"&gt;documentation&lt;/a&gt; for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["create", "delete", "remove"] }
 	 * @default A:F
 	 */
 	range: string | Expression<string>;
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["append", "create", "clear", "delete", "remove"], rawData: [true] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
 	/**
 	 * Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["clear", "create", "delete", "remove"], rawData: [true] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
@@ -286,25 +360,33 @@ export type GoogleSheetsV2SheetCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.
+	 * @displayOptions.show { resource: ["sheet"] }
 	 */
 	sheetId: string | Expression<string>;
 	/**
 	 * The table range to read from or to append data to. See the Google &lt;a href="https://developers.google.com/sheets/api/guides/values#writing"&gt;documentation&lt;/a&gt; for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["create", "delete", "remove"] }
 	 * @default A:F
 	 */
 	range: string | Expression<string>;
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["append", "create", "clear", "delete", "remove"], rawData: [true] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
 	/**
 	 * Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["clear", "create", "delete", "remove"], rawData: [true] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["sheet"], operation: ["create"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -317,35 +399,45 @@ export type GoogleSheetsV2SheetUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.
+	 * @displayOptions.show { resource: ["sheet"] }
 	 */
 	sheetId: string | Expression<string>;
 	/**
 	 * The table range to read from or to append data to. See the Google &lt;a href="https://developers.google.com/sheets/api/guides/values#writing"&gt;documentation&lt;/a&gt; for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["create", "delete", "remove"] }
 	 * @default A:F
 	 */
 	range: string | Expression<string>;
 	/**
 	 * Whether the data supplied is RAW instead of parsed into keys
+	 * @displayOptions.show { resource: ["sheet"], operation: ["update", "upsert"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
 	/**
 	 * The name of the property from which to read the RAW data
+	 * @displayOptions.show { resource: ["sheet"], operation: ["update", "upsert"], rawData: [true] }
 	 * @default data
 	 */
 	dataProperty?: string | Expression<string>;
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["append", "create", "clear", "delete", "remove"], rawData: [true] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
 	/**
 	 * Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["clear", "create", "delete", "remove"], rawData: [true] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
 	/**
 	 * The name of the key to identify which data should be updated in the sheet
+	 * @displayOptions.show { resource: ["sheet"], operation: ["update", "upsert"], rawData: [false] }
 	 * @default id
 	 */
 	key?: string | Expression<string>;
@@ -358,36 +450,60 @@ export type GoogleSheetsV2SheetDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.
+	 * @displayOptions.show { resource: ["sheet"] }
 	 */
 	sheetId: string | Expression<string>;
 	/**
 	 * The table range to read from or to append data to. See the Google &lt;a href="https://developers.google.com/sheets/api/guides/values#writing"&gt;documentation&lt;/a&gt; for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["create", "delete", "remove"] }
 	 * @default A:F
 	 */
 	range: string | Expression<string>;
 	/**
 	 * Deletes columns and rows from a sheet
+	 * @displayOptions.show { resource: ["sheet"], operation: ["delete"] }
 	 * @default {}
 	 */
 	toDelete?: {
 		columns?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			sheetId?: string | Expression<string>;
+			/** The start index (0 based and inclusive) of column to delete
+			 * @default 0
+			 */
 			startIndex?: number | Expression<number>;
+			/** Number of columns to delete
+			 * @default 1
+			 */
 			amount?: number | Expression<number>;
 		}>;
 		rows?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			sheetId?: string | Expression<string>;
+			/** The start index (0 based and inclusive) of row to delete
+			 * @default 0
+			 */
 			startIndex?: number | Expression<number>;
+			/** Number of rows to delete
+			 * @default 1
+			 */
 			amount?: number | Expression<number>;
 		}>;
 	};
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["append", "create", "clear", "delete", "remove"], rawData: [true] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
 	/**
 	 * Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["clear", "create", "delete", "remove"], rawData: [true] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
@@ -399,29 +515,38 @@ export type GoogleSheetsV2SheetLookupConfig = {
 	operation: 'lookup';
 	/**
 	 * The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.
+	 * @displayOptions.show { resource: ["sheet"] }
 	 */
 	sheetId: string | Expression<string>;
 	/**
 	 * The table range to read from or to append data to. See the Google &lt;a href="https://developers.google.com/sheets/api/guides/values#writing"&gt;documentation&lt;/a&gt; for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["create", "delete", "remove"] }
 	 * @default A:F
 	 */
 	range: string | Expression<string>;
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["append", "create", "clear", "delete", "remove"], rawData: [true] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
 	/**
 	 * Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["clear", "create", "delete", "remove"], rawData: [true] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
 	/**
 	 * The name of the column in which to look for value
+	 * @displayOptions.show { resource: ["sheet"], operation: ["lookup"] }
 	 */
 	lookupColumn: string | Expression<string>;
 	/**
 	 * The value to look for in column
+	 * @displayOptions.show { resource: ["sheet"], operation: ["lookup"] }
 	 */
 	lookupValue?: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -433,30 +558,39 @@ export type GoogleSheetsV2SheetReadConfig = {
 	operation: 'read';
 	/**
 	 * The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.
+	 * @displayOptions.show { resource: ["sheet"] }
 	 */
 	sheetId: string | Expression<string>;
 	/**
 	 * The table range to read from or to append data to. See the Google &lt;a href="https://developers.google.com/sheets/api/guides/values#writing"&gt;documentation&lt;/a&gt; for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["create", "delete", "remove"] }
 	 * @default A:F
 	 */
 	range: string | Expression<string>;
 	/**
 	 * Whether the data should be returned RAW instead of parsed into keys according to their header
+	 * @displayOptions.show { resource: ["sheet"], operation: ["read"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
 	/**
 	 * The name of the property into which to write the RAW data
+	 * @displayOptions.show { resource: ["sheet"], operation: ["read"], rawData: [true] }
 	 * @default data
 	 */
 	dataProperty?: string | Expression<string>;
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["append", "create", "clear", "delete", "remove"], rawData: [true] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
 	/**
 	 * Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["clear", "create", "delete", "remove"], rawData: [true] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
@@ -469,25 +603,33 @@ export type GoogleSheetsV2SheetRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.
+	 * @displayOptions.show { resource: ["sheet"] }
 	 */
 	sheetId: string | Expression<string>;
 	/**
 	 * The table range to read from or to append data to. See the Google &lt;a href="https://developers.google.com/sheets/api/guides/values#writing"&gt;documentation&lt;/a&gt; for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["create", "delete", "remove"] }
 	 * @default A:F
 	 */
 	range: string | Expression<string>;
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["append", "create", "clear", "delete", "remove"], rawData: [true] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
 	/**
 	 * Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["clear", "create", "delete", "remove"], rawData: [true] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
 	/**
 	 * The ID of the sheet to delete
+	 * @displayOptions.show { resource: ["sheet"], operation: ["remove"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -498,35 +640,45 @@ export type GoogleSheetsV2SheetUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the Google Spreadsheet. Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/.
+	 * @displayOptions.show { resource: ["sheet"] }
 	 */
 	sheetId: string | Expression<string>;
 	/**
 	 * The table range to read from or to append data to. See the Google &lt;a href="https://developers.google.com/sheets/api/guides/values#writing"&gt;documentation&lt;/a&gt; for the details. If it contains multiple sheets it can also be added like this: "MySheet!A:F"
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["create", "delete", "remove"] }
 	 * @default A:F
 	 */
 	range: string | Expression<string>;
 	/**
 	 * Whether the data supplied is RAW instead of parsed into keys
+	 * @displayOptions.show { resource: ["sheet"], operation: ["update", "upsert"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
 	/**
 	 * The name of the property from which to read the RAW data
+	 * @displayOptions.show { resource: ["sheet"], operation: ["update", "upsert"], rawData: [true] }
 	 * @default data
 	 */
 	dataProperty?: string | Expression<string>;
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["append", "create", "clear", "delete", "remove"], rawData: [true] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
 	/**
 	 * Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitive.
+	 * @displayOptions.show { resource: ["sheet"] }
+	 * @displayOptions.hide { operation: ["clear", "create", "delete", "remove"], rawData: [true] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
 	/**
 	 * The name of the key to identify which data should be updated in the sheet
+	 * @displayOptions.show { resource: ["sheet"], operation: ["update", "upsert"], rawData: [false] }
 	 * @default id
 	 */
 	key?: string | Expression<string>;

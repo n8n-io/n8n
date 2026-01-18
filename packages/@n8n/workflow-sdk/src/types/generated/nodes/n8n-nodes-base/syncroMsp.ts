@@ -30,6 +30,7 @@ export type SyncroMspV1ContactDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Delete a specific contact by ID
+	 * @displayOptions.show { resource: ["contact"], operation: ["delete"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -40,6 +41,7 @@ export type SyncroMspV1ContactGetConfig = {
 	operation: 'get';
 	/**
 	 * Get specific contact by ID
+	 * @displayOptions.show { resource: ["contact"], operation: ["get"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -50,11 +52,13 @@ export type SyncroMspV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;
@@ -82,6 +86,7 @@ export type SyncroMspV1CustomerDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Delete a specific customer by ID
+	 * @displayOptions.show { resource: ["customer"], operation: ["delete"] }
 	 */
 	customerId: string | Expression<string>;
 };
@@ -92,6 +97,7 @@ export type SyncroMspV1CustomerGetConfig = {
 	operation: 'get';
 	/**
 	 * Get specific customer by ID
+	 * @displayOptions.show { resource: ["customer"], operation: ["get"] }
 	 */
 	customerId: string | Expression<string>;
 };
@@ -102,11 +108,13 @@ export type SyncroMspV1CustomerGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["customer"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["customer"], operation: ["getAll"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;
@@ -137,6 +145,7 @@ export type SyncroMspV1RmmDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Delete the RMM alert by ID
+	 * @displayOptions.show { resource: ["rmm"], operation: ["delete"] }
 	 */
 	alertId: string | Expression<string>;
 };
@@ -147,6 +156,7 @@ export type SyncroMspV1RmmGetConfig = {
 	operation: 'get';
 	/**
 	 * Get specific RMM alert by ID
+	 * @displayOptions.show { resource: ["rmm"], operation: ["get"] }
 	 */
 	alertId: string | Expression<string>;
 };
@@ -157,11 +167,13 @@ export type SyncroMspV1RmmGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["rmm"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["rmm"], operation: ["getAll"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;
@@ -174,10 +186,12 @@ export type SyncroMspV1RmmMuteConfig = {
 	operation: 'mute';
 	/**
 	 * Mute the RMM alert by ID
+	 * @displayOptions.show { resource: ["rmm"], operation: ["mute"] }
 	 */
 	alertId: string | Expression<string>;
 	/**
 	 * Length of time to mute alert for
+	 * @displayOptions.show { resource: ["rmm"], operation: ["mute"] }
 	 */
 	muteFor?:
 		| '1-hour'
@@ -205,6 +219,7 @@ export type SyncroMspV1TicketDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Delete a specific customer by ID
+	 * @displayOptions.show { resource: ["ticket"], operation: ["delete"] }
 	 */
 	ticketId: string | Expression<string>;
 };
@@ -215,6 +230,7 @@ export type SyncroMspV1TicketGetConfig = {
 	operation: 'get';
 	/**
 	 * Get specific customer by ID
+	 * @displayOptions.show { resource: ["ticket"], operation: ["get"] }
 	 */
 	ticketId?: string | Expression<string>;
 };
@@ -225,11 +241,13 @@ export type SyncroMspV1TicketGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;

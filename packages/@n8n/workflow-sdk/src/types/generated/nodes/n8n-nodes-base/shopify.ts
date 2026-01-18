@@ -22,11 +22,24 @@ export type ShopifyV1OrderCreateConfig = {
 	additionalFields?: Record<string, unknown>;
 	limeItemsUi?: {
 		lineItemValues?: Array<{
+			/** The ID of the product that the line item belongs to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			productId?: string | Expression<string>;
+			/** The ID of the product variant
+			 */
 			variantId?: string | Expression<string>;
+			/** The title of the product
+			 */
 			title?: string | Expression<string>;
+			/** The weight of the item in grams
+			 */
 			grams?: string | Expression<string>;
+			/** The number of items that were purchased
+			 * @default 1
+			 */
 			quantity?: number | Expression<number>;
+			/** Price
+			 */
 			price?: string | Expression<string>;
 		}>;
 	};
@@ -53,11 +66,13 @@ export type ShopifyV1OrderGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["order"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["order"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -78,6 +93,7 @@ export type ShopifyV1ProductCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the product
+	 * @displayOptions.show { operation: ["create"], resource: ["product"] }
 	 */
 	title: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -104,11 +120,13 @@ export type ShopifyV1ProductGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["product"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["product"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

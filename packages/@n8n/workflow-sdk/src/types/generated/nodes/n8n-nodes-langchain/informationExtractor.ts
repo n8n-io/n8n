@@ -28,6 +28,7 @@ export interface LcInformationExtractorV12Params {
 	schemaType?: 'fromAttributes' | 'fromJson' | 'manual' | Expression<string>;
 	/**
  * Example JSON object to use to generate the schema
+ * @displayOptions.show { schemaType: ["fromJson"] }
  * @default {
 	"state": "California",
 	"cities": ["Los Angeles", "San Francisco", "San Diego"]
@@ -37,6 +38,7 @@ export interface LcInformationExtractorV12Params {
 	/**
  * Schema to use for the function
  * @hint Use &lt;a target="_blank" href="https://json-schema.org/"&gt;JSON Schema&lt;/a&gt; format (&lt;a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html"&gt;examples&lt;/a&gt;). $refs syntax is currently not supported.
+ * @displayOptions.show { schemaType: ["manual"] }
  * @default {
 	"type": "object",
 	"properties": {
@@ -55,9 +57,19 @@ export interface LcInformationExtractorV12Params {
 	inputSchema?: IDataObject | string | Expression<string>;
 	attributes?: {
 		attributes?: Array<{
+			/** Attribute to extract
+			 */
 			name?: string | Expression<string>;
+			/** Data type of the attribute
+			 * @default string
+			 */
 			type?: 'boolean' | 'date' | 'number' | 'string' | Expression<string>;
+			/** Describe your attribute
+			 */
 			description?: string | Expression<string>;
+			/** Whether attribute is required
+			 * @default false
+			 */
 			required?: boolean | Expression<boolean>;
 		}>;
 	};

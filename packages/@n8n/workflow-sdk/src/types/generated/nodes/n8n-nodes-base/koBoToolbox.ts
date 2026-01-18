@@ -21,16 +21,19 @@ export type KoBoToolboxV1FileCreateConfig = {
 	operation: 'create';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["file"] }
 	 */
 	formId: string | Expression<string>;
 	fileMode: 'binary' | 'url' | Expression<string>;
 	/**
 	 * Name of the binary property containing the file to upload. Supported types: image, audio, video, csv, xml, zip.
+	 * @displayOptions.show { resource: ["file"], operation: ["create"], fileMode: ["binary"] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * HTTP(s) link to the file to upload
+	 * @displayOptions.show { resource: ["file"], operation: ["create"], fileMode: ["url"] }
 	 */
 	fileUrl: string | Expression<string>;
 };
@@ -41,10 +44,12 @@ export type KoBoToolboxV1FileDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["file"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Uid of the file (should start with "af" e.g. "afQoJxA4kmKEXVpkH6SYbhb"
+	 * @displayOptions.show { resource: ["file"], operation: ["delete", "get"] }
 	 */
 	fileId: string | Expression<string>;
 };
@@ -55,19 +60,23 @@ export type KoBoToolboxV1FileGetConfig = {
 	operation: 'get';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["file"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Uid of the file (should start with "af" e.g. "afQoJxA4kmKEXVpkH6SYbhb"
+	 * @displayOptions.show { resource: ["file"], operation: ["delete", "get"] }
 	 */
 	fileId: string | Expression<string>;
 	/**
 	 * Name of the binary property to write the file into
+	 * @displayOptions.show { resource: ["file"], operation: ["get"] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * Whether to download the file content into a binary property
+	 * @displayOptions.show { resource: ["file"], operation: ["get"] }
 	 * @default false
 	 */
 	download: boolean | Expression<boolean>;
@@ -79,6 +88,7 @@ export type KoBoToolboxV1FileGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["file"] }
 	 */
 	formId: string | Expression<string>;
 };
@@ -89,6 +99,7 @@ export type KoBoToolboxV1FormGetConfig = {
 	operation: 'get';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["form"], operation: ["get", "redeploy"] }
 	 */
 	formId: string | Expression<string>;
 };
@@ -99,11 +110,13 @@ export type KoBoToolboxV1FormGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["form"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["form"], operation: ["getAll"], returnAll: [false] }
 	 * @default 1000
 	 */
 	limit?: number | Expression<number>;
@@ -117,6 +130,7 @@ export type KoBoToolboxV1FormRedeployConfig = {
 	operation: 'redeploy';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["form"], operation: ["get", "redeploy"] }
 	 */
 	formId: string | Expression<string>;
 };
@@ -127,10 +141,12 @@ export type KoBoToolboxV1HookGetConfig = {
 	operation: 'get';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["hook"], operation: ["get", "retryOne", "retryAll", "getLogs", "getAll"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Hook ID (starts with h, e.g. hVehywQ2oXPYGHJHKtqth4)
+	 * @displayOptions.show { resource: ["hook"], operation: ["get", "retryOne", "retryAll", "getLogs"] }
 	 */
 	hookId: string | Expression<string>;
 };
@@ -141,15 +157,18 @@ export type KoBoToolboxV1HookGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["hook"], operation: ["get", "retryOne", "retryAll", "getLogs", "getAll"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["hook"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["hook"], operation: ["getAll"], returnAll: [false] }
 	 * @default 1000
 	 */
 	limit?: number | Expression<number>;
@@ -161,22 +180,27 @@ export type KoBoToolboxV1HookGetLogsConfig = {
 	operation: 'getLogs';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["hook"], operation: ["get", "retryOne", "retryAll", "getLogs", "getAll"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Hook ID (starts with h, e.g. hVehywQ2oXPYGHJHKtqth4)
+	 * @displayOptions.show { resource: ["hook"], operation: ["get", "retryOne", "retryAll", "getLogs"] }
 	 */
 	hookId: string | Expression<string>;
 	/**
 	 * Only retrieve logs with a specific status
+	 * @displayOptions.show { resource: ["hook"], operation: ["getLogs"] }
 	 */
 	status?: '' | '0' | '1' | '2' | Expression<string>;
 	/**
 	 * Minimum date for the hook log to retrieve
+	 * @displayOptions.show { resource: ["hook"], operation: ["getLogs"] }
 	 */
 	startDate?: string | Expression<string>;
 	/**
 	 * Maximum date for the hook log to retrieve
+	 * @displayOptions.show { resource: ["hook"], operation: ["getLogs"] }
 	 */
 	endDate?: string | Expression<string>;
 };
@@ -187,10 +211,12 @@ export type KoBoToolboxV1HookRetryAllConfig = {
 	operation: 'retryAll';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["hook"], operation: ["get", "retryOne", "retryAll", "getLogs", "getAll"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Hook ID (starts with h, e.g. hVehywQ2oXPYGHJHKtqth4)
+	 * @displayOptions.show { resource: ["hook"], operation: ["get", "retryOne", "retryAll", "getLogs"] }
 	 */
 	hookId: string | Expression<string>;
 };
@@ -201,14 +227,17 @@ export type KoBoToolboxV1HookRetryOneConfig = {
 	operation: 'retryOne';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["hook"], operation: ["get", "retryOne", "retryAll", "getLogs", "getAll"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Hook ID (starts with h, e.g. hVehywQ2oXPYGHJHKtqth4)
+	 * @displayOptions.show { resource: ["hook"], operation: ["get", "retryOne", "retryAll", "getLogs"] }
 	 */
 	hookId: string | Expression<string>;
 	/**
 	 * Hook log ID (starts with hl, e.g. hlSbGKaUKzTVNoWEVMYbLHe)
+	 * @displayOptions.show { resource: ["hook"], operation: ["retryOne"] }
 	 */
 	logId: string | Expression<string>;
 };
@@ -219,10 +248,12 @@ export type KoBoToolboxV1SubmissionDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["submission"], operation: ["get", "delete", "getValidation", "setValidation", "getAll"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Submission ID (number, e.g. 245128)
+	 * @displayOptions.show { resource: ["submission"], operation: ["get", "delete", "getValidation", "setValidation"] }
 	 */
 	submissionId: string | Expression<string>;
 };
@@ -233,10 +264,12 @@ export type KoBoToolboxV1SubmissionGetConfig = {
 	operation: 'get';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["submission"], operation: ["get", "delete", "getValidation", "setValidation", "getAll"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Submission ID (number, e.g. 245128)
+	 * @displayOptions.show { resource: ["submission"], operation: ["get", "delete", "getValidation", "setValidation"] }
 	 */
 	submissionId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -248,15 +281,18 @@ export type KoBoToolboxV1SubmissionGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["submission"], operation: ["get", "delete", "getValidation", "setValidation", "getAll"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["submission"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["submission"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -271,10 +307,12 @@ export type KoBoToolboxV1SubmissionGetValidationConfig = {
 	operation: 'getValidation';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["submission"], operation: ["get", "delete", "getValidation", "setValidation", "getAll"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Submission ID (number, e.g. 245128)
+	 * @displayOptions.show { resource: ["submission"], operation: ["get", "delete", "getValidation", "setValidation"] }
 	 */
 	submissionId: string | Expression<string>;
 };
@@ -285,14 +323,17 @@ export type KoBoToolboxV1SubmissionSetValidationConfig = {
 	operation: 'setValidation';
 	/**
 	 * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["submission"], operation: ["get", "delete", "getValidation", "setValidation", "getAll"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Submission ID (number, e.g. 245128)
+	 * @displayOptions.show { resource: ["submission"], operation: ["get", "delete", "getValidation", "setValidation"] }
 	 */
 	submissionId: string | Expression<string>;
 	/**
 	 * Desired Validation Status
+	 * @displayOptions.show { resource: ["submission"], operation: ["setValidation"] }
 	 */
 	validationStatus:
 		| 'validation_status_approved'

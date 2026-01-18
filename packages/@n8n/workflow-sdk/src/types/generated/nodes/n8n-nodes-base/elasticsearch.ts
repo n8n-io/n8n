@@ -21,20 +21,27 @@ export type ElasticsearchV1DocumentCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the index to add the document to
+	 * @displayOptions.show { resource: ["document"], operation: ["create"] }
 	 */
 	indexId: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { resource: ["document"], operation: ["create"] }
 	 * @default defineBelow
 	 */
 	dataToSend?: 'defineBelow' | 'autoMapInputData' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { resource: ["document"], operation: ["create"], dataToSend: ["autoMapInputData"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Field Name
+			 */
 			fieldId?: string | Expression<string>;
+			/** Field Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -48,10 +55,12 @@ export type ElasticsearchV1DocumentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the index containing the document to delete
+	 * @displayOptions.show { resource: ["document"], operation: ["delete"] }
 	 */
 	indexId: string | Expression<string>;
 	/**
 	 * ID of the document to delete
+	 * @displayOptions.show { resource: ["document"], operation: ["delete"] }
 	 */
 	documentId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -63,14 +72,17 @@ export type ElasticsearchV1DocumentGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the index containing the document to retrieve
+	 * @displayOptions.show { resource: ["document"], operation: ["get"] }
 	 */
 	indexId: string | Expression<string>;
 	/**
 	 * ID of the document to retrieve
+	 * @displayOptions.show { resource: ["document"], operation: ["get"] }
 	 */
 	documentId: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["document"], operation: ["get"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -83,20 +95,24 @@ export type ElasticsearchV1DocumentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * ID of the index containing the documents to retrieve
+	 * @displayOptions.show { resource: ["document"], operation: ["getAll"] }
 	 */
 	indexId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["document"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["document"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["document"], operation: ["getAll"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -109,24 +125,32 @@ export type ElasticsearchV1DocumentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the document to update
+	 * @displayOptions.show { resource: ["document"], operation: ["update"] }
 	 */
 	indexId: string | Expression<string>;
 	/**
 	 * ID of the document to update
+	 * @displayOptions.show { resource: ["document"], operation: ["update"] }
 	 */
 	documentId: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { resource: ["document"], operation: ["update"] }
 	 * @default defineBelow
 	 */
 	dataToSend?: 'defineBelow' | 'autoMapInputData' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { resource: ["document"], operation: ["update"], dataToSend: ["autoMapInputData"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Field Name
+			 */
 			fieldId?: string | Expression<string>;
+			/** Field Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -139,6 +163,7 @@ export type ElasticsearchV1IndexCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the index to create
+	 * @displayOptions.show { resource: ["index"], operation: ["create"] }
 	 */
 	indexId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -150,6 +175,7 @@ export type ElasticsearchV1IndexDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the index to delete
+	 * @displayOptions.show { resource: ["index"], operation: ["delete"] }
 	 */
 	indexId: string | Expression<string>;
 };
@@ -160,6 +186,7 @@ export type ElasticsearchV1IndexGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the index to retrieve
+	 * @displayOptions.show { resource: ["index"], operation: ["get"] }
 	 */
 	indexId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -171,11 +198,13 @@ export type ElasticsearchV1IndexGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["index"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["index"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

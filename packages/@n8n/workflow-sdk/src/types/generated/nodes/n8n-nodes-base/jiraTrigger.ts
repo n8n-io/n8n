@@ -19,11 +19,13 @@ export interface JiraTriggerV11Params {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * Whether authentication should be activated for the incoming webhooks (makes it more secure)
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.1}}] }
 	 * @default false
 	 */
 	authenticateWebhook?: boolean | Expression<boolean>;
 	/**
 	 * If authentication should be activated for the webhook (makes it more secure)
+	 * @displayOptions.show { @version: [1] }
 	 * @default none
 	 */
 	incomingAuthentication?: 'queryAuth' | 'none' | Expression<string>;

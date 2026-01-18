@@ -20,6 +20,7 @@ export type MailcheckV1EmailCheckConfig = {
 	operation: 'check';
 	/**
 	 * Email address to check
+	 * @displayOptions.show { resource: ["email"], operation: ["check"] }
 	 */
 	email?: string | Expression<string>;
 };

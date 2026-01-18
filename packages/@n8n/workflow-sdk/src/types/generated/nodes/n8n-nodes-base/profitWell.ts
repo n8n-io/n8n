@@ -28,10 +28,12 @@ export type ProfitWellV1MetricGetConfig = {
 	type: 'daily' | 'monthly' | Expression<string>;
 	/**
 	 * Can only be the current or previous month. Format should be YYYY-MM.
+	 * @displayOptions.show { resource: ["metric"], operation: ["get"], type: ["daily"] }
 	 */
 	month: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["metric"], operation: ["get"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;

@@ -25,6 +25,7 @@ export type MicrosoftOutlookV2CalendarCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the calendar to create
+	 * @displayOptions.show { resource: ["calendar"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -50,11 +51,13 @@ export type MicrosoftOutlookV2CalendarGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["calendar"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["calendar"], operation: ["getAll"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -93,6 +96,7 @@ export type MicrosoftOutlookV2ContactGetConfig = {
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { output: ["fields"], resource: ["contact"], operation: ["get"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -142,17 +146,20 @@ export type MicrosoftOutlookV2ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["contact"], operation: ["getAll"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { output: ["fields"], resource: ["contact"], operation: ["getAll"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -211,10 +218,12 @@ export type MicrosoftOutlookV2DraftCreateConfig = {
 	operation: 'create';
 	/**
 	 * The subject of the message
+	 * @displayOptions.show { resource: ["draft"], operation: ["create"] }
 	 */
 	subject?: string | Expression<string>;
 	/**
 	 * Message body content
+	 * @displayOptions.show { resource: ["draft"], operation: ["create"] }
 	 */
 	bodyContent?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -235,6 +244,7 @@ export type MicrosoftOutlookV2DraftGetConfig = {
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { output: ["fields"], resource: ["draft"], operation: ["get"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -276,6 +286,7 @@ export type MicrosoftOutlookV2DraftSendConfig = {
 	draftId: ResourceLocatorValue;
 	/**
 	 * Comma-separated list of email addresses of recipients
+	 * @displayOptions.show { resource: ["draft"], operation: ["send"] }
 	 */
 	to?: string | Expression<string>;
 };
@@ -316,6 +327,7 @@ export type MicrosoftOutlookV2EventGetConfig = {
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { output: ["fields"], resource: ["event"], operation: ["get"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -369,17 +381,20 @@ export type MicrosoftOutlookV2EventGetAllConfig = {
 	calendarId: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["event"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["event"], operation: ["getAll"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { output: ["fields"], resource: ["event"], operation: ["getAll"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -441,6 +456,7 @@ export type MicrosoftOutlookV2FolderCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the folder
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"] }
 	 */
 	displayName: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -467,11 +483,13 @@ export type MicrosoftOutlookV2FolderGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["folder"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["folder"], operation: ["getAll"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -486,6 +504,7 @@ export type MicrosoftOutlookV2FolderUpdateConfig = {
 	folderId: ResourceLocatorValue;
 	/**
 	 * Name of the folder
+	 * @displayOptions.show { resource: ["folder"], operation: ["update"] }
 	 */
 	displayName: string | Expression<string>;
 };
@@ -497,17 +516,20 @@ export type MicrosoftOutlookV2FolderMessageGetAllConfig = {
 	folderId: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["folderMessage"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["folderMessage"], operation: ["getAll"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { output: ["fields"], resource: ["folderMessage"], operation: ["getAll"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -541,8 +563,18 @@ export type MicrosoftOutlookV2FolderMessageGetAllConfig = {
 	>;
 	filtersUI?: {
 		values?: {
+			/** Filter By
+			 * @default filters
+			 */
 			filterBy?: 'filters' | 'search' | Expression<string>;
+			/** Only return messages that contains search term. Without specific message properties, the search is carried out on the default search properties of from, subject, and body. &lt;a href="https://docs.microsoft.com/en-us/graph/query-parameters#search-parameter target="_blank"&gt;More info&lt;/a&gt;.
+			 * @displayOptions.show { filterBy: ["search"] }
+			 */
 			search?: string | Expression<string>;
+			/** Filters
+			 * @displayOptions.show { filterBy: ["filters"] }
+			 * @default {}
+			 */
 			filters?: Record<string, unknown>;
 		};
 	};
@@ -564,6 +596,7 @@ export type MicrosoftOutlookV2MessageGetConfig = {
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { output: ["fields"], resource: ["message"], operation: ["get"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -604,17 +637,20 @@ export type MicrosoftOutlookV2MessageGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["message"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["message"], operation: ["getAll"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	output?: 'simple' | 'raw' | 'fields' | Expression<string>;
 	/**
 	 * The fields to add to the output
+	 * @displayOptions.show { output: ["fields"], resource: ["message"], operation: ["getAll"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -648,8 +684,18 @@ export type MicrosoftOutlookV2MessageGetAllConfig = {
 	>;
 	filtersUI?: {
 		values?: {
+			/** Filter By
+			 * @default filters
+			 */
 			filterBy?: 'filters' | 'search' | Expression<string>;
+			/** Only return messages that contains search term. Without specific message properties, the search is carried out on the default search properties of from, subject, and body. &lt;a href="https://docs.microsoft.com/en-us/graph/query-parameters#search-parameter target="_blank"&gt;More info&lt;/a&gt;.
+			 * @displayOptions.show { filterBy: ["search"] }
+			 */
 			search?: string | Expression<string>;
+			/** Filters
+			 * @displayOptions.show { filterBy: ["filters"] }
+			 * @default {}
+			 */
 			filters?: Record<string, unknown>;
 		};
 	};
@@ -671,11 +717,13 @@ export type MicrosoftOutlookV2MessageReplyConfig = {
 	messageId: ResourceLocatorValue;
 	/**
 	 * Whether to reply to the sender only or to the entire list of recipients
+	 * @displayOptions.show { resource: ["message"], operation: ["reply"] }
 	 * @default false
 	 */
 	replyToSenderOnly?: boolean | Expression<boolean>;
 	/**
 	 * Message body content
+	 * @displayOptions.show { resource: ["message"], operation: ["reply"] }
 	 */
 	message?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -688,14 +736,17 @@ export type MicrosoftOutlookV2MessageSendConfig = {
 	operation: 'send';
 	/**
 	 * Comma-separated list of email addresses of recipients
+	 * @displayOptions.show { resource: ["message"], operation: ["send"] }
 	 */
 	toRecipients: string | Expression<string>;
 	/**
 	 * The subject of the message
+	 * @displayOptions.show { resource: ["message"], operation: ["send"] }
 	 */
 	subject?: string | Expression<string>;
 	/**
 	 * Message body content
+	 * @displayOptions.show { resource: ["message"], operation: ["send"] }
 	 */
 	bodyContent?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -707,6 +758,7 @@ export type MicrosoftOutlookV2MessageSendAndWaitConfig = {
 	operation: 'sendAndWait';
 	/**
 	 * Comma-separated list of email addresses of recipients
+	 * @displayOptions.show { resource: ["message"], operation: ["sendAndWait"] }
 	 */
 	toRecipients: string | Expression<string>;
 	subject: string | Expression<string>;
@@ -716,10 +768,28 @@ export type MicrosoftOutlookV2MessageSendAndWaitConfig = {
 	jsonOutput?: IDataObject | string | Expression<string>;
 	formFields?: {
 		values?: Array<{
+			/** The name of the field, used in input attributes and referenced by the workflow
+			 * @displayOptions.show { @version: [2.4] }
+			 * @displayOptions.hide { fieldType: ["html"] }
+			 */
 			fieldName?: string | Expression<string>;
+			/** Label that appears above the input field
+			 * @displayOptions.show { @version: [{"_cnd":{"gte":2.4}}] }
+			 * @displayOptions.hide { fieldType: ["hiddenField", "html"] }
+			 */
 			fieldLabel?: string | Expression<string>;
+			/** Label that appears above the input field
+			 * @displayOptions.show { @version: [{"_cnd":{"lt":2.4}}] }
+			 * @displayOptions.hide { fieldType: ["hiddenField", "html"] }
+			 */
 			fieldLabel?: string | Expression<string>;
+			/** The name of the field, used in input attributes and referenced by the workflow
+			 * @displayOptions.show { fieldType: ["hiddenField"], @version: [{"_cnd":{"lt":2.4}}] }
+			 */
 			fieldName?: string | Expression<string>;
+			/** The type of field to add to the form
+			 * @default text
+			 */
 			fieldType?:
 				| 'checkbox'
 				| 'html'
@@ -734,34 +804,148 @@ export type MicrosoftOutlookV2MessageSendAndWaitConfig = {
 				| 'text'
 				| 'textarea'
 				| Expression<string>;
+			/** Optional field. It can be used to include the html in the output.
+			 * @displayOptions.show { fieldType: ["html"] }
+			 */
 			elementName?: string | Expression<string>;
+			/** The name of the field, used in input attributes and referenced by the workflow
+			 * @displayOptions.show { @version: [{"_cnd":{"gte":2.5}}] }
+			 * @displayOptions.hide { fieldType: ["html"] }
+			 */
 			fieldName?: string | Expression<string>;
+			/** Sample text to display inside the field
+			 * @displayOptions.hide { fieldType: ["dropdown", "date", "file", "html", "hiddenField", "radio", "checkbox"] }
+			 */
 			placeholder?: string | Expression<string>;
+			/** Default value that will be pre-filled in the form field
+			 * @displayOptions.show { fieldType: ["text", "number", "email", "textarea"] }
+			 */
 			defaultValue?: string | Expression<string>;
+			/** Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)
+			 * @displayOptions.show { fieldType: ["date"] }
+			 */
 			defaultValue?: string | Expression<string>;
+			/** Default value that will be pre-selected. Must match one of the option labels.
+			 * @displayOptions.show { fieldType: ["dropdown", "radio"] }
+			 */
 			defaultValue?: string | Expression<string>;
+			/** Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma.
+			 * @displayOptions.show { fieldType: ["checkbox"] }
+			 */
 			defaultValue?: string | Expression<string>;
+			/** Input value can be set here or will be passed as a query parameter via Field Name if no value is set
+			 * @displayOptions.show { fieldType: ["hiddenField"] }
+			 */
 			fieldValue?: string | Expression<string>;
-			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
-			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
-			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			/** List of options that can be selected from the dropdown
+			 * @displayOptions.show { fieldType: ["dropdown"] }
+			 * @default {"values":[{"option":""}]}
+			 */
+			fieldOptions?: {
+				values?: Array<{
+					/** Option
+					 */
+					option?: string | Expression<string>;
+				}>;
+			};
+			/** Checkboxes
+			 * @displayOptions.show { fieldType: ["checkbox"] }
+			 * @default {"values":[{"option":""}]}
+			 */
+			fieldOptions?: {
+				values?: Array<{
+					/** Checkbox Label
+					 */
+					option?: string | Expression<string>;
+				}>;
+			};
+			/** Radio Buttons
+			 * @displayOptions.show { fieldType: ["radio"] }
+			 * @default {"values":[{"option":""}]}
+			 */
+			fieldOptions?: {
+				values?: Array<{
+					/** Radio Button Label
+					 */
+					option?: string | Expression<string>;
+				}>;
+			};
+			/** Whether to allow the user to select multiple options from the dropdown list
+			 * @displayOptions.show { fieldType: ["dropdown"], @version: [{"_cnd":{"lt":2.3}}] }
+			 * @default false
+			 */
 			multiselect?: boolean | Expression<boolean>;
+			/** Limit Selection
+			 * @displayOptions.show { fieldType: ["checkbox"] }
+			 * @default unlimited
+			 */
 			limitSelection?: 'exact' | 'range' | 'unlimited' | Expression<string>;
+			/** Number of Selections
+			 * @displayOptions.show { fieldType: ["checkbox"], limitSelection: ["exact"] }
+			 * @default 1
+			 */
 			numberOfSelections?: number | Expression<number>;
+			/** Minimum Selections
+			 * @displayOptions.show { fieldType: ["checkbox"], limitSelection: ["range"] }
+			 * @default 0
+			 */
 			minSelections?: number | Expression<number>;
+			/** Maximum Selections
+			 * @displayOptions.show { fieldType: ["checkbox"], limitSelection: ["range"] }
+			 * @default 1
+			 */
 			maxSelections?: number | Expression<number>;
+			/** HTML elements to display on the form page
+			 * @hint Does not accept &lt;code&gt;&lt;script&gt;&lt;/code&gt;, &lt;code&gt;&lt;style&gt;&lt;/code&gt; or &lt;code&gt;&lt;input&gt;&lt;/code&gt; tags
+			 * @displayOptions.show { fieldType: ["html"] }
+			 * @default <!-- Your custom HTML here --->
+
+
+
+			 */
 			html?: string | Expression<string>;
+			/** Whether to allow the user to select multiple files from the file input or just one
+			 * @displayOptions.show { fieldType: ["file"] }
+			 * @default true
+			 */
 			multipleFiles?: boolean | Expression<boolean>;
+			/** Comma-separated list of allowed file extensions
+			 * @hint Leave empty to allow all file types
+			 * @displayOptions.show { fieldType: ["file"] }
+			 */
 			acceptFileTypes?: string | Expression<string>;
+			/** Whether to require the user to enter a value for this field before submitting the form
+			 * @displayOptions.hide { fieldType: ["html", "hiddenField"] }
+			 * @default false
+			 */
 			requiredField?: boolean | Expression<boolean>;
 		}>;
 	};
 	approvalOptions?: {
 		values?: {
+			/** Type of Approval
+			 * @default single
+			 */
 			approvalType?: 'single' | 'double' | Expression<string>;
+			/** Approve Button Label
+			 * @displayOptions.show { approvalType: ["single", "double"] }
+			 * @default Approve
+			 */
 			approveLabel?: string | Expression<string>;
+			/** Approve Button Style
+			 * @displayOptions.show { approvalType: ["single", "double"] }
+			 * @default primary
+			 */
 			buttonApprovalStyle?: 'primary' | 'secondary' | Expression<string>;
+			/** Disapprove Button Label
+			 * @displayOptions.show { approvalType: ["double"] }
+			 * @default Decline
+			 */
 			disapproveLabel?: string | Expression<string>;
+			/** Disapprove Button Style
+			 * @displayOptions.show { approvalType: ["double"] }
+			 * @default secondary
+			 */
 			buttonDisapprovalStyle?: 'primary' | 'secondary' | Expression<string>;
 		};
 	};
@@ -810,11 +994,13 @@ export type MicrosoftOutlookV2MessageAttachmentGetAllConfig = {
 	messageId: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["messageAttachment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["messageAttachment"], operation: ["getAll"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -867,10 +1053,12 @@ export type MicrosoftOutlookV1DraftCreateConfig = {
 	operation: 'create';
 	/**
 	 * The subject of the message
+	 * @displayOptions.show { resource: ["draft"], operation: ["create"] }
 	 */
 	subject?: string | Expression<string>;
 	/**
 	 * Message body content
+	 * @displayOptions.show { resource: ["draft"], operation: ["create"] }
 	 */
 	bodyContent?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -913,25 +1101,30 @@ export type MicrosoftOutlookV1FolderCreateConfig = {
 	operation: 'create';
 	/**
 	 * Folder Type
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"] }
 	 * @default folder
 	 */
 	folderType?: 'folder' | 'searchFolder' | Expression<string>;
 	/**
 	 * Name of the folder
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"] }
 	 */
 	displayName: string | Expression<string>;
 	/**
 	 * Whether to include child folders in the search
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"], folderType: ["searchFolder"] }
 	 * @default false
 	 */
 	includeNestedFolders?: boolean | Expression<boolean>;
 	/**
 	 * The mailbox folders that should be mined
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"], folderType: ["searchFolder"] }
 	 * @default []
 	 */
 	sourceFolderIds?: string | Expression<string>;
 	/**
 	 * The OData query to filter the messages
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"], folderType: ["searchFolder"] }
 	 */
 	filterQuery: string | Expression<string>;
 };
@@ -958,11 +1151,13 @@ export type MicrosoftOutlookV1FolderGetChildrenConfig = {
 	folderId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["folder"], operation: ["getAll", "getChildren"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["folder"], operation: ["getAll", "getChildren"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -975,11 +1170,13 @@ export type MicrosoftOutlookV1FolderGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["folder"], operation: ["getAll", "getChildren"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["folder"], operation: ["getAll", "getChildren"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -993,11 +1190,13 @@ export type MicrosoftOutlookV1FolderMessageGetAllConfig = {
 	folderId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["folderMessage"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["folderMessage"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -1025,11 +1224,13 @@ export type MicrosoftOutlookV1MessageGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["message"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["message"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -1051,6 +1252,7 @@ export type MicrosoftOutlookV1MessageMoveConfig = {
 	messageId: string | Expression<string>;
 	/**
 	 * Target Folder ID
+	 * @displayOptions.show { resource: ["message"], operation: ["move"] }
 	 */
 	folderId: string | Expression<string>;
 };
@@ -1063,10 +1265,12 @@ export type MicrosoftOutlookV1MessageReplyConfig = {
 	replyType: 'reply' | 'replyAll' | Expression<string>;
 	/**
 	 * A comment to include. Can be an empty string.
+	 * @displayOptions.show { resource: ["message"], operation: ["reply"] }
 	 */
 	comment?: string | Expression<string>;
 	/**
 	 * Whether to send the reply message directly. If not set, it will be saved as draft.
+	 * @displayOptions.show { resource: ["message"], operation: ["reply"] }
 	 * @default true
 	 */
 	send?: boolean | Expression<boolean>;
@@ -1079,14 +1283,17 @@ export type MicrosoftOutlookV1MessageSendConfig = {
 	operation: 'send';
 	/**
 	 * The subject of the message
+	 * @displayOptions.show { resource: ["message"], operation: ["create", "send"] }
 	 */
 	subject?: string | Expression<string>;
 	/**
 	 * Message body content
+	 * @displayOptions.show { resource: ["message"], operation: ["create", "send"] }
 	 */
 	bodyContent?: string | Expression<string>;
 	/**
 	 * Email addresses of recipients. Multiple can be added separated by comma.
+	 * @displayOptions.show { resource: ["message"], operation: ["send"] }
 	 */
 	toRecipients: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -1134,11 +1341,13 @@ export type MicrosoftOutlookV1MessageAttachmentGetAllConfig = {
 	messageId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["messageAttachment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["messageAttachment"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

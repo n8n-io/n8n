@@ -22,6 +22,7 @@ export type BeeminderV1ChargeCreateConfig = {
 	operation: 'create';
 	/**
 	 * Charge amount in USD
+	 * @displayOptions.show { resource: ["charge"], operation: ["create"] }
 	 * @default 0
 	 */
 	amount: number | Expression<number>;
@@ -34,10 +35,12 @@ export type BeeminderV1DatapointCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["datapoint"] }
 	 */
 	goalName: string | Expression<string>;
 	/**
 	 * Datapoint value to send
+	 * @displayOptions.show { resource: ["datapoint"], operation: ["create"] }
 	 * @default 1
 	 */
 	value: number | Expression<number>;
@@ -50,10 +53,12 @@ export type BeeminderV1DatapointCreateAllConfig = {
 	operation: 'createAll';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["datapoint"] }
 	 */
 	goalName: string | Expression<string>;
 	/**
 	 * Array of datapoint objects to create. Each object should contain value and optionally timestamp, comment, etc.
+	 * @displayOptions.show { resource: ["datapoint"], operation: ["createAll"] }
 	 * @default []
 	 */
 	datapoints: IDataObject | string | Expression<string>;
@@ -65,6 +70,7 @@ export type BeeminderV1DatapointDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["datapoint"] }
 	 */
 	goalName: string | Expression<string>;
 	datapointId: string | Expression<string>;
@@ -76,6 +82,7 @@ export type BeeminderV1DatapointGetConfig = {
 	operation: 'get';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["datapoint"] }
 	 */
 	goalName: string | Expression<string>;
 	datapointId: string | Expression<string>;
@@ -87,15 +94,18 @@ export type BeeminderV1DatapointGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["datapoint"] }
 	 */
 	goalName: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["datapoint"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["datapoint"], returnAll: [false] }
 	 * @default 30
 	 */
 	limit?: number | Expression<number>;
@@ -108,6 +118,7 @@ export type BeeminderV1DatapointUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["datapoint"] }
 	 */
 	goalName: string | Expression<string>;
 	datapointId: string | Expression<string>;
@@ -120,14 +131,17 @@ export type BeeminderV1GoalCreateConfig = {
 	operation: 'create';
 	/**
 	 * Unique identifier for the goal
+	 * @displayOptions.show { resource: ["goal"], operation: ["create"] }
 	 */
 	slug: string | Expression<string>;
 	/**
 	 * Human-readable title for the goal
+	 * @displayOptions.show { resource: ["goal"], operation: ["create"] }
 	 */
 	title: string | Expression<string>;
 	/**
 	 * Type of goal. &lt;a href="https://api.beeminder.com/#attributes-2"&gt;More info here.&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["goal"], operation: ["create"] }
 	 * @default hustler
 	 */
 	goal_type:
@@ -141,6 +155,7 @@ export type BeeminderV1GoalCreateConfig = {
 		| Expression<string>;
 	/**
 	 * Units for the goal (e.g., "hours", "pages", "pounds")
+	 * @displayOptions.show { resource: ["goal"], operation: ["create"] }
 	 */
 	gunits: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -152,6 +167,7 @@ export type BeeminderV1GoalGetConfig = {
 	operation: 'get';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["goal"], operation: ["get", "update", "refresh", "shortCircuit", "stepDown", "cancelStepDown"] }
 	 */
 	goalName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -177,6 +193,7 @@ export type BeeminderV1GoalUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["goal"], operation: ["get", "update", "refresh", "shortCircuit", "stepDown", "cancelStepDown"] }
 	 */
 	goalName: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -188,6 +205,7 @@ export type BeeminderV1GoalRefreshConfig = {
 	operation: 'refresh';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["goal"], operation: ["get", "update", "refresh", "shortCircuit", "stepDown", "cancelStepDown"] }
 	 */
 	goalName: string | Expression<string>;
 };
@@ -198,6 +216,7 @@ export type BeeminderV1GoalShortCircuitConfig = {
 	operation: 'shortCircuit';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["goal"], operation: ["get", "update", "refresh", "shortCircuit", "stepDown", "cancelStepDown"] }
 	 */
 	goalName: string | Expression<string>;
 };
@@ -208,6 +227,7 @@ export type BeeminderV1GoalStepDownConfig = {
 	operation: 'stepDown';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["goal"], operation: ["get", "update", "refresh", "shortCircuit", "stepDown", "cancelStepDown"] }
 	 */
 	goalName: string | Expression<string>;
 };
@@ -217,6 +237,7 @@ export type BeeminderV1GoalCancelStepDownConfig = {
 	operation: 'cancelStepDown';
 	/**
 	 * The name of the goal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["goal"], operation: ["get", "update", "refresh", "shortCircuit", "stepDown", "cancelStepDown"] }
 	 */
 	goalName: string | Expression<string>;
 };
@@ -227,6 +248,7 @@ export type BeeminderV1GoalUncleConfig = {
 	operation: 'uncle';
 	/**
 	 * The name of the goal to derail. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["goal"], operation: ["uncle"] }
 	 */
 	goalName: string | Expression<string>;
 };

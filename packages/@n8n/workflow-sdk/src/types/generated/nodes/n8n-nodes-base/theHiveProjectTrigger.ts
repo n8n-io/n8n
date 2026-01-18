@@ -49,8 +49,16 @@ export interface TheHiveProjectTriggerV1Params {
 	 */
 	filters?: {
 		values?: Array<{
+			/** Field
+			 * @hint The field to filter on, supports dot notation
+			 */
 			field?: string | Expression<string>;
+			/** Operator
+			 * @default equal
+			 */
 			operator?: 'equal' | 'notEqual' | 'includes' | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};

@@ -19,6 +19,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../base'
 export interface LcEmbeddingsOpenAiV12Params {
 	/**
 	 * The model which will generate the embeddings. &lt;a href="https://platform.openai.com/docs/models/overview"&gt;Learn more&lt;/a&gt;.
+	 * @displayOptions.show { @version: [1] }
 	 * @default text-embedding-ada-002
 	 */
 	model?: string | Expression<string>;

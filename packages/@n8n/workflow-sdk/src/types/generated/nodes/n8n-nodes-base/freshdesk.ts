@@ -21,10 +21,12 @@ export type FreshdeskV1ContactCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the contact
+	 * @displayOptions.show { operation: ["create"], resource: ["contact"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.
+	 * @displayOptions.show { operation: ["create"], resource: ["contact"] }
 	 */
 	email?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -73,12 +75,14 @@ export type FreshdeskV1TicketCreateConfig = {
 		| Expression<string>;
 	/**
 	 * Value of the identification selected
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	requesterIdentificationValue: string | Expression<string>;
 	status: 'closed' | 'open' | 'pending' | 'resolved' | Expression<string>;
 	priority: 'low' | 'medium' | 'high' | 'urgent' | Expression<string>;
 	/**
 	 * The channel through which the ticket was created
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 * @default portal
 	 */
 	source:
@@ -113,11 +117,13 @@ export type FreshdeskV1TicketGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;

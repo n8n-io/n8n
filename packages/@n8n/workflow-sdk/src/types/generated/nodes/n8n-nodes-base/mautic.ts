@@ -23,6 +23,7 @@ export type MauticV1CampaignContactAddConfig = {
 	contactId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["campaignContact"], operation: ["add", "remove"] }
 	 */
 	campaignId: string | Expression<string>;
 };
@@ -34,6 +35,7 @@ export type MauticV1CampaignContactRemoveConfig = {
 	contactId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["campaignContact"], operation: ["add", "remove"] }
 	 */
 	campaignId: string | Expression<string>;
 };
@@ -44,10 +46,12 @@ export type MauticV1CompanyCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the company to create
+	 * @displayOptions.show { resource: ["company"], operation: ["create"] }
 	 */
 	name?: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["company"], operation: ["create"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -60,10 +64,12 @@ export type MauticV1CompanyDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the company to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["company"] }
 	 */
 	companyId?: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["company"], operation: ["delete"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -75,10 +81,12 @@ export type MauticV1CompanyGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the company to return
+	 * @displayOptions.show { operation: ["get"], resource: ["company"] }
 	 */
 	companyId?: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["company"], operation: ["get"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -90,16 +98,19 @@ export type MauticV1CompanyGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"], returnAll: [false] }
 	 * @default 30
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -112,10 +123,12 @@ export type MauticV1CompanyUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the company to update
+	 * @displayOptions.show { operation: ["update"], resource: ["company"] }
 	 */
 	companyId?: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["company"], operation: ["update"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -128,10 +141,12 @@ export type MauticV1CompanyContactAddConfig = {
 	operation: 'add';
 	/**
 	 * The ID of the contact
+	 * @displayOptions.show { resource: ["companyContact"], operation: ["add", "remove"] }
 	 */
 	contactId?: string | Expression<string>;
 	/**
 	 * The ID of the company
+	 * @displayOptions.show { resource: ["companyContact"], operation: ["add", "remove"] }
 	 */
 	companyId?: string | Expression<string>;
 };
@@ -142,10 +157,12 @@ export type MauticV1CompanyContactRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * The ID of the contact
+	 * @displayOptions.show { resource: ["companyContact"], operation: ["add", "remove"] }
 	 */
 	contactId?: string | Expression<string>;
 	/**
 	 * The ID of the company
+	 * @displayOptions.show { resource: ["companyContact"], operation: ["add", "remove"] }
 	 */
 	companyId?: string | Expression<string>;
 };
@@ -157,18 +174,21 @@ export type MauticV1ContactCreateConfig = {
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Email address of the contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["create"], jsonParameters: [false] }
 	 */
 	email?: string | Expression<string>;
 	firstName?: string | Expression<string>;
 	lastName?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["contact"], operation: ["create"], jsonParameters: [false] }
 	 */
 	company?: string | Expression<string>;
 	position?: string | Expression<string>;
 	title?: string | Expression<string>;
 	/**
 	 * Contact parameters
+	 * @displayOptions.show { operation: ["create"], resource: ["contact"], jsonParameters: [true] }
 	 */
 	bodyJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -218,11 +238,13 @@ export type MauticV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 30
 	 */
 	limit?: number | Expression<number>;
@@ -236,6 +258,7 @@ export type MauticV1ContactSendEmailConfig = {
 	options?: Record<string, unknown>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["contact"], operation: ["sendEmail"] }
 	 */
 	campaignEmailId: string | Expression<string>;
 	contactId: string | Expression<string>;
@@ -258,6 +281,7 @@ export type MauticV1ContactSegmentAddConfig = {
 	contactId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["contactSegment"], operation: ["add", "remove"] }
 	 */
 	segmentId: string | Expression<string>;
 };
@@ -269,6 +293,7 @@ export type MauticV1ContactSegmentRemoveConfig = {
 	contactId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["contactSegment"], operation: ["add", "remove"] }
 	 */
 	segmentId: string | Expression<string>;
 };
@@ -279,6 +304,7 @@ export type MauticV1SegmentEmailSendConfig = {
 	operation: 'send';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["segmentEmail"], operation: ["send"] }
 	 */
 	segmentEmailId: string | Expression<string>;
 };

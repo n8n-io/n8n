@@ -21,6 +21,7 @@ export type TravisCiV1BuildCancelConfig = {
 	operation: 'cancel';
 	/**
 	 * Value uniquely identifying the build
+	 * @displayOptions.show { operation: ["cancel"], resource: ["build"] }
 	 */
 	buildId?: string | Expression<string>;
 };
@@ -31,6 +32,7 @@ export type TravisCiV1BuildGetConfig = {
 	operation: 'get';
 	/**
 	 * Value uniquely identifying the build
+	 * @displayOptions.show { operation: ["get"], resource: ["build"] }
 	 */
 	buildId?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -42,11 +44,13 @@ export type TravisCiV1BuildGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["build"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["build"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -59,6 +63,7 @@ export type TravisCiV1BuildRestartConfig = {
 	operation: 'restart';
 	/**
 	 * Value uniquely identifying the build
+	 * @displayOptions.show { operation: ["restart"], resource: ["build"] }
 	 */
 	buildId?: string | Expression<string>;
 };
@@ -69,10 +74,12 @@ export type TravisCiV1BuildTriggerConfig = {
 	operation: 'trigger';
 	/**
 	 * Same as {ownerName}/{repositoryName}
+	 * @displayOptions.show { operation: ["trigger"], resource: ["build"] }
 	 */
 	slug?: string | Expression<string>;
 	/**
 	 * Branch requested to be built
+	 * @displayOptions.show { operation: ["trigger"], resource: ["build"] }
 	 */
 	branch?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

@@ -24,11 +24,13 @@ export type AwsIamV1UserAddToGroupConfig = {
 	operation: 'addToGroup';
 	/**
 	 * Select the user you want to add to the group
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	user: ResourceLocatorValue;
 	/**
 	 * Select the group you want to add the user to
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	group: ResourceLocatorValue;
@@ -41,6 +43,7 @@ export type AwsIamV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * The username of the new user to create
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	userName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -53,6 +56,7 @@ export type AwsIamV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Select the user you want to delete
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	user: ResourceLocatorValue;
@@ -65,6 +69,7 @@ export type AwsIamV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the user you want to retrieve
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	user: ResourceLocatorValue;
@@ -77,11 +82,14 @@ export type AwsIamV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
+	 * @displayOptions.hide { returnAll: [true] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -95,11 +103,13 @@ export type AwsIamV1UserRemoveFromGroupConfig = {
 	operation: 'removeFromGroup';
 	/**
 	 * Select the user you want to remove from the group
+	 * @displayOptions.show { resource: ["user"], operation: ["removeFromGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	user: ResourceLocatorValue;
 	/**
 	 * Select the group you want to remove the user from
+	 * @displayOptions.show { resource: ["user"], operation: ["removeFromGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	group: ResourceLocatorValue;
@@ -112,11 +122,13 @@ export type AwsIamV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Select the user you want to update
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	user: ResourceLocatorValue;
 	/**
 	 * The new name of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 */
 	userName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -129,6 +141,7 @@ export type AwsIamV1GroupCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the new group to create
+	 * @displayOptions.show { resource: ["group"], operation: ["create"] }
 	 */
 	groupName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -141,6 +154,7 @@ export type AwsIamV1GroupDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Select the group you want to delete
+	 * @displayOptions.show { resource: ["group"], operation: ["delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	group: ResourceLocatorValue;
@@ -153,11 +167,13 @@ export type AwsIamV1GroupGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the group you want to retrieve
+	 * @displayOptions.show { resource: ["group"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	group: ResourceLocatorValue;
 	/**
 	 * Whether to include a list of users in the group
+	 * @displayOptions.show { resource: ["group"], operation: ["get"] }
 	 * @default false
 	 */
 	includeUsers?: boolean | Expression<boolean>;
@@ -170,16 +186,20 @@ export type AwsIamV1GroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
+	 * @displayOptions.hide { returnAll: [true] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to include a list of users in the group
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
 	 * @default false
 	 */
 	includeUsers?: boolean | Expression<boolean>;
@@ -192,11 +212,13 @@ export type AwsIamV1GroupUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Select the group you want to update
+	 * @displayOptions.show { resource: ["group"], operation: ["update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	group: ResourceLocatorValue;
 	/**
 	 * The new name of the group
+	 * @displayOptions.show { resource: ["group"], operation: ["update"] }
 	 */
 	groupName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

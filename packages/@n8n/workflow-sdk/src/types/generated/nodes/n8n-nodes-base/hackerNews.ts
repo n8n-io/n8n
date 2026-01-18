@@ -21,11 +21,13 @@ export type HackerNewsV1AllGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["all"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["all"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -38,6 +40,7 @@ export type HackerNewsV1ArticleGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the Hacker News article to be returned
+	 * @displayOptions.show { resource: ["article"], operation: ["get"] }
 	 */
 	articleId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -49,6 +52,7 @@ export type HackerNewsV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * The Hacker News user to be returned
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	username: string | Expression<string>;
 };

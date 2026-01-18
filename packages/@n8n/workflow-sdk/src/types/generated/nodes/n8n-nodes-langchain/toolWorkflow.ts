@@ -20,6 +20,7 @@ import type { IDataObject } from '../../../base';
 export interface LcToolWorkflowV22Params {
 	/**
 	 * The name of the function to be called, could contain letters, numbers, and underscores only
+	 * @displayOptions.show { @version: [{"_cnd":{"lte":2.1}}] }
 	 */
 	name?: string | Expression<string>;
 	description?: string | Expression<string>;
@@ -32,6 +33,7 @@ export interface LcToolWorkflowV22Params {
 	workflowInputs: string | Expression<string>;
 	/**
  * The workflow JSON code to execute
+ * @displayOptions.show { source: ["parameter"] }
  * @default 
 
 
@@ -57,10 +59,12 @@ export interface LcToolWorkflowV13Params {
 	/**
 	 * The workflow to execute
 	 * @hint Can be found in the URL of the workflow
+	 * @displayOptions.show { source: ["database"], @version: [{"_cnd":{"lte":1.1}}] }
 	 */
 	workflowId: string | Expression<string>;
 	/**
  * The workflow JSON code to execute
+ * @displayOptions.show { source: ["parameter"] }
  * @default 
 
 
@@ -76,6 +80,7 @@ export interface LcToolWorkflowV13Params {
 	/**
 	 * Where to find the data that this tool should return. n8n will look in the output of the last-executed node of the workflow for a field with this name, and return its value.
 	 * @hint The field in the last-executed node of the workflow that contains the response
+	 * @displayOptions.show { @version: [{"_cnd":{"lt":1.3}}] }
 	 * @default response
 	 */
 	responsePropertyName: string | Expression<string>;
@@ -85,7 +90,12 @@ export interface LcToolWorkflowV13Params {
 	 */
 	fields?: {
 		values?: Array<{
+			/** Name of the field to set the value of. Supports dot-notation. Example: data.person[0].name.
+			 */
 			name?: string | Expression<string>;
+			/** The field value type
+			 * @default stringValue
+			 */
 			type?:
 				| 'stringValue'
 				| 'numberValue'
@@ -93,10 +103,27 @@ export interface LcToolWorkflowV13Params {
 				| 'arrayValue'
 				| 'objectValue'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.show { type: ["stringValue"] }
+			 */
 			stringValue?: string | Expression<string>;
+			/** Value
+			 * @displayOptions.show { type: ["numberValue"] }
+			 */
 			numberValue?: string | Expression<string>;
+			/** Value
+			 * @displayOptions.show { type: ["booleanValue"] }
+			 * @default true
+			 */
 			booleanValue?: 'true' | 'false' | Expression<string>;
+			/** Value
+			 * @displayOptions.show { type: ["arrayValue"] }
+			 */
 			arrayValue?: string | Expression<string>;
+			/** Value
+			 * @displayOptions.show { type: ["objectValue"] }
+			 * @default ={}
+			 */
 			objectValue?: IDataObject | string | Expression<string>;
 		}>;
 	};
@@ -107,11 +134,13 @@ export interface LcToolWorkflowV13Params {
 	specifyInputSchema?: boolean | Expression<boolean>;
 	/**
 	 * How to specify the schema for the function
+	 * @displayOptions.show { specifyInputSchema: [true] }
 	 * @default fromJson
 	 */
 	schemaType?: 'fromJson' | 'manual' | Expression<string>;
 	/**
  * Example JSON object to use to generate the schema
+ * @displayOptions.show { schemaType: ["fromJson"] }
  * @default {
 	"some_input": "some_value"
 }
@@ -120,6 +149,7 @@ export interface LcToolWorkflowV13Params {
 	/**
  * Schema to use for the function
  * @hint Use &lt;a target="_blank" href="https://json-schema.org/"&gt;JSON Schema&lt;/a&gt; format (&lt;a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html"&gt;examples&lt;/a&gt;). $refs syntax is currently not supported.
+ * @displayOptions.show { schemaType: ["manual"] }
  * @default {
 "type": "object",
 "properties": {

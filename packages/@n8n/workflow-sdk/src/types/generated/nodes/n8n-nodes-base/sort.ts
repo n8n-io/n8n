@@ -23,16 +23,24 @@ export interface SortV1Params {
 	type?: 'simple' | 'random' | 'code' | Expression<string>;
 	/**
 	 * The fields of the input items to sort by
+	 * @displayOptions.show { type: ["simple"] }
 	 * @default {}
 	 */
 	sortFieldsUi?: {
 		sortField?: Array<{
+			/** The field to sort by
+			 * @hint  Enter the field name as text
+			 */
 			fieldName?: string | Expression<string>;
+			/** The order to sort by
+			 * @default ascending
+			 */
 			order?: 'ascending' | 'descending' | Expression<string>;
 		}>;
 	};
 	/**
  * Javascript code to determine the order of any two items
+ * @displayOptions.show { type: ["code"] }
  * @default // The two items to compare are in the variables a and b
 	// Access the fields in a.json and b.json
 	// Return -1 if a should go before b

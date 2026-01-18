@@ -21,6 +21,7 @@ export type ZoomV1MeetingCreateConfig = {
 	operation: 'create';
 	/**
 	 * Topic of the meeting
+	 * @displayOptions.show { operation: ["create"], resource: ["meeting"] }
 	 */
 	topic?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -32,6 +33,7 @@ export type ZoomV1MeetingDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Meeting ID
+	 * @displayOptions.show { operation: ["delete"], resource: ["meeting"] }
 	 */
 	meetingId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -43,6 +45,7 @@ export type ZoomV1MeetingGetConfig = {
 	operation: 'get';
 	/**
 	 * Meeting ID
+	 * @displayOptions.show { operation: ["get"], resource: ["meeting"] }
 	 */
 	meetingId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -54,11 +57,13 @@ export type ZoomV1MeetingGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["meeting"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["meeting"], returnAll: [false] }
 	 * @default 30
 	 */
 	limit?: number | Expression<number>;
@@ -71,6 +76,7 @@ export type ZoomV1MeetingUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Meeting ID
+	 * @displayOptions.show { operation: ["update"], resource: ["meeting"] }
 	 */
 	meetingId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

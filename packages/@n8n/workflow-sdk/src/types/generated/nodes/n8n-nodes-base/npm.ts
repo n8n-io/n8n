@@ -38,15 +38,18 @@ export type NpmV1PackageSearchConfig = {
 	operation: 'search';
 	/**
 	 * The query text used to search for packages
+	 * @displayOptions.show { resource: ["package"], operation: ["search"] }
 	 */
 	query: string | Expression<string>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["package"], operation: ["search"] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Offset to return results from
+	 * @displayOptions.show { resource: ["package"], operation: ["search"] }
 	 * @default 0
 	 */
 	offset?: number | Expression<number>;

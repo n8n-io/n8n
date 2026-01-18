@@ -20,10 +20,12 @@ export type RaindropV1BookmarkCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["bookmark"], operation: ["create"] }
 	 */
 	collectionId?: string | Expression<string>;
 	/**
 	 * Link of the bookmark to be created
+	 * @displayOptions.show { resource: ["bookmark"], operation: ["create"] }
 	 */
 	link: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -34,6 +36,7 @@ export type RaindropV1BookmarkDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the bookmark to delete
+	 * @displayOptions.show { resource: ["bookmark"], operation: ["delete"] }
 	 */
 	bookmarkId: string | Expression<string>;
 };
@@ -43,6 +46,7 @@ export type RaindropV1BookmarkGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the bookmark to retrieve
+	 * @displayOptions.show { resource: ["bookmark"], operation: ["get"] }
 	 */
 	bookmarkId: string | Expression<string>;
 };
@@ -52,16 +56,19 @@ export type RaindropV1BookmarkGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the collection from which to retrieve all bookmarks. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["bookmark"], operation: ["getAll"] }
 	 * @default []
 	 */
 	collectionId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["bookmark"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["bookmark"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -72,6 +79,7 @@ export type RaindropV1BookmarkUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the bookmark to update
+	 * @displayOptions.show { resource: ["bookmark"], operation: ["update"] }
 	 */
 	bookmarkId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -82,6 +90,7 @@ export type RaindropV1CollectionCreateConfig = {
 	operation: 'create';
 	/**
 	 * Title of the collection to create
+	 * @displayOptions.show { resource: ["collection"], operation: ["create"] }
 	 */
 	title: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -92,6 +101,7 @@ export type RaindropV1CollectionDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the collection to delete
+	 * @displayOptions.show { resource: ["collection"], operation: ["delete"] }
 	 */
 	collectionId: string | Expression<string>;
 };
@@ -101,6 +111,7 @@ export type RaindropV1CollectionGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the collection to retrieve
+	 * @displayOptions.show { resource: ["collection"], operation: ["get"] }
 	 */
 	collectionId: string | Expression<string>;
 };
@@ -111,11 +122,13 @@ export type RaindropV1CollectionGetAllConfig = {
 	type: 'parent' | 'children' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["collection"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["collection"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -126,6 +139,7 @@ export type RaindropV1CollectionUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the collection to update
+	 * @displayOptions.show { resource: ["collection"], operation: ["update"] }
 	 */
 	collectionId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -136,6 +150,7 @@ export type RaindropV1TagDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * One or more tags to delete. Enter comma-separated values to delete multiple tags.
+	 * @displayOptions.show { resource: ["tag"], operation: ["delete"] }
 	 */
 	tags: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -146,11 +161,13 @@ export type RaindropV1TagGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["tag"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["tag"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -162,11 +179,13 @@ export type RaindropV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * Whether to return details on the logged-in user
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 * @default true
 	 */
 	self: boolean | Expression<boolean>;
 	/**
 	 * The ID of the user to retrieve
+	 * @displayOptions.show { resource: ["user"], operation: ["get"], self: [false] }
 	 */
 	userId: string | Expression<string>;
 };

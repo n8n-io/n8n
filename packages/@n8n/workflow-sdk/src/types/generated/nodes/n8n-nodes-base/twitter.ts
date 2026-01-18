@@ -24,11 +24,13 @@ export type TwitterV2DirectMessageCreateConfig = {
 	operation: 'create';
 	/**
 	 * The user you want to send the message to
+	 * @displayOptions.show { operation: ["create"], resource: ["directMessage"] }
 	 * @default {"mode":"username","value":""}
 	 */
 	user: ResourceLocatorValue;
 	/**
 	 * The text of the direct message. URL encoding is required. Max length of 10,000 characters.
+	 * @displayOptions.show { operation: ["create"], resource: ["directMessage"] }
 	 */
 	text: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -40,11 +42,13 @@ export type TwitterV2ListAddConfig = {
 	operation: 'add';
 	/**
 	 * The list you want to add the user to
+	 * @displayOptions.show { operation: ["add"], resource: ["list"] }
 	 * @default {"mode":"id","value":""}
 	 */
 	list: ResourceLocatorValue;
 	/**
 	 * The user you want to add to the list
+	 * @displayOptions.show { operation: ["add"], resource: ["list"] }
 	 * @default {"mode":"username","value":""}
 	 */
 	user: ResourceLocatorValue;
@@ -56,6 +60,7 @@ export type TwitterV2TweetCreateConfig = {
 	operation: 'create';
 	/**
 	 * The text of the status update. URLs must be encoded. Links wrapped with the t.co shortener will affect character count
+	 * @displayOptions.show { operation: ["create"], resource: ["tweet"] }
 	 */
 	text: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -67,6 +72,7 @@ export type TwitterV2TweetDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The tweet to delete
+	 * @displayOptions.show { resource: ["tweet"], operation: ["delete"] }
 	 * @default {"mode":"id","value":""}
 	 */
 	tweetDeleteId: ResourceLocatorValue;
@@ -78,6 +84,7 @@ export type TwitterV2TweetLikeConfig = {
 	operation: 'like';
 	/**
 	 * The tweet to like
+	 * @displayOptions.show { operation: ["like"], resource: ["tweet"] }
 	 * @default {"mode":"id","value":""}
 	 */
 	tweetId: ResourceLocatorValue;
@@ -89,6 +96,7 @@ export type TwitterV2TweetRetweetConfig = {
 	operation: 'retweet';
 	/**
 	 * The tweet to retweet
+	 * @displayOptions.show { operation: ["retweet"], resource: ["tweet"] }
 	 * @default {"mode":"id","value":""}
 	 */
 	tweetId: ResourceLocatorValue;
@@ -100,15 +108,18 @@ export type TwitterV2TweetSearchConfig = {
 	operation: 'search';
 	/**
 	 * A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples &lt;a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators"&gt;here&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["search"], resource: ["tweet"] }
 	 */
 	searchText: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["tweet"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["tweet"], operation: ["search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -121,11 +132,14 @@ export type TwitterV2UserSearchUserConfig = {
 	operation: 'searchUser';
 	/**
 	 * The user you want to search
+	 * @displayOptions.show { operation: ["searchUser"], resource: ["user"] }
+	 * @displayOptions.hide { me: [true] }
 	 * @default {"mode":"username","value":""}
 	 */
 	user: ResourceLocatorValue;
 	/**
 	 * Whether you want to search the authenticated user
+	 * @displayOptions.show { operation: ["searchUser"], resource: ["user"] }
 	 * @default false
 	 */
 	me?: boolean | Expression<boolean>;
@@ -147,10 +161,12 @@ export type TwitterV1DirectMessageCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the user who should receive the direct message
+	 * @displayOptions.show { operation: ["create"], resource: ["directMessage"] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * The text of your Direct Message. URL encode as necessary. Max length of 10,000 characters.
+	 * @displayOptions.show { operation: ["create"], resource: ["directMessage"] }
 	 */
 	text: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -162,6 +178,7 @@ export type TwitterV1TweetCreateConfig = {
 	operation: 'create';
 	/**
 	 * The text of the status update. URL encode as necessary. t.co link wrapping will affect character counts.
+	 * @displayOptions.show { operation: ["create"], resource: ["tweet"] }
 	 */
 	text: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -173,6 +190,7 @@ export type TwitterV1TweetDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the tweet to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["tweet"] }
 	 */
 	tweetId: string | Expression<string>;
 };
@@ -183,6 +201,7 @@ export type TwitterV1TweetLikeConfig = {
 	operation: 'like';
 	/**
 	 * The ID of the tweet
+	 * @displayOptions.show { operation: ["like"], resource: ["tweet"] }
 	 */
 	tweetId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -194,6 +213,7 @@ export type TwitterV1TweetRetweetConfig = {
 	operation: 'retweet';
 	/**
 	 * The ID of the tweet
+	 * @displayOptions.show { operation: ["retweet"], resource: ["tweet"] }
 	 */
 	tweetId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -205,15 +225,18 @@ export type TwitterV1TweetSearchConfig = {
 	operation: 'search';
 	/**
 	 * A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples &lt;a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators"&gt;here&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["search"], resource: ["tweet"] }
 	 */
 	searchText: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["search"], resource: ["tweet"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["search"], resource: ["tweet"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

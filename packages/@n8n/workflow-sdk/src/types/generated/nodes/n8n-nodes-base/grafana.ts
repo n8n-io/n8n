@@ -21,6 +21,7 @@ export type GrafanaV1DashboardCreateConfig = {
 	operation: 'create';
 	/**
 	 * Title of the dashboard to create
+	 * @displayOptions.show { resource: ["dashboard"], operation: ["create"] }
 	 */
 	title: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -32,6 +33,7 @@ export type GrafanaV1DashboardDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique alphabetic identifier or URL of the dashboard to delete
+	 * @displayOptions.show { resource: ["dashboard"], operation: ["delete"] }
 	 */
 	dashboardUidOrUrl: string | Expression<string>;
 };
@@ -42,6 +44,7 @@ export type GrafanaV1DashboardGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique alphabetic identifier or URL of the dashboard to retrieve
+	 * @displayOptions.show { resource: ["dashboard"], operation: ["get"] }
 	 */
 	dashboardUidOrUrl: string | Expression<string>;
 };
@@ -52,11 +55,13 @@ export type GrafanaV1DashboardGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["dashboard"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["dashboard"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -69,6 +74,7 @@ export type GrafanaV1DashboardUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique alphabetic identifier or URL of the dashboard to update
+	 * @displayOptions.show { resource: ["dashboard"], operation: ["update"] }
 	 */
 	dashboardUidOrUrl: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -80,6 +86,7 @@ export type GrafanaV1TeamCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the team to create
+	 * @displayOptions.show { resource: ["team"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -91,6 +98,7 @@ export type GrafanaV1TeamDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the team to delete
+	 * @displayOptions.show { resource: ["team"], operation: ["delete"] }
 	 */
 	teamId: string | Expression<string>;
 };
@@ -101,6 +109,7 @@ export type GrafanaV1TeamGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the team to retrieve
+	 * @displayOptions.show { resource: ["team"], operation: ["get"] }
 	 */
 	teamId: string | Expression<string>;
 };
@@ -111,11 +120,13 @@ export type GrafanaV1TeamGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["team"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["team"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -128,6 +139,7 @@ export type GrafanaV1TeamUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the team to update
+	 * @displayOptions.show { resource: ["team"], operation: ["update"] }
 	 */
 	teamId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -139,10 +151,12 @@ export type GrafanaV1TeamMemberAddConfig = {
 	operation: 'add';
 	/**
 	 * User to add to a team. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["teamMember"], operation: ["add"] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * Team to add the user to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["teamMember"], operation: ["add"] }
 	 */
 	teamId: string | Expression<string>;
 };
@@ -153,15 +167,18 @@ export type GrafanaV1TeamMemberGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Team to retrieve all members from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["teamMember"], operation: ["getAll"] }
 	 */
 	teamId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["teamMember"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["teamMember"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -173,10 +190,12 @@ export type GrafanaV1TeamMemberRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * User to remove from the team. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["teamMember"], operation: ["remove"] }
 	 */
 	memberId: string | Expression<string>;
 	/**
 	 * Team to remove the user from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["teamMember"], operation: ["remove"] }
 	 */
 	teamId: string | Expression<string>;
 };
@@ -187,6 +206,7 @@ export type GrafanaV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the user to delete
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -197,11 +217,13 @@ export type GrafanaV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -213,6 +235,7 @@ export type GrafanaV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the user to update
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 */
 	userId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

@@ -22,11 +22,13 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 export interface LcLmChatOpenAiV13Params {
 	/**
 	 * The model which will generate the completion. &lt;a href="https://beta.openai.com/docs/models/overview"&gt;Learn more&lt;/a&gt;.
+	 * @displayOptions.hide { @version: [{"_cnd":{"gte":1.2}}] }
 	 * @default gpt-5-mini
 	 */
 	model?: string | Expression<string>;
 	/**
 	 * Whether to use the Responses API to generate the response. &lt;a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/#use-responses-api"&gt;Learn more&lt;/a&gt;.
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.3}}] }
 	 * @default true
 	 */
 	responsesApiEnabled?: boolean | Expression<boolean>;

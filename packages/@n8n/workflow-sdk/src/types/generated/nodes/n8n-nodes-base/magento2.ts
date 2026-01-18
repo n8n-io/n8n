@@ -21,14 +21,17 @@ export type Magento2V1CustomerCreateConfig = {
 	operation: 'create';
 	/**
 	 * Email address of the user to create
+	 * @displayOptions.show { resource: ["customer"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	/**
 	 * First name of the user to create
+	 * @displayOptions.show { resource: ["customer"], operation: ["create"] }
 	 */
 	firstname: string | Expression<string>;
 	/**
 	 * Last name of the user to create
+	 * @displayOptions.show { resource: ["customer"], operation: ["create"] }
 	 */
 	lastname: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -54,11 +57,13 @@ export type Magento2V1CustomerGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["customer"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["customer"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -66,7 +71,12 @@ export type Magento2V1CustomerGetAllConfig = {
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
 	filters?: {
 		conditions?: Array<{
+			/** Field
+			 */
 			field?: string | Expression<string>;
+			/** Condition Type
+			 * @default eq
+			 */
 			condition_type?:
 				| 'eq'
 				| 'gt'
@@ -81,6 +91,9 @@ export type Magento2V1CustomerGetAllConfig = {
 				| 'notnull'
 				| 'null'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { condition_type: ["null", "notnull"] }
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -94,6 +107,7 @@ export type Magento2V1CustomerUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the customer to update
+	 * @displayOptions.show { resource: ["customer"], operation: ["update"] }
 	 */
 	customerId?: string | Expression<string>;
 	email?: string | Expression<string>;
@@ -101,6 +115,7 @@ export type Magento2V1CustomerUpdateConfig = {
 	lastName?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["customer"], operation: ["update"] }
 	 */
 	website_id?: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -133,11 +148,13 @@ export type Magento2V1OrderGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["order"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["order"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -145,7 +162,12 @@ export type Magento2V1OrderGetAllConfig = {
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
 	filters?: {
 		conditions?: Array<{
+			/** Field
+			 */
 			field?: string | Expression<string>;
+			/** Condition Type
+			 * @default eq
+			 */
 			condition_type?:
 				| 'eq'
 				| 'gt'
@@ -160,6 +182,9 @@ export type Magento2V1OrderGetAllConfig = {
 				| 'notnull'
 				| 'null'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { condition_type: ["null", "notnull"] }
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -180,11 +205,13 @@ export type Magento2V1ProductCreateConfig = {
 	operation: 'create';
 	/**
 	 * Stock-keeping unit of the product
+	 * @displayOptions.show { resource: ["product"], operation: ["create", "update"] }
 	 */
 	sku: string | Expression<string>;
 	name: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["product"], operation: ["create"] }
 	 */
 	attributeSetId?: string | Expression<string>;
 	price?: number | Expression<number>;
@@ -197,6 +224,7 @@ export type Magento2V1ProductDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Stock-keeping unit of the product
+	 * @displayOptions.show { resource: ["product"], operation: ["delete", "get"] }
 	 */
 	sku: string | Expression<string>;
 };
@@ -207,6 +235,7 @@ export type Magento2V1ProductGetConfig = {
 	operation: 'get';
 	/**
 	 * Stock-keeping unit of the product
+	 * @displayOptions.show { resource: ["product"], operation: ["delete", "get"] }
 	 */
 	sku: string | Expression<string>;
 };
@@ -217,11 +246,13 @@ export type Magento2V1ProductGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["product"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["product"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -229,7 +260,12 @@ export type Magento2V1ProductGetAllConfig = {
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
 	filters?: {
 		conditions?: Array<{
+			/** Field
+			 */
 			field?: string | Expression<string>;
+			/** Condition Type
+			 * @default eq
+			 */
 			condition_type?:
 				| 'eq'
 				| 'gt'
@@ -244,6 +280,9 @@ export type Magento2V1ProductGetAllConfig = {
 				| 'notnull'
 				| 'null'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { condition_type: ["null", "notnull"] }
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -257,6 +296,7 @@ export type Magento2V1ProductUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Stock-keeping unit of the product
+	 * @displayOptions.show { resource: ["product"], operation: ["create", "update"] }
 	 */
 	sku: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

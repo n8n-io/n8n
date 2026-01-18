@@ -21,6 +21,7 @@ export type DriftV1ContactCreateConfig = {
 	operation: 'create';
 	/**
 	 * The email of the contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -38,6 +39,7 @@ export type DriftV1ContactDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier for the contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["delete"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -48,6 +50,7 @@ export type DriftV1ContactGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["get"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -58,6 +61,7 @@ export type DriftV1ContactUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for the contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["update"] }
 	 */
 	contactId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

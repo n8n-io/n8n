@@ -21,15 +21,18 @@ export type DiscourseV1CategoryCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the category
+	 * @displayOptions.show { resource: ["category"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Color of the category
+	 * @displayOptions.show { resource: ["category"], operation: ["create"] }
 	 * @default 0000FF
 	 */
 	color: string | Expression<string>;
 	/**
 	 * Text color of the category
+	 * @displayOptions.show { resource: ["category"], operation: ["create"] }
 	 * @default 0000FF
 	 */
 	textColor: string | Expression<string>;
@@ -41,11 +44,13 @@ export type DiscourseV1CategoryGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["category"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["category"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -57,10 +62,12 @@ export type DiscourseV1CategoryUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the category
+	 * @displayOptions.show { resource: ["category"], operation: ["update"] }
 	 */
 	categoryId: string | Expression<string>;
 	/**
 	 * New name of the category
+	 * @displayOptions.show { resource: ["category"], operation: ["update"] }
 	 */
 	name: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -72,6 +79,7 @@ export type DiscourseV1GroupCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the group
+	 * @displayOptions.show { resource: ["group"], operation: ["get", "create"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -82,6 +90,7 @@ export type DiscourseV1GroupGetConfig = {
 	operation: 'get';
 	/**
 	 * Name of the group
+	 * @displayOptions.show { resource: ["group"], operation: ["get", "create"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -92,11 +101,13 @@ export type DiscourseV1GroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -108,10 +119,12 @@ export type DiscourseV1GroupUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the group to update
+	 * @displayOptions.show { resource: ["group"], operation: ["update"] }
 	 */
 	groupId: string | Expression<string>;
 	/**
 	 * New name of the group
+	 * @displayOptions.show { resource: ["group"], operation: ["update"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -122,10 +135,12 @@ export type DiscourseV1PostCreateConfig = {
 	operation: 'create';
 	/**
 	 * Title of the post
+	 * @displayOptions.show { resource: ["post"], operation: ["create"] }
 	 */
 	title?: string | Expression<string>;
 	/**
 	 * Content of the post
+	 * @displayOptions.show { resource: ["post"], operation: ["create"] }
 	 */
 	content: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -137,6 +152,7 @@ export type DiscourseV1PostGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the post
+	 * @displayOptions.show { resource: ["post"], operation: ["get"] }
 	 */
 	postId: string | Expression<string>;
 };
@@ -147,11 +163,13 @@ export type DiscourseV1PostGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["post"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["post"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -163,10 +181,12 @@ export type DiscourseV1PostUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the post
+	 * @displayOptions.show { resource: ["post"], operation: ["update"] }
 	 */
 	postId: string | Expression<string>;
 	/**
 	 * Content of the post. HTML is supported.
+	 * @displayOptions.show { resource: ["post"], operation: ["update"] }
 	 */
 	content: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -178,18 +198,22 @@ export type DiscourseV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the user to create
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Email of the user to create
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	/**
 	 * The username of the user to create
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	username: string | Expression<string>;
 	/**
 	 * The password of the user to create
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	password: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -201,15 +225,18 @@ export type DiscourseV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * What to search by
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 * @default username
 	 */
 	by: 'username' | 'externalId' | Expression<string>;
 	/**
 	 * The username of the user to return
+	 * @displayOptions.show { resource: ["user"], operation: ["get"], by: ["username"] }
 	 */
 	username: string | Expression<string>;
 	/**
 	 * Discourse SSO external ID
+	 * @displayOptions.show { resource: ["user"], operation: ["get"], by: ["externalId"] }
 	 */
 	externalId: string | Expression<string>;
 };
@@ -220,15 +247,18 @@ export type DiscourseV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * User flags to search for
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 */
 	flag?: 'active' | 'blocked' | 'new' | 'staff' | 'suspect' | 'suspended' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -241,10 +271,12 @@ export type DiscourseV1UserGroupAddConfig = {
 	operation: 'add';
 	/**
 	 * Usernames to add to group. Multiples can be defined separated by comma.
+	 * @displayOptions.show { resource: ["userGroup"], operation: ["add"] }
 	 */
 	usernames: string | Expression<string>;
 	/**
 	 * ID of the group
+	 * @displayOptions.show { resource: ["userGroup"], operation: ["add"] }
 	 */
 	groupId: string | Expression<string>;
 };
@@ -255,10 +287,12 @@ export type DiscourseV1UserGroupRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * Usernames to remove from group. Multiples can be defined separated by comma.
+	 * @displayOptions.show { resource: ["userGroup"], operation: ["remove"] }
 	 */
 	usernames: string | Expression<string>;
 	/**
 	 * ID of the group to remove
+	 * @displayOptions.show { resource: ["userGroup"], operation: ["remove"] }
 	 */
 	groupId: string | Expression<string>;
 };

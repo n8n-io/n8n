@@ -21,14 +21,17 @@ export type Msg91V1SmsSendConfig = {
 	operation: 'send';
 	/**
 	 * The number from which to send the message
+	 * @displayOptions.show { operation: ["send"], resource: ["sms"] }
 	 */
 	from: string | Expression<string>;
 	/**
 	 * The number, with coutry code, to which to send the message
+	 * @displayOptions.show { operation: ["send"], resource: ["sms"] }
 	 */
 	to: string | Expression<string>;
 	/**
 	 * The message to send
+	 * @displayOptions.show { operation: ["send"], resource: ["sms"] }
 	 */
 	message: string | Expression<string>;
 };

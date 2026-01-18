@@ -20,6 +20,7 @@ export type BitwardenV1CollectionDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The identifier of the collection
+	 * @displayOptions.show { resource: ["collection"], operation: ["delete", "get", "update"] }
 	 */
 	collectionId: string | Expression<string>;
 };
@@ -29,6 +30,7 @@ export type BitwardenV1CollectionGetConfig = {
 	operation: 'get';
 	/**
 	 * The identifier of the collection
+	 * @displayOptions.show { resource: ["collection"], operation: ["delete", "get", "update"] }
 	 */
 	collectionId: string | Expression<string>;
 };
@@ -38,11 +40,13 @@ export type BitwardenV1CollectionGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["collection"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["collection"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -53,6 +57,7 @@ export type BitwardenV1CollectionUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The identifier of the collection
+	 * @displayOptions.show { resource: ["collection"], operation: ["delete", "get", "update"] }
 	 */
 	collectionId: string | Expression<string>;
 	updateFields: Record<string, unknown>;
@@ -63,11 +68,13 @@ export type BitwardenV1EventGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["event"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["event"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -79,10 +86,12 @@ export type BitwardenV1GroupCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the group to create
+	 * @displayOptions.show { resource: ["group"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Whether to allow this group to access all collections within the organization, instead of only its associated collections. If set to true, this option overrides any collection assignments.
+	 * @displayOptions.show { resource: ["group"], operation: ["create"] }
 	 * @default false
 	 */
 	accessAll?: boolean | Expression<boolean>;
@@ -94,6 +103,7 @@ export type BitwardenV1GroupDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The identifier of the group
+	 * @displayOptions.show { resource: ["group"], operation: ["delete", "get", "getMembers", "update", "updateMembers"] }
 	 */
 	groupId: string | Expression<string>;
 };
@@ -103,6 +113,7 @@ export type BitwardenV1GroupGetConfig = {
 	operation: 'get';
 	/**
 	 * The identifier of the group
+	 * @displayOptions.show { resource: ["group"], operation: ["delete", "get", "getMembers", "update", "updateMembers"] }
 	 */
 	groupId: string | Expression<string>;
 };
@@ -112,11 +123,13 @@ export type BitwardenV1GroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -127,6 +140,7 @@ export type BitwardenV1GroupGetMembersConfig = {
 	operation: 'getMembers';
 	/**
 	 * The identifier of the group
+	 * @displayOptions.show { resource: ["group"], operation: ["delete", "get", "getMembers", "update", "updateMembers"] }
 	 */
 	groupId: string | Expression<string>;
 };
@@ -136,6 +150,7 @@ export type BitwardenV1GroupUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The identifier of the group
+	 * @displayOptions.show { resource: ["group"], operation: ["delete", "get", "getMembers", "update", "updateMembers"] }
 	 */
 	groupId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -146,10 +161,12 @@ export type BitwardenV1GroupUpdateMembersConfig = {
 	operation: 'updateMembers';
 	/**
 	 * The identifier of the group
+	 * @displayOptions.show { resource: ["group"], operation: ["delete", "get", "getMembers", "update", "updateMembers"] }
 	 */
 	groupId: string | Expression<string>;
 	/**
 	 * Comma-separated list of IDs of members to set in a group
+	 * @displayOptions.show { resource: ["group"], operation: ["updateMembers"] }
 	 */
 	memberIds?: string | Expression<string>;
 };
@@ -160,6 +177,7 @@ export type BitwardenV1MemberCreateConfig = {
 	type: 0 | 1 | 2 | 3 | Expression<number>;
 	/**
 	 * The email of the member to update
+	 * @displayOptions.show { resource: ["member"], operation: ["create"] }
 	 */
 	email?: string | Expression<string>;
 	accessAll?: boolean | Expression<boolean>;
@@ -171,6 +189,7 @@ export type BitwardenV1MemberDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The identifier of the member
+	 * @displayOptions.show { resource: ["member"], operation: ["delete", "get", "getGroups", "update", "updateGroups"] }
 	 */
 	memberId: string | Expression<string>;
 };
@@ -180,6 +199,7 @@ export type BitwardenV1MemberGetConfig = {
 	operation: 'get';
 	/**
 	 * The identifier of the member
+	 * @displayOptions.show { resource: ["member"], operation: ["delete", "get", "getGroups", "update", "updateGroups"] }
 	 */
 	memberId: string | Expression<string>;
 };
@@ -189,6 +209,7 @@ export type BitwardenV1MemberGetGroupsConfig = {
 	operation: 'getGroups';
 	/**
 	 * The identifier of the member
+	 * @displayOptions.show { resource: ["member"], operation: ["delete", "get", "getGroups", "update", "updateGroups"] }
 	 */
 	memberId: string | Expression<string>;
 };
@@ -198,11 +219,13 @@ export type BitwardenV1MemberGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["member"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["member"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -213,6 +236,7 @@ export type BitwardenV1MemberUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The identifier of the member
+	 * @displayOptions.show { resource: ["member"], operation: ["delete", "get", "getGroups", "update", "updateGroups"] }
 	 */
 	memberId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -223,10 +247,12 @@ export type BitwardenV1MemberUpdateGroupsConfig = {
 	operation: 'updateGroups';
 	/**
 	 * The identifier of the member
+	 * @displayOptions.show { resource: ["member"], operation: ["delete", "get", "getGroups", "update", "updateGroups"] }
 	 */
 	memberId: string | Expression<string>;
 	/**
 	 * Comma-separated list of IDs of groups to set for a member
+	 * @displayOptions.show { resource: ["member"], operation: ["updateGroups"] }
 	 */
 	groupIds?: string | Expression<string>;
 };

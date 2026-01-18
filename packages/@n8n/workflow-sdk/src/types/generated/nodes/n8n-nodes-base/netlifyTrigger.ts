@@ -28,10 +28,12 @@ export interface NetlifyTriggerV1Params {
 		| Expression<string>;
 	/**
 	 * Select a form. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { event: ["submissionCreated"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { event: ["submissionCreated"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;

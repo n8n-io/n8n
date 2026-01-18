@@ -23,14 +23,17 @@ export type SalesmateV1ActivityCreateConfig = {
 	title: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["activity"], operation: ["create"] }
 	 */
 	owner: string | Expression<string>;
 	/**
 	 * This field displays activity type such as call, meeting etc
+	 * @displayOptions.show { resource: ["activity"], operation: ["create"] }
 	 */
 	type: string | Expression<string>;
 	/**
 	 * Whether the data should include the fields details
+	 * @displayOptions.show { resource: ["activity"], operation: ["create"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
@@ -43,6 +46,7 @@ export type SalesmateV1ActivityDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * If more than one activity add them separated by ,
+	 * @displayOptions.show { resource: ["activity"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -54,6 +58,7 @@ export type SalesmateV1ActivityGetConfig = {
 	id: string | Expression<string>;
 	/**
 	 * Whether the data should include the fields details
+	 * @displayOptions.show { resource: ["activity"], operation: ["get"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
@@ -65,11 +70,13 @@ export type SalesmateV1ActivityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["activity"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["activity"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -78,10 +85,22 @@ export type SalesmateV1ActivityGetAllConfig = {
 	filtersJson?: IDataObject | string | Expression<string>;
 	filters?: {
 		filtersUi?: {
+			/** Operator
+			 * @default AND
+			 */
 			operator?: 'AND' | 'OR' | Expression<string>;
+			/** Conditions
+			 * @default {}
+			 */
 			conditions?: {
 				conditionsUi?: Array<{
+					/** Field
+					 * @default title
+					 */
 					field?: 'title' | 'tags' | Expression<string>;
+					/** Value of the property to set
+					 * @default EQUALS
+					 */
 					condition?:
 						| 'EQUALS'
 						| 'NOT_EQUALS'
@@ -92,6 +111,8 @@ export type SalesmateV1ActivityGetAllConfig = {
 						| 'STARTS_WITH'
 						| 'ENDS_WITH'
 						| Expression<string>;
+					/** Value
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -106,6 +127,7 @@ export type SalesmateV1ActivityUpdateConfig = {
 	id: string | Expression<string>;
 	/**
 	 * Whether the data should include the fields details
+	 * @displayOptions.show { resource: ["activity"], operation: ["update"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
@@ -119,10 +141,12 @@ export type SalesmateV1CompanyCreateConfig = {
 	name: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["company"], operation: ["create"] }
 	 */
 	owner: string | Expression<string>;
 	/**
 	 * Whether the data should include the fields details
+	 * @displayOptions.show { resource: ["company"], operation: ["create"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
@@ -135,6 +159,7 @@ export type SalesmateV1CompanyDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * If more than one company add them separated by ,
+	 * @displayOptions.show { resource: ["company"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -146,6 +171,7 @@ export type SalesmateV1CompanyGetConfig = {
 	id: string | Expression<string>;
 	/**
 	 * Whether the data should include the fields details
+	 * @displayOptions.show { resource: ["company"], operation: ["get"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
@@ -157,11 +183,13 @@ export type SalesmateV1CompanyGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -170,10 +198,22 @@ export type SalesmateV1CompanyGetAllConfig = {
 	filtersJson?: IDataObject | string | Expression<string>;
 	filters?: {
 		filtersUi?: {
+			/** Operator
+			 * @default AND
+			 */
 			operator?: 'AND' | 'OR' | Expression<string>;
+			/** Conditions
+			 * @default {}
+			 */
 			conditions?: {
 				conditionsUi?: Array<{
+					/** Field
+					 * @default name
+					 */
 					field?: 'name' | 'email' | 'phone' | Expression<string>;
+					/** Value of the property to set
+					 * @default EQUALS
+					 */
 					condition?:
 						| 'EQUALS'
 						| 'NOT_EQUALS'
@@ -184,6 +224,8 @@ export type SalesmateV1CompanyGetAllConfig = {
 						| 'STARTS_WITH'
 						| 'ENDS_WITH'
 						| Expression<string>;
+					/** Value
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -198,6 +240,7 @@ export type SalesmateV1CompanyUpdateConfig = {
 	id: string | Expression<string>;
 	/**
 	 * Whether the data should include the fields details
+	 * @displayOptions.show { resource: ["company"], operation: ["update"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
@@ -211,10 +254,12 @@ export type SalesmateV1DealCreateConfig = {
 	title: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"] }
 	 */
 	owner: string | Expression<string>;
 	/**
 	 * Primary contact for the deal. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"] }
 	 */
 	primaryContact: string | Expression<string>;
 	pipeline: 'Sales' | Expression<string>;
@@ -229,6 +274,7 @@ export type SalesmateV1DealCreateConfig = {
 	currency: string | Expression<string>;
 	/**
 	 * Whether the data should include the fields details
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
@@ -241,6 +287,7 @@ export type SalesmateV1DealDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * If more than one deal add them separated by ,
+	 * @displayOptions.show { resource: ["deal"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -252,6 +299,7 @@ export type SalesmateV1DealGetConfig = {
 	id: string | Expression<string>;
 	/**
 	 * Whether the data should include the fields details
+	 * @displayOptions.show { resource: ["deal"], operation: ["get"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
@@ -263,11 +311,13 @@ export type SalesmateV1DealGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["deal"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["deal"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -276,10 +326,22 @@ export type SalesmateV1DealGetAllConfig = {
 	filtersJson?: IDataObject | string | Expression<string>;
 	filters?: {
 		filtersUi?: {
+			/** Operator
+			 * @default AND
+			 */
 			operator?: 'AND' | 'OR' | Expression<string>;
+			/** Conditions
+			 * @default {}
+			 */
 			conditions?: {
 				conditionsUi?: Array<{
+					/** Field
+					 * @default title
+					 */
 					field?: 'title' | 'tags' | 'lastCommunicationMode' | Expression<string>;
+					/** Value of the property to set
+					 * @default EQUALS
+					 */
 					condition?:
 						| 'EQUALS'
 						| 'NOT_EQUALS'
@@ -290,6 +352,8 @@ export type SalesmateV1DealGetAllConfig = {
 						| 'STARTS_WITH'
 						| 'ENDS_WITH'
 						| Expression<string>;
+					/** Value
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -304,6 +368,7 @@ export type SalesmateV1DealUpdateConfig = {
 	id: string | Expression<string>;
 	/**
 	 * Whether the data should include the fields details
+	 * @displayOptions.show { resource: ["deal"], operation: ["update"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;

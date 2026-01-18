@@ -20,11 +20,13 @@ export type EmeliaV1CampaignAddContactConfig = {
 	operation: 'addContact';
 	/**
 	 * The ID of the campaign to add the contact to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["campaign"], operation: ["addContact"] }
 	 * @default []
 	 */
 	campaignId: string | Expression<string>;
 	/**
 	 * The email of the contact to add to the campaign
+	 * @displayOptions.show { resource: ["campaign"], operation: ["addContact"] }
 	 */
 	contactEmail: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -35,6 +37,7 @@ export type EmeliaV1CampaignCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the campaign to create
+	 * @displayOptions.show { resource: ["campaign"], operation: ["create"] }
 	 */
 	campaignName: string | Expression<string>;
 };
@@ -44,10 +47,12 @@ export type EmeliaV1CampaignDuplicateConfig = {
 	operation: 'duplicate';
 	/**
 	 * The ID of the campaign to duplicate. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["campaign"], operation: ["duplicate"] }
 	 */
 	campaignId: string | Expression<string>;
 	/**
 	 * The name of the new campaign to create
+	 * @displayOptions.show { resource: ["campaign"], operation: ["duplicate"] }
 	 */
 	campaignName: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -58,6 +63,7 @@ export type EmeliaV1CampaignGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the campaign to retrieve
+	 * @displayOptions.show { resource: ["campaign"], operation: ["get"] }
 	 */
 	campaignId: string | Expression<string>;
 };
@@ -67,11 +73,13 @@ export type EmeliaV1CampaignGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -82,6 +90,7 @@ export type EmeliaV1CampaignPauseConfig = {
 	operation: 'pause';
 	/**
 	 * The ID of the campaign to pause. The campaign must be in RUNNING mode.
+	 * @displayOptions.show { resource: ["campaign"], operation: ["pause"] }
 	 */
 	campaignId: string | Expression<string>;
 };
@@ -91,6 +100,7 @@ export type EmeliaV1CampaignStartConfig = {
 	operation: 'start';
 	/**
 	 * The ID of the campaign to start. Email provider and contacts must be set.
+	 * @displayOptions.show { resource: ["campaign"], operation: ["start"] }
 	 */
 	campaignId: string | Expression<string>;
 };
@@ -100,11 +110,13 @@ export type EmeliaV1ContactListAddConfig = {
 	operation: 'add';
 	/**
 	 * The ID of the contact list to add the contact to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["contactList"], operation: ["add"] }
 	 * @default []
 	 */
 	contactListId: string | Expression<string>;
 	/**
 	 * The email of the contact to add to the contact list
+	 * @displayOptions.show { resource: ["contactList"], operation: ["add"] }
 	 */
 	contactEmail: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -115,11 +127,13 @@ export type EmeliaV1ContactListGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contactList"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contactList"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

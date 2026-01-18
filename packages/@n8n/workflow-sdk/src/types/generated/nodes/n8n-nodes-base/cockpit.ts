@@ -22,23 +22,34 @@ export type CockpitV1CollectionCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the collection to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["collection"] }
 	 */
 	collection: string | Expression<string>;
 	/**
 	 * Whether new entry fields should be set via the value-key pair UI or JSON
+	 * @displayOptions.show { resource: ["collection"], operation: ["create", "update"] }
 	 * @default false
 	 */
 	jsonDataFields?: boolean | Expression<boolean>;
 	/**
 	 * Entry data to send as JSON
+	 * @displayOptions.show { jsonDataFields: [true], resource: ["collection"], operation: ["create", "update"] }
 	 */
 	dataFieldsJson?: IDataObject | string | Expression<string>;
 	/**
 	 * Entry data to send
+	 * @displayOptions.show { jsonDataFields: [false], resource: ["collection"], operation: ["create", "update"] }
 	 * @default {}
 	 */
 	dataFieldsUi?: {
-		field?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		field?: Array<{
+			/** Name of the field
+			 */
+			name?: string | Expression<string>;
+			/** Value of the field
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -48,15 +59,18 @@ export type CockpitV1CollectionGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Name of the collection to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["collection"] }
 	 */
 	collection: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["collection"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["collection"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -69,24 +83,35 @@ export type CockpitV1CollectionUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Name of the collection to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["collection"] }
 	 */
 	collection: string | Expression<string>;
 	id: string | Expression<string>;
 	/**
 	 * Whether new entry fields should be set via the value-key pair UI or JSON
+	 * @displayOptions.show { resource: ["collection"], operation: ["create", "update"] }
 	 * @default false
 	 */
 	jsonDataFields?: boolean | Expression<boolean>;
 	/**
 	 * Entry data to send as JSON
+	 * @displayOptions.show { jsonDataFields: [true], resource: ["collection"], operation: ["create", "update"] }
 	 */
 	dataFieldsJson?: IDataObject | string | Expression<string>;
 	/**
 	 * Entry data to send
+	 * @displayOptions.show { jsonDataFields: [false], resource: ["collection"], operation: ["create", "update"] }
 	 * @default {}
 	 */
 	dataFieldsUi?: {
-		field?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		field?: Array<{
+			/** Name of the field
+			 */
+			name?: string | Expression<string>;
+			/** Value of the field
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -96,23 +121,34 @@ export type CockpitV1FormSubmitConfig = {
 	operation: 'submit';
 	/**
 	 * Name of the form to operate on
+	 * @displayOptions.show { resource: ["form"] }
 	 */
 	form: string | Expression<string>;
 	/**
 	 * Whether form fields should be set via the value-key pair UI or JSON
+	 * @displayOptions.show { resource: ["form"], operation: ["submit"] }
 	 * @default false
 	 */
 	jsonDataFields?: boolean | Expression<boolean>;
 	/**
 	 * Form data to send as JSON
+	 * @displayOptions.show { jsonDataFields: [true], resource: ["form"], operation: ["submit"] }
 	 */
 	dataFieldsJson?: IDataObject | string | Expression<string>;
 	/**
 	 * Form data to send
+	 * @displayOptions.show { jsonDataFields: [false], resource: ["form"], operation: ["submit"] }
 	 * @default {}
 	 */
 	dataFieldsUi?: {
-		field?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		field?: Array<{
+			/** Name of the field
+			 */
+			name?: string | Expression<string>;
+			/** Value of the field
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -122,6 +158,7 @@ export type CockpitV1SingletonGetConfig = {
 	operation: 'get';
 	/**
 	 * Name of the singleton to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["singleton"] }
 	 */
 	singleton: string | Expression<string>;
 };

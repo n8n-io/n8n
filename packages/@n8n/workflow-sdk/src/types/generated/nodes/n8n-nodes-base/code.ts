@@ -21,10 +21,12 @@ export type CodeV2RunOnceForAllItemsConfig = {
 	language?: 'javaScript' | 'pythonNative' | Expression<string>;
 	/**
 	 * JavaScript code to execute.&lt;br&gt;&lt;br&gt;Tip: You can use luxon vars like &lt;code&gt;$today&lt;/code&gt; for dates and &lt;code&gt;$jmespath&lt;/code&gt; for querying JSON structures. &lt;a href="https://docs.n8n.io/nodes/n8n-nodes-base.function"&gt;Learn more&lt;/a&gt;.
+	 * @displayOptions.show { @version: [1], mode: ["runOnceForAllItems"] }
 	 */
 	jsCode?: string | Expression<string>;
 	/**
 	 * Python code to execute.&lt;br&gt;&lt;br&gt;Tip: You can use built-in methods and variables like &lt;code&gt;_today&lt;/code&gt; for dates and &lt;code&gt;_jmespath&lt;/code&gt; for querying JSON structures. &lt;a href="https://docs.n8n.io/code/builtin/"&gt;Learn more&lt;/a&gt;.
+	 * @displayOptions.show { language: ["pythonNative"], mode: ["runOnceForAllItems"] }
 	 */
 	pythonCode?: string | Expression<string>;
 };
@@ -35,10 +37,12 @@ export type CodeV2RunOnceForEachItemConfig = {
 	language?: 'javaScript' | 'pythonNative' | Expression<string>;
 	/**
 	 * JavaScript code to execute.&lt;br&gt;&lt;br&gt;Tip: You can use luxon vars like &lt;code&gt;$today&lt;/code&gt; for dates and &lt;code&gt;$jmespath&lt;/code&gt; for querying JSON structures. &lt;a href="https://docs.n8n.io/nodes/n8n-nodes-base.function"&gt;Learn more&lt;/a&gt;.
+	 * @displayOptions.show { @version: [1], mode: ["runOnceForEachItem"] }
 	 */
 	jsCode?: string | Expression<string>;
 	/**
 	 * Python code to execute.&lt;br&gt;&lt;br&gt;Tip: You can use built-in methods and variables like &lt;code&gt;_today&lt;/code&gt; for dates and &lt;code&gt;_jmespath&lt;/code&gt; for querying JSON structures. &lt;a href="https://docs.n8n.io/code/builtin/"&gt;Learn more&lt;/a&gt;.
+	 * @displayOptions.show { language: ["pythonNative"], mode: ["runOnceForEachItem"] }
 	 */
 	pythonCode?: string | Expression<string>;
 };

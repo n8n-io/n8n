@@ -29,6 +29,7 @@ export type ZammadV1GroupDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Group to delete. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["group"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -39,6 +40,7 @@ export type ZammadV1GroupGetConfig = {
 	operation: 'get';
 	/**
 	 * Group to retrieve. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["group"], operation: ["get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -49,11 +51,13 @@ export type ZammadV1GroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["group"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -65,6 +69,7 @@ export type ZammadV1GroupUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Group to update. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["group"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -84,6 +89,7 @@ export type ZammadV1OrganizationDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Organization to delete. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["organization"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -94,6 +100,7 @@ export type ZammadV1OrganizationGetConfig = {
 	operation: 'get';
 	/**
 	 * Organization to retrieve. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["organization"], operation: ["get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -104,11 +111,13 @@ export type ZammadV1OrganizationGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["organization"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["organization"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -120,6 +129,7 @@ export type ZammadV1OrganizationUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Organization to update. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["organization"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -131,23 +141,41 @@ export type ZammadV1TicketCreateConfig = {
 	operation: 'create';
 	/**
 	 * Title of the ticket to create
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	title: string | Expression<string>;
 	/**
 	 * Group that will own the ticket to create. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	group: string | Expression<string>;
 	/**
 	 * Email address of the customer concerned in the ticket to create. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	customer: string | Expression<string>;
 	article: {
 		articleDetails?: {
+			/** Subject
+			 */
 			subject?: string | Expression<string>;
+			/** Body
+			 */
 			body?: string | Expression<string>;
+			/** Visibility
+			 * @default internal
+			 */
 			visibility?: 'external' | 'internal' | Expression<string>;
+			/** Sender
+			 * @default Agent
+			 */
 			sender?: 'Agent' | 'Customer' | 'System' | Expression<string>;
+			/** Article Type
+			 * @default note
+			 */
 			type?: 'chat' | 'email' | 'fax' | 'note' | 'phone' | 'sms' | Expression<string>;
+			/** Reply To
+			 */
 			reply_to?: string | Expression<string>;
 		};
 	};
@@ -160,6 +188,7 @@ export type ZammadV1TicketDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Ticket to delete. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["ticket"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -170,6 +199,7 @@ export type ZammadV1TicketGetConfig = {
 	operation: 'get';
 	/**
 	 * Ticket to retrieve. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["ticket"], operation: ["get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -180,11 +210,13 @@ export type ZammadV1TicketGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -205,6 +237,7 @@ export type ZammadV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * User to delete. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -215,6 +248,7 @@ export type ZammadV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * User to retrieve. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -225,11 +259,13 @@ export type ZammadV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -248,6 +284,7 @@ export type ZammadV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * User to update. Specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

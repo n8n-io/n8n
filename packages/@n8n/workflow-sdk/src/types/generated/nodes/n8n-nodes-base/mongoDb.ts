@@ -25,16 +25,19 @@ export type MongoDbV12SearchIndexesCreateSearchIndexConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * The name of the search index
+	 * @displayOptions.show { operation: ["createSearchIndex", "dropSearchIndex", "updateSearchIndex"], resource: ["searchIndexes"] }
 	 */
 	indexNameRequired: string | Expression<string>;
 	/**
 	 * The search index definition
 	 * @hint Learn more about search index definitions &lt;a href="https://www.mongodb.com/docs/atlas/atlas-search/index-definitions/"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { operation: ["createSearchIndex", "updateSearchIndex"], resource: ["searchIndexes"] }
 	 * @default {}
 	 */
 	indexDefinition: IDataObject | string | Expression<string>;
 	/**
 	 * The search index index type
+	 * @displayOptions.show { operation: ["createSearchIndex"], resource: ["searchIndexes"] }
 	 * @default vectorSearch
 	 */
 	indexType: 'vectorSearch' | 'search' | Expression<string>;
@@ -49,6 +52,7 @@ export type MongoDbV12SearchIndexesDropSearchIndexConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * The name of the search index
+	 * @displayOptions.show { operation: ["createSearchIndex", "dropSearchIndex", "updateSearchIndex"], resource: ["searchIndexes"] }
 	 */
 	indexNameRequired: string | Expression<string>;
 };
@@ -62,6 +66,7 @@ export type MongoDbV12SearchIndexesListSearchIndexesConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * If provided, only lists indexes with the specified name
+	 * @displayOptions.show { operation: ["listSearchIndexes"], resource: ["searchIndexes"] }
 	 */
 	indexName?: string | Expression<string>;
 };
@@ -75,11 +80,13 @@ export type MongoDbV12SearchIndexesUpdateSearchIndexConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * The name of the search index
+	 * @displayOptions.show { operation: ["createSearchIndex", "dropSearchIndex", "updateSearchIndex"], resource: ["searchIndexes"] }
 	 */
 	indexNameRequired: string | Expression<string>;
 	/**
 	 * The search index definition
 	 * @hint Learn more about search index definitions &lt;a href="https://www.mongodb.com/docs/atlas/atlas-search/index-definitions/"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { operation: ["createSearchIndex", "updateSearchIndex"], resource: ["searchIndexes"] }
 	 * @default {}
 	 */
 	indexDefinition: IDataObject | string | Expression<string>;
@@ -96,6 +103,7 @@ export type MongoDbV12DocumentAggregateConfig = {
 	/**
 	 * MongoDB aggregation pipeline query in JSON format
 	 * @hint Learn more about aggregation pipeline &lt;a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { operation: ["aggregate"], resource: ["document"] }
 	 */
 	query: IDataObject | string | Expression<string>;
 };
@@ -110,6 +118,7 @@ export type MongoDbV12DocumentDeleteConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * MongoDB Delete query
+	 * @displayOptions.show { operation: ["delete"], resource: ["document"] }
 	 * @default {}
 	 */
 	query: IDataObject | string | Expression<string>;
@@ -125,11 +134,13 @@ export type MongoDbV12DocumentFindConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * Add query options
+	 * @displayOptions.show { operation: ["find"], resource: ["document"] }
 	 * @default {}
 	 */
 	options?: Record<string, unknown>;
 	/**
 	 * MongoDB Find query
+	 * @displayOptions.show { operation: ["find"], resource: ["document"] }
 	 * @default {}
 	 */
 	query: IDataObject | string | Expression<string>;
@@ -145,15 +156,18 @@ export type MongoDbV12DocumentFindOneAndReplaceConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * Name of the property which decides which rows in the database should be updated. Normally that would be "id".
+	 * @displayOptions.show { operation: ["update", "findOneAndReplace", "findOneAndUpdate"], resource: ["document"] }
 	 * @default id
 	 */
 	updateKey: string | Expression<string>;
 	/**
 	 * Comma-separated list of the fields to be included into the new document
+	 * @displayOptions.show { operation: ["update", "findOneAndReplace", "findOneAndUpdate"], resource: ["document"] }
 	 */
 	fields?: string | Expression<string>;
 	/**
 	 * Whether to perform an insert if no documents match the update key
+	 * @displayOptions.show { operation: ["update", "findOneAndReplace", "findOneAndUpdate"], resource: ["document"] }
 	 * @default false
 	 */
 	upsert?: boolean | Expression<boolean>;
@@ -170,15 +184,18 @@ export type MongoDbV12DocumentFindOneAndUpdateConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * Name of the property which decides which rows in the database should be updated. Normally that would be "id".
+	 * @displayOptions.show { operation: ["update", "findOneAndReplace", "findOneAndUpdate"], resource: ["document"] }
 	 * @default id
 	 */
 	updateKey: string | Expression<string>;
 	/**
 	 * Comma-separated list of the fields to be included into the new document
+	 * @displayOptions.show { operation: ["update", "findOneAndReplace", "findOneAndUpdate"], resource: ["document"] }
 	 */
 	fields?: string | Expression<string>;
 	/**
 	 * Whether to perform an insert if no documents match the update key
+	 * @displayOptions.show { operation: ["update", "findOneAndReplace", "findOneAndUpdate"], resource: ["document"] }
 	 * @default false
 	 */
 	upsert?: boolean | Expression<boolean>;
@@ -195,6 +212,7 @@ export type MongoDbV12DocumentInsertConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * Comma-separated list of the fields to be included into the new document
+	 * @displayOptions.show { operation: ["insert"], resource: ["document"] }
 	 */
 	fields?: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -210,15 +228,18 @@ export type MongoDbV12DocumentUpdateConfig = {
 	collection: string | Expression<string>;
 	/**
 	 * Name of the property which decides which rows in the database should be updated. Normally that would be "id".
+	 * @displayOptions.show { operation: ["update", "findOneAndReplace", "findOneAndUpdate"], resource: ["document"] }
 	 * @default id
 	 */
 	updateKey: string | Expression<string>;
 	/**
 	 * Comma-separated list of the fields to be included into the new document
+	 * @displayOptions.show { operation: ["update", "findOneAndReplace", "findOneAndUpdate"], resource: ["document"] }
 	 */
 	fields?: string | Expression<string>;
 	/**
 	 * Whether to perform an insert if no documents match the update key
+	 * @displayOptions.show { operation: ["update", "findOneAndReplace", "findOneAndUpdate"], resource: ["document"] }
 	 * @default false
 	 */
 	upsert?: boolean | Expression<boolean>;

@@ -21,6 +21,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 export interface EvaluationTriggerV47Params {
 	/**
 	 * Where to get the test dataset from
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":4.7}}] }
 	 * @default dataTable
 	 */
 	source?: 'dataTable' | 'googleSheets' | Expression<string>;
@@ -35,29 +36,46 @@ export interface EvaluationTriggerV47Params {
 	limitRows?: boolean | Expression<boolean>;
 	/**
 	 * Maximum number of rows to process
+	 * @displayOptions.show { limitRows: [true] }
 	 * @default 10
 	 */
 	maxRows?: number | Expression<number>;
 	filtersUI?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			lookupColumn?: string | Expression<string>;
+			/** Value
+			 * @hint The column must have this value to be matched
+			 */
 			lookupValue?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Whether to filter rows to process
+	 * @displayOptions.show { source: ["dataTable"] }
 	 * @default false
 	 */
 	filterRows?: boolean | Expression<boolean>;
 	matchType?: 'anyCondition' | 'allConditions' | Expression<string>;
 	/**
 	 * Filter to decide which rows get
+	 * @displayOptions.show { filterRows: [true] }
 	 * @default {}
 	 */
 	filters?: {
 		conditions?: Array<{
+			/** Choose from the list, or specify using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @default id
+			 */
 			keyName?: string | Expression<string>;
+			/** Condition
+			 * @default eq
+			 */
 			condition?: string | Expression<string>;
+			/** Value
+			 * @displayOptions.hide { condition: ["isEmpty", "isNotEmpty", "isTrue", "isFalse"] }
+			 */
 			keyValue?: string | Expression<string>;
 		}>;
 	};

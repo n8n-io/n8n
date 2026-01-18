@@ -21,14 +21,17 @@ export type CoinGeckoV1CoinCandlestickConfig = {
 	operation: 'candlestick';
 	/**
 	 * The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["candlestick"], resource: ["coin"] }
 	 */
 	baseCurrency: string | Expression<string>;
 	/**
 	 * The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["candlestick", "marketChart"], resource: ["coin"] }
 	 */
 	quoteCurrency: string | Expression<string>;
 	/**
 	 * Return data for this many days in the past from now
+	 * @displayOptions.show { operation: ["marketChart", "candlestick"], resource: ["coin"] }
 	 */
 	days: '1' | '7' | '14' | '30' | '90' | '180' | '365' | 'max' | Expression<string>;
 };
@@ -39,20 +42,24 @@ export type CoinGeckoV1CoinGetConfig = {
 	operation: 'get';
 	/**
 	 * Search by coin ID or contract address
+	 * @displayOptions.show { operation: ["get", "marketChart", "price"], resource: ["coin"] }
 	 * @default coinId
 	 */
 	searchBy: 'coinId' | 'contractAddress' | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["get"], resource: ["coin"] }
 	 */
 	coinId: string | Expression<string>;
 	/**
 	 * The ID of the platform issuing tokens
+	 * @displayOptions.show { operation: ["get", "marketChart", "price"], resource: ["coin"], searchBy: ["contractAddress"] }
 	 * @default ethereum
 	 */
 	platformId: 'ethereum' | Expression<string>;
 	/**
 	 * Token's contract address
+	 * @displayOptions.show { operation: ["get", "marketChart"], resource: ["coin"], searchBy: ["contractAddress"] }
 	 */
 	contractAddress: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -64,11 +71,13 @@ export type CoinGeckoV1CoinGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll", "market", "ticker"], resource: ["coin"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll", "market", "ticker"], resource: ["coin"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -80,10 +89,12 @@ export type CoinGeckoV1CoinHistoryConfig = {
 	operation: 'history';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["ticker", "history"], resource: ["coin"] }
 	 */
 	coinId: string | Expression<string>;
 	/**
 	 * The date of data snapshot
+	 * @displayOptions.show { operation: ["history"], resource: ["coin"] }
 	 */
 	date: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -95,15 +106,18 @@ export type CoinGeckoV1CoinMarketConfig = {
 	operation: 'market';
 	/**
 	 * The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["market"], resource: ["coin"] }
 	 */
 	baseCurrency: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll", "market", "ticker"], resource: ["coin"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll", "market", "ticker"], resource: ["coin"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -116,28 +130,35 @@ export type CoinGeckoV1CoinMarketChartConfig = {
 	operation: 'marketChart';
 	/**
 	 * Search by coin ID or contract address
+	 * @displayOptions.show { operation: ["get", "marketChart", "price"], resource: ["coin"] }
 	 * @default coinId
 	 */
 	searchBy: 'coinId' | 'contractAddress' | Expression<string>;
 	/**
 	 * The ID of the platform issuing tokens
+	 * @displayOptions.show { operation: ["get", "marketChart", "price"], resource: ["coin"], searchBy: ["contractAddress"] }
 	 * @default ethereum
 	 */
 	platformId: 'ethereum' | Expression<string>;
 	/**
 	 * Token's contract address
+	 * @displayOptions.show { operation: ["get", "marketChart"], resource: ["coin"], searchBy: ["contractAddress"] }
 	 */
 	contractAddress: string | Expression<string>;
 	/**
 	 * The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["marketChart"], resource: ["coin"], searchBy: ["coinId"] }
+	 * @displayOptions.hide { searchBy: ["contractAddress"] }
 	 */
 	baseCurrency: string | Expression<string>;
 	/**
 	 * The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["candlestick", "marketChart"], resource: ["coin"] }
 	 */
 	quoteCurrency: string | Expression<string>;
 	/**
 	 * Return data for this many days in the past from now
+	 * @displayOptions.show { operation: ["marketChart", "candlestick"], resource: ["coin"] }
 	 */
 	days: '1' | '7' | '14' | '30' | '90' | '180' | '365' | 'max' | Expression<string>;
 };
@@ -148,25 +169,30 @@ export type CoinGeckoV1CoinPriceConfig = {
 	operation: 'price';
 	/**
 	 * Search by coin ID or contract address
+	 * @displayOptions.show { operation: ["get", "marketChart", "price"], resource: ["coin"] }
 	 * @default coinId
 	 */
 	searchBy: 'coinId' | 'contractAddress' | Expression<string>;
 	/**
 	 * The first currency in the pair. For BTC:ETH this is BTC. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["price"], resource: ["coin"], searchBy: ["coinId"] }
 	 * @default []
 	 */
 	baseCurrencies: string[];
 	/**
 	 * The ID of the platform issuing tokens
+	 * @displayOptions.show { operation: ["get", "marketChart", "price"], resource: ["coin"], searchBy: ["contractAddress"] }
 	 * @default ethereum
 	 */
 	platformId: 'ethereum' | Expression<string>;
 	/**
 	 * The contract address of tokens, comma-separated
+	 * @displayOptions.show { operation: ["price"], resource: ["coin"], searchBy: ["contractAddress"] }
 	 */
 	contractAddresses: string | Expression<string>;
 	/**
 	 * The second currency in the pair. For BTC:ETH this is ETH. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["price"], resource: ["coin"] }
 	 * @default []
 	 */
 	quoteCurrencies: string[];
@@ -179,15 +205,18 @@ export type CoinGeckoV1CoinTickerConfig = {
 	operation: 'ticker';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["ticker", "history"], resource: ["coin"] }
 	 */
 	coinId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll", "market", "ticker"], resource: ["coin"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll", "market", "ticker"], resource: ["coin"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -200,11 +229,13 @@ export type CoinGeckoV1EventGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["event"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["event"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

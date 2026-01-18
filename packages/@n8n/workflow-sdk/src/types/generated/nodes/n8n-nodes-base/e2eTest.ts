@@ -23,6 +23,7 @@ export interface E2eTestV1Params {
 	fieldId?: string | Expression<string>;
 	/**
 	 * Remote options to load. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["remoteOptions"] }
 	 * @default []
 	 */
 	remoteOptions: string | Expression<string>;

@@ -23,6 +23,7 @@ export type MicrosoftOneDriveV11FileCopyConfig = {
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * Reference to the parent item the copy will be created in &lt;a href="https://docs.microsoft.com/en-us/onedrive/developer/rest-api/resources/itemreference?view=odsp-graph-online"&gt; Details &lt;/a&gt;
+	 * @displayOptions.show { operation: ["copy"], resource: ["file"] }
 	 * @default {}
 	 */
 	parentReference?: Record<string, unknown>;
@@ -34,6 +35,7 @@ export type MicrosoftOneDriveV11FileDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Field ID
+	 * @displayOptions.show { operation: ["delete"], resource: ["file"] }
 	 */
 	fileId?: string | Expression<string>;
 };
@@ -52,6 +54,7 @@ export type MicrosoftOneDriveV11FileGetConfig = {
 	operation: 'get';
 	/**
 	 * Field ID
+	 * @displayOptions.show { operation: ["get"], resource: ["file"] }
 	 */
 	fileId?: string | Expression<string>;
 };
@@ -62,10 +65,12 @@ export type MicrosoftOneDriveV11FileRenameConfig = {
 	operation: 'rename';
 	/**
 	 * ID of the file
+	 * @displayOptions.show { operation: ["rename"], resource: ["file"] }
 	 */
 	itemId?: string | Expression<string>;
 	/**
 	 * New name for file
+	 * @displayOptions.show { operation: ["rename"], resource: ["file"] }
 	 */
 	newName?: string | Expression<string>;
 };
@@ -76,6 +81,7 @@ export type MicrosoftOneDriveV11FileSearchConfig = {
 	operation: 'search';
 	/**
 	 * The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.
+	 * @displayOptions.show { operation: ["search"], resource: ["file"] }
 	 */
 	query?: string | Expression<string>;
 };
@@ -87,10 +93,12 @@ export type MicrosoftOneDriveV11FileShareConfig = {
 	fileId?: string | Expression<string>;
 	/**
 	 * The type of sharing link to create
+	 * @displayOptions.show { operation: ["share"], resource: ["file"] }
 	 */
 	type?: 'view' | 'edit' | 'embed' | Expression<string>;
 	/**
 	 * The type of sharing link to create
+	 * @displayOptions.show { operation: ["share"], resource: ["file"] }
 	 */
 	scope?: 'anonymous' | 'organization' | Expression<string>;
 };
@@ -101,19 +109,23 @@ export type MicrosoftOneDriveV11FileUploadConfig = {
 	operation: 'upload';
 	/**
 	 * The name the file should be saved as
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 */
 	fileName?: string | Expression<string>;
 	/**
 	 * ID of the parent folder that will contain the file
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 */
 	parentId: string | Expression<string>;
 	/**
 	 * Whether the data to upload should be taken from binary field
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 * @default false
 	 */
 	binaryData: boolean | Expression<boolean>;
 	/**
 	 * The text content of the file
+	 * @displayOptions.show { binaryData: [false], operation: ["upload"], resource: ["file"] }
 	 */
 	fileContent: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
@@ -125,6 +137,7 @@ export type MicrosoftOneDriveV11FolderCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name or path of the folder
+	 * @displayOptions.show { operation: ["create"], resource: ["folder"] }
 	 */
 	name: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -150,10 +163,12 @@ export type MicrosoftOneDriveV11FolderRenameConfig = {
 	operation: 'rename';
 	/**
 	 * ID of the folder
+	 * @displayOptions.show { operation: ["rename"], resource: ["folder"] }
 	 */
 	itemId?: string | Expression<string>;
 	/**
 	 * New name for folder
+	 * @displayOptions.show { operation: ["rename"], resource: ["folder"] }
 	 */
 	newName?: string | Expression<string>;
 };
@@ -164,6 +179,7 @@ export type MicrosoftOneDriveV11FolderSearchConfig = {
 	operation: 'search';
 	/**
 	 * The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.
+	 * @displayOptions.show { operation: ["search"], resource: ["folder"] }
 	 */
 	query?: string | Expression<string>;
 };
@@ -174,14 +190,17 @@ export type MicrosoftOneDriveV11FolderShareConfig = {
 	operation: 'share';
 	/**
 	 * File ID
+	 * @displayOptions.show { operation: ["share"], resource: ["folder"] }
 	 */
 	folderId?: string | Expression<string>;
 	/**
 	 * The type of sharing link to create
+	 * @displayOptions.show { operation: ["share"], resource: ["folder"] }
 	 */
 	type?: 'view' | 'edit' | 'embed' | Expression<string>;
 	/**
 	 * The type of sharing link to create
+	 * @displayOptions.show { operation: ["share"], resource: ["folder"] }
 	 */
 	scope?: 'anonymous' | 'organization' | Expression<string>;
 };

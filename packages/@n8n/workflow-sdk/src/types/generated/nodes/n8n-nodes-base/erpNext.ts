@@ -21,11 +21,17 @@ export type ErpNextV1DocumentCreateConfig = {
 	operation: 'create';
 	/**
 	 * DocType you would like to create. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["document"], operation: ["create"] }
 	 */
 	docType: string | Expression<string>;
 	properties: {
 		customProperty?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @default []
+			 */
 			field?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -37,10 +43,12 @@ export type ErpNextV1DocumentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The type of document you would like to delete. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["document"], operation: ["delete"] }
 	 */
 	docType: string | Expression<string>;
 	/**
 	 * The name (ID) of document you would like to get
+	 * @displayOptions.show { resource: ["document"], operation: ["delete"] }
 	 */
 	documentName: string | Expression<string>;
 };
@@ -51,10 +59,12 @@ export type ErpNextV1DocumentGetConfig = {
 	operation: 'get';
 	/**
 	 * The type of document you would like to get. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["document"], operation: ["get"] }
 	 */
 	docType: string | Expression<string>;
 	/**
 	 * The name (ID) of document you would like to get
+	 * @displayOptions.show { resource: ["document"], operation: ["get"] }
 	 */
 	documentName: string | Expression<string>;
 };
@@ -65,15 +75,18 @@ export type ErpNextV1DocumentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * DocType whose documents to retrieve. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["document"], operation: ["getAll"] }
 	 */
 	docType?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["document"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["document"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -86,19 +99,26 @@ export type ErpNextV1DocumentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The type of document you would like to update. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["document"], operation: ["update"] }
 	 */
 	docType: string | Expression<string>;
 	/**
 	 * The name (ID) of document you would like to get
+	 * @displayOptions.show { resource: ["document"], operation: ["update"] }
 	 */
 	documentName: string | Expression<string>;
 	/**
 	 * Properties of request body
+	 * @displayOptions.show { resource: ["document"], operation: ["update"] }
 	 * @default {}
 	 */
 	properties?: {
 		customProperty?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			field?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};

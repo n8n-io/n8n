@@ -27,11 +27,13 @@ export type JiraV1IssueChangelogConfig = {
 	issueKey: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["issue"], operation: ["changelog"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["issue"], operation: ["changelog"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -65,6 +67,7 @@ export type JiraV1IssueGetConfig = {
 	issueKey: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["issue"], operation: ["get"] }
 	 * @default false
 	 */
 	simplifyOutput?: boolean | Expression<boolean>;
@@ -78,11 +81,13 @@ export type JiraV1IssueGetAllConfig = {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["issue"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["issue"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -99,31 +104,62 @@ export type JiraV1IssueNotifyConfig = {
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * The recipients of the email notification for the issue
+	 * @displayOptions.show { resource: ["issue"], operation: ["notify"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	notificationRecipientsUi?: {
 		notificationRecipientsValues?: {
+			/** Whether the notification should be sent to the issue's reporter
+			 * @default false
+			 */
 			reporter?: boolean | Expression<boolean>;
+			/** Whether the notification should be sent to the issue's assignees
+			 * @default false
+			 */
 			assignee?: boolean | Expression<boolean>;
+			/** Whether the notification should be sent to the issue's assignees
+			 * @default false
+			 */
 			watchers?: boolean | Expression<boolean>;
+			/** Whether the notification should be sent to the issue's voters
+			 * @default false
+			 */
 			voters?: boolean | Expression<boolean>;
+			/** List of users to receive the notification. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 * @default []
+			 */
 			users?: string[];
+			/** List of groups to receive the notification. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 * @default []
+			 */
 			groups?: string[];
 		};
 	};
 	/**
 	 * The recipients of the email notification for the issue
+	 * @displayOptions.show { resource: ["issue"], operation: ["notify"], jsonParameters: [true] }
 	 */
 	notificationRecipientsJson?: IDataObject | string | Expression<string>;
 	/**
 	 * Restricts the notifications to users with the specified permissions
+	 * @displayOptions.show { resource: ["issue"], operation: ["notify"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	notificationRecipientsRestrictionsUi?: {
-		notificationRecipientsRestrictionsValues?: { users?: string[]; groups?: string[] };
+		notificationRecipientsRestrictionsValues?: {
+			/** List of users to receive the notification. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 * @default []
+			 */
+			users?: string[];
+			/** List of groups to receive the notification. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 * @default []
+			 */
+			groups?: string[];
+		};
 	};
 	/**
 	 * Restricts the notifications to users with the specified permissions
+	 * @displayOptions.show { resource: ["issue"], operation: ["notify"], jsonParameters: [true] }
 	 */
 	notificationRecipientsRestrictionsJson?: IDataObject | string | Expression<string>;
 };
@@ -162,6 +198,7 @@ export type JiraV1IssueAttachmentGetConfig = {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * The ID of the attachment
+	 * @displayOptions.show { resource: ["issueAttachment"], operation: ["get"] }
 	 */
 	attachmentId: string | Expression<string>;
 	download: boolean | Expression<boolean>;
@@ -176,11 +213,13 @@ export type JiraV1IssueAttachmentGetAllConfig = {
 	issueKey: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["issueAttachment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["issueAttachment"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -195,6 +234,7 @@ export type JiraV1IssueAttachmentRemoveConfig = {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * The ID of the attachment
+	 * @displayOptions.show { resource: ["issueAttachment"], operation: ["remove"] }
 	 */
 	attachmentId: string | Expression<string>;
 };
@@ -206,15 +246,18 @@ export type JiraV1IssueCommentAddConfig = {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * issueComment Key
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["add"] }
 	 */
 	issueKey: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Comment's text
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["add"], jsonParameters: [false] }
 	 */
 	comment?: string | Expression<string>;
 	/**
 	 * The Atlassian Document Format (ADF). Online builder can be found &lt;a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/"&gt;here&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["add"], jsonParameters: [true] }
 	 */
 	commentJson?: IDataObject | string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -227,10 +270,12 @@ export type JiraV1IssueCommentGetConfig = {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * The ID or key of the issue
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["get"] }
 	 */
 	issueKey: string | Expression<string>;
 	/**
 	 * The ID of the comment
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["get"] }
 	 */
 	commentId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -243,15 +288,18 @@ export type JiraV1IssueCommentGetAllConfig = {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * The ID or key of the issue
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["getAll"] }
 	 */
 	issueKey: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -265,10 +313,12 @@ export type JiraV1IssueCommentRemoveConfig = {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * The ID or key of the issue
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["remove"] }
 	 */
 	issueKey: string | Expression<string>;
 	/**
 	 * The ID of the comment
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["remove"] }
 	 */
 	commentId: string | Expression<string>;
 };
@@ -280,19 +330,23 @@ export type JiraV1IssueCommentUpdateConfig = {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * The Issue Comment key
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["update"] }
 	 */
 	issueKey: string | Expression<string>;
 	/**
 	 * The ID of the comment
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["update"] }
 	 */
 	commentId: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Comment's text
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["update"], jsonParameters: [false] }
 	 */
 	comment?: string | Expression<string>;
 	/**
 	 * The Atlassian Document Format (ADF). Online builder can be found &lt;a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/"&gt;here&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["issueComment"], operation: ["update"], jsonParameters: [true] }
 	 */
 	commentJson?: IDataObject | string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -316,6 +370,7 @@ export type JiraV1UserDeleteConfig = {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * Account ID of the user to delete
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 */
 	accountId?: string | Expression<string>;
 };
@@ -327,6 +382,7 @@ export type JiraV1UserGetConfig = {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 	/**
 	 * Account ID of the user to retrieve
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	accountId?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

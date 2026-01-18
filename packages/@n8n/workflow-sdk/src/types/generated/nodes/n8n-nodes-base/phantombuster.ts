@@ -21,6 +21,7 @@ export type PhantombusterV1AgentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["delete"], resource: ["agent"] }
 	 */
 	agentId: string | Expression<string>;
 };
@@ -38,11 +39,13 @@ export type PhantombusterV1AgentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["agent"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["agent"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;
@@ -54,10 +57,12 @@ export type PhantombusterV1AgentGetOutputConfig = {
 	operation: 'getOutput';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getOutput"], resource: ["agent"] }
 	 */
 	agentId: string | Expression<string>;
 	/**
 	 * By default the outpout is presented as string. If this option gets activated, it will resolve the data automatically.
+	 * @displayOptions.show { operation: ["getOutput"], resource: ["agent"] }
 	 * @default true
 	 */
 	resolveData?: boolean | Expression<boolean>;
@@ -70,10 +75,12 @@ export type PhantombusterV1AgentLaunchConfig = {
 	operation: 'launch';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["launch"], resource: ["agent"] }
 	 */
 	agentId: string | Expression<string>;
 	/**
 	 * By default the launch just include the container ID. If this option gets activated, it will resolve the data automatically.
+	 * @displayOptions.show { operation: ["launch"], resource: ["agent"] }
 	 * @default true
 	 */
 	resolveData?: boolean | Expression<boolean>;

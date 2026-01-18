@@ -38,6 +38,7 @@ export type GoogleContactsV1ContactGetConfig = {
 	contactId: string | Expression<string>;
 	/**
 	 * A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.
+	 * @displayOptions.show { operation: ["get"], resource: ["contact"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -69,6 +70,7 @@ export type GoogleContactsV1ContactGetConfig = {
 	>;
 	/**
 	 * Whether to return the data exactly in the way it got received from the API
+	 * @displayOptions.show { operation: ["get"], resource: ["contact"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
@@ -80,16 +82,19 @@ export type GoogleContactsV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["contact"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["contact"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["contact"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -121,15 +126,18 @@ export type GoogleContactsV1ContactGetAllConfig = {
 	>;
 	/**
 	 * Whether or not to use a query to filter the results
+	 * @displayOptions.show { operation: ["getAll"], resource: ["contact"] }
 	 * @default false
 	 */
 	useQuery?: boolean | Expression<boolean>;
 	/**
 	 * The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "nam", etc., but not "oo n".
+	 * @displayOptions.show { operation: ["getAll"], resource: ["contact"], useQuery: [true] }
 	 */
 	query?: string | Expression<string>;
 	/**
 	 * Whether to return the data exactly in the way it got received from the API
+	 * @displayOptions.show { operation: ["getAll"], resource: ["contact"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
@@ -143,6 +151,7 @@ export type GoogleContactsV1ContactUpdateConfig = {
 	contactId: string | Expression<string>;
 	/**
 	 * A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.
+	 * @displayOptions.show { operation: ["update"], resource: ["contact"] }
 	 * @default []
 	 */
 	fields?: Array<

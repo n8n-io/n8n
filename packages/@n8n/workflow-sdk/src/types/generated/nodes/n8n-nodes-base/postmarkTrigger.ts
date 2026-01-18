@@ -23,11 +23,13 @@ export interface PostmarkTriggerV1Params {
 	events: Array<'bounce' | 'click' | 'delivery' | 'open' | 'spamComplaint' | 'subscriptionChange'>;
 	/**
 	 * Only fires on first open for event "Open"
+	 * @displayOptions.show { events: ["open"] }
 	 * @default false
 	 */
 	firstOpen?: boolean | Expression<boolean>;
 	/**
 	 * Whether to include message content for events "Bounce" and "Spam Complaint"
+	 * @displayOptions.show { events: ["bounce", "spamComplaint"] }
 	 * @default false
 	 */
 	includeContent?: boolean | Expression<boolean>;

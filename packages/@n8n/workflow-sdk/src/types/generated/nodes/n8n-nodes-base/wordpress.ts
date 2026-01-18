@@ -21,6 +21,7 @@ export type WordpressV1PostCreateConfig = {
 	operation: 'create';
 	/**
 	 * The title for the post
+	 * @displayOptions.show { resource: ["post"], operation: ["create"] }
 	 */
 	title: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -32,6 +33,7 @@ export type WordpressV1PostGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the object
+	 * @displayOptions.show { resource: ["post"], operation: ["get"] }
 	 */
 	postId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -43,11 +45,13 @@ export type WordpressV1PostGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["post"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["post"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -60,6 +64,7 @@ export type WordpressV1PostUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for the object
+	 * @displayOptions.show { resource: ["post"], operation: ["update"] }
 	 */
 	postId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -71,6 +76,7 @@ export type WordpressV1PageCreateConfig = {
 	operation: 'create';
 	/**
 	 * The title for the page
+	 * @displayOptions.show { resource: ["page"], operation: ["create"] }
 	 */
 	title: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -82,6 +88,7 @@ export type WordpressV1PageGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the object
+	 * @displayOptions.show { resource: ["page"], operation: ["get"] }
 	 */
 	pageId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -93,11 +100,13 @@ export type WordpressV1PageGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["page"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["page"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -110,6 +119,7 @@ export type WordpressV1PageUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for the object
+	 * @displayOptions.show { resource: ["page"], operation: ["update"] }
 	 */
 	pageId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -121,26 +131,32 @@ export type WordpressV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * Login name for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	username: string | Expression<string>;
 	/**
 	 * Display name for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * First name for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	firstName: string | Expression<string>;
 	/**
 	 * Last name for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	lastName: string | Expression<string>;
 	/**
 	 * The email address for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	/**
 	 * Password for the user (never included)
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	password: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -152,6 +168,7 @@ export type WordpressV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	userId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -163,11 +180,13 @@ export type WordpressV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -180,6 +199,7 @@ export type WordpressV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 */
 	userId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

@@ -20,13 +20,22 @@ export interface RundeckV1Params {
 	operation?: 'execute' | 'getMetadata' | Expression<string>;
 	/**
 	 * The job ID to execute
+	 * @displayOptions.show { operation: ["execute"], resource: ["job"] }
 	 */
 	jobid: string | Expression<string>;
 	arguments?: {
-		arguments?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		arguments?: Array<{
+			/** Name
+			 */
+			name?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * Filter Rundeck nodes by name
+	 * @displayOptions.show { operation: ["execute"], resource: ["job"] }
 	 */
 	filter?: string | Expression<string>;
 }

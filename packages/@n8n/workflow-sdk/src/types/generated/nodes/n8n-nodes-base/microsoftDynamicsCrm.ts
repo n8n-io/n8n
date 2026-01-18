@@ -20,6 +20,7 @@ export type MicrosoftDynamicsCrmV1AccountCreateConfig = {
 	operation: 'create';
 	/**
 	 * Company or business name
+	 * @displayOptions.show { resource: ["account"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -44,11 +45,13 @@ export type MicrosoftDynamicsCrmV1AccountGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["account"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["account"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;

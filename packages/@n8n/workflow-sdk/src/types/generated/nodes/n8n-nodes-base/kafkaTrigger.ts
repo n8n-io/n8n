@@ -31,6 +31,7 @@ export interface KafkaTriggerV11Params {
 	useSchemaRegistry?: boolean | Expression<boolean>;
 	/**
 	 * URL of the schema registry
+	 * @displayOptions.show { useSchemaRegistry: [true] }
 	 */
 	schemaRegistryUrl: string | Expression<string>;
 	options?: Record<string, unknown>;

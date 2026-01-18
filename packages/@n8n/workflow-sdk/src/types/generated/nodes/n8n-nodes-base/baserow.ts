@@ -29,16 +29,22 @@ export type BaserowV1RowCreateConfig = {
 	tableId: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { operation: ["create", "update"] }
 	 * @default defineBelow
 	 */
 	dataToSend?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { operation: ["create", "update"], dataToSend: ["autoMapInputData"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			fieldId?: string | Expression<string>;
+			/** Field Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -58,6 +64,7 @@ export type BaserowV1RowDeleteConfig = {
 	tableId: string | Expression<string>;
 	/**
 	 * ID of the row to delete
+	 * @displayOptions.show { operation: ["delete"] }
 	 */
 	rowId: string | Expression<string>;
 };
@@ -76,6 +83,7 @@ export type BaserowV1RowGetConfig = {
 	tableId: string | Expression<string>;
 	/**
 	 * ID of the row to return
+	 * @displayOptions.show { operation: ["get"] }
 	 */
 	rowId: string | Expression<string>;
 };
@@ -94,11 +102,13 @@ export type BaserowV1RowGetAllConfig = {
 	tableId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -119,20 +129,27 @@ export type BaserowV1RowUpdateConfig = {
 	tableId: string | Expression<string>;
 	/**
 	 * ID of the row to update
+	 * @displayOptions.show { operation: ["update"] }
 	 */
 	rowId: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { operation: ["create", "update"] }
 	 * @default defineBelow
 	 */
 	dataToSend?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { operation: ["create", "update"], dataToSend: ["autoMapInputData"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			fieldId?: string | Expression<string>;
+			/** Field Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};

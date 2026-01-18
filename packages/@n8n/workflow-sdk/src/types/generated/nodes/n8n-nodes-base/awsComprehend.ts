@@ -25,6 +25,7 @@ export interface AwsComprehendV1Params {
 	operation?: 'detectDominantLanguage' | 'detectEntities' | 'detectSentiment' | Expression<string>;
 	/**
 	 * The language code for text
+	 * @displayOptions.show { resource: ["text"], operation: ["detectSentiment", "detectEntities"] }
 	 * @default en
 	 */
 	languageCode?:
@@ -43,10 +44,12 @@ export interface AwsComprehendV1Params {
 		| Expression<string>;
 	/**
 	 * The text to send
+	 * @displayOptions.show { resource: ["text"] }
 	 */
 	text?: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["text"], operation: ["detectDominantLanguage"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;

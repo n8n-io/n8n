@@ -29,6 +29,7 @@ export type ZohoCrmV1AccountUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Name of the account. If a record with this account name exists it will be updated, otherwise a new one will be created.
+	 * @displayOptions.show { resource: ["account"], operation: ["upsert"] }
 	 */
 	accountName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -40,6 +41,7 @@ export type ZohoCrmV1AccountDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the account to delete. Can be found at the end of the URL.
+	 * @displayOptions.show { resource: ["account"], operation: ["delete"] }
 	 */
 	accountId: string | Expression<string>;
 };
@@ -50,6 +52,7 @@ export type ZohoCrmV1AccountGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the account to retrieve. Can be found at the end of the URL.
+	 * @displayOptions.show { resource: ["account"], operation: ["get"] }
 	 */
 	accountId: string | Expression<string>;
 };
@@ -60,11 +63,13 @@ export type ZohoCrmV1AccountGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["account"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["account"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -77,6 +82,7 @@ export type ZohoCrmV1AccountUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the account to update. Can be found at the end of the URL.
+	 * @displayOptions.show { resource: ["account"], operation: ["update"] }
 	 */
 	accountId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -104,6 +110,7 @@ export type ZohoCrmV1ContactDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the contact to delete
+	 * @displayOptions.show { resource: ["contact"], operation: ["delete"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -114,6 +121,7 @@ export type ZohoCrmV1ContactGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the contact to retrieve
+	 * @displayOptions.show { resource: ["contact"], operation: ["get"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -124,11 +132,13 @@ export type ZohoCrmV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -141,6 +151,7 @@ export type ZohoCrmV1ContactUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the contact to update
+	 * @displayOptions.show { resource: ["contact"], operation: ["update"] }
 	 */
 	contactId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -153,6 +164,7 @@ export type ZohoCrmV1DealCreateConfig = {
 	dealName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["deal"], operation: ["create", "upsert"] }
 	 * @default []
 	 */
 	stage: string | Expression<string>;
@@ -165,10 +177,12 @@ export type ZohoCrmV1DealUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Name of the deal. If a record with this deal name exists it will be updated, otherwise a new one will be created.
+	 * @displayOptions.show { resource: ["deal"], operation: ["upsert"] }
 	 */
 	dealName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["deal"], operation: ["create", "upsert"] }
 	 * @default []
 	 */
 	stage: string | Expression<string>;
@@ -181,6 +195,7 @@ export type ZohoCrmV1DealDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the deal to delete
+	 * @displayOptions.show { resource: ["deal"], operation: ["delete"] }
 	 */
 	dealId: string | Expression<string>;
 };
@@ -191,6 +206,7 @@ export type ZohoCrmV1DealGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the deal to retrieve
+	 * @displayOptions.show { resource: ["deal"], operation: ["get"] }
 	 */
 	dealId: string | Expression<string>;
 };
@@ -201,11 +217,13 @@ export type ZohoCrmV1DealGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["deal"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["deal"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -218,6 +236,7 @@ export type ZohoCrmV1DealUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the deal to update
+	 * @displayOptions.show { resource: ["deal"], operation: ["update"] }
 	 */
 	dealId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -229,6 +248,7 @@ export type ZohoCrmV1InvoiceCreateConfig = {
 	operation: 'create';
 	/**
 	 * Subject or title of the invoice
+	 * @displayOptions.show { resource: ["invoice"], operation: ["create"] }
 	 */
 	subject: string | Expression<string>;
 	Product_Details?: Record<string, unknown>;
@@ -241,6 +261,7 @@ export type ZohoCrmV1InvoiceUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Subject or title of the invoice. If a record with this subject exists it will be updated, otherwise a new one will be created.
+	 * @displayOptions.show { resource: ["invoice"], operation: ["upsert"] }
 	 */
 	subject: string | Expression<string>;
 	Product_Details?: Record<string, unknown>;
@@ -253,6 +274,7 @@ export type ZohoCrmV1InvoiceDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the invoice to delete
+	 * @displayOptions.show { resource: ["invoice"], operation: ["delete"] }
 	 */
 	invoiceId: string | Expression<string>;
 };
@@ -263,6 +285,7 @@ export type ZohoCrmV1InvoiceGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the invoice to retrieve
+	 * @displayOptions.show { resource: ["invoice"], operation: ["get"] }
 	 */
 	invoiceId: string | Expression<string>;
 };
@@ -273,11 +296,13 @@ export type ZohoCrmV1InvoiceGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["invoice"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["invoice"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -290,6 +315,7 @@ export type ZohoCrmV1InvoiceUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the invoice to update
+	 * @displayOptions.show { resource: ["invoice"], operation: ["update"] }
 	 */
 	invoiceId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -301,6 +327,7 @@ export type ZohoCrmV1LeadCreateConfig = {
 	operation: 'create';
 	/**
 	 * Company at which the lead works
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"] }
 	 */
 	Company: string | Expression<string>;
 	lastName: string | Expression<string>;
@@ -313,6 +340,7 @@ export type ZohoCrmV1LeadUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Company at which the lead works
+	 * @displayOptions.show { resource: ["lead"], operation: ["upsert"] }
 	 */
 	Company: string | Expression<string>;
 	lastName: string | Expression<string>;
@@ -325,6 +353,7 @@ export type ZohoCrmV1LeadDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the lead to delete
+	 * @displayOptions.show { resource: ["lead"], operation: ["delete"] }
 	 */
 	leadId: string | Expression<string>;
 };
@@ -335,6 +364,7 @@ export type ZohoCrmV1LeadGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the lead to retrieve
+	 * @displayOptions.show { resource: ["lead"], operation: ["get"] }
 	 */
 	leadId: string | Expression<string>;
 };
@@ -351,11 +381,13 @@ export type ZohoCrmV1LeadGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["lead"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["lead"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -368,6 +400,7 @@ export type ZohoCrmV1LeadUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the lead to update
+	 * @displayOptions.show { resource: ["lead"], operation: ["update"] }
 	 */
 	leadId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -387,6 +420,7 @@ export type ZohoCrmV1ProductUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Name of the product. If a record with this product name exists it will be updated, otherwise a new one will be created.
+	 * @displayOptions.show { resource: ["product"], operation: ["upsert"] }
 	 */
 	productName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -398,6 +432,7 @@ export type ZohoCrmV1ProductDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the product to delete
+	 * @displayOptions.show { resource: ["product"], operation: ["delete"] }
 	 */
 	productId: string | Expression<string>;
 };
@@ -408,6 +443,7 @@ export type ZohoCrmV1ProductGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the product to retrieve
+	 * @displayOptions.show { resource: ["product"], operation: ["get"] }
 	 */
 	productId: string | Expression<string>;
 };
@@ -418,11 +454,13 @@ export type ZohoCrmV1ProductGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["product"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["product"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -435,6 +473,7 @@ export type ZohoCrmV1ProductUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the product to update
+	 * @displayOptions.show { resource: ["product"], operation: ["update"] }
 	 */
 	productId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -446,10 +485,12 @@ export type ZohoCrmV1PurchaseOrderCreateConfig = {
 	operation: 'create';
 	/**
 	 * Subject or title of the purchase order
+	 * @displayOptions.show { resource: ["purchaseOrder"], operation: ["create"] }
 	 */
 	subject: string | Expression<string>;
 	/**
 	 * ID of the vendor associated with the purchase order. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["purchaseOrder"], operation: ["create", "upsert"] }
 	 * @default []
 	 */
 	vendorId?: string | Expression<string>;
@@ -463,10 +504,12 @@ export type ZohoCrmV1PurchaseOrderUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Subject or title of the purchase order. If a record with this subject exists it will be updated, otherwise a new one will be created.
+	 * @displayOptions.show { resource: ["purchaseOrder"], operation: ["upsert"] }
 	 */
 	subject: string | Expression<string>;
 	/**
 	 * ID of the vendor associated with the purchase order. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["purchaseOrder"], operation: ["create", "upsert"] }
 	 * @default []
 	 */
 	vendorId?: string | Expression<string>;
@@ -480,6 +523,7 @@ export type ZohoCrmV1PurchaseOrderDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the purchase order to delete
+	 * @displayOptions.show { resource: ["purchaseOrder"], operation: ["delete"] }
 	 */
 	purchaseOrderId: string | Expression<string>;
 };
@@ -490,6 +534,7 @@ export type ZohoCrmV1PurchaseOrderGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the purchase order to retrieve
+	 * @displayOptions.show { resource: ["purchaseOrder"], operation: ["get"] }
 	 */
 	purchaseOrderId: string | Expression<string>;
 };
@@ -500,11 +545,13 @@ export type ZohoCrmV1PurchaseOrderGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["purchaseOrder"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["purchaseOrder"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -517,6 +564,7 @@ export type ZohoCrmV1PurchaseOrderUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the purchase order to update
+	 * @displayOptions.show { resource: ["purchaseOrder"], operation: ["update"] }
 	 */
 	purchaseOrderId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -528,6 +576,7 @@ export type ZohoCrmV1QuoteCreateConfig = {
 	operation: 'create';
 	/**
 	 * Subject or title of the quote
+	 * @displayOptions.show { resource: ["quote"], operation: ["create"] }
 	 */
 	subject: string | Expression<string>;
 	Product_Details?: Record<string, unknown>;
@@ -540,6 +589,7 @@ export type ZohoCrmV1QuoteUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Subject or title of the quote. If a record with this subject exists it will be updated, otherwise a new one will be created.
+	 * @displayOptions.show { resource: ["quote"], operation: ["upsert"] }
 	 */
 	subject: string | Expression<string>;
 	Product_Details?: Record<string, unknown>;
@@ -552,6 +602,7 @@ export type ZohoCrmV1QuoteDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the quote to delete
+	 * @displayOptions.show { resource: ["quote"], operation: ["delete"] }
 	 */
 	quoteId: string | Expression<string>;
 };
@@ -562,6 +613,7 @@ export type ZohoCrmV1QuoteGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the quote to retrieve
+	 * @displayOptions.show { resource: ["quote"], operation: ["get"] }
 	 */
 	quoteId: string | Expression<string>;
 };
@@ -572,11 +624,13 @@ export type ZohoCrmV1QuoteGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["quote"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["quote"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -589,6 +643,7 @@ export type ZohoCrmV1QuoteUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the quote to update
+	 * @displayOptions.show { resource: ["quote"], operation: ["update"] }
 	 */
 	quoteId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -600,11 +655,13 @@ export type ZohoCrmV1SalesOrderCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["salesOrder"], operation: ["create", "upsert"] }
 	 * @default []
 	 */
 	accountId: string | Expression<string>;
 	/**
 	 * Subject or title of the sales order
+	 * @displayOptions.show { resource: ["salesOrder"], operation: ["create"] }
 	 */
 	subject: string | Expression<string>;
 	Product_Details?: Record<string, unknown>;
@@ -617,11 +674,13 @@ export type ZohoCrmV1SalesOrderUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["salesOrder"], operation: ["create", "upsert"] }
 	 * @default []
 	 */
 	accountId: string | Expression<string>;
 	/**
 	 * Subject or title of the sales order. If a record with this subject exists it will be updated, otherwise a new one will be created.
+	 * @displayOptions.show { resource: ["salesOrder"], operation: ["upsert"] }
 	 */
 	subject: string | Expression<string>;
 	Product_Details?: Record<string, unknown>;
@@ -634,6 +693,7 @@ export type ZohoCrmV1SalesOrderDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the sales order to delete
+	 * @displayOptions.show { resource: ["salesOrder"], operation: ["delete"] }
 	 */
 	salesOrderId: string | Expression<string>;
 };
@@ -644,6 +704,7 @@ export type ZohoCrmV1SalesOrderGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the sales order to retrieve
+	 * @displayOptions.show { resource: ["salesOrder"], operation: ["get"] }
 	 */
 	salesOrderId: string | Expression<string>;
 };
@@ -654,11 +715,13 @@ export type ZohoCrmV1SalesOrderGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["salesOrder"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["salesOrder"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -671,6 +734,7 @@ export type ZohoCrmV1SalesOrderUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the sales order to update
+	 * @displayOptions.show { resource: ["salesOrder"], operation: ["update"] }
 	 */
 	salesOrderId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -690,6 +754,7 @@ export type ZohoCrmV1VendorUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Name of the vendor. If a record with this vendor name exists it will be updated, otherwise a new one will be created.
+	 * @displayOptions.show { resource: ["vendor"], operation: ["upsert"] }
 	 */
 	vendorName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -701,6 +766,7 @@ export type ZohoCrmV1VendorDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the vendor to delete
+	 * @displayOptions.show { resource: ["vendor"], operation: ["delete"] }
 	 */
 	vendorId: string | Expression<string>;
 };
@@ -711,6 +777,7 @@ export type ZohoCrmV1VendorGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the vendor to retrieve
+	 * @displayOptions.show { resource: ["vendor"], operation: ["get"] }
 	 */
 	vendorId: string | Expression<string>;
 };
@@ -721,11 +788,13 @@ export type ZohoCrmV1VendorGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["vendor"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["vendor"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -738,6 +807,7 @@ export type ZohoCrmV1VendorUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the vendor to update
+	 * @displayOptions.show { resource: ["vendor"], operation: ["update"] }
 	 */
 	vendorId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

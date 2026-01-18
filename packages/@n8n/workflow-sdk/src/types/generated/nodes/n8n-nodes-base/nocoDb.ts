@@ -22,31 +22,47 @@ export type NocoDbV3RowCreateConfig = {
 	version?: 1 | 2 | 3 | Expression<number>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { version: [3] }
 	 * @default none
 	 */
 	workspaceId?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { version: [3] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * The table to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { version: [2, 3] }
 	 */
 	table: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { operation: ["create", "update"] }
 	 * @default defineBelow
 	 */
 	dataToSend?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { operation: ["create", "update"], dataToSend: ["autoMapInputData"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Field Name
+			 */
 			fieldName?: string | Expression<string>;
+			/** Whether the field data to set is binary and should be taken from a binary property
+			 * @default false
+			 */
 			binaryData?: boolean | Expression<boolean>;
+			/** Field Value
+			 * @displayOptions.show { binaryData: [false] }
+			 */
 			fieldValue?: string | Expression<string>;
+			/** The field containing the binary file data to be uploaded
+			 * @displayOptions.show { binaryData: [true] }
+			 */
 			binaryProperty?: string | Expression<string>;
 		}>;
 	};
@@ -59,21 +75,25 @@ export type NocoDbV3RowDeleteConfig = {
 	version?: 1 | 2 | 3 | Expression<number>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { version: [3] }
 	 * @default none
 	 */
 	workspaceId?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { version: [3] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * The table to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { version: [2, 3] }
 	 */
 	table: string | Expression<string>;
 	primaryKey?: 'id' | 'ncRecordId' | 'custom' | Expression<string>;
 	customPrimaryKey?: string | Expression<string>;
 	/**
 	 * The value of the ID field
+	 * @displayOptions.show { version: [1, 2], operation: ["delete", "get", "update"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -85,28 +105,34 @@ export type NocoDbV3RowGetConfig = {
 	version?: 1 | 2 | 3 | Expression<number>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { version: [3] }
 	 * @default none
 	 */
 	workspaceId?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { version: [3] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * The table to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { version: [2, 3] }
 	 */
 	table: string | Expression<string>;
 	/**
 	 * The value of the ID field
+	 * @displayOptions.show { version: [1, 2], operation: ["delete", "get", "update"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether the attachment fields define in 'Download Fields' will be downloaded
+	 * @displayOptions.show { operation: ["get"] }
 	 * @default false
 	 */
 	downloadAttachments?: boolean | Expression<boolean>;
 	/**
 	 * Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.
+	 * @displayOptions.show { operation: ["get"], downloadAttachments: [true] }
 	 */
 	downloadFieldNames: string | Expression<string>;
 };
@@ -118,34 +144,41 @@ export type NocoDbV3RowGetAllConfig = {
 	version?: 1 | 2 | 3 | Expression<number>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { version: [3] }
 	 * @default none
 	 */
 	workspaceId?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { version: [3] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * The table to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { version: [2, 3] }
 	 */
 	table: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether the attachment fields define in 'Download Fields' will be downloaded
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	downloadAttachments?: boolean | Expression<boolean>;
 	/**
 	 * Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.
+	 * @displayOptions.show { operation: ["getAll"], downloadAttachments: [true] }
 	 */
 	downloadFieldNames: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -158,37 +191,54 @@ export type NocoDbV3RowUpdateConfig = {
 	version?: 1 | 2 | 3 | Expression<number>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { version: [3] }
 	 * @default none
 	 */
 	workspaceId?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { version: [3] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * The table to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { version: [2, 3] }
 	 */
 	table: string | Expression<string>;
 	primaryKey?: 'id' | 'ncRecordId' | 'custom' | Expression<string>;
 	customPrimaryKey?: string | Expression<string>;
 	/**
 	 * The value of the ID field
+	 * @displayOptions.show { version: [1, 2], operation: ["delete", "get", "update"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to insert the input data this node receives in the new row
+	 * @displayOptions.show { operation: ["create", "update"] }
 	 * @default defineBelow
 	 */
 	dataToSend?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
+	 * @displayOptions.show { operation: ["create", "update"], dataToSend: ["autoMapInputData"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	fieldsUi?: {
 		fieldValues?: Array<{
+			/** Field Name
+			 */
 			fieldName?: string | Expression<string>;
+			/** Whether the field data to set is binary and should be taken from a binary property
+			 * @default false
+			 */
 			binaryData?: boolean | Expression<boolean>;
+			/** Field Value
+			 * @displayOptions.show { binaryData: [false] }
+			 */
 			fieldValue?: string | Expression<string>;
+			/** The field containing the binary file data to be uploaded
+			 * @displayOptions.show { binaryData: [true] }
+			 */
 			binaryProperty?: string | Expression<string>;
 		}>;
 	};

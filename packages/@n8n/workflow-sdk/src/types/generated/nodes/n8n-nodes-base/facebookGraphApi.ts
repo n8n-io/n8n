@@ -71,12 +71,15 @@ export interface FacebookGraphApiV1Params {
 	allowUnauthorizedCerts?: boolean | Expression<boolean>;
 	/**
 	 * Whether binary data should be sent as body
+	 * @displayOptions.show { httpRequestMethod: ["POST", "PUT"] }
 	 * @default false
 	 */
 	sendBinaryData: boolean | Expression<boolean>;
 	/**
 	 * For Form-Data Multipart, they can be provided in the format: &lt;code&gt;"sendKey1:binaryProperty1,sendKey2:binaryProperty2&lt;/code&gt;
 	 * @hint The name of the input binary field containing the file to be uploaded
+	 * @displayOptions.show { httpRequestMethod: ["POST", "PUT"] }
+	 * @displayOptions.hide { sendBinaryData: [false] }
 	 */
 	binaryPropertyName?: string | Expression<string>;
 	options?: Record<string, unknown>;

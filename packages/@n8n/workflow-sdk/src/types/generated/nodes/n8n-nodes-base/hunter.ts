@@ -23,34 +23,41 @@ export interface HunterV1Params {
 	operation?: 'domainSearch' | 'emailFinder' | 'emailVerifier' | Expression<string>;
 	/**
 	 * Domain name from which you want to find the email addresses. For example, "stripe.com".
+	 * @displayOptions.show { operation: ["domainSearch"] }
 	 */
 	domain: string | Expression<string>;
 	/**
 	 * Whether to return only the found emails
+	 * @displayOptions.show { operation: ["domainSearch"] }
 	 * @default true
 	 */
 	onlyEmails?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["domainSearch"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["domainSearch"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	filters?: Record<string, unknown>;
 	/**
 	 * The person's first name. It doesn't need to be in lowercase.
+	 * @displayOptions.show { operation: ["emailFinder"] }
 	 */
 	firstname: string | Expression<string>;
 	/**
 	 * The person's last name. It doesn't need to be in lowercase.
+	 * @displayOptions.show { operation: ["emailFinder"] }
 	 */
 	lastname: string | Expression<string>;
 	/**
 	 * The email address you want to verify
+	 * @displayOptions.show { operation: ["emailVerifier"] }
 	 */
 	email: string | Expression<string>;
 }

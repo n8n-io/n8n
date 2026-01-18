@@ -26,10 +26,12 @@ export interface AwsSnsV1Params {
 	topic: ResourceLocatorValue;
 	/**
 	 * Subject when the message is delivered to email endpoints
+	 * @displayOptions.show { operation: ["publish"] }
 	 */
 	subject: string | Expression<string>;
 	/**
 	 * The message you want to send
+	 * @displayOptions.show { operation: ["publish"] }
 	 */
 	message: string | Expression<string>;
 }

@@ -24,6 +24,7 @@ export interface LcToolCodeV13Params {
 	/**
  * E.g. Converts any text to uppercase
  * @hint You can access the input the tool receives via the input property "query". The returned value should be a single string.
+ * @displayOptions.show { language: ["javaScript"] }
  * @default // Example: convert the incoming query to uppercase and return it
 return query.toUpperCase()
  */
@@ -31,6 +32,7 @@ return query.toUpperCase()
 	/**
  * E.g. Converts any text to uppercase
  * @hint You can access the input the tool receives via the input property "_query". The returned value should be a single string.
+ * @displayOptions.show { language: ["python"] }
  * @default # Example: convert the incoming query to uppercase and return it
 return _query.upper()
  */
@@ -42,11 +44,13 @@ return _query.upper()
 	specifyInputSchema?: boolean | Expression<boolean>;
 	/**
 	 * How to specify the schema for the function
+	 * @displayOptions.show { specifyInputSchema: [true] }
 	 * @default fromJson
 	 */
 	schemaType?: 'fromJson' | 'manual' | Expression<string>;
 	/**
  * Example JSON object to use to generate the schema
+ * @displayOptions.show { specifyInputSchema: [true], schemaType: ["fromJson"] }
  * @default {
 	"some_input": "some_value"
 }
@@ -55,6 +59,7 @@ return _query.upper()
 	/**
  * Schema to use for the function
  * @hint Use &lt;a target="_blank" href="https://json-schema.org/"&gt;JSON Schema&lt;/a&gt; format (&lt;a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html"&gt;examples&lt;/a&gt;). $refs syntax is currently not supported.
+ * @displayOptions.show { specifyInputSchema: [true], schemaType: ["manual"] }
  * @default {
 "type": "object",
 "properties": {

@@ -21,26 +21,32 @@ export type AwsSesV1CustomVerificationEmailCreateConfig = {
 	operation: 'create';
 	/**
 	 * The email address that the custom verification email is sent from
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["create"] }
 	 */
 	fromEmailAddress: string | Expression<string>;
 	/**
 	 * The name of the custom verification email template
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["create"] }
 	 */
 	templateName?: string | Expression<string>;
 	/**
 	 * The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["create"] }
 	 */
 	templateContent?: string | Expression<string>;
 	/**
 	 * The subject line of the custom verification email
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["create"] }
 	 */
 	templateSubject: string | Expression<string>;
 	/**
 	 * The URL that the recipient of the verification email is sent to if his or her address is successfully verified
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["create"] }
 	 */
 	successRedirectionURL: string | Expression<string>;
 	/**
 	 * The URL that the recipient of the verification email is sent to if his or her address is not successfully verified
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["create"] }
 	 */
 	failureRedirectionURL: string | Expression<string>;
 };
@@ -51,6 +57,7 @@ export type AwsSesV1CustomVerificationEmailDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The name of the custom verification email template
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["update", "delete", "get"] }
 	 */
 	templateName?: string | Expression<string>;
 };
@@ -61,6 +68,7 @@ export type AwsSesV1CustomVerificationEmailGetConfig = {
 	operation: 'get';
 	/**
 	 * The name of the custom verification email template
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["update", "delete", "get"] }
 	 */
 	templateName?: string | Expression<string>;
 };
@@ -71,11 +79,13 @@ export type AwsSesV1CustomVerificationEmailGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -87,10 +97,12 @@ export type AwsSesV1CustomVerificationEmailSendConfig = {
 	operation: 'send';
 	/**
 	 * The email address to verify
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["send"] }
 	 */
 	email: string | Expression<string>;
 	/**
 	 * The name of the custom verification email template to use when sending the verification email
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["send"] }
 	 */
 	templateName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -102,6 +114,7 @@ export type AwsSesV1CustomVerificationEmailUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The name of the custom verification email template
+	 * @displayOptions.show { resource: ["customVerificationEmail"], operation: ["update", "delete", "get"] }
 	 */
 	templateName?: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -113,20 +126,24 @@ export type AwsSesV1EmailSendConfig = {
 	operation: 'send';
 	/**
 	 * Whether body is HTML or simple text
+	 * @displayOptions.show { resource: ["email"], operation: ["send"] }
 	 * @default false
 	 */
 	isBodyHtml?: boolean | Expression<boolean>;
 	subject: string | Expression<string>;
 	/**
 	 * The message to be sent
+	 * @displayOptions.show { resource: ["email"], operation: ["send"] }
 	 */
 	body: string | Expression<string>;
 	/**
 	 * Email address of the sender
+	 * @displayOptions.show { resource: ["email"], operation: ["send"] }
 	 */
 	fromEmail: string | Expression<string>;
 	/**
 	 * Email addresses of the recipients
+	 * @displayOptions.show { resource: ["email"], operation: ["send"] }
 	 * @default []
 	 */
 	toAddresses?: string | Expression<string>;
@@ -138,20 +155,27 @@ export type AwsSesV1EmailSendTemplateConfig = {
 	operation: 'sendTemplate';
 	/**
 	 * The ARN of the template to use when sending this email. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["email"], operation: ["sendTemplate"] }
 	 */
 	templateName?: string | Expression<string>;
 	/**
 	 * Email address of the sender
+	 * @displayOptions.show { resource: ["email"], operation: ["sendTemplate"] }
 	 */
 	fromEmail: string | Expression<string>;
 	/**
 	 * Email addresses of the recipients
+	 * @displayOptions.show { resource: ["email"], operation: ["sendTemplate"] }
 	 * @default []
 	 */
 	toAddresses?: string | Expression<string>;
 	templateDataUi?: {
 		templateDataValues?: Array<{
+			/** Key
+			 */
 			key?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -164,14 +188,17 @@ export type AwsSesV1TemplateCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the template
+	 * @displayOptions.show { resource: ["template"], operation: ["update", "create", "get", "delete"] }
 	 */
 	templateName: string | Expression<string>;
 	/**
 	 * The subject line of the email
+	 * @displayOptions.show { resource: ["template"], operation: ["create"] }
 	 */
 	subjectPart?: string | Expression<string>;
 	/**
 	 * The HTML body of the email
+	 * @displayOptions.show { resource: ["template"], operation: ["create"] }
 	 */
 	htmlPart?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -183,6 +210,7 @@ export type AwsSesV1TemplateDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The name of the template
+	 * @displayOptions.show { resource: ["template"], operation: ["update", "create", "get", "delete"] }
 	 */
 	templateName: string | Expression<string>;
 };
@@ -193,6 +221,7 @@ export type AwsSesV1TemplateGetConfig = {
 	operation: 'get';
 	/**
 	 * The name of the template
+	 * @displayOptions.show { resource: ["template"], operation: ["update", "create", "get", "delete"] }
 	 */
 	templateName: string | Expression<string>;
 };
@@ -203,11 +232,13 @@ export type AwsSesV1TemplateGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["template"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["template"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -219,6 +250,7 @@ export type AwsSesV1TemplateUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The name of the template
+	 * @displayOptions.show { resource: ["template"], operation: ["update", "create", "get", "delete"] }
 	 */
 	templateName: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

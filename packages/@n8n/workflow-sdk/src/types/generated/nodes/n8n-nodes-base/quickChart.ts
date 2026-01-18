@@ -25,11 +25,19 @@ export interface QuickChartV1Params {
 	labelsMode?: 'manually' | 'array' | Expression<string>;
 	/**
 	 * Labels to use in the chart
+	 * @displayOptions.show { labelsMode: ["manually"] }
 	 * @default {}
 	 */
-	labelsUi: { labelsValues?: Array<{ label?: string | Expression<string> }> };
+	labelsUi: {
+		labelsValues?: Array<{
+			/** Label
+			 */
+			label?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * The array of labels to be used in the chart
+	 * @displayOptions.show { labelsMode: ["array"] }
 	 */
 	labelsArray: string | Expression<string>;
 	/**

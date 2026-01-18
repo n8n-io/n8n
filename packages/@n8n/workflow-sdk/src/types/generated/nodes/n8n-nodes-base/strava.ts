@@ -21,14 +21,18 @@ export type StravaV11ActivityCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the activity
+	 * @displayOptions.show { resource: ["activity"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Type of activity. For example - Run, Ride etc.
+	 * @displayOptions.show { resource: ["activity"], operation: ["create"], @version: [1] }
 	 */
 	type: string | Expression<string>;
 	/**
 	 * Type of sport
+	 * @displayOptions.show { resource: ["activity"], operation: ["create"] }
+	 * @displayOptions.hide { @version: [1] }
 	 * @default Run
 	 */
 	sport_type?:
@@ -85,10 +89,12 @@ export type StravaV11ActivityCreateConfig = {
 		| Expression<string>;
 	/**
 	 * ISO 8601 formatted date time
+	 * @displayOptions.show { resource: ["activity"], operation: ["create"] }
 	 */
 	startDate: string | Expression<string>;
 	/**
 	 * In seconds
+	 * @displayOptions.show { resource: ["activity"], operation: ["create"] }
 	 * @default 0
 	 */
 	elapsedTime: number | Expression<number>;
@@ -101,6 +107,7 @@ export type StravaV11ActivityGetConfig = {
 	operation: 'get';
 	/**
 	 * ID or email of activity
+	 * @displayOptions.show { resource: ["activity"], operation: ["get"] }
 	 */
 	activityId: string | Expression<string>;
 };
@@ -111,15 +118,18 @@ export type StravaV11ActivityGetCommentsConfig = {
 	operation: 'getComments';
 	/**
 	 * ID or email of activity
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones", "getStreams"] }
 	 */
 	activityId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -131,15 +141,18 @@ export type StravaV11ActivityGetKudosConfig = {
 	operation: 'getKudos';
 	/**
 	 * ID or email of activity
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones", "getStreams"] }
 	 */
 	activityId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -151,15 +164,18 @@ export type StravaV11ActivityGetLapsConfig = {
 	operation: 'getLaps';
 	/**
 	 * ID or email of activity
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones", "getStreams"] }
 	 */
 	activityId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -171,11 +187,13 @@ export type StravaV11ActivityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["activity"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["activity"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -187,10 +205,12 @@ export type StravaV11ActivityGetStreamsConfig = {
 	operation: 'getStreams';
 	/**
 	 * ID or email of activity
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones", "getStreams"] }
 	 */
 	activityId: string | Expression<string>;
 	/**
 	 * Desired stream types to return
+	 * @displayOptions.show { resource: ["activity"], operation: ["getStreams"] }
 	 * @default []
 	 */
 	keys: Array<
@@ -214,15 +234,18 @@ export type StravaV11ActivityGetZonesConfig = {
 	operation: 'getZones';
 	/**
 	 * ID or email of activity
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones", "getStreams"] }
 	 */
 	activityId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["activity"], operation: ["getComments", "getLaps", "getKudos", "getZones"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -234,6 +257,7 @@ export type StravaV11ActivityUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID or email of activity
+	 * @displayOptions.show { resource: ["activity"], operation: ["update"] }
 	 */
 	activityId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

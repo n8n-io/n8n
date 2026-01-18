@@ -20,15 +20,18 @@ export interface BitbucketTriggerV11Params {
 	resource: 'repository' | 'workspace' | Expression<string>;
 	/**
 	 * The repository of which to listen to the events. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["workspace", "repository"] }
 	 */
 	workspace: string | Expression<string>;
 	/**
 	 * The events to listen to. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["workspace"] }
 	 * @default []
 	 */
 	events: string[];
 	/**
 	 * The repository of which to listen to the events. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["repository"] }
 	 */
 	repository: string | Expression<string>;
 }

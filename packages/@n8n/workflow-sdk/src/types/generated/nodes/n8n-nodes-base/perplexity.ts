@@ -20,6 +20,7 @@ export interface PerplexityV1Params {
 	operation?: 'complete' | Expression<string>;
 	/**
 	 * The model which will generate the completion
+	 * @displayOptions.show { resource: ["chat"], operation: ["complete"] }
 	 * @default sonar
 	 */
 	model:
@@ -31,16 +32,23 @@ export interface PerplexityV1Params {
 		| Expression<string>;
 	/**
 	 * Any optional system messages must be sent first, followed by alternating user and assistant messages
+	 * @displayOptions.show { resource: ["chat"], operation: ["complete"] }
 	 * @default {"message":[{"role":"user","content":""}]}
 	 */
 	messages: {
 		message?: Array<{
+			/** The content of the message to be sent
+			 */
 			content?: string | Expression<string>;
+			/** Role in shaping the model's response, it tells the model how it should behave and interact with the user
+			 * @default user
+			 */
 			role?: 'assistant' | 'system' | 'user' | Expression<string>;
 		}>;
 	};
 	/**
 	 * Whether to return only essential fields (ID, citations, message)
+	 * @displayOptions.show { resource: ["chat"], operation: ["complete"] }
 	 * @default false
 	 */
 	simplify?: boolean | Expression<boolean>;

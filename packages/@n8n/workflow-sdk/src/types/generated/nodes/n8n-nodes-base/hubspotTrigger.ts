@@ -18,6 +18,9 @@ import type { CredentialReference, NodeConfig } from '../../../base';
 export interface HubspotTriggerV1Params {
 	eventsUi?: {
 		eventValues?: Array<{
+			/** Name
+			 * @default contact.creation
+			 */
 			name?:
 				| 'company.creation'
 				| 'company.deletion'
@@ -38,8 +41,17 @@ export interface HubspotTriggerV1Params {
 				| 'ticket.deletion'
 				| 'ticket.propertyChange'
 				| Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { name: ["contact.propertyChange"] }
+			 */
 			property?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { name: ["company.propertyChange"] }
+			 */
 			property?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { name: ["deal.propertyChange"] }
+			 */
 			property?: string | Expression<string>;
 		}>;
 	};

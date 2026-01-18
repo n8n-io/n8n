@@ -20,10 +20,18 @@ export type BubbleV1ObjectCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of data type of the object to create
+	 * @displayOptions.show { resource: ["object"], operation: ["create"] }
 	 */
 	typeName: string | Expression<string>;
 	properties?: {
-		property?: Array<{ key?: string | Expression<string>; value?: string | Expression<string> }>;
+		property?: Array<{
+			/** Field to set for the object to create
+			 */
+			key?: string | Expression<string>;
+			/** Value to set for the object to create
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -32,10 +40,12 @@ export type BubbleV1ObjectDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Name of data type of the object to retrieve
+	 * @displayOptions.show { resource: ["object"], operation: ["get", "delete"] }
 	 */
 	typeName: string | Expression<string>;
 	/**
 	 * ID of the object to retrieve
+	 * @displayOptions.show { resource: ["object"], operation: ["get", "delete"] }
 	 */
 	objectId: string | Expression<string>;
 };
@@ -45,10 +55,12 @@ export type BubbleV1ObjectGetConfig = {
 	operation: 'get';
 	/**
 	 * Name of data type of the object to retrieve
+	 * @displayOptions.show { resource: ["object"], operation: ["get", "delete"] }
 	 */
 	typeName: string | Expression<string>;
 	/**
 	 * ID of the object to retrieve
+	 * @displayOptions.show { resource: ["object"], operation: ["get", "delete"] }
 	 */
 	objectId: string | Expression<string>;
 };
@@ -58,15 +70,18 @@ export type BubbleV1ObjectGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Name of data type of the object to create
+	 * @displayOptions.show { resource: ["object"], operation: ["getAll"] }
 	 */
 	typeName: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["object"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["object"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -79,14 +94,23 @@ export type BubbleV1ObjectUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Name of data type of the object to update
+	 * @displayOptions.show { resource: ["object"], operation: ["update"] }
 	 */
 	typeName: string | Expression<string>;
 	/**
 	 * ID of the object to update
+	 * @displayOptions.show { resource: ["object"], operation: ["update"] }
 	 */
 	objectId: string | Expression<string>;
 	properties?: {
-		property?: Array<{ key?: string | Expression<string>; value?: string | Expression<string> }>;
+		property?: Array<{
+			/** Field to set for the object to create
+			 */
+			key?: string | Expression<string>;
+			/** Value to set for the object to create
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 

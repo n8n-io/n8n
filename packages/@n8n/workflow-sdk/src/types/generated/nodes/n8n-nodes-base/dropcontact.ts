@@ -22,6 +22,7 @@ export interface DropcontactV1Params {
 	email?: string | Expression<string>;
 	/**
 	 * When off, waits for the contact data before completing. Waiting time can be adjusted with Extend Wait Time option. When on, returns a request_id that can be used later in the Fetch Request operation.
+	 * @displayOptions.show { resource: ["contact"], operation: ["enrich"] }
 	 * @default false
 	 */
 	simplify?: boolean | Expression<boolean>;

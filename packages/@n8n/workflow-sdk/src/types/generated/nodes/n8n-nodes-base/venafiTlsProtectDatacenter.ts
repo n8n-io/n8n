@@ -21,10 +21,12 @@ export type VenafiTlsProtectDatacenterV1CertificateCreateConfig = {
 	operation: 'create';
 	/**
 	 * The folder DN for the new certificate. If the value is missing, the folder name is the system default. If no system default is configured
+	 * @displayOptions.show { operation: ["create"], resource: ["certificate"] }
 	 */
 	PolicyDN?: string | Expression<string>;
 	/**
 	 * The Common Name field for the certificate Subject (DN)
+	 * @displayOptions.show { operation: ["create"], resource: ["certificate"] }
 	 */
 	Subject?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -36,6 +38,7 @@ export type VenafiTlsProtectDatacenterV1CertificateDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * A GUID that uniquely identifies the certificate
+	 * @displayOptions.show { operation: ["get", "delete"], resource: ["certificate"] }
 	 */
 	certificateId: string | Expression<string>;
 };
@@ -49,6 +52,7 @@ export type VenafiTlsProtectDatacenterV1CertificateDownloadConfig = {
 	password: string | Expression<string>;
 	/**
 	 * The name of the input field containing the binary file data to be uploaded
+	 * @displayOptions.show { operation: ["download"], resource: ["certificate"] }
 	 * @default data
 	 */
 	binaryProperty: string | Expression<string>;
@@ -61,6 +65,7 @@ export type VenafiTlsProtectDatacenterV1CertificateGetConfig = {
 	operation: 'get';
 	/**
 	 * A GUID that uniquely identifies the certificate
+	 * @displayOptions.show { operation: ["get", "delete"], resource: ["certificate"] }
 	 */
 	certificateId: string | Expression<string>;
 };
@@ -71,11 +76,13 @@ export type VenafiTlsProtectDatacenterV1CertificateGetManyConfig = {
 	operation: 'getMany';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getMany"], resource: ["certificate"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getMany"], resource: ["certificate"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -88,6 +95,7 @@ export type VenafiTlsProtectDatacenterV1CertificateRenewConfig = {
 	operation: 'renew';
 	/**
 	 * The Distinguished Name (DN) of the certificate to renew
+	 * @displayOptions.show { operation: ["renew"], resource: ["certificate"] }
 	 */
 	certificateDN: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -99,6 +107,7 @@ export type VenafiTlsProtectDatacenterV1PolicyGetConfig = {
 	operation: 'get';
 	/**
 	 * The Distinguished Name (DN) of the policy folder
+	 * @displayOptions.show { operation: ["get"], resource: ["policy"] }
 	 */
 	policyDn: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

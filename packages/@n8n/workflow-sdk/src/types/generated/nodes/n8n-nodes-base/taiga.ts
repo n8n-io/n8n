@@ -21,6 +21,7 @@ export type TaigaV1EpicCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the project to which the epic belongs. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["epic"], operation: ["create"] }
 	 */
 	projectId: string | Expression<string>;
 	subject: string | Expression<string>;
@@ -33,6 +34,7 @@ export type TaigaV1EpicDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the epic to delete
+	 * @displayOptions.show { resource: ["epic"], operation: ["delete"] }
 	 */
 	epicId: string | Expression<string>;
 };
@@ -43,6 +45,7 @@ export type TaigaV1EpicGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the epic to retrieve
+	 * @displayOptions.show { resource: ["epic"], operation: ["get"] }
 	 */
 	epicId: string | Expression<string>;
 };
@@ -53,15 +56,18 @@ export type TaigaV1EpicGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * ID of the project to which the epic belongs. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["epic"], operation: ["getAll"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["epic"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["epic"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -74,10 +80,12 @@ export type TaigaV1EpicUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the project to set the epic to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["epic"], operation: ["update"] }
 	 */
 	projectId?: string | Expression<string>;
 	/**
 	 * ID of the epic to update
+	 * @displayOptions.show { resource: ["epic"], operation: ["update"] }
 	 */
 	epicId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -89,6 +97,7 @@ export type TaigaV1IssueCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the project to which the issue belongs. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["issue"], operation: ["create"] }
 	 */
 	projectId: string | Expression<string>;
 	subject: string | Expression<string>;
@@ -101,6 +110,7 @@ export type TaigaV1IssueDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the issue to delete
+	 * @displayOptions.show { resource: ["issue"], operation: ["delete"] }
 	 */
 	issueId: string | Expression<string>;
 };
@@ -111,6 +121,7 @@ export type TaigaV1IssueGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the issue to retrieve
+	 * @displayOptions.show { resource: ["issue"], operation: ["get"] }
 	 */
 	issueId: string | Expression<string>;
 };
@@ -121,15 +132,18 @@ export type TaigaV1IssueGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * ID of the project to which the issue belongs. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["issue"], operation: ["getAll"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["issue"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["issue"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -142,10 +156,12 @@ export type TaigaV1IssueUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the project to set the issue to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["issue"], operation: ["update"] }
 	 */
 	projectId?: string | Expression<string>;
 	/**
 	 * ID of the issue to update
+	 * @displayOptions.show { resource: ["issue"], operation: ["update"] }
 	 */
 	issueId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -157,6 +173,7 @@ export type TaigaV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the project to which the task belongs. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	projectId: string | Expression<string>;
 	subject: string | Expression<string>;
@@ -169,6 +186,7 @@ export type TaigaV1TaskDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the task to delete
+	 * @displayOptions.show { resource: ["task"], operation: ["delete"] }
 	 */
 	taskId: string | Expression<string>;
 };
@@ -179,6 +197,7 @@ export type TaigaV1TaskGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the task to retrieve
+	 * @displayOptions.show { resource: ["task"], operation: ["get"] }
 	 */
 	taskId: string | Expression<string>;
 };
@@ -189,15 +208,18 @@ export type TaigaV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * ID of the project to which the task belongs. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -210,10 +232,12 @@ export type TaigaV1TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the project to set the task to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["update"] }
 	 */
 	projectId?: string | Expression<string>;
 	/**
 	 * ID of the task to update
+	 * @displayOptions.show { resource: ["task"], operation: ["update"] }
 	 */
 	taskId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -225,6 +249,7 @@ export type TaigaV1UserStoryCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the project to which the user story belongs. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["userStory"], operation: ["create"] }
 	 */
 	projectId: string | Expression<string>;
 	subject: string | Expression<string>;
@@ -237,6 +262,7 @@ export type TaigaV1UserStoryDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the user story to delete
+	 * @displayOptions.show { resource: ["userStory"], operation: ["delete"] }
 	 */
 	userStoryId: string | Expression<string>;
 };
@@ -247,6 +273,7 @@ export type TaigaV1UserStoryGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the user story to retrieve
+	 * @displayOptions.show { resource: ["userStory"], operation: ["get"] }
 	 */
 	userStoryId: string | Expression<string>;
 };
@@ -257,15 +284,18 @@ export type TaigaV1UserStoryGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * ID of the project to which the user story belongs. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["userStory"], operation: ["getAll"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["userStory"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["userStory"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -278,10 +308,12 @@ export type TaigaV1UserStoryUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the project to set the user story to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["userStory"], operation: ["update"] }
 	 */
 	projectId?: string | Expression<string>;
 	/**
 	 * ID of the user story to update
+	 * @displayOptions.show { resource: ["userStory"], operation: ["update"] }
 	 */
 	userStoryId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

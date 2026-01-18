@@ -21,11 +21,13 @@ export type NasaV1AsteroidNeoBrowseGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -44,6 +46,7 @@ export type NasaV1AsteroidNeoLookupGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the asteroid to be returned
+	 * @displayOptions.show { resource: ["asteroidNeoLookup"], operation: ["get"] }
 	 */
 	asteroidId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -55,6 +58,7 @@ export type NasaV1AstronomyPictureOfTheDayGetConfig = {
 	operation: 'get';
 	/**
 	 * By default just the URL of the image is returned. When set to true the image will be downloaded.
+	 * @displayOptions.show { resource: ["astronomyPictureOfTheDay"] }
 	 * @default true
 	 */
 	download?: boolean | Expression<boolean>;
@@ -131,10 +135,12 @@ export type NasaV1EarthAssetsGetConfig = {
 	operation: 'get';
 	/**
 	 * Latitude for the location of the image
+	 * @displayOptions.show { resource: ["earthImagery", "earthAssets"], operation: ["get"] }
 	 */
 	lat?: number | Expression<number>;
 	/**
 	 * Longitude for the location of the image
+	 * @displayOptions.show { resource: ["earthImagery", "earthAssets"], operation: ["get"] }
 	 */
 	lon?: number | Expression<number>;
 	additionalFields?: Record<string, unknown>;
@@ -146,10 +152,12 @@ export type NasaV1EarthImageryGetConfig = {
 	operation: 'get';
 	/**
 	 * Latitude for the location of the image
+	 * @displayOptions.show { resource: ["earthImagery", "earthAssets"], operation: ["get"] }
 	 */
 	lat?: number | Expression<number>;
 	/**
 	 * Longitude for the location of the image
+	 * @displayOptions.show { resource: ["earthImagery", "earthAssets"], operation: ["get"] }
 	 */
 	lon?: number | Expression<number>;
 	binaryPropertyName: string | Expression<string>;

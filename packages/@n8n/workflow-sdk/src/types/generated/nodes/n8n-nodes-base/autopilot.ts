@@ -21,6 +21,7 @@ export type AutopilotV1ContactUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Email address of the contact
+	 * @displayOptions.show { operation: ["upsert"], resource: ["contact"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -32,6 +33,7 @@ export type AutopilotV1ContactDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Can be ID or email
+	 * @displayOptions.show { operation: ["delete"], resource: ["contact"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -42,6 +44,7 @@ export type AutopilotV1ContactGetConfig = {
 	operation: 'get';
 	/**
 	 * Can be ID or email
+	 * @displayOptions.show { operation: ["get"], resource: ["contact"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -52,11 +55,13 @@ export type AutopilotV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["contact"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["contact"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -68,10 +73,12 @@ export type AutopilotV1ContactJourneyAddConfig = {
 	operation: 'add';
 	/**
 	 * List ID. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["add"], resource: ["contactJourney"] }
 	 */
 	triggerId: string | Expression<string>;
 	/**
 	 * Can be ID or email
+	 * @displayOptions.show { operation: ["add"], resource: ["contactJourney"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -82,10 +89,12 @@ export type AutopilotV1ContactListAddConfig = {
 	operation: 'add';
 	/**
 	 * ID of the list to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["add", "remove", "exist", "getAll"], resource: ["contactList"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * Can be ID or email
+	 * @displayOptions.show { operation: ["add", "remove", "exist"], resource: ["contactList"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -96,10 +105,12 @@ export type AutopilotV1ContactListExistConfig = {
 	operation: 'exist';
 	/**
 	 * ID of the list to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["add", "remove", "exist", "getAll"], resource: ["contactList"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * Can be ID or email
+	 * @displayOptions.show { operation: ["add", "remove", "exist"], resource: ["contactList"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -110,15 +121,18 @@ export type AutopilotV1ContactListGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * ID of the list to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["add", "remove", "exist", "getAll"], resource: ["contactList"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["contactList"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["contactList"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -130,10 +144,12 @@ export type AutopilotV1ContactListRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * ID of the list to operate on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["add", "remove", "exist", "getAll"], resource: ["contactList"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * Can be ID or email
+	 * @displayOptions.show { operation: ["add", "remove", "exist"], resource: ["contactList"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -144,6 +160,7 @@ export type AutopilotV1ListCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the list to create
+	 * @displayOptions.show { operation: ["create"], resource: ["list"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -154,11 +171,13 @@ export type AutopilotV1ListGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["list"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["list"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

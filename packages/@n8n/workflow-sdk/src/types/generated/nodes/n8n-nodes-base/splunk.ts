@@ -37,6 +37,7 @@ export type SplunkV2ReportCreateConfig = {
 	searchJobId: ResourceLocatorValue;
 	/**
 	 * The name of the report
+	 * @displayOptions.show { resource: ["report"], operation: ["create"] }
 	 */
 	name?: string | Expression<string>;
 };
@@ -61,11 +62,13 @@ export type SplunkV2ReportGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["report"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["report"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -78,6 +81,7 @@ export type SplunkV2SearchCreateConfig = {
 	operation: 'create';
 	/**
 	 * Search language string to execute, in Splunk's &lt;a href="https://docs.splunk.com/Documentation/Splunk/latest/SearchReference/WhatsInThisManual"&gt;Search Processing Language&lt;/a&gt;
+	 * @displayOptions.show { resource: ["search"], operation: ["create"] }
 	 */
 	search: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -103,18 +107,28 @@ export type SplunkV2SearchGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["search"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["search"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	sort?: {
 		values?: {
+			/** Sort Direction
+			 * @default asc
+			 */
 			sort_dir?: 'asc' | 'desc' | Expression<string>;
+			/** Key name to use for sorting
+			 */
 			sort_key?: string | Expression<string>;
+			/** Sort Mode
+			 * @default auto
+			 */
 			sort_mode?: 'auto' | 'alpha' | 'alpha_case' | 'num' | Expression<string>;
 		};
 	};
@@ -127,11 +141,13 @@ export type SplunkV2SearchGetResultConfig = {
 	searchJobId: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["search"], operation: ["getResult"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["search"], operation: ["getResult"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -145,10 +161,12 @@ export type SplunkV2UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * Login name of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Comma-separated list of roles to assign to the user. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 * @default ["user"]
 	 */
 	roles: string[];
@@ -176,11 +194,13 @@ export type SplunkV2UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["user"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -224,6 +244,7 @@ export type SplunkV1SearchConfigurationDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the search configuration to delete
+	 * @displayOptions.show { resource: ["searchConfiguration"], operation: ["delete"] }
 	 */
 	searchConfigurationId: string | Expression<string>;
 };
@@ -234,6 +255,7 @@ export type SplunkV1SearchConfigurationGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the search configuration to retrieve
+	 * @displayOptions.show { resource: ["searchConfiguration"], operation: ["get"] }
 	 */
 	searchConfigurationId: string | Expression<string>;
 };
@@ -244,11 +266,13 @@ export type SplunkV1SearchConfigurationGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["searchConfiguration"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["searchConfiguration"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -261,6 +285,7 @@ export type SplunkV1SearchJobCreateConfig = {
 	operation: 'create';
 	/**
 	 * Search language string to execute, in Splunk's &lt;a href="https://docs.splunk.com/Documentation/Splunk/latest/SearchReference/WhatsInThisManual"&gt;Search Processing Language&lt;/a&gt;
+	 * @displayOptions.show { resource: ["searchJob"], operation: ["create"] }
 	 */
 	search: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -272,6 +297,7 @@ export type SplunkV1SearchJobDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the search job to delete
+	 * @displayOptions.show { resource: ["searchJob"], operation: ["delete"] }
 	 */
 	searchJobId: string | Expression<string>;
 };
@@ -282,6 +308,7 @@ export type SplunkV1SearchJobGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the search job to retrieve
+	 * @displayOptions.show { resource: ["searchJob"], operation: ["get"] }
 	 */
 	searchJobId: string | Expression<string>;
 };
@@ -292,11 +319,13 @@ export type SplunkV1SearchJobGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["searchJob"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["searchJob"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -309,15 +338,18 @@ export type SplunkV1SearchResultGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * ID of the search whose results to retrieve
+	 * @displayOptions.show { resource: ["searchResult"], operation: ["getAll"] }
 	 */
 	searchJobId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["searchResult"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["searchResult"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -331,10 +363,12 @@ export type SplunkV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * Login name of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Comma-separated list of roles to assign to the user. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 * @default []
 	 */
 	roles: string[];
@@ -348,6 +382,7 @@ export type SplunkV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the user to delete
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -358,6 +393,7 @@ export type SplunkV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the user to retrieve
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -368,11 +404,13 @@ export type SplunkV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -384,6 +422,7 @@ export type SplunkV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the user to update
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 */
 	userId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

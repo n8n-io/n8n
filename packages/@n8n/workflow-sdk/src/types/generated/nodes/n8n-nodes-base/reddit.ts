@@ -21,27 +21,33 @@ export type RedditV1PostCreateConfig = {
 	operation: 'create';
 	/**
 	 * Subreddit to create the post in
+	 * @displayOptions.show { resource: ["post"], operation: ["create"] }
 	 */
 	subreddit: string | Expression<string>;
 	/**
 	 * The kind of the post to create
+	 * @displayOptions.show { resource: ["post"], operation: ["create"] }
 	 * @default self
 	 */
 	kind?: 'self' | 'link' | 'image' | Expression<string>;
 	/**
 	 * Title of the post, up to 300 characters long
+	 * @displayOptions.show { resource: ["post"], operation: ["create"] }
 	 */
 	title: string | Expression<string>;
 	/**
 	 * URL of the post
+	 * @displayOptions.show { resource: ["post"], operation: ["create"], kind: ["link", "image"] }
 	 */
 	url: string | Expression<string>;
 	/**
 	 * Text of the post. Markdown supported.
+	 * @displayOptions.show { resource: ["post"], operation: ["create"], kind: ["self"] }
 	 */
 	text: string | Expression<string>;
 	/**
 	 * Whether the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.
+	 * @displayOptions.show { resource: ["post"], operation: ["create"], kind: ["link", "image"] }
 	 * @default false
 	 */
 	resubmit?: boolean | Expression<boolean>;
@@ -53,6 +59,7 @@ export type RedditV1PostDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the post to delete. Found in the post URL: &lt;code&gt;/r/[subreddit_name]/comments/[post_id]/[post_title]&lt;/code&gt;
+	 * @displayOptions.show { resource: ["post"], operation: ["delete"] }
 	 */
 	postId: string | Expression<string>;
 };
@@ -62,10 +69,12 @@ export type RedditV1PostGetConfig = {
 	operation: 'get';
 	/**
 	 * The name of subreddit to retrieve the post from
+	 * @displayOptions.show { resource: ["post"], operation: ["get"] }
 	 */
 	subreddit: string | Expression<string>;
 	/**
 	 * ID of the post to retrieve. Found in the post URL: &lt;code&gt;/r/[subreddit_name]/comments/[post_id]/[post_title]&lt;/code&gt;
+	 * @displayOptions.show { resource: ["post"], operation: ["get"] }
 	 */
 	postId: string | Expression<string>;
 };
@@ -76,15 +85,18 @@ export type RedditV1PostGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The name of subreddit to retrieve the posts from
+	 * @displayOptions.show { resource: ["post"], operation: ["getAll"] }
 	 */
 	subreddit: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["post"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["post"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -97,24 +109,29 @@ export type RedditV1PostSearchConfig = {
 	operation: 'search';
 	/**
 	 * Location where to search for posts
+	 * @displayOptions.show { resource: ["post"], operation: ["search"] }
 	 * @default subreddit
 	 */
 	location?: 'allReddit' | 'subreddit' | Expression<string>;
 	/**
 	 * The name of subreddit to search in
+	 * @displayOptions.show { resource: ["post"], operation: ["search"], location: ["subreddit"] }
 	 */
 	subreddit: string | Expression<string>;
 	/**
 	 * The keyword for the search
+	 * @displayOptions.show { resource: ["post"], operation: ["search"] }
 	 */
 	keyword: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["post"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["post"], operation: ["search"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -127,10 +144,12 @@ export type RedditV1PostCommentCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the post to write the comment to. Found in the post URL: &lt;code&gt;/r/[subreddit_name]/comments/[post_id]/[post_title]&lt;/code&gt;
+	 * @displayOptions.show { resource: ["postComment"], operation: ["create"] }
 	 */
 	postId: string | Expression<string>;
 	/**
 	 * Text of the comment. Markdown supported.
+	 * @displayOptions.show { resource: ["postComment"], operation: ["create"] }
 	 */
 	commentText: string | Expression<string>;
 };
@@ -141,19 +160,23 @@ export type RedditV1PostCommentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The name of subreddit where the post is
+	 * @displayOptions.show { resource: ["postComment"], operation: ["getAll"] }
 	 */
 	subreddit: string | Expression<string>;
 	/**
 	 * ID of the post to get all comments from. Found in the post URL: &lt;code&gt;/r/[subreddit_name]/comments/[post_id]/[post_title]&lt;/code&gt;
+	 * @displayOptions.show { resource: ["postComment"], operation: ["getAll"] }
 	 */
 	postId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["postComment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["postComment"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -165,6 +188,7 @@ export type RedditV1PostCommentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the comment to remove. Found in the comment URL:&lt;code&gt;/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]&lt;/code&gt;
+	 * @displayOptions.show { resource: ["postComment"], operation: ["delete"] }
 	 */
 	commentId: string | Expression<string>;
 };
@@ -175,10 +199,12 @@ export type RedditV1PostCommentReplyConfig = {
 	operation: 'reply';
 	/**
 	 * ID of the comment to reply to. To be found in the comment URL: &lt;code&gt;www.reddit.com/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]&lt;/code&gt;
+	 * @displayOptions.show { resource: ["postComment"], operation: ["reply"] }
 	 */
 	commentId: string | Expression<string>;
 	/**
 	 * Text of the reply. Markdown supported.
+	 * @displayOptions.show { resource: ["postComment"], operation: ["reply"] }
 	 */
 	replyText: string | Expression<string>;
 };
@@ -188,6 +214,7 @@ export type RedditV1ProfileGetConfig = {
 	operation: 'get';
 	/**
 	 * Details of my account to retrieve
+	 * @displayOptions.show { resource: ["profile"], operation: ["get"] }
 	 * @default identity
 	 */
 	details:
@@ -201,11 +228,13 @@ export type RedditV1ProfileGetConfig = {
 		| Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["profile"], operation: ["get"], details: ["saved"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["profile"], operation: ["get"], details: ["saved"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -216,11 +245,13 @@ export type RedditV1SubredditGetConfig = {
 	operation: 'get';
 	/**
 	 * Subreddit content to retrieve
+	 * @displayOptions.show { resource: ["subreddit"], operation: ["get"] }
 	 * @default about
 	 */
 	content: 'about' | 'rules' | Expression<string>;
 	/**
 	 * The name of subreddit to retrieve the content from
+	 * @displayOptions.show { resource: ["subreddit"], operation: ["get"] }
 	 */
 	subreddit: string | Expression<string>;
 };
@@ -231,11 +262,13 @@ export type RedditV1SubredditGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["subreddit"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["subreddit"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -247,20 +280,24 @@ export type RedditV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * Reddit ID of the user to retrieve
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	username: string | Expression<string>;
 	/**
 	 * Details of the user to retrieve
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 * @default about
 	 */
 	details: 'about' | 'comments' | 'gilded' | 'overview' | 'submitted' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["get"], details: ["overview", "submitted", "comments", "gilded"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["get"], details: ["comments", "gilded", "overview", "submitted"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

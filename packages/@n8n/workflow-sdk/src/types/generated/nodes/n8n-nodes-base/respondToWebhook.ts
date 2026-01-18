@@ -19,11 +19,13 @@ import type { IDataObject } from '../../../base';
 export interface RespondToWebhookV15Params {
 	/**
 	 * Whether to provide an additional output branch with the response sent to the webhook
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.4}}] }
 	 * @default false
 	 */
 	enableResponseOutput?: boolean | Expression<boolean>;
 	/**
 	 * The data that should be returned
+	 * @displayOptions.show { @version: [1, 1.1] }
 	 * @default firstIncomingItem
 	 */
 	respondWith?:
@@ -38,10 +40,12 @@ export interface RespondToWebhookV15Params {
 		| Expression<string>;
 	/**
 	 * The URL to redirect to
+	 * @displayOptions.show { respondWith: ["redirect"] }
 	 */
 	redirectURL: string | Expression<string>;
 	/**
  * The HTTP response JSON data
+ * @displayOptions.show { respondWith: ["json"] }
  * @default {
   "myField": "value"
 }
@@ -49,6 +53,7 @@ export interface RespondToWebhookV15Params {
 	responseBody?: IDataObject | string | Expression<string>;
 	/**
  * The payload to include in the JWT token
+ * @displayOptions.show { respondWith: ["jwt"] }
  * @default {
   "myField": "value"
 }
@@ -57,6 +62,7 @@ export interface RespondToWebhookV15Params {
 	responseDataSource?: 'automatically' | 'set' | Expression<string>;
 	/**
 	 * The name of the node input field with the binary data
+	 * @displayOptions.show { respondWith: ["binary"], responseDataSource: ["set"] }
 	 * @default data
 	 */
 	inputFieldName: string | Expression<string>;

@@ -20,6 +20,7 @@ export interface AwsSqsV1Params {
 	operation?: 'sendMessage' | Expression<string>;
 	/**
 	 * Queue to send a message to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["sendMessage"] }
 	 */
 	queue: string | Expression<string>;
 	queueType?: 'fifo' | 'standard' | Expression<string>;
@@ -30,10 +31,12 @@ export interface AwsSqsV1Params {
 	sendInputData?: boolean | Expression<boolean>;
 	/**
 	 * Message to send to the queue
+	 * @displayOptions.show { operation: ["sendMessage"], sendInputData: [false] }
 	 */
 	message: string | Expression<string>;
 	/**
 	 * Tag that specifies that a message belongs to a specific message group. Applies only to FIFO (first-in-first-out) queues.
+	 * @displayOptions.show { queueType: ["fifo"] }
 	 */
 	messageGroupId: string | Expression<string>;
 	options?: Record<string, unknown>;

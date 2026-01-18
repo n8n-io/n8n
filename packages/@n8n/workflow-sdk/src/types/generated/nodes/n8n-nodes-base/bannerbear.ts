@@ -21,15 +21,26 @@ export type BannerbearV1ImageCreateConfig = {
 	operation: 'create';
 	/**
 	 * The template ID you want to use. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["image"], operation: ["create"] }
 	 */
 	templateId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
 	modificationsUi?: {
 		modificationsValues?: Array<{
+			/** The name of the item you want to change. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			name?: string | Expression<string>;
+			/** Replacement text you want to use
+			 */
 			text?: string | Expression<string>;
+			/** Color hex of object
+			 */
 			color?: string | Expression<string>;
+			/** Color hex of text background
+			 */
 			background?: string | Expression<string>;
+			/** Replacement image URL you want to use (must be publicly viewable)
+			 */
 			imageUrl?: string | Expression<string>;
 		}>;
 	};
@@ -41,6 +52,7 @@ export type BannerbearV1ImageGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the image
+	 * @displayOptions.show { resource: ["image"], operation: ["get"] }
 	 */
 	imageId: string | Expression<string>;
 };
@@ -51,6 +63,7 @@ export type BannerbearV1TemplateGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the template
+	 * @displayOptions.show { resource: ["template"], operation: ["get"] }
 	 */
 	templateId: string | Expression<string>;
 };

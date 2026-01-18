@@ -21,14 +21,17 @@ export type ServiceNowV1AttachmentUploadConfig = {
 	operation: 'upload';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["attachment"], operation: ["upload", "getAll"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Sys_id of the record in the table specified in Table Name that you want to attach the file to
+	 * @displayOptions.show { resource: ["attachment"], operation: ["upload"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Name of the binary property that contains the data to upload
+	 * @displayOptions.show { resource: ["attachment"], operation: ["upload"] }
 	 * @default data
 	 */
 	inputDataFieldName: string | Expression<string>;
@@ -41,6 +44,7 @@ export type ServiceNowV1AttachmentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Sys_id value of the attachment to delete
+	 * @displayOptions.show { resource: ["attachment"], operation: ["delete"] }
 	 */
 	attachmentId: string | Expression<string>;
 };
@@ -51,11 +55,13 @@ export type ServiceNowV1AttachmentGetConfig = {
 	operation: 'get';
 	/**
 	 * Sys_id value of the attachment to delete
+	 * @displayOptions.show { resource: ["attachment"], operation: ["get"] }
 	 */
 	attachmentId: string | Expression<string>;
 	download: boolean | Expression<boolean>;
 	/**
 	 * Field name where downloaded data will be placed
+	 * @displayOptions.show { resource: ["attachment"], operation: ["get", "getAll"], download: [true] }
 	 * @default data
 	 */
 	outputField?: string | Expression<string>;
@@ -68,21 +74,25 @@ export type ServiceNowV1AttachmentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["attachment"], operation: ["upload", "getAll"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["attachment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["attachment"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	download: boolean | Expression<boolean>;
 	/**
 	 * Field name where downloaded data will be placed
+	 * @displayOptions.show { resource: ["attachment"], operation: ["get", "getAll"], download: [true] }
 	 * @default data
 	 */
 	outputField?: string | Expression<string>;
@@ -95,11 +105,13 @@ export type ServiceNowV1BusinessServiceGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["businessService"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["businessService"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -112,11 +124,13 @@ export type ServiceNowV1ConfigurationItemsGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["configurationItems"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["configurationItems"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -129,11 +143,13 @@ export type ServiceNowV1DepartmentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["department"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["department"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -146,11 +162,13 @@ export type ServiceNowV1DictionaryGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["dictionary"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["dictionary"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -162,6 +180,7 @@ export type ServiceNowV1IncidentCreateConfig = {
 	operation: 'create';
 	/**
 	 * Short description of the incident
+	 * @displayOptions.show { resource: ["incident"], operation: ["create"] }
 	 */
 	short_description: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -173,6 +192,7 @@ export type ServiceNowV1IncidentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier of the incident
+	 * @displayOptions.show { resource: ["incident"], operation: ["delete", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -183,6 +203,7 @@ export type ServiceNowV1IncidentGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier of the incident
+	 * @displayOptions.show { resource: ["incident"], operation: ["delete", "get"] }
 	 */
 	id: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -194,11 +215,13 @@ export type ServiceNowV1IncidentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["incident"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["incident"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -210,6 +233,7 @@ export type ServiceNowV1IncidentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier of the incident
+	 * @displayOptions.show { resource: ["incident"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -220,15 +244,24 @@ export type ServiceNowV1TableRecordCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["tableRecord"], operation: ["create"] }
 	 */
 	tableName: string | Expression<string>;
 	dataToSend?: 'mapInput' | 'columns' | 'nothing' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.
+	 * @displayOptions.show { resource: ["tableRecord"], operation: ["create"], dataToSend: ["mapInput"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	fieldsToSend?: {
-		field?: Array<{ column?: string | Expression<string>; value?: string | Expression<string> }>;
+		field?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
+			column?: string | Expression<string>;
+			/** Field Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -238,10 +271,12 @@ export type ServiceNowV1TableRecordDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Name of the table in which the record exists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["tableRecord"], operation: ["delete", "get"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Unique identifier of the record
+	 * @displayOptions.show { resource: ["tableRecord"], operation: ["delete", "get"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -252,10 +287,12 @@ export type ServiceNowV1TableRecordGetConfig = {
 	operation: 'get';
 	/**
 	 * Name of the table in which the record exists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["tableRecord"], operation: ["delete", "get"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Unique identifier of the record
+	 * @displayOptions.show { resource: ["tableRecord"], operation: ["delete", "get"] }
 	 */
 	id: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -267,15 +304,18 @@ export type ServiceNowV1TableRecordGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["tableRecord"], operation: ["getAll"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["tableRecord"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["tableRecord"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -287,19 +327,29 @@ export type ServiceNowV1TableRecordUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["tableRecord"], operation: ["update"] }
 	 */
 	tableName: string | Expression<string>;
 	/**
 	 * Unique identifier of the record
+	 * @displayOptions.show { resource: ["tableRecord"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	dataToSend?: 'mapInput' | 'columns' | 'nothing' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.
+	 * @displayOptions.show { resource: ["tableRecord"], operation: ["update"], dataToSend: ["mapInput"] }
 	 */
 	inputsToIgnore?: string | Expression<string>;
 	fieldsToSend?: {
-		field?: Array<{ column?: string | Expression<string>; value?: string | Expression<string> }>;
+		field?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
+			column?: string | Expression<string>;
+			/** Field Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -308,6 +358,7 @@ export type ServiceNowV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * Short description of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	short_description: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -319,6 +370,7 @@ export type ServiceNowV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -329,15 +381,18 @@ export type ServiceNowV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 * @default id
 	 */
 	getOption: 'id' | 'user_name' | Expression<string>;
 	/**
 	 * Unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["get"], getOption: ["user_name"] }
 	 */
 	user_name: string | Expression<string>;
 	/**
 	 * Unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["get"], getOption: ["id"] }
 	 */
 	id: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -349,11 +404,13 @@ export type ServiceNowV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["user"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["user"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -365,6 +422,7 @@ export type ServiceNowV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -376,11 +434,13 @@ export type ServiceNowV1UserGroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["userGroup"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["userGroup"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -393,11 +453,13 @@ export type ServiceNowV1UserRoleGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["userRole"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["userRole"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

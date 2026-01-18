@@ -29,6 +29,7 @@ export type WooCommerceV1CustomerDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the customer to delete
+	 * @displayOptions.show { resource: ["customer"], operation: ["delete"] }
 	 */
 	customerId: string | Expression<string>;
 };
@@ -39,6 +40,7 @@ export type WooCommerceV1CustomerGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the customer to retrieve
+	 * @displayOptions.show { resource: ["customer"], operation: ["get"] }
 	 */
 	customerId: string | Expression<string>;
 };
@@ -49,11 +51,13 @@ export type WooCommerceV1CustomerGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["customer"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["customer"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -66,6 +70,7 @@ export type WooCommerceV1CustomerUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the customer to update
+	 * @displayOptions.show { resource: ["customer"], operation: ["update"] }
 	 */
 	customerId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -78,32 +83,63 @@ export type WooCommerceV1OrderCreateConfig = {
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * Billing address
+	 * @displayOptions.show { resource: ["order"], operation: ["create"] }
 	 * @default {}
 	 */
 	billingUi?: {
 		billingValues?: {
+			/** First Name
+			 */
 			firstName?: string | Expression<string>;
+			/** Last Name
+			 */
 			lastName?: string | Expression<string>;
+			/** Company
+			 */
 			company?: string | Expression<string>;
+			/** Address Line 1
+			 */
 			address_1?: string | Expression<string>;
+			/** Address Line 2
+			 */
 			address_2?: string | Expression<string>;
+			/** ISO code or name of the state, province or district
+			 */
 			city?: string | Expression<string>;
+			/** Postal Code
+			 */
 			postcode?: string | Expression<string>;
+			/** Country
+			 */
 			country?: string | Expression<string>;
+			/** Email
+			 */
 			email?: string | Expression<string>;
+			/** Phone
+			 */
 			phone?: string | Expression<string>;
 		};
 	};
 	/**
 	 * Coupons line data
+	 * @displayOptions.show { resource: ["order"], operation: ["create"] }
 	 * @default {}
 	 */
 	couponLinesUi?: {
 		couponLinesValues?: Array<{
+			/** Coupon code
+			 */
 			code?: string | Expression<string>;
+			/** Meta data
+			 * @default {}
+			 */
 			metadataUi?: {
 				metadataValues?: Array<{
+					/** Name of the metadata key to add
+					 */
 					key?: string | Expression<string>;
+					/** Value to set for the metadata key
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -111,17 +147,33 @@ export type WooCommerceV1OrderCreateConfig = {
 	};
 	/**
 	 * Fee line data
+	 * @displayOptions.show { resource: ["order"], operation: ["create"] }
 	 * @default {}
 	 */
 	feeLinesUi?: {
 		feeLinesValues?: Array<{
+			/** Fee name
+			 */
 			name?: string | Expression<string>;
+			/** Tax class of fee
+			 */
 			taxClass?: string | Expression<string>;
+			/** Tax class of fee
+			 */
 			taxStatus?: 'taxable' | 'none' | Expression<string>;
+			/** Line total (after discounts)
+			 */
 			total?: string | Expression<string>;
+			/** Meta data
+			 * @default {}
+			 */
 			metadataUi?: {
 				metadataValues?: Array<{
+					/** Name of the metadata key to add
+					 */
 					key?: string | Expression<string>;
+					/** Value to set for the metadata key
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -129,20 +181,45 @@ export type WooCommerceV1OrderCreateConfig = {
 	};
 	/**
 	 * Line item data
+	 * @displayOptions.show { resource: ["order"], operation: ["create"] }
 	 * @default {}
 	 */
 	lineItemsUi?: {
 		lineItemsValues?: Array<{
+			/** Product name
+			 */
 			name?: string | Expression<string>;
+			/** Product ID
+			 * @default 0
+			 */
 			productId?: number | Expression<number>;
+			/** Variation ID, if applicable
+			 * @default 0
+			 */
 			variationId?: number | Expression<number>;
+			/** Quantity ordered
+			 * @default 1
+			 */
 			quantity?: number | Expression<number>;
+			/** Slug of the tax class of product
+			 */
 			taxClass?: string | Expression<string>;
+			/** Line subtotal (before discounts)
+			 */
 			subtotal?: string | Expression<string>;
+			/** Line total (after discounts)
+			 */
 			total?: string | Expression<string>;
+			/** Meta data
+			 * @default {}
+			 */
 			metadataUi?: {
 				metadataValues?: Array<{
+					/** Name of the metadata key to add
+					 */
 					key?: string | Expression<string>;
+					/** Value to set for the metadata key
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -150,42 +227,78 @@ export type WooCommerceV1OrderCreateConfig = {
 	};
 	/**
 	 * Meta data
+	 * @displayOptions.show { resource: ["order"], operation: ["create"] }
 	 * @default {}
 	 */
 	metadataUi?: {
 		metadataValues?: Array<{
+			/** Name of the metadata key to add
+			 */
 			key?: string | Expression<string>;
+			/** Value to set for the metadata key
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Shipping address
+	 * @displayOptions.show { resource: ["order"], operation: ["create"] }
 	 * @default {}
 	 */
 	shippingUi?: {
 		shippingValues?: {
+			/** First Name
+			 */
 			firstName?: string | Expression<string>;
+			/** Last Name
+			 */
 			lastName?: string | Expression<string>;
+			/** Company
+			 */
 			company?: string | Expression<string>;
+			/** Address Line 1
+			 */
 			address_1?: string | Expression<string>;
+			/** Address Line 2
+			 */
 			address_2?: string | Expression<string>;
+			/** ISO code or name of the state, province or district
+			 */
 			city?: string | Expression<string>;
+			/** Postal Code
+			 */
 			postcode?: string | Expression<string>;
+			/** Country
+			 */
 			country?: string | Expression<string>;
 		};
 	};
 	/**
 	 * Shipping line data
+	 * @displayOptions.show { resource: ["order"], operation: ["create"] }
 	 * @default {}
 	 */
 	shippingLinesUi?: {
 		shippingLinesValues?: Array<{
+			/** Shipping method name
+			 */
 			methodTitle?: string | Expression<string>;
+			/** Shipping method ID
+			 */
 			'method ID'?: string | Expression<string>;
+			/** Line total (after discounts)
+			 */
 			total?: string | Expression<string>;
+			/** Meta data
+			 * @default {}
+			 */
 			metadataUi?: {
 				metadataValues?: Array<{
+					/** Name of the metadata key to add
+					 */
 					key?: string | Expression<string>;
+					/** Value to set for the metadata key
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -213,11 +326,13 @@ export type WooCommerceV1OrderGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["order"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["order"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -232,32 +347,63 @@ export type WooCommerceV1OrderUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 	/**
 	 * Billing address
+	 * @displayOptions.show { resource: ["order"], operation: ["update"] }
 	 * @default {}
 	 */
 	billingUi?: {
 		billingValues?: {
+			/** First Name
+			 */
 			firstName?: string | Expression<string>;
+			/** Last Name
+			 */
 			lastName?: string | Expression<string>;
+			/** Company
+			 */
 			company?: string | Expression<string>;
+			/** Address Line 1
+			 */
 			address_1?: string | Expression<string>;
+			/** Address Line 2
+			 */
 			address_2?: string | Expression<string>;
+			/** ISO code or name of the state, province or district
+			 */
 			city?: string | Expression<string>;
+			/** Postal Code
+			 */
 			postalCode?: string | Expression<string>;
+			/** Country
+			 */
 			country?: string | Expression<string>;
+			/** Email
+			 */
 			email?: string | Expression<string>;
+			/** Phone
+			 */
 			phone?: string | Expression<string>;
 		};
 	};
 	/**
 	 * Coupons line data
+	 * @displayOptions.show { resource: ["order"], operation: ["update"] }
 	 * @default {}
 	 */
 	couponLinesUi?: {
 		couponLinesValues?: Array<{
+			/** Coupon code
+			 */
 			code?: string | Expression<string>;
+			/** Meta data
+			 * @default {}
+			 */
 			metadataUi?: {
 				metadataValues?: Array<{
+					/** Name of the metadata key to add
+					 */
 					key?: string | Expression<string>;
+					/** Value to set for the metadata key
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -265,17 +411,33 @@ export type WooCommerceV1OrderUpdateConfig = {
 	};
 	/**
 	 * Fee line data
+	 * @displayOptions.show { resource: ["order"], operation: ["update"] }
 	 * @default {}
 	 */
 	feeLinesUi?: {
 		feeLinesValues?: Array<{
+			/** Fee name
+			 */
 			name?: string | Expression<string>;
+			/** Tax class of fee
+			 */
 			taxClass?: string | Expression<string>;
+			/** Tax class of fee
+			 */
 			taxStatus?: 'taxable' | 'none' | Expression<string>;
+			/** Line total (after discounts)
+			 */
 			total?: string | Expression<string>;
+			/** Meta data
+			 * @default {}
+			 */
 			metadataUi?: {
 				metadataValues?: Array<{
+					/** Name of the metadata key to add
+					 */
 					key?: string | Expression<string>;
+					/** Value to set for the metadata key
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -283,20 +445,45 @@ export type WooCommerceV1OrderUpdateConfig = {
 	};
 	/**
 	 * Line item data
+	 * @displayOptions.show { resource: ["order"], operation: ["update"] }
 	 * @default {}
 	 */
 	lineItemsUi?: {
 		lineItemsValues?: Array<{
+			/** Product name
+			 */
 			name?: string | Expression<string>;
+			/** Product ID
+			 * @default 0
+			 */
 			productId?: number | Expression<number>;
+			/** Variation ID, if applicable
+			 * @default 0
+			 */
 			variationId?: number | Expression<number>;
+			/** Quantity ordered
+			 * @default 1
+			 */
 			quantity?: number | Expression<number>;
+			/** Slug of the tax class of product
+			 */
 			taxClass?: string | Expression<string>;
+			/** Line subtotal (before discounts)
+			 */
 			subtotal?: string | Expression<string>;
+			/** Line total (after discounts)
+			 */
 			total?: string | Expression<string>;
+			/** Meta data
+			 * @default {}
+			 */
 			metadataUi?: {
 				metadataValues?: Array<{
+					/** Name of the metadata key to add
+					 */
 					key?: string | Expression<string>;
+					/** Value to set for the metadata key
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -304,42 +491,78 @@ export type WooCommerceV1OrderUpdateConfig = {
 	};
 	/**
 	 * Meta data
+	 * @displayOptions.show { resource: ["order"], operation: ["update"] }
 	 * @default {}
 	 */
 	metadataUi?: {
 		metadataValues?: Array<{
+			/** Name of the metadata key to add
+			 */
 			key?: string | Expression<string>;
+			/** Value to set for the metadata key
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Shipping address
+	 * @displayOptions.show { resource: ["order"], operation: ["update"] }
 	 * @default {}
 	 */
 	shippingUi?: {
 		shippingValues?: {
+			/** First Name
+			 */
 			firstName?: string | Expression<string>;
+			/** Last Name
+			 */
 			lastName?: string | Expression<string>;
+			/** Company
+			 */
 			company?: string | Expression<string>;
+			/** Address Line 1
+			 */
 			address_1?: string | Expression<string>;
+			/** Address Line 2
+			 */
 			address_2?: string | Expression<string>;
+			/** ISO code or name of the state, province or district
+			 */
 			city?: string | Expression<string>;
+			/** Postal Code
+			 */
 			postalCode?: string | Expression<string>;
+			/** Country
+			 */
 			country?: string | Expression<string>;
 		};
 	};
 	/**
 	 * Shipping line data
+	 * @displayOptions.show { resource: ["order"], operation: ["update"] }
 	 * @default {}
 	 */
 	shippingLinesUi?: {
 		shippingLinesValues?: Array<{
+			/** Shipping method name
+			 */
 			methodTitle?: string | Expression<string>;
+			/** Shipping method ID
+			 */
 			'method ID'?: string | Expression<string>;
+			/** Line total (after discounts)
+			 */
 			total?: string | Expression<string>;
+			/** Meta data
+			 * @default {}
+			 */
 			metadataUi?: {
 				metadataValues?: Array<{
+					/** Name of the metadata key to add
+					 */
 					key?: string | Expression<string>;
+					/** Value to set for the metadata key
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -353,38 +576,58 @@ export type WooCommerceV1ProductCreateConfig = {
 	operation: 'create';
 	/**
 	 * Product name
+	 * @displayOptions.show { resource: ["product"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * Product dimensions
+	 * @displayOptions.show { resource: ["product"], operation: ["create"] }
 	 * @default {}
 	 */
 	dimensionsUi?: {
 		dimensionsValues?: {
+			/** Product height
+			 */
 			height?: string | Expression<string>;
+			/** Product length
+			 */
 			length?: string | Expression<string>;
+			/** Product width
+			 */
 			width?: string | Expression<string>;
 		};
 	};
 	/**
 	 * Product Image
+	 * @displayOptions.show { resource: ["product"], operation: ["create"] }
 	 * @default {}
 	 */
 	imagesUi?: {
 		imagesValues?: Array<{
+			/** Image alternative text
+			 */
 			alt?: string | Expression<string>;
+			/** Image URL
+			 */
 			src?: string | Expression<string>;
+			/** Image name
+			 */
 			name?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Meta data
+	 * @displayOptions.show { resource: ["product"], operation: ["create"] }
 	 * @default {}
 	 */
 	metadataUi?: {
 		metadataValues?: Array<{
+			/** Name of the metadata key to add
+			 */
 			key?: string | Expression<string>;
+			/** Value to set for the metadata key
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -410,11 +653,13 @@ export type WooCommerceV1ProductGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["product"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["product"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -429,33 +674,52 @@ export type WooCommerceV1ProductUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 	/**
 	 * Product dimensions
+	 * @displayOptions.show { resource: ["product"], operation: ["update"] }
 	 * @default {}
 	 */
 	dimensionsUi?: {
 		dimensionsValues?: {
+			/** Product height
+			 */
 			height?: string | Expression<string>;
+			/** Product length
+			 */
 			length?: string | Expression<string>;
+			/** Product width
+			 */
 			width?: string | Expression<string>;
 		};
 	};
 	/**
 	 * Product Image
+	 * @displayOptions.show { resource: ["product"], operation: ["update"] }
 	 * @default {}
 	 */
 	imagesUi?: {
 		imagesValues?: Array<{
+			/** Image alternative text
+			 */
 			alt?: string | Expression<string>;
+			/** Image URL
+			 */
 			src?: string | Expression<string>;
+			/** Image name
+			 */
 			name?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Meta data
+	 * @displayOptions.show { resource: ["product"], operation: ["update"] }
 	 * @default {}
 	 */
 	metadataUi?: {
 		metadataValues?: Array<{
+			/** Name of the metadata key to add
+			 */
 			key?: string | Expression<string>;
+			/** Value to set for the metadata key
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};

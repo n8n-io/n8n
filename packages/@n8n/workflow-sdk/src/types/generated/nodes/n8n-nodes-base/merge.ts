@@ -20,6 +20,7 @@ export type MergeV32AppendConfig = {
 	mode: 'append';
 	/**
 	 * The number of data inputs you want to merge. The node waits for all connected inputs to be executed.
+	 * @displayOptions.show { mode: ["append"] }
 	 * @default 2
 	 */
 	numberInputs?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Expression<number>;
@@ -30,29 +31,43 @@ export type MergeV32CombineConfig = {
 	mode: 'combine';
 	/**
 	 * How input data should be merged
+	 * @displayOptions.show { mode: ["combine"] }
 	 * @default combineByFields
 	 */
 	combineBy?: 'combineByFields' | 'combineByPosition' | 'combineAll' | Expression<string>;
 	options?: Record<string, unknown>;
 	/**
 	 * Whether name(s) of field to match are different in input 1 and input 2
+	 * @displayOptions.show { mode: ["combine"], combineBy: ["combineByFields"] }
 	 * @default false
 	 */
 	advanced?: boolean | Expression<boolean>;
 	/**
 	 * Specify the fields to use for matching input items
 	 * @hint Drag or type the input field name
+	 * @displayOptions.show { advanced: [false], mode: ["combine"], combineBy: ["combineByFields"] }
 	 */
 	fieldsToMatchString?: string | Expression<string>;
 	/**
 	 * Specify the fields to use for matching input items
+	 * @displayOptions.show { advanced: [true], mode: ["combine"], combineBy: ["combineByFields"] }
 	 * @default {"values":[{"field1":"","field2":""}]}
 	 */
 	mergeByFields?: {
-		values?: Array<{ field1?: string | Expression<string>; field2?: string | Expression<string> }>;
+		values?: Array<{
+			/** Input 1 Field
+			 * @hint Drag or type the input field name
+			 */
+			field1?: string | Expression<string>;
+			/** Input 2 Field
+			 * @hint Drag or type the input field name
+			 */
+			field2?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * How to select the items to send to output
+	 * @displayOptions.show { mode: ["combine"], combineBy: ["combineByFields"] }
 	 * @default keepMatches
 	 */
 	joinMode?:
@@ -65,6 +80,7 @@ export type MergeV32CombineConfig = {
 	outputDataFrom?: 'both' | 'input1' | 'input2' | Expression<string>;
 	/**
 	 * The number of data inputs you want to merge. The node waits for all connected inputs to be executed.
+	 * @displayOptions.show { mode: ["combine"], combineBy: ["combineByPosition"] }
 	 * @default 2
 	 */
 	numberInputs?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Expression<number>;
@@ -75,12 +91,14 @@ export type MergeV32CombineBySqlConfig = {
 	mode: 'combineBySql';
 	/**
 	 * The number of data inputs you want to merge. The node waits for all connected inputs to be executed.
+	 * @displayOptions.show { mode: ["combineBySql"] }
 	 * @default 2
 	 */
 	numberInputs?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Expression<number>;
 	/**
 	 * Input data available as tables with corresponding number, e.g. input1, input2
 	 * @hint Supports &lt;a href="https://github.com/alasql/alasql/wiki/Supported-SQL-statements" target="_blank"&gt;most&lt;/a&gt; of the SQL-99 language
+	 * @displayOptions.show { mode: ["combineBySql"] }
 	 * @default SELECT * FROM input1 LEFT JOIN input2 ON input1.name = input2.id
 	 */
 	query: string | Expression<string>;
@@ -92,6 +110,7 @@ export type MergeV32ChooseBranchConfig = {
 	mode: 'chooseBranch';
 	/**
 	 * The number of data inputs you want to merge. The node waits for all connected inputs to be executed.
+	 * @displayOptions.show { mode: ["chooseBranch"] }
 	 * @default 2
 	 */
 	numberInputs?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Expression<number>;
@@ -99,6 +118,7 @@ export type MergeV32ChooseBranchConfig = {
 	output?: 'specifiedInput' | 'empty' | Expression<string>;
 	/**
 	 * The number of the input to use data of
+	 * @displayOptions.show { output: ["specifiedInput"], mode: ["chooseBranch"] }
 	 * @default 1
 	 */
 	useDataOfInput?: string | Expression<string>;
@@ -120,7 +140,16 @@ export type MergeV21CombineConfig = {
 	mode: 'combine';
 	combinationMode?: 'mergeByFields' | 'mergeByPosition' | 'multiplex' | Expression<string>;
 	mergeByFields?: {
-		values?: Array<{ field1?: string | Expression<string>; field2?: string | Expression<string> }>;
+		values?: Array<{
+			/** Input 1 Field
+			 * @hint  Enter the field name as text
+			 */
+			field1?: string | Expression<string>;
+			/** Input 2 Field
+			 * @hint  Enter the field name as text
+			 */
+			field2?: string | Expression<string>;
+		}>;
 	};
 	joinMode?:
 		| 'keepMatches'
@@ -155,11 +184,13 @@ export type MergeV1KeepKeyMatchesConfig = {
 	/**
 	 * Name of property which decides which items to merge of input 1
 	 * @hint The name of the field as text (e.g. “id”)
+	 * @displayOptions.show { mode: ["keepKeyMatches", "mergeByKey", "removeKeyMatches"] }
 	 */
 	propertyName1: string | Expression<string>;
 	/**
 	 * Name of property which decides which items to merge of input 2
 	 * @hint The name of the field as text (e.g. “id”)
+	 * @displayOptions.show { mode: ["keepKeyMatches", "mergeByKey", "removeKeyMatches"] }
 	 */
 	propertyName2: string | Expression<string>;
 };
@@ -169,6 +200,7 @@ export type MergeV1MergeByIndexConfig = {
 	mode: 'mergeByIndex';
 	/**
 	 * How many items the output will contain if inputs contain different amount of items
+	 * @displayOptions.show { mode: ["mergeByIndex"] }
 	 * @default left
 	 */
 	join?: 'inner' | 'left' | 'outer' | Expression<string>;
@@ -180,15 +212,18 @@ export type MergeV1MergeByKeyConfig = {
 	/**
 	 * Name of property which decides which items to merge of input 1
 	 * @hint The name of the field as text (e.g. “id”)
+	 * @displayOptions.show { mode: ["keepKeyMatches", "mergeByKey", "removeKeyMatches"] }
 	 */
 	propertyName1: string | Expression<string>;
 	/**
 	 * Name of property which decides which items to merge of input 2
 	 * @hint The name of the field as text (e.g. “id”)
+	 * @displayOptions.show { mode: ["keepKeyMatches", "mergeByKey", "removeKeyMatches"] }
 	 */
 	propertyName2: string | Expression<string>;
 	/**
 	 * Select when to overwrite the values from Input1 with values from Input 2
+	 * @displayOptions.show { mode: ["mergeByKey"] }
 	 * @default always
 	 */
 	overwrite?: 'always' | 'blank' | 'undefined' | Expression<string>;
@@ -204,6 +239,7 @@ export type MergeV1PassThroughConfig = {
 	mode: 'passThrough';
 	/**
 	 * Defines of which input the data should be used as output of node
+	 * @displayOptions.show { mode: ["passThrough"] }
 	 * @default input1
 	 */
 	output?: 'input1' | 'input2' | Expression<string>;
@@ -215,11 +251,13 @@ export type MergeV1RemoveKeyMatchesConfig = {
 	/**
 	 * Name of property which decides which items to merge of input 1
 	 * @hint The name of the field as text (e.g. “id”)
+	 * @displayOptions.show { mode: ["keepKeyMatches", "mergeByKey", "removeKeyMatches"] }
 	 */
 	propertyName1: string | Expression<string>;
 	/**
 	 * Name of property which decides which items to merge of input 2
 	 * @hint The name of the field as text (e.g. “id”)
+	 * @displayOptions.show { mode: ["keepKeyMatches", "mergeByKey", "removeKeyMatches"] }
 	 */
 	propertyName2: string | Expression<string>;
 };

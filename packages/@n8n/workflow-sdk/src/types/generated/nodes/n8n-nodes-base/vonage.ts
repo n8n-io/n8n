@@ -20,14 +20,17 @@ export type VonageV1SmsSendConfig = {
 	operation: 'send';
 	/**
 	 * The name or number the message should be sent from
+	 * @displayOptions.show { resource: ["sms"], operation: ["send"] }
 	 */
 	from?: string | Expression<string>;
 	/**
 	 * The number that the message should be sent to. Numbers are specified in E.164 format.
+	 * @displayOptions.show { resource: ["sms"], operation: ["send"] }
 	 */
 	to?: string | Expression<string>;
 	/**
 	 * The body of the message being sent
+	 * @displayOptions.show { resource: ["sms"], operation: ["send"] }
 	 */
 	message?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

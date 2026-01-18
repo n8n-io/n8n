@@ -24,6 +24,7 @@ export interface EmailReadImapV21Params {
 	postProcessAction?: 'read' | 'nothing' | Expression<string>;
 	/**
 	 * Whether attachments of emails should be downloaded. Only set if needed as it increases processing.
+	 * @displayOptions.show { format: ["simple"] }
 	 * @default false
 	 */
 	downloadAttachments?: boolean | Expression<boolean>;
@@ -34,6 +35,7 @@ export interface EmailReadImapV21Params {
 	format?: 'raw' | 'resolved' | 'simple' | Expression<string>;
 	/**
 	 * Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"
+	 * @displayOptions.show { format: ["resolved"] }
 	 * @default attachment_
 	 */
 	dataPropertyAttachmentsPrefixName?: string | Expression<string>;
@@ -49,6 +51,7 @@ export interface EmailReadImapV1Params {
 	postProcessAction?: 'read' | 'nothing' | Expression<string>;
 	/**
 	 * Whether attachments of emails should be downloaded. Only set if needed as it increases processing.
+	 * @displayOptions.show { format: ["simple"] }
 	 * @default false
 	 */
 	downloadAttachments?: boolean | Expression<boolean>;
@@ -59,6 +62,7 @@ export interface EmailReadImapV1Params {
 	format?: 'raw' | 'resolved' | 'simple' | Expression<string>;
 	/**
 	 * Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"
+	 * @displayOptions.show { format: ["resolved"] }
 	 * @default attachment_
 	 */
 	dataPropertyAttachmentsPrefixName?: string | Expression<string>;

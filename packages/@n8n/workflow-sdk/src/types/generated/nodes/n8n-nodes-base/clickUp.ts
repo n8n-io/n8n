@@ -89,6 +89,7 @@ export type ClickUpV1CommentGetAllConfig = {
 	id: string | Expression<string>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["comment"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -108,10 +109,12 @@ export type ClickUpV1FolderCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"] }
 	 */
 	space: string | Expression<string>;
 	name: string | Expression<string>;
@@ -123,14 +126,17 @@ export type ClickUpV1FolderDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["delete"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["delete"] }
 	 */
 	space: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["delete"] }
 	 */
 	folder: string | Expression<string>;
 };
@@ -141,14 +147,17 @@ export type ClickUpV1FolderGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["get"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["get"] }
 	 */
 	space: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["get"] }
 	 */
 	folder: string | Expression<string>;
 };
@@ -159,14 +168,17 @@ export type ClickUpV1FolderGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["getAll"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["getAll"] }
 	 */
 	space: string | Expression<string>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["folder"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -179,14 +191,17 @@ export type ClickUpV1FolderUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["update"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["update"] }
 	 */
 	space: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["folder"], operation: ["update"] }
 	 */
 	folder: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -198,6 +213,7 @@ export type ClickUpV1GoalCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["goal"], operation: ["create"] }
 	 */
 	team: string | Expression<string>;
 	name: string | Expression<string>;
@@ -224,10 +240,12 @@ export type ClickUpV1GoalGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["goal"], operation: ["getAll"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["goal"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -272,15 +290,18 @@ export type ClickUpV1ListCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["create"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["create"] }
 	 */
 	space: string | Expression<string>;
 	folderless: boolean | Expression<boolean>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["create"], folderless: [false] }
 	 */
 	folder: string | Expression<string>;
 	name: string | Expression<string>;
@@ -293,19 +314,23 @@ export type ClickUpV1ListCustomFieldsConfig = {
 	operation: 'customFields';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["customFields"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["customFields"] }
 	 */
 	space: string | Expression<string>;
 	folderless: boolean | Expression<boolean>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["customFields"], folderless: [false] }
 	 */
 	folder: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["customFields"], folderless: [true] }
 	 */
 	list: string | Expression<string>;
 };
@@ -316,15 +341,18 @@ export type ClickUpV1ListDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["delete"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["delete"] }
 	 */
 	space: string | Expression<string>;
 	folderless: boolean | Expression<boolean>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["delete"], folderless: [false] }
 	 */
 	folder: string | Expression<string>;
 	list: string | Expression<string>;
@@ -336,15 +364,18 @@ export type ClickUpV1ListGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["get"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["get"] }
 	 */
 	space: string | Expression<string>;
 	folderless: boolean | Expression<boolean>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["get"], folderless: [false] }
 	 */
 	folder: string | Expression<string>;
 	list: string | Expression<string>;
@@ -356,19 +387,23 @@ export type ClickUpV1ListGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"] }
 	 */
 	space: string | Expression<string>;
 	folderless: boolean | Expression<boolean>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"], folderless: [false] }
 	 */
 	folder: string | Expression<string>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -381,15 +416,18 @@ export type ClickUpV1ListMemberConfig = {
 	operation: 'member';
 	/**
 	 * Task ID
+	 * @displayOptions.show { resource: ["list"], operation: ["member"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["list"], operation: ["member"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["list"], operation: ["member"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -401,15 +439,18 @@ export type ClickUpV1ListUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["update"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["update"] }
 	 */
 	space: string | Expression<string>;
 	folderless: boolean | Expression<boolean>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["list"], operation: ["update"], folderless: [false] }
 	 */
 	folder: string | Expression<string>;
 	list: string | Expression<string>;
@@ -433,6 +474,7 @@ export type ClickUpV1SpaceTagDeleteConfig = {
 	space: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["spaceTag"], operation: ["delete", "update"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -444,11 +486,13 @@ export type ClickUpV1SpaceTagGetAllConfig = {
 	space: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["spaceTag"], operation: ["getAll"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["spaceTag"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -461,10 +505,12 @@ export type ClickUpV1SpaceTagUpdateConfig = {
 	space: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["spaceTag"], operation: ["delete", "update"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * New name to set for the tag
+	 * @displayOptions.show { resource: ["spaceTag"], operation: ["update"] }
 	 */
 	newName: string | Expression<string>;
 	foregroundColor: string | Expression<string>;
@@ -477,23 +523,28 @@ export type ClickUpV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	space: string | Expression<string>;
 	folderless: boolean | Expression<boolean>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"], operation: ["create"], folderless: [false] }
 	 */
 	folder: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"], operation: ["create"], folderless: [true] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * The first name on the task
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -513,11 +564,13 @@ export type ClickUpV1TaskGetConfig = {
 	id: string | Expression<string>;
 	/**
 	 * Whether to also fetch and include subtasks for this task
+	 * @displayOptions.show { resource: ["task"], operation: ["get"] }
 	 * @default false
 	 */
 	includeSubtasks?: boolean | Expression<boolean>;
 	/**
 	 * Whether to include the markdown_description field in the response. This is important for preserving links in the description.
+	 * @displayOptions.show { resource: ["task"], operation: ["get"] }
 	 * @default false
 	 */
 	includeMarkdownDescription?: boolean | Expression<boolean>;
@@ -529,28 +582,34 @@ export type ClickUpV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 */
 	space: string | Expression<string>;
 	folderless: boolean | Expression<boolean>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], folderless: [false] }
 	 */
 	folder: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], folderless: [true] }
 	 */
 	list: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -564,11 +623,13 @@ export type ClickUpV1TaskMemberConfig = {
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["member"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["member"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -580,19 +641,23 @@ export type ClickUpV1TaskSetCustomFieldConfig = {
 	operation: 'setCustomField';
 	/**
 	 * The ID of the task to add custom field to
+	 * @displayOptions.show { resource: ["task"], operation: ["setCustomField"] }
 	 */
 	task: string | Expression<string>;
 	/**
 	 * The ID of the field to add custom field to
+	 * @displayOptions.show { resource: ["task"], operation: ["setCustomField"] }
 	 */
 	field: string | Expression<string>;
 	/**
 	 * The value is JSON and will be parsed as such. Is needed if for example needed for labels which expects the value to be an array.
+	 * @displayOptions.show { resource: ["task"], operation: ["setCustomField"] }
 	 * @default false
 	 */
 	jsonParse?: boolean | Expression<boolean>;
 	/**
 	 * The value to set on custom field
+	 * @displayOptions.show { resource: ["task"], operation: ["setCustomField"] }
 	 */
 	value: string | Expression<string>;
 };
@@ -661,29 +726,35 @@ export type ClickUpV1TimeEntryCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["create"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["create"] }
 	 */
 	space: string | Expression<string>;
 	folderless: boolean | Expression<boolean>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["create"], folderless: [false] }
 	 */
 	folder: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["create"], folderless: [true] }
 	 */
 	list: string | Expression<string>;
 	start: string | Expression<string>;
 	/**
 	 * Duration in minutes
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["create"] }
 	 * @default 0
 	 */
 	duration: number | Expression<number>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["create"] }
 	 */
 	task?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -695,6 +766,7 @@ export type ClickUpV1TimeEntryDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["delete"] }
 	 */
 	team: string | Expression<string>;
 	timeEntry: string | Expression<string>;
@@ -706,10 +778,12 @@ export type ClickUpV1TimeEntryGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["get"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Whether to return just the current running time entry
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["get"] }
 	 * @default false
 	 */
 	running?: boolean | Expression<boolean>;
@@ -722,15 +796,18 @@ export type ClickUpV1TimeEntryGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["getAll"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -743,6 +820,7 @@ export type ClickUpV1TimeEntryStartConfig = {
 	operation: 'start';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["start"] }
 	 */
 	team: string | Expression<string>;
 	task: string | Expression<string>;
@@ -755,6 +833,7 @@ export type ClickUpV1TimeEntryStopConfig = {
 	operation: 'stop';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["stop"] }
 	 */
 	team: string | Expression<string>;
 };
@@ -765,19 +844,23 @@ export type ClickUpV1TimeEntryUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["update"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["update"] }
 	 */
 	space: string | Expression<string>;
 	folderless: boolean | Expression<boolean>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["update"], folderless: [false] }
 	 */
 	folder: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntry"], operation: ["update"], folderless: [true] }
 	 */
 	list: string | Expression<string>;
 	archived: boolean | Expression<boolean>;
@@ -791,13 +874,22 @@ export type ClickUpV1TimeEntryTagAddConfig = {
 	operation: 'add';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntryTag"], operation: ["add"] }
 	 */
 	team: string | Expression<string>;
 	timeEntryIds: string | Expression<string>;
 	tagsUi?: {
 		tagsValues?: Array<{
+			/** Name
+			 */
 			name?: string | Expression<string>;
+			/** Background Color
+			 * @default #ff0000
+			 */
 			tag_bg?: string | Expression<string>;
+			/** Foreground Color
+			 * @default #ff0000
+			 */
 			tag_fg?: string | Expression<string>;
 		}>;
 	};
@@ -809,15 +901,18 @@ export type ClickUpV1TimeEntryTagGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntryTag"], operation: ["getAll"] }
 	 */
 	team: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["timeEntryTag"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["timeEntryTag"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -829,11 +924,13 @@ export type ClickUpV1TimeEntryTagRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntryTag"], operation: ["remove"] }
 	 */
 	team: string | Expression<string>;
 	timeEntryIds: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["timeEntryTag"], operation: ["remove"] }
 	 * @default []
 	 */
 	tagNames: string[];

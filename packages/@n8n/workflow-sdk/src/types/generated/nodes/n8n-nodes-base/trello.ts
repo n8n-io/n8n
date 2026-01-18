@@ -24,11 +24,13 @@ export type TrelloV1AttachmentCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["delete", "create", "get", "getAll"], resource: ["attachment"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The URL of the attachment to add
+	 * @displayOptions.show { operation: ["create"], resource: ["attachment"] }
 	 */
 	url: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -40,11 +42,13 @@ export type TrelloV1AttachmentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["delete", "create", "get", "getAll"], resource: ["attachment"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The ID of the attachment to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["attachment"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -55,11 +59,13 @@ export type TrelloV1AttachmentGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["delete", "create", "get", "getAll"], resource: ["attachment"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The ID of the attachment to get
+	 * @displayOptions.show { operation: ["get"], resource: ["attachment"] }
 	 */
 	id: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -71,6 +77,7 @@ export type TrelloV1AttachmentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["delete", "create", "get", "getAll"], resource: ["attachment"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
@@ -83,10 +90,12 @@ export type TrelloV1BoardCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the board
+	 * @displayOptions.show { operation: ["create"], resource: ["board"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * The description of the board
+	 * @displayOptions.show { operation: ["create"], resource: ["board"] }
 	 */
 	description?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -98,6 +107,7 @@ export type TrelloV1BoardDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the board
+	 * @displayOptions.show { operation: ["get", "delete", "update"], resource: ["board"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	id: ResourceLocatorValue;
@@ -109,6 +119,7 @@ export type TrelloV1BoardGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the board
+	 * @displayOptions.show { operation: ["get", "delete", "update"], resource: ["board"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	id: ResourceLocatorValue;
@@ -121,6 +132,7 @@ export type TrelloV1BoardUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the board
+	 * @displayOptions.show { operation: ["get", "delete", "update"], resource: ["board"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	id: ResourceLocatorValue;
@@ -133,14 +145,17 @@ export type TrelloV1BoardMemberAddConfig = {
 	operation: 'add';
 	/**
 	 * The ID of the board to add member to
+	 * @displayOptions.show { operation: ["add"], resource: ["boardMember"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The ID of the member to add to the board
+	 * @displayOptions.show { operation: ["add"], resource: ["boardMember"] }
 	 */
 	idMember: string | Expression<string>;
 	/**
 	 * Determines the type of membership the user being added should have
+	 * @displayOptions.show { operation: ["add"], resource: ["boardMember"] }
 	 * @default normal
 	 */
 	type: 'normal' | 'admin' | 'observer' | Expression<string>;
@@ -153,15 +168,18 @@ export type TrelloV1BoardMemberGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the board to get members from
+	 * @displayOptions.show { operation: ["getAll"], resource: ["boardMember"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["boardMember"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["boardMember"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -173,10 +191,12 @@ export type TrelloV1BoardMemberInviteConfig = {
 	operation: 'invite';
 	/**
 	 * The ID of the board to invite member to
+	 * @displayOptions.show { operation: ["invite"], resource: ["boardMember"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The ID of the board to update
+	 * @displayOptions.show { operation: ["invite"], resource: ["boardMember"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -188,10 +208,12 @@ export type TrelloV1BoardMemberRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * The ID of the board to remove member from
+	 * @displayOptions.show { operation: ["remove"], resource: ["boardMember"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The ID of the member to remove from the board
+	 * @displayOptions.show { operation: ["remove"], resource: ["boardMember"] }
 	 */
 	idMember: string | Expression<string>;
 };
@@ -202,14 +224,17 @@ export type TrelloV1CardCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the list to create card in
+	 * @displayOptions.show { operation: ["create"], resource: ["card"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * The name of the card
+	 * @displayOptions.show { operation: ["create"], resource: ["card"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * The description of the card
+	 * @displayOptions.show { operation: ["create"], resource: ["card"] }
 	 */
 	description?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -221,6 +246,7 @@ export type TrelloV1CardDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["get", "delete", "update"], resource: ["card"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	id: ResourceLocatorValue;
@@ -232,6 +258,7 @@ export type TrelloV1CardGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["get", "delete", "update"], resource: ["card"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	id: ResourceLocatorValue;
@@ -244,6 +271,7 @@ export type TrelloV1CardUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["get", "delete", "update"], resource: ["card"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	id: ResourceLocatorValue;
@@ -256,11 +284,13 @@ export type TrelloV1CardCommentCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["update", "delete", "create"], resource: ["cardComment"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * Text of the comment
+	 * @displayOptions.show { operation: ["create"], resource: ["cardComment"] }
 	 */
 	text: string | Expression<string>;
 };
@@ -271,11 +301,13 @@ export type TrelloV1CardCommentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["update", "delete", "create"], resource: ["cardComment"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The ID of the comment to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["cardComment"] }
 	 */
 	commentId: string | Expression<string>;
 };
@@ -286,15 +318,18 @@ export type TrelloV1CardCommentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["update", "delete", "create"], resource: ["cardComment"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The ID of the comment to delete
+	 * @displayOptions.show { operation: ["update"], resource: ["cardComment"] }
 	 */
 	commentId: string | Expression<string>;
 	/**
 	 * Text of the comment
+	 * @displayOptions.show { operation: ["update"], resource: ["cardComment"] }
 	 */
 	text: string | Expression<string>;
 };
@@ -305,11 +340,13 @@ export type TrelloV1ChecklistCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["delete", "create", "getAll", "deleteCheckItem", "getCheckItem", "updateCheckItem", "completeCheckItems"], resource: ["checklist"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The URL of the checklist to add
+	 * @displayOptions.show { operation: ["create"], resource: ["checklist"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -321,10 +358,12 @@ export type TrelloV1ChecklistCreateCheckItemConfig = {
 	operation: 'createCheckItem';
 	/**
 	 * The ID of the checklist to update
+	 * @displayOptions.show { operation: ["createCheckItem"], resource: ["checklist"] }
 	 */
 	checklistId: string | Expression<string>;
 	/**
 	 * The name of the new check item on the checklist
+	 * @displayOptions.show { operation: ["createCheckItem"], resource: ["checklist"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -336,11 +375,13 @@ export type TrelloV1ChecklistDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["delete", "create", "getAll", "deleteCheckItem", "getCheckItem", "updateCheckItem", "completeCheckItems"], resource: ["checklist"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The ID of the checklist to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["checklist"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -351,11 +392,13 @@ export type TrelloV1ChecklistDeleteCheckItemConfig = {
 	operation: 'deleteCheckItem';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["delete", "create", "getAll", "deleteCheckItem", "getCheckItem", "updateCheckItem", "completeCheckItems"], resource: ["checklist"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The ID of the checklist item to delete
+	 * @displayOptions.show { operation: ["deleteCheckItem"], resource: ["checklist"] }
 	 */
 	checkItemId: string | Expression<string>;
 };
@@ -366,6 +409,7 @@ export type TrelloV1ChecklistGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the checklist to get
+	 * @displayOptions.show { operation: ["get"], resource: ["checklist"] }
 	 */
 	id: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -377,11 +421,13 @@ export type TrelloV1ChecklistGetCheckItemConfig = {
 	operation: 'getCheckItem';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["delete", "create", "getAll", "deleteCheckItem", "getCheckItem", "updateCheckItem", "completeCheckItems"], resource: ["checklist"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The ID of the checklist item to get
+	 * @displayOptions.show { operation: ["getCheckItem"], resource: ["checklist"] }
 	 */
 	checkItemId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -400,6 +446,7 @@ export type TrelloV1ChecklistGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["delete", "create", "getAll", "deleteCheckItem", "getCheckItem", "updateCheckItem", "completeCheckItems"], resource: ["checklist"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
@@ -412,11 +459,13 @@ export type TrelloV1ChecklistUpdateCheckItemConfig = {
 	operation: 'updateCheckItem';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["delete", "create", "getAll", "deleteCheckItem", "getCheckItem", "updateCheckItem", "completeCheckItems"], resource: ["checklist"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The ID of the checklist item to update
+	 * @displayOptions.show { operation: ["updateCheckItem"], resource: ["checklist"] }
 	 */
 	checkItemId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -428,11 +477,13 @@ export type TrelloV1LabelAddLabelConfig = {
 	operation: 'addLabel';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["addLabel", "removeLabel"], resource: ["label"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The ID of the label to add
+	 * @displayOptions.show { operation: ["addLabel"], resource: ["label"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -443,15 +494,18 @@ export type TrelloV1LabelCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the board
+	 * @displayOptions.show { operation: ["create", "getAll"], resource: ["label"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	boardId: ResourceLocatorValue;
 	/**
 	 * Name for the label
+	 * @displayOptions.show { operation: ["create"], resource: ["label"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * The color for the label
+	 * @displayOptions.show { operation: ["create"], resource: ["label"] }
 	 * @default null
 	 */
 	color:
@@ -475,6 +529,7 @@ export type TrelloV1LabelDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the label to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["label"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -485,6 +540,7 @@ export type TrelloV1LabelGetConfig = {
 	operation: 'get';
 	/**
 	 * Get information about a label by ID
+	 * @displayOptions.show { operation: ["get"], resource: ["label"] }
 	 */
 	id: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -496,6 +552,7 @@ export type TrelloV1LabelGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the board
+	 * @displayOptions.show { operation: ["create", "getAll"], resource: ["label"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	boardId: ResourceLocatorValue;
@@ -508,11 +565,13 @@ export type TrelloV1LabelRemoveLabelConfig = {
 	operation: 'removeLabel';
 	/**
 	 * The ID of the card
+	 * @displayOptions.show { operation: ["addLabel", "removeLabel"], resource: ["label"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	cardId: ResourceLocatorValue;
 	/**
 	 * The ID of the label to remove
+	 * @displayOptions.show { operation: ["removeLabel"], resource: ["label"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -523,6 +582,7 @@ export type TrelloV1LabelUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the label to update
+	 * @displayOptions.show { operation: ["update"], resource: ["label"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -534,10 +594,12 @@ export type TrelloV1ListArchiveConfig = {
 	operation: 'archive';
 	/**
 	 * The ID of the list to archive or unarchive
+	 * @displayOptions.show { operation: ["archive"], resource: ["list"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether the list should be archived or unarchived
+	 * @displayOptions.show { operation: ["archive"], resource: ["list"] }
 	 * @default false
 	 */
 	archive?: boolean | Expression<boolean>;
@@ -549,10 +611,12 @@ export type TrelloV1ListCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the board the list should be created in
+	 * @displayOptions.show { operation: ["create"], resource: ["list"] }
 	 */
 	idBoard: string | Expression<string>;
 	/**
 	 * The name of the list
+	 * @displayOptions.show { operation: ["create"], resource: ["list"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -564,6 +628,7 @@ export type TrelloV1ListGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the list to get
+	 * @displayOptions.show { operation: ["get"], resource: ["list"] }
 	 */
 	id: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -575,15 +640,18 @@ export type TrelloV1ListGetCardsConfig = {
 	operation: 'getCards';
 	/**
 	 * The ID of the list to get cards
+	 * @displayOptions.show { operation: ["getCards"], resource: ["list"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["list"], operation: ["getCards"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["list"], operation: ["getCards"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -596,15 +664,18 @@ export type TrelloV1ListGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The ID of the board
+	 * @displayOptions.show { operation: ["getAll"], resource: ["list"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -617,6 +688,7 @@ export type TrelloV1ListUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the list to update
+	 * @displayOptions.show { operation: ["update"], resource: ["list"] }
 	 */
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

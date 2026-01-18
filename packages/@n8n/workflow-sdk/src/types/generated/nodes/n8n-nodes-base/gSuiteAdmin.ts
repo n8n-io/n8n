@@ -24,11 +24,13 @@ export type GSuiteAdminV1DeviceGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the device you want to retrieve
+	 * @displayOptions.show { operation: ["get", "update", "changeStatus"], resource: ["device"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	deviceId: ResourceLocatorValue;
 	/**
 	 * What subset of fields to fetch for this device
+	 * @displayOptions.show { operation: ["get", "getAll"], resource: ["device"] }
 	 * @default basic
 	 */
 	projection: 'basic' | 'full' | Expression<string>;
@@ -40,31 +42,38 @@ export type GSuiteAdminV1DeviceGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["device"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["device"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * What subset of fields to fetch for this device
+	 * @displayOptions.show { operation: ["get", "getAll"], resource: ["device"] }
 	 * @default basic
 	 */
 	projection: 'basic' | 'full' | Expression<string>;
 	/**
 	 * Whether to include devices from organizational units below your specified organizational unit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["device"] }
 	 * @default false
 	 */
 	includeChildOrgunits?: boolean | Expression<boolean>;
 	filter?: Record<string, unknown>;
 	/**
 	 * Define sorting rules for the results
+	 * @displayOptions.show { operation: ["getAll"], resource: ["device"] }
 	 * @default {}
 	 */
 	sort?: {
 		sortRules?: {
+			/** Field to sort the results by
+			 */
 			orderBy?:
 				| 'annotatedLocation'
 				| 'annotatedUser'
@@ -73,6 +82,8 @@ export type GSuiteAdminV1DeviceGetAllConfig = {
 				| 'serialNumber'
 				| 'status'
 				| Expression<string>;
+			/** Sort order direction
+			 */
 			sortBy?: 'ascending' | 'descending' | Expression<string>;
 		};
 	};
@@ -84,6 +95,7 @@ export type GSuiteAdminV1DeviceUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Select the device you want to retrieve
+	 * @displayOptions.show { operation: ["get", "update", "changeStatus"], resource: ["device"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	deviceId: ResourceLocatorValue;
@@ -96,11 +108,13 @@ export type GSuiteAdminV1DeviceChangeStatusConfig = {
 	operation: 'changeStatus';
 	/**
 	 * Select the device you want to retrieve
+	 * @displayOptions.show { operation: ["get", "update", "changeStatus"], resource: ["device"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	deviceId: ResourceLocatorValue;
 	/**
 	 * Set the status of a device
+	 * @displayOptions.show { operation: ["changeStatus"], resource: ["device"] }
 	 * @default reenable
 	 */
 	action: 'reenable' | 'disable' | Expression<string>;
@@ -112,10 +126,12 @@ export type GSuiteAdminV1GroupCreateConfig = {
 	operation: 'create';
 	/**
 	 * The group's display name
+	 * @displayOptions.show { operation: ["create"], resource: ["group"] }
 	 */
 	name?: string | Expression<string>;
 	/**
 	 * The group's email address. If your account has multiple domains, select the appropriate domain for the email address. The email must be unique
+	 * @displayOptions.show { operation: ["create"], resource: ["group"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -127,6 +143,7 @@ export type GSuiteAdminV1GroupDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Select the group to perform the operation on
+	 * @displayOptions.show { operation: ["delete", "get", "update"], resource: ["group"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	groupId: ResourceLocatorValue;
@@ -138,6 +155,7 @@ export type GSuiteAdminV1GroupGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the group to perform the operation on
+	 * @displayOptions.show { operation: ["delete", "get", "update"], resource: ["group"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	groupId: ResourceLocatorValue;
@@ -149,18 +167,26 @@ export type GSuiteAdminV1GroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["group"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["group"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	filter?: Record<string, unknown>;
 	sort?: {
 		sortRules?: {
+			/** Field to sort the results by
+			 * @default email
+			 */
 			orderBy?: 'email' | Expression<string>;
+			/** Sort order direction
+			 * @default ASCENDING
+			 */
 			sortOrder?: 'ASCENDING' | 'DESCENDING' | Expression<string>;
 		};
 	};
@@ -172,6 +198,7 @@ export type GSuiteAdminV1GroupUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Select the group to perform the operation on
+	 * @displayOptions.show { operation: ["delete", "get", "update"], resource: ["group"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	groupId: ResourceLocatorValue;
@@ -184,11 +211,13 @@ export type GSuiteAdminV1UserAddToGroupConfig = {
 	operation: 'addToGroup';
 	/**
 	 * Select the user to perform the operation on
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup", "delete", "get", "removeFromGroup", "update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userId: ResourceLocatorValue;
 	/**
 	 * Select the group to perform the operation on
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup", "removeFromGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	groupId: ResourceLocatorValue;
@@ -202,14 +231,17 @@ export type GSuiteAdminV1UserCreateConfig = {
 	lastName: string | Expression<string>;
 	/**
 	 * Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.
+	 * @displayOptions.show { operation: ["create"], resource: ["user"] }
 	 */
 	password: string | Expression<string>;
 	/**
 	 * The username that will be set to the user. Example: If you domain is example.com and you set the username to n.smith then the user's final email address will be n.smith@example.com.
+	 * @displayOptions.show { operation: ["create"], resource: ["user"] }
 	 */
 	username?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["create"], resource: ["user"] }
 	 */
 	domain: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -221,6 +253,7 @@ export type GSuiteAdminV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Select the user to perform the operation on
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup", "delete", "get", "removeFromGroup", "update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userId: ResourceLocatorValue;
@@ -232,12 +265,14 @@ export type GSuiteAdminV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the user to perform the operation on
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup", "delete", "get", "removeFromGroup", "update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userId: ResourceLocatorValue;
 	output: 'simplified' | 'raw' | 'select' | Expression<string>;
 	/**
 	 * Fields to include in the response when "Select Included Fields" is chosen
+	 * @displayOptions.show { output: ["select"], operation: ["get"], resource: ["user"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -245,11 +280,13 @@ export type GSuiteAdminV1UserGetConfig = {
 	>;
 	/**
 	 * What subset of fields to fetch for this user
+	 * @displayOptions.show { operation: ["get"], resource: ["user"] }
 	 * @default basic
 	 */
 	projection: 'basic' | 'custom' | 'full' | Expression<string>;
 	/**
 	 * A comma-separated list of schema names. All fields from these schemas are fetched. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["get"], resource: ["user"], /projection: ["custom"] }
 	 * @default []
 	 */
 	customFieldMask: string[];
@@ -261,17 +298,20 @@ export type GSuiteAdminV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["user"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["user"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	output: 'simplified' | 'raw' | 'select' | Expression<string>;
 	/**
 	 * Fields to include in the response when "Select Included Fields" is chosen
+	 * @displayOptions.show { output: ["select"], operation: ["getAll"], resource: ["user"] }
 	 * @default []
 	 */
 	fields?: Array<
@@ -279,22 +319,30 @@ export type GSuiteAdminV1UserGetAllConfig = {
 	>;
 	/**
 	 * What subset of fields to fetch for this user
+	 * @displayOptions.show { operation: ["getAll"], resource: ["user"] }
 	 * @default basic
 	 */
 	projection: 'basic' | 'custom' | 'full' | Expression<string>;
 	/**
 	 * A comma-separated list of schema names. All fields from these schemas are fetched. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["user"], /projection: ["custom"] }
 	 * @default []
 	 */
 	customFieldMask: string[];
 	filter?: Record<string, unknown>;
 	/**
 	 * Define sorting rules for the results
+	 * @displayOptions.show { operation: ["getAll"], resource: ["user"] }
 	 * @default {}
 	 */
 	sort?: {
 		sortRules?: {
+			/** Field to sort the results by
+			 */
 			orderBy?: 'email' | 'familyName' | 'givenName' | Expression<string>;
+			/** Sort order direction
+			 * @default ASCENDING
+			 */
 			sortOrder?: 'ASCENDING' | 'DESCENDING' | Expression<string>;
 		};
 	};
@@ -306,11 +354,13 @@ export type GSuiteAdminV1UserRemoveFromGroupConfig = {
 	operation: 'removeFromGroup';
 	/**
 	 * Select the user to perform the operation on
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup", "delete", "get", "removeFromGroup", "update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userId: ResourceLocatorValue;
 	/**
 	 * Select the group to perform the operation on
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup", "removeFromGroup"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	groupId: ResourceLocatorValue;
@@ -322,6 +372,7 @@ export type GSuiteAdminV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Select the user to perform the operation on
+	 * @displayOptions.show { resource: ["user"], operation: ["addToGroup", "delete", "get", "removeFromGroup", "update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	userId: ResourceLocatorValue;

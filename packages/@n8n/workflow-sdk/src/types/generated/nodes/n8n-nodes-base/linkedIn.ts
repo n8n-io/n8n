@@ -26,14 +26,17 @@ export type LinkedInV1PostCreateConfig = {
 	postAs?: 'person' | 'organization' | Expression<string>;
 	/**
 	 * Person as which the post should be posted as. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], postAs: ["person"], resource: ["post"] }
 	 */
 	person: string | Expression<string>;
 	/**
 	 * URN of Organization as which the post should be posted as
+	 * @displayOptions.show { operation: ["create"], postAs: ["organization"], resource: ["post"] }
 	 */
 	organization?: string | Expression<string>;
 	/**
 	 * The primary content of the post
+	 * @displayOptions.show { operation: ["create"], resource: ["post"] }
 	 */
 	text?: string | Expression<string>;
 	shareMediaCategory?: 'NONE' | 'ARTICLE' | 'IMAGE' | Expression<string>;

@@ -22,6 +22,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 export interface LcLmChatAnthropicV13Params {
 	/**
 	 * The model which will generate the completion. &lt;a href="https://docs.anthropic.com/claude/docs/models-overview"&gt;Learn more&lt;/a&gt;.
+	 * @displayOptions.show { @version: [1] }
 	 * @default claude-2
 	 */
 	model?:

@@ -27,6 +27,7 @@ export interface MqttV1Params {
 	sendInputData?: boolean | Expression<boolean>;
 	/**
 	 * The message to publish
+	 * @displayOptions.show { sendInputData: [false] }
 	 */
 	message: string | Expression<string>;
 	options?: Record<string, unknown>;

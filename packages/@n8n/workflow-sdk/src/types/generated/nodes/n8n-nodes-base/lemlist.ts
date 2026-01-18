@@ -20,11 +20,13 @@ export type LemlistV2ActivityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["activity"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["activity"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -36,11 +38,13 @@ export type LemlistV2CampaignGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -52,6 +56,7 @@ export type LemlistV2CampaignGetStatsConfig = {
 	operation: 'getStats';
 	/**
 	 * ID of the campaign to get stats for. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getStats"] }
 	 * @default []
 	 */
 	campaignId: string | Expression<string>;
@@ -65,6 +70,7 @@ export type LemlistV2EnrichGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the enrichment to retrieve
+	 * @displayOptions.show { resource: ["enrich"], operation: ["get"] }
 	 */
 	enrichId: string | Expression<string>;
 };
@@ -94,11 +100,13 @@ export type LemlistV2LeadCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the campaign to create the lead under. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"] }
 	 * @default []
 	 */
 	campaignId: string | Expression<string>;
 	/**
 	 * Email of the lead to create
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"] }
 	 */
 	email?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -109,11 +117,13 @@ export type LemlistV2LeadDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the campaign to remove the lead from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["lead"], operation: ["delete"] }
 	 * @default []
 	 */
 	campaignId: string | Expression<string>;
 	/**
 	 * Email of the lead to delete
+	 * @displayOptions.show { resource: ["lead"], operation: ["delete"] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -123,6 +133,7 @@ export type LemlistV2LeadGetConfig = {
 	operation: 'get';
 	/**
 	 * Email of the lead to retrieve
+	 * @displayOptions.show { resource: ["lead"], operation: ["get"] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -132,11 +143,13 @@ export type LemlistV2LeadUnsubscribeConfig = {
 	operation: 'unsubscribe';
 	/**
 	 * ID of the campaign to unsubscribe the lead from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["lead"], operation: ["unsubscribe"] }
 	 * @default []
 	 */
 	campaignId: string | Expression<string>;
 	/**
 	 * Email of the lead to unsubscribe
+	 * @displayOptions.show { resource: ["lead"], operation: ["unsubscribe"] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -156,6 +169,7 @@ export type LemlistV2UnsubscribeAddConfig = {
 	operation: 'add';
 	/**
 	 * Email to add to the unsubscribes
+	 * @displayOptions.show { resource: ["unsubscribe"], operation: ["add"] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -165,6 +179,7 @@ export type LemlistV2UnsubscribeDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Email to delete from the unsubscribes
+	 * @displayOptions.show { resource: ["unsubscribe"], operation: ["delete"] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -174,11 +189,13 @@ export type LemlistV2UnsubscribeGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["unsubscribe"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["unsubscribe"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -206,11 +223,13 @@ export type LemlistV1ActivityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["activity"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["activity"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -222,11 +241,13 @@ export type LemlistV1CampaignGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -237,11 +258,13 @@ export type LemlistV1LeadCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the campaign to create the lead under. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"] }
 	 * @default []
 	 */
 	campaignId: string | Expression<string>;
 	/**
 	 * Email of the lead to create
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"] }
 	 */
 	email?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -252,11 +275,13 @@ export type LemlistV1LeadDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the campaign to remove the lead from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["lead"], operation: ["delete"] }
 	 * @default []
 	 */
 	campaignId: string | Expression<string>;
 	/**
 	 * Email of the lead to delete
+	 * @displayOptions.show { resource: ["lead"], operation: ["delete"] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -266,6 +291,7 @@ export type LemlistV1LeadGetConfig = {
 	operation: 'get';
 	/**
 	 * Email of the lead to retrieve
+	 * @displayOptions.show { resource: ["lead"], operation: ["get"] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -275,11 +301,13 @@ export type LemlistV1LeadUnsubscribeConfig = {
 	operation: 'unsubscribe';
 	/**
 	 * ID of the campaign to unsubscribe the lead from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["lead"], operation: ["unsubscribe"] }
 	 * @default []
 	 */
 	campaignId: string | Expression<string>;
 	/**
 	 * Email of the lead to unsubscribe
+	 * @displayOptions.show { resource: ["lead"], operation: ["unsubscribe"] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -294,6 +322,7 @@ export type LemlistV1UnsubscribeAddConfig = {
 	operation: 'add';
 	/**
 	 * Email to add to the unsubscribes
+	 * @displayOptions.show { resource: ["unsubscribe"], operation: ["add"] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -303,6 +332,7 @@ export type LemlistV1UnsubscribeDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Email to delete from the unsubscribes
+	 * @displayOptions.show { resource: ["unsubscribe"], operation: ["delete"] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -312,11 +342,13 @@ export type LemlistV1UnsubscribeGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["unsubscribe"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["unsubscribe"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;

@@ -24,16 +24,21 @@ export type MicrosoftSharePointV1FileDownloadConfig = {
 	operation: 'download';
 	/**
 	 * Select the site to retrieve folders from
+	 * @displayOptions.show { resource: ["file"], operation: ["download"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Select the folder to download the file from
+	 * @displayOptions.show { resource: ["file"], operation: ["download"] }
+	 * @displayOptions.hide { site: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	folder: ResourceLocatorValue;
 	/**
 	 * Select the file to download
+	 * @displayOptions.show { resource: ["file"], operation: ["download"] }
+	 * @displayOptions.hide { site: [""], folder: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	file: ResourceLocatorValue;
@@ -46,31 +51,39 @@ export type MicrosoftSharePointV1FileUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Select the site to retrieve folders from
+	 * @displayOptions.show { resource: ["file"], operation: ["update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Select the folder to update the file in
+	 * @displayOptions.show { resource: ["file"], operation: ["update"] }
+	 * @displayOptions.hide { site: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	folder: ResourceLocatorValue;
 	/**
 	 * Select the file to update
+	 * @displayOptions.show { resource: ["file"], operation: ["update"] }
+	 * @displayOptions.hide { site: [""], folder: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	file: ResourceLocatorValue;
 	/**
 	 * If not specified, the original file name will be used
+	 * @displayOptions.show { resource: ["file"], operation: ["update"] }
 	 */
 	fileName?: string | Expression<string>;
 	/**
 	 * Whether to update the file contents
+	 * @displayOptions.show { resource: ["file"], operation: ["update"] }
 	 * @default false
 	 */
 	changeFileContent: boolean | Expression<boolean>;
 	/**
 	 * Find the name of input field containing the binary data to update the file with in the Input panel on the left, in the Binary tab
 	 * @hint The name of the input field containing the binary file data to update the file with
+	 * @displayOptions.show { changeFileContent: [true], resource: ["file"], operation: ["update"] }
 	 */
 	fileContents: string | Expression<string>;
 	requestOptions?: Record<string, unknown>;
@@ -82,21 +95,26 @@ export type MicrosoftSharePointV1FileUploadConfig = {
 	operation: 'upload';
 	/**
 	 * Select the site to retrieve folders from
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Select the folder to upload the file to
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
+	 * @displayOptions.hide { site: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	folder: ResourceLocatorValue;
 	/**
 	 * The name of the file being uploaded
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 */
 	fileName: string | Expression<string>;
 	/**
 	 * Find the name of input field containing the binary data to upload in the Input panel on the left, in the Binary tab
 	 * @hint The name of the input field containing the binary file data to upload
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 */
 	fileContents: string | Expression<string>;
 	requestOptions?: Record<string, unknown>;
@@ -108,11 +126,14 @@ export type MicrosoftSharePointV1ItemCreateConfig = {
 	operation: 'create';
 	/**
 	 * Select the site to retrieve lists from
+	 * @displayOptions.show { resource: ["item"], operation: ["create"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Select the list you want to create an item in
+	 * @displayOptions.show { resource: ["item"], operation: ["create"] }
+	 * @displayOptions.hide { site: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	list: ResourceLocatorValue;
@@ -126,11 +147,14 @@ export type MicrosoftSharePointV1ItemUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Select the site to retrieve lists from
+	 * @displayOptions.show { resource: ["item"], operation: ["upsert"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Select the list you want to create or update an item in
+	 * @displayOptions.show { resource: ["item"], operation: ["upsert"] }
+	 * @displayOptions.hide { site: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	list: ResourceLocatorValue;
@@ -144,16 +168,21 @@ export type MicrosoftSharePointV1ItemDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Select the site to retrieve lists from
+	 * @displayOptions.show { resource: ["item"], operation: ["delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Select the list you want to delete an item in
+	 * @displayOptions.show { resource: ["item"], operation: ["delete"] }
+	 * @displayOptions.hide { site: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	list: ResourceLocatorValue;
 	/**
 	 * Select the item you want to delete
+	 * @displayOptions.show { resource: ["item"], operation: ["delete"] }
+	 * @displayOptions.hide { site: [""], list: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	item: ResourceLocatorValue;
@@ -166,16 +195,21 @@ export type MicrosoftSharePointV1ItemGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the site to retrieve lists from
+	 * @displayOptions.show { resource: ["item"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Select the list you want to retrieve an item from
+	 * @displayOptions.show { resource: ["item"], operation: ["get"] }
+	 * @displayOptions.hide { site: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	list: ResourceLocatorValue;
 	/**
 	 * Select the item you want to get
+	 * @displayOptions.show { resource: ["item"], operation: ["get"] }
+	 * @displayOptions.hide { site: [""], list: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	item: ResourceLocatorValue;
@@ -189,26 +223,32 @@ export type MicrosoftSharePointV1ItemGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Select the site to retrieve lists from
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Select the list you want to search for items in
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
+	 * @displayOptions.hide { site: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	list: ResourceLocatorValue;
 	/**
 	 * The formula will be evaluated for each record. &lt;a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter"&gt;More info&lt;/a&gt;.
 	 * @hint If empty, all the items will be returned
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 */
 	filter?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["item"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -223,11 +263,14 @@ export type MicrosoftSharePointV1ItemUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Select the site to retrieve lists from
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Select the list you want to update an item in
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
+	 * @displayOptions.hide { site: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	list: ResourceLocatorValue;
@@ -241,11 +284,14 @@ export type MicrosoftSharePointV1ListGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the site to retrieve lists from
+	 * @displayOptions.show { resource: ["list"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Select the list you want to retrieve
+	 * @displayOptions.show { resource: ["list"], operation: ["get"] }
+	 * @displayOptions.hide { site: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	list: ResourceLocatorValue;
@@ -259,16 +305,19 @@ export type MicrosoftSharePointV1ListGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Select the site to retrieve lists from
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	site: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["list"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

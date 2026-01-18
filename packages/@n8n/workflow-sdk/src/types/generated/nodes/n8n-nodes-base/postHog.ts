@@ -21,10 +21,12 @@ export type PostHogV1AliasCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the alias
+	 * @displayOptions.show { resource: ["alias"], operation: ["create"] }
 	 */
 	alias: string | Expression<string>;
 	/**
 	 * The user's distinct ID
+	 * @displayOptions.show { resource: ["alias"], operation: ["create"] }
 	 */
 	distinctId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -36,10 +38,12 @@ export type PostHogV1EventCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the event
+	 * @displayOptions.show { resource: ["event"], operation: ["create"] }
 	 */
 	eventName: string | Expression<string>;
 	/**
 	 * The user's distinct ID
+	 * @displayOptions.show { resource: ["event"], operation: ["create"] }
 	 */
 	distinctId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -51,6 +55,7 @@ export type PostHogV1IdentityCreateConfig = {
 	operation: 'create';
 	/**
 	 * The identity's distinct ID
+	 * @displayOptions.show { resource: ["identity"], operation: ["create"] }
 	 */
 	distinctId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -63,6 +68,7 @@ export type PostHogV1TrackPageConfig = {
 	name: string | Expression<string>;
 	/**
 	 * The user's distinct ID
+	 * @displayOptions.show { resource: ["track"], operation: ["page", "screen"] }
 	 */
 	distinctId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -75,6 +81,7 @@ export type PostHogV1TrackScreenConfig = {
 	name: string | Expression<string>;
 	/**
 	 * The user's distinct ID
+	 * @displayOptions.show { resource: ["track"], operation: ["page", "screen"] }
 	 */
 	distinctId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

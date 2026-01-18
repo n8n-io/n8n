@@ -22,12 +22,14 @@ export type ZendeskV1TicketCreateConfig = {
 	operation: 'create';
 	/**
 	 * The first comment on the ticket
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	description: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * Object of values to set as described &lt;a href="https://developer.zendesk.com/rest_api/docs/support/tickets"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 };
@@ -55,11 +57,13 @@ export type ZendeskV1TicketGetAllConfig = {
 	ticketType: 'regular' | 'suspended' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -82,6 +86,7 @@ export type ZendeskV1TicketUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 	/**
 	 * Object of values to update as described &lt;a href="https://developer.zendesk.com/rest_api/docs/support/tickets"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["ticket"], operation: ["update"], jsonParameters: [true] }
 	 */
 	updateFieldsJson?: IDataObject | string | Expression<string>;
 };
@@ -99,11 +104,13 @@ export type ZendeskV1TicketFieldGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["ticketField"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["ticketField"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -115,6 +122,7 @@ export type ZendeskV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * The user's name
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -140,11 +148,13 @@ export type ZendeskV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -171,11 +181,13 @@ export type ZendeskV1UserSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["search"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -224,11 +236,13 @@ export type ZendeskV1OrganizationGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["organization"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["organization"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

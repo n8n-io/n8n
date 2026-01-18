@@ -254,6 +254,64 @@ function quotePropertyName(name: string): string {
 }
 
 /**
+ * Generate a compact JSDoc comment for a nested property (used in fixedCollections)
+ * Returns a multi-line JSDoc that can be placed before property definitions
+ */
+function generateNestedPropertyJSDoc(prop: NodeProperty, indent: string): string {
+	const lines: string[] = [];
+
+	// Description
+	const description = prop.description ?? prop.displayName;
+	if (description) {
+		const safeDescription = description
+			.replace(/\*\//g, '*\\/')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+		lines.push(`${indent}/** ${safeDescription}`);
+	} else {
+		lines.push(`${indent}/**`);
+	}
+
+	// Hint
+	if (prop.hint) {
+		const safeHint = prop.hint.replace(/\*\//g, '*\\/').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		lines.push(`${indent} * @hint ${safeHint}`);
+	}
+
+	// Display options
+	if (prop.displayOptions) {
+		if (prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) {
+			const showConditions = Object.entries(prop.displayOptions.show)
+				.map(
+					([key, values]) =>
+						`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
+				)
+				.join(', ');
+			lines.push(`${indent} * @displayOptions.show { ${showConditions} }`);
+		}
+		if (prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0) {
+			const hideConditions = Object.entries(prop.displayOptions.hide)
+				.map(
+					([key, values]) =>
+						`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
+				)
+				.join(', ');
+			lines.push(`${indent} * @displayOptions.hide { ${hideConditions} }`);
+		}
+	}
+
+	// Default value
+	if (prop.default !== undefined && prop.default !== null && prop.default !== '') {
+		const defaultStr =
+			typeof prop.default === 'object' ? JSON.stringify(prop.default) : String(prop.default);
+		lines.push(`${indent} * @default ${defaultStr}`);
+	}
+
+	lines.push(`${indent} */`);
+	return lines.join('\n');
+}
+
+/**
  * Generate inline type for a fixedCollection property
  * This generates proper nested types instead of Record<string, unknown>
  */
@@ -283,12 +341,14 @@ function generateFixedCollectionType(prop: NodeProperty): string {
 			const nestedType = mapNestedPropertyType(nestedProp);
 			if (nestedType) {
 				const quotedName = quotePropertyName(nestedProp.name);
-				nestedProps.push(`${quotedName}?: ${nestedType}`);
+				// Generate JSDoc for the nested property
+				const jsDoc = generateNestedPropertyJSDoc(nestedProp, '\t\t\t');
+				nestedProps.push(`${jsDoc}\n\t\t\t${quotedName}?: ${nestedType}`);
 			}
 		}
 
 		if (nestedProps.length > 0) {
-			const innerType = `{ ${nestedProps.join('; ')} }`;
+			const innerType = `{\n${nestedProps.join(';\n')};\n\t\t}`;
 			const groupType = isMultipleValues ? `Array<${innerType}>` : innerType;
 			groups.push(`${groupName}?: ${groupType}`);
 		}
@@ -298,7 +358,7 @@ function generateFixedCollectionType(prop: NodeProperty): string {
 		return 'Record<string, unknown>';
 	}
 
-	return `{ ${groups.join('; ')} }`;
+	return `{\n\t\t${groups.join(';\n\t\t')};\n\t}`;
 }
 
 /**
@@ -654,6 +714,28 @@ export function generatePropertyJSDoc(prop: NodeProperty): string {
 	if (prop.hint) {
 		const safeHint = prop.hint.replace(/\*\//g, '*\\/').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		lines.push(` * @hint ${safeHint}`);
+	}
+
+	// Display options - conditions for when this property is shown/hidden
+	if (prop.displayOptions) {
+		if (prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) {
+			const showConditions = Object.entries(prop.displayOptions.show)
+				.map(
+					([key, values]) =>
+						`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
+				)
+				.join(', ');
+			lines.push(` * @displayOptions.show { ${showConditions} }`);
+		}
+		if (prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0) {
+			const hideConditions = Object.entries(prop.displayOptions.hide)
+				.map(
+					([key, values]) =>
+						`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
+				)
+				.join(', ');
+			lines.push(` * @displayOptions.hide { ${hideConditions} }`);
+		}
 	}
 
 	// Default value

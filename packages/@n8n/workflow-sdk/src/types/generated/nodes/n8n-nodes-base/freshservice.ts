@@ -23,17 +23,26 @@ export type FreshserviceV1AgentCreateConfig = {
 	firstName: string | Expression<string>;
 	/**
 	 * Role to assign to the agent
+	 * @displayOptions.show { resource: ["agent"], operation: ["create"] }
 	 * @default {}
 	 */
 	roles: {
 		roleProperties?: Array<{
+			/** Name of the role to assign to the agent. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			role?: string | Expression<string>;
+			/** Scope in which the agent may use the permissions granted by the role
+			 * @default specified_groups
+			 */
 			assignment_scope?:
 				| 'entire_helpdesk'
 				| 'member_groups'
 				| 'specified_groups'
 				| 'assigned_items'
 				| Expression<string>;
+			/** Groups in which the permissions granted by the role apply. Required only when Scope is Specified Groups - ignored otherwise. Choose from the list or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 * @default []
+			 */
 			groups?: string[];
 		}>;
 	};
@@ -46,6 +55,7 @@ export type FreshserviceV1AgentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the agent to delete
+	 * @displayOptions.show { resource: ["agent"], operation: ["delete"] }
 	 */
 	agentId: string | Expression<string>;
 };
@@ -56,6 +66,7 @@ export type FreshserviceV1AgentGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the agent to retrieve
+	 * @displayOptions.show { resource: ["agent"], operation: ["get"] }
 	 */
 	agentId: string | Expression<string>;
 };
@@ -66,11 +77,13 @@ export type FreshserviceV1AgentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["agent"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["agent"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -83,6 +96,7 @@ export type FreshserviceV1AgentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the agent to update
+	 * @displayOptions.show { resource: ["agent"], operation: ["update"] }
 	 */
 	agentId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -102,6 +116,7 @@ export type FreshserviceV1AgentGroupDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the agent group to delete
+	 * @displayOptions.show { resource: ["agentGroup"], operation: ["delete"] }
 	 */
 	agentGroupId: string | Expression<string>;
 };
@@ -112,6 +127,7 @@ export type FreshserviceV1AgentGroupGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the agent group to retrieve
+	 * @displayOptions.show { resource: ["agentGroup"], operation: ["get"] }
 	 */
 	agentGroupId: string | Expression<string>;
 };
@@ -122,11 +138,13 @@ export type FreshserviceV1AgentGroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["agentGroup"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["agentGroup"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -138,6 +156,7 @@ export type FreshserviceV1AgentGroupUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the agent group to update
+	 * @displayOptions.show { resource: ["agentGroup"], operation: ["update"] }
 	 */
 	agentGroupId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -149,6 +168,7 @@ export type FreshserviceV1AgentRoleGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the agent role to retrieve
+	 * @displayOptions.show { resource: ["agentRole"], operation: ["get"] }
 	 */
 	agentRoleId: string | Expression<string>;
 };
@@ -159,11 +179,13 @@ export type FreshserviceV1AgentRoleGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["agentRole"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["agentRole"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -176,11 +198,13 @@ export type FreshserviceV1AnnouncementCreateConfig = {
 	title: string | Expression<string>;
 	/**
 	 * HTML supported
+	 * @displayOptions.show { resource: ["announcement"], operation: ["create"] }
 	 */
 	bodyHtml: string | Expression<string>;
 	visibility: 'agents_only' | 'grouped_visibility' | 'everyone' | Expression<string>;
 	/**
 	 * Timestamp at which announcement becomes active
+	 * @displayOptions.show { resource: ["announcement"], operation: ["create"] }
 	 */
 	visibleFrom: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -192,6 +216,7 @@ export type FreshserviceV1AnnouncementDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the announcement to delete
+	 * @displayOptions.show { resource: ["announcement"], operation: ["delete"] }
 	 */
 	announcementId: string | Expression<string>;
 };
@@ -202,6 +227,7 @@ export type FreshserviceV1AnnouncementGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the announcement to retrieve
+	 * @displayOptions.show { resource: ["announcement"], operation: ["get"] }
 	 */
 	announcementId: string | Expression<string>;
 };
@@ -212,11 +238,13 @@ export type FreshserviceV1AnnouncementGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["announcement"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["announcement"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -228,6 +256,7 @@ export type FreshserviceV1AnnouncementUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the announcement to update
+	 * @displayOptions.show { resource: ["announcement"], operation: ["update"] }
 	 */
 	announcementId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -247,6 +276,7 @@ export type FreshserviceV1AssetTypeDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the asset type to delete
+	 * @displayOptions.show { resource: ["assetType"], operation: ["delete"] }
 	 */
 	assetTypeId: string | Expression<string>;
 };
@@ -257,6 +287,7 @@ export type FreshserviceV1AssetTypeGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the asset type to retrieve
+	 * @displayOptions.show { resource: ["assetType"], operation: ["get"] }
 	 */
 	assetTypeId: string | Expression<string>;
 };
@@ -267,11 +298,13 @@ export type FreshserviceV1AssetTypeGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["assetType"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["assetType"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -283,6 +316,7 @@ export type FreshserviceV1AssetTypeUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the asset type to update
+	 * @displayOptions.show { resource: ["assetType"], operation: ["update"] }
 	 */
 	assetTypeId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -294,6 +328,7 @@ export type FreshserviceV1ChangeCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the requester of the change. Choose from the list or specify an ID. You can also specify the ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["change"], operation: ["create"] }
 	 */
 	requesterId: string | Expression<string>;
 	subject: string | Expression<string>;
@@ -308,6 +343,7 @@ export type FreshserviceV1ChangeDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the change to delete
+	 * @displayOptions.show { resource: ["change"], operation: ["delete"] }
 	 */
 	changeId: string | Expression<string>;
 };
@@ -318,6 +354,7 @@ export type FreshserviceV1ChangeGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the change to retrieve
+	 * @displayOptions.show { resource: ["change"], operation: ["get"] }
 	 */
 	changeId: string | Expression<string>;
 };
@@ -328,11 +365,13 @@ export type FreshserviceV1ChangeGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["change"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["change"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -345,6 +384,7 @@ export type FreshserviceV1ChangeUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the change to update
+	 * @displayOptions.show { resource: ["change"], operation: ["update"] }
 	 */
 	changeId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -364,6 +404,7 @@ export type FreshserviceV1DepartmentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the department to delete
+	 * @displayOptions.show { resource: ["department"], operation: ["delete"] }
 	 */
 	departmentId: string | Expression<string>;
 };
@@ -374,6 +415,7 @@ export type FreshserviceV1DepartmentGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the department to retrieve
+	 * @displayOptions.show { resource: ["department"], operation: ["get"] }
 	 */
 	departmentId: string | Expression<string>;
 };
@@ -384,11 +426,13 @@ export type FreshserviceV1DepartmentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["department"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["department"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -401,6 +445,7 @@ export type FreshserviceV1DepartmentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the department to update
+	 * @displayOptions.show { resource: ["department"], operation: ["update"] }
 	 */
 	departmentId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -412,6 +457,7 @@ export type FreshserviceV1LocationCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the location
+	 * @displayOptions.show { resource: ["location"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -423,6 +469,7 @@ export type FreshserviceV1LocationDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the location to delete
+	 * @displayOptions.show { resource: ["location"], operation: ["delete"] }
 	 */
 	locationId: string | Expression<string>;
 };
@@ -433,6 +480,7 @@ export type FreshserviceV1LocationGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the location to retrieve
+	 * @displayOptions.show { resource: ["location"], operation: ["get"] }
 	 */
 	locationId: string | Expression<string>;
 };
@@ -443,11 +491,13 @@ export type FreshserviceV1LocationGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["location"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["location"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -459,6 +509,7 @@ export type FreshserviceV1LocationUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the location to update
+	 * @displayOptions.show { resource: ["location"], operation: ["update"] }
 	 */
 	locationId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -471,10 +522,12 @@ export type FreshserviceV1ProblemCreateConfig = {
 	subject: string | Expression<string>;
 	/**
 	 * ID of the initiator of the problem. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["problem"], operation: ["create"] }
 	 */
 	requesterId: string | Expression<string>;
 	/**
 	 * Date when the problem is due to be solved
+	 * @displayOptions.show { resource: ["problem"], operation: ["create"] }
 	 */
 	dueBy?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -486,6 +539,7 @@ export type FreshserviceV1ProblemDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the problem to delete
+	 * @displayOptions.show { resource: ["problem"], operation: ["delete"] }
 	 */
 	problemId: string | Expression<string>;
 };
@@ -496,6 +550,7 @@ export type FreshserviceV1ProblemGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the problem to retrieve
+	 * @displayOptions.show { resource: ["problem"], operation: ["get"] }
 	 */
 	problemId: string | Expression<string>;
 };
@@ -506,11 +561,13 @@ export type FreshserviceV1ProblemGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["problem"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["problem"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -522,6 +579,7 @@ export type FreshserviceV1ProblemUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the problem to update
+	 * @displayOptions.show { resource: ["problem"], operation: ["update"] }
 	 */
 	problemId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -533,6 +591,7 @@ export type FreshserviceV1ProductCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["product"], operation: ["create"] }
 	 */
 	assetTypeId: string | Expression<string>;
 	name: string | Expression<string>;
@@ -545,6 +604,7 @@ export type FreshserviceV1ProductDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the product to delete
+	 * @displayOptions.show { resource: ["product"], operation: ["delete"] }
 	 */
 	productId: string | Expression<string>;
 };
@@ -555,6 +615,7 @@ export type FreshserviceV1ProductGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the product to retrieve
+	 * @displayOptions.show { resource: ["product"], operation: ["get"] }
 	 */
 	productId: string | Expression<string>;
 };
@@ -565,11 +626,13 @@ export type FreshserviceV1ProductGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["product"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["product"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -581,6 +644,7 @@ export type FreshserviceV1ProductUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the product to update
+	 * @displayOptions.show { resource: ["product"], operation: ["update"] }
 	 */
 	productId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -605,6 +669,7 @@ export type FreshserviceV1ReleaseDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the release to delete
+	 * @displayOptions.show { resource: ["release"], operation: ["delete"] }
 	 */
 	releaseId: string | Expression<string>;
 };
@@ -615,6 +680,7 @@ export type FreshserviceV1ReleaseGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the release to retrieve
+	 * @displayOptions.show { resource: ["release"], operation: ["get"] }
 	 */
 	releaseId: string | Expression<string>;
 };
@@ -625,11 +691,13 @@ export type FreshserviceV1ReleaseGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["release"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["release"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -641,6 +709,7 @@ export type FreshserviceV1ReleaseUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the release to update
+	 * @displayOptions.show { resource: ["release"], operation: ["update"] }
 	 */
 	releaseId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -661,6 +730,7 @@ export type FreshserviceV1RequesterDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the requester to delete
+	 * @displayOptions.show { resource: ["requester"], operation: ["delete"] }
 	 */
 	requesterId: string | Expression<string>;
 };
@@ -671,6 +741,7 @@ export type FreshserviceV1RequesterGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the requester to retrieve
+	 * @displayOptions.show { resource: ["requester"], operation: ["get"] }
 	 */
 	requesterId: string | Expression<string>;
 };
@@ -681,11 +752,13 @@ export type FreshserviceV1RequesterGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["requester"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["requester"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -698,6 +771,7 @@ export type FreshserviceV1RequesterUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the requester to update
+	 * @displayOptions.show { resource: ["requester"], operation: ["update"] }
 	 */
 	requesterId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -717,6 +791,7 @@ export type FreshserviceV1RequesterGroupDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the requester group to delete
+	 * @displayOptions.show { resource: ["requesterGroup"], operation: ["delete"] }
 	 */
 	requesterGroupId: string | Expression<string>;
 };
@@ -727,6 +802,7 @@ export type FreshserviceV1RequesterGroupGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the requester group to retrieve
+	 * @displayOptions.show { resource: ["requesterGroup"], operation: ["get"] }
 	 */
 	requesterGroupId: string | Expression<string>;
 };
@@ -737,11 +813,13 @@ export type FreshserviceV1RequesterGroupGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["requesterGroup"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["requesterGroup"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -753,6 +831,7 @@ export type FreshserviceV1RequesterGroupUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the requester group to update
+	 * @displayOptions.show { resource: ["requesterGroup"], operation: ["update"] }
 	 */
 	requesterGroupId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -773,6 +852,7 @@ export type FreshserviceV1SoftwareDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the software application to delete
+	 * @displayOptions.show { resource: ["software"], operation: ["delete"] }
 	 */
 	softwareId: string | Expression<string>;
 };
@@ -783,6 +863,7 @@ export type FreshserviceV1SoftwareGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the software application to retrieve
+	 * @displayOptions.show { resource: ["software"], operation: ["get"] }
 	 */
 	softwareId: string | Expression<string>;
 };
@@ -793,11 +874,13 @@ export type FreshserviceV1SoftwareGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["software"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["software"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -809,6 +892,7 @@ export type FreshserviceV1SoftwareUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the software application to update
+	 * @displayOptions.show { resource: ["software"], operation: ["update"] }
 	 */
 	softwareId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -820,11 +904,13 @@ export type FreshserviceV1TicketCreateConfig = {
 	operation: 'create';
 	/**
 	 * Email address of the ticket author
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	subject?: string | Expression<string>;
 	/**
 	 * HTML supported
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	description?: string | Expression<string>;
 	priority?: 1 | 2 | 3 | 4 | Expression<number>;
@@ -838,6 +924,7 @@ export type FreshserviceV1TicketDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the ticket to delete
+	 * @displayOptions.show { resource: ["ticket"], operation: ["delete"] }
 	 */
 	ticketId: string | Expression<string>;
 };
@@ -848,6 +935,7 @@ export type FreshserviceV1TicketGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the ticket to retrieve
+	 * @displayOptions.show { resource: ["ticket"], operation: ["get"] }
 	 */
 	ticketId: string | Expression<string>;
 };
@@ -858,11 +946,13 @@ export type FreshserviceV1TicketGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -875,6 +965,7 @@ export type FreshserviceV1TicketUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the ticket to update
+	 * @displayOptions.show { resource: ["ticket"], operation: ["update"] }
 	 */
 	ticketId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;

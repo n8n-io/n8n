@@ -25,6 +25,7 @@ export interface StopAndErrorV1Params {
 	errorMessage: string | Expression<string>;
 	/**
 	 * Object containing error properties
+	 * @displayOptions.show { errorType: ["errorObject"] }
 	 */
 	errorObject: IDataObject | string | Expression<string>;
 }

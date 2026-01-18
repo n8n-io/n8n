@@ -23,6 +23,7 @@ export type GoogleAdsV1CampaignGetAllConfig = {
 	clientCustomerId: string | Expression<string>;
 	/**
 	 * Additional options for fetching campaigns
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getAll"] }
 	 * @default {}
 	 */
 	additionalOptions?: Record<string, unknown>;
@@ -37,6 +38,7 @@ export type GoogleAdsV1CampaignGetConfig = {
 	clientCustomerId: string | Expression<string>;
 	/**
 	 * ID of the campaign
+	 * @displayOptions.show { operation: ["get"], resource: ["campaign"] }
 	 */
 	campaignId: string | Expression<string>;
 	requestOptions?: Record<string, unknown>;

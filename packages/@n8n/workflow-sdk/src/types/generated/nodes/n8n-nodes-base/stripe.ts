@@ -27,19 +27,23 @@ export type StripeV1ChargeCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the customer to be associated with this charge
+	 * @displayOptions.show { resource: ["charge"], operation: ["create"] }
 	 */
 	customerId: string | Expression<string>;
 	/**
 	 * Amount in cents to be collected for this charge, e.g. enter &lt;code&gt;100&lt;/code&gt; for $1.00
+	 * @displayOptions.show { resource: ["charge"], operation: ["create"] }
 	 * @default 0
 	 */
 	amount: number | Expression<number>;
 	/**
 	 * Three-letter ISO currency code, e.g. &lt;code&gt;USD&lt;/code&gt; or &lt;code&gt;EUR&lt;/code&gt;. It must be a &lt;a href="https://stripe.com/docs/currencies"&gt;Stripe-supported currency&lt;/a&gt;. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["charge"], operation: ["create"] }
 	 */
 	currency: string | Expression<string>;
 	/**
 	 * ID of the customer's payment source to be charged
+	 * @displayOptions.show { resource: ["charge"], operation: ["create"] }
 	 */
 	source: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -51,6 +55,7 @@ export type StripeV1ChargeGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the charge to retrieve
+	 * @displayOptions.show { resource: ["charge"], operation: ["get"] }
 	 */
 	chargeId: string | Expression<string>;
 };
@@ -61,11 +66,13 @@ export type StripeV1ChargeGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["charge"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["charge"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -77,6 +84,7 @@ export type StripeV1ChargeUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the charge to update
+	 * @displayOptions.show { resource: ["charge"], operation: ["update"] }
 	 */
 	chargeId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -88,25 +96,30 @@ export type StripeV1CouponCreateConfig = {
 	operation: 'create';
 	/**
 	 * How long the discount will be in effect
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"] }
 	 * @default once
 	 */
 	duration: 'forever' | 'once' | Expression<string>;
 	/**
 	 * Whether the coupon discount is a percentage or a fixed amount
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"] }
 	 * @default percent
 	 */
 	type: 'fixedAmount' | 'percent' | Expression<string>;
 	/**
 	 * Amount in cents to subtract from an invoice total, e.g. enter &lt;code&gt;100&lt;/code&gt; for $1.00
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"], type: ["fixedAmount"] }
 	 * @default 0
 	 */
 	amountOff: number | Expression<number>;
 	/**
 	 * Three-letter ISO currency code, e.g. &lt;code&gt;USD&lt;/code&gt; or &lt;code&gt;EUR&lt;/code&gt;. It must be a &lt;a href="https://stripe.com/docs/currencies"&gt;Stripe-supported currency&lt;/a&gt;. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"], type: ["fixedAmount"] }
 	 */
 	currency: string | Expression<string>;
 	/**
 	 * Percentage to apply with the coupon
+	 * @displayOptions.show { resource: ["coupon"], operation: ["create"], type: ["percent"] }
 	 * @default 1
 	 */
 	percentOff: number | Expression<number>;
@@ -118,11 +131,13 @@ export type StripeV1CouponGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["coupon"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["coupon"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -134,6 +149,7 @@ export type StripeV1CustomerCreateConfig = {
 	operation: 'create';
 	/**
 	 * Full name or business name of the customer to create
+	 * @displayOptions.show { resource: ["customer"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -145,6 +161,7 @@ export type StripeV1CustomerDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the customer to delete
+	 * @displayOptions.show { resource: ["customer"], operation: ["delete"] }
 	 */
 	customerId: string | Expression<string>;
 };
@@ -155,6 +172,7 @@ export type StripeV1CustomerGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the customer to retrieve
+	 * @displayOptions.show { resource: ["customer"], operation: ["get"] }
 	 */
 	customerId: string | Expression<string>;
 };
@@ -165,11 +183,13 @@ export type StripeV1CustomerGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["customer"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["customer"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -182,6 +202,7 @@ export type StripeV1CustomerUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the customer to update
+	 * @displayOptions.show { resource: ["customer"], operation: ["update"] }
 	 */
 	customerId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -193,10 +214,12 @@ export type StripeV1CustomerCardAddConfig = {
 	operation: 'add';
 	/**
 	 * ID of the customer to be associated with this card
+	 * @displayOptions.show { resource: ["customerCard"], operation: ["add"] }
 	 */
 	customerId: string | Expression<string>;
 	/**
 	 * Token representing sensitive card information
+	 * @displayOptions.show { resource: ["customerCard"], operation: ["add"] }
 	 */
 	token: string | Expression<string>;
 };
@@ -207,10 +230,12 @@ export type StripeV1CustomerCardGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the customer whose card to retrieve
+	 * @displayOptions.show { resource: ["customerCard"], operation: ["get"] }
 	 */
 	customerId: string | Expression<string>;
 	/**
 	 * ID of the source to retrieve
+	 * @displayOptions.show { resource: ["customerCard"], operation: ["get"] }
 	 */
 	sourceId: string | Expression<string>;
 };
@@ -221,10 +246,12 @@ export type StripeV1CustomerCardRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * ID of the customer whose card to remove
+	 * @displayOptions.show { resource: ["customerCard"], operation: ["remove"] }
 	 */
 	customerId: string | Expression<string>;
 	/**
 	 * ID of the card to remove
+	 * @displayOptions.show { resource: ["customerCard"], operation: ["remove"] }
 	 */
 	cardId: string | Expression<string>;
 };
@@ -235,14 +262,17 @@ export type StripeV1MeterEventCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the meter event. Corresponds with the event_name field on a meter.
+	 * @displayOptions.show { resource: ["meterEvent"], operation: ["create"] }
 	 */
 	eventName: string | Expression<string>;
 	/**
 	 * The Stripe customer ID associated with this meter event
+	 * @displayOptions.show { resource: ["meterEvent"], operation: ["create"] }
 	 */
 	customerId: string | Expression<string>;
 	/**
 	 * The value of the meter event. Must be an integer. Can be positive or negative.
+	 * @displayOptions.show { resource: ["meterEvent"], operation: ["create"] }
 	 * @default 1
 	 */
 	value: number | Expression<number>;
@@ -255,20 +285,24 @@ export type StripeV1SourceCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the customer to attach the source to
+	 * @displayOptions.show { resource: ["source"], operation: ["create"] }
 	 */
 	customerId: string | Expression<string>;
 	/**
 	 * Type of source (payment instrument) to create
+	 * @displayOptions.show { resource: ["source"], operation: ["create"] }
 	 * @default wechat
 	 */
 	type: 'wechat' | Expression<string>;
 	/**
 	 * Amount in cents to be collected for this charge, e.g. enter &lt;code&gt;100&lt;/code&gt; for $1.00
+	 * @displayOptions.show { resource: ["source"], operation: ["create"] }
 	 * @default 0
 	 */
 	amount?: number | Expression<number>;
 	/**
 	 * Three-letter ISO currency code, e.g. &lt;code&gt;USD&lt;/code&gt; or &lt;code&gt;EUR&lt;/code&gt;. It must be a &lt;a href="https://stripe.com/docs/currencies"&gt;Stripe-supported currency&lt;/a&gt;. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["source"], operation: ["create"] }
 	 */
 	currency?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -280,10 +314,12 @@ export type StripeV1SourceDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the customer whose source to delete
+	 * @displayOptions.show { resource: ["source"], operation: ["delete"] }
 	 */
 	customerId: string | Expression<string>;
 	/**
 	 * ID of the source to delete
+	 * @displayOptions.show { resource: ["source"], operation: ["delete"] }
 	 */
 	sourceId: string | Expression<string>;
 };
@@ -294,6 +330,7 @@ export type StripeV1SourceGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the source to retrieve
+	 * @displayOptions.show { resource: ["source"], operation: ["get"] }
 	 */
 	sourceId: string | Expression<string>;
 };
@@ -304,20 +341,24 @@ export type StripeV1TokenCreateConfig = {
 	operation: 'create';
 	/**
 	 * Type of token to create
+	 * @displayOptions.show { resource: ["token"], operation: ["create"] }
 	 * @default cardToken
 	 */
 	type: 'cardToken' | Expression<string>;
 	number?: string | Expression<string>;
 	/**
 	 * Security code printed on the back of the card
+	 * @displayOptions.show { resource: ["token"], operation: ["create"], type: ["cardToken"] }
 	 */
 	cvc?: string | Expression<string>;
 	/**
 	 * Number of the month when the card will expire
+	 * @displayOptions.show { resource: ["token"], operation: ["create"], type: ["cardToken"] }
 	 */
 	expirationMonth?: string | Expression<string>;
 	/**
 	 * Year when the card will expire
+	 * @displayOptions.show { resource: ["token"], operation: ["create"], type: ["cardToken"] }
 	 */
 	expirationYear?: string | Expression<string>;
 };

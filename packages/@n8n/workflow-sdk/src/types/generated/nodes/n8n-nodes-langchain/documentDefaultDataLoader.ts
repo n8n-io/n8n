@@ -31,10 +31,13 @@ export interface LcDocumentDefaultDataLoaderV11Params {
 		| Expression<string>;
 	/**
 	 * Drag and drop fields from the input pane, or use an expression
+	 * @displayOptions.show { dataType: ["json"], jsonMode: ["expressionData"] }
 	 */
 	jsonData: string | Expression<string>;
 	/**
 	 * The name of the field in the agent or chain’s input that contains the binary file to be processed
+	 * @displayOptions.show { dataType: ["binary"] }
+	 * @displayOptions.hide { binaryMode: ["allInputData"] }
 	 * @default data
 	 */
 	binaryDataKey: string | Expression<string>;

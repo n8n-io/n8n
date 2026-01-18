@@ -23,6 +23,7 @@ export type AgileCrmV1CompanyCreateConfig = {
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Object of values to set as described &lt;a href="https://github.com/agilecrm/rest-api#1-companys---companies-api"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["company"], operation: ["create"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -34,6 +35,7 @@ export type AgileCrmV1CompanyDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of company to delete
+	 * @displayOptions.show { resource: ["company"], operation: ["delete"] }
 	 */
 	companyId: string | Expression<string>;
 };
@@ -44,6 +46,7 @@ export type AgileCrmV1CompanyGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for a particular company
+	 * @displayOptions.show { resource: ["company"], operation: ["get"] }
 	 */
 	companyId: string | Expression<string>;
 };
@@ -54,11 +57,13 @@ export type AgileCrmV1CompanyGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -66,12 +71,18 @@ export type AgileCrmV1CompanyGetAllConfig = {
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"] }
 	 * @default false
 	 */
 	simple?: boolean | Expression<boolean>;
 	filters?: {
 		conditions?: Array<{
+			/** Any searchable field
+			 */
 			field?: string | Expression<string>;
+			/** Condition Type
+			 * @default EQUALS
+			 */
 			condition_type?:
 				| 'AFTER'
 				| 'BEFORE'
@@ -81,7 +92,12 @@ export type AgileCrmV1CompanyGetAllConfig = {
 				| 'NOTEQUALS'
 				| 'ON'
 				| Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
+			/** Value 2
+			 * @displayOptions.show { condition_type: ["BETWEEN"] }
+			 */
 			value2?: string | Expression<string>;
 		}>;
 	};
@@ -95,11 +111,13 @@ export type AgileCrmV1CompanyUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for a particular company
+	 * @displayOptions.show { resource: ["company"], operation: ["update"] }
 	 */
 	companyId: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Object of values to set as described &lt;a href="https://github.com/agilecrm/rest-api#1-companys---companies-api"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["company"], operation: ["update"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -112,6 +130,7 @@ export type AgileCrmV1ContactCreateConfig = {
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Object of values to set as described &lt;a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["contact"], operation: ["create"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -123,6 +142,7 @@ export type AgileCrmV1ContactDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of contact to delete
+	 * @displayOptions.show { resource: ["contact"], operation: ["delete"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -133,6 +153,7 @@ export type AgileCrmV1ContactGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for a particular contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["get"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -143,11 +164,13 @@ export type AgileCrmV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
@@ -155,12 +178,18 @@ export type AgileCrmV1ContactGetAllConfig = {
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	simple?: boolean | Expression<boolean>;
 	filters?: {
 		conditions?: Array<{
+			/** Any searchable field
+			 */
 			field?: string | Expression<string>;
+			/** Condition Type
+			 * @default EQUALS
+			 */
 			condition_type?:
 				| 'AFTER'
 				| 'BEFORE'
@@ -170,7 +199,12 @@ export type AgileCrmV1ContactGetAllConfig = {
 				| 'NOTEQUALS'
 				| 'ON'
 				| Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
+			/** Value 2
+			 * @displayOptions.show { condition_type: ["BETWEEN"] }
+			 */
 			value2?: string | Expression<string>;
 		}>;
 	};
@@ -184,11 +218,13 @@ export type AgileCrmV1ContactUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for a particular contact
+	 * @displayOptions.show { resource: ["contact"], operation: ["update"] }
 	 */
 	contactId: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Object of values to set as described &lt;a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["contact"], operation: ["update"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -200,29 +236,35 @@ export type AgileCrmV1DealCreateConfig = {
 	operation: 'create';
 	/**
 	 * Closing date of deal
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"], jsonParameters: [false] }
 	 */
 	closeDate: string | Expression<string>;
 	/**
 	 * Expected Value of deal
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"], jsonParameters: [false] }
 	 * @default 1
 	 */
 	expectedValue: number | Expression<number>;
 	/**
 	 * Milestone of deal
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"], jsonParameters: [false] }
 	 */
 	milestone: string | Expression<string>;
 	/**
 	 * Name of deal
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"], jsonParameters: [false] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Expected probability
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"], jsonParameters: [false] }
 	 * @default 50
 	 */
 	probability: number | Expression<number>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Object of values to set as described &lt;a href="https://github.com/agilecrm/rest-api#1-deals---companies-api"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["deal"], operation: ["create"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -234,6 +276,7 @@ export type AgileCrmV1DealDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of deal to delete
+	 * @displayOptions.show { resource: ["deal"], operation: ["delete"] }
 	 */
 	dealId: string | Expression<string>;
 };
@@ -244,6 +287,7 @@ export type AgileCrmV1DealGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for a particular deal
+	 * @displayOptions.show { resource: ["deal"], operation: ["get"] }
 	 */
 	dealId: string | Expression<string>;
 };
@@ -254,11 +298,13 @@ export type AgileCrmV1DealGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["deal"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["deal"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
@@ -270,11 +316,13 @@ export type AgileCrmV1DealUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of deal to update
+	 * @displayOptions.show { resource: ["deal"], operation: ["update"] }
 	 */
 	dealId: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Object of values to set as described &lt;a href="https://github.com/agilecrm/rest-api#1-deals---companies-api"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["deal"], operation: ["update"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

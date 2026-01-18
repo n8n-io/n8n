@@ -21,14 +21,17 @@ export type CircleCiV1PipelineGetConfig = {
 	operation: 'get';
 	/**
 	 * Source control system
+	 * @displayOptions.show { operation: ["get", "getAll", "trigger"], resource: ["pipeline"] }
 	 */
 	vcs?: 'bitbucket' | 'github' | Expression<string>;
 	/**
 	 * Project slug in the form org-name/repo-name
+	 * @displayOptions.show { operation: ["get", "getAll", "trigger"], resource: ["pipeline"] }
 	 */
 	projectSlug?: string | Expression<string>;
 	/**
 	 * The number of the pipeline
+	 * @displayOptions.show { operation: ["get"], resource: ["pipeline"] }
 	 * @default 1
 	 */
 	pipelineNumber?: number | Expression<number>;
@@ -40,19 +43,23 @@ export type CircleCiV1PipelineGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Source control system
+	 * @displayOptions.show { operation: ["get", "getAll", "trigger"], resource: ["pipeline"] }
 	 */
 	vcs?: 'bitbucket' | 'github' | Expression<string>;
 	/**
 	 * Project slug in the form org-name/repo-name
+	 * @displayOptions.show { operation: ["get", "getAll", "trigger"], resource: ["pipeline"] }
 	 */
 	projectSlug?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["pipeline"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["pipeline"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -65,10 +72,12 @@ export type CircleCiV1PipelineTriggerConfig = {
 	operation: 'trigger';
 	/**
 	 * Source control system
+	 * @displayOptions.show { operation: ["get", "getAll", "trigger"], resource: ["pipeline"] }
 	 */
 	vcs?: 'bitbucket' | 'github' | Expression<string>;
 	/**
 	 * Project slug in the form org-name/repo-name
+	 * @displayOptions.show { operation: ["get", "getAll", "trigger"], resource: ["pipeline"] }
 	 */
 	projectSlug?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

@@ -28,6 +28,7 @@ export interface SplitOutV1Params {
 	include?: 'noOtherFields' | 'allOtherFields' | 'selectedOtherFields' | Expression<string>;
 	/**
 	 * Fields in the input items to aggregate together
+	 * @displayOptions.show { include: ["selectedOtherFields"] }
 	 */
 	fieldsToInclude?: string | Expression<string>;
 	options?: Record<string, unknown>;

@@ -30,17 +30,25 @@ export interface MySqlV25Params {
 		| Expression<string>;
 	/**
 	 * The table you want to work on
+	 * @displayOptions.hide { operation: ["executeQuery"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	table: ResourceLocatorValue;
 	deleteCommand?: 'truncate' | 'delete' | 'drop' | Expression<string>;
 	/**
 	 * If not set, all rows will be selected
+	 * @displayOptions.show { deleteCommand: ["delete"], resource: ["database"], operation: ["deleteTable"] }
+	 * @displayOptions.hide { table: [""] }
 	 * @default {}
 	 */
 	where?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/" target="_blank"&gt;expression&lt;/a&gt;
+			 */
 			column?: string | Expression<string>;
+			/** The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.
+			 * @default equal
+			 */
 			condition?:
 				| 'equal'
 				| '!='
@@ -52,11 +60,16 @@ export interface MySqlV25Params {
 				| 'IS NULL'
 				| 'IS NOT NULL'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { condition: ["IS NULL", "IS NOT NULL"] }
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true
+	 * @displayOptions.show { deleteCommand: ["delete"], resource: ["database"], operation: ["deleteTable"] }
+	 * @displayOptions.hide { table: [""] }
 	 * @default AND
 	 */
 	combineConditions?: 'AND' | 'OR' | Expression<string>;
@@ -64,39 +77,63 @@ export interface MySqlV25Params {
 	/**
 	 * The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.
 	 * @hint Consider using query parameters to prevent SQL injection attacks. Add them in the options below
+	 * @displayOptions.show { resource: ["database"], operation: ["executeQuery"] }
 	 */
 	query: string | Expression<string>;
 	/**
 	 * Whether to map node input properties and the table data automatically or manually
+	 * @displayOptions.show { resource: ["database"], operation: ["insert"] }
+	 * @displayOptions.hide { table: [""] }
 	 * @default autoMapInputData
 	 */
 	dataMode?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	valuesToSend?: {
-		values?: Array<{ column?: string | Expression<string>; value?: string | Expression<string> }>;
+		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/" target="_blank"&gt;expression&lt;/a&gt;
+			 * @default []
+			 */
+			column?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["database"], operation: ["select"] }
+	 * @displayOptions.hide { table: [""] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["database"], operation: ["select"] }
+	 * @displayOptions.hide { table: [""] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	sort?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/" target="_blank"&gt;expression&lt;/a&gt;
+			 */
 			column?: string | Expression<string>;
+			/** Direction
+			 * @default ASC
+			 */
 			direction?: 'ASC' | 'DESC' | Expression<string>;
 		}>;
 	};
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/" target="_blank"&gt;expression&lt;/a&gt;
 	 * @hint Used to find the correct row to update. Doesn't get changed.
+	 * @displayOptions.show { resource: ["database"], operation: ["update"] }
+	 * @displayOptions.hide { table: [""] }
 	 */
 	columnToMatchOn: string | Expression<string>;
 	/**
 	 * Rows with a value in the specified "Column to Match On" that corresponds to the value in this field will be updated
+	 * @displayOptions.show { dataMode: ["defineBelow"], resource: ["database"], operation: ["update"] }
+	 * @displayOptions.hide { table: [""] }
 	 */
 	valueToMatchOn?: string | Expression<string>;
 }
@@ -105,24 +142,29 @@ export interface MySqlV1Params {
 	operation?: 'executeQuery' | 'insert' | 'update' | Expression<string>;
 	/**
 	 * The SQL query to execute
+	 * @displayOptions.show { operation: ["executeQuery"] }
 	 */
 	query: string | Expression<string>;
 	/**
 	 * Name of the table in which to insert data to
+	 * @displayOptions.show { operation: ["insert"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	table: ResourceLocatorValue;
 	/**
 	 * Comma-separated list of the properties which should used as columns for the new rows
+	 * @displayOptions.show { operation: ["insert"] }
 	 */
 	columns?: string | Expression<string>;
 	/**
 	 * Modifiers for INSERT statement
+	 * @displayOptions.show { operation: ["insert"] }
 	 * @default {}
 	 */
 	options?: Record<string, unknown>;
 	/**
 	 * Name of the property which decides which rows in the database should be updated. Normally that would be "id".
+	 * @displayOptions.show { operation: ["update"] }
 	 * @default id
 	 */
 	updateKey: string | Expression<string>;

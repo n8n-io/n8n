@@ -25,10 +25,24 @@ export type TheHiveProjectV1AlertCreateConfig = {
 	alertFields: unknown;
 	observableUi?: {
 		values?: Array<{
+			/** Type of the observable. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			dataType?: string | Expression<string>;
+			/** Data
+			 * @displayOptions.hide { dataType: ["file"] }
+			 */
 			data?: string | Expression<string>;
+			/** Input Binary Field
+			 * @hint The name of the input binary field containing the file to be written
+			 * @displayOptions.show { dataType: ["file"] }
+			 * @default data
+			 */
 			binaryProperty?: string | Expression<string>;
+			/** Message
+			 */
 			message?: string | Expression<string>;
+			/** Tags
+			 */
 			tags?: string | Expression<string>;
 		}>;
 	};
@@ -46,6 +60,8 @@ export type TheHiveProjectV1AlertExecuteResponderConfig = {
 	id: ResourceLocatorValue;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["alert"], operation: ["executeResponder"] }
+	 * @displayOptions.hide { id: [""] }
 	 */
 	responder: string | Expression<string>;
 };
@@ -76,24 +92,53 @@ export type TheHiveProjectV1AlertSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["alert"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["alert"], operation: ["search"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	filters?: {
 		values?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Operator
+			 * @default _eq
+			 */
 			operator?:
 				| '_between'
 				| '_like'
@@ -108,22 +153,61 @@ export type TheHiveProjectV1AlertSearchConfig = {
 				| '_ne'
 				| '_startsWith'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { operator: ["_between", "_in"] }
+			 */
 			value?: string | Expression<string>;
+			/** Comma-separated list of values
+			 * @displayOptions.show { operator: ["_in"] }
+			 */
 			values?: string | Expression<string>;
+			/** From
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			from?: string | Expression<string>;
+			/** To
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			to?: string | Expression<string>;
 		}>;
 	};
 	sort?: {
 		fields?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Direction
+			 * @default asc
+			 */
 			direction?: 'asc' | 'desc' | Expression<string>;
 		}>;
 	};
@@ -142,6 +226,7 @@ export type TheHiveProjectV1AlertStatusConfig = {
 	alertId: ResourceLocatorValue;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["alert"], operation: ["status"] }
 	 */
 	status: string | Expression<string>;
 };
@@ -152,9 +237,18 @@ export type TheHiveProjectV1CaseAddAttachmentConfig = {
 	caseId: ResourceLocatorValue;
 	/**
 	 * Array of supported attachments to add to the message
+	 * @displayOptions.show { resource: ["case"], operation: ["addAttachment"] }
 	 * @default {}
 	 */
-	attachmentsUi?: { values?: Array<{ field?: string | Expression<string> }> };
+	attachmentsUi?: {
+		values?: Array<{
+			/** Add the field name from the input node
+			 * @hint The name of the field with the attachment in the node input
+			 * @default data
+			 */
+			field?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -170,6 +264,7 @@ export type TheHiveProjectV1CaseDeleteAttachmentConfig = {
 	caseId: ResourceLocatorValue;
 	/**
 	 * ID of the attachment. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["case"], operation: ["deleteAttachment"] }
 	 */
 	attachmentId: string | Expression<string>;
 };
@@ -186,6 +281,8 @@ export type TheHiveProjectV1CaseExecuteResponderConfig = {
 	id: ResourceLocatorValue;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["case"], operation: ["executeResponder"] }
+	 * @displayOptions.hide { id: [""] }
 	 */
 	responder: string | Expression<string>;
 };
@@ -202,6 +299,7 @@ export type TheHiveProjectV1CaseGetAttachmentConfig = {
 	caseId: ResourceLocatorValue;
 	/**
 	 * ID of the attachment. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["case"], operation: ["getAttachment"] }
 	 */
 	attachmentId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -218,24 +316,53 @@ export type TheHiveProjectV1CaseSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["case"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["case"], operation: ["search"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	filters?: {
 		values?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Operator
+			 * @default _eq
+			 */
 			operator?:
 				| '_between'
 				| '_like'
@@ -250,22 +377,61 @@ export type TheHiveProjectV1CaseSearchConfig = {
 				| '_ne'
 				| '_startsWith'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { operator: ["_between", "_in"] }
+			 */
 			value?: string | Expression<string>;
+			/** Comma-separated list of values
+			 * @displayOptions.show { operator: ["_in"] }
+			 */
 			values?: string | Expression<string>;
+			/** From
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			from?: string | Expression<string>;
+			/** To
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			to?: string | Expression<string>;
 		}>;
 	};
 	sort?: {
 		fields?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Direction
+			 * @default asc
+			 */
 			direction?: 'asc' | 'desc' | Expression<string>;
 		}>;
 	};
@@ -297,6 +463,7 @@ export type TheHiveProjectV1CommentSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to search for comments in all alerts and cases or in a specific case or alert
+	 * @displayOptions.show { resource: ["comment"], operation: ["search"] }
 	 * @default all
 	 */
 	searchIn?: 'all' | 'alert' | 'case' | Expression<string>;
@@ -304,24 +471,53 @@ export type TheHiveProjectV1CommentSearchConfig = {
 	alertId: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["comment"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["comment"], operation: ["search"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	filters?: {
 		values?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Operator
+			 * @default _eq
+			 */
 			operator?:
 				| '_between'
 				| '_like'
@@ -336,22 +532,61 @@ export type TheHiveProjectV1CommentSearchConfig = {
 				| '_ne'
 				| '_startsWith'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { operator: ["_between", "_in"] }
+			 */
 			value?: string | Expression<string>;
+			/** Comma-separated list of values
+			 * @displayOptions.show { operator: ["_in"] }
+			 */
 			values?: string | Expression<string>;
+			/** From
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			from?: string | Expression<string>;
+			/** To
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			to?: string | Expression<string>;
 		}>;
 	};
 	sort?: {
 		fields?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Direction
+			 * @default asc
+			 */
 			direction?: 'asc' | 'desc' | Expression<string>;
 		}>;
 	};
@@ -372,15 +607,25 @@ export type TheHiveProjectV1ObservableCreateConfig = {
 	id: ResourceLocatorValue;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["observable"], operation: ["create"] }
 	 * @default file
 	 */
 	dataType: string | Expression<string>;
 	data: string | Expression<string>;
 	/**
 	 * Array of supported attachments to add to the message
+	 * @displayOptions.show { dataType: ["file"], resource: ["observable"], operation: ["create"] }
 	 * @default {}
 	 */
-	attachmentsUi: { values?: Array<{ field?: string | Expression<string> }> };
+	attachmentsUi: {
+		values?: Array<{
+			/** Add the field name from the input node
+			 * @hint The name of the field with the attachment in the node input
+			 * @default data
+			 */
+			field?: string | Expression<string>;
+		}>;
+	};
 	observableFields: unknown;
 };
 
@@ -396,10 +641,13 @@ export type TheHiveProjectV1ObservableExecuteAnalyzerConfig = {
 	observableId: ResourceLocatorValue;
 	/**
 	 * Type of the observable. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["observable"], operation: ["executeAnalyzer"] }
 	 */
 	dataType?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["observable"], operation: ["executeAnalyzer"] }
+	 * @displayOptions.hide { id: [""] }
 	 * @default []
 	 */
 	analyzers: string[];
@@ -411,6 +659,8 @@ export type TheHiveProjectV1ObservableExecuteResponderConfig = {
 	id: ResourceLocatorValue;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["observable"], operation: ["executeResponder"] }
+	 * @displayOptions.hide { id: [""] }
 	 */
 	responder: string | Expression<string>;
 };
@@ -426,6 +676,7 @@ export type TheHiveProjectV1ObservableSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to search for observables in all alerts and cases or in a specific case or alert
+	 * @displayOptions.show { resource: ["observable"], operation: ["search"] }
 	 * @default all
 	 */
 	searchIn?: 'all' | 'alert' | 'case' | Expression<string>;
@@ -433,24 +684,53 @@ export type TheHiveProjectV1ObservableSearchConfig = {
 	alertId: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["observable"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["observable"], operation: ["search"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	filters?: {
 		values?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Operator
+			 * @default _eq
+			 */
 			operator?:
 				| '_between'
 				| '_like'
@@ -465,22 +745,61 @@ export type TheHiveProjectV1ObservableSearchConfig = {
 				| '_ne'
 				| '_startsWith'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { operator: ["_between", "_in"] }
+			 */
 			value?: string | Expression<string>;
+			/** Comma-separated list of values
+			 * @displayOptions.show { operator: ["_in"] }
+			 */
 			values?: string | Expression<string>;
+			/** From
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			from?: string | Expression<string>;
+			/** To
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			to?: string | Expression<string>;
 		}>;
 	};
 	sort?: {
 		fields?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Direction
+			 * @default asc
+			 */
 			direction?: 'asc' | 'desc' | Expression<string>;
 		}>;
 	};
@@ -516,30 +835,60 @@ export type TheHiveProjectV1PageSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to search in knowledge base or only in the selected case
+	 * @displayOptions.show { resource: ["page"], operation: ["search"] }
 	 * @default true
 	 */
 	searchInKnowledgeBase?: boolean | Expression<boolean>;
 	caseId: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["page"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["page"], operation: ["search"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	filters?: {
 		values?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Operator
+			 * @default _eq
+			 */
 			operator?:
 				| '_between'
 				| '_like'
@@ -554,22 +903,61 @@ export type TheHiveProjectV1PageSearchConfig = {
 				| '_ne'
 				| '_startsWith'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { operator: ["_between", "_in"] }
+			 */
 			value?: string | Expression<string>;
+			/** Comma-separated list of values
+			 * @displayOptions.show { operator: ["_in"] }
+			 */
 			values?: string | Expression<string>;
+			/** From
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			from?: string | Expression<string>;
+			/** To
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			to?: string | Expression<string>;
 		}>;
 	};
 	sort?: {
 		fields?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Direction
+			 * @default asc
+			 */
 			direction?: 'asc' | 'desc' | Expression<string>;
 		}>;
 	};
@@ -592,6 +980,7 @@ export type TheHiveProjectV1QueryExecuteQueryConfig = {
 	/**
  * Search for objects with filtering and sorting capabilities
  * @hint The query should be an array of operations with the required selection and optional filtering, sorting, and pagination. See &lt;a href="https://docs.strangebee.com/thehive/api-docs/#operation/Query%20API" target="_blank"&gt;Query API&lt;/a&gt; for more information.
+ * @displayOptions.show { resource: ["query"], operation: ["executeQuery"] }
  * @default =[
   {
     "_name": "listOrganisation"
@@ -620,6 +1009,8 @@ export type TheHiveProjectV1TaskExecuteResponderConfig = {
 	id: ResourceLocatorValue;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["task"], operation: ["executeResponder"] }
+	 * @displayOptions.hide { id: [""] }
 	 */
 	responder: string | Expression<string>;
 };
@@ -635,30 +1026,60 @@ export type TheHiveProjectV1TaskSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to search in all cases or only in a selected case
+	 * @displayOptions.show { resource: ["task"], operation: ["search"] }
 	 * @default true
 	 */
 	allCases?: boolean | Expression<boolean>;
 	caseId: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["task"], operation: ["search"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	filters?: {
 		values?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Operator
+			 * @default _eq
+			 */
 			operator?:
 				| '_between'
 				| '_like'
@@ -673,22 +1094,61 @@ export type TheHiveProjectV1TaskSearchConfig = {
 				| '_ne'
 				| '_startsWith'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { operator: ["_between", "_in"] }
+			 */
 			value?: string | Expression<string>;
+			/** Comma-separated list of values
+			 * @displayOptions.show { operator: ["_in"] }
+			 */
 			values?: string | Expression<string>;
+			/** From
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			from?: string | Expression<string>;
+			/** To
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			to?: string | Expression<string>;
 		}>;
 	};
 	sort?: {
 		fields?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Direction
+			 * @default asc
+			 */
 			direction?: 'asc' | 'desc' | Expression<string>;
 		}>;
 	};
@@ -707,9 +1167,18 @@ export type TheHiveProjectV1LogAddAttachmentConfig = {
 	logId: ResourceLocatorValue;
 	/**
 	 * Array of supported attachments to add to the message
+	 * @displayOptions.show { resource: ["log"], operation: ["addAttachment"] }
 	 * @default {}
 	 */
-	attachmentsUi?: { values?: Array<{ field?: string | Expression<string> }> };
+	attachmentsUi?: {
+		values?: Array<{
+			/** Add the field name from the input node
+			 * @hint The name of the field with the attachment in the node input
+			 * @default data
+			 */
+			field?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type TheHiveProjectV1LogCreateConfig = {
@@ -719,9 +1188,18 @@ export type TheHiveProjectV1LogCreateConfig = {
 	logFields: unknown;
 	/**
 	 * Array of supported attachments to add to the message
+	 * @displayOptions.show { resource: ["log"], operation: ["create"] }
 	 * @default {}
 	 */
-	attachmentsUi?: { values?: Array<{ field?: string | Expression<string> }> };
+	attachmentsUi?: {
+		values?: Array<{
+			/** Add the field name from the input node
+			 * @hint The name of the field with the attachment in the node input
+			 * @default data
+			 */
+			field?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type TheHiveProjectV1LogDeleteLogConfig = {
@@ -736,6 +1214,7 @@ export type TheHiveProjectV1LogDeleteAttachmentConfig = {
 	logId: ResourceLocatorValue;
 	/**
 	 * ID of the attachment. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["log"], operation: ["deleteAttachment"] }
 	 */
 	attachmentId: string | Expression<string>;
 };
@@ -746,6 +1225,8 @@ export type TheHiveProjectV1LogExecuteResponderConfig = {
 	id: ResourceLocatorValue;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["log"], operation: ["executeResponder"] }
+	 * @displayOptions.hide { id: [""] }
 	 */
 	responder: string | Expression<string>;
 };
@@ -761,30 +1242,60 @@ export type TheHiveProjectV1LogSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to search in all tasks or only in selected task
+	 * @displayOptions.show { resource: ["log"], operation: ["search"] }
 	 * @default true
 	 */
 	allTasks?: boolean | Expression<boolean>;
 	taskId: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["log"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["log"], operation: ["search"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	filters?: {
 		values?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Operator
+			 * @default _eq
+			 */
 			operator?:
 				| '_between'
 				| '_like'
@@ -799,22 +1310,61 @@ export type TheHiveProjectV1LogSearchConfig = {
 				| '_ne'
 				| '_startsWith'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.hide { operator: ["_between", "_in"] }
+			 */
 			value?: string | Expression<string>;
+			/** Comma-separated list of values
+			 * @displayOptions.show { operator: ["_in"] }
+			 */
 			values?: string | Expression<string>;
+			/** From
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			from?: string | Expression<string>;
+			/** To
+			 * @displayOptions.show { operator: ["_between"] }
+			 */
 			to?: string | Expression<string>;
 		}>;
 	};
 	sort?: {
 		fields?: Array<{
+			/** Dot notation is also supported, e.g. customFields.field1
+			 * @displayOptions.hide { /resource: ["alert", "case", "comment", "task", "observable", "log", "page"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["alert"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["case"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["task"] }
+			 */
 			field?: string | Expression<string>;
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 * @displayOptions.show { /resource: ["observable"] }
+			 */
 			field?: string | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["log"] }
+			 */
 			field?: 'message' | 'date' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["comment"] }
+			 */
 			field?: 'message' | Expression<string>;
+			/** Field
+			 * @displayOptions.show { /resource: ["page"] }
+			 */
 			field?: 'category' | 'content' | 'title' | Expression<string>;
+			/** Direction
+			 * @default asc
+			 */
 			direction?: 'asc' | 'desc' | Expression<string>;
 		}>;
 	};

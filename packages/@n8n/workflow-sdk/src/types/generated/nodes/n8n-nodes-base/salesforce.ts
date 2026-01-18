@@ -22,10 +22,12 @@ export type SalesforceV1AccountAddNoteConfig = {
 	operation: 'addNote';
 	/**
 	 * ID of account that needs to be fetched
+	 * @displayOptions.show { resource: ["account"], operation: ["addNote"] }
 	 */
 	accountId: string | Expression<string>;
 	/**
 	 * Title of the note
+	 * @displayOptions.show { resource: ["account"], operation: ["addNote"] }
 	 */
 	title: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -37,6 +39,7 @@ export type SalesforceV1AccountCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the account. Maximum size is 255 characters.
+	 * @displayOptions.show { resource: ["account"], operation: ["create", "upsert"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -48,14 +51,17 @@ export type SalesforceV1AccountUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * The field to check to see if the account already exists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["account"], operation: ["upsert"] }
 	 */
 	externalId: string | Expression<string>;
 	/**
 	 * If this value exists in the 'match against' field, update the account. Otherwise create a new one.
+	 * @displayOptions.show { resource: ["account"], operation: ["upsert"] }
 	 */
 	externalIdValue: string | Expression<string>;
 	/**
 	 * Name of the account. Maximum size is 255 characters.
+	 * @displayOptions.show { resource: ["account"], operation: ["create", "upsert"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -67,6 +73,7 @@ export type SalesforceV1AccountDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of account that needs to be fetched
+	 * @displayOptions.show { resource: ["account"], operation: ["delete"] }
 	 */
 	accountId: string | Expression<string>;
 };
@@ -77,6 +84,7 @@ export type SalesforceV1AccountGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of account that needs to be fetched
+	 * @displayOptions.show { resource: ["account"], operation: ["get"] }
 	 */
 	accountId: string | Expression<string>;
 };
@@ -87,11 +95,13 @@ export type SalesforceV1AccountGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["account"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["account"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -110,6 +120,7 @@ export type SalesforceV1AccountUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of account that needs to be fetched
+	 * @displayOptions.show { resource: ["account"], operation: ["update"] }
 	 */
 	accountId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -122,6 +133,7 @@ export type SalesforceV1AttachmentCreateConfig = {
 	parentId: string | Expression<string>;
 	/**
 	 * Required. Name of the attached file. Maximum size is 255 characters. Label is File Name.
+	 * @displayOptions.show { resource: ["attachment"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
@@ -134,6 +146,7 @@ export type SalesforceV1AttachmentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of attachment that needs to be fetched
+	 * @displayOptions.show { resource: ["attachment"], operation: ["delete"] }
 	 */
 	attachmentId: string | Expression<string>;
 };
@@ -144,6 +157,7 @@ export type SalesforceV1AttachmentGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of attachment that needs to be fetched
+	 * @displayOptions.show { resource: ["attachment"], operation: ["get"] }
 	 */
 	attachmentId: string | Expression<string>;
 };
@@ -154,11 +168,13 @@ export type SalesforceV1AttachmentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["attachment"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["attachment"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -177,6 +193,7 @@ export type SalesforceV1AttachmentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of attachment that needs to be fetched
+	 * @displayOptions.show { resource: ["attachment"], operation: ["update"] }
 	 */
 	attachmentId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -188,6 +205,7 @@ export type SalesforceV1CaseAddCommentConfig = {
 	operation: 'addComment';
 	/**
 	 * ID of case that needs to be fetched
+	 * @displayOptions.show { resource: ["case"], operation: ["addComment"] }
 	 */
 	caseId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -199,6 +217,7 @@ export type SalesforceV1CaseCreateConfig = {
 	operation: 'create';
 	/**
 	 * The type of case. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["case"], operation: ["create"] }
 	 */
 	type: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -210,6 +229,7 @@ export type SalesforceV1CaseDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of case that needs to be fetched
+	 * @displayOptions.show { resource: ["case"], operation: ["delete"] }
 	 */
 	caseId: string | Expression<string>;
 };
@@ -220,6 +240,7 @@ export type SalesforceV1CaseGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of case that needs to be fetched
+	 * @displayOptions.show { resource: ["case"], operation: ["get"] }
 	 */
 	caseId: string | Expression<string>;
 };
@@ -230,11 +251,13 @@ export type SalesforceV1CaseGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["case"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["case"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -253,6 +276,7 @@ export type SalesforceV1CaseUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of case that needs to be fetched
+	 * @displayOptions.show { resource: ["case"], operation: ["update"] }
 	 */
 	caseId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -264,10 +288,12 @@ export type SalesforceV1ContactAddToCampaignConfig = {
 	operation: 'addToCampaign';
 	/**
 	 * ID of contact that needs to be fetched
+	 * @displayOptions.show { resource: ["contact"], operation: ["addToCampaign"] }
 	 */
 	contactId: string | Expression<string>;
 	/**
 	 * ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["contact"], operation: ["addToCampaign"] }
 	 */
 	campaignId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -279,10 +305,12 @@ export type SalesforceV1ContactAddNoteConfig = {
 	operation: 'addNote';
 	/**
 	 * ID of contact that needs to be fetched
+	 * @displayOptions.show { resource: ["contact"], operation: ["addNote"] }
 	 */
 	contactId: string | Expression<string>;
 	/**
 	 * Title of the note
+	 * @displayOptions.show { resource: ["contact"], operation: ["addNote"] }
 	 */
 	title: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -294,6 +322,7 @@ export type SalesforceV1ContactCreateConfig = {
 	operation: 'create';
 	/**
 	 * Required. Last name of the contact. Limited to 80 characters.
+	 * @displayOptions.show { resource: ["contact"], operation: ["create", "upsert"] }
 	 */
 	lastname: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -305,14 +334,17 @@ export type SalesforceV1ContactUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * The field to check to see if the contact already exists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["contact"], operation: ["upsert"] }
 	 */
 	externalId: string | Expression<string>;
 	/**
 	 * If this value exists in the 'match against' field, update the contact. Otherwise create a new one.
+	 * @displayOptions.show { resource: ["contact"], operation: ["upsert"] }
 	 */
 	externalIdValue: string | Expression<string>;
 	/**
 	 * Required. Last name of the contact. Limited to 80 characters.
+	 * @displayOptions.show { resource: ["contact"], operation: ["create", "upsert"] }
 	 */
 	lastname: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -324,6 +356,7 @@ export type SalesforceV1ContactDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of contact that needs to be fetched
+	 * @displayOptions.show { resource: ["contact"], operation: ["delete"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -334,6 +367,7 @@ export type SalesforceV1ContactGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of contact that needs to be fetched
+	 * @displayOptions.show { resource: ["contact"], operation: ["get"] }
 	 */
 	contactId: string | Expression<string>;
 };
@@ -344,11 +378,13 @@ export type SalesforceV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -367,6 +403,7 @@ export type SalesforceV1ContactUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of contact that needs to be fetched
+	 * @displayOptions.show { resource: ["contact"], operation: ["update"] }
 	 */
 	contactId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -378,15 +415,21 @@ export type SalesforceV1CustomObjectCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the custom object. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["customObject"], operation: ["create", "upsert"] }
 	 */
 	customObject: string | Expression<string>;
 	/**
 	 * Filter by custom fields
+	 * @displayOptions.show { resource: ["customObject"], operation: ["create", "upsert"] }
 	 * @default {}
 	 */
 	customFieldsUi?: {
 		customFieldsValues?: Array<{
+			/** The ID of the field. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			fieldId?: string | Expression<string>;
+			/** The value to set on custom field
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -399,23 +442,31 @@ export type SalesforceV1CustomObjectUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * Name of the custom object. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["customObject"], operation: ["create", "upsert"] }
 	 */
 	customObject: string | Expression<string>;
 	/**
 	 * The field to check to see if the object already exists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["customObject"], operation: ["upsert"] }
 	 */
 	externalId: string | Expression<string>;
 	/**
 	 * If this value exists in the 'match against' field, update the object. Otherwise create a new one.
+	 * @displayOptions.show { resource: ["customObject"], operation: ["upsert"] }
 	 */
 	externalIdValue: string | Expression<string>;
 	/**
 	 * Filter by custom fields
+	 * @displayOptions.show { resource: ["customObject"], operation: ["create", "upsert"] }
 	 * @default {}
 	 */
 	customFieldsUi?: {
 		customFieldsValues?: Array<{
+			/** The ID of the field. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			fieldId?: string | Expression<string>;
+			/** The value to set on custom field
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -428,10 +479,12 @@ export type SalesforceV1CustomObjectDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Name of the custom object. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["customObject"], operation: ["delete"] }
 	 */
 	customObject: string | Expression<string>;
 	/**
 	 * Record ID to be deleted
+	 * @displayOptions.show { resource: ["customObject"], operation: ["delete"] }
 	 */
 	recordId: string | Expression<string>;
 };
@@ -442,10 +495,12 @@ export type SalesforceV1CustomObjectGetConfig = {
 	operation: 'get';
 	/**
 	 * Name of the custom object. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["customObject"], operation: ["get"] }
 	 */
 	customObject: string | Expression<string>;
 	/**
 	 * Record ID to be retrieved
+	 * @displayOptions.show { resource: ["customObject"], operation: ["get"] }
 	 */
 	recordId: string | Expression<string>;
 };
@@ -456,15 +511,18 @@ export type SalesforceV1CustomObjectGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Name of the custom object. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["customObject"], operation: ["getAll"] }
 	 */
 	customObject: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["customObject"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["customObject"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -477,19 +535,26 @@ export type SalesforceV1CustomObjectUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Name of the custom object. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["customObject"], operation: ["update"] }
 	 */
 	customObject: string | Expression<string>;
 	/**
 	 * Record ID to be updated
+	 * @displayOptions.show { resource: ["customObject"], operation: ["update"] }
 	 */
 	recordId: string | Expression<string>;
 	/**
 	 * Filter by custom fields
+	 * @displayOptions.show { resource: ["customObject"], operation: ["update"] }
 	 * @default {}
 	 */
 	customFieldsUi?: {
 		customFieldsValues?: Array<{
+			/** The ID of the field. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			fieldId?: string | Expression<string>;
+			/** The value to set on custom field
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -502,6 +567,7 @@ export type SalesforceV1DocumentUploadConfig = {
 	operation: 'upload';
 	/**
 	 * Name of the file
+	 * @displayOptions.show { resource: ["document"], operation: ["upload"] }
 	 */
 	title: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
@@ -514,11 +580,13 @@ export type SalesforceV1FlowGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["flow"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["flow"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -530,24 +598,32 @@ export type SalesforceV1FlowInvokeConfig = {
 	operation: 'invoke';
 	/**
 	 * Required. API name of the flow.
+	 * @displayOptions.show { resource: ["flow"], operation: ["invoke"] }
 	 */
 	apiName: string | Expression<string>;
 	/**
 	 * Whether the input variables should be set via the value-key pair UI or JSON/RAW
+	 * @displayOptions.show { resource: ["flow"], operation: ["invoke"] }
 	 * @default false
 	 */
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Input variables as JSON object
+	 * @displayOptions.show { resource: ["flow"], operation: ["invoke"], jsonParameters: [true] }
 	 */
 	variablesJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The input variable to send
+	 * @displayOptions.show { resource: ["flow"], operation: ["invoke"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	variablesUi?: {
 		variablesValues?: Array<{
+			/** Name of the input variable
+			 */
 			name?: string | Expression<string>;
+			/** Value of the input variable
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -559,10 +635,12 @@ export type SalesforceV1LeadAddToCampaignConfig = {
 	operation: 'addToCampaign';
 	/**
 	 * ID of contact that needs to be fetched
+	 * @displayOptions.show { resource: ["lead"], operation: ["addToCampaign"] }
 	 */
 	leadId: string | Expression<string>;
 	/**
 	 * ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["lead"], operation: ["addToCampaign"] }
 	 */
 	campaignId: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -574,10 +652,12 @@ export type SalesforceV1LeadAddNoteConfig = {
 	operation: 'addNote';
 	/**
 	 * ID of lead that needs to be fetched
+	 * @displayOptions.show { resource: ["lead"], operation: ["addNote"] }
 	 */
 	leadId: string | Expression<string>;
 	/**
 	 * Title of the note
+	 * @displayOptions.show { resource: ["lead"], operation: ["addNote"] }
 	 */
 	title: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -589,10 +669,12 @@ export type SalesforceV1LeadCreateConfig = {
 	operation: 'create';
 	/**
 	 * Company of the lead. If person account record types have been enabled, and if the value of Company is null, the lead converts to a person account.
+	 * @displayOptions.show { resource: ["lead"], operation: ["create", "upsert"] }
 	 */
 	company: string | Expression<string>;
 	/**
 	 * Required. Last name of the lead. Limited to 80 characters.
+	 * @displayOptions.show { resource: ["lead"], operation: ["create", "upsert"] }
 	 */
 	lastname: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -604,18 +686,22 @@ export type SalesforceV1LeadUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * The field to check to see if the lead already exists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["lead"], operation: ["upsert"] }
 	 */
 	externalId: string | Expression<string>;
 	/**
 	 * If this value exists in the 'match against' field, update the lead. Otherwise create a new one.
+	 * @displayOptions.show { resource: ["lead"], operation: ["upsert"] }
 	 */
 	externalIdValue: string | Expression<string>;
 	/**
 	 * Company of the lead. If person account record types have been enabled, and if the value of Company is null, the lead converts to a person account.
+	 * @displayOptions.show { resource: ["lead"], operation: ["create", "upsert"] }
 	 */
 	company: string | Expression<string>;
 	/**
 	 * Required. Last name of the lead. Limited to 80 characters.
+	 * @displayOptions.show { resource: ["lead"], operation: ["create", "upsert"] }
 	 */
 	lastname: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -627,6 +713,7 @@ export type SalesforceV1LeadDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of Lead that needs to be fetched
+	 * @displayOptions.show { resource: ["lead"], operation: ["delete"] }
 	 */
 	leadId: string | Expression<string>;
 };
@@ -637,6 +724,7 @@ export type SalesforceV1LeadGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of Lead that needs to be fetched
+	 * @displayOptions.show { resource: ["lead"], operation: ["get"] }
 	 */
 	leadId: string | Expression<string>;
 };
@@ -647,11 +735,13 @@ export type SalesforceV1LeadGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["lead"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["lead"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -670,6 +760,7 @@ export type SalesforceV1LeadUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of Lead that needs to be fetched
+	 * @displayOptions.show { resource: ["lead"], operation: ["update"] }
 	 */
 	leadId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -681,10 +772,12 @@ export type SalesforceV1OpportunityAddNoteConfig = {
 	operation: 'addNote';
 	/**
 	 * ID of opportunity that needs to be fetched
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["addNote"] }
 	 */
 	opportunityId: string | Expression<string>;
 	/**
 	 * Title of the note
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["addNote"] }
 	 */
 	title: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -696,14 +789,17 @@ export type SalesforceV1OpportunityCreateConfig = {
 	operation: 'create';
 	/**
 	 * Required. Last name of the opportunity. Limited to 80 characters.
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "upsert"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Required. Date when the opportunity is expected to close.
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "upsert"] }
 	 */
 	closeDate: string | Expression<string>;
 	/**
 	 * Required. Date when the opportunity is expected to close. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "upsert"] }
 	 */
 	stageName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -715,22 +811,27 @@ export type SalesforceV1OpportunityUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * The field to check to see if the opportunity already exists. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["upsert"] }
 	 */
 	externalId: string | Expression<string>;
 	/**
 	 * If this value exists in the 'match against' field, update the opportunity. Otherwise create a new one.
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["upsert"] }
 	 */
 	externalIdValue: string | Expression<string>;
 	/**
 	 * Required. Last name of the opportunity. Limited to 80 characters.
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "upsert"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Required. Date when the opportunity is expected to close.
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "upsert"] }
 	 */
 	closeDate: string | Expression<string>;
 	/**
 	 * Required. Date when the opportunity is expected to close. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["create", "upsert"] }
 	 */
 	stageName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -742,6 +843,7 @@ export type SalesforceV1OpportunityDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of opportunity that needs to be fetched
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["delete"] }
 	 */
 	opportunityId: string | Expression<string>;
 };
@@ -752,6 +854,7 @@ export type SalesforceV1OpportunityGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of opportunity that needs to be fetched
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["get"] }
 	 */
 	opportunityId: string | Expression<string>;
 };
@@ -762,11 +865,13 @@ export type SalesforceV1OpportunityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -785,6 +890,7 @@ export type SalesforceV1OpportunityUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of opportunity that needs to be fetched
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["update"] }
 	 */
 	opportunityId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -796,6 +902,7 @@ export type SalesforceV1SearchQueryConfig = {
 	operation: 'query';
 	/**
 	 * A SOQL query. An example query parameter string might look like: “SELECT+Name+FROM+MyObject”. If the SOQL query string is invalid, a MALFORMED_QUERY response is returned.
+	 * @displayOptions.show { resource: ["search"], operation: ["query"] }
 	 */
 	query: string | Expression<string>;
 };
@@ -806,6 +913,7 @@ export type SalesforceV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * The current status of the task, such as In Progress or Completed. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	status: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -817,6 +925,7 @@ export type SalesforceV1TaskDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of task that needs to be fetched
+	 * @displayOptions.show { resource: ["task"], operation: ["delete"] }
 	 */
 	taskId: string | Expression<string>;
 };
@@ -827,6 +936,7 @@ export type SalesforceV1TaskGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of task that needs to be fetched
+	 * @displayOptions.show { resource: ["task"], operation: ["get"] }
 	 */
 	taskId: string | Expression<string>;
 };
@@ -837,11 +947,13 @@ export type SalesforceV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -860,6 +972,7 @@ export type SalesforceV1TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of task that needs to be fetched
+	 * @displayOptions.show { resource: ["task"], operation: ["update"] }
 	 */
 	taskId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -871,6 +984,7 @@ export type SalesforceV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of user that needs to be fetched
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -881,11 +995,13 @@ export type SalesforceV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

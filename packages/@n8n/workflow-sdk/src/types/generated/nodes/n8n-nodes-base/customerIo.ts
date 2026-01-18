@@ -22,11 +22,13 @@ export type CustomerIoV1CustomerUpsertConfig = {
 	operation: 'upsert';
 	/**
 	 * The unique identifier for the customer
+	 * @displayOptions.show { resource: ["customer"], operation: ["upsert"] }
 	 */
 	id: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Object of values to set as described &lt;a href="https://github.com/agilecrm/rest-api#1-companys---companies-api"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["customer"], operation: ["upsert"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -38,6 +40,7 @@ export type CustomerIoV1CustomerDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The unique identifier for the customer
+	 * @displayOptions.show { resource: ["customer"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -48,15 +51,18 @@ export type CustomerIoV1EventTrackConfig = {
 	operation: 'track';
 	/**
 	 * The unique identifier for the customer
+	 * @displayOptions.show { resource: ["event"], operation: ["track"] }
 	 */
 	customerId: string | Expression<string>;
 	/**
 	 * Name of the event to track
+	 * @displayOptions.show { resource: ["event"], operation: ["track"] }
 	 */
 	eventName?: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Object of values to set as described &lt;a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["event"], operation: ["track"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -68,11 +74,13 @@ export type CustomerIoV1EventTrackAnonymousConfig = {
 	operation: 'trackAnonymous';
 	/**
 	 * The unique identifier for the customer
+	 * @displayOptions.show { resource: ["event"], operation: ["trackAnonymous"] }
 	 */
 	eventName: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Object of values to set as described &lt;a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { resource: ["event"], operation: ["trackAnonymous"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -83,6 +91,7 @@ export type CustomerIoV1CampaignGetConfig = {
 	operation: 'get';
 	/**
 	 * The unique identifier for the campaign
+	 * @displayOptions.show { resource: ["campaign"], operation: ["get"] }
 	 * @default 0
 	 */
 	campaignId: number | Expression<number>;
@@ -98,11 +107,13 @@ export type CustomerIoV1CampaignGetMetricsConfig = {
 	operation: 'getMetrics';
 	/**
 	 * The unique identifier for the campaign
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getMetrics"] }
 	 * @default 0
 	 */
 	campaignId: number | Expression<number>;
 	/**
 	 * Specify metric period
+	 * @displayOptions.show { resource: ["campaign"], operation: ["getMetrics"] }
 	 * @default days
 	 */
 	period?: 'hours' | 'days' | 'weeks' | 'months' | Expression<string>;
@@ -115,11 +126,13 @@ export type CustomerIoV1SegmentAddConfig = {
 	operation: 'add';
 	/**
 	 * The unique identifier of the segment
+	 * @displayOptions.show { resource: ["segment"], operation: ["add", "remove"] }
 	 * @default 0
 	 */
 	segmentId: number | Expression<number>;
 	/**
 	 * A list of customer IDs to add to the segment
+	 * @displayOptions.show { resource: ["segment"], operation: ["add", "remove"] }
 	 */
 	customerIds: string | Expression<string>;
 };
@@ -129,11 +142,13 @@ export type CustomerIoV1SegmentRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * The unique identifier of the segment
+	 * @displayOptions.show { resource: ["segment"], operation: ["add", "remove"] }
 	 * @default 0
 	 */
 	segmentId: number | Expression<number>;
 	/**
 	 * A list of customer IDs to add to the segment
+	 * @displayOptions.show { resource: ["segment"], operation: ["add", "remove"] }
 	 */
 	customerIds: string | Expression<string>;
 };

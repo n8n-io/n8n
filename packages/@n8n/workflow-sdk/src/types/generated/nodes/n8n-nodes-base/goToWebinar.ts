@@ -20,14 +20,17 @@ export type GoToWebinarV1AttendeeGetConfig = {
 	operation: 'get';
 	/**
 	 * Key of the webinar that the attendee attended. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["attendee"] }
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Key of the session that the attendee attended. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["attendee"] }
 	 */
 	sessionKey: string | Expression<string>;
 	/**
 	 * Registrant key of the attendee at the webinar session
+	 * @displayOptions.show { resource: ["attendee"], operation: ["get"] }
 	 */
 	registrantKey: string | Expression<string>;
 };
@@ -37,19 +40,23 @@ export type GoToWebinarV1AttendeeGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Key of the webinar that the attendee attended. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["attendee"] }
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Key of the session that the attendee attended. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["attendee"] }
 	 */
 	sessionKey: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["attendee"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["attendee"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -60,18 +67,22 @@ export type GoToWebinarV1AttendeeGetDetailsConfig = {
 	operation: 'getDetails';
 	/**
 	 * Key of the webinar that the attendee attended. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["attendee"] }
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Key of the session that the attendee attended. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["attendee"] }
 	 */
 	sessionKey: string | Expression<string>;
 	/**
 	 * Registrant key of the attendee at the webinar session
+	 * @displayOptions.show { resource: ["attendee"], operation: ["getDetails"] }
 	 */
 	registrantKey: string | Expression<string>;
 	/**
 	 * The details to retrieve for the attendee
+	 * @displayOptions.show { resource: ["attendee"], operation: ["getDetails"] }
 	 */
 	details: 'polls' | 'questions' | 'surveyAnswers' | Expression<string>;
 };
@@ -81,24 +92,29 @@ export type GoToWebinarV1CoorganizerCreateConfig = {
 	operation: 'create';
 	/**
 	 * Key of the webinar that the co-organizer is hosting. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["create"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Whether the co-organizer has no GoToWebinar account
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["create"] }
 	 * @default false
 	 */
 	isExternal: boolean | Expression<boolean>;
 	/**
 	 * The co-organizer's organizer key for the webinar
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["create"], isExternal: [false] }
 	 */
 	organizerKey?: string | Expression<string>;
 	/**
 	 * The co-organizer's given name
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["create"], isExternal: [true] }
 	 */
 	givenName?: string | Expression<string>;
 	/**
 	 * The co-organizer's email address
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["create"], isExternal: [true] }
 	 */
 	email?: string | Expression<string>;
 };
@@ -108,15 +124,18 @@ export type GoToWebinarV1CoorganizerDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Key of the webinar to delete. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["delete"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Key of the co-organizer to delete
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["delete"] }
 	 */
 	coorganizerKey?: string | Expression<string>;
 	/**
 	 * By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to 'true'.
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["delete"] }
 	 * @default false
 	 */
 	isExternal: boolean | Expression<boolean>;
@@ -127,16 +146,19 @@ export type GoToWebinarV1CoorganizerGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Key of the webinar to retrieve all co-organizers from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["getAll"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -147,14 +169,17 @@ export type GoToWebinarV1CoorganizerReinviteConfig = {
 	operation: 'reinvite';
 	/**
 	 * By default only internal co-organizers (with a GoToWebinar account) can be deleted. If you want to use this call for external co-organizers you have to set this parameter to 'true'.
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["reinvite"] }
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Key of the co-organizer to reinvite
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["reinvite"] }
 	 */
 	coorganizerKey?: string | Expression<string>;
 	/**
 	 * Whether the co-organizer has no GoToWebinar account
+	 * @displayOptions.show { resource: ["coorganizer"], operation: ["reinvite"] }
 	 * @default false
 	 */
 	isExternal: boolean | Expression<boolean>;
@@ -165,14 +190,17 @@ export type GoToWebinarV1PanelistCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the panelist to create
+	 * @displayOptions.show { resource: ["panelist"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * Email address of the panelist to create
+	 * @displayOptions.show { resource: ["panelist"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	/**
 	 * Key of the webinar that the panelist will present at. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["panelist"], operation: ["create"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
@@ -183,11 +211,13 @@ export type GoToWebinarV1PanelistDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Key of the webinar to delete the panelist from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["panelist"], operation: ["delete"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Key of the panelist to delete
+	 * @displayOptions.show { resource: ["panelist"], operation: ["delete"] }
 	 */
 	panelistKey: string | Expression<string>;
 };
@@ -197,16 +227,19 @@ export type GoToWebinarV1PanelistGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Key of the webinar to retrieve all panelists from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["panelist"], operation: ["getAll"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["panelist"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["panelist"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -217,11 +250,13 @@ export type GoToWebinarV1PanelistReinviteConfig = {
 	operation: 'reinvite';
 	/**
 	 * Key of the webinar to reinvite the panelist to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["panelist"], operation: ["reinvite"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Key of the panelist to reinvite
+	 * @displayOptions.show { resource: ["panelist"], operation: ["reinvite"] }
 	 */
 	panelistKey: string | Expression<string>;
 };
@@ -231,19 +266,23 @@ export type GoToWebinarV1RegistrantCreateConfig = {
 	operation: 'create';
 	/**
 	 * Key of the webinar of the registrant to create. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["registrant"], operation: ["create"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * First name of the registrant to create
+	 * @displayOptions.show { resource: ["registrant"], operation: ["create"] }
 	 */
 	firstName?: string | Expression<string>;
 	/**
 	 * Last name of the registrant to create
+	 * @displayOptions.show { resource: ["registrant"], operation: ["create"] }
 	 */
 	lastName?: string | Expression<string>;
 	/**
 	 * Email address of the registrant to create
+	 * @displayOptions.show { resource: ["registrant"], operation: ["create"] }
 	 */
 	email?: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -254,11 +293,13 @@ export type GoToWebinarV1RegistrantDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Key of the webinar of the registrant to delete. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["registrant"], operation: ["delete"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Key of the registrant to delete
+	 * @displayOptions.show { resource: ["registrant"], operation: ["delete"] }
 	 */
 	registrantKey: string | Expression<string>;
 };
@@ -268,11 +309,13 @@ export type GoToWebinarV1RegistrantGetConfig = {
 	operation: 'get';
 	/**
 	 * Key of the webinar of the registrant to retrieve. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["registrant"], operation: ["get"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Key of the registrant to retrieve
+	 * @displayOptions.show { resource: ["registrant"], operation: ["get"] }
 	 */
 	registrantKey: string | Expression<string>;
 };
@@ -282,16 +325,19 @@ export type GoToWebinarV1RegistrantGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The key of the webinar to retrieve registrants from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["registrant"], operation: ["getAll"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["registrant"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["registrant"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -302,6 +348,7 @@ export type GoToWebinarV1SessionGetConfig = {
 	operation: 'get';
 	/**
 	 * Key of the webinar to which the session belongs. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["session"], operation: ["get", "getDetails"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
@@ -313,11 +360,13 @@ export type GoToWebinarV1SessionGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["session"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["session"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -329,6 +378,7 @@ export type GoToWebinarV1SessionGetDetailsConfig = {
 	operation: 'getDetails';
 	/**
 	 * Key of the webinar to which the session belongs. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["session"], operation: ["get", "getDetails"] }
 	 * @default []
 	 */
 	webinarKey: string | Expression<string>;
@@ -342,7 +392,11 @@ export type GoToWebinarV1WebinarCreateConfig = {
 	subject: string | Expression<string>;
 	times: {
 		timesProperties?: Array<{
+			/** Start Time
+			 */
 			startTime?: string | Expression<string>;
+			/** End Time
+			 */
 			endTime?: string | Expression<string>;
 		}>;
 	};
@@ -354,6 +408,7 @@ export type GoToWebinarV1WebinarGetConfig = {
 	operation: 'get';
 	/**
 	 * Key of the webinar to retrieve
+	 * @displayOptions.show { resource: ["webinar"], operation: ["get"] }
 	 */
 	webinarKey: string | Expression<string>;
 };
@@ -363,11 +418,13 @@ export type GoToWebinarV1WebinarGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["webinar"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["webinar"], operation: ["getAll"], returnAll: [false] }
 	 * @default 10
 	 */
 	limit?: number | Expression<number>;
@@ -379,6 +436,7 @@ export type GoToWebinarV1WebinarUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Key of the webinar to update
+	 * @displayOptions.show { resource: ["webinar"], operation: ["update"] }
 	 */
 	webinarKey: string | Expression<string>;
 	notifyParticipants: boolean | Expression<boolean>;

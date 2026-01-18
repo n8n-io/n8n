@@ -20,15 +20,18 @@ export type MicrosoftToDoV1LinkedResourceCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["create", "delete", "get", "getAll", "update"], resource: ["linkedResource"] }
 	 */
 	taskListId: string | Expression<string>;
 	taskId: string | Expression<string>;
 	/**
 	 * Field indicating title of the linked entity
+	 * @displayOptions.show { operation: ["create"], resource: ["linkedResource"] }
 	 */
 	displayName?: string | Expression<string>;
 	/**
 	 * App name of the source that is sending the linked entity
+	 * @displayOptions.show { operation: ["create"], resource: ["linkedResource"] }
 	 */
 	applicationName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -39,6 +42,7 @@ export type MicrosoftToDoV1LinkedResourceDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["create", "delete", "get", "getAll", "update"], resource: ["linkedResource"] }
 	 */
 	taskListId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -50,6 +54,7 @@ export type MicrosoftToDoV1LinkedResourceGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["create", "delete", "get", "getAll", "update"], resource: ["linkedResource"] }
 	 */
 	taskListId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -61,16 +66,19 @@ export type MicrosoftToDoV1LinkedResourceGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["create", "delete", "get", "getAll", "update"], resource: ["linkedResource"] }
 	 */
 	taskListId: string | Expression<string>;
 	taskId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["linkedResource"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["linkedResource"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -81,6 +89,7 @@ export type MicrosoftToDoV1LinkedResourceUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["create", "delete", "get", "getAll", "update"], resource: ["linkedResource"] }
 	 */
 	taskListId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -93,6 +102,7 @@ export type MicrosoftToDoV1ListCreateConfig = {
 	operation: 'create';
 	/**
 	 * List display name
+	 * @displayOptions.show { operation: ["create"], resource: ["list"] }
 	 */
 	displayName: string | Expression<string>;
 };
@@ -102,6 +112,7 @@ export type MicrosoftToDoV1ListDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The identifier of the list, unique in the user's mailbox
+	 * @displayOptions.show { operation: ["delete", "get", "update"], resource: ["list"] }
 	 */
 	listId: string | Expression<string>;
 };
@@ -111,6 +122,7 @@ export type MicrosoftToDoV1ListGetConfig = {
 	operation: 'get';
 	/**
 	 * The identifier of the list, unique in the user's mailbox
+	 * @displayOptions.show { operation: ["delete", "get", "update"], resource: ["list"] }
 	 */
 	listId: string | Expression<string>;
 };
@@ -120,11 +132,13 @@ export type MicrosoftToDoV1ListGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["list"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -135,10 +149,12 @@ export type MicrosoftToDoV1ListUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The identifier of the list, unique in the user's mailbox
+	 * @displayOptions.show { operation: ["delete", "get", "update"], resource: ["list"] }
 	 */
 	listId: string | Expression<string>;
 	/**
 	 * List display name
+	 * @displayOptions.show { operation: ["update"], resource: ["list"] }
 	 */
 	displayName: string | Expression<string>;
 };
@@ -148,10 +164,12 @@ export type MicrosoftToDoV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * The identifier of the list, unique in the user's mailbox. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["task"] }
 	 */
 	taskListId: string | Expression<string>;
 	/**
 	 * A brief description of the task
+	 * @displayOptions.show { operation: ["create"], resource: ["task"] }
 	 */
 	title: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -162,6 +180,7 @@ export type MicrosoftToDoV1TaskDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The identifier of the list, unique in the user's mailbox. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["delete", "get", "getAll", "update"], resource: ["task"] }
 	 */
 	taskListId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -172,6 +191,7 @@ export type MicrosoftToDoV1TaskGetConfig = {
 	operation: 'get';
 	/**
 	 * The identifier of the list, unique in the user's mailbox. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["delete", "get", "getAll", "update"], resource: ["task"] }
 	 */
 	taskListId: string | Expression<string>;
 	taskId: string | Expression<string>;
@@ -182,15 +202,18 @@ export type MicrosoftToDoV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The identifier of the list, unique in the user's mailbox. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["delete", "get", "getAll", "update"], resource: ["task"] }
 	 */
 	taskListId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["task"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -201,6 +224,7 @@ export type MicrosoftToDoV1TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The identifier of the list, unique in the user's mailbox. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["delete", "get", "getAll", "update"], resource: ["task"] }
 	 */
 	taskListId: string | Expression<string>;
 	taskId: string | Expression<string>;

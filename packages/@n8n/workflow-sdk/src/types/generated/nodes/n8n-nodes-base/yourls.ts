@@ -21,6 +21,7 @@ export type YourlsV1UrlExpandConfig = {
 	operation: 'expand';
 	/**
 	 * The short URL to expand
+	 * @displayOptions.show { resource: ["url"], operation: ["expand"] }
 	 */
 	shortUrl: string | Expression<string>;
 };
@@ -31,6 +32,7 @@ export type YourlsV1UrlShortenConfig = {
 	operation: 'shorten';
 	/**
 	 * The URL to shorten
+	 * @displayOptions.show { resource: ["url"], operation: ["shorten"] }
 	 */
 	url: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -42,6 +44,7 @@ export type YourlsV1UrlStatsConfig = {
 	operation: 'stats';
 	/**
 	 * The short URL for which to get stats
+	 * @displayOptions.show { resource: ["url"], operation: ["stats"] }
 	 */
 	shortUrl: string | Expression<string>;
 };

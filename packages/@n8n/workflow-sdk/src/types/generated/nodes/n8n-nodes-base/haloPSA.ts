@@ -21,6 +21,7 @@ export type HaloPSAV1ClientCreateConfig = {
 	operation: 'create';
 	/**
 	 * Enter client name
+	 * @displayOptions.show { operation: ["create"], resource: ["client"] }
 	 */
 	clientName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -40,6 +41,7 @@ export type HaloPSAV1ClientGetConfig = {
 	clientId: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["client"], operation: ["get", "getAll"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -51,16 +53,19 @@ export type HaloPSAV1ClientGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["client"], operation: ["get", "getAll"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["client"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["client"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -81,10 +86,12 @@ export type HaloPSAV1SiteCreateConfig = {
 	operation: 'create';
 	/**
 	 * Enter site name
+	 * @displayOptions.show { resource: ["site"], operation: ["create"] }
 	 */
 	siteName: string | Expression<string>;
 	/**
 	 * Whether client can be selected by ID
+	 * @displayOptions.show { resource: ["site"], operation: ["create"] }
 	 * @default false
 	 */
 	selectOption?: boolean | Expression<boolean>;
@@ -106,6 +113,7 @@ export type HaloPSAV1SiteGetConfig = {
 	siteId: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["site"], operation: ["get", "getAll"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -117,16 +125,19 @@ export type HaloPSAV1SiteGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["site"], operation: ["get", "getAll"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["site"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["site"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -147,6 +158,7 @@ export type HaloPSAV1TicketCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["ticket"], operation: ["create"] }
 	 */
 	ticketType: string | Expression<string>;
 	summary: string | Expression<string>;
@@ -168,6 +180,7 @@ export type HaloPSAV1TicketGetConfig = {
 	ticketId: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["ticket"], operation: ["get", "getAll"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -179,16 +192,19 @@ export type HaloPSAV1TicketGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["ticket"], operation: ["get", "getAll"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["ticket"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -209,10 +225,12 @@ export type HaloPSAV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * Enter user name
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	userName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	siteId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -232,6 +250,7 @@ export type HaloPSAV1UserGetConfig = {
 	userId: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["user"], operation: ["get", "getAll"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -243,16 +262,19 @@ export type HaloPSAV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["user"], operation: ["get", "getAll"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

@@ -26,11 +26,13 @@ export type ApiTemplateIoV1ImageCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the image template to use. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["image"], operation: ["create"] }
 	 */
 	imageTemplateId: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Name of the binary property to which to write the data of the read file
+	 * @displayOptions.show { resource: ["pdf", "image"], operation: ["create"] }
 	 * @default false
 	 */
 	download?: boolean | Expression<boolean>;
@@ -38,9 +40,16 @@ export type ApiTemplateIoV1ImageCreateConfig = {
 	overridesJson?: IDataObject | string | Expression<string>;
 	overridesUi?: {
 		overrideValues?: Array<{
+			/** Properties
+			 * @default {}
+			 */
 			propertiesUi?: {
 				propertyValues?: Array<{
+					/** Name of the property
+					 */
 					key?: string | Expression<string>;
+					/** Value to the property
+					 */
 					value?: string | Expression<string>;
 				}>;
 			};
@@ -54,11 +63,13 @@ export type ApiTemplateIoV1PdfCreateConfig = {
 	operation: 'create';
 	/**
 	 * ID of the PDF template to use. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["pdf"], operation: ["create"] }
 	 */
 	pdfTemplateId: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * Name of the binary property to which to write the data of the read file
+	 * @displayOptions.show { resource: ["pdf", "image"], operation: ["create"] }
 	 * @default false
 	 */
 	download?: boolean | Expression<boolean>;
@@ -66,7 +77,11 @@ export type ApiTemplateIoV1PdfCreateConfig = {
 	propertiesJson?: IDataObject | string | Expression<string>;
 	propertiesUi?: {
 		propertyValues?: Array<{
+			/** Name of the property
+			 */
 			key?: string | Expression<string>;
+			/** Value to the property
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};

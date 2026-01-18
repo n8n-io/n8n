@@ -29,11 +29,16 @@ export type MicrosoftExcelV22TableAppendConfig = {
 	dataMode?: 'autoMap' | 'define' | 'raw' | Expression<string>;
 	/**
 	 * Raw values for the specified range as array of string arrays in JSON format
+	 * @displayOptions.show { dataMode: ["raw"], resource: ["table"], operation: ["append"] }
 	 */
 	data: IDataObject | string | Expression<string>;
 	fieldsUi?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			column?: string | Expression<string>;
+			/** Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -58,10 +63,12 @@ export type MicrosoftExcelV22TableAddTableConfig = {
 	selectRange?: 'auto' | 'manual' | Expression<string>;
 	/**
 	 * The range of cells that will be converted to a table
+	 * @displayOptions.show { selectRange: ["manual"], resource: ["table"], operation: ["addTable"] }
 	 */
 	range?: string | Expression<string>;
 	/**
 	 * Whether the range has column labels. When this property set to false Excel will automatically generate header shifting the data down by one row.
+	 * @displayOptions.show { resource: ["table"], operation: ["addTable"] }
 	 * @default true
 	 */
 	hasHeaders?: boolean | Expression<boolean>;
@@ -85,21 +92,25 @@ export type MicrosoftExcelV22TableGetColumnsConfig = {
 	table: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["table"], operation: ["getColumns"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["table"], operation: ["getColumns"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether the data should be returned RAW instead of parsed into keys according to their header
+	 * @displayOptions.show { resource: ["table"], operation: ["getColumns"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
 	/**
 	 * The name of the property into which to write the RAW data
+	 * @displayOptions.show { rawData: [true], resource: ["table"], operation: ["getColumns"] }
 	 * @default data
 	 */
 	dataProperty?: string | Expression<string>;
@@ -115,21 +126,25 @@ export type MicrosoftExcelV22TableGetRowsConfig = {
 	table: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["table"], operation: ["getRows"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["table"], operation: ["getRows"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether the data should be returned RAW instead of parsed into keys according to their header
+	 * @displayOptions.show { resource: ["table"], operation: ["getRows"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
 	/**
 	 * The name of the property into which to write the RAW data
+	 * @displayOptions.show { rawData: [true], resource: ["table"], operation: ["getRows"] }
 	 * @default data
 	 */
 	dataProperty?: string | Expression<string>;
@@ -145,10 +160,12 @@ export type MicrosoftExcelV22TableLookupConfig = {
 	table: ResourceLocatorValue;
 	/**
 	 * The name of the column in which to look for value
+	 * @displayOptions.show { resource: ["table"], operation: ["lookup"] }
 	 */
 	lookupColumn: string | Expression<string>;
 	/**
 	 * The value to look for in column
+	 * @displayOptions.show { resource: ["table"], operation: ["lookup"] }
 	 */
 	lookupValue: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -175,11 +192,13 @@ export type MicrosoftExcelV22WorkbookGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["workbook"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["workbook"], operation: ["getAll"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -195,11 +214,16 @@ export type MicrosoftExcelV22WorksheetAppendConfig = {
 	dataMode?: 'autoMap' | 'define' | 'raw' | Expression<string>;
 	/**
 	 * Raw values for the specified range as array of string arrays in JSON format
+	 * @displayOptions.show { dataMode: ["raw"], resource: ["worksheet"], operation: ["append"] }
 	 */
 	data: IDataObject | string | Expression<string>;
 	fieldsUi?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			column?: string | Expression<string>;
+			/** Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -216,18 +240,24 @@ export type MicrosoftExcelV22WorksheetUpsertConfig = {
 	/**
 	 * The sheet range to read the data from specified using a A1-style notation, has to be specific e.g A1:B5, generic ranges like A:B are not supported. Leave blank to use whole used range in the sheet.
 	 * @hint First row must contain column names
+	 * @displayOptions.show { dataMode: ["autoMap", "define"], useRange: [true], resource: ["worksheet"], operation: ["upsert"] }
 	 */
 	range?: string | Expression<string>;
 	dataMode?: 'autoMap' | 'define' | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
 	 * @hint Used to find the correct row to update. Doesn't get changed.
+	 * @displayOptions.show { dataMode: ["autoMap", "define"], resource: ["worksheet"], operation: ["upsert"] }
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;
 	fieldsUi?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			column?: string | Expression<string>;
+			/** Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -245,6 +275,7 @@ export type MicrosoftExcelV22WorksheetClearConfig = {
 	/**
 	 * The sheet range that would be cleared, specified using a A1-style notation
 	 * @hint Leave blank for entire worksheet
+	 * @displayOptions.show { useRange: [true], resource: ["worksheet"], operation: ["clear"] }
 	 */
 	range?: string | Expression<string>;
 };
@@ -264,11 +295,13 @@ export type MicrosoftExcelV22WorksheetGetAllConfig = {
 	workbook: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["worksheet"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["worksheet"], operation: ["getAll"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -285,17 +318,20 @@ export type MicrosoftExcelV22WorksheetReadRowsConfig = {
 	/**
 	 * The sheet range to read the data from specified using a A1-style notation, has to be specific e.g A1:B5, generic ranges like A:B are not supported
 	 * @hint Leave blank to return entire sheet
+	 * @displayOptions.show { useRange: [true], resource: ["worksheet"], operation: ["readRows"] }
 	 */
 	range?: string | Expression<string>;
 	/**
 	 * Relative to selected 'Range', first row index is 0
 	 * @hint Index of the row which contains the column names
+	 * @displayOptions.show { useRange: [true], resource: ["worksheet"], operation: ["readRows"] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;
 	/**
 	 * Relative to selected 'Range', first row index is 0
 	 * @hint Index of first row which contains the actual data
+	 * @displayOptions.show { useRange: [true], resource: ["worksheet"], operation: ["readRows"] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
@@ -312,22 +348,29 @@ export type MicrosoftExcelV22WorksheetUpdateConfig = {
 	/**
 	 * The sheet range to read the data from specified using a A1-style notation, has to be specific e.g A1:B5, generic ranges like A:B are not supported. Leave blank to use whole used range in the sheet.
 	 * @hint First row must contain column names
+	 * @displayOptions.show { dataMode: ["autoMap", "define"], useRange: [true], resource: ["worksheet"], operation: ["update"] }
 	 */
 	range?: string | Expression<string>;
 	dataMode?: 'autoMap' | 'define' | 'raw' | Expression<string>;
 	/**
 	 * Raw values for the specified range as array of string arrays in JSON format. Should match the specified range: one array item for each row.
+	 * @displayOptions.show { dataMode: ["raw"], resource: ["worksheet"], operation: ["update"] }
 	 */
 	data: IDataObject | string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
 	 * @hint Used to find the correct row to update. Doesn't get changed.
+	 * @displayOptions.show { dataMode: ["autoMap", "define"], resource: ["worksheet"], operation: ["update"] }
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;
 	fieldsUi?: {
 		values?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			column?: string | Expression<string>;
+			/** Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -359,14 +402,17 @@ export type MicrosoftExcelV1TableAddRowConfig = {
 	operation: 'addRow';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["addRow"], resource: ["table"] }
 	 */
 	workbook?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["addRow"], resource: ["table"] }
 	 */
 	worksheet: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["addRow"], resource: ["table"] }
 	 */
 	table: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -378,33 +424,40 @@ export type MicrosoftExcelV1TableGetColumnsConfig = {
 	operation: 'getColumns';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getColumns"], resource: ["table"] }
 	 */
 	workbook?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getColumns"], resource: ["table"] }
 	 */
 	worksheet: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getColumns"], resource: ["table"] }
 	 */
 	table: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getColumns"], resource: ["table"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getColumns"], resource: ["table"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether the data should be returned RAW instead of parsed into keys according to their header
+	 * @displayOptions.show { operation: ["getColumns"], resource: ["table"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
 	/**
 	 * The name of the property into which to write the RAW data
+	 * @displayOptions.show { operation: ["getColumns"], resource: ["table"], rawData: [true] }
 	 * @default data
 	 */
 	dataProperty?: string | Expression<string>;
@@ -417,33 +470,40 @@ export type MicrosoftExcelV1TableGetRowsConfig = {
 	operation: 'getRows';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getRows"], resource: ["table"] }
 	 */
 	workbook?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getRows"], resource: ["table"] }
 	 */
 	worksheet: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getRows"], resource: ["table"] }
 	 */
 	table: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getRows"], resource: ["table"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getRows"], resource: ["table"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether the data should be returned RAW instead of parsed into keys according to their header
+	 * @displayOptions.show { operation: ["getRows"], resource: ["table"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
 	/**
 	 * The name of the property into which to write the RAW data
+	 * @displayOptions.show { operation: ["getRows"], resource: ["table"], rawData: [true] }
 	 * @default data
 	 */
 	dataProperty?: string | Expression<string>;
@@ -456,22 +516,27 @@ export type MicrosoftExcelV1TableLookupConfig = {
 	operation: 'lookup';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["lookup"], resource: ["table"] }
 	 */
 	workbook: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["lookup"], resource: ["table"] }
 	 */
 	worksheet: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["lookup"], resource: ["table"] }
 	 */
 	table: string | Expression<string>;
 	/**
 	 * The name of the column in which to look for value
+	 * @displayOptions.show { resource: ["table"], operation: ["lookup"] }
 	 */
 	lookupColumn: string | Expression<string>;
 	/**
 	 * The value to look for in column
+	 * @displayOptions.show { resource: ["table"], operation: ["lookup"] }
 	 */
 	lookupValue: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -483,6 +548,7 @@ export type MicrosoftExcelV1WorkbookAddWorksheetConfig = {
 	operation: 'addWorksheet';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["addWorksheet"], resource: ["workbook"] }
 	 */
 	workbook: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -494,11 +560,13 @@ export type MicrosoftExcelV1WorkbookGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["workbook"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["workbook"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -511,15 +579,18 @@ export type MicrosoftExcelV1WorksheetGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getAll"], resource: ["worksheet"] }
 	 */
 	workbook?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["worksheet"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["worksheet"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -532,34 +603,43 @@ export type MicrosoftExcelV1WorksheetGetContentConfig = {
 	operation: 'getContent';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getContent"], resource: ["worksheet"] }
 	 */
 	workbook: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["getContent"], resource: ["worksheet"] }
 	 */
 	worksheet: string | Expression<string>;
 	/**
 	 * The address or the name of the range. If not specified, the entire worksheet range is returned.
+	 * @displayOptions.show { operation: ["getContent"], resource: ["worksheet"] }
 	 * @default A1:C3
 	 */
 	range: string | Expression<string>;
 	/**
 	 * Whether the data should be returned RAW instead of parsed into keys according to their header
+	 * @displayOptions.show { operation: ["getContent"], resource: ["worksheet"] }
 	 * @default false
 	 */
 	rawData?: boolean | Expression<boolean>;
 	/**
 	 * The name of the property into which to write the RAW data
+	 * @displayOptions.show { operation: ["getContent"], resource: ["worksheet"], rawData: [true] }
 	 * @default data
 	 */
 	dataProperty?: string | Expression<string>;
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
+	 * @displayOptions.show { operation: ["getContent"], resource: ["worksheet"] }
+	 * @displayOptions.hide { rawData: [true] }
 	 * @default 1
 	 */
 	dataStartRow?: number | Expression<number>;
 	/**
 	 * Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitve.
+	 * @displayOptions.show { operation: ["getContent"], resource: ["worksheet"] }
+	 * @displayOptions.hide { rawData: [true] }
 	 * @default 0
 	 */
 	keyRow?: number | Expression<number>;

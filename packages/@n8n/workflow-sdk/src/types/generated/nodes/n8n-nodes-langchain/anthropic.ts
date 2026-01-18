@@ -27,16 +27,19 @@ export type LcAnthropicV1DocumentAnalyzeConfig = {
 	inputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL(s) of the document(s) to analyze, multiple URLs can be added separated by comma
+	 * @displayOptions.show { inputType: ["url"], operation: ["analyze"], resource: ["document"] }
 	 */
 	documentUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the document(s), seperate multiple field names with commas
 	 * @hint The name of the input field containing the binary file data to be processed
+	 * @displayOptions.show { inputType: ["binary"], operation: ["analyze"], resource: ["document"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
 	/**
 	 * Whether to simplify the response or not
+	 * @displayOptions.show { operation: ["analyze"], resource: ["document"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -50,11 +53,13 @@ export type LcAnthropicV1FileUploadConfig = {
 	inputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL of the file to upload
+	 * @displayOptions.show { inputType: ["url"], operation: ["upload"], resource: ["file"] }
 	 */
 	fileUrl?: string | Expression<string>;
 	/**
 	 * Name of the binary field which contains the file
 	 * @hint The name of the input field containing the binary file data to be processed
+	 * @displayOptions.show { inputType: ["binary"], operation: ["upload"], resource: ["file"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -67,6 +72,7 @@ export type LcAnthropicV1FileGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the file to get metadata for
+	 * @displayOptions.show { operation: ["get"], resource: ["file"] }
 	 */
 	fileId?: string | Expression<string>;
 };
@@ -77,11 +83,13 @@ export type LcAnthropicV1FileListConfig = {
 	operation: 'list';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["list"], resource: ["file"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], operation: ["list"], resource: ["file"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -93,6 +101,7 @@ export type LcAnthropicV1FileDeleteFileConfig = {
 	operation: 'deleteFile';
 	/**
 	 * ID of the file to delete
+	 * @displayOptions.show { operation: ["deleteFile"], resource: ["file"] }
 	 */
 	fileId?: string | Expression<string>;
 };
@@ -106,16 +115,19 @@ export type LcAnthropicV1ImageAnalyzeConfig = {
 	inputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL(s) of the image(s) to analyze, multiple URLs can be added separated by comma
+	 * @displayOptions.show { inputType: ["url"], operation: ["analyze"], resource: ["image"] }
 	 */
 	imageUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the image(s), seperate multiple field names with commas
 	 * @hint The name of the input field containing the binary file data to be processed
+	 * @displayOptions.show { inputType: ["binary"], operation: ["analyze"], resource: ["image"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
 	/**
 	 * Whether to simplify the response or not
+	 * @displayOptions.show { operation: ["analyze"], resource: ["image"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -128,10 +140,12 @@ export type LcAnthropicV1PromptGenerateConfig = {
 	operation: 'generate';
 	/**
 	 * Description of the prompt's purpose
+	 * @displayOptions.show { operation: ["generate"], resource: ["prompt"] }
 	 */
 	task?: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { operation: ["generate"], resource: ["prompt"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -143,16 +157,23 @@ export type LcAnthropicV1PromptImproveConfig = {
 	operation: 'improve';
 	/**
 	 * Messages that constitute the prompt to be improved
+	 * @displayOptions.show { operation: ["improve"], resource: ["prompt"] }
 	 * @default {"values":[{"content":"","role":"user"}]}
 	 */
 	messages?: {
 		values?: Array<{
+			/** The content of the message to be sent
+			 */
 			content?: string | Expression<string>;
+			/** Role in shaping the model's response, it tells the model how it should behave and interact with the user
+			 * @default user
+			 */
 			role?: 'user' | 'assistant' | Expression<string>;
 		}>;
 	};
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { operation: ["improve"], resource: ["prompt"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -165,16 +186,23 @@ export type LcAnthropicV1PromptTemplatizeConfig = {
 	operation: 'templatize';
 	/**
 	 * Messages that constitute the prompt to be templatized
+	 * @displayOptions.show { operation: ["templatize"], resource: ["prompt"] }
 	 * @default {"values":[{"content":"","role":"user"}]}
 	 */
 	messages?: {
 		values?: Array<{
+			/** The content of the message to be sent
+			 */
 			content?: string | Expression<string>;
+			/** Role in shaping the model's response, it tells the model how it should behave and interact with the user
+			 * @default user
+			 */
 			role?: 'user' | 'assistant' | Expression<string>;
 		}>;
 	};
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { operation: ["templatize"], resource: ["prompt"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -188,31 +216,41 @@ export type LcAnthropicV1TextMessageConfig = {
 	modelId: ResourceLocatorValue;
 	messages?: {
 		values?: Array<{
+			/** The content of the message to be sent
+			 */
 			content?: string | Expression<string>;
+			/** Role in shaping the model's response, it tells the model how it should behave and interact with the user
+			 * @default user
+			 */
 			role?: 'user' | 'assistant' | Expression<string>;
 		}>;
 	};
 	/**
 	 * Whether to add attachments to the message
+	 * @displayOptions.show { operation: ["message"], resource: ["text"] }
 	 * @default false
 	 */
 	addAttachments?: boolean | Expression<boolean>;
 	/**
 	 * The type of input to use for the attachments
+	 * @displayOptions.show { addAttachments: [true], operation: ["message"], resource: ["text"] }
 	 * @default url
 	 */
 	attachmentsInputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL(s) of the file(s) to attach, multiple URLs can be added separated by comma
+	 * @displayOptions.show { addAttachments: [true], attachmentsInputType: ["url"], operation: ["message"], resource: ["text"] }
 	 */
 	attachmentsUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the file(s) to attach, multiple field names can be added separated by comma
+	 * @displayOptions.show { addAttachments: [true], attachmentsInputType: ["binary"], operation: ["message"], resource: ["text"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { operation: ["message"], resource: ["text"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;

@@ -22,10 +22,13 @@ export type GoogleBooksV2BookshelfGetConfig = {
 	myLibrary: boolean | Expression<boolean>;
 	/**
 	 * ID of user
+	 * @displayOptions.show { operation: ["get", "getAll"], resource: ["bookshelf", "bookshelfVolume"] }
+	 * @displayOptions.hide { myLibrary: [true] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * ID of the bookshelf
+	 * @displayOptions.show { operation: ["get", "add", "clear", "move", "remove"], resource: ["bookshelf", "bookshelfVolume"] }
 	 */
 	shelfId: string | Expression<string>;
 };
@@ -37,15 +40,19 @@ export type GoogleBooksV2BookshelfGetAllConfig = {
 	myLibrary: boolean | Expression<boolean>;
 	/**
 	 * ID of user
+	 * @displayOptions.show { operation: ["get", "getAll"], resource: ["bookshelf", "bookshelfVolume"] }
+	 * @displayOptions.hide { myLibrary: [true] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 40
 	 */
 	limit?: number | Expression<number>;
@@ -57,10 +64,12 @@ export type GoogleBooksV2BookshelfVolumeAddConfig = {
 	operation: 'add';
 	/**
 	 * ID of the bookshelf
+	 * @displayOptions.show { operation: ["get", "add", "clear", "move", "remove"], resource: ["bookshelf", "bookshelfVolume"] }
 	 */
 	shelfId: string | Expression<string>;
 	/**
 	 * ID of the volume
+	 * @displayOptions.show { operation: ["add", "move", "remove", "get"], resource: ["bookshelfVolume", "volume"] }
 	 */
 	volumeId: string | Expression<string>;
 };
@@ -71,6 +80,7 @@ export type GoogleBooksV2BookshelfVolumeClearConfig = {
 	operation: 'clear';
 	/**
 	 * ID of the bookshelf
+	 * @displayOptions.show { operation: ["get", "add", "clear", "move", "remove"], resource: ["bookshelf", "bookshelfVolume"] }
 	 */
 	shelfId: string | Expression<string>;
 };
@@ -82,19 +92,24 @@ export type GoogleBooksV2BookshelfVolumeGetAllConfig = {
 	myLibrary: boolean | Expression<boolean>;
 	/**
 	 * ID of user
+	 * @displayOptions.show { operation: ["get", "getAll"], resource: ["bookshelf", "bookshelfVolume"] }
+	 * @displayOptions.hide { myLibrary: [true] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * ID of the bookshelf
+	 * @displayOptions.show { operation: ["getAll"], resource: ["bookshelfVolume"] }
 	 */
 	shelfId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 40
 	 */
 	limit?: number | Expression<number>;
@@ -106,14 +121,17 @@ export type GoogleBooksV2BookshelfVolumeMoveConfig = {
 	operation: 'move';
 	/**
 	 * ID of the bookshelf
+	 * @displayOptions.show { operation: ["get", "add", "clear", "move", "remove"], resource: ["bookshelf", "bookshelfVolume"] }
 	 */
 	shelfId: string | Expression<string>;
 	/**
 	 * ID of the volume
+	 * @displayOptions.show { operation: ["add", "move", "remove", "get"], resource: ["bookshelfVolume", "volume"] }
 	 */
 	volumeId: string | Expression<string>;
 	/**
 	 * Position on shelf to move the item (0 puts the item before the current first item, 1 puts it between the first and the second and so on)
+	 * @displayOptions.show { operation: ["move"], resource: ["bookshelfVolume"] }
 	 */
 	volumePosition: string | Expression<string>;
 };
@@ -124,10 +142,12 @@ export type GoogleBooksV2BookshelfVolumeRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * ID of the bookshelf
+	 * @displayOptions.show { operation: ["get", "add", "clear", "move", "remove"], resource: ["bookshelf", "bookshelfVolume"] }
 	 */
 	shelfId: string | Expression<string>;
 	/**
 	 * ID of the volume
+	 * @displayOptions.show { operation: ["add", "move", "remove", "get"], resource: ["bookshelfVolume", "volume"] }
 	 */
 	volumeId: string | Expression<string>;
 };
@@ -138,6 +158,7 @@ export type GoogleBooksV2VolumeGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the volume
+	 * @displayOptions.show { operation: ["add", "move", "remove", "get"], resource: ["bookshelfVolume", "volume"] }
 	 */
 	volumeId: string | Expression<string>;
 };
@@ -148,15 +169,18 @@ export type GoogleBooksV2VolumeGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Full-text search query string
+	 * @displayOptions.show { operation: ["getAll"], resource: ["volume"] }
 	 */
 	searchQuery: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], returnAll: [false] }
 	 * @default 40
 	 */
 	limit?: number | Expression<number>;

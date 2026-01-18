@@ -21,6 +21,7 @@ export type MispV1AttributeCreateConfig = {
 	operation: 'create';
 	/**
 	 * UUID of the event to attach the attribute to
+	 * @displayOptions.show { resource: ["attribute"], operation: ["create"] }
 	 */
 	eventId: string | Expression<string>;
 	type: 'text' | 'url' | 'comment' | Expression<string>;
@@ -33,6 +34,7 @@ export type MispV1AttributeDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * UUID or numeric ID of the attribute
+	 * @displayOptions.show { resource: ["attribute"], operation: ["delete"] }
 	 */
 	attributeId: string | Expression<string>;
 };
@@ -42,6 +44,7 @@ export type MispV1AttributeGetConfig = {
 	operation: 'get';
 	/**
 	 * UUID or numeric ID of the attribute
+	 * @displayOptions.show { resource: ["attribute"], operation: ["get"] }
 	 */
 	attributeId: string | Expression<string>;
 };
@@ -51,11 +54,13 @@ export type MispV1AttributeGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["attribute"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["attribute"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -66,11 +71,13 @@ export type MispV1AttributeSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to use JSON to specify the fields for the search request
+	 * @displayOptions.show { resource: ["attribute"], operation: ["search"] }
 	 * @default false
 	 */
 	useJson?: boolean | Expression<boolean>;
 	/**
  * Get more info at {YOUR_BASE_URL_SPECIFIED_IN_CREDENTIALS}/api/openapi#operation/restSearchAttributes
+ * @displayOptions.show { useJson: [true], resource: ["attribute"], operation: ["search"] }
  * @default {
   "value": "search value",
   "type": "text"
@@ -87,6 +94,7 @@ export type MispV1AttributeUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the attribute to update
+	 * @displayOptions.show { resource: ["attribute"], operation: ["update"] }
 	 */
 	attributeId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -97,10 +105,12 @@ export type MispV1EventCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["event"], operation: ["create"] }
 	 */
 	org_id: string | Expression<string>;
 	/**
 	 * Information on the event - max 65535 characters
+	 * @displayOptions.show { resource: ["event"], operation: ["create"] }
 	 */
 	information: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -111,6 +121,7 @@ export type MispV1EventDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * UUID or numeric ID of the event
+	 * @displayOptions.show { resource: ["event"], operation: ["delete"] }
 	 */
 	eventId: string | Expression<string>;
 };
@@ -120,6 +131,7 @@ export type MispV1EventGetConfig = {
 	operation: 'get';
 	/**
 	 * UUID or numeric ID of the event
+	 * @displayOptions.show { resource: ["event"], operation: ["get"] }
 	 */
 	eventId: string | Expression<string>;
 };
@@ -129,11 +141,13 @@ export type MispV1EventGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["event"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["event"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -144,6 +158,7 @@ export type MispV1EventPublishConfig = {
 	operation: 'publish';
 	/**
 	 * UUID or numeric ID of the event
+	 * @displayOptions.show { resource: ["event"], operation: ["publish"] }
 	 */
 	eventId: string | Expression<string>;
 };
@@ -153,11 +168,13 @@ export type MispV1EventSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to use JSON to specify the fields for the search request
+	 * @displayOptions.show { resource: ["event"], operation: ["search"] }
 	 * @default false
 	 */
 	useJson?: boolean | Expression<boolean>;
 	/**
  * Get more info at {YOUR_BASE_URL_SPECIFIED_IN_CREDENTIALS}/api/openapi#operation/restSearchAttributes
+ * @displayOptions.show { useJson: [true], resource: ["event"], operation: ["search"] }
  * @default {
   "value": "search value",
   "type": "text"
@@ -174,6 +191,7 @@ export type MispV1EventUnpublishConfig = {
 	operation: 'unpublish';
 	/**
 	 * UUID or numeric ID of the event
+	 * @displayOptions.show { resource: ["event"], operation: ["unpublish"] }
 	 */
 	eventId: string | Expression<string>;
 };
@@ -183,6 +201,7 @@ export type MispV1EventUpdateConfig = {
 	operation: 'update';
 	/**
 	 * UUID or numeric ID of the event
+	 * @displayOptions.show { resource: ["event"], operation: ["update"] }
 	 */
 	eventId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -193,10 +212,12 @@ export type MispV1EventTagAddConfig = {
 	operation: 'add';
 	/**
 	 * UUID or numeric ID of the event
+	 * @displayOptions.show { resource: ["eventTag"], operation: ["add"] }
 	 */
 	eventId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["eventTag"], operation: ["add"] }
 	 */
 	tagId: string | Expression<string>;
 };
@@ -206,10 +227,12 @@ export type MispV1EventTagRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * UUID or numeric ID of the event
+	 * @displayOptions.show { resource: ["eventTag"], operation: ["remove"] }
 	 */
 	eventId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["eventTag"], operation: ["remove"] }
 	 */
 	tagId: string | Expression<string>;
 };
@@ -228,6 +251,7 @@ export type MispV1FeedDisableConfig = {
 	operation: 'disable';
 	/**
 	 * UUID or numeric ID of the feed
+	 * @displayOptions.show { resource: ["feed"], operation: ["disable"] }
 	 */
 	feedId: string | Expression<string>;
 };
@@ -237,6 +261,7 @@ export type MispV1FeedEnableConfig = {
 	operation: 'enable';
 	/**
 	 * UUID or numeric ID of the feed
+	 * @displayOptions.show { resource: ["feed"], operation: ["enable"] }
 	 */
 	feedId: string | Expression<string>;
 };
@@ -246,6 +271,7 @@ export type MispV1FeedGetConfig = {
 	operation: 'get';
 	/**
 	 * UUID or numeric ID of the feed
+	 * @displayOptions.show { resource: ["feed"], operation: ["get"] }
 	 */
 	feedId: string | Expression<string>;
 };
@@ -255,11 +281,13 @@ export type MispV1FeedGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["feed"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["feed"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -270,6 +298,7 @@ export type MispV1FeedUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the feed to update
+	 * @displayOptions.show { resource: ["feed"], operation: ["update"] }
 	 */
 	feedId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -280,6 +309,7 @@ export type MispV1GalaxyDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * UUID or numeric ID of the galaxy
+	 * @displayOptions.show { resource: ["galaxy"], operation: ["delete"] }
 	 */
 	galaxyId: string | Expression<string>;
 };
@@ -289,6 +319,7 @@ export type MispV1GalaxyGetConfig = {
 	operation: 'get';
 	/**
 	 * UUID or numeric ID of the galaxy
+	 * @displayOptions.show { resource: ["galaxy"], operation: ["get"] }
 	 */
 	galaxyId: string | Expression<string>;
 };
@@ -298,11 +329,13 @@ export type MispV1GalaxyGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["galaxy"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["galaxy"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -313,6 +346,7 @@ export type MispV1NoticelistGetConfig = {
 	operation: 'get';
 	/**
 	 * Numeric ID of the noticelist
+	 * @displayOptions.show { resource: ["noticelist"], operation: ["get"] }
 	 */
 	noticelistId: string | Expression<string>;
 };
@@ -322,11 +356,13 @@ export type MispV1NoticelistGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["noticelist"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["noticelist"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -337,11 +373,13 @@ export type MispV1ObjectSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to use JSON to specify the fields for the search request
+	 * @displayOptions.show { resource: ["object"], operation: ["search"] }
 	 * @default false
 	 */
 	useJson?: boolean | Expression<boolean>;
 	/**
  * Get more info at {YOUR_BASE_URL_SPECIFIED_IN_CREDENTIALS}/api/openapi#operation/restSearchAttributes
+ * @displayOptions.show { useJson: [true], resource: ["object"], operation: ["search"] }
  * @default {
   "value": "search value",
   "type": "text"
@@ -365,6 +403,7 @@ export type MispV1OrganisationDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * UUID or numeric ID of the organisation
+	 * @displayOptions.show { resource: ["organisation"], operation: ["delete"] }
 	 */
 	organisationId: string | Expression<string>;
 };
@@ -374,6 +413,7 @@ export type MispV1OrganisationGetConfig = {
 	operation: 'get';
 	/**
 	 * UUID or numeric ID of the organisation
+	 * @displayOptions.show { resource: ["organisation"], operation: ["get"] }
 	 */
 	organisationId: string | Expression<string>;
 };
@@ -383,11 +423,13 @@ export type MispV1OrganisationGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["organisation"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["organisation"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -398,6 +440,7 @@ export type MispV1OrganisationUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the organisation to update
+	 * @displayOptions.show { resource: ["organisation"], operation: ["update"] }
 	 */
 	organisationId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -415,6 +458,7 @@ export type MispV1TagDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Numeric ID of the attribute
+	 * @displayOptions.show { resource: ["tag"], operation: ["delete"] }
 	 */
 	tagId: string | Expression<string>;
 };
@@ -424,11 +468,13 @@ export type MispV1TagGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["tag"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["tag"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -439,6 +485,7 @@ export type MispV1TagUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the tag to update
+	 * @displayOptions.show { resource: ["tag"], operation: ["update"] }
 	 */
 	tagId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -450,6 +497,7 @@ export type MispV1UserCreateConfig = {
 	email: string | Expression<string>;
 	/**
 	 * Role IDs are available in the MISP dashboard at /roles/index
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	role_id: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -460,6 +508,7 @@ export type MispV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Numeric ID of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -469,6 +518,7 @@ export type MispV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * Numeric ID of the user
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -478,11 +528,13 @@ export type MispV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -493,6 +545,7 @@ export type MispV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the user to update
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 */
 	userId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -503,6 +556,7 @@ export type MispV1WarninglistGetConfig = {
 	operation: 'get';
 	/**
 	 * Numeric ID of the warninglist
+	 * @displayOptions.show { resource: ["warninglist"], operation: ["get"] }
 	 */
 	warninglistId: string | Expression<string>;
 };
@@ -512,11 +566,13 @@ export type MispV1WarninglistGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["warninglist"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["warninglist"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

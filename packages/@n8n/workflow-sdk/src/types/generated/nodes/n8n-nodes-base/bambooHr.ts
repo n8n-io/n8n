@@ -21,15 +21,19 @@ export type BambooHrV1CompanyReportGetConfig = {
 	operation: 'get';
 	/**
 	 * ID of the report. You can get the report number by hovering over the report name on the reports page and grabbing the ID.
+	 * @displayOptions.show { operation: ["get"], resource: ["companyReport"] }
 	 */
 	reportId: string | Expression<string>;
 	/**
 	 * The output format for the report
+	 * @displayOptions.show { operation: ["get"], resource: ["companyReport"] }
 	 * @default JSON
 	 */
 	format: 'CSV' | 'JSON' | 'PDF' | 'XLS' | 'XML' | Expression<string>;
 	/**
 	 * The name of the output field to put the binary file data in
+	 * @displayOptions.show { operation: ["get"], resource: ["companyReport"] }
+	 * @displayOptions.hide { format: ["JSON"] }
 	 * @default data
 	 */
 	output: string | Expression<string>;
@@ -42,6 +46,7 @@ export type BambooHrV1EmployeeCreateConfig = {
 	operation: 'create';
 	/**
 	 * Whether the employee to create was added to a pay schedule synced with Trax Payroll
+	 * @displayOptions.show { operation: ["create"], resource: ["employee"] }
 	 * @default false
 	 */
 	synced: boolean | Expression<boolean>;
@@ -49,20 +54,32 @@ export type BambooHrV1EmployeeCreateConfig = {
 	lastName: string | Expression<string>;
 	address: {
 		value?: {
+			/** Line 1
+			 */
 			address1?: string | Expression<string>;
+			/** Line 2
+			 */
 			address2?: string | Expression<string>;
+			/** City
+			 */
 			city?: string | Expression<string>;
+			/** The full name of the state/province
+			 */
 			state?: string | Expression<string>;
+			/** The name of the country. Must exist in the BambooHr country list.
+			 */
 			country?: string | Expression<string>;
 		};
 	};
 	dateOfBirth: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["employee"], operation: ["create"], synced: [true] }
 	 */
 	department: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["employee"], operation: ["create"], synced: [true] }
 	 */
 	division: string | Expression<string>;
 	employeeNumber: string | Expression<string>;
@@ -71,13 +88,21 @@ export type BambooHrV1EmployeeCreateConfig = {
 	hireDate: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["employee"], operation: ["create"], synced: [true] }
 	 */
 	location: string | Expression<string>;
 	maritalStatus: 'single' | 'married' | 'domesticPartnership' | Expression<string>;
 	mobilePhone: string | Expression<string>;
 	paidPer: 'hour' | 'day' | 'week' | 'month' | 'quater' | 'year' | Expression<string>;
 	payRate: {
-		value?: { value?: string | Expression<string>; currency?: string | Expression<string> };
+		value?: {
+			/** Value
+			 */
+			value?: string | Expression<string>;
+			/** Currency
+			 */
+			currency?: string | Expression<string>;
+		};
 	};
 	payType:
 		| 'commission'
@@ -94,6 +119,7 @@ export type BambooHrV1EmployeeCreateConfig = {
 	preferredName: string | Expression<string>;
 	/**
 	 * A standard United States Social Security number, with dashes
+	 * @displayOptions.show { resource: ["employee"], operation: ["create"], synced: [true] }
 	 */
 	ssn: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -113,11 +139,13 @@ export type BambooHrV1EmployeeGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["employee"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["employee"], operation: ["getAll"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -130,25 +158,38 @@ export type BambooHrV1EmployeeUpdateConfig = {
 	employeeId: string | Expression<string>;
 	/**
 	 * Whether the employee to create was added to a pay schedule synced with Trax Payroll
+	 * @displayOptions.show { operation: ["update"], resource: ["employee"] }
 	 * @default false
 	 */
 	synced: boolean | Expression<boolean>;
 	addasasress: {
 		value?: {
+			/** Line 1
+			 */
 			address1?: string | Expression<string>;
+			/** Line 2
+			 */
 			address2?: string | Expression<string>;
+			/** City
+			 */
 			city?: string | Expression<string>;
+			/** The full name of the state/province
+			 */
 			state?: string | Expression<string>;
+			/** The name of the country. Must exist in the BambooHr country list.
+			 */
 			country?: string | Expression<string>;
 		};
 	};
 	dateOfBirth: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["employee"], operation: ["update"], synced: [true] }
 	 */
 	department: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["employee"], operation: ["update"], synced: [true] }
 	 */
 	division: string | Expression<string>;
 	employeeNumber: string | Expression<string>;
@@ -159,13 +200,21 @@ export type BambooHrV1EmployeeUpdateConfig = {
 	hireDate: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["employee"], operation: ["update"], synced: [true] }
 	 */
 	location: string | Expression<string>;
 	maritalStatus: 'single' | 'married' | 'domesticPartnership' | Expression<string>;
 	mobilePhone: string | Expression<string>;
 	paidPer: 'hour' | 'day' | 'week' | 'month' | 'quater' | 'year' | Expression<string>;
 	payRate: {
-		value?: { value?: string | Expression<string>; currency?: string | Expression<string> };
+		value?: {
+			/** Value
+			 */
+			value?: string | Expression<string>;
+			/** Currency
+			 */
+			currency?: string | Expression<string>;
+		};
 	};
 	payType:
 		| 'commission'
@@ -182,6 +231,7 @@ export type BambooHrV1EmployeeUpdateConfig = {
 	preferredName: string | Expression<string>;
 	/**
 	 * A standard United States Social Security number, with dashes
+	 * @displayOptions.show { resource: ["employee"], operation: ["update"], synced: [true] }
 	 */
 	ssn: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -193,10 +243,12 @@ export type BambooHrV1EmployeeDocumentDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the employee
+	 * @displayOptions.show { operation: ["delete"], resource: ["employeeDocument"] }
 	 */
 	employeeId: string | Expression<string>;
 	/**
 	 * ID of the employee file
+	 * @displayOptions.show { operation: ["delete"], resource: ["employeeDocument"] }
 	 */
 	fileId: string | Expression<string>;
 };
@@ -207,14 +259,17 @@ export type BambooHrV1EmployeeDocumentDownloadConfig = {
 	operation: 'download';
 	/**
 	 * ID of the employee
+	 * @displayOptions.show { operation: ["download"], resource: ["employeeDocument"] }
 	 */
 	employeeId: string | Expression<string>;
 	/**
 	 * ID of the employee file
+	 * @displayOptions.show { operation: ["download"], resource: ["employeeDocument"] }
 	 */
 	fileId: string | Expression<string>;
 	/**
 	 * The name of the output field to put the binary file data in
+	 * @displayOptions.show { operation: ["download"], resource: ["employeeDocument"] }
 	 * @default data
 	 */
 	output: string | Expression<string>;
@@ -227,16 +282,19 @@ export type BambooHrV1EmployeeDocumentGetAllConfig = {
 	employeeId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["employeeDocument"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["employeeDocument"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { operation: ["getAll"], resource: ["employeeDocument"] }
 	 * @default true
 	 */
 	simplifyOutput?: boolean | Expression<boolean>;
@@ -257,11 +315,13 @@ export type BambooHrV1EmployeeDocumentUploadConfig = {
 	operation: 'upload';
 	/**
 	 * ID of the employee
+	 * @displayOptions.show { operation: ["upload"], resource: ["employeeDocument"] }
 	 */
 	employeeId: string | Expression<string>;
 	categoryId: string | Expression<string>;
 	/**
 	 * The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.
+	 * @displayOptions.show { operation: ["upload"], resource: ["employeeDocument"] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
@@ -274,6 +334,7 @@ export type BambooHrV1FileDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of the file
+	 * @displayOptions.show { operation: ["delete"], resource: ["file"] }
 	 */
 	fileId: string | Expression<string>;
 };
@@ -284,10 +345,12 @@ export type BambooHrV1FileDownloadConfig = {
 	operation: 'download';
 	/**
 	 * ID of the file
+	 * @displayOptions.show { operation: ["download"], resource: ["file"] }
 	 */
 	fileId: string | Expression<string>;
 	/**
 	 * The name of the output field to put the binary file data in
+	 * @displayOptions.show { operation: ["download"], resource: ["file"] }
 	 * @default data
 	 */
 	output: string | Expression<string>;
@@ -299,16 +362,19 @@ export type BambooHrV1FileGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["file"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["file"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { operation: ["getAll"], resource: ["file"] }
 	 * @default true
 	 */
 	simplifyOutput?: boolean | Expression<boolean>;
@@ -320,6 +386,7 @@ export type BambooHrV1FileUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of the file
+	 * @displayOptions.show { operation: ["update"], resource: ["file"] }
 	 */
 	fileId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -331,11 +398,13 @@ export type BambooHrV1FileUploadConfig = {
 	operation: 'upload';
 	/**
 	 * The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 */
 	categoryId: string | Expression<string>;
 	options?: Record<string, unknown>;

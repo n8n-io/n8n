@@ -21,20 +21,27 @@ export type PagerDutyV1IncidentCreateConfig = {
 	operation: 'create';
 	/**
 	 * A succinct description of the nature, symptoms, cause, or effect of the incident
+	 * @displayOptions.show { resource: ["incident"], operation: ["create"] }
 	 */
 	title: string | Expression<string>;
 	/**
 	 * The incident will be created on this service. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["incident"], operation: ["create"] }
 	 */
 	serviceId: string | Expression<string>;
 	/**
 	 * The email address of a valid user associated with the account making the request
+	 * @displayOptions.show { resource: ["incident"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
 	conferenceBridgeUi?: {
 		conferenceBridgeValues?: {
+			/** Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input
+			 */
 			conferenceNumber?: string | Expression<string>;
+			/** An URL for the conference bridge. This could be a link to a web conference or Slack channel.
+			 */
 			conferenceUrl?: string | Expression<string>;
 		};
 	};
@@ -46,6 +53,7 @@ export type PagerDutyV1IncidentGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the incident
+	 * @displayOptions.show { resource: ["incident"], operation: ["get"] }
 	 */
 	incidentId: string | Expression<string>;
 };
@@ -56,11 +64,13 @@ export type PagerDutyV1IncidentGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["incident"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["incident"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -73,16 +83,22 @@ export type PagerDutyV1IncidentUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for the incident
+	 * @displayOptions.show { resource: ["incident"], operation: ["update"] }
 	 */
 	incidentId: string | Expression<string>;
 	/**
 	 * The email address of a valid user associated with the account making the request
+	 * @displayOptions.show { resource: ["incident"], operation: ["update"] }
 	 */
 	email: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
 	conferenceBridgeUi?: {
 		conferenceBridgeValues?: {
+			/** Phone numbers should be formatted like +1 415-555-1212,,,,1234#, where a comma (,) represents a one-second wait and pound (#) completes access code input
+			 */
 			conferenceNumber?: string | Expression<string>;
+			/** An URL for the conference bridge. This could be a link to a web conference or Slack channel.
+			 */
 			conferenceUrl?: string | Expression<string>;
 		};
 	};
@@ -94,14 +110,17 @@ export type PagerDutyV1IncidentNoteCreateConfig = {
 	operation: 'create';
 	/**
 	 * Unique identifier for the incident
+	 * @displayOptions.show { resource: ["incidentNote"], operation: ["create"] }
 	 */
 	incidentId: string | Expression<string>;
 	/**
 	 * The note content
+	 * @displayOptions.show { resource: ["incidentNote"], operation: ["create"] }
 	 */
 	content: string | Expression<string>;
 	/**
 	 * The email address of a valid user associated with the account making the request
+	 * @displayOptions.show { resource: ["incidentNote"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 };
@@ -112,15 +131,18 @@ export type PagerDutyV1IncidentNoteGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Unique identifier for the incident
+	 * @displayOptions.show { resource: ["incidentNote"], operation: ["getAll"] }
 	 */
 	incidentId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["incidentNote"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["incidentNote"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -132,6 +154,7 @@ export type PagerDutyV1LogEntryGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the log entry
+	 * @displayOptions.show { resource: ["logEntry"], operation: ["get"] }
 	 */
 	logEntryId: string | Expression<string>;
 };
@@ -142,11 +165,13 @@ export type PagerDutyV1LogEntryGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["logEntry"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["logEntry"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -159,6 +184,7 @@ export type PagerDutyV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the user
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	userId: string | Expression<string>;
 };

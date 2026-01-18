@@ -35,7 +35,14 @@ export type HttpRequestV43NoneConfig = {
 	sendQuery?: boolean | Expression<boolean>;
 	specifyQuery?: 'keypair' | 'json' | Expression<string>;
 	queryParameters?: {
-		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameters?: Array<{
+			/** Name
+			 */
+			name?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	jsonQuery?: IDataObject | string | Expression<string>;
 	/**
@@ -45,7 +52,14 @@ export type HttpRequestV43NoneConfig = {
 	sendHeaders?: boolean | Expression<boolean>;
 	specifyHeaders?: 'keypair' | 'json' | Expression<string>;
 	headerParameters?: {
-		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameters?: Array<{
+			/** Name
+			 */
+			name?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	jsonHeaders?: IDataObject | string | Expression<string>;
 	/**
@@ -55,6 +69,7 @@ export type HttpRequestV43NoneConfig = {
 	sendBody?: boolean | Expression<boolean>;
 	/**
 	 * Content-Type to use to send body parameters
+	 * @displayOptions.show { sendBody: [true] }
 	 * @default json
 	 */
 	contentType?:
@@ -66,22 +81,32 @@ export type HttpRequestV43NoneConfig = {
 		| Expression<string>;
 	/**
 	 * The body can be specified using explicit fields (&lt;code&gt;keypair&lt;/code&gt;) or using a JavaScript object (&lt;code&gt;json&lt;/code&gt;)
+	 * @displayOptions.show { sendBody: [true], contentType: ["json"] }
 	 * @default keypair
 	 */
 	specifyBody?: 'keypair' | 'json' | Expression<string>;
 	bodyParameters?: {
-		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameters?: Array<{
+			/** ID of the field to set. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
+			name?: string | Expression<string>;
+			/** Value of the field to set
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	jsonBody?: IDataObject | string | Expression<string>;
 	body?: string | Expression<string>;
 	/**
 	 * The name of the incoming field containing the binary file data to be processed
+	 * @displayOptions.show { sendBody: [true], contentType: ["binaryData"] }
 	 */
 	inputDataFieldName?: string | Expression<string>;
 	rawContentType?: string | Expression<string>;
 	options?: Record<string, unknown>;
 	/**
 	 * Whether the optimize the tool response to reduce amount of data passed to the LLM that could lead to better result and reduce cost
+	 * @displayOptions.show { @tool: [true] }
 	 * @default false
 	 */
 	optimizeResponse?: boolean | Expression<boolean>;
@@ -89,30 +114,37 @@ export type HttpRequestV43NoneConfig = {
 	/**
 	 * Specify the name of the field in the response containing the data
 	 * @hint leave blank to use whole response
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["json"], @tool: [true] }
 	 */
 	dataField?: string | Expression<string>;
 	/**
 	 * What fields response object should include
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["json"], @tool: [true] }
 	 * @default all
 	 */
 	fieldsToInclude?: 'all' | 'selected' | 'except' | Expression<string>;
 	/**
 	 * Comma-separated list of the field names. Supports dot notation. You can drag the selected fields from the input panel.
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["json"], @tool: [true] }
+	 * @displayOptions.hide { fieldsToInclude: ["all"] }
 	 */
 	fields?: string | Expression<string>;
 	/**
 	 * Select specific element(e.g. body) or multiple elements(e.g. div) of chosen type in the response HTML.
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["html"], @tool: [true] }
 	 * @default body
 	 */
 	cssSelector?: string | Expression<string>;
 	/**
 	 * Whether to return only content of html elements, stripping html tags and attributes
 	 * @hint Uses less tokens and may be easier for model to understand
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["html"], @tool: [true] }
 	 * @default false
 	 */
 	onlyContent?: boolean | Expression<boolean>;
 	/**
 	 * Comma-separated list of selectors that would be excluded when extracting content
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["html"], onlyContent: [true], @tool: [true] }
 	 */
 	elementsToOmit?: string | Expression<string>;
 	truncateResponse?: boolean | Expression<boolean>;
@@ -139,7 +171,14 @@ export type HttpRequestV43PredefinedCredentialTypeConfig = {
 	sendQuery?: boolean | Expression<boolean>;
 	specifyQuery?: 'keypair' | 'json' | Expression<string>;
 	queryParameters?: {
-		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameters?: Array<{
+			/** Name
+			 */
+			name?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	jsonQuery?: IDataObject | string | Expression<string>;
 	/**
@@ -149,7 +188,14 @@ export type HttpRequestV43PredefinedCredentialTypeConfig = {
 	sendHeaders?: boolean | Expression<boolean>;
 	specifyHeaders?: 'keypair' | 'json' | Expression<string>;
 	headerParameters?: {
-		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameters?: Array<{
+			/** Name
+			 */
+			name?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	jsonHeaders?: IDataObject | string | Expression<string>;
 	/**
@@ -159,6 +205,7 @@ export type HttpRequestV43PredefinedCredentialTypeConfig = {
 	sendBody?: boolean | Expression<boolean>;
 	/**
 	 * Content-Type to use to send body parameters
+	 * @displayOptions.show { sendBody: [true] }
 	 * @default json
 	 */
 	contentType?:
@@ -170,22 +217,32 @@ export type HttpRequestV43PredefinedCredentialTypeConfig = {
 		| Expression<string>;
 	/**
 	 * The body can be specified using explicit fields (&lt;code&gt;keypair&lt;/code&gt;) or using a JavaScript object (&lt;code&gt;json&lt;/code&gt;)
+	 * @displayOptions.show { sendBody: [true], contentType: ["json"] }
 	 * @default keypair
 	 */
 	specifyBody?: 'keypair' | 'json' | Expression<string>;
 	bodyParameters?: {
-		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameters?: Array<{
+			/** ID of the field to set. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
+			name?: string | Expression<string>;
+			/** Value of the field to set
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	jsonBody?: IDataObject | string | Expression<string>;
 	body?: string | Expression<string>;
 	/**
 	 * The name of the incoming field containing the binary file data to be processed
+	 * @displayOptions.show { sendBody: [true], contentType: ["binaryData"] }
 	 */
 	inputDataFieldName?: string | Expression<string>;
 	rawContentType?: string | Expression<string>;
 	options?: Record<string, unknown>;
 	/**
 	 * Whether the optimize the tool response to reduce amount of data passed to the LLM that could lead to better result and reduce cost
+	 * @displayOptions.show { @tool: [true] }
 	 * @default false
 	 */
 	optimizeResponse?: boolean | Expression<boolean>;
@@ -193,30 +250,37 @@ export type HttpRequestV43PredefinedCredentialTypeConfig = {
 	/**
 	 * Specify the name of the field in the response containing the data
 	 * @hint leave blank to use whole response
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["json"], @tool: [true] }
 	 */
 	dataField?: string | Expression<string>;
 	/**
 	 * What fields response object should include
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["json"], @tool: [true] }
 	 * @default all
 	 */
 	fieldsToInclude?: 'all' | 'selected' | 'except' | Expression<string>;
 	/**
 	 * Comma-separated list of the field names. Supports dot notation. You can drag the selected fields from the input panel.
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["json"], @tool: [true] }
+	 * @displayOptions.hide { fieldsToInclude: ["all"] }
 	 */
 	fields?: string | Expression<string>;
 	/**
 	 * Select specific element(e.g. body) or multiple elements(e.g. div) of chosen type in the response HTML.
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["html"], @tool: [true] }
 	 * @default body
 	 */
 	cssSelector?: string | Expression<string>;
 	/**
 	 * Whether to return only content of html elements, stripping html tags and attributes
 	 * @hint Uses less tokens and may be easier for model to understand
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["html"], @tool: [true] }
 	 * @default false
 	 */
 	onlyContent?: boolean | Expression<boolean>;
 	/**
 	 * Comma-separated list of selectors that would be excluded when extracting content
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["html"], onlyContent: [true], @tool: [true] }
 	 */
 	elementsToOmit?: string | Expression<string>;
 	truncateResponse?: boolean | Expression<boolean>;
@@ -243,7 +307,14 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 	sendQuery?: boolean | Expression<boolean>;
 	specifyQuery?: 'keypair' | 'json' | Expression<string>;
 	queryParameters?: {
-		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameters?: Array<{
+			/** Name
+			 */
+			name?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	jsonQuery?: IDataObject | string | Expression<string>;
 	/**
@@ -253,7 +324,14 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 	sendHeaders?: boolean | Expression<boolean>;
 	specifyHeaders?: 'keypair' | 'json' | Expression<string>;
 	headerParameters?: {
-		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameters?: Array<{
+			/** Name
+			 */
+			name?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	jsonHeaders?: IDataObject | string | Expression<string>;
 	/**
@@ -263,6 +341,7 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 	sendBody?: boolean | Expression<boolean>;
 	/**
 	 * Content-Type to use to send body parameters
+	 * @displayOptions.show { sendBody: [true] }
 	 * @default json
 	 */
 	contentType?:
@@ -274,22 +353,32 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 		| Expression<string>;
 	/**
 	 * The body can be specified using explicit fields (&lt;code&gt;keypair&lt;/code&gt;) or using a JavaScript object (&lt;code&gt;json&lt;/code&gt;)
+	 * @displayOptions.show { sendBody: [true], contentType: ["json"] }
 	 * @default keypair
 	 */
 	specifyBody?: 'keypair' | 'json' | Expression<string>;
 	bodyParameters?: {
-		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameters?: Array<{
+			/** ID of the field to set. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
+			name?: string | Expression<string>;
+			/** Value of the field to set
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	jsonBody?: IDataObject | string | Expression<string>;
 	body?: string | Expression<string>;
 	/**
 	 * The name of the incoming field containing the binary file data to be processed
+	 * @displayOptions.show { sendBody: [true], contentType: ["binaryData"] }
 	 */
 	inputDataFieldName?: string | Expression<string>;
 	rawContentType?: string | Expression<string>;
 	options?: Record<string, unknown>;
 	/**
 	 * Whether the optimize the tool response to reduce amount of data passed to the LLM that could lead to better result and reduce cost
+	 * @displayOptions.show { @tool: [true] }
 	 * @default false
 	 */
 	optimizeResponse?: boolean | Expression<boolean>;
@@ -297,30 +386,37 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 	/**
 	 * Specify the name of the field in the response containing the data
 	 * @hint leave blank to use whole response
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["json"], @tool: [true] }
 	 */
 	dataField?: string | Expression<string>;
 	/**
 	 * What fields response object should include
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["json"], @tool: [true] }
 	 * @default all
 	 */
 	fieldsToInclude?: 'all' | 'selected' | 'except' | Expression<string>;
 	/**
 	 * Comma-separated list of the field names. Supports dot notation. You can drag the selected fields from the input panel.
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["json"], @tool: [true] }
+	 * @displayOptions.hide { fieldsToInclude: ["all"] }
 	 */
 	fields?: string | Expression<string>;
 	/**
 	 * Select specific element(e.g. body) or multiple elements(e.g. div) of chosen type in the response HTML.
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["html"], @tool: [true] }
 	 * @default body
 	 */
 	cssSelector?: string | Expression<string>;
 	/**
 	 * Whether to return only content of html elements, stripping html tags and attributes
 	 * @hint Uses less tokens and may be easier for model to understand
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["html"], @tool: [true] }
 	 * @default false
 	 */
 	onlyContent?: boolean | Expression<boolean>;
 	/**
 	 * Comma-separated list of selectors that would be excluded when extracting content
+	 * @displayOptions.show { optimizeResponse: [true], responseType: ["html"], onlyContent: [true], @tool: [true] }
 	 */
 	elementsToOmit?: string | Expression<string>;
 	truncateResponse?: boolean | Expression<boolean>;
@@ -363,6 +459,7 @@ export type HttpRequestV2NoneConfig = {
 	responseFormat?: 'file' | 'json' | 'string' | Expression<string>;
 	/**
 	 * Name of the property to which to write the response data
+	 * @displayOptions.show { responseFormat: ["string"] }
 	 * @default data
 	 */
 	dataPropertyName: string | Expression<string>;
@@ -374,47 +471,78 @@ export type HttpRequestV2NoneConfig = {
 	options?: Record<string, unknown>;
 	/**
 	 * Whether binary data should be send as body
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT"] }
 	 * @default false
 	 */
 	sendBinaryData?: boolean | Expression<boolean>;
 	/**
 	 * For Form-Data Multipart, they can be provided in the format: &lt;code&gt;"sendKey1:binaryProperty1,sendKey2:binaryProperty2&lt;/code&gt;
 	 * @hint The name of the input binary field containing the file to be uploaded
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT"] }
+	 * @displayOptions.hide { sendBinaryData: [false] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * Body parameters as JSON or RAW
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT", "DELETE"] }
+	 * @displayOptions.hide { sendBinaryData: [true] }
 	 */
 	bodyParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The body parameter to send
+	 * @displayOptions.show { jsonParameters: [false], requestMethod: ["PATCH", "POST", "PUT", "DELETE"] }
 	 * @default {}
 	 */
 	bodyParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the parameter
+			 */
+			name?: string | Expression<string>;
+			/** Value of the parameter
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * Header parameters as JSON or RAW
+	 * @displayOptions.show { jsonParameters: [true] }
 	 */
 	headerParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The headers to send
+	 * @displayOptions.show { jsonParameters: [false] }
 	 * @default {}
 	 */
 	headerParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the header
+			 */
+			name?: string | Expression<string>;
+			/** Value to set for the header
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * Query parameters as JSON (flat object)
+	 * @displayOptions.show { jsonParameters: [true] }
 	 */
 	queryParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The query parameter to send
+	 * @displayOptions.show { jsonParameters: [false] }
 	 * @default {}
 	 */
 	queryParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the parameter
+			 */
+			name?: string | Expression<string>;
+			/** Value of the parameter
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -450,6 +578,7 @@ export type HttpRequestV2PredefinedCredentialTypeConfig = {
 	responseFormat?: 'file' | 'json' | 'string' | Expression<string>;
 	/**
 	 * Name of the property to which to write the response data
+	 * @displayOptions.show { responseFormat: ["string"] }
 	 * @default data
 	 */
 	dataPropertyName: string | Expression<string>;
@@ -461,47 +590,78 @@ export type HttpRequestV2PredefinedCredentialTypeConfig = {
 	options?: Record<string, unknown>;
 	/**
 	 * Whether binary data should be send as body
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT"] }
 	 * @default false
 	 */
 	sendBinaryData?: boolean | Expression<boolean>;
 	/**
 	 * For Form-Data Multipart, they can be provided in the format: &lt;code&gt;"sendKey1:binaryProperty1,sendKey2:binaryProperty2&lt;/code&gt;
 	 * @hint The name of the input binary field containing the file to be uploaded
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT"] }
+	 * @displayOptions.hide { sendBinaryData: [false] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * Body parameters as JSON or RAW
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT", "DELETE"] }
+	 * @displayOptions.hide { sendBinaryData: [true] }
 	 */
 	bodyParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The body parameter to send
+	 * @displayOptions.show { jsonParameters: [false], requestMethod: ["PATCH", "POST", "PUT", "DELETE"] }
 	 * @default {}
 	 */
 	bodyParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the parameter
+			 */
+			name?: string | Expression<string>;
+			/** Value of the parameter
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * Header parameters as JSON or RAW
+	 * @displayOptions.show { jsonParameters: [true] }
 	 */
 	headerParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The headers to send
+	 * @displayOptions.show { jsonParameters: [false] }
 	 * @default {}
 	 */
 	headerParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the header
+			 */
+			name?: string | Expression<string>;
+			/** Value to set for the header
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * Query parameters as JSON (flat object)
+	 * @displayOptions.show { jsonParameters: [true] }
 	 */
 	queryParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The query parameter to send
+	 * @displayOptions.show { jsonParameters: [false] }
 	 * @default {}
 	 */
 	queryParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the parameter
+			 */
+			name?: string | Expression<string>;
+			/** Value of the parameter
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -537,6 +697,7 @@ export type HttpRequestV2GenericCredentialTypeConfig = {
 	responseFormat?: 'file' | 'json' | 'string' | Expression<string>;
 	/**
 	 * Name of the property to which to write the response data
+	 * @displayOptions.show { responseFormat: ["string"] }
 	 * @default data
 	 */
 	dataPropertyName: string | Expression<string>;
@@ -548,47 +709,78 @@ export type HttpRequestV2GenericCredentialTypeConfig = {
 	options?: Record<string, unknown>;
 	/**
 	 * Whether binary data should be send as body
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT"] }
 	 * @default false
 	 */
 	sendBinaryData?: boolean | Expression<boolean>;
 	/**
 	 * For Form-Data Multipart, they can be provided in the format: &lt;code&gt;"sendKey1:binaryProperty1,sendKey2:binaryProperty2&lt;/code&gt;
 	 * @hint The name of the input binary field containing the file to be uploaded
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT"] }
+	 * @displayOptions.hide { sendBinaryData: [false] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * Body parameters as JSON or RAW
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT", "DELETE"] }
+	 * @displayOptions.hide { sendBinaryData: [true] }
 	 */
 	bodyParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The body parameter to send
+	 * @displayOptions.show { jsonParameters: [false], requestMethod: ["PATCH", "POST", "PUT", "DELETE"] }
 	 * @default {}
 	 */
 	bodyParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the parameter
+			 */
+			name?: string | Expression<string>;
+			/** Value of the parameter
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * Header parameters as JSON or RAW
+	 * @displayOptions.show { jsonParameters: [true] }
 	 */
 	headerParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The headers to send
+	 * @displayOptions.show { jsonParameters: [false] }
 	 * @default {}
 	 */
 	headerParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the header
+			 */
+			name?: string | Expression<string>;
+			/** Value to set for the header
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * Query parameters as JSON (flat object)
+	 * @displayOptions.show { jsonParameters: [true] }
 	 */
 	queryParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The query parameter to send
+	 * @displayOptions.show { jsonParameters: [false] }
 	 * @default {}
 	 */
 	queryParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the parameter
+			 */
+			name?: string | Expression<string>;
+			/** Value of the parameter
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -640,6 +832,7 @@ export interface HttpRequestV1Params {
 	responseFormat?: 'file' | 'json' | 'string' | Expression<string>;
 	/**
 	 * Name of the property to which to write the response data
+	 * @displayOptions.show { responseFormat: ["string"] }
 	 * @default data
 	 */
 	dataPropertyName: string | Expression<string>;
@@ -651,47 +844,78 @@ export interface HttpRequestV1Params {
 	options?: Record<string, unknown>;
 	/**
 	 * Whether binary data should be send as body
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT"] }
 	 * @default false
 	 */
 	sendBinaryData?: boolean | Expression<boolean>;
 	/**
 	 * For Form-Data Multipart, they can be provided in the format: &lt;code&gt;"sendKey1:binaryProperty1,sendKey2:binaryProperty2&lt;/code&gt;
 	 * @hint The name of the input binary field containing the file to be uploaded
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT"] }
+	 * @displayOptions.hide { sendBinaryData: [false] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * Body parameters as JSON or RAW
+	 * @displayOptions.show { jsonParameters: [true], requestMethod: ["PATCH", "POST", "PUT", "DELETE"] }
+	 * @displayOptions.hide { sendBinaryData: [true] }
 	 */
 	bodyParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The body parameter to send
+	 * @displayOptions.show { jsonParameters: [false], requestMethod: ["PATCH", "POST", "PUT", "DELETE"] }
 	 * @default {}
 	 */
 	bodyParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the parameter
+			 */
+			name?: string | Expression<string>;
+			/** Value of the parameter
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * Header parameters as JSON or RAW
+	 * @displayOptions.show { jsonParameters: [true] }
 	 */
 	headerParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The headers to send
+	 * @displayOptions.show { jsonParameters: [false] }
 	 * @default {}
 	 */
 	headerParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the header
+			 */
+			name?: string | Expression<string>;
+			/** Value to set for the header
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 	/**
 	 * Query parameters as JSON (flat object)
+	 * @displayOptions.show { jsonParameters: [true] }
 	 */
 	queryParametersJson?: IDataObject | string | Expression<string>;
 	/**
 	 * The query parameter to send
+	 * @displayOptions.show { jsonParameters: [false] }
 	 * @default {}
 	 */
 	queryParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the parameter
+			 */
+			name?: string | Expression<string>;
+			/** Value of the parameter
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 }
 

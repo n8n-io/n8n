@@ -21,6 +21,8 @@ export type SpotifyV1AlbumGetConfig = {
 	operation: 'get';
 	/**
 	 * The album's Spotify URI or ID
+	 * @displayOptions.show { resource: ["album"], operation: ["get", "getTracks"] }
+	 * @displayOptions.hide { operation: ["search"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -31,11 +33,13 @@ export type SpotifyV1AlbumGetNewReleasesConfig = {
 	operation: 'getNewReleases';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["album", "artist", "library", "playlist", "track"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -48,15 +52,19 @@ export type SpotifyV1AlbumGetTracksConfig = {
 	operation: 'getTracks';
 	/**
 	 * The album's Spotify URI or ID
+	 * @displayOptions.show { resource: ["album"], operation: ["get", "getTracks"] }
+	 * @displayOptions.hide { operation: ["search"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["album", "artist", "library", "playlist", "track"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -68,15 +76,18 @@ export type SpotifyV1AlbumSearchConfig = {
 	operation: 'search';
 	/**
 	 * The keyword term to search for
+	 * @displayOptions.show { resource: ["album"], operation: ["search"] }
 	 */
 	query: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["album", "artist", "library", "playlist", "track"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -89,6 +100,8 @@ export type SpotifyV1ArtistGetConfig = {
 	operation: 'get';
 	/**
 	 * The artist's Spotify URI or ID
+	 * @displayOptions.show { resource: ["artist"] }
+	 * @displayOptions.hide { operation: ["search"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -99,15 +112,19 @@ export type SpotifyV1ArtistGetAlbumsConfig = {
 	operation: 'getAlbums';
 	/**
 	 * The artist's Spotify URI or ID
+	 * @displayOptions.show { resource: ["artist"] }
+	 * @displayOptions.hide { operation: ["search"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["album", "artist", "library", "playlist", "track"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -119,6 +136,8 @@ export type SpotifyV1ArtistGetRelatedArtistsConfig = {
 	operation: 'getRelatedArtists';
 	/**
 	 * The artist's Spotify URI or ID
+	 * @displayOptions.show { resource: ["artist"] }
+	 * @displayOptions.hide { operation: ["search"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -129,10 +148,13 @@ export type SpotifyV1ArtistGetTopTracksConfig = {
 	operation: 'getTopTracks';
 	/**
 	 * The artist's Spotify URI or ID
+	 * @displayOptions.show { resource: ["artist"] }
+	 * @displayOptions.hide { operation: ["search"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Top tracks in which country? Enter the postal abbreviation
+	 * @displayOptions.show { resource: ["artist"], operation: ["getTopTracks"] }
 	 * @default US
 	 */
 	country: string | Expression<string>;
@@ -144,19 +166,24 @@ export type SpotifyV1ArtistSearchConfig = {
 	operation: 'search';
 	/**
 	 * The artist's Spotify URI or ID
+	 * @displayOptions.show { resource: ["artist"] }
+	 * @displayOptions.hide { operation: ["search"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The keyword term to search for
+	 * @displayOptions.show { resource: ["artist"], operation: ["search"] }
 	 */
 	query: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["album", "artist", "library", "playlist", "track"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -169,11 +196,13 @@ export type SpotifyV1LibraryGetLikedTracksConfig = {
 	operation: 'getLikedTracks';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["album", "artist", "library", "playlist", "track"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -185,11 +214,13 @@ export type SpotifyV1MyDataGetFollowingArtistsConfig = {
 	operation: 'getFollowingArtists';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["myData", "player"], operation: ["getFollowingArtists", "recentlyPlayed"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -201,6 +232,7 @@ export type SpotifyV1PlayerAddSongToQueueConfig = {
 	operation: 'addSongToQueue';
 	/**
 	 * Enter a track URI or ID
+	 * @displayOptions.show { resource: ["player"], operation: ["addSongToQueue"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -235,11 +267,13 @@ export type SpotifyV1PlayerRecentlyPlayedConfig = {
 	operation: 'recentlyPlayed';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["myData", "player"], operation: ["getFollowingArtists", "recentlyPlayed"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -257,6 +291,7 @@ export type SpotifyV1PlayerVolumeConfig = {
 	operation: 'volume';
 	/**
 	 * The volume percentage to set
+	 * @displayOptions.show { resource: ["player"], operation: ["volume"] }
 	 * @default 50
 	 */
 	volumePercent: number | Expression<number>;
@@ -268,6 +303,7 @@ export type SpotifyV1PlayerStartMusicConfig = {
 	operation: 'startMusic';
 	/**
 	 * Enter a playlist, artist, or album URI or ID
+	 * @displayOptions.show { resource: ["player"], operation: ["startMusic"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -278,10 +314,12 @@ export type SpotifyV1PlaylistAddConfig = {
 	operation: 'add';
 	/**
 	 * The playlist's Spotify URI or its ID
+	 * @displayOptions.show { resource: ["playlist"], operation: ["add", "delete", "get", "getTracks"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The track's Spotify URI or its ID. The track to add/delete from the playlist.
+	 * @displayOptions.show { resource: ["playlist"], operation: ["add", "delete"] }
 	 */
 	trackID: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -293,6 +331,7 @@ export type SpotifyV1PlaylistCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the playlist to create
+	 * @displayOptions.show { resource: ["playlist"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -304,6 +343,7 @@ export type SpotifyV1PlaylistGetConfig = {
 	operation: 'get';
 	/**
 	 * The playlist's Spotify URI or its ID
+	 * @displayOptions.show { resource: ["playlist"], operation: ["add", "delete", "get", "getTracks"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -314,11 +354,13 @@ export type SpotifyV1PlaylistGetUserPlaylistsConfig = {
 	operation: 'getUserPlaylists';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["album", "artist", "library", "playlist", "track"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -330,15 +372,18 @@ export type SpotifyV1PlaylistGetTracksConfig = {
 	operation: 'getTracks';
 	/**
 	 * The playlist's Spotify URI or its ID
+	 * @displayOptions.show { resource: ["playlist"], operation: ["add", "delete", "get", "getTracks"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["album", "artist", "library", "playlist", "track"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -350,10 +395,12 @@ export type SpotifyV1PlaylistDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The playlist's Spotify URI or its ID
+	 * @displayOptions.show { resource: ["playlist"], operation: ["add", "delete", "get", "getTracks"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The track's Spotify URI or its ID. The track to add/delete from the playlist.
+	 * @displayOptions.show { resource: ["playlist"], operation: ["add", "delete"] }
 	 */
 	trackID: string | Expression<string>;
 };
@@ -364,15 +411,18 @@ export type SpotifyV1PlaylistSearchConfig = {
 	operation: 'search';
 	/**
 	 * The keyword term to search for
+	 * @displayOptions.show { resource: ["playlist"], operation: ["search"] }
 	 */
 	query: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["album", "artist", "library", "playlist", "track"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;
@@ -385,6 +435,8 @@ export type SpotifyV1TrackGetConfig = {
 	operation: 'get';
 	/**
 	 * The track's Spotify URI or ID
+	 * @displayOptions.show { resource: ["track"] }
+	 * @displayOptions.hide { operation: ["search"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -395,6 +447,8 @@ export type SpotifyV1TrackGetAudioFeaturesConfig = {
 	operation: 'getAudioFeatures';
 	/**
 	 * The track's Spotify URI or ID
+	 * @displayOptions.show { resource: ["track"] }
+	 * @displayOptions.hide { operation: ["search"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -405,19 +459,24 @@ export type SpotifyV1TrackSearchConfig = {
 	operation: 'search';
 	/**
 	 * The track's Spotify URI or ID
+	 * @displayOptions.show { resource: ["track"] }
+	 * @displayOptions.hide { operation: ["search"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The keyword term to search for
+	 * @displayOptions.show { resource: ["track"], operation: ["search"] }
 	 */
 	query: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["album", "artist", "library", "myData", "playlist", "track", "player"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "getFollowingArtists", "search", "recentlyPlayed"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["album", "artist", "library", "playlist", "track"], operation: ["getTracks", "getAlbums", "getUserPlaylists", "getNewReleases", "getLikedTracks", "search"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit: number | Expression<number>;

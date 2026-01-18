@@ -21,6 +21,7 @@ export type SshV1CommandExecuteConfig = {
 	operation: 'execute';
 	/**
 	 * The command to be executed on a remote device
+	 * @displayOptions.show { resource: ["command"], operation: ["execute"] }
 	 */
 	command?: string | Expression<string>;
 	cwd: string | Expression<string>;
@@ -32,10 +33,12 @@ export type SshV1FileDownloadConfig = {
 	operation: 'download';
 	/**
 	 * The file path of the file to download. Has to contain the full path including file name.
+	 * @displayOptions.show { resource: ["file"], operation: ["download"] }
 	 */
 	path: string | Expression<string>;
 	/**
 	 * Object property name which holds binary data
+	 * @displayOptions.show { resource: ["file"], operation: ["download"] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
@@ -49,6 +52,7 @@ export type SshV1FileUploadConfig = {
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * The directory to upload the file to. The name of the file does not need to be specified, it's taken from the binary data file name. To override this behavior, set the parameter "File Name" under options.
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 */
 	path: string | Expression<string>;
 	options?: Record<string, unknown>;

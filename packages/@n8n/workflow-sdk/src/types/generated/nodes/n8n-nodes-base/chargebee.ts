@@ -21,6 +21,7 @@ export type ChargebeeV1CustomerCreateConfig = {
 	operation: 'create';
 	/**
 	 * Properties to set on the new user
+	 * @displayOptions.show { operation: ["create"], resource: ["customer"] }
 	 * @default {}
 	 */
 	properties?: Record<string, unknown>;
@@ -32,20 +33,33 @@ export type ChargebeeV1InvoiceListConfig = {
 	operation: 'list';
 	/**
 	 * Max. amount of results to return(&lt; 100).
+	 * @displayOptions.show { operation: ["list"], resource: ["invoice"] }
 	 * @default 10
 	 */
 	maxResults?: number | Expression<number>;
 	/**
 	 * Filter for invoices
+	 * @displayOptions.show { operation: ["list"], resource: ["invoice"] }
 	 * @default {}
 	 */
 	filters?: {
 		date?: Array<{
+			/** Operation to decide where the data should be mapped to
+			 * @default after
+			 */
 			operation?: 'is' | 'is_not' | 'after' | 'before' | Expression<string>;
+			/** Query date
+			 */
 			value?: string | Expression<string>;
 		}>;
 		total?: Array<{
+			/** Operation to decide where the data should be mapped to
+			 * @default gt
+			 */
 			operation?: 'gte' | 'gt' | 'is' | 'is_not' | 'lte' | 'lt' | Expression<string>;
+			/** Query amount
+			 * @default 0
+			 */
 			value?: number | Expression<number>;
 		}>;
 	};
@@ -57,6 +71,7 @@ export type ChargebeeV1InvoicePdfUrlConfig = {
 	operation: 'pdfUrl';
 	/**
 	 * The ID of the invoice to get
+	 * @displayOptions.show { operation: ["pdfUrl"], resource: ["invoice"] }
 	 */
 	invoiceId: string | Expression<string>;
 };
@@ -67,10 +82,12 @@ export type ChargebeeV1SubscriptionCancelConfig = {
 	operation: 'cancel';
 	/**
 	 * The ID of the subscription to cancel
+	 * @displayOptions.show { operation: ["cancel"], resource: ["subscription"] }
 	 */
 	subscriptionId: string | Expression<string>;
 	/**
 	 * Whether it will not cancel it directly in will instead schedule the cancelation for the end of the term
+	 * @displayOptions.show { operation: ["cancel"], resource: ["subscription"] }
 	 * @default false
 	 */
 	endOfTerm?: boolean | Expression<boolean>;
@@ -82,6 +99,7 @@ export type ChargebeeV1SubscriptionDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the subscription to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["subscription"] }
 	 */
 	subscriptionId: string | Expression<string>;
 };

@@ -22,6 +22,7 @@ export type ZulipV1MessageDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Unique identifier for the message
+	 * @displayOptions.show { resource: ["message"], operation: ["delete"] }
 	 */
 	messageId: string | Expression<string>;
 };
@@ -32,6 +33,7 @@ export type ZulipV1MessageGetConfig = {
 	operation: 'get';
 	/**
 	 * Unique identifier for the message
+	 * @displayOptions.show { resource: ["message"], operation: ["get"] }
 	 */
 	messageId: string | Expression<string>;
 };
@@ -42,11 +44,13 @@ export type ZulipV1MessageSendPrivateConfig = {
 	operation: 'sendPrivate';
 	/**
 	 * The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["message"], operation: ["sendPrivate"] }
 	 * @default []
 	 */
 	to: string[];
 	/**
 	 * The content of the message
+	 * @displayOptions.show { resource: ["message"], operation: ["sendPrivate"] }
 	 */
 	content: string | Expression<string>;
 };
@@ -57,14 +61,17 @@ export type ZulipV1MessageSendStreamConfig = {
 	operation: 'sendStream';
 	/**
 	 * The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["message"], operation: ["sendStream"] }
 	 */
 	stream: string | Expression<string>;
 	/**
 	 * The topic of the message. Only required if type is stream, ignored otherwise. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["message"], operation: ["sendStream"] }
 	 */
 	topic: string | Expression<string>;
 	/**
 	 * The content of the message
+	 * @displayOptions.show { resource: ["message"], operation: ["sendStream"] }
 	 */
 	content: string | Expression<string>;
 };
@@ -75,6 +82,7 @@ export type ZulipV1MessageUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Unique identifier for the message
+	 * @displayOptions.show { resource: ["message"], operation: ["update"] }
 	 */
 	messageId: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
@@ -93,15 +101,21 @@ export type ZulipV1StreamCreateConfig = {
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * JSON format parameters for stream creation
+	 * @displayOptions.show { resource: ["stream"], operation: ["create"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	/**
 	 * A list of dictionaries containing the the key name and value specifying the name of the stream to subscribe. If the stream does not exist a new stream is created.
+	 * @displayOptions.show { resource: ["stream"], operation: ["create"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	subscriptions: {
 		properties?: Array<{
+			/** Name of Subscription
+			 */
 			name?: string | Expression<string>;
+			/** Description of Subscription
+			 */
 			description?: string | Expression<string>;
 		}>;
 	};
@@ -114,6 +128,7 @@ export type ZulipV1StreamDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * ID of stream to delete
+	 * @displayOptions.show { resource: ["stream"], operation: ["delete"] }
 	 */
 	streamId: string | Expression<string>;
 };
@@ -138,11 +153,13 @@ export type ZulipV1StreamUpdateConfig = {
 	operation: 'update';
 	/**
 	 * ID of stream to update
+	 * @displayOptions.show { resource: ["stream"], operation: ["update"] }
 	 */
 	streamId: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	/**
 	 * JSON format parameters for stream creation
+	 * @displayOptions.show { resource: ["stream"], operation: ["update"], jsonParameters: [true] }
 	 */
 	additionalFieldsJson?: IDataObject | string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -154,18 +171,22 @@ export type ZulipV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * The email address of the new user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	/**
 	 * The full name of the new user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	fullName: string | Expression<string>;
 	/**
 	 * The password of the new user
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	password: string | Expression<string>;
 	/**
 	 * The short name of the new user. Not user-visible.
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	shortName: string | Expression<string>;
 };
@@ -176,6 +197,7 @@ export type ZulipV1UserDeactivateConfig = {
 	operation: 'deactivate';
 	/**
 	 * The ID of user to deactivate
+	 * @displayOptions.show { resource: ["user"], operation: ["deactivate"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -186,6 +208,7 @@ export type ZulipV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of user to get
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	userId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -204,6 +227,7 @@ export type ZulipV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of user to update
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 */
 	userId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

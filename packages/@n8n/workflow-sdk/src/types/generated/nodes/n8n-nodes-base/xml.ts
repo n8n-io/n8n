@@ -20,6 +20,7 @@ export type XmlV1JsonToxmlConfig = {
 	mode: 'jsonToxml';
 	/**
 	 * Name of the property to which to contains the converted XML data
+	 * @displayOptions.show { mode: ["jsonToxml"] }
 	 * @default data
 	 */
 	dataPropertyName: string | Expression<string>;
@@ -31,6 +32,7 @@ export type XmlV1XmlToJsonConfig = {
 	mode: 'xmlToJson';
 	/**
 	 * Name of the property which contains the XML data to convert
+	 * @displayOptions.show { mode: ["xmlToJson"] }
 	 * @default data
 	 */
 	dataPropertyName: string | Expression<string>;

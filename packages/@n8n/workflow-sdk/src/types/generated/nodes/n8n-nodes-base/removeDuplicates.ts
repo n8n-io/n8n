@@ -23,19 +23,23 @@ export interface RemoveDuplicatesV2Params {
 		| Expression<string>;
 	/**
 	 * The fields of the input items to compare to see if they are the same
+	 * @displayOptions.show { operation: ["removeDuplicateInputItems"] }
 	 * @default allFields
 	 */
 	compare?: 'allFields' | 'allFieldsExcept' | 'selectedFields' | Expression<string>;
 	/**
 	 * Fields in the input to exclude from the comparison
+	 * @displayOptions.show { compare: ["allFieldsExcept"] }
 	 */
 	fieldsToExclude?: string | Expression<string>;
 	/**
 	 * Fields in the input to add to the comparison
+	 * @displayOptions.show { compare: ["selectedFields"] }
 	 */
 	fieldsToCompare?: string | Expression<string>;
 	/**
 	 * How to select input items to remove by comparing them with key values previously processed
+	 * @displayOptions.show { operation: ["removeItemsSeenInPreviousExecutions"] }
 	 * @default removeItemsWithAlreadySeenKeyValues
 	 */
 	logic?:
@@ -46,20 +50,24 @@ export interface RemoveDuplicatesV2Params {
 	/**
 	 * Use an input field (or a combination of fields) that has a unique ID value
 	 * @hint The input field value to compare between items
+	 * @displayOptions.show { logic: ["removeItemsWithAlreadySeenKeyValues"], /operation: ["removeItemsSeenInPreviousExecutions"] }
 	 */
 	dedupeValue: string | Expression<string>;
 	/**
 	 * Use an input field (or a combination of fields) that has an incremental value
 	 * @hint The input field value to compare between items, an incremental value is expected
+	 * @displayOptions.show { logic: ["removeItemsUpToStoredIncrementalKey"], /operation: ["removeItemsSeenInPreviousExecutions"] }
 	 */
 	incrementalDedupeValue?: number | Expression<number>;
 	/**
 	 * Use an input field that has a date value in ISO format
 	 * @hint The input field value to compare between items, a date is expected
+	 * @displayOptions.show { logic: ["removeItemsUpToStoredDate"], /operation: ["removeItemsSeenInPreviousExecutions"] }
 	 */
 	dateDedupeValue?: string | Expression<string>;
 	/**
 	 * How you want to modify the key values stored on the database. None of these modes removes input items.
+	 * @displayOptions.show { operation: ["clearDeduplicationHistory"] }
 	 * @default cleanDatabase
 	 */
 	mode?: 'cleanDatabase' | Expression<string>;
@@ -74,10 +82,12 @@ export interface RemoveDuplicatesV11Params {
 	compare?: 'allFields' | 'allFieldsExcept' | 'selectedFields' | Expression<string>;
 	/**
 	 * Fields in the input to exclude from the comparison
+	 * @displayOptions.show { compare: ["allFieldsExcept"] }
 	 */
 	fieldsToExclude?: string | Expression<string>;
 	/**
 	 * Fields in the input to add to the comparison
+	 * @displayOptions.show { compare: ["selectedFields"] }
 	 */
 	fieldsToCompare?: string | Expression<string>;
 	options?: Record<string, unknown>;

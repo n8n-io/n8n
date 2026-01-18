@@ -27,11 +27,13 @@ export type OuraV1SummaryGetActivityConfig = {
 	operation: 'getActivity';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["summary"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["summary"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -44,11 +46,13 @@ export type OuraV1SummaryGetReadinessConfig = {
 	operation: 'getReadiness';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["summary"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["summary"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;
@@ -61,11 +65,13 @@ export type OuraV1SummaryGetSleepConfig = {
 	operation: 'getSleep';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["summary"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["summary"], returnAll: [false] }
 	 * @default 5
 	 */
 	limit?: number | Expression<number>;

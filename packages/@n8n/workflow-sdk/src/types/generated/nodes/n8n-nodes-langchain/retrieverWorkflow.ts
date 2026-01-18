@@ -25,10 +25,12 @@ export interface LcRetrieverWorkflowV11Params {
 	source?: 'database' | 'parameter' | Expression<string>;
 	/**
 	 * The workflow to execute
+	 * @displayOptions.show { source: ["database"], @version: [{"_cnd":{"eq":1}}] }
 	 */
 	workflowId: string | Expression<string>;
 	/**
  * The workflow JSON code to execute
+ * @displayOptions.show { source: ["parameter"] }
  * @default 
 
 
@@ -41,7 +43,12 @@ export interface LcRetrieverWorkflowV11Params {
 	 */
 	fields?: {
 		values?: Array<{
+			/** Name of the field to set the value of. Supports dot-notation. Example: data.person[0].name.
+			 */
 			name?: string | Expression<string>;
+			/** The field value type
+			 * @default stringValue
+			 */
 			type?:
 				| 'stringValue'
 				| 'numberValue'
@@ -49,10 +56,27 @@ export interface LcRetrieverWorkflowV11Params {
 				| 'arrayValue'
 				| 'objectValue'
 				| Expression<string>;
+			/** Value
+			 * @displayOptions.show { type: ["stringValue"] }
+			 */
 			stringValue?: string | Expression<string>;
+			/** Value
+			 * @displayOptions.show { type: ["numberValue"] }
+			 */
 			numberValue?: string | Expression<string>;
+			/** Value
+			 * @displayOptions.show { type: ["booleanValue"] }
+			 * @default true
+			 */
 			booleanValue?: 'true' | 'false' | Expression<string>;
+			/** Value
+			 * @displayOptions.show { type: ["arrayValue"] }
+			 */
 			arrayValue?: string | Expression<string>;
+			/** Value
+			 * @displayOptions.show { type: ["objectValue"] }
+			 * @default ={}
+			 */
 			objectValue?: IDataObject | string | Expression<string>;
 		}>;
 	};

@@ -20,10 +20,12 @@ export type MarkdownV1MarkdownToHtmlConfig = {
 	mode: 'markdownToHtml';
 	/**
 	 * The Markdown to be converted to html
+	 * @displayOptions.show { mode: ["markdownToHtml"] }
 	 */
 	markdown: string | Expression<string>;
 	/**
 	 * The field to put the output in. Specify nested fields using dots, e.g."level1.level2.newKey".
+	 * @displayOptions.show { mode: ["markdownToHtml", "htmlToMarkdown"] }
 	 * @default data
 	 */
 	destinationKey: string | Expression<string>;
@@ -35,10 +37,12 @@ export type MarkdownV1HtmlToMarkdownConfig = {
 	mode: 'htmlToMarkdown';
 	/**
 	 * The HTML to be converted to markdown
+	 * @displayOptions.show { mode: ["htmlToMarkdown"] }
 	 */
 	html: string | Expression<string>;
 	/**
 	 * The field to put the output in. Specify nested fields using dots, e.g."level1.level2.newKey".
+	 * @displayOptions.show { mode: ["markdownToHtml", "htmlToMarkdown"] }
 	 * @default data
 	 */
 	destinationKey: string | Expression<string>;

@@ -25,10 +25,12 @@ export type AzureCosmosDbV1ContainerCreateConfig = {
 	operation: 'create';
 	/**
 	 * Unique identifier for the new container
+	 * @displayOptions.show { resource: ["container"], operation: ["create"] }
 	 */
 	containerCreate: string | Expression<string>;
 	/**
  * The partition key is used to automatically distribute data across partitions for scalability. Choose a property in your JSON document that has a wide range of values and evenly distributes request volume.
+ * @displayOptions.show { resource: ["container"], operation: ["create"] }
  * @default {
 	"paths": [
 		"/id"
@@ -48,6 +50,7 @@ export type AzureCosmosDbV1ContainerDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Select the container you want to delete
+	 * @displayOptions.show { resource: ["container"], operation: ["delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	container: ResourceLocatorValue;
@@ -60,11 +63,13 @@ export type AzureCosmosDbV1ContainerGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the container you want to retrieve
+	 * @displayOptions.show { resource: ["container"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	container: ResourceLocatorValue;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["container"], operation: ["get"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -77,16 +82,19 @@ export type AzureCosmosDbV1ContainerGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["container"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["container"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["container"], operation: ["getAll"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -99,12 +107,15 @@ export type AzureCosmosDbV1ItemCreateConfig = {
 	operation: 'create';
 	/**
 	 * Select the container you want to use
+	 * @displayOptions.show { resource: ["item"], operation: ["create"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	container: ResourceLocatorValue;
 	/**
  * The item contents as a JSON object
  * @hint The item requires an ID and partition key value if a custom key is set
+ * @displayOptions.show { resource: ["item"], operation: ["create"] }
+ * @displayOptions.hide { container: [""] }
  * @default {
 	"id": "replace_with_new_document_id"
 }
@@ -119,11 +130,14 @@ export type AzureCosmosDbV1ItemDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Select the container you want to use
+	 * @displayOptions.show { resource: ["item"], operation: ["delete"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	container: ResourceLocatorValue;
 	/**
 	 * Select the item to be deleted
+	 * @displayOptions.show { resource: ["item"], operation: ["delete"] }
+	 * @displayOptions.hide { container: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	item: ResourceLocatorValue;
@@ -137,16 +151,21 @@ export type AzureCosmosDbV1ItemGetConfig = {
 	operation: 'get';
 	/**
 	 * Select the container you want to use
+	 * @displayOptions.show { resource: ["item"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	container: ResourceLocatorValue;
 	/**
 	 * Select the item you want to retrieve
+	 * @displayOptions.show { resource: ["item"], operation: ["get"] }
+	 * @displayOptions.hide { container: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	item: ResourceLocatorValue;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["item"], operation: ["get"] }
+	 * @displayOptions.hide { container: [""], item: [""] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -160,21 +179,25 @@ export type AzureCosmosDbV1ItemGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Select the container you want to use
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	container: ResourceLocatorValue;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["item"], operation: ["getAll"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["item"], operation: ["getAll"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
@@ -186,20 +209,30 @@ export type AzureCosmosDbV1ItemQueryConfig = {
 	operation: 'query';
 	/**
 	 * Select the container you want to use
+	 * @displayOptions.show { resource: ["item"], operation: ["query"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	container: ResourceLocatorValue;
 	/**
 	 * The SQL query to execute. Use $1, $2, $3, etc., to reference the 'Query Parameters' set in the options below.
 	 * @hint Consider using query parameters to prevent SQL injection attacks. Add them in the options below.
+	 * @displayOptions.show { resource: ["item"], operation: ["query"] }
 	 */
 	query: string | Expression<string>;
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { resource: ["item"], operation: ["query"] }
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
-	options?: { queryOptions?: { queryParameters?: string | Expression<string> } };
+	options?: {
+		queryOptions?: {
+			/** Comma-separated list of values used as query parameters. Use $1, $2, $3, etc., in your query.
+			 * @hint Reference them in your query as $1, $2, $3…
+			 */
+			queryParameters?: string | Expression<string>;
+		};
+	};
 	requestOptions?: Record<string, unknown>;
 };
 
@@ -209,16 +242,21 @@ export type AzureCosmosDbV1ItemUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Select the container you want to use
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	container: ResourceLocatorValue;
 	/**
 	 * Select the item to be updated
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
+	 * @displayOptions.hide { container: [""] }
 	 * @default {"mode":"list","value":""}
 	 */
 	item: ResourceLocatorValue;
 	/**
 	 * The item contents as a JSON object
+	 * @displayOptions.show { resource: ["item"], operation: ["update"] }
+	 * @displayOptions.hide { container: [""], item: [""] }
 	 * @default {}
 	 */
 	customProperties: IDataObject | string | Expression<string>;

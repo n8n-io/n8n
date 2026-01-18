@@ -44,11 +44,13 @@ export type OdooV1ContactGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["contact"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -69,11 +71,16 @@ export type OdooV1CustomCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["custom"] }
 	 */
 	customResource?: string | Expression<string>;
 	fieldsToCreateOrUpdate?: {
 		fields?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			fieldName?: string | Expression<string>;
+			/** New Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -85,6 +92,7 @@ export type OdooV1CustomDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["custom"] }
 	 */
 	customResource?: string | Expression<string>;
 	customResourceId: string | Expression<string>;
@@ -96,6 +104,7 @@ export type OdooV1CustomGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["custom"] }
 	 */
 	customResource?: string | Expression<string>;
 	customResourceId: string | Expression<string>;
@@ -108,26 +117,35 @@ export type OdooV1CustomGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["custom"] }
 	 */
 	customResource?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["custom"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["custom"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	options?: Record<string, unknown>;
 	/**
 	 * Filter request by applying filters
+	 * @displayOptions.show { operation: ["getAll"], resource: ["custom"] }
 	 * @default {}
 	 */
 	filterRequest?: {
 		filter?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			fieldName?: string | Expression<string>;
+			/** Specify an operator
+			 * @default equal
+			 */
 			operator?:
 				| 'notEqual'
 				| 'lesserThen'
@@ -140,6 +158,8 @@ export type OdooV1CustomGetAllConfig = {
 				| 'like'
 				| 'notIn'
 				| Expression<string>;
+			/** Specify value for comparison
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -151,12 +171,17 @@ export type OdooV1CustomUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["custom"] }
 	 */
 	customResource?: string | Expression<string>;
 	customResourceId: string | Expression<string>;
 	fieldsToCreateOrUpdate?: {
 		fields?: Array<{
+			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+			 */
 			fieldName?: string | Expression<string>;
+			/** New Value
+			 */
 			fieldValue?: string | Expression<string>;
 		}>;
 	};
@@ -190,11 +215,13 @@ export type OdooV1NoteGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["note"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["note"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -238,11 +265,13 @@ export type OdooV1OpportunityGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["opportunity"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

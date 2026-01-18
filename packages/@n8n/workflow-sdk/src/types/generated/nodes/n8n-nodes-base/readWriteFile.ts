@@ -20,11 +20,13 @@ export interface ReadWriteFileV11Params {
 	/**
 	 * Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows.
 	 * @hint Supports patterns, learn more &lt;a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank"&gt;here&lt;/a&gt;
+	 * @displayOptions.show { operation: ["read"] }
 	 */
 	fileSelector: string | Expression<string>;
 	options?: Record<string, unknown>;
 	/**
 	 * Path and name of the file that should be written. Also include the file extension.
+	 * @displayOptions.show { operation: ["write"] }
 	 */
 	fileName: string | Expression<string>;
 	dataPropertyName: string | Expression<string>;

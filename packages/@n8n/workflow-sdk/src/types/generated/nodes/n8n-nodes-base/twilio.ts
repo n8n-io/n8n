@@ -20,14 +20,17 @@ export type TwilioV1CallMakeConfig = {
 	operation: 'make';
 	/**
 	 * The number from which to send the message
+	 * @displayOptions.show { operation: ["send", "make"], resource: ["sms", "call"] }
 	 */
 	from: string | Expression<string>;
 	/**
 	 * The number to which to send the message
+	 * @displayOptions.show { operation: ["send", "make"], resource: ["sms", "call"] }
 	 */
 	to: string | Expression<string>;
 	/**
 	 * Whether to use the &lt;a href="https://www.twilio.com/docs/voice/twiml"&gt;Twilio Markup Language&lt;/a&gt; in the message
+	 * @displayOptions.show { operation: ["make"], resource: ["call"] }
 	 * @default false
 	 */
 	twiml?: boolean | Expression<boolean>;
@@ -41,19 +44,23 @@ export type TwilioV1SmsSendConfig = {
 	operation: 'send';
 	/**
 	 * The number from which to send the message
+	 * @displayOptions.show { operation: ["send", "make"], resource: ["sms", "call"] }
 	 */
 	from: string | Expression<string>;
 	/**
 	 * The number to which to send the message
+	 * @displayOptions.show { operation: ["send", "make"], resource: ["sms", "call"] }
 	 */
 	to: string | Expression<string>;
 	/**
 	 * Whether the message should be sent to WhatsApp
+	 * @displayOptions.show { operation: ["send"], resource: ["sms"] }
 	 * @default false
 	 */
 	toWhatsapp?: boolean | Expression<boolean>;
 	/**
 	 * The message to send
+	 * @displayOptions.show { operation: ["send"], resource: ["sms"] }
 	 */
 	message: string | Expression<string>;
 	options?: Record<string, unknown>;

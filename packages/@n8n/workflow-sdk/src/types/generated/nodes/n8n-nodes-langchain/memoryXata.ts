@@ -21,6 +21,7 @@ export interface LcMemoryXataV14Params {
 	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
 	/**
 	 * The key to use to store session ID in the memory
+	 * @displayOptions.show { sessionIdType: ["customKey"] }
 	 */
 	sessionKey?: string | Expression<string>;
 	contextWindowLength?: number | Expression<number>;

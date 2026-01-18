@@ -24,6 +24,7 @@ export interface PostgresTriggerV1Params {
 	tableName: ResourceLocatorValue;
 	/**
 	 * Name of the channel to listen to
+	 * @displayOptions.show { triggerMode: ["listenTrigger"] }
 	 */
 	channelName: string | Expression<string>;
 	firesOn?: 'INSERT' | 'UPDATE' | 'DELETE' | Expression<string>;

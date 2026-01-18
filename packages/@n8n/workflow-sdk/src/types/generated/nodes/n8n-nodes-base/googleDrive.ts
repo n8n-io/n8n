@@ -24,25 +24,30 @@ export type GoogleDriveV3FileCopyConfig = {
 	operation: 'copy';
 	/**
 	 * The file to copy
+	 * @displayOptions.show { resource: ["file"], operation: ["copy"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
 	/**
 	 * The name of the new file. If not set, “Copy of {original file name}” will be used.
+	 * @displayOptions.show { resource: ["file"], operation: ["copy"] }
 	 */
 	name?: string | Expression<string>;
 	/**
 	 * Whether to copy the file in the same folder as the original file
+	 * @displayOptions.show { resource: ["file"], operation: ["copy"] }
 	 * @default true
 	 */
 	sameFolder?: boolean | Expression<boolean>;
 	/**
 	 * The drive where to save the copied file
+	 * @displayOptions.show { sameFolder: [false], resource: ["file"], operation: ["copy"] }
 	 * @default {"mode":"list","value":"My Drive"}
 	 */
 	driveId: ResourceLocatorValue;
 	/**
 	 * The folder where to save the copied file
+	 * @displayOptions.show { sameFolder: [false], resource: ["file"], operation: ["copy"] }
 	 * @default {"mode":"list","value":"root","cachedResultName":"/ (Root folder)"}
 	 */
 	folderId: ResourceLocatorValue;
@@ -55,19 +60,23 @@ export type GoogleDriveV3FileCreateFromTextConfig = {
 	operation: 'createFromText';
 	/**
 	 * The text to create the file with
+	 * @displayOptions.show { resource: ["file"], operation: ["createFromText"] }
 	 */
 	content?: string | Expression<string>;
 	/**
 	 * The name of the file you want to create. If not specified, 'Untitled' will be used.
+	 * @displayOptions.show { resource: ["file"], operation: ["createFromText"] }
 	 */
 	name?: string | Expression<string>;
 	/**
 	 * The drive where to create the new file
+	 * @displayOptions.show { resource: ["file"], operation: ["createFromText"] }
 	 * @default {"mode":"list","value":"My Drive"}
 	 */
 	driveId?: ResourceLocatorValue;
 	/**
 	 * The folder where to create the new file
+	 * @displayOptions.show { resource: ["file"], operation: ["createFromText"] }
 	 * @default {"mode":"list","value":"root","cachedResultName":"/ (Root folder)"}
 	 */
 	folderId?: ResourceLocatorValue;
@@ -80,6 +89,7 @@ export type GoogleDriveV3FileDeleteFileConfig = {
 	operation: 'deleteFile';
 	/**
 	 * The file to delete
+	 * @displayOptions.show { resource: ["file"], operation: ["deleteFile"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
@@ -92,6 +102,7 @@ export type GoogleDriveV3FileDownloadConfig = {
 	operation: 'download';
 	/**
 	 * The file to download
+	 * @displayOptions.show { resource: ["file"], operation: ["download"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
@@ -104,16 +115,19 @@ export type GoogleDriveV3FileMoveConfig = {
 	operation: 'move';
 	/**
 	 * The file to move
+	 * @displayOptions.show { resource: ["file"], operation: ["move"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
 	/**
 	 * The drive where to move the file
+	 * @displayOptions.show { resource: ["file"], operation: ["move"] }
 	 * @default {"mode":"list","value":"My Drive"}
 	 */
 	driveId: ResourceLocatorValue;
 	/**
 	 * The folder where to move the file
+	 * @displayOptions.show { resource: ["file"], operation: ["move"] }
 	 * @default {"mode":"list","value":"root","cachedResultName":"/ (Root folder)"}
 	 */
 	folderId: ResourceLocatorValue;
@@ -125,11 +139,14 @@ export type GoogleDriveV3FileShareConfig = {
 	operation: 'share';
 	/**
 	 * The file to share
+	 * @displayOptions.show { resource: ["file"], operation: ["share"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
 	permissionsUi?: {
 		permissionsValues?: {
+			/** Defines what users can do with the file or folder
+			 */
 			role?:
 				| 'commenter'
 				| 'fileOrganizer'
@@ -138,9 +155,21 @@ export type GoogleDriveV3FileShareConfig = {
 				| 'reader'
 				| 'writer'
 				| Expression<string>;
+			/** The scope of the permission. A permission with type=user applies to a specific user whereas a permission with type=domain applies to everyone in a specific domain.
+			 */
 			type?: 'user' | 'group' | 'domain' | 'anyone' | Expression<string>;
+			/** The email address of the user or group to which this permission refers
+			 * @displayOptions.show { type: ["user", "group"] }
+			 */
 			emailAddress?: string | Expression<string>;
+			/** The domain to which this permission refers
+			 * @displayOptions.show { type: ["domain"] }
+			 */
 			domain?: string | Expression<string>;
+			/** Whether to allow the file to be discovered through search
+			 * @displayOptions.show { type: ["domain", "anyone"] }
+			 * @default false
+			 */
 			allowFileDiscovery?: boolean | Expression<boolean>;
 		};
 	};
@@ -153,22 +182,26 @@ export type GoogleDriveV3FileUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The file to update
+	 * @displayOptions.show { resource: ["file"], operation: ["update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
 	/**
 	 * Whether to send a new binary data to update the file
+	 * @displayOptions.show { resource: ["file"], operation: ["update"] }
 	 * @default false
 	 */
 	changeFileContent?: boolean | Expression<boolean>;
 	/**
 	 * Find the name of input field containing the binary data to update the file in the Input panel on the left, in the Binary tab
 	 * @hint The name of the input field containing the binary file data to update the file
+	 * @displayOptions.show { changeFileContent: [true], resource: ["file"], operation: ["update"] }
 	 * @default data
 	 */
 	inputDataFieldName?: string | Expression<string>;
 	/**
 	 * If not specified, the file name will not be changed
+	 * @displayOptions.show { resource: ["file"], operation: ["update"] }
 	 */
 	newUpdatedFileName?: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -181,20 +214,24 @@ export type GoogleDriveV3FileUploadConfig = {
 	/**
 	 * Find the name of input field containing the binary data to update the file in the Input panel on the left, in the Binary tab
 	 * @hint The name of the input field containing the binary file data to update the file
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default data
 	 */
 	inputDataFieldName: string | Expression<string>;
 	/**
 	 * If not specified, the original file name will be used
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 */
 	name?: string | Expression<string>;
 	/**
 	 * The drive where to upload the file
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default {"mode":"list","value":"My Drive"}
 	 */
 	driveId: ResourceLocatorValue;
 	/**
 	 * The folder where to upload the file
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default {"mode":"list","value":"root","cachedResultName":"/ (Root folder)"}
 	 */
 	folderId: ResourceLocatorValue;
@@ -207,20 +244,24 @@ export type GoogleDriveV3FileFolderSearchConfig = {
 	operation: 'search';
 	/**
 	 * Whether to search for the file/folder name or use a query string
+	 * @displayOptions.show { resource: ["fileFolder"], operation: ["search"] }
 	 * @default name
 	 */
 	searchMethod?: 'name' | 'query' | Expression<string>;
 	/**
 	 * The name of the file or folder to search for. Returns also files and folders whose names partially match this search term.
+	 * @displayOptions.show { searchMethod: ["name"], resource: ["fileFolder"], operation: ["search"] }
 	 */
 	queryString?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["fileFolder"], operation: ["search"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["fileFolder"], operation: ["search"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -234,15 +275,18 @@ export type GoogleDriveV3FolderCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the new folder. If not set, 'Untitled' will be used.
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"] }
 	 */
 	name?: string | Expression<string>;
 	/**
 	 * The drive where to create the new folder
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"] }
 	 * @default {"mode":"list","value":"My Drive"}
 	 */
 	driveId: ResourceLocatorValue;
 	/**
 	 * The parent folder where to create the new folder
+	 * @displayOptions.show { resource: ["folder"], operation: ["create"] }
 	 * @default {"mode":"list","value":"root","cachedResultName":"/ (Root folder)"}
 	 */
 	folderId: ResourceLocatorValue;
@@ -255,6 +299,7 @@ export type GoogleDriveV3FolderDeleteFolderConfig = {
 	operation: 'deleteFolder';
 	/**
 	 * The folder to delete
+	 * @displayOptions.show { resource: ["folder"], operation: ["deleteFolder"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	folderNoRootId: ResourceLocatorValue;
@@ -267,11 +312,14 @@ export type GoogleDriveV3FolderShareConfig = {
 	operation: 'share';
 	/**
 	 * The folder to share
+	 * @displayOptions.show { resource: ["folder"], operation: ["share"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	folderNoRootId: ResourceLocatorValue;
 	permissionsUi?: {
 		permissionsValues?: {
+			/** Defines what users can do with the file or folder
+			 */
 			role?:
 				| 'commenter'
 				| 'fileOrganizer'
@@ -280,9 +328,21 @@ export type GoogleDriveV3FolderShareConfig = {
 				| 'reader'
 				| 'writer'
 				| Expression<string>;
+			/** The scope of the permission. A permission with type=user applies to a specific user whereas a permission with type=domain applies to everyone in a specific domain.
+			 */
 			type?: 'user' | 'group' | 'domain' | 'anyone' | Expression<string>;
+			/** The email address of the user or group to which this permission refers
+			 * @displayOptions.show { type: ["user", "group"] }
+			 */
 			emailAddress?: string | Expression<string>;
+			/** The domain to which this permission refers
+			 * @displayOptions.show { type: ["domain"] }
+			 */
 			domain?: string | Expression<string>;
+			/** Whether to allow the file to be discovered through search
+			 * @displayOptions.show { type: ["domain", "anyone"] }
+			 * @default false
+			 */
 			allowFileDiscovery?: boolean | Expression<boolean>;
 		};
 	};
@@ -295,6 +355,7 @@ export type GoogleDriveV3DriveCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the shared drive to create
+	 * @displayOptions.show { resource: ["drive"], operation: ["create"] }
 	 */
 	name?: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -306,6 +367,7 @@ export type GoogleDriveV3DriveDeleteDriveConfig = {
 	operation: 'deleteDrive';
 	/**
 	 * The shared drive to delete
+	 * @displayOptions.show { resource: ["drive"], operation: ["deleteDrive"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	driveId: ResourceLocatorValue;
@@ -317,6 +379,7 @@ export type GoogleDriveV3DriveGetConfig = {
 	operation: 'get';
 	/**
 	 * The shared drive to get
+	 * @displayOptions.show { resource: ["drive"], operation: ["get"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	driveId: ResourceLocatorValue;
@@ -329,11 +392,13 @@ export type GoogleDriveV3DriveListConfig = {
 	operation: 'list';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["drive"], operation: ["list"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["drive"], operation: ["list"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -346,6 +411,7 @@ export type GoogleDriveV3DriveUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The shared drive to update
+	 * @displayOptions.show { resource: ["drive"], operation: ["update"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	driveId: ResourceLocatorValue;
@@ -378,6 +444,7 @@ export type GoogleDriveV2DriveCreateConfig = {
 	options?: Record<string, unknown>;
 	/**
 	 * The name of this shared drive
+	 * @displayOptions.show { operation: ["create"], resource: ["drive"] }
 	 */
 	name?: string | Expression<string>;
 };
@@ -390,6 +457,7 @@ export type GoogleDriveV2DriveDeleteConfig = {
 	/**
 	 * The ID of the drive
 	 * @hint The Google Drive drive to operate on
+	 * @displayOptions.show { operation: ["delete", "get", "update"], resource: ["drive"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	driveId: ResourceLocatorValue;
@@ -403,6 +471,7 @@ export type GoogleDriveV2DriveGetConfig = {
 	/**
 	 * The ID of the drive
 	 * @hint The Google Drive drive to operate on
+	 * @displayOptions.show { operation: ["delete", "get", "update"], resource: ["drive"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	driveId: ResourceLocatorValue;
@@ -415,11 +484,13 @@ export type GoogleDriveV2DriveListConfig = {
 	options?: Record<string, unknown>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["list"], resource: ["drive"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["list"], resource: ["drive"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -433,6 +504,7 @@ export type GoogleDriveV2DriveUpdateConfig = {
 	/**
 	 * The ID of the drive
 	 * @hint The Google Drive drive to operate on
+	 * @displayOptions.show { operation: ["delete", "get", "update"], resource: ["drive"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	driveId: ResourceLocatorValue;
@@ -444,6 +516,7 @@ export type GoogleDriveV2FileCopyConfig = {
 	operation: 'copy';
 	/**
 	 * The ID of the file
+	 * @displayOptions.show { operation: ["download", "copy", "update", "delete", "share"], resource: ["file"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
@@ -456,6 +529,7 @@ export type GoogleDriveV2FileDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the file
+	 * @displayOptions.show { operation: ["download", "copy", "update", "delete", "share"], resource: ["file"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
@@ -468,6 +542,7 @@ export type GoogleDriveV2FileDownloadConfig = {
 	operation: 'download';
 	/**
 	 * The ID of the file
+	 * @displayOptions.show { operation: ["download", "copy", "update", "delete", "share"], resource: ["file"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
@@ -481,28 +556,40 @@ export type GoogleDriveV2FileListConfig = {
 	operation: 'list';
 	/**
 	 * Whether a query string should be used to filter results
+	 * @displayOptions.show { operation: ["list"], resource: ["file"] }
 	 * @default false
 	 */
 	useQueryString?: boolean | Expression<boolean>;
 	/**
 	 * Query to use to return only specific files
+	 * @displayOptions.show { operation: ["list"], useQueryString: [true], resource: ["file"] }
 	 */
 	queryString?: string | Expression<string>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["list"], resource: ["file"] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Filters to use to return only specific files
+	 * @displayOptions.show { operation: ["list"], useQueryString: [false], resource: ["file"] }
 	 * @default {}
 	 */
 	queryFilters?: {
 		name?: Array<{
+			/** Operation
+			 * @default contains
+			 */
 			operation?: 'contains' | 'is' | 'isNot' | Expression<string>;
+			/** The value for operation
+			 */
 			value?: string | Expression<string>;
 		}>;
 		mimeType?: Array<{
+			/** The Mime-Type of the files to return
+			 * @default application/vnd.google-apps.file
+			 */
 			mimeType?:
 				| 'application/vnd.google-apps.drive-sdk'
 				| 'application/vnd.google-apps.audio'
@@ -522,6 +609,9 @@ export type GoogleDriveV2FileListConfig = {
 				| 'application/vnd.google-apps.unknown'
 				| 'application/vnd.google-apps.video'
 				| Expression<string>;
+			/** Custom Mime Type
+			 * @displayOptions.show { mimeType: ["custom"] }
+			 */
 			customMimeType?: string | Expression<string>;
 		}>;
 	};
@@ -534,11 +624,14 @@ export type GoogleDriveV2FileShareConfig = {
 	operation: 'share';
 	/**
 	 * The ID of the file
+	 * @displayOptions.show { operation: ["download", "copy", "update", "delete", "share"], resource: ["file"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
 	permissionsUi?: {
 		permissionsValues?: {
+			/** Role
+			 */
 			role?:
 				| 'commenter'
 				| 'fileOrganizer'
@@ -547,9 +640,21 @@ export type GoogleDriveV2FileShareConfig = {
 				| 'reader'
 				| 'writer'
 				| Expression<string>;
+			/** Information about the different types can be found &lt;a href="https://developers.google.com/drive/api/v3/ref-roles"&gt;here&lt;/a&gt;
+			 */
 			type?: 'user' | 'group' | 'domain' | 'anyone' | Expression<string>;
+			/** The email address of the user or group to which this permission refers
+			 * @displayOptions.show { type: ["user", "group"] }
+			 */
 			emailAddress?: string | Expression<string>;
+			/** The domain to which this permission refers
+			 * @displayOptions.show { type: ["domain"] }
+			 */
 			domain?: string | Expression<string>;
+			/** Whether the permission allows the file to be discovered through search
+			 * @displayOptions.show { type: ["domain", "anyone"] }
+			 * @default false
+			 */
 			allowFileDiscovery?: boolean | Expression<boolean>;
 		};
 	};
@@ -562,6 +667,7 @@ export type GoogleDriveV2FileUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the file
+	 * @displayOptions.show { operation: ["download", "copy", "update", "delete", "share"], resource: ["file"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
@@ -575,25 +681,30 @@ export type GoogleDriveV2FileUploadConfig = {
 	operation: 'upload';
 	/**
 	 * Whether the data to upload should be taken from binary field
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 * @default false
 	 */
 	binaryData?: boolean | Expression<boolean>;
 	/**
 	 * The text content of the file to upload
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"], binaryData: [false] }
 	 */
 	fileContent?: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * The name the file should be saved as
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * By default the response only contain the ID of the file. If this option gets activated, it will resolve the data automatically.
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 * @default false
 	 */
 	resolveData?: boolean | Expression<boolean>;
 	/**
 	 * The IDs of the parent folders which contain the file
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 * @default []
 	 */
 	parents?: string | Expression<string>;
@@ -606,6 +717,7 @@ export type GoogleDriveV2FolderCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of folder to create
+	 * @displayOptions.show { operation: ["create"], resource: ["folder"] }
 	 */
 	name: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -617,6 +729,7 @@ export type GoogleDriveV2FolderDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the folder
+	 * @displayOptions.show { operation: ["delete", "share"], resource: ["folder"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
@@ -629,11 +742,14 @@ export type GoogleDriveV2FolderShareConfig = {
 	operation: 'share';
 	/**
 	 * The ID of the folder
+	 * @displayOptions.show { operation: ["delete", "share"], resource: ["folder"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
 	permissionsUi?: {
 		permissionsValues?: {
+			/** Role
+			 */
 			role?:
 				| 'commenter'
 				| 'fileOrganizer'
@@ -642,9 +758,21 @@ export type GoogleDriveV2FolderShareConfig = {
 				| 'reader'
 				| 'writer'
 				| Expression<string>;
+			/** Information about the different types can be found &lt;a href="https://developers.google.com/drive/api/v3/ref-roles"&gt;here&lt;/a&gt;
+			 */
 			type?: 'user' | 'group' | 'domain' | 'anyone' | Expression<string>;
+			/** The email address of the user or group to which this permission refers
+			 * @displayOptions.show { type: ["user", "group"] }
+			 */
 			emailAddress?: string | Expression<string>;
+			/** The domain to which this permission refers
+			 * @displayOptions.show { type: ["domain"] }
+			 */
 			domain?: string | Expression<string>;
+			/** Whether the permission allows the file to be discovered through search
+			 * @displayOptions.show { type: ["domain", "anyone"] }
+			 * @default false
+			 */
 			allowFileDiscovery?: boolean | Expression<boolean>;
 		};
 	};

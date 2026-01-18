@@ -23,6 +23,7 @@ export interface HtmlV12Params {
 		| Expression<string>;
 	/**
  * HTML template to render
+ * @displayOptions.show { operation: ["generateHtmlTemplate"] }
  * @default <!DOCTYPE html>
 
 <html>
@@ -69,17 +70,34 @@ console.log("Hello World!");
 	html?: string | Expression<string>;
 	/**
 	 * If HTML should be read from binary or JSON data
+	 * @displayOptions.show { operation: ["extractHtmlContent"] }
 	 * @default json
 	 */
 	sourceData?: 'binary' | 'json' | Expression<string>;
 	dataPropertyName: string | Expression<string>;
 	extractionValues?: {
 		values?: Array<{
+			/** The key under which the extracted value should be saved
+			 */
 			key?: string | Expression<string>;
+			/** The CSS selector to use
+			 */
 			cssSelector?: string | Expression<string>;
+			/** What kind of data should be returned
+			 * @default text
+			 */
 			returnValue?: 'attribute' | 'html' | 'text' | 'value' | Expression<string>;
+			/** The name of the attribute to return the value off
+			 * @displayOptions.show { returnValue: ["attribute"] }
+			 */
 			attribute?: string | Expression<string>;
+			/** Comma-separated list of selectors to skip in the text extraction
+			 * @displayOptions.show { returnValue: ["text"], @version: [{"_cnd":{"gt":1.1}}] }
+			 */
 			skipSelectors?: string | Expression<string>;
+			/** Whether to return the values as an array so if multiple ones get found they also get returned separately. If not set all will be returned as a single string.
+			 * @default false
+			 */
 			returnArray?: boolean | Expression<boolean>;
 		}>;
 	};

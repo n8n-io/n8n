@@ -22,10 +22,12 @@ export type RocketchatV1ChatPostMessageConfig = {
 	operation: 'postMessage';
 	/**
 	 * The channel name with the prefix in front of it
+	 * @displayOptions.show { resource: ["chat"], operation: ["postMessage"] }
 	 */
 	channel: string | Expression<string>;
 	/**
 	 * The text of the message to send, is optional because of attachments
+	 * @displayOptions.show { resource: ["chat"], operation: ["postMessage"] }
 	 */
 	text?: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;

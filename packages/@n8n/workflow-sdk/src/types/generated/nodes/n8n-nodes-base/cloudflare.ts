@@ -21,6 +21,7 @@ export type CloudflareV1ZoneCertificateDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["zoneCertificate"], operation: ["upload", "getMany", "get", "delete"] }
 	 */
 	zoneId: string | Expression<string>;
 	certificateId: string | Expression<string>;
@@ -32,6 +33,7 @@ export type CloudflareV1ZoneCertificateGetConfig = {
 	operation: 'get';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["zoneCertificate"], operation: ["upload", "getMany", "get", "delete"] }
 	 */
 	zoneId: string | Expression<string>;
 	certificateId: string | Expression<string>;
@@ -43,15 +45,18 @@ export type CloudflareV1ZoneCertificateGetManyConfig = {
 	operation: 'getMany';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["zoneCertificate"], operation: ["upload", "getMany", "get", "delete"] }
 	 */
 	zoneId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["zoneCertificate"], operation: ["getMany"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["zoneCertificate"], operation: ["getMany"], returnAll: [false] }
 	 * @default 25
 	 */
 	limit?: number | Expression<number>;
@@ -64,10 +69,12 @@ export type CloudflareV1ZoneCertificateUploadConfig = {
 	operation: 'upload';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["zoneCertificate"], operation: ["upload", "getMany", "get", "delete"] }
 	 */
 	zoneId: string | Expression<string>;
 	/**
 	 * The zone's leaf certificate
+	 * @displayOptions.show { resource: ["zoneCertificate"], operation: ["upload"] }
 	 */
 	certificate: string | Expression<string>;
 	privateKey: string | Expression<string>;

@@ -33,19 +33,23 @@ export interface ConvertKitTriggerV1Params {
 		| Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { event: ["formSubscribe"] }
 	 */
 	formId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { event: ["courseSubscribe", "courseComplete"] }
 	 */
 	courseId: string | Expression<string>;
 	/**
 	 * The URL of the initiating link
+	 * @displayOptions.show { event: ["linkClick"] }
 	 */
 	link: string | Expression<string>;
 	productId: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { event: ["tagAdd", "tagRemove"] }
 	 */
 	tagId: string | Expression<string>;
 }

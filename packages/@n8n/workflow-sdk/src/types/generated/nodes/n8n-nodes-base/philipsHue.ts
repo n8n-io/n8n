@@ -35,11 +35,13 @@ export type PhilipsHueV1LightGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["light"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["light"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -51,10 +53,12 @@ export type PhilipsHueV1LightUpdateConfig = {
 	operation: 'update';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["update"], resource: ["light"] }
 	 */
 	lightId: string | Expression<string>;
 	/**
 	 * On/Off state of the light
+	 * @displayOptions.show { operation: ["update"], resource: ["light"] }
 	 * @default true
 	 */
 	on: boolean | Expression<boolean>;

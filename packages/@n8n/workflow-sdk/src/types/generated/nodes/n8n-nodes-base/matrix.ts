@@ -27,10 +27,12 @@ export type MatrixV1EventGetConfig = {
 	operation: 'get';
 	/**
 	 * The room related to the event
+	 * @displayOptions.show { operation: ["get"], resource: ["event"] }
 	 */
 	roomId: string | Expression<string>;
 	/**
 	 * The room related to the event
+	 * @displayOptions.show { operation: ["get"], resource: ["event"] }
 	 */
 	eventId: string | Expression<string>;
 };
@@ -41,11 +43,13 @@ export type MatrixV1MediaUploadConfig = {
 	operation: 'upload';
 	/**
 	 * Room ID to post. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["media"], operation: ["upload"] }
 	 */
 	roomId: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * Type of file being uploaded
+	 * @displayOptions.show { resource: ["media"], operation: ["upload"] }
 	 * @default image
 	 */
 	mediaType: 'file' | 'image' | 'audio' | 'video' | Expression<string>;
@@ -58,24 +62,29 @@ export type MatrixV1MessageCreateConfig = {
 	operation: 'create';
 	/**
 	 * The channel to send the message to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["message"] }
 	 */
 	roomId: string | Expression<string>;
 	/**
 	 * The text to send
+	 * @displayOptions.show { operation: ["create"], resource: ["message"] }
 	 */
 	text?: string | Expression<string>;
 	/**
 	 * The type of message to send
+	 * @displayOptions.show { operation: ["create"], resource: ["message"] }
 	 * @default m.text
 	 */
 	messageType?: 'm.emote' | 'm.notice' | 'm.text' | Expression<string>;
 	/**
 	 * The format of the message's body
+	 * @displayOptions.show { operation: ["create"], resource: ["message"] }
 	 * @default plain
 	 */
 	messageFormat?: 'plain' | 'org.matrix.custom.html' | Expression<string>;
 	/**
 	 * A plain text message to display in case the HTML cannot be rendered by the Matrix client
+	 * @displayOptions.show { resource: ["message"], operation: ["create"], messageFormat: ["org.matrix.custom.html"] }
 	 */
 	fallbackText?: string | Expression<string>;
 };
@@ -86,15 +95,18 @@ export type MatrixV1MessageGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["message"], operation: ["getAll"] }
 	 */
 	roomId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["message"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["message"], operation: ["getAll"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -116,10 +128,12 @@ export type MatrixV1RoomInviteConfig = {
 	operation: 'invite';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["room"], operation: ["invite"] }
 	 */
 	roomId: string | Expression<string>;
 	/**
 	 * The fully qualified user ID of the invitee
+	 * @displayOptions.show { resource: ["room"], operation: ["invite"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -137,14 +151,17 @@ export type MatrixV1RoomKickConfig = {
 	operation: 'kick';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["room"], operation: ["kick"] }
 	 */
 	roomId: string | Expression<string>;
 	/**
 	 * The fully qualified user ID
+	 * @displayOptions.show { resource: ["room"], operation: ["kick"] }
 	 */
 	userId: string | Expression<string>;
 	/**
 	 * Reason for kick
+	 * @displayOptions.show { resource: ["room"], operation: ["kick"] }
 	 */
 	reason?: string | Expression<string>;
 };
@@ -155,6 +172,7 @@ export type MatrixV1RoomLeaveConfig = {
 	operation: 'leave';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["room"], operation: ["leave"] }
 	 */
 	roomId: string | Expression<string>;
 };
@@ -165,10 +183,12 @@ export type MatrixV1RoomMemberGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["roomMember"], operation: ["getAll"] }
 	 */
 	roomId: string | Expression<string>;
 	/**
 	 * Filtering options
+	 * @displayOptions.show { resource: ["roomMember"], operation: ["getAll"] }
 	 * @default {}
 	 */
 	filters?: Record<string, unknown>;

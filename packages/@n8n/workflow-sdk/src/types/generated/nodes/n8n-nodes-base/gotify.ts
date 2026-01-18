@@ -20,6 +20,7 @@ export type GotifyV1MessageCreateConfig = {
 	operation: 'create';
 	/**
 	 * The message to send, If using Markdown add the Content Type option
+	 * @displayOptions.show { resource: ["message"], operation: ["create"] }
 	 */
 	message: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -37,11 +38,13 @@ export type GotifyV1MessageGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["message"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["message"], operation: ["getAll"], returnAll: [false] }
 	 * @default 20
 	 */
 	limit?: number | Expression<number>;

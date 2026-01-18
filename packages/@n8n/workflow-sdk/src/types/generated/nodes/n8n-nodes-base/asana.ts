@@ -21,18 +21,22 @@ export type AsanaV1ProjectCreateConfig = {
 	operation: 'create';
 	/**
 	 * The name of the project to create
+	 * @displayOptions.show { operation: ["create"], resource: ["project"] }
 	 */
 	name: string | Expression<string>;
 	/**
 	 * The workspace to create the project in. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["project"] }
 	 */
 	workspace: string | Expression<string>;
 	/**
 	 * The team this project will be assigned to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["project"] }
 	 */
 	team?: string | Expression<string>;
 	/**
 	 * Other properties to set
+	 * @displayOptions.show { resource: ["project"], operation: ["create"] }
 	 * @default {}
 	 */
 	additionalFields?: Record<string, unknown>;
@@ -58,20 +62,24 @@ export type AsanaV1ProjectGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The workspace in which to get users. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["project"] }
 	 */
 	workspace: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["project"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["project"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Other properties to set
+	 * @displayOptions.show { resource: ["project"], operation: ["getAll"] }
 	 * @default {}
 	 */
 	additionalFields?: Record<string, unknown>;
@@ -83,14 +91,17 @@ export type AsanaV1ProjectUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The workspace in which to get users. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["update"], resource: ["project"] }
 	 */
 	workspace: string | Expression<string>;
 	/**
 	 * The ID of the project to update the data of
+	 * @displayOptions.show { operation: ["update"], resource: ["project"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Other properties to set
+	 * @displayOptions.show { resource: ["project"], operation: ["update"] }
 	 * @default {}
 	 */
 	updateFields?: Record<string, unknown>;
@@ -102,10 +113,12 @@ export type AsanaV1SubtaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * The task to operate on
+	 * @displayOptions.show { operation: ["create"], resource: ["subtask"] }
 	 */
 	taskId: string | Expression<string>;
 	/**
 	 * The name of the subtask to create
+	 * @displayOptions.show { operation: ["create"], resource: ["subtask"] }
 	 */
 	name: string | Expression<string>;
 	otherProperties?: Record<string, unknown>;
@@ -117,15 +130,18 @@ export type AsanaV1SubtaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The task to operate on
+	 * @displayOptions.show { operation: ["getAll"], resource: ["subtask"] }
 	 */
 	taskId: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["subtask"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["subtask"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -138,10 +154,12 @@ export type AsanaV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * The workspace to create the task in. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["create"], resource: ["task"] }
 	 */
 	workspace: string | Expression<string>;
 	/**
 	 * The name of the task to create
+	 * @displayOptions.show { operation: ["create"], resource: ["task"] }
 	 */
 	name: string | Expression<string>;
 	otherProperties?: Record<string, unknown>;
@@ -153,6 +171,7 @@ export type AsanaV1TaskDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The ID of the task to delete
+	 * @displayOptions.show { operation: ["delete"], resource: ["task"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -163,6 +182,7 @@ export type AsanaV1TaskGetConfig = {
 	operation: 'get';
 	/**
 	 * The ID of the task to get the data of
+	 * @displayOptions.show { operation: ["get"], resource: ["task"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -173,16 +193,19 @@ export type AsanaV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Properties to search for
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"] }
 	 * @default {}
 	 */
 	filters?: Record<string, unknown>;
@@ -194,14 +217,17 @@ export type AsanaV1TaskMoveConfig = {
 	operation: 'move';
 	/**
 	 * The ID of the task to be moved
+	 * @displayOptions.show { operation: ["move"], resource: ["task"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Project to show the sections of. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["move"], resource: ["task"] }
 	 */
 	projectId: string | Expression<string>;
 	/**
 	 * The Section to move the task to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["move"], resource: ["task"] }
 	 */
 	section: string | Expression<string>;
 };
@@ -212,10 +238,12 @@ export type AsanaV1TaskSearchConfig = {
 	operation: 'search';
 	/**
 	 * The workspace in which the task is searched. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["search"], resource: ["task"] }
 	 */
 	workspace: string | Expression<string>;
 	/**
 	 * Properties to search for
+	 * @displayOptions.show { operation: ["search"], resource: ["task"] }
 	 * @default {}
 	 */
 	searchTaskProperties?: Record<string, unknown>;
@@ -227,6 +255,7 @@ export type AsanaV1TaskUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The ID of the task to update the data of
+	 * @displayOptions.show { operation: ["update"], resource: ["task"] }
 	 */
 	id: string | Expression<string>;
 	otherProperties?: Record<string, unknown>;
@@ -238,19 +267,23 @@ export type AsanaV1TaskCommentAddConfig = {
 	operation: 'add';
 	/**
 	 * The ID of the task to add the comment to
+	 * @displayOptions.show { operation: ["add"], resource: ["taskComment"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether body is HTML or simple text
+	 * @displayOptions.show { operation: ["add"], resource: ["taskComment"] }
 	 * @default false
 	 */
 	isTextHtml?: boolean | Expression<boolean>;
 	/**
 	 * The plain text of the comment to add
+	 * @displayOptions.show { operation: ["add"], resource: ["taskComment"], isTextHtml: [false] }
 	 */
 	text: string | Expression<string>;
 	/**
 	 * Properties of the task comment
+	 * @displayOptions.show { operation: ["add"], resource: ["taskComment"] }
 	 * @default {}
 	 */
 	additionalFields?: Record<string, unknown>;
@@ -262,6 +295,7 @@ export type AsanaV1TaskCommentRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * The ID of the comment to be removed
+	 * @displayOptions.show { operation: ["remove"], resource: ["taskComment"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -272,14 +306,17 @@ export type AsanaV1TaskProjectAddConfig = {
 	operation: 'add';
 	/**
 	 * The ID of the task to add the project to
+	 * @displayOptions.show { operation: ["add"], resource: ["taskProject"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The project where the task will be added. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["add"], resource: ["taskProject"] }
 	 */
 	project: string | Expression<string>;
 	/**
 	 * Other properties to set
+	 * @displayOptions.show { resource: ["taskProject"], operation: ["add"] }
 	 * @default {}
 	 */
 	additionalFields?: Record<string, unknown>;
@@ -291,10 +328,12 @@ export type AsanaV1TaskProjectRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * The ID of the task to add the project to
+	 * @displayOptions.show { operation: ["remove"], resource: ["taskProject"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The project where the task will be removed from. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["remove"], resource: ["taskProject"] }
 	 */
 	project: string | Expression<string>;
 };
@@ -305,10 +344,12 @@ export type AsanaV1TaskTagAddConfig = {
 	operation: 'add';
 	/**
 	 * The ID of the task to add the tag to
+	 * @displayOptions.show { operation: ["add"], resource: ["taskTag"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The tag that should be added. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["add"], resource: ["taskTag"] }
 	 */
 	tag: string | Expression<string>;
 };
@@ -319,10 +360,12 @@ export type AsanaV1TaskTagRemoveConfig = {
 	operation: 'remove';
 	/**
 	 * The ID of the task to add the tag to
+	 * @displayOptions.show { operation: ["remove"], resource: ["taskTag"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * The tag that should be added. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["remove"], resource: ["taskTag"] }
 	 */
 	tag: string | Expression<string>;
 };
@@ -333,6 +376,7 @@ export type AsanaV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * An identifier for the user to get data of. Can be one of an email address,the globally unique identifier for the user, or the keyword me to indicate the current user making the request.
+	 * @displayOptions.show { operation: ["get"], resource: ["user"] }
 	 */
 	userId: string | Expression<string>;
 };
@@ -343,6 +387,7 @@ export type AsanaV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * The workspace in which to get users. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["getAll"], resource: ["user"] }
 	 */
 	workspace: string | Expression<string>;
 };

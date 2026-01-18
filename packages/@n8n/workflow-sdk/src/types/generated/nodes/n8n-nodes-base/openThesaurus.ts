@@ -19,6 +19,7 @@ export interface OpenThesaurusV1Params {
 	operation?: 'getSynonyms' | Expression<string>;
 	/**
 	 * The word to get synonyms for
+	 * @displayOptions.show { operation: ["getSynonyms"] }
 	 */
 	text: string | Expression<string>;
 	options?: Record<string, unknown>;

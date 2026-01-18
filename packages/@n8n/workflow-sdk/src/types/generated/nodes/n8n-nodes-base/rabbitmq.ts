@@ -20,15 +20,19 @@ export type RabbitmqV11QueueConfig = {
 	mode: 'queue';
 	/**
 	 * Name of the queue to publish to
+	 * @displayOptions.show { mode: ["queue"] }
+	 * @displayOptions.hide { operation: ["deleteMessage"] }
 	 */
 	queue?: string | Expression<string>;
 	/**
 	 * Whether to send the data the node receives as JSON
+	 * @displayOptions.show { operation: ["sendMessage"] }
 	 * @default true
 	 */
 	sendInputData?: boolean | Expression<boolean>;
 	/**
 	 * The message to be sent
+	 * @displayOptions.show { sendInputData: [false] }
 	 */
 	message?: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -39,24 +43,29 @@ export type RabbitmqV11ExchangeConfig = {
 	mode: 'exchange';
 	/**
 	 * Name of the exchange to publish to
+	 * @displayOptions.show { mode: ["exchange"] }
 	 */
 	exchange?: string | Expression<string>;
 	/**
 	 * Type of exchange
+	 * @displayOptions.show { mode: ["exchange"] }
 	 * @default fanout
 	 */
 	exchangeType?: 'direct' | 'topic' | 'headers' | 'fanout' | Expression<string>;
 	/**
 	 * The routing key for the message
+	 * @displayOptions.show { mode: ["exchange"] }
 	 */
 	routingKey?: string | Expression<string>;
 	/**
 	 * Whether to send the data the node receives as JSON
+	 * @displayOptions.show { operation: ["sendMessage"] }
 	 * @default true
 	 */
 	sendInputData?: boolean | Expression<boolean>;
 	/**
 	 * The message to be sent
+	 * @displayOptions.show { sendInputData: [false] }
 	 */
 	message?: string | Expression<string>;
 	options?: Record<string, unknown>;

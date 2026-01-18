@@ -21,10 +21,12 @@ export type DeepLV1LanguageTranslateConfig = {
 	operation: 'translate';
 	/**
 	 * Input text to translate
+	 * @displayOptions.show { operation: ["translate"] }
 	 */
 	text: string | Expression<string>;
 	/**
 	 * Language to translate to. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { operation: ["translate"] }
 	 */
 	translateTo: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

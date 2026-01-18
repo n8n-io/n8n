@@ -31,16 +31,19 @@ export type TodoistV22TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * The destination project. Choose from the list, or specify an ID.
+	 * @displayOptions.show { resource: ["task"], operation: ["create", "move"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	project: ResourceLocatorValue;
 	/**
 	 * Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 * @default []
 	 */
 	labels?: string[];
 	/**
 	 * Task content
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	content: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -66,11 +69,13 @@ export type TodoistV22TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -84,11 +89,14 @@ export type TodoistV22TaskMoveConfig = {
 	taskId: string | Expression<string>;
 	/**
 	 * The destination project. Choose from the list, or specify an ID.
+	 * @displayOptions.show { resource: ["task"], operation: ["create", "move"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	project: ResourceLocatorValue;
 	/**
 	 * Section to which you want move the task. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["move"] }
+	 * @displayOptions.hide { @version: [{"_cnd":{"gte":2.1}}] }
 	 */
 	section?: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -100,6 +108,7 @@ export type TodoistV22TaskQuickAddConfig = {
 	operation: 'quickAdd';
 	/**
 	 * Natural language text for quick adding task (e.g., "Buy milk @Grocery #shopping tomorrow"). It can include a due date in free form text, a project name starting with the "#" character (without spaces), a label starting with the "@" character, an assignee starting with the "+" character, a priority (e.g., p1), a deadline between "{}" (e.g. {in 3 days}), or a description starting from "//" until the end of the text.
+	 * @displayOptions.show { resource: ["task"], operation: ["quickAdd"] }
 	 */
 	text: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -126,6 +135,7 @@ export type TodoistV22ProjectArchiveConfig = {
 	operation: 'archive';
 	/**
 	 * The project ID - can be either a string or number
+	 * @displayOptions.show { resource: ["project"], operation: ["archive", "delete", "get", "getCollaborators", "unarchive", "update"] }
 	 */
 	projectId: string | Expression<string>;
 };
@@ -136,6 +146,7 @@ export type TodoistV22ProjectCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the project
+	 * @displayOptions.show { resource: ["project"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	projectOptions?: Record<string, unknown>;
@@ -147,6 +158,7 @@ export type TodoistV22ProjectDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The project ID - can be either a string or number
+	 * @displayOptions.show { resource: ["project"], operation: ["archive", "delete", "get", "getCollaborators", "unarchive", "update"] }
 	 */
 	projectId: string | Expression<string>;
 };
@@ -157,6 +169,7 @@ export type TodoistV22ProjectGetConfig = {
 	operation: 'get';
 	/**
 	 * The project ID - can be either a string or number
+	 * @displayOptions.show { resource: ["project"], operation: ["archive", "delete", "get", "getCollaborators", "unarchive", "update"] }
 	 */
 	projectId: string | Expression<string>;
 };
@@ -167,6 +180,7 @@ export type TodoistV22ProjectGetCollaboratorsConfig = {
 	operation: 'getCollaborators';
 	/**
 	 * The project ID - can be either a string or number
+	 * @displayOptions.show { resource: ["project"], operation: ["archive", "delete", "get", "getCollaborators", "unarchive", "update"] }
 	 */
 	projectId: string | Expression<string>;
 };
@@ -183,6 +197,7 @@ export type TodoistV22ProjectUnarchiveConfig = {
 	operation: 'unarchive';
 	/**
 	 * The project ID - can be either a string or number
+	 * @displayOptions.show { resource: ["project"], operation: ["archive", "delete", "get", "getCollaborators", "unarchive", "update"] }
 	 */
 	projectId: string | Expression<string>;
 };
@@ -193,6 +208,7 @@ export type TodoistV22ProjectUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The project ID - can be either a string or number
+	 * @displayOptions.show { resource: ["project"], operation: ["archive", "delete", "get", "getCollaborators", "unarchive", "update"] }
 	 */
 	projectId: string | Expression<string>;
 	projectUpdateFields?: Record<string, unknown>;
@@ -204,11 +220,13 @@ export type TodoistV22SectionCreateConfig = {
 	operation: 'create';
 	/**
 	 * The project to add the section to
+	 * @displayOptions.show { resource: ["section"], operation: ["create"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	sectionProject: ResourceLocatorValue;
 	/**
 	 * Name of the section
+	 * @displayOptions.show { resource: ["section"], operation: ["create"] }
 	 */
 	sectionName: string | Expression<string>;
 	sectionOptions?: Record<string, unknown>;
@@ -249,10 +267,12 @@ export type TodoistV22CommentCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the task to comment on
+	 * @displayOptions.show { resource: ["comment"], operation: ["create"] }
 	 */
 	commentTaskId: string | Expression<string>;
 	/**
 	 * Comment content
+	 * @displayOptions.show { resource: ["comment"], operation: ["create"] }
 	 */
 	commentContent: string | Expression<string>;
 };
@@ -292,6 +312,7 @@ export type TodoistV22LabelCreateConfig = {
 	operation: 'create';
 	/**
 	 * Name of the label
+	 * @displayOptions.show { resource: ["label"], operation: ["create"] }
 	 */
 	labelName: string | Expression<string>;
 	labelOptions?: Record<string, unknown>;
@@ -331,10 +352,12 @@ export type TodoistV22ReminderCreateConfig = {
 	operation: 'create';
 	/**
 	 * The ID of the task to attach reminder to
+	 * @displayOptions.show { resource: ["reminder"], operation: ["create"] }
 	 */
 	itemId: string | Expression<string>;
 	/**
 	 * How to specify when the reminder should trigger
+	 * @displayOptions.show { resource: ["reminder"], operation: ["create"] }
 	 * @default natural_language
 	 */
 	dueDateType:
@@ -345,18 +368,22 @@ export type TodoistV22ReminderCreateConfig = {
 		| Expression<string>;
 	/**
 	 * Human-readable date and time
+	 * @displayOptions.show { resource: ["reminder"], operation: ["create"], dueDateType: ["natural_language"] }
 	 */
 	natural_language_representation: string | Expression<string>;
 	/**
 	 * Full-day date in YYYY-MM-DD format
+	 * @displayOptions.show { resource: ["reminder"], operation: ["create"], dueDateType: ["full_day"] }
 	 */
 	date: string | Expression<string>;
 	/**
 	 * Floating date and time (no timezone)
+	 * @displayOptions.show { resource: ["reminder"], operation: ["create"], dueDateType: ["floating_time"] }
 	 */
 	datetime: string | Expression<string>;
 	/**
 	 * Timezone for the fixed timezone date
+	 * @displayOptions.show { resource: ["reminder"], operation: ["create"], dueDateType: ["fixed_timezone"] }
 	 */
 	timezone: string | Expression<string>;
 	reminderOptions?: Record<string, unknown>;
@@ -434,16 +461,19 @@ export type TodoistV1TaskCreateConfig = {
 	operation: 'create';
 	/**
 	 * The project you want to operate on. Choose from the list, or specify an ID.
+	 * @displayOptions.show { resource: ["task"], operation: ["create", "move", "sync"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	project: ResourceLocatorValue;
 	/**
 	 * Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 * @default []
 	 */
 	labels?: string[];
 	/**
 	 * Task content
+	 * @displayOptions.show { resource: ["task"], operation: ["create"] }
 	 */
 	content: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -469,11 +499,13 @@ export type TodoistV1TaskGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["task"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -487,11 +519,13 @@ export type TodoistV1TaskMoveConfig = {
 	taskId: string | Expression<string>;
 	/**
 	 * The project you want to operate on. Choose from the list, or specify an ID.
+	 * @displayOptions.show { resource: ["task"], operation: ["create", "move", "sync"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	project: ResourceLocatorValue;
 	/**
 	 * Section to which you want move the task. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["task"], operation: ["move"] }
 	 */
 	section?: string | Expression<string>;
 };

@@ -28,6 +28,7 @@ export interface KafkaV1Params {
 	sendInputData?: boolean | Expression<boolean>;
 	/**
 	 * The message to be sent
+	 * @displayOptions.show { sendInputData: [false] }
 	 */
 	message?: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
@@ -38,6 +39,7 @@ export interface KafkaV1Params {
 	useSchemaRegistry?: boolean | Expression<boolean>;
 	/**
 	 * URL of the schema registry
+	 * @displayOptions.show { useSchemaRegistry: [true] }
 	 */
 	schemaRegistryUrl: string | Expression<string>;
 	/**
@@ -47,20 +49,27 @@ export interface KafkaV1Params {
 	useKey?: boolean | Expression<boolean>;
 	/**
 	 * The message key
+	 * @displayOptions.show { useKey: [true] }
 	 */
 	key: string | Expression<string>;
 	/**
 	 * Namespace and Name of Schema in Schema Registry (namespace.name)
+	 * @displayOptions.show { useSchemaRegistry: [true] }
 	 */
 	eventName: string | Expression<string>;
 	headersUi?: {
 		headerValues?: Array<{
+			/** Key
+			 */
 			key?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * Header parameters as JSON (flat object)
+	 * @displayOptions.show { jsonParameters: [true] }
 	 */
 	headerParametersJson?: IDataObject | string | Expression<string>;
 	options?: Record<string, unknown>;

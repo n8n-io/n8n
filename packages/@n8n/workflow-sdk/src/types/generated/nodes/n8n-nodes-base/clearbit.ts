@@ -21,6 +21,7 @@ export type ClearbitV1CompanyAutocompleteConfig = {
 	operation: 'autocomplete';
 	/**
 	 * Name is the partial name of the company
+	 * @displayOptions.show { resource: ["company"], operation: ["autocomplete"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -31,6 +32,7 @@ export type ClearbitV1CompanyEnrichConfig = {
 	operation: 'enrich';
 	/**
 	 * The domain to look up
+	 * @displayOptions.show { resource: ["company"], operation: ["enrich"] }
 	 */
 	domain: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -42,6 +44,7 @@ export type ClearbitV1PersonEnrichConfig = {
 	operation: 'enrich';
 	/**
 	 * The email address to look up
+	 * @displayOptions.show { resource: ["person"], operation: ["enrich"] }
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;

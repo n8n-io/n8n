@@ -27,16 +27,19 @@ export type LcGoogleGeminiV11AudioAnalyzeConfig = {
 	inputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL(s) of the audio(s) to analyze, multiple URLs can be added separated by comma
+	 * @displayOptions.show { inputType: ["url"], operation: ["analyze"], resource: ["audio"] }
 	 */
 	audioUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the audio(s), seperate multiple field names with commas
 	 * @hint The name of the input field containing the binary file data to be processed
+	 * @displayOptions.show { inputType: ["binary"], operation: ["analyze"], resource: ["audio"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
 	/**
 	 * Whether to simplify the response or not
+	 * @displayOptions.show { operation: ["analyze"], resource: ["audio"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -51,16 +54,19 @@ export type LcGoogleGeminiV11AudioTranscribeConfig = {
 	inputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL(s) of the audio(s) to transcribe, multiple URLs can be added separated by comma
+	 * @displayOptions.show { inputType: ["url"], operation: ["transcribe"], resource: ["audio"] }
 	 */
 	audioUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the audio(s), seperate multiple field names with commas
 	 * @hint The name of the input field containing the binary file data to be processed
+	 * @displayOptions.show { inputType: ["binary"], operation: ["transcribe"], resource: ["audio"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
 	/**
 	 * Whether to simplify the response or not
+	 * @displayOptions.show { operation: ["transcribe"], resource: ["audio"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -76,16 +82,19 @@ export type LcGoogleGeminiV11DocumentAnalyzeConfig = {
 	inputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL(s) of the document(s) to analyze, multiple URLs can be added separated by comma
+	 * @displayOptions.show { inputType: ["url"], operation: ["analyze"], resource: ["document"] }
 	 */
 	documentUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the document(s), seperate multiple field names with commas
 	 * @hint The name of the input field containing the binary file data to be processed
+	 * @displayOptions.show { inputType: ["binary"], operation: ["analyze"], resource: ["document"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
 	/**
 	 * Whether to simplify the response or not
+	 * @displayOptions.show { operation: ["analyze"], resource: ["document"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -98,6 +107,7 @@ export type LcGoogleGeminiV11FileSearchCreateStoreConfig = {
 	operation: 'createStore';
 	/**
 	 * A human-readable name for the File Search store
+	 * @displayOptions.show { operation: ["createStore"], resource: ["fileSearch"] }
 	 */
 	displayName: string | Expression<string>;
 };
@@ -108,10 +118,12 @@ export type LcGoogleGeminiV11FileSearchDeleteStoreConfig = {
 	operation: 'deleteStore';
 	/**
 	 * The full name of the File Search store to delete (format: fileSearchStores/...)
+	 * @displayOptions.show { operation: ["deleteStore"], resource: ["fileSearch"] }
 	 */
 	fileSearchStoreName: string | Expression<string>;
 	/**
 	 * Whether to delete related Documents and objects. If false, deletion will fail if the store contains any Documents.
+	 * @displayOptions.show { operation: ["deleteStore"], resource: ["fileSearch"] }
 	 * @default false
 	 */
 	force?: boolean | Expression<boolean>;
@@ -123,11 +135,13 @@ export type LcGoogleGeminiV11FileSearchListStoresConfig = {
 	operation: 'listStores';
 	/**
 	 * Maximum number of File Search stores to return per page (max 20)
+	 * @displayOptions.show { operation: ["listStores"], resource: ["fileSearch"] }
 	 * @default 10
 	 */
 	pageSize?: number | Expression<number>;
 	/**
 	 * Token from a previous page to retrieve the next page of results
+	 * @displayOptions.show { operation: ["listStores"], resource: ["fileSearch"] }
 	 */
 	pageToken?: string | Expression<string>;
 };
@@ -138,20 +152,24 @@ export type LcGoogleGeminiV11FileSearchUploadToStoreConfig = {
 	operation: 'uploadToStore';
 	/**
 	 * The full name of the File Search store to upload to (format: fileSearchStores/...)
+	 * @displayOptions.show { operation: ["uploadToStore"], resource: ["fileSearch"] }
 	 */
 	fileSearchStoreName: string | Expression<string>;
 	/**
 	 * A human-readable name for the file (will be visible in citations)
+	 * @displayOptions.show { operation: ["uploadToStore"], resource: ["fileSearch"] }
 	 */
 	displayName: string | Expression<string>;
 	inputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL of the file to upload
+	 * @displayOptions.show { inputType: ["url"], operation: ["uploadToStore"], resource: ["fileSearch"] }
 	 */
 	fileUrl?: string | Expression<string>;
 	/**
 	 * Name of the binary property which contains the file
 	 * @hint The name of the input field containing the binary file data to be processed
+	 * @displayOptions.show { inputType: ["binary"], operation: ["uploadToStore"], resource: ["fileSearch"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -166,16 +184,19 @@ export type LcGoogleGeminiV11ImageAnalyzeConfig = {
 	inputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL(s) of the image(s) to analyze, multiple URLs can be added separated by comma
+	 * @displayOptions.show { inputType: ["url"], operation: ["analyze"], resource: ["image"] }
 	 */
 	imageUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the image(s), separate multiple field names with commas
 	 * @hint The name of the input field containing the binary file data to be processed
+	 * @displayOptions.show { inputType: ["binary"], operation: ["analyze"], resource: ["image"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
 	/**
 	 * Whether to simplify the response or not
+	 * @displayOptions.show { operation: ["analyze"], resource: ["image"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -189,6 +210,7 @@ export type LcGoogleGeminiV11ImageGenerateConfig = {
 	modelId: ResourceLocatorValue;
 	/**
 	 * A text description of the desired image(s)
+	 * @displayOptions.show { operation: ["generate"], resource: ["image"] }
 	 */
 	prompt?: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -201,13 +223,22 @@ export type LcGoogleGeminiV11ImageEditConfig = {
 	modelId: ResourceLocatorValue;
 	/**
 	 * Instruction describing how to edit the image
+	 * @displayOptions.show { operation: ["edit"], resource: ["image"] }
 	 */
 	prompt?: string | Expression<string>;
 	/**
 	 * Add one or more binary fields to include images with your prompt
+	 * @displayOptions.show { operation: ["edit"], resource: ["image"] }
 	 * @default {"values":[{"binaryPropertyName":"data"}]}
 	 */
-	images?: { values?: Array<{ binaryPropertyName?: string | Expression<string> }> };
+	images?: {
+		values?: Array<{
+			/** The name of the binary field containing the image data
+			 * @default data
+			 */
+			binaryPropertyName?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -218,11 +249,13 @@ export type LcGoogleGeminiV11FileUploadConfig = {
 	inputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL of the file to upload
+	 * @displayOptions.show { inputType: ["url"], operation: ["upload"], resource: ["file"] }
 	 */
 	fileUrl?: string | Expression<string>;
 	/**
 	 * Name of the binary property which contains the file
 	 * @hint The name of the input field containing the binary file data to be processed
+	 * @displayOptions.show { inputType: ["binary"], operation: ["upload"], resource: ["file"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
@@ -235,17 +268,24 @@ export type LcGoogleGeminiV11TextMessageConfig = {
 	modelId: ResourceLocatorValue;
 	messages?: {
 		values?: Array<{
+			/** The content of the message to be send
+			 */
 			content?: string | Expression<string>;
+			/** Role in shaping the model's response, it tells the model how it should behave and interact with the user
+			 * @default user
+			 */
 			role?: 'user' | 'model' | Expression<string>;
 		}>;
 	};
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
+	 * @displayOptions.show { operation: ["message"], resource: ["text"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
 	/**
 	 * Whether to attempt to return the response in JSON format
+	 * @displayOptions.show { operation: ["message"], resource: ["text"] }
 	 * @default false
 	 */
 	jsonOutput?: boolean | Expression<boolean>;
@@ -262,16 +302,19 @@ export type LcGoogleGeminiV11VideoAnalyzeConfig = {
 	inputType?: 'url' | 'binary' | Expression<string>;
 	/**
 	 * URL(s) of the video(s) to analyze, multiple URLs can be added separated by comma
+	 * @displayOptions.show { inputType: ["url"], operation: ["analyze"], resource: ["video"] }
 	 */
 	videoUrls?: string | Expression<string>;
 	/**
 	 * Name of the binary field(s) which contains the video(s), seperate multiple field names with commas
 	 * @hint The name of the input field containing the binary file data to be processed
+	 * @displayOptions.show { inputType: ["binary"], operation: ["analyze"], resource: ["video"] }
 	 * @default data
 	 */
 	binaryPropertyName?: string | Expression<string>;
 	/**
 	 * Whether to simplify the response or not
+	 * @displayOptions.show { operation: ["analyze"], resource: ["video"] }
 	 * @default true
 	 */
 	simplify?: boolean | Expression<boolean>;
@@ -285,10 +328,12 @@ export type LcGoogleGeminiV11VideoGenerateConfig = {
 	modelId: ResourceLocatorValue;
 	/**
 	 * A text description of the desired video
+	 * @displayOptions.show { operation: ["generate"], resource: ["video"] }
 	 */
 	prompt?: string | Expression<string>;
 	/**
 	 * Whether to return the video as a binary file or a URL that can be used to download the video later
+	 * @displayOptions.show { operation: ["generate"], resource: ["video"] }
 	 * @default video
 	 */
 	returnAs?: 'video' | 'url' | Expression<string>;
@@ -301,6 +346,7 @@ export type LcGoogleGeminiV11VideoDownloadConfig = {
 	operation: 'download';
 	/**
 	 * The URL from Google Gemini API to download the video from
+	 * @displayOptions.show { operation: ["download"], resource: ["video"] }
 	 */
 	url?: string | Expression<string>;
 	options?: Record<string, unknown>;

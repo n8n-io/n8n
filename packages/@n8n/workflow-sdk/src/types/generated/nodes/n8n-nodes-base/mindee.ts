@@ -18,6 +18,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../base'
 export interface MindeeV3Params {
 	/**
 	 * Which Mindee API Version to use
+	 * @displayOptions.show { @version: [1] }
 	 * @default 1
 	 */
 	apiVersion?: 1 | 3 | 4 | Expression<number>;

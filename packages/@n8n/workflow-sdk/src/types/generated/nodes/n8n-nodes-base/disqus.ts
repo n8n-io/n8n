@@ -21,6 +21,7 @@ export type DisqusV1ForumGetConfig = {
 	operation: 'get';
 	/**
 	 * The short name(aka ID) of the forum to get
+	 * @displayOptions.show { operation: ["get"], resource: ["forum"] }
 	 */
 	id: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -32,15 +33,18 @@ export type DisqusV1ForumGetCategoriesConfig = {
 	operation: 'getCategories';
 	/**
 	 * The short name(aka ID) of the forum to get Categories
+	 * @displayOptions.show { operation: ["getCategories"], resource: ["forum"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["forum"], operation: ["getCategories"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["forum"], operation: ["getCategories"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -53,15 +57,18 @@ export type DisqusV1ForumGetThreadsConfig = {
 	operation: 'getThreads';
 	/**
 	 * The short name(aka ID) of the forum to get Threads
+	 * @displayOptions.show { operation: ["getThreads"], resource: ["forum"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["forum"], operation: ["getThreads"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["forum"], operation: ["getThreads"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -74,15 +81,18 @@ export type DisqusV1ForumGetPostsConfig = {
 	operation: 'getPosts';
 	/**
 	 * The short name(aka ID) of the forum to get
+	 * @displayOptions.show { operation: ["getPosts"], resource: ["forum"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["forum"], operation: ["getPosts"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["forum"], operation: ["getPosts"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

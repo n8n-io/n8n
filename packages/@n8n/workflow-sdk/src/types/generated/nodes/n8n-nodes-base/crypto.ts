@@ -19,6 +19,7 @@ export interface CryptoV1Params {
 	action?: 'generate' | 'hash' | 'hmac' | 'sign' | Expression<string>;
 	/**
 	 * The hash type to use
+	 * @displayOptions.show { action: ["hash"] }
 	 * @default MD5
 	 */
 	type:
@@ -32,20 +33,24 @@ export interface CryptoV1Params {
 		| Expression<string>;
 	/**
 	 * Whether the data to hashed should be taken from binary field
+	 * @displayOptions.show { action: ["hash", "hmac"] }
 	 * @default false
 	 */
 	binaryData: boolean | Expression<boolean>;
 	/**
 	 * Name of the binary property which contains the input data
+	 * @displayOptions.show { action: ["hash", "hmac"], binaryData: [true] }
 	 * @default data
 	 */
 	binaryPropertyName: string | Expression<string>;
 	/**
 	 * The value that should be hashed
+	 * @displayOptions.show { action: ["hash"], binaryData: [false] }
 	 */
 	value: string | Expression<string>;
 	/**
 	 * Name of the property to which to write the hash
+	 * @displayOptions.show { action: ["hash"] }
 	 * @default data
 	 */
 	dataPropertyName: string | Expression<string>;
@@ -53,6 +58,7 @@ export interface CryptoV1Params {
 	secret: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { action: ["sign"] }
 	 */
 	algorithm:
 		| 'RSA-MD5'
@@ -110,15 +116,18 @@ export interface CryptoV1Params {
 		| Expression<string>;
 	/**
 	 * Private key to use when signing the string
+	 * @displayOptions.show { action: ["sign"] }
 	 */
 	privateKey: string | Expression<string>;
 	/**
 	 * Encoding that will be used to generate string
+	 * @displayOptions.show { action: ["generate"] }
 	 * @default uuid
 	 */
 	encodingType: 'ascii' | 'base64' | 'hex' | 'uuid' | Expression<string>;
 	/**
 	 * Length of the generated string
+	 * @displayOptions.show { action: ["generate"], encodingType: ["ascii", "base64", "hex"] }
 	 * @default 32
 	 */
 	stringLength?: number | Expression<number>;

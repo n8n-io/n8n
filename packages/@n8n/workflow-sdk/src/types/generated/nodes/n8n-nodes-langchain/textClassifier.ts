@@ -22,7 +22,11 @@ export interface LcTextClassifierV11Params {
 	inputText: string | Expression<string>;
 	categories?: {
 		categories?: Array<{
+			/** Category to add
+			 */
 			category?: string | Expression<string>;
+			/** Describe your category if it's not obvious
+			 */
 			description?: string | Expression<string>;
 		}>;
 	};

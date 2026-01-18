@@ -21,10 +21,12 @@ export type MailjetV1EmailSendConfig = {
 	operation: 'send';
 	/**
 	 * The title for the email
+	 * @displayOptions.show { resource: ["email"], operation: ["send"] }
 	 */
 	fromEmail: string | Expression<string>;
 	/**
 	 * Email address of the recipient. Multiple ones can be separated by comma.
+	 * @displayOptions.show { resource: ["email"], operation: ["send"] }
 	 */
 	toEmail: string | Expression<string>;
 	/**
@@ -33,21 +35,28 @@ export type MailjetV1EmailSendConfig = {
 	subject?: string | Expression<string>;
 	/**
 	 * Plain text message of email
+	 * @displayOptions.show { resource: ["email"], operation: ["send"] }
 	 */
 	text?: string | Expression<string>;
 	/**
 	 * HTML text message of email
+	 * @displayOptions.show { resource: ["email"], operation: ["send"] }
 	 */
 	html?: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * HTML text message of email
+	 * @displayOptions.show { resource: ["email"], operation: ["send"], jsonParameters: [true] }
 	 */
 	variablesJson?: string | Expression<string>;
 	variablesUi?: {
 		variablesValues?: Array<{
+			/** Name
+			 */
 			name?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -63,26 +72,34 @@ export type MailjetV1EmailSendTemplateConfig = {
 	subject?: string | Expression<string>;
 	/**
 	 * The title for the email
+	 * @displayOptions.show { resource: ["email"], operation: ["sendTemplate"] }
 	 */
 	fromEmail: string | Expression<string>;
 	/**
 	 * Email address of the recipient. Multiple ones can be separated by comma.
+	 * @displayOptions.show { resource: ["email"], operation: ["sendTemplate"] }
 	 */
 	toEmail: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { resource: ["email"], operation: ["sendTemplate"] }
 	 */
 	templateId: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	variablesUi?: {
 		variablesValues?: Array<{
+			/** Name
+			 */
 			name?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
 	/**
 	 * HTML text message of email
+	 * @displayOptions.show { resource: ["email"], operation: ["sendTemplate"], jsonParameters: [true] }
 	 */
 	variablesJson?: string | Expression<string>;
 };
@@ -97,10 +114,12 @@ export type MailjetV1SmsSendConfig = {
 	subject?: string | Expression<string>;
 	/**
 	 * Customizable sender name. Should be between 3 and 11 characters in length, only alphanumeric characters are allowed.
+	 * @displayOptions.show { resource: ["sms"], operation: ["send"] }
 	 */
 	from: string | Expression<string>;
 	/**
 	 * Message recipient. Should be between 3 and 15 characters in length. The number always starts with a plus sign followed by a country code, followed by the number. Phone numbers are expected to comply with the E.164 format.
+	 * @displayOptions.show { resource: ["sms"], operation: ["send"] }
 	 */
 	to: string | Expression<string>;
 	text: string | Expression<string>;

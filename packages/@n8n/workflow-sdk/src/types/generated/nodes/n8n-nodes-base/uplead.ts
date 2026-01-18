@@ -21,10 +21,12 @@ export type UpleadV1CompanyEnrichConfig = {
 	operation: 'enrich';
 	/**
 	 * The name of the company (e.g – amazon)
+	 * @displayOptions.show { resource: ["company"], operation: ["enrich"] }
 	 */
 	company?: string | Expression<string>;
 	/**
 	 * The domain name (e.g – amazon.com)
+	 * @displayOptions.show { resource: ["company"], operation: ["enrich"] }
 	 */
 	domain?: string | Expression<string>;
 };
@@ -35,18 +37,22 @@ export type UpleadV1PersonEnrichConfig = {
 	operation: 'enrich';
 	/**
 	 * Email address (e.g – mbenioff@salesforce.com)
+	 * @displayOptions.show { resource: ["person"], operation: ["enrich"] }
 	 */
 	email?: string | Expression<string>;
 	/**
 	 * First name of the person (e.g – Marc)
+	 * @displayOptions.show { resource: ["person"], operation: ["enrich"] }
 	 */
 	firstname?: string | Expression<string>;
 	/**
 	 * Last name of the person (e.g – Benioff)
+	 * @displayOptions.show { resource: ["person"], operation: ["enrich"] }
 	 */
 	lastname?: string | Expression<string>;
 	/**
 	 * The domain name (e.g – salesforce.com)
+	 * @displayOptions.show { resource: ["person"], operation: ["enrich"] }
 	 */
 	domain?: string | Expression<string>;
 };

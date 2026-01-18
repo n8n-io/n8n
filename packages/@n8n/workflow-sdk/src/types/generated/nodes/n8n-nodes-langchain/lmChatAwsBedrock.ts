@@ -19,11 +19,13 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../base'
 export interface LcLmChatAwsBedrockV11Params {
 	/**
 	 * Choose between on-demand foundation models or inference profiles
+	 * @displayOptions.show { @version: [{"_cnd":{"gte":1.1}}] }
 	 * @default onDemand
 	 */
 	modelSource?: 'onDemand' | 'inferenceProfile' | Expression<string>;
 	/**
 	 * The model which will generate the completion. &lt;a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html"&gt;Learn more&lt;/a&gt;.
+	 * @displayOptions.hide { modelSource: ["inferenceProfile"] }
 	 */
 	model?: string | Expression<string>;
 	/**

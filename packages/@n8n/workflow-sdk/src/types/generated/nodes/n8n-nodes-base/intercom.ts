@@ -22,21 +22,28 @@ export type IntercomV1CompanyCreateConfig = {
 	operation: 'create';
 	/**
 	 * The company ID you have defined for the company
+	 * @displayOptions.show { resource: ["company"], operation: ["create", "update"] }
 	 */
 	companyId?: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["company"], operation: ["create", "update"], jsonParameters: [true] }
 	 */
 	customAttributesJson?: IDataObject | string | Expression<string>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["company"], operation: ["create", "update"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	customAttributesUi?: {
 		customAttributesValues?: Array<{
+			/** Name
+			 */
 			name?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -48,10 +55,12 @@ export type IntercomV1CompanyGetConfig = {
 	operation: 'get';
 	/**
 	 * What property to use to query the company
+	 * @displayOptions.show { resource: ["company"], operation: ["get"] }
 	 */
 	selectBy?: 'companyId' | 'id' | 'name' | Expression<string>;
 	/**
 	 * View by value
+	 * @displayOptions.show { resource: ["company"], operation: ["get"] }
 	 */
 	value: string | Expression<string>;
 };
@@ -62,11 +71,13 @@ export type IntercomV1CompanyGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -79,21 +90,28 @@ export type IntercomV1CompanyUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The company ID you have defined for the company
+	 * @displayOptions.show { resource: ["company"], operation: ["create", "update"] }
 	 */
 	companyId?: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["company"], operation: ["create", "update"], jsonParameters: [true] }
 	 */
 	customAttributesJson?: IDataObject | string | Expression<string>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["company"], operation: ["create", "update"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	customAttributesUi?: {
 		customAttributesValues?: Array<{
+			/** Name
+			 */
 			name?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -106,15 +124,18 @@ export type IntercomV1CompanyUsersConfig = {
 	listBy?: 'id' | 'companyId' | Expression<string>;
 	/**
 	 * View by value
+	 * @displayOptions.show { resource: ["company"], operation: ["users"] }
 	 */
 	value: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["company"], operation: ["users"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["company"], operation: ["users"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -126,21 +147,28 @@ export type IntercomV1LeadCreateConfig = {
 	operation: 'create';
 	/**
 	 * The email of the user
+	 * @displayOptions.show { resource: ["lead"], operation: ["create"] }
 	 */
 	email: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["lead"], operation: ["create", "update"], jsonParameters: [true] }
 	 */
 	customAttributesJson?: IDataObject | string | Expression<string>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["lead"], operation: ["create", "update"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	customAttributesUi?: {
 		customAttributesValues?: Array<{
+			/** Name
+			 */
 			name?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -153,6 +181,7 @@ export type IntercomV1LeadDeleteConfig = {
 	deleteBy?: 'id' | 'userId' | Expression<string>;
 	/**
 	 * Delete by value
+	 * @displayOptions.show { resource: ["lead"], operation: ["delete"] }
 	 */
 	value: string | Expression<string>;
 };
@@ -163,10 +192,12 @@ export type IntercomV1LeadGetConfig = {
 	operation: 'get';
 	/**
 	 * The property to select the lead by
+	 * @displayOptions.show { resource: ["lead"], operation: ["get"] }
 	 */
 	selectBy?: 'email' | 'id' | 'userId' | 'phone' | Expression<string>;
 	/**
 	 * View by value
+	 * @displayOptions.show { resource: ["lead"], operation: ["get"] }
 	 */
 	value: string | Expression<string>;
 };
@@ -177,11 +208,13 @@ export type IntercomV1LeadGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["lead"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["lead"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -194,26 +227,34 @@ export type IntercomV1LeadUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The property via which to query the lead
+	 * @displayOptions.show { resource: ["lead"], operation: ["update"] }
 	 * @default id
 	 */
 	updateBy?: 'userId' | 'id' | Expression<string>;
 	/**
 	 * Value of the property to identify the lead to update
+	 * @displayOptions.show { resource: ["lead"], operation: ["update"] }
 	 */
 	value: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["lead"], operation: ["create", "update"], jsonParameters: [true] }
 	 */
 	customAttributesJson?: IDataObject | string | Expression<string>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["lead"], operation: ["create", "update"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	customAttributesUi?: {
 		customAttributesValues?: Array<{
+			/** Name
+			 */
 			name?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -225,25 +266,33 @@ export type IntercomV1UserCreateConfig = {
 	operation: 'create';
 	/**
 	 * Unique string identifier
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	identifierType?: 'userId' | 'email' | Expression<string>;
 	/**
 	 * Unique string identifier value
+	 * @displayOptions.show { resource: ["user"], operation: ["create"] }
 	 */
 	idValue: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["user"], operation: ["create", "update"], jsonParameters: [true] }
 	 */
 	customAttributesJson?: IDataObject | string | Expression<string>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["user"], operation: ["create", "update"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	customAttributesUi?: {
 		customAttributesValues?: Array<{
+			/** Name
+			 */
 			name?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};
@@ -255,6 +304,7 @@ export type IntercomV1UserDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * The Intercom defined ID representing the Lead
+	 * @displayOptions.show { resource: ["user"], operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -265,10 +315,12 @@ export type IntercomV1UserGetConfig = {
 	operation: 'get';
 	/**
 	 * The property to select the user by
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	selectBy?: 'id' | 'userId' | Expression<string>;
 	/**
 	 * View by value
+	 * @displayOptions.show { resource: ["user"], operation: ["get"] }
 	 */
 	value: string | Expression<string>;
 };
@@ -279,11 +331,13 @@ export type IntercomV1UserGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { resource: ["user"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -296,26 +350,34 @@ export type IntercomV1UserUpdateConfig = {
 	operation: 'update';
 	/**
 	 * The property via which to query the user
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 * @default id
 	 */
 	updateBy?: 'id' | 'email' | 'userId' | Expression<string>;
 	/**
 	 * Value of the property to identify the user to update
+	 * @displayOptions.show { resource: ["user"], operation: ["update"] }
 	 */
 	value: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["user"], operation: ["create", "update"], jsonParameters: [true] }
 	 */
 	customAttributesJson?: IDataObject | string | Expression<string>;
 	/**
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
+	 * @displayOptions.show { resource: ["user"], operation: ["create", "update"], jsonParameters: [false] }
 	 * @default {}
 	 */
 	customAttributesUi?: {
 		customAttributesValues?: Array<{
+			/** Name
+			 */
 			name?: string | Expression<string>;
+			/** Value
+			 */
 			value?: string | Expression<string>;
 		}>;
 	};

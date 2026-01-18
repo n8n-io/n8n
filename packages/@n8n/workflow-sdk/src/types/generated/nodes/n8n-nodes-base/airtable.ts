@@ -24,11 +24,13 @@ export type AirtableV21BaseGetManyConfig = {
 	operation: 'getMany';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["base"], operation: ["getMany"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["base"], operation: ["getMany"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -41,6 +43,7 @@ export type AirtableV21BaseGetSchemaConfig = {
 	operation: 'getSchema';
 	/**
 	 * The Airtable Base to retrieve the schema from
+	 * @displayOptions.show { resource: ["base"], operation: ["getSchema"] }
 	 * @default {"mode":"list","value":""}
 	 */
 	base: ResourceLocatorValue;
@@ -74,6 +77,7 @@ export type AirtableV21RecordDeleteRecordConfig = {
 	table: string | Expression<string>;
 	/**
 	 * ID of the record to delete. &lt;a href="https://support.airtable.com/docs/record-id" target="_blank"&gt;More info&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["record"], operation: ["deleteRecord"] }
 	 */
 	id: string | Expression<string>;
 };
@@ -86,10 +90,12 @@ export type AirtableV21RecordGetConfig = {
 	table: string | Expression<string>;
 	/**
 	 * ID of the record to get. &lt;a href="https://support.airtable.com/docs/record-id" target="_blank"&gt;More info&lt;/a&gt;.
+	 * @displayOptions.show { resource: ["record"], operation: ["get"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Additional options which decide which records should be returned
+	 * @displayOptions.show { resource: ["record"], operation: ["get"] }
 	 * @default {}
 	 */
 	options?: Record<string, unknown>;
@@ -104,30 +110,40 @@ export type AirtableV21RecordSearchConfig = {
 	/**
 	 * The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response. &lt;a href="https://support.airtable.com/docs/formula-field-reference" target="_blank"&gt;More info&lt;/a&gt;.
 	 * @hint If empty, all the records will be returned
+	 * @displayOptions.show { resource: ["record"], operation: ["search"] }
 	 */
 	filterByFormula?: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { resource: ["record"], operation: ["search"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { returnAll: [false], resource: ["record"], operation: ["search"] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Additional options which decide which records should be returned
+	 * @displayOptions.show { resource: ["record"], operation: ["search"] }
 	 * @default {}
 	 */
 	options?: Record<string, unknown>;
 	/**
 	 * Defines how the returned records should be ordered
+	 * @displayOptions.show { resource: ["record"], operation: ["search"] }
 	 * @default {}
 	 */
 	sort?: {
 		property?: Array<{
+			/** Name of the field to sort on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+			 */
 			field?: string | Expression<string>;
+			/** The sort direction
+			 * @default asc
+			 */
 			direction?: 'asc' | 'desc' | Expression<string>;
 		}>;
 	};
@@ -163,44 +179,53 @@ export type AirtableV1AirtableTokenApiConfig = {
 	table: ResourceLocatorValue;
 	/**
 	 * Whether all fields should be sent to Airtable or only specific ones
+	 * @displayOptions.show { operation: ["append"] }
 	 * @default true
 	 */
 	addAllFields?: boolean | Expression<boolean>;
 	/**
 	 * The name of fields for which data should be sent to Airtable
+	 * @displayOptions.show { addAllFields: [false], operation: ["append"] }
 	 * @default []
 	 */
 	fields: string | Expression<string>;
 	/**
 	 * ID of the record to delete
+	 * @displayOptions.show { operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["list"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["list"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether the attachment fields define in 'Download Fields' will be downloaded
+	 * @displayOptions.show { operation: ["list"] }
 	 * @default false
 	 */
 	downloadAttachments?: boolean | Expression<boolean>;
 	/**
 	 * Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.
+	 * @displayOptions.show { operation: ["list"], downloadAttachments: [true] }
 	 */
 	downloadFieldNames: string | Expression<string>;
 	/**
 	 * Additional options which decide which records should be returned
+	 * @displayOptions.show { operation: ["list"] }
 	 * @default {}
 	 */
 	additionalOptions?: Record<string, unknown>;
 	/**
 	 * Whether all fields should be sent to Airtable or only specific ones
+	 * @displayOptions.show { operation: ["update"] }
 	 * @default true
 	 */
 	updateAllFields?: boolean | Expression<boolean>;
@@ -217,44 +242,53 @@ export type AirtableV1AirtableOAuth2ApiConfig = {
 	table: ResourceLocatorValue;
 	/**
 	 * Whether all fields should be sent to Airtable or only specific ones
+	 * @displayOptions.show { operation: ["append"] }
 	 * @default true
 	 */
 	addAllFields?: boolean | Expression<boolean>;
 	/**
 	 * The name of fields for which data should be sent to Airtable
+	 * @displayOptions.show { addAllFields: [false], operation: ["append"] }
 	 * @default []
 	 */
 	fields: string | Expression<string>;
 	/**
 	 * ID of the record to delete
+	 * @displayOptions.show { operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["list"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["list"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether the attachment fields define in 'Download Fields' will be downloaded
+	 * @displayOptions.show { operation: ["list"] }
 	 * @default false
 	 */
 	downloadAttachments?: boolean | Expression<boolean>;
 	/**
 	 * Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.
+	 * @displayOptions.show { operation: ["list"], downloadAttachments: [true] }
 	 */
 	downloadFieldNames: string | Expression<string>;
 	/**
 	 * Additional options which decide which records should be returned
+	 * @displayOptions.show { operation: ["list"] }
 	 * @default {}
 	 */
 	additionalOptions?: Record<string, unknown>;
 	/**
 	 * Whether all fields should be sent to Airtable or only specific ones
+	 * @displayOptions.show { operation: ["update"] }
 	 * @default true
 	 */
 	updateAllFields?: boolean | Expression<boolean>;
@@ -271,44 +305,53 @@ export type AirtableV1AirtableApiConfig = {
 	table: ResourceLocatorValue;
 	/**
 	 * Whether all fields should be sent to Airtable or only specific ones
+	 * @displayOptions.show { operation: ["append"] }
 	 * @default true
 	 */
 	addAllFields?: boolean | Expression<boolean>;
 	/**
 	 * The name of fields for which data should be sent to Airtable
+	 * @displayOptions.show { addAllFields: [false], operation: ["append"] }
 	 * @default []
 	 */
 	fields: string | Expression<string>;
 	/**
 	 * ID of the record to delete
+	 * @displayOptions.show { operation: ["delete"] }
 	 */
 	id: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["list"] }
 	 * @default true
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["list"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
 	/**
 	 * Whether the attachment fields define in 'Download Fields' will be downloaded
+	 * @displayOptions.show { operation: ["list"] }
 	 * @default false
 	 */
 	downloadAttachments?: boolean | Expression<boolean>;
 	/**
 	 * Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.
+	 * @displayOptions.show { operation: ["list"], downloadAttachments: [true] }
 	 */
 	downloadFieldNames: string | Expression<string>;
 	/**
 	 * Additional options which decide which records should be returned
+	 * @displayOptions.show { operation: ["list"] }
 	 * @default {}
 	 */
 	additionalOptions?: Record<string, unknown>;
 	/**
 	 * Whether all fields should be sent to Airtable or only specific ones
+	 * @displayOptions.show { operation: ["update"] }
 	 * @default true
 	 */
 	updateAllFields?: boolean | Expression<boolean>;

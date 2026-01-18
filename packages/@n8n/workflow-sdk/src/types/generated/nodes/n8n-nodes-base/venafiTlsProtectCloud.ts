@@ -34,6 +34,7 @@ export type VenafiTlsProtectCloudV1CertificateDownloadConfig = {
 	keystorePassphrase: string | Expression<string>;
 	/**
 	 * The name of the input field containing the binary file data to be uploaded
+	 * @displayOptions.show { operation: ["download"], resource: ["certificate"] }
 	 * @default data
 	 */
 	binaryProperty: string | Expression<string>;
@@ -53,11 +54,13 @@ export type VenafiTlsProtectCloudV1CertificateGetManyConfig = {
 	operation: 'getMany';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getMany"], resource: ["certificate"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getMany"], resource: ["certificate"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
@@ -70,11 +73,13 @@ export type VenafiTlsProtectCloudV1CertificateRenewConfig = {
 	operation: 'renew';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["renew"], resource: ["certificate"] }
 	 */
 	applicationId?: string | Expression<string>;
 	existingCertificateId?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["renew"], resource: ["certificate"] }
 	 */
 	certificateIssuingTemplateId?: string | Expression<string>;
 	certificateSigningRequest?: string | Expression<string>;
@@ -87,15 +92,18 @@ export type VenafiTlsProtectCloudV1CertificateRequestCreateConfig = {
 	operation: 'create';
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["create"], resource: ["certificateRequest"] }
 	 */
 	applicationId?: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
+	 * @displayOptions.show { operation: ["create"], resource: ["certificateRequest"] }
 	 */
 	certificateIssuingTemplateId?: string | Expression<string>;
 	generateCsr?: boolean | Expression<boolean>;
 	/**
 	 * The Common Name field for the certificate Subject (CN)
+	 * @displayOptions.show { operation: ["create"], resource: ["certificateRequest"], generateCsr: [true] }
 	 * @default n8n.io
 	 */
 	commonName: string | Expression<string>;
@@ -117,11 +125,13 @@ export type VenafiTlsProtectCloudV1CertificateRequestGetManyConfig = {
 	operation: 'getMany';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getMany"], resource: ["certificateRequest"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getMany"], resource: ["certificateRequest"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;

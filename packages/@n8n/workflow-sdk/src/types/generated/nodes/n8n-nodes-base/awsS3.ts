@@ -21,6 +21,7 @@ export type AwsS3V2BucketCreateConfig = {
 	operation: 'create';
 	/**
 	 * A succinct description of the nature, symptoms, cause, or effect of the bucket
+	 * @displayOptions.show { resource: ["bucket"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -32,6 +33,7 @@ export type AwsS3V2BucketDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Name of the AWS S3 bucket to delete
+	 * @displayOptions.show { resource: ["bucket"], operation: ["delete"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -42,11 +44,13 @@ export type AwsS3V2BucketGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["bucket"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["bucket"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -59,11 +63,13 @@ export type AwsS3V2BucketSearchConfig = {
 	bucketName: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["search"], resource: ["bucket"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["search"], resource: ["bucket"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -76,10 +82,12 @@ export type AwsS3V2FileCopyConfig = {
 	operation: 'copy';
 	/**
 	 * The name of the source bucket should start with (/) and key name of the source object, separated by a slash (/)
+	 * @displayOptions.show { resource: ["file"], operation: ["copy"] }
 	 */
 	sourcePath: string | Expression<string>;
 	/**
 	 * The name of the destination bucket and key name of the destination object, separated by a slash (/)
+	 * @displayOptions.show { resource: ["file"], operation: ["copy"] }
 	 */
 	destinationPath: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -110,11 +118,13 @@ export type AwsS3V2FileGetAllConfig = {
 	bucketName: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["file"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["file"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -129,21 +139,31 @@ export type AwsS3V2FileUploadConfig = {
 	fileName: string | Expression<string>;
 	/**
 	 * Whether the data to upload should be taken from binary field
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 * @default true
 	 */
 	binaryData?: boolean | Expression<boolean>;
 	/**
 	 * The text content of the file to upload
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"], binaryData: [false] }
 	 */
 	fileContent?: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * Optional extra headers to add to the message (most headers are allowed)
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default {}
 	 */
 	tagsUi?: {
-		tagsValues?: Array<{ key?: string | Expression<string>; value?: string | Expression<string> }>;
+		tagsValues?: Array<{
+			/** Key
+			 */
+			key?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -171,11 +191,13 @@ export type AwsS3V2FolderGetAllConfig = {
 	bucketName: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["folder"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["folder"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -202,6 +224,7 @@ export type AwsS3V1BucketCreateConfig = {
 	operation: 'create';
 	/**
 	 * A succinct description of the nature, symptoms, cause, or effect of the bucket
+	 * @displayOptions.show { resource: ["bucket"], operation: ["create"] }
 	 */
 	name: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -213,6 +236,7 @@ export type AwsS3V1BucketDeleteConfig = {
 	operation: 'delete';
 	/**
 	 * Name of the AWS S3 bucket to delete
+	 * @displayOptions.show { resource: ["bucket"], operation: ["delete"] }
 	 */
 	name: string | Expression<string>;
 };
@@ -223,11 +247,13 @@ export type AwsS3V1BucketGetAllConfig = {
 	operation: 'getAll';
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["bucket"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["bucket"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -240,11 +266,13 @@ export type AwsS3V1BucketSearchConfig = {
 	bucketName: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["search"], resource: ["bucket"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["search"], resource: ["bucket"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -257,10 +285,12 @@ export type AwsS3V1FileCopyConfig = {
 	operation: 'copy';
 	/**
 	 * The name of the source bucket should start with (/) and key name of the source object, separated by a slash (/)
+	 * @displayOptions.show { resource: ["file"], operation: ["copy"] }
 	 */
 	sourcePath: string | Expression<string>;
 	/**
 	 * The name of the destination bucket and key name of the destination object, separated by a slash (/)
+	 * @displayOptions.show { resource: ["file"], operation: ["copy"] }
 	 */
 	destinationPath: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
@@ -291,11 +321,13 @@ export type AwsS3V1FileGetAllConfig = {
 	bucketName: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["file"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["file"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;
@@ -310,21 +342,31 @@ export type AwsS3V1FileUploadConfig = {
 	fileName: string | Expression<string>;
 	/**
 	 * Whether the data to upload should be taken from binary field
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"] }
 	 * @default true
 	 */
 	binaryData?: boolean | Expression<boolean>;
 	/**
 	 * The text content of the file to upload
+	 * @displayOptions.show { operation: ["upload"], resource: ["file"], binaryData: [false] }
 	 */
 	fileContent?: string | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * Optional extra headers to add to the message (most headers are allowed)
+	 * @displayOptions.show { resource: ["file"], operation: ["upload"] }
 	 * @default {}
 	 */
 	tagsUi?: {
-		tagsValues?: Array<{ key?: string | Expression<string>; value?: string | Expression<string> }>;
+		tagsValues?: Array<{
+			/** Key
+			 */
+			key?: string | Expression<string>;
+			/** Value
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 };
 
@@ -352,11 +394,13 @@ export type AwsS3V1FolderGetAllConfig = {
 	bucketName: string | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { operation: ["getAll"], resource: ["folder"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { operation: ["getAll"], resource: ["folder"], returnAll: [false] }
 	 * @default 100
 	 */
 	limit?: number | Expression<number>;

@@ -47,6 +47,7 @@ export interface GraphqlV11Params {
 	allowUnauthorizedCerts?: boolean | Expression<boolean>;
 	/**
 	 * The format for the query payload
+	 * @displayOptions.show { requestMethod: ["POST"], @version: [1] }
 	 * @default graphql
 	 */
 	requestFormat: 'graphql' | 'json' | Expression<string>;
@@ -56,10 +57,12 @@ export interface GraphqlV11Params {
 	query: string | Expression<string>;
 	/**
 	 * Query variables as JSON object
+	 * @displayOptions.show { requestFormat: ["json"], requestMethod: ["POST"] }
 	 */
 	variables?: IDataObject | string | Expression<string>;
 	/**
 	 * Name of operation to execute
+	 * @displayOptions.show { requestFormat: ["json"], requestMethod: ["POST"] }
 	 */
 	operationName?: string | Expression<string>;
 	/**
@@ -69,6 +72,7 @@ export interface GraphqlV11Params {
 	responseFormat?: 'json' | 'string' | Expression<string>;
 	/**
 	 * Name of the property to which to write the response data
+	 * @displayOptions.show { responseFormat: ["string"] }
 	 * @default data
 	 */
 	dataPropertyName: string | Expression<string>;
@@ -77,7 +81,14 @@ export interface GraphqlV11Params {
 	 * @default {}
 	 */
 	headerParametersUi?: {
-		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+		parameter?: Array<{
+			/** Name of the header
+			 */
+			name?: string | Expression<string>;
+			/** Value to set for the header
+			 */
+			value?: string | Expression<string>;
+		}>;
 	};
 }
 

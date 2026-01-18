@@ -27,11 +27,13 @@ export type GhostV1PostGetConfig = {
 	source?: 'adminApi' | 'contentApi' | Expression<string>;
 	/**
 	 * Get the post either by slug or ID
+	 * @displayOptions.show { source: ["contentApi", "adminApi"], resource: ["post"], operation: ["get"] }
 	 * @default id
 	 */
 	by: 'id' | 'slug' | Expression<string>;
 	/**
 	 * The ID or slug of the post to get
+	 * @displayOptions.show { source: ["contentApi", "adminApi"], resource: ["post"], operation: ["get"] }
 	 */
 	identifier: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -48,11 +50,13 @@ export type GhostV1PostGetAllConfig = {
 	source?: 'adminApi' | 'contentApi' | Expression<string>;
 	/**
 	 * Whether to return all results or only up to a given limit
+	 * @displayOptions.show { source: ["contentApi", "adminApi"], resource: ["post"], operation: ["getAll"] }
 	 * @default false
 	 */
 	returnAll?: boolean | Expression<boolean>;
 	/**
 	 * Max number of results to return
+	 * @displayOptions.show { source: ["adminApi", "contentApi"], resource: ["post"], operation: ["getAll"], returnAll: [false] }
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
