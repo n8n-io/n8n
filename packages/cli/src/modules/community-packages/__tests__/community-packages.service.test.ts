@@ -467,7 +467,7 @@ describe('CommunityPackagesService', () => {
 				1,
 				'npm',
 				['pack', `${PACKAGE_NAME}@latest`, `--registry=${testBlockRegistry}`, '--quiet'],
-				{ cwd: testBlockDownloadDir },
+				{ cwd: testBlockDownloadDir, shell: true },
 				expect.any(Function),
 			);
 
@@ -483,7 +483,7 @@ describe('CommunityPackagesService', () => {
 				3,
 				'npm',
 				['install', ...testBlockNpmInstallArgs.split(' ')],
-				{ cwd: testBlockPackageDir },
+				{ cwd: testBlockPackageDir, shell: true },
 				expect.any(Function),
 			);
 
