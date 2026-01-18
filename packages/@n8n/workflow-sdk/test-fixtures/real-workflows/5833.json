@@ -1,0 +1,601 @@
+{
+	"id": "C4GyUqmPvAFtDBbG",
+	"meta": {
+		"instanceId": "2df08f928998d4e5d8b5a6b8a989bb8e91873e1415dd987955b920ab774cea97",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "[IG] Carousel on IG",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "f0c8b3af-13db-4fdd-8cbc-46986ca7dd18",
+			"name": "Get image list from a Google Drive folder1",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [-340, 360],
+			"parameters": {
+				"filter": {
+					"folderId": {
+						"__rl": true,
+						"mode": "url",
+						"value": "={{ $('Get Execution for Carousel').item.json.Folder }}"
+					}
+				},
+				"options": {
+					"fields": ["id", "name", "thumbnailLink", "webViewLink"]
+				},
+				"resource": "fileFolder",
+				"returnAll": true,
+				"queryString": "="
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "51f669e2-d933-47ce-9892-ba18bfaf92de",
+			"name": "Get Execution for Carousel",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-760, 360],
+			"parameters": {
+				"options": {},
+				"filtersUI": {
+					"values": [
+						{
+							"lookupValue": "ToDo",
+							"lookupColumn": "Status"
+						},
+						{
+							"lookupValue": "Carousel",
+							"lookupColumn": "Type"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 1315784118,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WEUHeQXFMYsWVAW3DykWwpANxxD3DxH-S6c0i06dW1g/edit#gid=1315784118",
+					"cachedResultName": "Execute "
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1WEUHeQXFMYsWVAW3DykWwpANxxD3DxH-S6c0i06dW1g",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WEUHeQXFMYsWVAW3DykWwpANxxD3DxH-S6c0i06dW1g/edit?usp=drivesdk",
+					"cachedResultName": "0004_Master"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "8c2b669d-9185-469f-9084-7075ffce5a90",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-1020, 360],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e8656c07-d4a5-4f98-89d1-89dfb497d4eb",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2020, 40],
+			"parameters": {
+				"width": 904,
+				"height": 1074,
+				"content": "## 📸 Instagram Carousel Automation Flow (Simplified)\n\n### 🧩 Overview\n\n#### This n8n workflow automatically creates and publishes **Instagram Carousel posts** using data from a Google Sheet. It checks for content scheduled to be posted (marked by user as \"ToDo\"). The flow is scheduled to check the Google Sheet every 5 minutes.\n#### Once eligible content is found, the flow uploads images from the Google Drive folder to Cloudinary, prepares media containers via the Instagram Graph API, and publishes the carousel post.\n---\n## Preparation\n- Google Sheet file - [Sample](https://docs.google.com/spreadsheets/d/1WEUHeQXFMYsWVAW3DykWwpANxxD3DxH-S6c0i06dW1g/edit?usp=sharing)\n- Cloudinary account: How to set up Cloudinary - [Link](https://docs.google.com/document/d/1_KUPrmX0Df_WhsRvGvauWDkn5c__OLib/edit)\n- Instagram: access_token and ig_business_id\n\n\n## 🔁 Flow Steps\n#### 0. Preparation \n- Upload images to a Google Drive folder ([Sample](https://drive.google.com/drive/u/1/folders/1QYYlHaSXNj7pTV0gNhKVKPPhImrZAy84))\n- On the Google Sheet - Master file ([Sample](https://docs.google.com/spreadsheets/d/1WEUHeQXFMYsWVAW3DykWwpANxxD3DxH-S6c0i06dW1g/edit?usp=sharing)): Add a new record - input the folder link and IG contents \n- Change the status to \"ToDo\" for the Trigger\n\n#### 1. 🕒 Trigger (Scheduled)\n- **Node**: Schedule Trigger\n- **Runs**: Every 5 minutes (or any chosen interval)\n\n---\n\n#### 2. 📄 Read Google Sheet\n- **Node**: Google Sheets ([Sample](https://docs.google.com/spreadsheets/d/1WEUHeQXFMYsWVAW3DykWwpANxxD3DxH-S6c0i06dW1g/edit?usp=sharing))\n- **Operation**: Read all rows\n- **Columns Used**:\n  - `ExecuteId`\n  - `Folder` ([Google Drive folder URL](https://drive.google.com/drive/u/1/folders/1ZdlOczJHCTGcvWuzJ4CvzAa_9r0cXf5n))\n  - `Expected content` (used as caption)\n  - `Status` (must be `\"ToDo\"`)\n  - `Type` (should be `\"Carousel\"`)\n\n---\n\n### 3. ⏰ Filter Rows by Schedule\n- **Node**: Function\n- **Goal**: Keep only rows where:\n  - `Status` is `\"ToDo\"`"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "092a13f4-2b43-4685-8341-6b9cd46ba07b",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [300, 200],
+			"parameters": {
+				"width": 304,
+				"height": 354,
+				"content": "After creating account and folder on Cloudinary, make sure to update the following:\n<your-cloud-name>\n<your_upload_preset>\nto match your settings\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ac7daff2-beb3-43f6-a1df-995c77f8791a",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-420, 220],
+			"parameters": {
+				"width": 284,
+				"height": 354,
+				"content": "The Google Drive folder needs to be shared publicly (Anyone with the link can view)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fce26691-ff66-4bb7-8c9e-4d8afb18bf4c",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [680, 200],
+			"parameters": {
+				"width": 304,
+				"height": 354,
+				"content": "Update your instagram information below\n<your-instagram-access-token>\n<your-ig_user_id>"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "00027ef7-ece6-4b31-ad04-6508684b33ac",
+			"name": "Upload images to Cloudinary",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [420, 360],
+			"parameters": {
+				"url": "https://api.cloudinary.com/v1_1/<your-cloud-name>/image/upload",
+				"method": "POST",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "file",
+							"parameterType": "formBinaryData",
+							"inputDataFieldName": "data"
+						},
+						{
+							"name": "upload_preset",
+							"value": "<your_upload_preset>"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "7b22ae20-73c9-44f0-8f87-673836a47a25",
+			"name": "Setup for Instagram (access token, ig_business_id)",
+			"type": "n8n-nodes-base.set",
+			"position": [780, 360],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "5b2dad43-2ec9-4bc0-8427-c9bab6a5fc2c",
+							"name": "access_token",
+							"type": "string",
+							"value": "<your-instagram-access-token>"
+						},
+						{
+							"id": "55b08009-fd62-44b8-b21e-6dde6aa9594f",
+							"name": "ig_user_id",
+							"type": "string",
+							"value": "<your-ig_user_id>"
+						},
+						{
+							"id": "53127a63-5583-4a5b-84bf-d2efd439af2b",
+							"name": "image_url",
+							"type": "string",
+							"value": "={{ $json.url }}"
+						},
+						{
+							"id": "90a680ca-49c2-4b83-bbf4-45614e882c01",
+							"name": "caption",
+							"type": "string",
+							"value": "={{ $('Get Execution for Carousel').item.json['Expected content'] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8f7f2ba9-4157-40a2-8561-17e77c74baef",
+			"name": "Download Image from Google Drive (Carousel)",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [80, 360],
+			"parameters": {
+				"url": "=https://drive.google.com/uc?export=download&id={{ $json.id }}",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"responseFormat": "file"
+						}
+					}
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "09cb809c-9997-413c-b94f-9203e80eaa1d",
+			"name": "Create Media Container (Image)",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1100, 360],
+			"parameters": {
+				"url": "=https://graph.instagram.com/v23.0/{{ $json.ig_user_id }}/media",
+				"method": "POST",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"sendBody": true,
+				"contentType": "form-urlencoded",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "image_url",
+							"value": "={{ $json.image_url }}"
+						},
+						{
+							"name": "caption",
+							"value": "={{ $json.caption }}"
+						},
+						{
+							"name": "access_token",
+							"value": "={{ $json.access_token }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "d0453b3b-5c36-4a27-a808-65893674d451",
+			"name": "Combine Instagram media containers",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [1380, 360],
+			"parameters": {
+				"options": {
+					"mergeLists": true
+				},
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{
+							"fieldToAggregate": "body.id"
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "04b3998b-3fb1-4128-a77c-7ea8029235a0",
+			"name": "Create Media Container (Carousel)",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1700, 360],
+			"parameters": {
+				"url": "=https://graph.instagram.com/v23.0/{{ $('Setup for Instagram (access token, ig_business_id)').first().json.ig_user_id }}/media",
+				"method": "POST",
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true
+						}
+					}
+				},
+				"sendBody": true,
+				"contentType": "form-urlencoded",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "caption",
+							"value": "={{ $('Get Execution for Carousel').item.json['Expected content'] }}"
+						},
+						{
+							"name": "media_type",
+							"value": "=CAROUSEL"
+						},
+						{
+							"name": "children",
+							"value": "={{ $json.id }}"
+						},
+						{
+							"name": "access_token",
+							"value": "={{ $('Setup for Instagram (access token, ig_business_id)').first().json.access_token }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "662e0de0-26b0-4045-ae9e-e2f5b630419f",
+			"name": "Publish Instagram Carousel",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2020, 360],
+			"parameters": {
+				"url": "=https://graph.instagram.com/v23.0/{{ $('Setup for Instagram (access token, ig_business_id)').first().json.ig_user_id }}/media_publish",
+				"method": "POST",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"sendBody": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "creation_id",
+							"value": "={{ $json.body.id }}"
+						},
+						{
+							"name": "access_token",
+							"value": "={{ $('Setup for Instagram (access token, ig_business_id)').first().json.access_token }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "8f4ad80f-53e2-4c86-be4a-02f4f8bb630e",
+			"name": "Update Execute to \"Processed\"",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2280, 360],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Status": "Processed",
+						"ExecuteId": "={{ $('Get Execution for Carousel').item.json.ExecuteId }}"
+					},
+					"schema": [
+						{
+							"id": "ExecuteId",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "ExecuteId",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Folder",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Folder",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Expected content",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Expected content",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Language",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Language",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Status",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Type",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Type",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Schedule_at",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Schedule_at",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["ExecuteId"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 1315784118,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WEUHeQXFMYsWVAW3DykWwpANxxD3DxH-S6c0i06dW1g/edit#gid=1315784118",
+					"cachedResultName": "Execute "
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1WEUHeQXFMYsWVAW3DykWwpANxxD3DxH-S6c0i06dW1g",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WEUHeQXFMYsWVAW3DykWwpANxxD3DxH-S6c0i06dW1g/edit?usp=drivesdk",
+					"cachedResultName": "0004_Master"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "6b272ad0-76fd-407e-bf95-1329660d0e20",
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Get Execution for Carousel",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Execution for Carousel": {
+			"main": [
+				[
+					{
+						"node": "Get image list from a Google Drive folder1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Publish Instagram Carousel": {
+			"main": [
+				[
+					{
+						"node": "Update Execute to \"Processed\"",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload images to Cloudinary": {
+			"main": [
+				[
+					{
+						"node": "Setup for Instagram (access token, ig_business_id)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Media Container (Image)": {
+			"main": [
+				[
+					{
+						"node": "Combine Instagram media containers",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Media Container (Carousel)": {
+			"main": [
+				[
+					{
+						"node": "Publish Instagram Carousel",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Combine Instagram media containers": {
+			"main": [
+				[
+					{
+						"node": "Create Media Container (Carousel)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get image list from a Google Drive folder1": {
+			"main": [
+				[
+					{
+						"node": "Download Image from Google Drive (Carousel)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Image from Google Drive (Carousel)": {
+			"main": [
+				[
+					{
+						"node": "Upload images to Cloudinary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Setup for Instagram (access token, ig_business_id)": {
+			"main": [
+				[
+					{
+						"node": "Create Media Container (Image)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

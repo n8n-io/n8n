@@ -1,0 +1,413 @@
+{
+	"id": "abSdfsaYgkssXX7g",
+	"meta": {
+		"instanceId": "a4bfc93e975ca233ac45ed7c9227d84cf5a2329310525917adaf3312e10d5462",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Dynamically Selects Models Based on Input Type",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "daf34daa-19e5-42a8-b820-5aa3d78c29a4",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-528, -112],
+			"webhookId": "56b65a7f-0698-4e99-81eb-fd87e0cb5bfa",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "85be9290-50ac-457e-9fa1-0c00a88667da",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [160, -112],
+			"parameters": {
+				"text": "={{ $('When chat message received').item.json.chatInput }}",
+				"options": {
+					"returnIntermediateSteps": true
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "0721d812-2dc6-4069-87e6-844b8f94214b",
+			"name": "Model Selector",
+			"type": "@n8n/n8n-nodes-langchain.modelSelector",
+			"position": [80, 128],
+			"parameters": {
+				"rules": {
+					"rule": [
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "976d83bb-7e9e-4aab-9722-25a9e238164f",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.output.request_type }}",
+										"rightValue": "coding"
+									}
+								]
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "1e68688d-73fe-47c1-9b35-a1e226220bcd",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.output.request_type }}",
+										"rightValue": "reasoning"
+									}
+								]
+							},
+							"modelIndex": 2
+						},
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "61d58197-db59-4cd7-bc41-bbeaf5e7b069",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.output.request_type }}",
+										"rightValue": "general"
+									}
+								]
+							},
+							"modelIndex": 3
+						},
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "fca2ec99-fd1d-458f-9919-73bfbba55c4f",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.output.request_type }}",
+										"rightValue": "search"
+									}
+								]
+							},
+							"modelIndex": 4
+						}
+					]
+				},
+				"numberInputs": 4
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "449b0bae-3749-493d-b6f6-dad155537bc9",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [-80, 32],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"request_type\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t}\n}"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "03339701-3ed8-43c9-a490-3ebca30d39bb",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [400, 128],
+			"parameters": {
+				"sessionKey": "={{ $('When chat message received').item.json.sessionId }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "1d86d306-bbdd-45b0-9b96-fce0cbcdc0a0",
+			"name": "Request Type",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [-288, -112],
+			"parameters": {
+				"batching": {},
+				"messages": {
+					"messageValues": [
+						{
+							"message": "=Your task is to classify the type of request you receive as input.\nYou must provide the following output:\n- general: if it is a general request\n- reasoning: if it is a reasoning request\n- coding: if it is a request related to code development\n- search: if it is a request that involves the use of Google tools"
+						}
+					]
+				},
+				"hasOutputParser": true
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "f49883cd-fc48-4c26-8596-6267beb74c3d",
+			"name": "Opus 4",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"position": [-64, 352],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-sonnet-4-20250514",
+					"cachedResultName": "Claude 4 Sonnet"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"anthropicApi": {
+					"id": "credential-id",
+					"name": "anthropicApi Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "0f19c20b-298b-45d8-b855-3a92c0dac675",
+			"name": "Gemini Thinking Pro",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [80, 352],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.0-flash-thinking-exp"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d2676326-64f2-47db-84f4-17fbf194d31b",
+			"name": "GPT 4.1 mini",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [224, 352],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "1f8d38d9-0298-4588-a763-7fac0132edf5",
+			"name": "Perplexity",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+			"position": [352, 352],
+			"parameters": {
+				"model": "perplexity/sonar",
+				"options": {}
+			},
+			"credentials": {
+				"openRouterApi": {
+					"id": "credential-id",
+					"name": "openRouterApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fc7a67be-d46a-4fec-b1d2-9f8ce3b86462",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-320, 48],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "de2fc53a-bf97-475a-b978-0cde88483ee0",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-528, -416],
+			"parameters": {
+				"width": 624,
+				"height": 256,
+				"content": "## AI Orchestrator: dynamically Selects Models Based on Input Type\n\nThis workflow is designed to intelligently **route user queries to the most suitable large language model (LLM)** based on the type of request received in a chat environment. It uses structured classification and model selection to optimize both performance and cost-efficiency in AI-driven conversations.\n\nIt dynamically routes requests to specialized AI models based on content type, optimizing response quality and efficiency."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "d852ebdf-2860-4611-a58e-e58c8cd4cc35",
+	"connections": {
+		"Opus 4": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Model Selector",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Perplexity": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Model Selector",
+						"type": "ai_languageModel",
+						"index": 3
+					}
+				]
+			]
+		},
+		"GPT 4.1 mini": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Model Selector",
+						"type": "ai_languageModel",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Request Type": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Model Selector": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Request Type",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gemini Thinking Pro": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Model Selector",
+						"type": "ai_languageModel",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Request Type",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Request Type",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

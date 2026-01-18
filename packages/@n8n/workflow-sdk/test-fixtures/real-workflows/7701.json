@@ -1,0 +1,394 @@
+{
+	"id": "tMez4xptNdwuoUMa",
+	"meta": {
+		"instanceId": "dd69efaf8212c74ad206700d104739d3329588a6f3f8381a46a481f34c9cc281",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Real-Time Stock Price Monitor & Smart Alerts for Indian & US Markets",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "3a5d716d-1bc8-4aef-820c-a93125ee3d99",
+			"name": "Market Hours Trigger",
+			"type": "n8n-nodes-base.cron",
+			"position": [-352, 176],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "1e0a06c3-a7da-44ca-a47d-4821bf599049",
+			"name": "Read Stock Watchlist",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-128, 176],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=YOUR_GOOGLE_SHEET_ID_HERE"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "=YOUR_GOOGLE_SHEET_ID_HERE"
+				},
+				"authentication": "serviceAccount"
+			},
+			"credentials": {
+				"googleApi": {
+					"id": "credential-id",
+					"name": "googleApi Credential"
+				}
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "3fea256c-b34b-4200-8757-903fb7370183",
+			"name": "Parse Watchlist Data",
+			"type": "n8n-nodes-base.code",
+			"position": [96, 176],
+			"parameters": {
+				"jsCode": "const items = [];\nconst inputData = $input.all();\n\nfor (let i = 0; i < inputData.length; i++) {\n  const row = inputData[i].json;\n\n  // Validate required fields\n  if (row.symbol && row.upper_limit && row.lower_limit) {\n    items.push({\n      json: {\n        symbol: row.symbol,\n        upper_limit: parseFloat(row.upper_limit),\n        lower_limit: parseFloat(row.lower_limit),\n        direction: row.direction || 'both',\n        cooldown_minutes: parseInt(row.cooldown_minutes) || 15,\n        last_alert_price: parseFloat(row.last_alert_price) || 0,\n        last_alert_time: row.last_alert_time || ''\n      }\n    });\n  }\n}\n\nreturn items;\n"
+			},
+			"typeVersion": 2,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "ac5b2580-30a7-4fe3-934b-be3f075bfe7a",
+			"name": "Fetch Live Stock Price",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [320, 176],
+			"parameters": {
+				"url": "=https://api.twelvedata.com/time_series?symbol={{ $json.symbol }}&interval={{ $json.cooldown_minutes }}min&apikey=your_api_key_add_here",
+				"options": {
+					"response": {
+						"response": {
+							"neverError": true
+						}
+					}
+				}
+			},
+			"typeVersion": 4.1
+		},
+		{
+			"id": "1d750f99-a199-4f79-a916-a27d00e31106",
+			"name": "Smart Alert Logic",
+			"type": "n8n-nodes-base.code",
+			"position": [544, 176],
+			"parameters": {
+				"jsCode": "const watchlist = $('Parse Watchlist Data').first().json;\n\nconst symbol = watchlist.symbol;\nconst upperLimit = parseFloat(watchlist.upper_limit);\nconst lowerLimit = parseFloat(watchlist.lower_limit);\n\nconst values = $input.first().json.values;\n\nlet alerts = [];\n\nfor (let i = 0; i < Math.min(20, values.length); i++) {\n  const datetime = values[i].datetime;\n  const closePrice = parseFloat(values[i].close);\n\n  if (closePrice >= upperLimit) {\n    alerts.push({\n      symbol: symbol,\n      status: 'UP',\n      price: closePrice,\n      limit: upperLimit,\n      datetime: datetime,\n      message: `${datetime} - ${symbol} crossed UP limit. Current Price: ${closePrice}`\n    });\n  } else if (closePrice <= lowerLimit) {\n    alerts.push({\n      symbol: symbol,\n      status: 'DOWN',\n      price: closePrice,\n      limit: lowerLimit,\n      datetime: datetime,\n      message: `${datetime} - ${symbol} crossed DOWN limit. Current Price: ${closePrice}`\n    });\n  }\n}\n\nreturn alerts.length ? alerts.map(alert => ({ json: alert })) : [{ json: { message: 'No alerts' } }];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "3ecf4f65-5761-4aef-95af-2ae934bbe350",
+			"name": "Check Alert Conditions",
+			"type": "n8n-nodes-base.if",
+			"position": [768, 176],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 1,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "8e7f6d5c-4b3a-2910-8765-fedcba098765",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty"
+							},
+							"leftValue": "={{ $json.alertMessage }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "f11c4e27-caf8-4db8-891d-08c034696a0b",
+			"name": "Send Email Alert",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [992, -16],
+			"webhookId": "afa5fdce-820a-4c51-bde5-6fd1b2970351",
+			"parameters": {
+				"text": "=🚨 Stock Alert: {{ $('Smart Alert Logic').item.json.message }}",
+				"options": {},
+				"subject": "=🚨 Stock Alert: {{ $('Smart Alert Logic').item.json.message }}",
+				"toEmail": "user@example.com",
+				"fromEmail": "user@example.com",
+				"emailFormat": "text"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "dfbdf149-cec3-4cba-b341-a86a23b44b16",
+			"name": "Send Telegram Alert",
+			"type": "n8n-nodes-base.telegram",
+			"position": [992, 368],
+			"webhookId": "921c67ea-1155-4f10-86fb-a568d98a88a5",
+			"parameters": {
+				"text": "={{ $json.alert_message }}",
+				"chatId": "YOUR_TELEGRAM_CHAT_ID",
+				"additionalFields": {
+					"parse_mode": "HTML"
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6c24ea09-602b-4347-8501-bbaf943332d9",
+			"name": "Update Alert History",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [992, 176],
+			"parameters": {
+				"columns": {
+					"value": {},
+					"schema": [],
+					"mappingMode": "autoMapInputData",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": "Sheet1",
+				"documentId": "YOUR_GOOGLE_SHEET_ID_HERE",
+				"authentication": "serviceAccount"
+			},
+			"credentials": {
+				"googleApi": {
+					"id": "credential-id",
+					"name": "googleApi Credential"
+				}
+			},
+			"typeVersion": 4
+		},
+		{
+			"id": "081864e8-cfd4-4fa3-9521-63b0c8940a1e",
+			"name": "Alert Status Check",
+			"type": "n8n-nodes-base.if",
+			"position": [1216, 176],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "success-condition",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty"
+							},
+							"leftValue": "={{ $json.symbol }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "5c24217a-8b4a-4f2a-8f10-6eedfa2e3781",
+			"name": "Success Notification",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [1440, 80],
+			"webhookId": "59f9f4e5-730a-4d15-99d3-0aa6d8128aa5",
+			"parameters": {
+				"options": {},
+				"subject": "✅ Stock Monitor: Alert Sent Successfully",
+				"toEmail": "user@example.com",
+				"fromEmail": "user@example.com"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "5d6a13f3-502f-43e3-a580-8323ee791e2e",
+			"name": "Error Notification",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [1440, 272],
+			"webhookId": "31a88e41-fb2a-4280-bbf9-9cd58607d94f",
+			"parameters": {
+				"options": {},
+				"subject": "❌ Stock Monitor: Alert Failed",
+				"toEmail": "user@example.com",
+				"fromEmail": "user@example.com"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "2cfd4cd7-60f7-4035-b359-cabb05443a41",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [48, -544],
+			"parameters": {
+				"width": 800,
+				"height": 480,
+				"content": "## 📈 Real-Time Stock Price Monitor & Smart Alerts\n### Monitor Indian (NSE/BSE) and US stock markets with intelligent price alerts, cooldown periods, and multi-channel notifications (Email + Telegram). Automatically tracks price movements and sends alerts when stocks cross predefined upper/lower limits.\n### Perfect for day traders, investors, and portfolio managers who need instant notifications for price breakouts and breakdowns.\n\n\n\n\n## Google Sheets Setup:\n### Create a Google Sheet with these columns (in exact order):\n\nA: symbol (e.g., TCS, AAPL, RELIANCE.BSE)\nB: upper_limit (e.g., 4000)\nC: lower_limit (e.g., 3600)\nD: direction (both/above/below)\nE: cooldown_minutes (e.g., 15)\nF: last_alert_price (auto-updated)\nG: last_alert_time (auto-updated)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "781ab2c1-1f5d-4498-ac06-ae7d3f918652",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-736, -528],
+			"parameters": {
+				"color": 4,
+				"width": 640,
+				"height": 480,
+				"content": "## 🔧 How It Works\n\n**📊 Market Hours Trigger** - Runs every 2 minutes during market hours\n**📋 Read Stock Watchlist** - Fetches your stock list from Google Sheets\n**🔍 Parse Watchlist Data** - Processes stock symbols and alert parameters\n**💰 Fetch Live Stock Price** - Gets real-time prices from Twelve Data API\n**🧠 Smart Alert Logic** - Intelligent price checking with cooldown periods\n**⚡ Check Alert Conditions** - Validates if alerts should be triggered\n**📧 Send Email Alert** - Sends detailed email notifications\n**📱 Send Telegram Alert** - Instant mobile notifications\n**📝 Update Alert History** - Records alert timestamps in Google Sheets\n**✅ Alert Status Check** - Monitors workflow success/failure\n**🔔 Success/Error Notifications** - Admin notifications for monitoring\n\n### 🎯 Key Features:\n- **Smart Cooldown**: Prevents alert spam\n- **Multi-Market**: Supports Indian & US stocks\n- **Dual Alerts**: Email + Telegram notifications\n- **Auto-Update**: Tracks last alert times\n- **Error Handling**: Built-in failure notifications"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "1cd6bdbd-412e-4ea3-95cc-b5a718ef79da",
+	"connections": {
+		"Smart Alert Logic": {
+			"main": [
+				[
+					{
+						"node": "Check Alert Conditions",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Alert Status Check": {
+			"main": [
+				[
+					{
+						"node": "Success Notification",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error Notification",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Market Hours Trigger": {
+			"main": [
+				[
+					{
+						"node": "Read Stock Watchlist",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse Watchlist Data": {
+			"main": [
+				[
+					{
+						"node": "Fetch Live Stock Price",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Stock Watchlist": {
+			"main": [
+				[
+					{
+						"node": "Parse Watchlist Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Alert History": {
+			"main": [
+				[
+					{
+						"node": "Alert Status Check",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Alert Conditions": {
+			"main": [
+				[
+					{
+						"node": "Send Email Alert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Telegram Alert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Alert History",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Live Stock Price": {
+			"main": [
+				[
+					{
+						"node": "Smart Alert Logic",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

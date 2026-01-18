@@ -1,0 +1,662 @@
+{
+	"id": "",
+	"meta": {},
+	"name": "Veo3 Instagram Agent Workflow",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "748cbf5d-c44f-4d0c-97ad-6c53dfbe1d79",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-180, -20],
+			"webhookId": "6d4edfc3-f45e-4404-a2bd-f5a740de6667",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "85e110c8-3655-4f8a-b4e0-cb0fa9d8023c",
+			"name": "AI Video Prompt Agent",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [40, -20],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4",
+					"cachedResultName": "GPT-4"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "={{ $json.chatInput }}"
+						},
+						{
+							"role": "system",
+							"content": "You are a creative video prompt generator for short-form reels (e.g., Instagram, TikTok). Based on:\n\nThe chat input of the user\n\nYour task is to craft an elaborate, visually descriptive video generation prompt suitable for input into the Seedance/Veo3 API.\n\n🛑 Do not include any extra explanation, formatting, or commentary. Your entire output must be the exact prompt to pass into the video generator.\n\nThe prompt should:\n– Be under 100 words\n– Describe the visual elements, tone, and motion clearly\n– Reflect the thematic visual in a coherent manner\n\nExample of your expected output format:\n\n“A close-up slow-motion shot of a glass perfume bottle as morning sunlight filters through mist. The background shows soft-focus wildflowers, matching the theme of natural beauty and calm. Overlay text: ‘Nature’s Elegance. Reinvented.’ Trend-inspired styling based on the ‘quiet luxury’ aesthetic. For Instagram.”"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "6b98147c-69de-46e6-9be5-868be53436ec",
+			"name": "30 Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [620, -20],
+			"webhookId": "feb86a07-9431-4fde-8f41-8145483921e1",
+			"parameters": {
+				"amount": 30
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "412c35be-e37d-4373-aea7-a9d438dff8ee",
+			"name": "HTTP Get Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [840, -20],
+			"parameters": {
+				"url": "=https://api.wavespeed.ai/api/v3/predictions/{{ $json.data.id }}/result",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "fd4495d3-a62e-4eb5-844a-3917a187915e",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [1060, -20],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "57f70829-d058-494e-b438-7ce9dc8a6384",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.data.status }}",
+							"rightValue": "processing"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "a733eb21-21a4-4421-ba7e-54e888f1360d",
+			"name": "Wait 30 Secs",
+			"type": "n8n-nodes-base.wait",
+			"position": [1020, 180],
+			"webhookId": "0f2d17ef-dde0-41d6-b29e-0896907f75a0",
+			"parameters": {
+				"amount": 30
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "caf8768f-b5c0-4409-a5d8-26903819affa",
+			"name": "Caption Agent",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [1280, -20],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "chatgpt-4o-latest",
+					"cachedResultName": "CHATGPT-4O-LATEST"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=Based on this video generation prompt, create an impactful accompanying caption for the Instagram Post: {{ $('AI Video Prompt Agent').item.json.message.content }}"
+						},
+						{
+							"role": "system",
+							"content": "You're an Instagram Caption copywriter. You'll receive a set of video prompt message that is used for generating an Instagram short reel video. Your job is to write an effective accompanying caption. Language style should be playful and impactful."
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "a4b6823c-5613-4005-8027-7d572b5ac16e",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [1860, -20],
+			"parameters": {
+				"mode": "raw",
+				"options": {},
+				"jsonOutput": "{}"
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "3fcb1142-1fc0-48a2-8b98-029e71f5bbd8",
+			"name": "Upload Bloatato",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2060, -20],
+			"parameters": {
+				"url": "https://backend.blotato.com/v2/media",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "url",
+							"value": "={{ $('Google Sheet Ready To Post').item.json['Video URL (google drive)'] }}"
+						}
+					]
+				},
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "133122f3-3121-493c-a8de-0143e6c4bb8f",
+			"name": "Google Sheets1",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2500, -20],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Status": "Posted",
+						"Video URL (google drive)": "={{ $('Google Sheet Ready To Post').item.json['Video URL (google drive)'] }}"
+					},
+					"schema": [
+						{
+							"id": "Video Description / Prompt",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Video Description / Prompt",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Video URL (google drive)",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Video URL (google drive)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Caption",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Caption",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Status",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Video URL (google drive)"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": "",
+				"documentId": ""
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "5e9c7145-face-4312-957e-189be416d08e",
+			"name": "Publish to IG",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2260, -20],
+			"parameters": {
+				"url": "https://backend.blotato.com/v2/posts",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"post\": {\n    \"target\": {\n      \"targetType\": \"instagram\"\n    },\n    \"content\": {\n      \"text\": {{ $('Google Sheet Ready To Post').item.json.Caption.toJsonString() }},\n      \"platform\": \"instagram\",\n      \"mediaUrls\": [\"{{ $json.url }}\"]\n    },\n    \"accountId\": \"{{ YOUR_INSTAGRAM_ID }}\"\n  }\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "cf959117-131c-424a-9dcc-f140c745b9c3",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-300, -260],
+			"parameters": {
+				"width": 300,
+				"height": 820,
+				"content": "Chat Trigger"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9bdaebd2-89f6-4200-8039-fcb2c865d8dd",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [20, -260],
+			"parameters": {
+				"color": 4,
+				"width": 300,
+				"height": 820,
+				"content": "Video Prompt Agent"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "499c2aa4-053b-4afc-8451-2c24576bcab3",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [340, -260],
+			"parameters": {
+				"color": 5,
+				"height": 820,
+				"content": "Video Prompt Agent"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e9c9f126-d4df-4ed7-a623-b2597874ce08",
+			"name": "Veo3 Video Generator",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [400, -20],
+			"parameters": {
+				"url": "https://api.wavespeed.ai/api/v3/google/veo3-fast",
+				"method": "POST",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"sendBody": true,
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "aspect_ratio",
+							"value": "9:16"
+						},
+						{
+							"name": "duration",
+							"value": "8"
+						},
+						{
+							"name": "enable_prompt_expansion",
+							"value": "true"
+						},
+						{
+							"name": "generate_audio",
+							"value": "true"
+						},
+						{
+							"name": "prompt",
+							"value": "={{ $json.message.content }}"
+						}
+					]
+				},
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ee9bda38-b08a-4a5b-88b5-553ba786d2fd",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [600, -260],
+			"parameters": {
+				"color": 6,
+				"width": 640,
+				"height": 820,
+				"content": "Veo3 Get Requst Loop"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f8889ae0-2605-4427-bae4-a4214cc17ca4",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1260, -260],
+			"parameters": {
+				"color": 3,
+				"width": 320,
+				"height": 820,
+				"content": "Caption Agent"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9466e6a7-ead7-4815-83dd-f8d41d2228c2",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1600, -260],
+			"parameters": {
+				"color": 2,
+				"width": 820,
+				"height": 820,
+				"content": "Upload to Google Sheet, Blotato and Post"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "69b4f195-0227-4402-bd3b-256155df9f53",
+			"name": "Google Sheet Ready To Post",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1680, -20],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Status": "Ready to Post",
+						"Caption": "={{ $json.message.content }}",
+						"Video URL (google drive)": "={{ $('If').item.json.data.outputs[0] }}",
+						"Video Description / Prompt": "={{ $('AI Video Prompt Agent').item.json.message.content }}"
+					},
+					"schema": [
+						{
+							"id": "Video Description / Prompt",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Video Description / Prompt",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Video URL (google drive)",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Video URL (google drive)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Caption",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Caption",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Status",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": "",
+				"documentId": ""
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "da6abba8-5722-4e4c-8403-9e3ea6655573",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2440, -260],
+			"parameters": {
+				"color": 4,
+				"width": 300,
+				"height": 820,
+				"content": "Update Google Sheet"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "46d2c455-ee23-43aa-876a-0b934e637dc8",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1060, -260],
+			"parameters": {
+				"width": 700,
+				"height": 1020,
+				"content": "📱 Veo3 Instagram Agent – Create & Auto-Post Reels with AI\nDescription:\nThis no-code workflow automates the full pipeline of generating and publishing Instagram Reels using Veo3 (via Wavespeed API). From prompt to post, it handles content ideation, short-form video generation, caption writing, logging, and even automatic publishing to Instagram via Blotato.\n\nPerfect for creators, brands, and marketers who want to scale content creation without needing to shoot or edit videos manually.\n\n🔗  Watch the full step-by-step tutorial on how to build this workflow:\nhttps://www.youtube.com/@Automatewithmarc\n\n🚀 What This Workflow Does:\nTrigger via Chat or Telegram\n Start with a simple message like:\n \"Make a reel for a luxury minimalist candle brand using calm aesthetics.\"\n\nAI Video Prompt Generation\n Uses OpenAI to craft a visually rich, platform-optimized video description prompt.\n\n🎞️ Video Creation with Veo3 API\n Submits your prompt to Veo3 to create a short video (9:16 ratio, 8 seconds) with motion, tone, and trend styles.\n\n✍️ Caption Writing\n An AI agent writes an engaging and playful caption based on the video content.\n\n📄 Google Sheets Logging\n Stores prompt, video URL, caption, and status in a GSheet to keep track of all generated assets.\n\n📤 Auto-Publish to Instagram\n Posts the video + caption directly to Instagram using Blotato’s social media publishing API.\n\n🔌 Tools & Integrations Used:\nOpenAI for prompt & caption generation\n\nWavespeed API (Veo3) for video generation\n\nGoogle Sheets for tracking\n\nBlotato for scheduling & publishing content\n\nn8n for orchestration and automation logic\n\n💡 Use Cases:\nContent calendar automation for small teams\n\nTrend-based ad creation and testing\n\nUGC-style reel generation for e-commerce\n\nRapid ideation & creative experimentation"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "",
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Wait 30 Secs",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Caption Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"30 Wait": {
+			"main": [
+				[
+					{
+						"node": "HTTP Get Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Upload Bloatato",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait 30 Secs": {
+			"main": [
+				[
+					{
+						"node": "HTTP Get Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Caption Agent": {
+			"main": [
+				[
+					{
+						"node": "Google Sheet Ready To Post",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Publish to IG": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload Bloatato": {
+			"main": [
+				[
+					{
+						"node": "Publish to IG",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Get Request": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Veo3 Video Generator": {
+			"main": [
+				[
+					{
+						"node": "30 Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Video Prompt Agent": {
+			"main": [
+				[
+					{
+						"node": "Veo3 Video Generator",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheet Ready To Post": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Video Prompt Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

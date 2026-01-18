@@ -1,0 +1,124 @@
+{
+	"nodes": [
+		{
+			"name": "Telegram Bot (Webhook)",
+			"type": "n8n-nodes-base.telegramBot",
+			"position": [250, 200],
+			"parameters": {
+				"webhookUrl": "=https://api.telegram.org/bot{{$env.YOUR_TELEGRAM_BOT_TOKEN}}/getUpdates",
+				"pollInterval": 5,
+				"allowedUpdates": ["message"],
+				"onlyNewUpdates": true
+			},
+			"typeVersion": 1
+		},
+		{
+			"name": "Check 'Photo'",
+			"type": "n8n-nodes-base.if",
+			"position": [450, 500],
+			"parameters": {
+				"conditions": [
+					{
+						"value1": "={{$json.message.photo}}",
+						"value2": "true",
+						"operation": "isNotEmpty"
+					}
+				]
+			},
+			"typeVersion": 1
+		},
+		{
+			"name": "Get Telegram Photo",
+			"type": "n8n-nodes-base.telegramBot",
+			"position": [700, 500],
+			"parameters": {
+				"chatId": "={{$json.message.chat.id}}",
+				"fileId": "={{$json.message.photo[{$json.message.photo.length - 1}].file_id}}",
+				"operation": "getFile"
+			},
+			"typeVersion": 1
+		},
+		{
+			"name": "OCR.space Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [950, 500],
+			"parameters": {
+				"url": "https://api.ocr.space/parse/image",
+				"method": "POST",
+				"options": {
+					"query": [
+						{
+							"name": "apikey",
+							"value": "={{$env.YOUR_OCR_SPACE_API_KEY}}"
+						},
+						{
+							"name": "language",
+							"value": "eng"
+						},
+						{
+							"name": "isOverlayRequired",
+							"value": "true"
+						}
+					],
+					"bodyParameters": [
+						{
+							"name": "file",
+							"value": "={{$binary.data}}"
+						}
+					],
+					"bodyContentType": "formData"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"name": "Send Raw OCR Text",
+			"type": "n8n-nodes-base.telegramBot",
+			"position": [1200, 500],
+			"parameters": {
+				"text": "OCR Text Found:\n\n*{{$json.ParsedResults[0].ParsedText}}*",
+				"chatId": "={{$json.message.chat.id}}",
+				"parseMode": "HTML"
+			},
+			"typeVersion": 1
+		}
+	],
+	"connections": {
+		"Check 'Photo'": {
+			"output": [
+				{
+					"node": "Get Telegram Photo",
+					"type": "main",
+					"index": 0
+				}
+			]
+		},
+		"OCR.space Request": {
+			"output": [
+				{
+					"node": "Send Raw OCR Text",
+					"type": "main",
+					"index": 0
+				}
+			]
+		},
+		"Get Telegram Photo": {
+			"output": [
+				{
+					"node": "OCR.space Request",
+					"type": "main",
+					"index": 0
+				}
+			]
+		},
+		"Telegram Bot (Webhook)": {
+			"output": [
+				{
+					"node": "Check 'Photo'",
+					"type": "main",
+					"index": 0
+				}
+			]
+		}
+	}
+}

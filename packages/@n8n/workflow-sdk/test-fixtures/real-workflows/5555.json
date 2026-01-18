@@ -1,0 +1,317 @@
+{
+	"id": "WrK2POhl0j01MouD",
+	"meta": {
+		"instanceId": "a97a355585978a3ea8482a54d4027c9471a4b4bfbbee0507d09a2debf19c9347",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Apify_lead_generation",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "4087fd3a-82a1-4879-8485-02dc833c9c6a",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-580, 460],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "2a869b44-e5e8-4bab-922d-fc1153248d2a",
+			"name": "Wait for all results",
+			"type": "n8n-nodes-base.wait",
+			"position": [-100, 460],
+			"webhookId": "655bb8eb-9b65-4028-ae5b-0a45d87cab21",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 1
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "d232ea32-e66a-4870-be21-5a0bcf01ddb3",
+			"name": "Split Out into Google Sheets",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [400, 460],
+			"parameters": {
+				"include": "selectedOtherFields",
+				"options": {},
+				"fieldToSplitOut": "title",
+				"fieldsToInclude": "address, state, neighborhood, phone, emails"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7a0ebea8-f584-4d8e-b798-4a82adb7b39e",
+			"name": "Update Scraped Information",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [580, 460],
+			"parameters": {
+				"columns": {
+					"value": {
+						"phone": "={{ $json.phone.replace('+', '') }}",
+						"state": "={{ $json.state }}",
+						"title": "={{ $json.title }}",
+						"emails": "={{ $json.emails }}",
+						"address": "={{ $json.address }}",
+						"neighborhood": "={{ $json.neighborhood }}"
+					},
+					"schema": [
+						{
+							"id": "title",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "title",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "address",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "address",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "state",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "state",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "neighborhood",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "neighborhood",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "phone",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "phone",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "emails",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "emails",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["title"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EdMrBVfX_aHipnjdngetJ2fapohi6pLqULL5Onv-KpA/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "dssdd"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "3f82257a-bb69-4c88-a7d7-28b4f9d5c35c",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-700, 240],
+			"parameters": {
+				"color": 7,
+				"width": 1560,
+				"height": 480,
+				"content": "## Business Lead Generation with Apify Web Scraping and Google Sheets Storage\n- Use this tool for larger amount of leads (over 100)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ebc3ce14-524a-4da5-9a11-9489edc2ab83",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-640, 380],
+			"parameters": {
+				"width": 460,
+				"height": 260,
+				"content": "## Start the Apify Web Scraper Tool"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3e398d9d-542e-4aa0-a118-e5acb9da9e0f",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-160, 380],
+			"parameters": {
+				"color": 4,
+				"width": 440,
+				"height": 260,
+				"content": "## Get Results from Apify "
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b5e8bc74-e925-446d-bf4e-c0df78a08206",
+			"name": "Get Results (Apify)",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [100, 460],
+			"parameters": {
+				"url": "enter (get dataset url)",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "7c2eb1e1-470d-4852-a3c1-04f8386d1dc6",
+			"name": "Start Results (Apify)",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-360, 460],
+			"parameters": {
+				"url": "enter apify (get run)",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "{\n    \"includeWebResults\": false,\n    \"language\": \"en\",\n    \"locationQuery\": \"Toronto\",\n    \"maxCrawledPlacesPerSearch\": 12,\n    \"maxImages\": 0,\n    \"maximumLeadsEnrichmentRecords\": 0,\n    \"scrapeContacts\": true,\n    \"scrapeDirectories\": false,\n    \"scrapeImageAuthors\": false,\n    \"scrapePlaceDetailPage\": false,\n    \"scrapeReviewsPersonalData\": true,\n    \"scrapeTableReservationProvider\": false,\n    \"searchStringsArray\": [\n        \"barber\"\n    ],\n    \"skipClosedPlaces\": false\n}",
+				"sendBody": true,
+				"specifyBody": "json"
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "537fbede-14c7-45f4-a243-c47edb32548d",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-140, -60],
+			"parameters": {
+				"color": 6,
+				"width": 400,
+				"height": 280,
+				"content": "## Small amount lead generation\n**Use for a smaller amount of lead Scraping**\n- Apify HTTP request"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "876b808b-d5f1-4bf3-8625-cbd77ce3af20",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [300, 380],
+			"parameters": {
+				"color": 5,
+				"width": 500,
+				"height": 260,
+				"content": "## Add & Organize Results Into Google Sheet"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3859d702-bee6-4dfa-ad07-9d457983cd1b",
+			"name": "Get Results (Apify)1",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [0, 60],
+			"parameters": {
+				"url": "copy get run URL from Apify",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "{\n    \"includeWebResults\": false,\n    \"language\": \"en\",\n    \"locationQuery\": \"Toronto\",\n    \"maxCrawledPlacesPerSearch\": 12,\n    \"maxImages\": 0,\n    \"maximumLeadsEnrichmentRecords\": 0,\n    \"scrapeContacts\": true,\n    \"scrapeDirectories\": false,\n    \"scrapeImageAuthors\": false,\n    \"scrapePlaceDetailPage\": false,\n    \"scrapeReviewsPersonalData\": true,\n    \"scrapeTableReservationProvider\": false,\n    \"searchStringsArray\": [\n        \"barber\"\n    ],\n    \"skipClosedPlaces\": false\n}",
+				"sendBody": true,
+				"specifyBody": "json"
+			},
+			"typeVersion": 4.2
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "7a05c110-94fd-495f-8231-f477d7fff828",
+	"connections": {
+		"Get Results (Apify)": {
+			"main": [
+				[
+					{
+						"node": "Split Out into Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for all results": {
+			"main": [
+				[
+					{
+						"node": "Get Results (Apify)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start Results (Apify)": {
+			"main": [
+				[
+					{
+						"node": "Wait for all results",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out into Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Update Scraped Information",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Start Results (Apify)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,449 @@
+{
+	"meta": {
+		"instanceId": "ad0113c344ee237399e44e9f11798b05baeb83a6196d514a9ae9d2ad71c3b5c9",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "b96307a6-bb22-4556-96a9-89ca63119d1e",
+			"name": "Chat Trigger",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-48, -240],
+			"webhookId": "87dac172-bf37-4f9d-982a-d5ecddc07f38",
+			"parameters": {
+				"options": {
+					"responseMode": "responseNodes"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "ad1d74e7-99a7-481d-8b1e-1c10c41d5571",
+			"name": "Project Manager Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [288, 0],
+			"parameters": {
+				"options": {
+					"systemMessage": "Goal:\nYou are only helping the user create new tasks in a Google Sheet. Do not handle updates yet.\n\nProcess:\n\nStart by determining whether the user wants to create a new item or update an existing one.\n\nContinue chatting naturally with the user until:\n\nYou know that they want to update (in which case you’ll stop and output that), or\n\nYou’ve gathered all the necessary fields for a new task.\n\nRequired fields for creating a new task:\n\nTask\n\nDescription\n\nStatus\n\nThe user can respond with “don’t know,” in which case that field is left blank (output nothing for that field).\n\nOutput Format:\n\n{\n  \"response\": \"Your message back to the user\",\n  \"info gathered\": {\n    \"type\": \"create or update\",\n    \"Task\": \"\",\n    \"Description\": \"\",\n    \"Status\": \"\"\n  },\n  \"all Info\": \"Yes or No\"\n}\n\n\nRules:\n\n\"type\" can only be \"create\" or \"update\".\n\n\"all Info\" can only be \"Yes\" or \"No\", depending on whether you have all required fields for the chosen action.\n\nKeep chatting with the user until \"all Info\" = \"Yes\"."
+				},
+				"hasOutputParser": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "59010e50-ee02-4de3-b5a0-346d4178a449",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [64, 432],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "a848cc81-5f47-4858-8a12-9a831486e071",
+			"name": "Chat Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [320, 256],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "10c72aeb-b224-49fb-86cd-93470008271b",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [496, 256],
+			"parameters": {
+				"autoFix": true,
+				"jsonSchemaExample": "{\n\t\"response\": \"what you want to say back to the user\", \n  \"info gathered\": \"all of the info you have gathered so far\", \n  \"all Info\": \"Yes or no if you have all of the fields\"\n}"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "6fb809a0-142c-400b-b9de-e18ad05b2a07",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [512, 432],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f14a95f4-5673-43f6-91f8-c23f2c15d508",
+			"name": "OpenAI Chat Model2",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [1216, -64],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "cee60393-1bd8-4f9d-a9d2-d905b5a52806",
+			"name": "Structured Output Parser1",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [1440, -80],
+			"parameters": {
+				"jsonSchemaExample": "{\n\t\"task\": \"task\",\n\t\"description\": \"description\",\n  \"status\": \"status\"\n}"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "2b3667cb-be26-496a-adf0-1e0057d0483f",
+			"name": "Write Json",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1264, -288],
+			"parameters": {
+				"text": "={{ $json.output['info gathered'] }}",
+				"options": {
+					"systemMessage": "take in this info and parse it into this json. "
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "724db2b3-48c4-4979-bdd8-b56db7473cf0",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-208, -448],
+			"parameters": {
+				"color": 7,
+				"width": 2448,
+				"height": 1136,
+				"content": "### AI Project Manager — Add Tasks to Google Sheets from Chat\n\nLet your team create, track, and manage project tasks through natural conversation.  \nThis workflow uses an **AI Project Manager Agent** that chats with users, gathers the task details it needs, and automatically adds them to a **Google Sheet**.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "705cd275-88bd-4002-9e0e-cbc070614196",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-640, -448],
+			"parameters": {
+				"width": 400,
+				"height": 1136,
+				"content": "## ⚙️ Setup instructions\n\n### 1. Connect OpenAI\n1. Go to [OpenAI Platform](https://platform.openai.com/api-keys) → copy your API key.  \n2. In n8n, create **New Credentials → OpenAI API** and paste your key.  \n3. Ensure your account has active billing under [OpenAI Billing](https://platform.openai.com/settings/organization/billing/overview).\n\n### 2. Connect Google Sheets (OAuth2)\n1. In **n8n → Credentials → New → Google Sheets (OAuth2)**  \n2. Sign in with your Google account and **grant access**.  \n3. Select your spreadsheet and tab (e.g., “Tasks”) when prompted.  \n   - Example sheet: `https://docs.google.com/spreadsheets/d/1pbK-B-Q9p8fVjxJIsjEVrAfRgqEPCeYw8rZojZPAb84/edit`\n\n### 3. Test your chat\nClick **Execute Workflow**, then start chatting:  \n> “Add a task for reviewing the project report tomorrow.”  \nThe agent will ask questions if needed, then add the record to your sheet.\n\n---\n\n\n\n## 📬 Contact  \nNeed help customizing this (e.g., adding deadlines, linking to Notion, or Slack notifications)?  \n\n- 📧 **robert@ynteractive.com**  \n- 🔗 **[Robert Breen](https://www.linkedin.com/in/robert-breen-29429625/)**  \n- 🌐 **[ynteractive.com](https://ynteractive.com)**  "
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7783171c-3b32-4a8c-8b50-4017c024506a",
+			"name": "Sticky Note64",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1632, -272],
+			"parameters": {
+				"color": 3,
+				"width": 256,
+				"height": 656,
+				"content": "### 2) Connect Google Sheets (OAuth2)\n\n1. In **n8n → Credentials → New → Google Sheets (OAuth2)**  \n2. Sign in with your Google account and **grant access**.  \n3. In your workflow’s **Google Sheets** node (e.g., *Append or Update*), select this spreadsheet and tab:  \n   - **Spreadsheet URL:** https://docs.google.com/spreadsheets/d/1pbK-B-Q9p8fVjxJIsjEVrAfRgqEPCeYw8rZojZPAb84/edit?gid=0#gid=0\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d3082998-cae4-4be1-97a4-55c37fae9452",
+			"name": "Add Task",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1712, 160],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Task": "={{ $json.output.task }}",
+						"Status": "={{ $json.output.status }}",
+						"Description": "={{ $json.output.description }}"
+					},
+					"schema": [
+						{
+							"id": "Task",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Task",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Description",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Status",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Task"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pbK-B-Q9p8fVjxJIsjEVrAfRgqEPCeYw8rZojZPAb84/edit#gid=0",
+					"cachedResultName": "Tasks"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1pbK-B-Q9p8fVjxJIsjEVrAfRgqEPCeYw8rZojZPAb84",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pbK-B-Q9p8fVjxJIsjEVrAfRgqEPCeYw8rZojZPAb84/edit?usp=drivesdk",
+					"cachedResultName": "Project Manager"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "0cfb869e-1572-4a14-b280-f41c274b5c3e",
+			"name": "Respond Complete",
+			"type": "@n8n/n8n-nodes-langchain.chat",
+			"position": [2000, -288],
+			"parameters": {
+				"message": "=Item Added",
+				"options": {},
+				"waitUserReply": false
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "72085766-5d15-4556-b034-2b009340bfbd",
+			"name": "Have All Info?",
+			"type": "n8n-nodes-base.if",
+			"position": [640, 0],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "852bfa85-8367-4822-ae6b-e8490c57f00e",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.output['all Info'] }}",
+							"rightValue": "Yes"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "eaa01a56-d5c6-415e-b445-56a8dedc8a5e",
+			"name": "Sticky Note29",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-48, 256],
+			"parameters": {
+				"color": 3,
+				"width": 288,
+				"height": 304,
+				"content": "### 1 Set Up OpenAI Connection\n1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)  \n2. Navigate to [OpenAI Billing](https://platform.openai.com/settings/organization/billing/overview)  \n3. Add funds to your billing account  \n4. Copy your API key into the **OpenAI credentials** in n8n  "
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6959a232-2f84-438e-830a-15cc240f6c5b",
+			"name": "Get More Info",
+			"type": "@n8n/n8n-nodes-langchain.chat",
+			"position": [992, 128],
+			"parameters": {
+				"message": "={{ $json.output.response }}",
+				"options": {},
+				"waitUserReply": false
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Add Task": {
+			"main": [
+				[
+					{
+						"node": "Respond Complete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Write Json": {
+			"main": [
+				[
+					{
+						"node": "Add Task",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "Project Manager Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat Trigger": {
+			"main": [
+				[
+					{
+						"node": "Project Manager Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Have All Info?": {
+			"main": [
+				[
+					{
+						"node": "Write Json",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Get More Info",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Project Manager Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Structured Output Parser",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model2": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Write Json",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Project Manager Agent": {
+			"main": [
+				[
+					{
+						"node": "Have All Info?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Project Manager Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser1": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Write Json",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,751 @@
+{
+	"id": "REDACTED_WORKFLOW_ID",
+	"meta": {
+		"instanceId": "REDACTED_INSTANCE_ID",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "insta Reel publish",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "e56fcbb9-2ede-4fa0-91b1-565b41e45ec9",
+			"name": "Post File Upload in Google Drive Folder  Trigger",
+			"type": "n8n-nodes-base.googleDriveTrigger",
+			"position": [-864, -640],
+			"parameters": {
+				"event": "fileCreated",
+				"options": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyX",
+							"unit": "minutes",
+							"value": 1
+						}
+					]
+				},
+				"triggerOn": "specificFolder",
+				"folderToWatch": {
+					"__rl": true,
+					"mode": "list",
+					"value": "REDACTED_FOLDER_ID",
+					"cachedResultUrl": "REDACTED_URL",
+					"cachedResultName": "REDACTED_FOLDER_NAME"
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "14f7c794-938e-4c19-ba7d-9df7c8db2713",
+			"name": "Post File Download in N8N (Google Drive Node)",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [-528, -304],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $json.id }}"
+				},
+				"options": {},
+				"operation": "download"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "8edf7ec7-06c5-47f5-8f35-e294af1256df",
+			"name": "Google Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-272, 128],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.0-flash"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1f09b5fc-331b-4914-9b2f-598f5a492722",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-144, -688],
+			"parameters": {
+				"text": "=Generate an engaging Instagram caption for a video titled \"{{ $json.processedFileName }}\".\n\nHere's what to include:\n- 2-3 engaging sentences with appropriate emojis.\n- 3-5 relevant hashtags based on the video title.\n- A clear call-to-action encouraging comments.\n\nPlease keep the total caption under 150 characters.\n\nYou are skilled at writing clear, engaging, and detailed captions based on just a file name. Help viewers understand and appreciate the post. The tone should be relatable and suitable for an Instagram audience. Avoid using too many whimsical words or excessive adjectives. Focus on encouraging people to connect with the post and respond in the comments.",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "4289ddbe-71f0-49bb-98e8-fbe0899f4ad4",
+			"name": "Airtable",
+			"type": "n8n-nodes-base.airtable",
+			"position": [208, -656],
+			"parameters": {
+				"base": {
+					"__rl": true,
+					"mode": "list",
+					"value": "REDACTED_AIRTABLE_BASE_ID",
+					"cachedResultUrl": "REDACTED_URL",
+					"cachedResultName": "REDACTED_AIRTABLE_BASE_NAME"
+				},
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "REDACTED_AIRTABLE_TABLE_ID",
+					"cachedResultUrl": "REDACTED_URL",
+					"cachedResultName": "REDACTED_AIRTABLE_TABLE_NAME"
+				},
+				"columns": {
+					"value": {
+						"URL": "={{ $('Code').item.json.processedWebContentLink }}",
+						"Name": "={{ $('Code').item.json.processedFileName }}",
+						"Caption": "={{ $json.output }}"
+					},
+					"schema": [
+						{
+							"id": "Name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Caption",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Caption",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "create"
+			},
+			"credentials": {
+				"airtableTokenApi": {
+					"id": "credential-id",
+					"name": "airtableTokenApi Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "b7c45adb-ae7e-4497-b261-e37b0437a70c",
+			"name": "container",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [432, -656],
+			"parameters": {
+				"edge": "media",
+				"node": "REDACTED_FACEBOOK_NODE_ID",
+				"options": {
+					"queryParameters": {
+						"parameter": [
+							{
+								"name": "video_url",
+								"value": "={{ $json.fields.URL }}"
+							},
+							{
+								"name": "media_type",
+								"value": "REELS"
+							},
+							{
+								"name": "caption",
+								"value": "={{ $('AI Agent').item.json.output }}"
+							}
+						]
+					}
+				},
+				"graphApiVersion": "v22.0",
+				"httpRequestMethod": "POST"
+			},
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "credential-id",
+					"name": "facebookGraphApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "80ba05f1-127d-4a79-9be7-d05f13287568",
+			"name": "Post to IG",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [960, -592],
+			"parameters": {
+				"edge": "media_publish",
+				"node": "REDACTED_FACEBOOK_NODE_ID",
+				"options": {
+					"queryParameters": {
+						"parameter": [
+							{
+								"name": "creation_id",
+								"value": "={{ $json.id }}"
+							}
+						]
+					}
+				},
+				"graphApiVersion": "v22.0",
+				"httpRequestMethod": "POST"
+			},
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "credential-id",
+					"name": "facebookGraphApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cdcef117-9334-4683-90a1-cdd6a3608bc8",
+			"name": "Google Drive1",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [48, 128],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "url",
+					"value": "={{ $('Post File Download in N8N (Google Drive Node)').item.json.webViewLink }}"
+				},
+				"options": {},
+				"operation": "deleteFile"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "795dcd70-54d4-4e99-9336-0575b2e4fe41",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [688, -624],
+			"webhookId": "REDACTED_WEBHOOK_ID",
+			"parameters": {
+				"amount": 90
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "fa82e952-e230-4d3a-9cd2-97bf59747a3d",
+			"name": "Wait1",
+			"type": "n8n-nodes-base.wait",
+			"position": [128, -144],
+			"webhookId": "REDACTED_WEBHOOK_ID",
+			"parameters": {
+				"amount": 20
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "57e21bda-91ec-4061-bc9a-1cbb47d4ce74",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"position": [-208, -304],
+			"parameters": {
+				"jsCode": "// Code (Function) Node Script - Focused on Input Debugging\nconst inputItem = items[0]; // Get the whole item, not just .json yet\n\n// Log the entire incoming item to see its structure, including binary properties if any\nconsole.log(\"Full Input Item to Code Node:\", JSON.stringify(inputItem, null, 2));\n\nconst itemJson = inputItem.json; // Now get the JSON part\n\nlet fileId;\nlet fileName;\nlet webContentLink;\n\nif (typeof itemJson !== 'object' || itemJson === null) {\n    console.error(\"Input item.json is not an object or is null. Input was:\", JSON.stringify(inputItem, null, 2));\n    fileName = \"Unknown Video (Input not an object)\";\n} else {\n    // Try to access properties directly, assuming Google Drive File Resource structure\n    fileId = itemJson.id;\n    fileName = itemJson.name;\n    webContentLink = 'REDACTED_WEBHOOK_URL'; // Fallback to webViewLink\n\n    console.log(`Attempting to extract: id='${fileId}', name='${fileName}', webContentLink='${webContentLink}'`);\n\n    if (typeof fileName !== 'string' || fileName.trim() === \"\") {\n        console.warn(\"fileName is missing or invalid in Code Node input. Actual item.json.name was:\", itemJson.name, \". Setting to 'Unknown Video'.\");\n        fileName = \"Unknown Video\";\n    } else {\n        console.log(\"Successfully extracted fileName:\", fileName);\n    }\n\n    if (typeof fileId !== 'string' || fileId.trim() === \"\") {\n        console.warn(\"fileId is missing or invalid.\");\n        // fileId remains as extracted or undefined\n    }\n\n    if (typeof webContentLink !== 'string' || webContentLink.trim() === \"\") {\n        console.warn(\"webContentLink (and webViewLink) is missing or invalid.\");\n        // webContentLink remains as extracted or undefined\n    }\n}\n\nconst outputData = {\n  processedFileId: fileId,\n  processedFileName: fileName,\n  processedWebContentLink: webContentLink\n};\n\nconsole.log(\"Output from Code Node:\", JSON.stringify(outputData, null, 2));\n\n// Return structure expected by n8n\nreturn [{ json: outputData }];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "d5a8af48-f6da-46d6-aa9a-9307c426f9c9",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-1248, -384],
+			"parameters": {
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"sendQuery": true,
+				"authentication": "predefinedCredentialType",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "q",
+							"value": "'REDACTED_DRIVE_FOLDER_ID' in parents and mimeType='video/mp4' and trashed=false"
+						},
+						{
+							"name": "fields",
+							"value": "files(id, name, mimeType, parents)"
+						},
+						{
+							"name": "supportsAllDrives",
+							"value": "true"
+						},
+						{
+							"name": "includeItemsFromAllDrives",
+							"value": "true"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "b6b7630c-cf14-4318-9bb8-fc67750805db",
+			"name": "HTTP Request1",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-1248, 112],
+			"parameters": {
+				"url": "=https://www.googleapis.com/drive/v3/files/{{ $json.id }}",
+				"method": "PATCH",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				},
+				"sendQuery": true,
+				"authentication": "predefinedCredentialType",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "addParents",
+							"value": "REDACTED_PARENT_ID_TO_ADD"
+						},
+						{
+							"name": "removeParents",
+							"value": "REDACTED_PARENT_ID_TO_REMOVE"
+						},
+						{
+							"name": "fields",
+							"value": "id,name,parents,webContentLink,webViewLink,mimeType"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "db8fd564-37e0-47f8-81ab-8bac592df96c",
+			"name": "Schedule Trigger1",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-1264, -624],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours",
+							"hoursInterval": 6
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "4c78b24d-f9be-4db9-ab8a-8ca064865911",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"position": [-1248, -160],
+			"parameters": {
+				"jsCode": "const responseData = items[0].json;\n\nif (!responseData || !responseData.files || responseData.files.length === 0) {\n  console.warn(\"No files found in the source Google Drive folder via API or API response was unexpected.\");\n  return [];\n}\n\nconst filesArray = responseData.files;\nconst randomIndex = Math.floor(Math.random() * filesArray.length);\nconst randomFile = filesArray[randomIndex];\n\nreturn [{ json: randomFile }];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "a4d882e1-93bc-4647-8222-0a1a9519e1f0",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-976, -384],
+			"parameters": {
+				"color": 5,
+				"width": 400,
+				"height": 720,
+				"content": "## wait 20 seconds then trigger the insta posting workflow"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a75eab91-cb94-42b2-b8aa-491bcaadc2bf",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1408, -800],
+			"parameters": {
+				"width": 420,
+				"height": 1140,
+				"content": "## Random file mover\n**For every 100 minutes this path of workflow will select and move a single video file from the G-drive fil named: Random video mover**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ea0150fd-e301-4d4a-aaa7-69124b1aa624",
+			"name": "Wait2",
+			"type": "n8n-nodes-base.wait",
+			"position": [-848, -64],
+			"webhookId": "REDACTED_WEBHOOK_ID",
+			"parameters": {
+				"amount": 20
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "50f581c6-f8f1-4967-91a4-2a636eaffb1c",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-976, -800],
+			"parameters": {
+				"color": 3,
+				"width": 400,
+				"height": 420,
+				"content": "## manual upload trigger\n\n**it will trigger the workflow whenever the video file as upload manually on the folder"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f312023b-cb76-415c-945b-732b534a6b6e",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-560, -800],
+			"parameters": {
+				"color": 4,
+				"width": 1880,
+				"height": 1140,
+				"content": "## insta uploader"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e37c99b4-1393-4978-91e5-84e999f40e2e",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1520, -880],
+			"parameters": {
+				"color": 6,
+				"width": 2920,
+				"height": 1320,
+				"content": "## Instagram automation workflow....."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cb310658-894c-4839-91b8-7b316e50c293",
+			"name": "Read/Write Files from Disk",
+			"type": "n8n-nodes-base.readWriteFile",
+			"position": [-352, -304],
+			"parameters": {
+				"options": {},
+				"fileName": "/tmp/video.mp4",
+				"operation": "write"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "625fe994-f253-450e-9247-3c7dc7553dec",
+			"name": "Respond to Webhook",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [976, -32],
+			"parameters": {
+				"options": {},
+				"respondWith": "binary"
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "7651d41b-e7b0-403d-8203-97abec7b05c5",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"position": [640, -32],
+			"webhookId": "REDACTED_WEBHOOK_ID",
+			"parameters": {
+				"path": "REDACTED_WEBHOOK_PATH",
+				"options": {},
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "df2e5e4e-a80f-4a92-8e37-394a48403bde",
+			"name": "Read/Write Files from Disk1",
+			"type": "n8n-nodes-base.readWriteFile",
+			"position": [800, -32],
+			"parameters": {
+				"options": {},
+				"fileSelector": "/tmp/video.mp4"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dae6ea97-1065-45f9-85fa-60935d568306",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [560, -128],
+			"parameters": {
+				"width": 608,
+				"height": 288,
+				"content": "## **Webhook to serve the file** [it act as a public url for facebook Api](REDACTED_WEBHOOK_URL)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"timezone": "UTC",
+		"callerPolicy": "workflowsFromSameOwner",
+		"executionOrder": "v1"
+	},
+	"versionId": "REDACTED_VERSION_ID",
+	"connections": {
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Post to IG",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait1": {
+			"main": [
+				[
+					{
+						"node": "Google Drive1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait2": {
+			"main": [
+				[
+					{
+						"node": "Post File Download in N8N (Google Drive Node)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Read/Write Files from Disk1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Airtable",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Airtable": {
+			"main": [
+				[
+					{
+						"node": "container",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"container": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post to IG": {
+			"main": [
+				[
+					{
+						"node": "Wait1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request1": {
+			"main": [
+				[
+					{
+						"node": "Wait2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger1": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read/Write Files from Disk": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read/Write Files from Disk1": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post File Download in N8N (Google Drive Node)": {
+			"main": [
+				[
+					{
+						"node": "Read/Write Files from Disk",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post File Upload in Google Drive Folder  Trigger": {
+			"main": [
+				[
+					{
+						"node": "Post File Download in N8N (Google Drive Node)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

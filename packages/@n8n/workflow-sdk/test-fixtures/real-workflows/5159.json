@@ -1,0 +1,950 @@
+{
+	"meta": {
+		"instanceId": "ee764605661f484417a5505724882cb4f8c547a6bf9bef1f89eacbbcb7cca6ab"
+	},
+	"nodes": [
+		{
+			"id": "aa01f852-aa12-4001-9bc4-94fd0bbd0e88",
+			"name": "Fetch Unprocessed Ideas",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-980, 800],
+			"parameters": {
+				"options": {
+					"dataLocationOnSheet": {
+						"values": {
+							"rangeDefinition": "detectAutomatically"
+						}
+					}
+				},
+				"filtersUI": {
+					"values": [
+						{
+							"lookupValue": "no",
+							"lookupColumn": "Generated"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U"
+				}
+			},
+			"executeOnce": false,
+			"typeVersion": 4.5
+		},
+		{
+			"id": "3ab71903-3b38-4891-a769-2d0304cb4bad",
+			"name": "Set Prompt",
+			"type": "n8n-nodes-base.set",
+			"position": [-780, 800],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "3e8d2523-66aa-46fe-adcc-39dc78b9161e",
+							"name": "prompt",
+							"type": "string",
+							"value": "={{ $json.Prompt }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "23e7d119-2d0f-41df-8e94-67bdd95bf6c0",
+			"name": "Create WordPress Post",
+			"type": "n8n-nodes-base.wordpress",
+			"position": [-760, 1180],
+			"parameters": {
+				"title": "={{ $('Fetch Unprocessed Ideas').item.json.Prompt }}",
+				"additionalFields": {
+					"status": "publish",
+					"content": "={{ $('Generate Article AI').item.json.output }}\n\nImage by: {{ $('Search Pexels Image').item.json.photos[0].photographer }}\n{{ $('Search Pexels Image').item.json.photos[0].photographer_url }}"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a07f4264-c011-4925-a8c6-d5fa11ec809b",
+			"name": "Upload Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"onError": "continueRegularOutput",
+			"position": [-380, 1180],
+			"parameters": {
+				"url": "https://<YOUR_WORDPRESS_URL>/wp-json/wp/v2/media",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "binaryData",
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Disposition",
+							"value": "=attachment; filename=\"cover-{{ $('Create WordPress Post').item.json.id }}.jpg\""
+						}
+					]
+				},
+				"inputDataFieldName": "data",
+				"nodeCredentialType": "wordpressApi"
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "cbbae382-12b2-47c7-8fd8-13df5236bbdc",
+			"name": "Set Featured Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-200, 1180],
+			"parameters": {
+				"url": "=https://<YOUR_WORDPRESS_URL>/wp-json/wp/v2/posts/{{ $('Create WordPress Post').item.json.id }}",
+				"method": "POST",
+				"options": {},
+				"sendQuery": true,
+				"authentication": "predefinedCredentialType",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "featured_media",
+							"value": "={{ $json.id }}"
+						}
+					]
+				},
+				"nodeCredentialType": "wordpressApi"
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "cc2d86a1-cc0f-46fc-81ee-ec02801b29cf",
+			"name": "Update Google Sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-20, 1180],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Date": "={{ $now.format('dd/LL/yyyy') }}",
+						"Title": "={{ $('Create WordPress Post').item.json.title.raw }}",
+						"Post ID": "={{ $('Create WordPress Post').item.json.id }}",
+						"Generated": "yes",
+						"row_number": "={{ $('Fetch Unprocessed Ideas').item.json.row_number }}"
+					},
+					"schema": [
+						{
+							"id": "Date",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Prompt",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Prompt",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Title",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Title",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Post ID",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Post ID",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Generated",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Generated",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["row_number"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U/edit?usp=drivesdk",
+					"cachedResultName": "n8n-wp"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "74a74b39-d14c-44b7-920b-bfd343225a87",
+			"name": "Generate Article AI",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-600, 800],
+			"parameters": {
+				"text": "=You are an SEO expert. Write an article based on this topic: {{ $('Fetch Unprocessed Ideas').item.json.Prompt }}\nInstructions:\n-In the introduction, present the topic that will be discussed in the rest of the text.\n-The introduction should be about 120 words.\n-The conclusion should be about 120 words.\n-In the conclusion, summarize everything said in the article and present the reader with final conclusions.\n-Write a maximum of 4-5 chapters and expand on them.\n-Chapters should maintain a logical sequence and not repeat the same concepts.\n-Chapters should be interconnected, not isolated blocks of text. The text should be fluent and follow a linear logic.\n-Do not start chapters with \"Chapter 1\", \"Chapter 2\", \"Chapter 3\"... just write the chapter title.\n-Use HTML for text formatting, but limit yourself to using bold, italics, paragraphs, lists, and tables.\n-Do not place the result in a ```html code block, only the text itself.\n-Do not use markdown formatting.\n-Delve into the topic you are writing about; do not provide only superficial information.\n-I expect only HTML format in the response.\nDO NOT INCLUDE ```html\nWRITE SO IT DOESN'T LOOK LIKE AI - do not use long dashes, and in titles and subheadings, capitalize only the first word.\n\nIf possible, add data in a table.",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "0be71cb1-6b52-4227-a70d-c0e01033f8c4",
+			"name": "Generate Image Keyword AI",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-280, 800],
+			"parameters": {
+				"text": "=Choose an expression based on which you will find a matching graphic in Pexels API.\nTopic: {{ $('Fetch Unprocessed Ideas').item.json.Prompt }} \nInstructions:\n- Choose one expression that will best match to find a graphic.\n- Use a general category to always match a graphic.\n- Do not use any HTML characters.\n- Return only a string containing the expression.\n- Do not use quotation marks. The only allowed special characters are \":\" and \",\".\n- Make each one unique so there are no 2 identical graphics.",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "f7da0b58-b5ae-48b3-a69a-739512282179",
+			"name": "Gemini Model for Article",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-620, 940],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-1.5-flash-latest"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5af891b9-069d-4e48-8b93-e04413d85e7c",
+			"name": "Gemini Model for Image Keyword",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-300, 940],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-1.5-flash-latest"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3b0f4db2-e2d1-4590-b08b-a37039db7f70",
+			"name": "Search Pexels Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-960, 1180],
+			"parameters": {
+				"url": "=https://api.pexels.com/v1/search?query={{ encodeURIComponent($('Generate Image Keyword AI').item.json.output) }}&per_page=1",
+				"options": {},
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "<YOUR_PEXELS_API_KEY>"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "7fb8b8fe-4e6b-4af8-8d6b-9419096350d2",
+			"name": "Download Pexels Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"onError": "continueRegularOutput",
+			"position": [-560, 1180],
+			"parameters": {
+				"url": "={{ $('Search Pexels Image').item.json.photos[0].src.large2x }}",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file"
+						}
+					}
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "32b7c739-19e0-4115-8d7e-35a2db6423bb",
+			"name": "Form Trigger: Select Action",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-1580, 580],
+			"webhookId": "09988680-2d17-4e68-b1e1-81fef6163a0d",
+			"parameters": {
+				"options": {
+					"path": "wpcontent",
+					"buttonLabel": "Next",
+					"appendAttribution": false
+				},
+				"formTitle": "Create Content",
+				"formFields": {
+					"values": [
+						{
+							"fieldType": "dropdown",
+							"fieldLabel": "Task",
+							"fieldOptions": {
+								"values": [
+									{
+										"option": "Generate Content"
+									},
+									{
+										"option": "Add Ideas"
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "bc2a6f22-a0f7-4933-b660-a0f4dbd52de4",
+			"name": "If Generate Content",
+			"type": "n8n-nodes-base.if",
+			"position": [-1340, 580],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "loose"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "41e4b502-f201-47a2-a244-ac705528f843",
+							"operator": {
+								"type": "string",
+								"operation": "contains"
+							},
+							"leftValue": "={{ $json.Task }}",
+							"rightValue": "Generate Content"
+						}
+					]
+				},
+				"looseTypeValidation": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "18bdad61-7286-4e66-bdc3-f37d404f8dc0",
+			"name": "Add Ideas to Sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-40, 400],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Title": "=",
+						"Prompt": "={{ $json.Topic }}",
+						"Generated": "no"
+					},
+					"schema": [
+						{
+							"id": "Date",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Prompt",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Prompt",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Title",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Title",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Post ID",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Post ID",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Generated",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Generated",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U/edit?usp=drivesdk",
+					"cachedResultName": "n8n-wp"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "d7697c4b-e651-414c-a7eb-171ef43110b6",
+			"name": "Generate Blog Topics AI",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-700, 400],
+			"parameters": {
+				"text": "=Prepare a blog topic - Make the title great for SEO.\n\nNOTE.\nGenerate 5 topics.\nIn the response, provide JSON code: \n{\n  \"Topic\": \"Sample topic\"\n}\nDo not add markdown, do not add '''json'.\nDo not add numbers to topics.\n\nWrite about {{ $json.Topic }}",
+				"options": {},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"executeOnce": false,
+			"typeVersion": 2
+		},
+		{
+			"id": "b6c75452-0f77-426e-bf0f-c20ecaf620e4",
+			"name": "Form: Enter Topic for Ideas",
+			"type": "n8n-nodes-base.form",
+			"position": [-980, 400],
+			"webhookId": "fcee9395-085e-4831-9bbf-32ce2f571027",
+			"parameters": {
+				"options": {
+					"buttonLabel": "NEXT"
+				},
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Topic"
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "63701441-2b94-4a59-804c-ff25494749db",
+			"name": "Form: Add More Topics?",
+			"type": "n8n-nodes-base.form",
+			"position": [240, 400],
+			"webhookId": "e897fa2c-f8a3-4e4e-ae03-14725ba1d705",
+			"parameters": {
+				"options": {
+					"buttonLabel": "NEXT",
+					"formDescription": "={{ $items().map(item => \"- \" + item.json.Prompt).join('\\n') }}"
+				},
+				"formFields": {
+					"values": [
+						{
+							"fieldType": "dropdown",
+							"fieldLabel": "What next?",
+							"fieldOptions": {
+								"values": [
+									{
+										"option": "END"
+									},
+									{
+										"option": "NEXT"
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "562cd4ea-8fc2-43bb-a0f8-b84e63e55807",
+			"name": "If Add More Topics",
+			"type": "n8n-nodes-base.if",
+			"position": [460, 400],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "73836e3b-ce8d-4e69-be29-82971a6bd82c",
+							"operator": {
+								"type": "string",
+								"operation": "contains"
+							},
+							"leftValue": "={{ $json[\"What next?\"] }}",
+							"rightValue": "NEXT"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "754f0694-c09b-46b0-9566-293889ecd68a",
+			"name": "Gemini Model for Topics",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [-740, 560],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-1.5-flash-latest"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "72976425-ebbf-4d31-97b4-898648c13b20",
+			"name": "Parse AI Topic Output",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [-500, 560],
+			"parameters": {
+				"jsonSchemaExample": "[\n  {\n    \"Topic\": \"Example topic 1\"\n  },\n  {\n    \"Topic\": \"Example topic 2\"\n  },\n  {\n    \"Topic\": \"Example topic 3\"\n  },\n    {\n    \"Topic\": \"Example topic 4\"\n  },\n  {\n    \"Topic\": \"Example topic 5\"\n  }\n]"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "c9c8c275-31c0-4a5f-a324-c27f3c18031b",
+			"name": "Split Topics",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [-300, 400],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "output"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "424cab92-8a0a-4407-972a-b82186d600f2",
+			"name": "Form: End Idea Generation",
+			"type": "n8n-nodes-base.form",
+			"position": [680, 420],
+			"webhookId": "ea907aa5-971f-4a0d-89a1-d834177d09c8",
+			"parameters": {
+				"options": {},
+				"operation": "completion",
+				"completionTitle": "END",
+				"completionMessage": "={{ $items(\"Generate Blog Topics AI\")[0].json.output.map(item => \"- \" + item.Topic).join('\\n') }}"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f15c02d2-44a1-450e-95ee-c95445dbcafc",
+			"name": "Form: End Post Generation",
+			"type": "n8n-nodes-base.form",
+			"position": [180, 1180],
+			"webhookId": "ea907aa5-971f-4a0d-89a1-d834177d09c8",
+			"parameters": {
+				"options": {},
+				"operation": "completion",
+				"completionTitle": "END",
+				"completionMessage": "={{ $items().map(item => \"- \" + item.json.Title).join('\\n') }}"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f25aabe7-ae32-4db9-9e37-3612a7f21a64",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1040, 260],
+			"parameters": {
+				"color": 5,
+				"height": 400,
+				"content": "## Generate Topics\nWhat topics should be generated?"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d5a4794e-1857-421b-b33f-cc3493f55e0e",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-120, 260],
+			"parameters": {
+				"color": 5,
+				"height": 380,
+				"content": "## Add to Sheet\nAdd as topics for which posts have not yet been generated."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a8929634-52bc-414b-8301-e98fcae5e940",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [180, 260],
+			"parameters": {
+				"color": 5,
+				"width": 220,
+				"height": 380,
+				"content": "## Add More?\nSelect in the form to add another 5 topics."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e2c3d8ad-eb78-441c-9576-082f91568131",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [440, 260],
+			"parameters": {
+				"color": 4,
+				"width": 220,
+				"height": 380,
+				"content": "## Start Over or End\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ad74f19e-8811-4d2e-ba1d-b78df9ada687",
+			"name": "API Settings Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1580, 1140],
+			"parameters": {
+				"width": 960,
+				"height": 280,
+				"content": "## WordPress & Pexels API Settings\nEdit settings by entering your WordPress data and Pexels API key.\n- `Search Pexels Image` node: Add Pexels API Key in Headers -> Authorization.\n- `Upload Image` & `Set Featured Image` nodes: Update URL with your WordPress site URL."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7f04b46b-0918-4afd-98ec-e1433f9ebdb7",
+			"name": "Workflow Instructions",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1640, -200],
+			"parameters": {
+				"width": 500,
+				"height": 940,
+				"content": "# Workflow Instructions\n\nThis workflow automates content creation, from idea generation to publishing on WordPress.\n\n**Prerequisites:**\n1.  Google Sheets account & a sheet with columns: `Date`, `Prompt`, `Title`, `Post ID`, `Generated`, `row_number`.\n2.  WordPress site with REST API enabled.\n3.  Google Gemini API Key.\n4.  Pexels API Key.\n\n**Setup Steps:**\n1.  **Credentials:** Configure credentials for Google Sheets, WordPress, and Google Gemini in the respective n8n nodes.\n2.  **API Keys & URLs:**\n    *   In `Search Pexels Image` node: Set your Pexels API key in the `Authorization` header.\n    *   In `Upload Image` & `Set Featured Image` nodes: Replace `<YOUR_WORDPRESS_URL>` with your site's URL.\n3.  **Google Sheet:** Ensure `Document ID` and `Sheet Name` (e.g., `Sheet1`) are correct in all Google Sheets nodes.\n4.  **Activate Workflow.**\n\n**How it works:**\nThe workflow starts with `Form Trigger: Select Action`:\n*   **Generate Content:** Fetches ideas marked `no` in `Generated` column, creates an article, finds an image, posts to WordPress, and updates the sheet.\n*   **Add Ideas:** Prompts for a general topic, generates 5 blog ideas, adds them to the sheet, and asks if you want to generate more."
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Set Prompt": {
+			"main": [
+				[
+					{
+						"node": "Generate Article AI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Topics": {
+			"main": [
+				[
+					{
+						"node": "Add Ideas to Sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload Image": {
+			"main": [
+				[
+					{
+						"node": "Set Featured Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add Ideas to Sheet": {
+			"main": [
+				[
+					{
+						"node": "Form: Add More Topics?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If Add More Topics": {
+			"main": [
+				[
+					{
+						"node": "Form: Enter Topic for Ideas",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Form: End Idea Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Featured Image": {
+			"main": [
+				[
+					{
+						"node": "Update Google Sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Article AI": {
+			"main": [
+				[
+					{
+						"node": "Generate Image Keyword AI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If Generate Content": {
+			"main": [
+				[
+					{
+						"node": "Fetch Unprocessed Ideas",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Form: Enter Topic for Ideas",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search Pexels Image": {
+			"main": [
+				[
+					{
+						"node": "Create WordPress Post",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Google Sheet": {
+			"main": [
+				[
+					{
+						"node": "Form: End Post Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create WordPress Post": {
+			"main": [
+				[
+					{
+						"node": "Download Pexels Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Pexels Image": {
+			"main": [
+				[
+					{
+						"node": "Upload Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse AI Topic Output": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Generate Blog Topics AI",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Form: Add More Topics?": {
+			"main": [
+				[
+					{
+						"node": "If Add More Topics",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Unprocessed Ideas": {
+			"main": [
+				[
+					{
+						"node": "Set Prompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gemini Model for Topics": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Generate Blog Topics AI",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Blog Topics AI": {
+			"main": [
+				[
+					{
+						"node": "Split Topics",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gemini Model for Article": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Generate Article AI",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Image Keyword AI": {
+			"main": [
+				[
+					{
+						"node": "Search Pexels Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Form Trigger: Select Action": {
+			"main": [
+				[
+					{
+						"node": "If Generate Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Form: Enter Topic for Ideas": {
+			"main": [
+				[
+					{
+						"node": "Generate Blog Topics AI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gemini Model for Image Keyword": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Generate Image Keyword AI",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

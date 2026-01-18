@@ -9,7 +9,10 @@
  *
  * API:
  *   GET https://api.n8n.io/api/workflows/{id}
- *   Response: { data: { attributes: { name, workflow: { nodes, connections, ... } } } }
+ *   Response: { data: { attributes: { name, status, workflow: { nodes, connections, ... } } } }
+ *
+ *   GET https://n8n.io/api/product-api/workflows/search?rows=100&page=1
+ *   Returns workflow metadata for discovering IDs
  */
 
 import * as fs from 'fs';
@@ -17,30 +20,11 @@ import * as path from 'path';
 
 const OUTPUT_DIR = path.resolve(__dirname, '../test-fixtures/real-workflows');
 
-// Workflow IDs to fetch - covering various patterns
-// Fetched from n8n.io/api/product-api/workflows/search
-const WORKFLOW_IDS = [
-	// First batch - AI and complex workflows
-	6270, 5819, 10000, 7639, 5035, 8500, 6281, 7756, 5148, 5110, 7990, 12345, 5962, 4846, 5271, 5755,
-	2519, 9867, 4827, 10358, 5338, 9437, 5170, 12462, 9200, 6287, 4968, 5906, 5678, 11572, 11204,
-	6067, 9383, 8428, 7156, 8022, 5010, 4110, 4966, 8549, 4722, 5691, 5948, 7423, 5677, 10566, 10174,
-	12645, 12325, 8093,
-	// Second batch
-	9814, 9576, 6841, 6524, 5626, 5449, 9429, 5683, 8597, 5690, 10427, 4352, 8591, 5796, 10531, 9626,
-	7177, 5979, 4600, 10640, 9277, 5523, 3066, 10420, 5398, 5835, 8095, 4484, 9801, 7467, 6765, 5799,
-	5817, 4723, 10889, 8237, 7163, 5857, 5856, 5228, 7422, 5832, 5711, 11724, 4557, 5541, 5385, 6480,
-	10212, 5938,
-	// Third batch
-	5881, 4721, 5808, 4912, 12202, 5694, 4849, 5296, 7455, 5828, 6236, 5608, 4506, 11290, 11047, 7946,
-	5680, 10139, 7945, 7849,
-	// Previously working ones
-	1954, 2043, 5786, 5779, 5789, 6897,
-];
-
 interface WorkflowResponse {
 	data: {
 		attributes: {
 			name: string;
+			status: string;
 			workflow: {
 				nodes: unknown[];
 				connections: Record<string, unknown>;
@@ -51,9 +35,31 @@ interface WorkflowResponse {
 	};
 }
 
+interface SearchResult {
+	id: number;
+	name: string;
+}
+
+async function searchWorkflows(page: number, rows: number = 100): Promise<SearchResult[]> {
+	const url = `https://n8n.io/api/product-api/workflows/search?rows=${rows}&page=${page}`;
+	console.log(`Searching workflows page ${page}...`);
+
+	try {
+		const response = await fetch(url);
+		if (!response.ok) {
+			console.error(`  Failed to search workflows: ${response.status}`);
+			return [];
+		}
+		const data = (await response.json()) as { workflows: SearchResult[]; totalWorkflows: number };
+		return data.workflows || [];
+	} catch (error) {
+		console.error(`  Error searching workflows:`, error);
+		return [];
+	}
+}
+
 async function fetchWorkflow(id: number): Promise<WorkflowResponse | null> {
 	const url = `https://api.n8n.io/api/workflows/${id}`;
-	console.log(`Fetching workflow ${id}...`);
 
 	try {
 		const response = await fetch(url);
@@ -74,15 +80,66 @@ async function main() {
 		fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 	}
 
-	console.log('Fetching test workflows from n8n.io...\n');
+	// Load existing manifest to see what we already have
+	const manifestPath = path.join(OUTPUT_DIR, 'manifest.json');
+	let existingIds = new Set<number>();
+	if (fs.existsSync(manifestPath)) {
+		const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+		existingIds = new Set(
+			manifest.workflows
+				.filter((w: { success: boolean }) => w.success)
+				.map((w: { id: number }) => w.id),
+		);
+		console.log(`Found ${existingIds.size} existing workflows\n`);
+	}
+
+	// Discover workflow IDs from search API
+	console.log('Discovering workflows from n8n.io search API...\n');
+	const allWorkflowIds: number[] = [];
+
+	// Fetch multiple pages to get enough workflow IDs
+	for (let page = 1; page <= 10; page++) {
+		const results = await searchWorkflows(page, 100);
+		if (results.length === 0) break;
+
+		for (const item of results) {
+			if (!existingIds.has(item.id)) {
+				allWorkflowIds.push(item.id);
+			}
+		}
+		console.log(
+			`  Page ${page}: ${results.length} workflows, ${allWorkflowIds.length} new candidates`,
+		);
+
+		// Stop if we have enough candidates
+		if (allWorkflowIds.length >= 200) break;
+	}
+
+	console.log(`\nFound ${allWorkflowIds.length} new workflow candidates\n`);
+	console.log('Fetching workflows (only published)...\n');
 
 	const results: { id: number; name: string; success: boolean }[] = [];
+	let publishedCount = 0;
+	const TARGET_COUNT = 100;
 
-	for (const id of WORKFLOW_IDS) {
+	for (const id of allWorkflowIds) {
+		if (publishedCount >= TARGET_COUNT) {
+			console.log(`\nReached target of ${TARGET_COUNT} published workflows`);
+			break;
+		}
+
+		console.log(`Fetching workflow ${id}...`);
 		const data = await fetchWorkflow(id);
 
 		if (data && data.data && data.data.attributes) {
-			const { name, workflow } = data.data.attributes;
+			const { name, status, workflow } = data.data.attributes;
+
+			// Only include published workflows
+			if (status !== 'published') {
+				console.log(`  Skipping: status=${status} (not published)`);
+				continue;
+			}
+
 			const outputPath = path.join(OUTPUT_DIR, `${id}.json`);
 
 			// Save just the workflow part (nodes, connections, settings)
@@ -93,22 +150,38 @@ async function main() {
 			console.log('');
 
 			results.push({ id, name, success: true });
+			publishedCount++;
 		} else {
 			results.push({ id, name: 'Unknown', success: false });
 		}
 	}
 
-	// Create manifest file
+	// Load existing results and merge with new ones
+	let allResults: { id: number; name: string; success: boolean }[] = [];
+	if (fs.existsSync(manifestPath)) {
+		const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+		allResults = manifest.workflows;
+	}
+
+	// Add new results (avoid duplicates)
+	const resultIds = new Set(allResults.map((r) => r.id));
+	for (const result of results) {
+		if (!resultIds.has(result.id)) {
+			allResults.push(result);
+		}
+	}
+
+	// Update manifest file
 	const manifest = {
 		fetchedAt: new Date().toISOString(),
-		workflows: results,
+		workflows: allResults,
 	};
-	fs.writeFileSync(path.join(OUTPUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2));
+	fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
 	console.log('\nSummary:');
-	console.log(`  Total: ${results.length}`);
-	console.log(`  Success: ${results.filter((r) => r.success).length}`);
+	console.log(`  New published workflows: ${publishedCount}`);
 	console.log(`  Failed: ${results.filter((r) => !r.success).length}`);
+	console.log(`  Total in manifest: ${allResults.filter((r) => r.success).length}`);
 }
 
 main().catch(console.error);

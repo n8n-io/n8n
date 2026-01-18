@@ -1,0 +1,429 @@
+{
+	"id": "vPkPxcHDEdL6FNZi",
+	"meta": {
+		"instanceId": "548acc2e7428ceb53b1074dedcb0aa0107627dedd253460b796a49ef19136fca",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "🤖 SUPERVISOR AVA",
+	"tags": [
+		{
+			"id": "g6PVVsobpsnjG98n",
+			"name": "Supervisor Ava",
+			"createdAt": "2025-05-10T15:00:36.847Z",
+			"updatedAt": "2025-05-10T15:00:36.847Z"
+		}
+	],
+	"nodes": [
+		{
+			"id": "7eb478cd-d204-44ac-9891-18e5fc2bf77b",
+			"name": "Calculator",
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"position": [320, 360],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "fc51ac2b-72f0-479e-b012-a089007bf816",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"onError": "continueErrorOutput",
+			"position": [340, 20],
+			"parameters": {
+				"text": "={{ $('Telegram Trigger1').item.json.message.text }}",
+				"options": {
+					"systemMessage": "=# ROLE\n\nYou are an AI agent called Ava.\n\nYour job is to orchestrate the activities between different agents and then formulate a friendly response back to the user.\n\nYou should never write emails, create contacts, create content, create calendar events, create summaries yourself. Your job is to call agents and tools in the correct sequence.\n\nThink carefully about the sequence of events. Some tools might first require you to call another tool in order to pass it the correct information.\n\n\nThe tools are:\n- Calendar\n- Contacts\n- Gmail\n- Google Search \n- Calculator\n\n\n# ADDITIONAL INFORMATION\n- You are talking to Jordan\n- The current date and time is {{  $now.toString() }}\n- Time zone is EST (Ottawa)\n\n\n\n# RULES",
+					"returnIntermediateSteps": true
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "64593c21-7a6a-4404-8188-4718002db01f",
+			"name": "Calendar",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [560, 360],
+			"parameters": {
+				"name": "Calendar",
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "tC8OSGmmiBE9kvnt",
+					"cachedResultName": "🤖 Calendar Agent"
+				},
+				"description": "Use this tool for any Calendar related actions.",
+				"workflowInputs": {
+					"value": {},
+					"schema": [],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "853f816a-05a1-4af5-8bb8-a6a8a44c5c3a",
+			"name": "Gmail",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [660, 360],
+			"parameters": {
+				"name": "Gmail",
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "mh7GGdzmesTrHGxU",
+					"cachedResultName": "🤖 Gmail Agent"
+				},
+				"description": "Use this tool for any email related actions.",
+				"workflowInputs": {
+					"value": {},
+					"schema": [],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "801a5a3f-536e-489f-81ef-edb6cf3aefce",
+			"name": "Google Search",
+			"type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+			"position": [440, 360],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"serpApi": {
+					"id": "credential-id",
+					"name": "serpApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "91c2a746-3071-4624-9f84-ff5d57929778",
+			"name": "Response",
+			"type": "n8n-nodes-base.telegram",
+			"position": [820, 20],
+			"webhookId": "5dced4b9-5066-4036-a4d4-14fc07edd53c",
+			"parameters": {
+				"text": "={{ $json.output }}",
+				"chatId": "={{ $('Telegram Trigger1').item.json.message.chat.id }}",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "1cbc8229-217e-448a-883e-39d5a75b4f6b",
+			"name": "Telegram Trigger1",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [120, 20],
+			"webhookId": "47bfd98b-694c-484d-9760-d2532dfdcdc4",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {
+					"download": true
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "22b9e60b-85ec-4f82-85e9-98f81af0df03",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [200, 360],
+			"parameters": {
+				"sessionKey": "={{ $('Telegram Trigger1').item.json.message.chat.id }}",
+				"sessionIdType": "customKey",
+				"contextWindowLength": 7
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "e17861fb-c3a7-4665-b194-165b40e4fddd",
+			"name": "Contacts",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [760, 360],
+			"parameters": {
+				"name": "Contacts",
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "ydXdT3mvOkaFRYKS",
+					"cachedResultName": "🤖 Contacts Agent"
+				},
+				"description": "Use this tool for any contacts related actions.",
+				"workflowInputs": {
+					"value": {
+						"aNumber": 0
+					},
+					"schema": [
+						{
+							"id": "query",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "query",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "aNumber",
+							"type": "number",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "aNumber",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "ef9df397-d620-47e3-a318-6b7e15115344",
+			"name": "OpenRouter Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+			"position": [60, 360],
+			"parameters": {
+				"model": "openai/gpt-4o",
+				"options": {}
+			},
+			"credentials": {
+				"openRouterApi": {
+					"id": "credential-id",
+					"name": "openRouterApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9a9a0d85-0eb5-41a5-80bc-2800f99143d9",
+			"name": "LinkedIn Comment Agent",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [880, 360],
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a3bvZDBy1bGKYKXt",
+					"cachedResultName": "LinkedIn Comment Agent"
+				},
+				"description": "Use this tool for any LinkedIn Comment related action.",
+				"workflowInputs": {
+					"value": {
+						"query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('query', ``, 'string') }}"
+					},
+					"schema": [
+						{
+							"id": "query",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "query",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "aNumber",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "aNumber",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "d525f091-55a0-47f5-9cd1-9b27b0a03338",
+			"name": "Perplexity",
+			"type": "n8n-nodes-base.perplexityTool",
+			"position": [1020, 360],
+			"parameters": {
+				"model": "sonar",
+				"options": {},
+				"messages": {
+					"message": [
+						{
+							"content": "={{ $('Telegram Trigger1').item.json.message.text }}"
+						}
+					]
+				},
+				"requestOptions": {}
+			},
+			"credentials": {
+				"perplexityApi": {
+					"id": "credential-id",
+					"name": "perplexityApi Credential"
+				}
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"timezone": "America/Toronto",
+		"callerPolicy": "workflowsFromSameOwner",
+		"executionOrder": "v1",
+		"timeSavedPerExecution": 4
+	},
+	"versionId": "8a4acb7c-1982-4c59-aff9-6e3c7bfe4202",
+	"connections": {
+		"Gmail": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calendar": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Contacts": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Perplexity": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Search": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger1": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenRouter Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LinkedIn Comment Agent": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

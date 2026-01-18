@@ -1,0 +1,502 @@
+{
+	"meta": {
+		"instanceId": "67d4d33d8b0ad4e5e12f051d8ad92fc35893d7f48d7f801bc6da4f39967b3592",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "5029ae4f-cddf-4ea3-887b-24dfe0bd4526",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-80, -240],
+			"webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+			"parameters": {
+				"path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+				"options": {},
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "9722f40e-5f71-4e2f-b774-30abaf2cd12b",
+			"name": "Webhook1",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-80, 64],
+			"webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+			"parameters": {
+				"path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+				"options": {},
+				"httpMethod": "POST",
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "61ab48f4-cbc4-4fe6-b999-5c8179c2f199",
+			"name": "Webhook2",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-80, 1200],
+			"webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+			"parameters": {
+				"path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+				"options": {},
+				"httpMethod": "PUT"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "52473972-d31a-4d2d-b7bd-4021b218dbf1",
+			"name": "Webhook3",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-80, 352],
+			"webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+			"parameters": {
+				"path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+				"options": {
+					"ipWhitelist": "",
+					"allowedOrigins": "*"
+				},
+				"httpMethod": "PATCH",
+				"responseMode": "streaming"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "977d58d2-21f2-456e-8c32-188f4058d8e5",
+			"name": "Webhook4",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-80, 640],
+			"webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+			"parameters": {
+				"path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+				"options": {},
+				"httpMethod": "DELETE"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "6cb10c72-df1e-4b00-a616-1b814d39e49f",
+			"name": "Webhook5",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-80, 928],
+			"webhookId": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+			"parameters": {
+				"path": "07aaa04d-6c73-416f-82e2-1e6ededeacc4",
+				"options": {},
+				"httpMethod": "HEAD"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "39d1b185-bd11-4fba-9efb-0b839dc9fd34",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-704, -368],
+			"parameters": {
+				"color": 4,
+				"width": 464,
+				"height": 272,
+				"content": "## What is a webhook (in n8n)?\nA webhook is a tiny HTTP endpoint that n8n exposes to trigger a workflow when it’s called. It can read query params, headers, and body (JSON/form/multipart), and it can send a response immediately, after the flow finishes, or via a Respond to Webhook node. Each Webhook node gives you a Test URL (editor-only) and a Production URL (requires the workflow to be active). Security is built-in: Basic, Header, or JWT auth, plus IP allow-listing and CORS options."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "82826a07-84c3-415b-8253-dbb7098da016",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-144, -368],
+			"parameters": {
+				"color": 7,
+				"width": 272,
+				"height": 272,
+				"content": "## GET → \n“Retrieve data without making changes. Think queries or health checks.”"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2895700d-5086-4d05-9048-d4038cdf387f",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-144, -64],
+			"parameters": {
+				"color": 7,
+				"width": 272,
+				"height": 272,
+				"content": "## POST → \n“Send new data/events. Most webhooks from apps use POST.”"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "34949301-c2dc-4c6f-9630-765bf6e8237e",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-144, 1088],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 272,
+				"content": "## PUT → \n“Replace a whole resource with new data. Idempotent.”"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2876d5a1-b3e8-41dc-9619-d91fe8bac16e",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-144, 224],
+			"parameters": {
+				"color": 7,
+				"width": 272,
+				"height": 272,
+				"content": "## PATCH → \n“Update part of a resource. Send only the fields that changed.”"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "083b92a1-d4cd-46bb-a0b3-4db1f24dbffd",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-144, 512],
+			"parameters": {
+				"color": 7,
+				"width": 272,
+				"height": 272,
+				"content": "## DELETE → \n“Remove a resource. Repeating the call has the same result.”"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ffda96a3-68fc-4388-88d5-375a39a4cea0",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-144, 800],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 272,
+				"content": "## HEAD → \n“Like GET but no body — used for checks/headers only.”"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "667f87de-c043-4d88-a9a3-4ee70e3abfd2",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-704, -80],
+			"parameters": {
+				"color": 4,
+				"width": 464,
+				"height": 432,
+				"content": "## 🔐 Webhook Auth Types in n8n\n\n* **Basic Auth** → Username + password in the request.\n  *Good for simple server-to-server use. Always use HTTPS.*\n\n* **Header Auth** → Require a specific header + value (e.g. `X-API-Key`).\n  *Works like an API key. Easy to rotate or share.*\n\n* **JWT Auth** → Caller sends a signed JWT (`Authorization: Bearer <token>`).\n  *Stronger option — tokens can expire and carry claims.*\n\n**Extra hardening (Options menu):**\n\n* **IP Whitelist** → Only allow listed IPs.\n* **Allowed Origins (CORS)** → Restrict browser requests to known domains.\n* **Ignore Bots** → Block crawlers/link previewers."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "907e9243-a595-497d-a017-acfb4211d2b5",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-704, 368],
+			"parameters": {
+				"color": 4,
+				"width": 464,
+				"height": 320,
+				"content": "## 📡 Webhook Response Types in n8n\n\n* **Immediately** → Returns `200 OK` right away.\n  *Use when caller only needs a quick acknowledgement.*\n\n* **When Last Node Finishes** → Waits for the workflow to complete, then sends the final data back.\n  *Good when the client expects the processed result.*\n\n* **Using Respond to Webhook** → Response is sent from a separate **Respond to Webhook** node.\n  *Best for async flows — reply later while work continues in background.*\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d11d5a46-2b3e-4e49-beb5-4923f828492a",
+			"name": "Get a row",
+			"type": "n8n-nodes-base.supabase",
+			"position": [240, -240],
+			"parameters": {
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "email",
+							"keyValue": "={{ $json.query.email }}"
+						}
+					]
+				},
+				"tableId": "demo_contacts",
+				"operation": "get"
+			},
+			"credentials": {
+				"supabaseApi": {
+					"id": "credential-id",
+					"name": "supabaseApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "edbd8d72-79ea-4101-900e-2635b047300f",
+			"name": "Respond to Webhook",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [512, -240],
+			"parameters": {
+				"options": {},
+				"respondWith": "allIncomingItems"
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "f8d8f340-c194-4c4e-a308-d5c95e8533b9",
+			"name": "Create a row",
+			"type": "n8n-nodes-base.supabase",
+			"position": [512, 64],
+			"parameters": {
+				"tableId": "demo_contacts",
+				"dataToSend": "autoMapInputData",
+				"inputsToIgnore": "id"
+			},
+			"credentials": {
+				"supabaseApi": {
+					"id": "credential-id",
+					"name": "supabaseApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5999b69a-5b9f-4f55-9bf3-f579dfe869a1",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [240, 64],
+			"parameters": {
+				"mode": "raw",
+				"options": {},
+				"jsonOutput": "={{ $json.body }}"
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "c04fc7eb-e43a-48bd-a979-ed423b52b9f3",
+			"name": "Edit Fields1",
+			"type": "n8n-nodes-base.set",
+			"position": [240, 352],
+			"parameters": {
+				"mode": "raw",
+				"options": {},
+				"jsonOutput": "={{ $json.body }}"
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "7ec4b8ac-5b1a-4b31-9759-f8b7ed070178",
+			"name": "Respond to Webhook1",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [752, 64],
+			"parameters": {
+				"options": {},
+				"respondWith": "allIncomingItems"
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "0d50f8f4-df4d-448f-9c05-8e2043e8a8d2",
+			"name": "Respond to Webhook2",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [752, 352],
+			"parameters": {
+				"options": {},
+				"respondWith": "allIncomingItems"
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "481f146d-0d14-4b40-beeb-3f56c548d9cc",
+			"name": "Update a row",
+			"type": "n8n-nodes-base.supabase",
+			"position": [512, 352],
+			"parameters": {
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "id",
+							"keyValue": "={{ $json.id }}",
+							"condition": "eq"
+						}
+					]
+				},
+				"tableId": "demo_contacts",
+				"operation": "update",
+				"dataToSend": "autoMapInputData"
+			},
+			"credentials": {
+				"supabaseApi": {
+					"id": "credential-id",
+					"name": "supabaseApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ae559e34-c048-4ab7-82d6-5e5f34d0f5d5",
+			"name": "Delete a row",
+			"type": "n8n-nodes-base.supabase",
+			"position": [240, 640],
+			"parameters": {
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "id",
+							"keyValue": "={{ $json.query.id }}",
+							"condition": "eq"
+						}
+					]
+				},
+				"tableId": "demo_contacts",
+				"operation": "delete"
+			},
+			"credentials": {
+				"supabaseApi": {
+					"id": "credential-id",
+					"name": "supabaseApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fb7f6c4a-05f9-4096-96f8-035f8bc20a8d",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1248, -32],
+			"parameters": {
+				"color": 6,
+				"width": 848,
+				"height": 171,
+				"content": "# n8n Webhooks: A Beginner’s Guide (with Security Built-In)\nBuilt by [Wayne Simpson](https://www.linkedin.com/in/simpsonwayne/) at [nocodecreative.io](https://nocodecreative.io)\n☕ If you find this useful, feel free to [buy me a coffee](https://ko-fi.com/waynesimpson)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "647b73a3-b157-40ef-b12d-8fe7b69d630c",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1040, 176],
+			"parameters": {
+				"color": 7,
+				"width": 667,
+				"height": 497,
+				"content": "# Watch the Video 📺\n### Watch the Video 👇\n[![n8n Webhooks 101 | Secure Them the Right Way](https://vdyfnvnstovfxpabhdjc.supabase.co/storage/v1/object/public/images/Thumbnails/n8n%20webhooks%20101%20SECURE%20YOUR%20DATA.png)](https://www.youtube.com/watch?v=o6F36xsiuBk)\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "99ecd5f5-6df0-430a-a863-56af8417ea72",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1744, 176],
+			"parameters": {
+				"color": 7,
+				"width": 600,
+				"height": 500,
+				"content": "## Read to blog post to get started 📝\n**Follow along to to get up and running**\n\n[![n8n Webhooks: A Beginner’s Guide (with Security Built-In)](https://vdyfnvnstovfxpabhdjc.supabase.co/storage/v1/object/public/images/Thumbnails/Screenshot%202025-09-04%20161058.png)](https://blog.nocodecreative.io/n8n-webhooks-a-beginners-guide-with-security-built-in/)\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Get a row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook1": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook3": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook4": {
+			"main": [
+				[
+					{
+						"node": "Delete a row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get a row": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Create a row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a row": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Update a row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update a row": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

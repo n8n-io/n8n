@@ -1,0 +1,1168 @@
+{
+	"meta": {
+		"instanceId": "7914110285fa02b6fbc6c97080a41909334a12a40fb7c7c8ccd7922fbaeffe1b",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "30e55c89-981a-4e19-8745-8c72110bc735",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [528, 928],
+			"parameters": {
+				"color": 5,
+				"width": 528,
+				"height": 640,
+				"content": "## Muhammad Farooq Iqbal - Automation Expert & n8n Creator\n\nI am a passionate automation expert and recognized n8n Creator specializing in intelligent workflow automation. With extensive experience in n8n, AI automation, Zapier, and Make.com, I have created innovative workflow templates with 2500+ downloads across the global automation community\n\n### Expertise\n- **Workflow Automation**: n8n, Zapier, Make.com, AI automation\n- **AI Integration**: Gemini AI, API integration, data processing\n- **Platform Mastery**: Google Sheets, Google Drive, custom scripts\n\n## Need Help with This Workflow?\n\nIf you face any issues with this workflow or need customization support, feel free to reach out:\n\n**📧 Email**: mfarooqiqbal143@gmail.com  \n**📱 Phone**: +923036991118  \n**💼 LinkedIn**: [Connect with me](https://linkedin.com/in/muhammadfarooqiqbal)  \n**🌐 Portfolio**: [View my work](https://mfarooqone.github.io/n8n/)\n**UpWork**: [Upwork Profile](https://www.upwork.com/freelancers/~011aeba159896e2eba)\n\n*I'm always excited to help with automation challenges and workflow optimization!*\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f95aa621-36a8-47e0-8f47-9712cb6f3487",
+			"name": "Submit Video Generation Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1616, 560],
+			"parameters": {
+				"url": "https://api.kie.ai/api/v1/jobs/createTask",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"model\": \"wan/2-6-text-to-video\",\n    \"input\": {\n      \"prompt\": \"{{ $json.prompt }}\",\n      \"duration\": \"{{ $json.duration }}\",\n      \"resolution\": \"{{ $json.resolution }}\",\n      \"multi_shots\": false\n    }\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth"
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "vX52jw1dTyyouVZr",
+					"name": "KIA.AI"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "146f02fd-0f20-468c-aac9-a1e34c4bd87b",
+			"name": "Switch Video Generation Status",
+			"type": "n8n-nodes-base.switch",
+			"onError": "continueRegularOutput",
+			"position": [2240, 512],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "fail",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "fail-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "fail"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "success",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "success-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "success"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "generating",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "generating-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "generating"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "queuing",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "queuing-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "queuing"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "waiting",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "waiting-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "waiting"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"retryOnFail": true,
+			"typeVersion": 3.2
+		},
+		{
+			"id": "5ef6cbca-c4b5-4a9a-a2c2-8ebd477d2d2e",
+			"name": "Check Video Generation Status",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2016, 560],
+			"parameters": {
+				"url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+				"options": {},
+				"sendQuery": true,
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "taskId",
+							"value": "={{ $json.data.taskId }}"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "vX52jw1dTyyouVZr",
+					"name": "KIA.AI"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "f67aafe5-661d-4a90-9022-9b30421bac08",
+			"name": "Wait for Video Generation",
+			"type": "n8n-nodes-base.wait",
+			"position": [1856, 560],
+			"webhookId": "c5523b4b-b1c7-494f-b973-65a222f25ece",
+			"parameters": {
+				"unit": "seconds",
+				"amount": 5
+			},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "45fd425c-2900-438a-a0c9-9a79fb7f5534",
+			"name": "Extract Video URL",
+			"type": "n8n-nodes-base.code",
+			"position": [2448, 528],
+			"parameters": {
+				"jsCode": "// n8n Function node\nconst items = $input.all();\nconst out = [];\n\nfor (const item of items) {\n  // Your HTTP node sometimes returns an array at top-level\n  const payload = item.json;\n  const first = Array.isArray(payload) ? payload[0] : payload;\n\n  // Get the stringified resultJson safely\n  const resultJsonStr = first?.data?.resultJson ?? '';\n\n  // Parse and extract\n  let resultUrls = [];\n  try {\n    const parsed = JSON.parse(resultJsonStr);\n    resultUrls = parsed?.resultUrls ?? [];\n  } catch (e) {\n    // leave resultUrls as []\n  }\n\n  out.push({ json: { resultUrls } });\n}\n\nreturn out;\n"
+			},
+			"retryOnFail": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "8055f1ce-2ced-42a4-9a6e-501f1c4ec833",
+			"name": "Download Video File",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2624, 528],
+			"parameters": {
+				"url": "={{ $json.resultUrls[0] }}",
+				"options": {}
+			},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "9e38d0df-8af9-46d5-b004-ee2f0167dee8",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [1184, 560],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "1e767905-f274-446e-ba97-586abda74e20",
+			"name": "Set Video Parameters",
+			"type": "n8n-nodes-base.set",
+			"position": [1392, 560],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "774ed91a-11bd-4584-ad9c-418e9caf88df",
+							"name": "prompt",
+							"type": "string",
+							"value": "=YOUR_VIDEO_PROMPT_DESCRIPTION"
+						},
+						{
+							"id": "f810bb1e-e54d-4fc8-9be7-72426902de3f",
+							"name": "duration",
+							"type": "string",
+							"value": "=5"
+						},
+						{
+							"id": "698c7fb7-c7e2-41d5-8d06-f5114d4a55d2",
+							"name": "resolution",
+							"type": "string",
+							"value": "=720p"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "3f7653d5-7dfa-4b18-9870-0cc900124c34",
+			"name": "Text-to-Video Section",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1104, 368],
+			"parameters": {
+				"width": 1728,
+				"height": 512,
+				"content": "**Text-to-Video Workflow**\n\nGenerates videos from text prompts using WAN 2.6. Set your parameters, submit the request, and the workflow polls for completion before downloading."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6c50889b-086e-487a-9f1d-0c4a311cda20",
+			"name": "Video-to-Video Section",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1104, 1488],
+			"parameters": {
+				"width": 1728,
+				"height": 512,
+				"content": "**Video-to-Video Workflow**\n\nTransforms existing videos using WAN 2.6. Provide a video URL and prompt, then the workflow handles generation and download."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "94bfa5af-5a85-421f-a59b-0bbc9097f108",
+			"name": "Set Video URL and Prompt",
+			"type": "n8n-nodes-base.set",
+			"position": [1440, 1696],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "774ed91a-11bd-4584-ad9c-418e9caf88df",
+							"name": "prompt",
+							"type": "string",
+							"value": "=YOUR_VIDEO_PROMPT_DESCRIPTION"
+						},
+						{
+							"id": "f810bb1e-e54d-4fc8-9be7-72426902de3f",
+							"name": "duration",
+							"type": "string",
+							"value": "=5"
+						},
+						{
+							"id": "698c7fb7-c7e2-41d5-8d06-f5114d4a55d2",
+							"name": "resolution",
+							"type": "string",
+							"value": "=720p"
+						},
+						{
+							"id": "eac7bc3a-db33-4a87-b073-c6cb7a67ac5f",
+							"name": "video_urls",
+							"type": "string",
+							"value": "=https://static.aiquickdraw.com/tools/example/1765957777782_cNJpvhRx.mp4"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "b76f18f8-5d7f-452d-891f-c52409d000b7",
+			"name": "Submit Video Generation",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1632, 1696],
+			"parameters": {
+				"url": "https://api.kie.ai/api/v1/jobs/createTask",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"model\": \"wan/2-6-video-to-video\",\n    \"input\": {\n      \"prompt\": \"{{ $json.prompt }}\",\n      \"video_urls\": [\n        \"{{ $json.video_urls }}\"\n      ],\n      \"duration\": \"{{ $json.duration }}\",\n      \"resolution\": \"{{ $json.resolution }}\",\n      \"multi_shots\": false\n    }\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth"
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "vX52jw1dTyyouVZr",
+					"name": "KIA.AI"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "b62633c3-c33d-4098-9e1d-d2b002c1999e",
+			"name": "Wait for Video-to-Video Generation",
+			"type": "n8n-nodes-base.wait",
+			"position": [1872, 1696],
+			"webhookId": "880bd3a8-8a18-4123-8de4-502f4a4d8eef",
+			"parameters": {
+				"unit": "seconds",
+				"amount": 5
+			},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "ebe97690-3ce2-41d9-8cc6-b1d6c91b99a3",
+			"name": "Check Video Generation",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2032, 1696],
+			"parameters": {
+				"url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+				"options": {},
+				"sendQuery": true,
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "taskId",
+							"value": "={{ $json.data.taskId }}"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "vX52jw1dTyyouVZr",
+					"name": "KIA.AI"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "20e3f708-ca7a-4b18-a9bb-95c014fd5aa8",
+			"name": "Switch Video Generation",
+			"type": "n8n-nodes-base.switch",
+			"onError": "continueRegularOutput",
+			"position": [2256, 1648],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "fail",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "fail-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "fail"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "success",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "success-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "success"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "generating",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "generating-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "generating"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "queuing",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "queuing-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "queuing"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "waiting",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "waiting-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "waiting"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"retryOnFail": true,
+			"typeVersion": 3.2
+		},
+		{
+			"id": "1b8cc478-1277-49f9-bbc9-555bb267a5c9",
+			"name": "Video URL",
+			"type": "n8n-nodes-base.code",
+			"position": [2496, 1664],
+			"parameters": {
+				"jsCode": "// n8n Function node\nconst items = $input.all();\nconst out = [];\n\nfor (const item of items) {\n  // Your HTTP node sometimes returns an array at top-level\n  const payload = item.json;\n  const first = Array.isArray(payload) ? payload[0] : payload;\n\n  // Get the stringified resultJson safely\n  const resultJsonStr = first?.data?.resultJson ?? '';\n\n  // Parse and extract\n  let resultUrls = [];\n  try {\n    const parsed = JSON.parse(resultJsonStr);\n    resultUrls = parsed?.resultUrls ?? [];\n  } catch (e) {\n    // leave resultUrls as []\n  }\n\n  out.push({ json: { resultUrls } });\n}\n\nreturn out;\n"
+			},
+			"retryOnFail": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "0f4dd138-eed4-4b10-973a-697205ebcb49",
+			"name": "Download Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2672, 1664],
+			"parameters": {
+				"url": "={{ $json.resultUrls[0] }}",
+				"options": {}
+			},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "be0b1bdd-7284-4f04-9ac2-9c9a5382d698",
+			"name": "Image-to-Video Section",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1104, 928],
+			"parameters": {
+				"width": 1728,
+				"height": 512,
+				"content": "**Image-to-Video Workflow**\n\nAnimates existing images into videos using WAN 2.6. Provide an image URL and prompt, then the workflow handles generation and download."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e2782d2f-248c-4581-b625-e656a57b354e",
+			"name": "Set Prompt & Image Url",
+			"type": "n8n-nodes-base.set",
+			"position": [1424, 1104],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "774ed91a-11bd-4584-ad9c-418e9caf88df",
+							"name": "prompt",
+							"type": "string",
+							"value": "=YOUR_VIDEO_PROMPT_DESCRIPTION"
+						},
+						{
+							"id": "f810bb1e-e54d-4fc8-9be7-72426902de3f",
+							"name": "duration",
+							"type": "string",
+							"value": "=5"
+						},
+						{
+							"id": "698c7fb7-c7e2-41d5-8d06-f5114d4a55d2",
+							"name": "resolution",
+							"type": "string",
+							"value": "=720p"
+						},
+						{
+							"id": "eac7bc3a-db33-4a87-b073-c6cb7a67ac5f",
+							"name": "image_url",
+							"type": "string",
+							"value": "=YOUR_IMAGE_URL"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "c45072ae-5772-4713-a1dc-8e5c3922eb23",
+			"name": "Submit Video Generation a",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1648, 1104],
+			"parameters": {
+				"url": "https://api.kie.ai/api/v1/jobs/createTask",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"model\": \"wan/2-6-image-to-video\",\n    \"input\": {\n      \"prompt\": \"{{ $json.prompt }}\",\n      \"image_urls\": [\n        \"{{ $json.image_url }}\"\n      ],\n      \"duration\": \"{{ $json.duration }}\",\n      \"resolution\": \"{{ $json.resolution }}\",\n      \"multi_shots\": false\n    }\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth"
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "vX52jw1dTyyouVZr",
+					"name": "KIA.AI"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "c2a697bd-e2ee-475c-81e0-6b5fd34edefd",
+			"name": "Wait for Image-to-Video Generation",
+			"type": "n8n-nodes-base.wait",
+			"position": [1872, 1104],
+			"webhookId": "0cfc061d-e0c4-440c-a388-79c16ce76b65",
+			"parameters": {
+				"unit": "seconds",
+				"amount": 5
+			},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "7480e077-79a2-47ae-b459-1aac077ba263",
+			"name": "Switch Image-to-Video Status",
+			"type": "n8n-nodes-base.switch",
+			"onError": "continueRegularOutput",
+			"position": [2256, 1056],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "fail",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "fail-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "fail"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "success",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "success-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "success"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "generating",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "generating-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "generating"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "queuing",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "queuing-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "queuing"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "waiting",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "waiting-state-condition",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data.state }}",
+										"rightValue": "waiting"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"retryOnFail": true,
+			"typeVersion": 3.2
+		},
+		{
+			"id": "3033778e-0ddc-4b89-bd13-cadb82dac9c3",
+			"name": "Check Video Status",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2032, 1104],
+			"parameters": {
+				"url": "https://api.kie.ai/api/v1/jobs/recordInfo",
+				"options": {},
+				"sendQuery": true,
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "taskId",
+							"value": "={{ $json.data.taskId }}"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "vX52jw1dTyyouVZr",
+					"name": "KIA.AI"
+				}
+			},
+			"retryOnFail": true,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "5fb15592-8ad7-4874-8e32-69dc21b499d3",
+			"name": "Video URL1",
+			"type": "n8n-nodes-base.code",
+			"position": [2480, 1072],
+			"parameters": {
+				"jsCode": "// n8n Function node\nconst items = $input.all();\nconst out = [];\n\nfor (const item of items) {\n  // Your HTTP node sometimes returns an array at top-level\n  const payload = item.json;\n  const first = Array.isArray(payload) ? payload[0] : payload;\n\n  // Get the stringified resultJson safely\n  const resultJsonStr = first?.data?.resultJson ?? '';\n\n  // Parse and extract\n  let resultUrls = [];\n  try {\n    const parsed = JSON.parse(resultJsonStr);\n    resultUrls = parsed?.resultUrls ?? [];\n  } catch (e) {\n    // leave resultUrls as []\n  }\n\n  out.push({ json: { resultUrls } });\n}\n\nreturn out;\n"
+			},
+			"retryOnFail": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "5c5c99d9-65a7-4522-8f41-2350d11d82dd",
+			"name": "Download Video1",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2640, 1072],
+			"parameters": {
+				"url": "={{ $json.resultUrls[0] }}",
+				"options": {}
+			},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "5448d710-b8c4-4cd5-a730-1f3bd9797754",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [416, 368],
+			"parameters": {
+				"width": 640,
+				"height": 512,
+				"content": "## How it works\n\nThis workflow generates videos using WAN 2.6 AI through the KIE.AI API. You can create videos three ways: text-to-video (from descriptions), image-to-video (animate images), or video-to-video (transform existing videos). Each workflow submits your request, waits for processing (typically 1-5 minutes), checks status every 5 seconds, and downloads the completed video when ready.\n\n## Setup steps\n\n1. Get your KIE.AI API key from https://kie.ai/\n2. In n8n, create an HTTP Bearer Auth credential named \"KIE.AI\" and paste your API key\n3. Choose your workflow type and update the corresponding 'Set' node:\n   - Text-to-Video: Update 'Set Video Parameters' (prompt, duration: 5/10/15s, resolution: 720p/1080p)\n   - Image-to-Video: Update 'Set Prompt & Image Url' (prompt, image_url, duration, resolution)\n   - Video-to-Video: Update 'Set Video URL and Prompt' (prompt, video_urls, duration, resolution)\n4. Click \"Execute Workflow\" to test. The workflow automatically polls for completion and downloads your video.\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Video URL": {
+			"main": [
+				[
+					{
+						"node": "Download Video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Video URL1": {
+			"main": [
+				[
+					{
+						"node": "Download Video1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Video URL": {
+			"main": [
+				[
+					{
+						"node": "Download Video File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Video Status": {
+			"main": [
+				[
+					{
+						"node": "Switch Image-to-Video Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Video Parameters": {
+			"main": [
+				[
+					{
+						"node": "Submit Video Generation Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Video Generation": {
+			"main": [
+				[
+					{
+						"node": "Switch Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Prompt & Image Url": {
+			"main": [
+				[
+					{
+						"node": "Submit Video Generation a",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Submit Video Generation": {
+			"main": [
+				[
+					{
+						"node": "Wait for Video-to-Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch Video Generation": {
+			"main": [
+				[
+					{
+						"node": "Submit Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Video URL",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait for Video-to-Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait for Video-to-Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait for Video-to-Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Video URL and Prompt": {
+			"main": [
+				[
+					{
+						"node": "Submit Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Submit Video Generation a": {
+			"main": [
+				[
+					{
+						"node": "Wait for Image-to-Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Video Generation": {
+			"main": [
+				[
+					{
+						"node": "Check Video Generation Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch Image-to-Video Status": {
+			"main": [
+				[
+					{
+						"node": "Submit Video Generation a",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Video URL1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait for Image-to-Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait for Image-to-Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait for Image-to-Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Video Generation Status": {
+			"main": [
+				[
+					{
+						"node": "Switch Video Generation Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch Video Generation Status": {
+			"main": [
+				[
+					{
+						"node": "Submit Video Generation Request",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Extract Video URL",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait for Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait for Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait for Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Submit Video Generation Request": {
+			"main": [
+				[
+					{
+						"node": "Wait for Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Image-to-Video Generation": {
+			"main": [
+				[
+					{
+						"node": "Check Video Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Video-to-Video Generation": {
+			"main": [
+				[
+					{
+						"node": "Check Video Generation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Set Video Parameters",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,187 @@
+{
+	"id": "JoBrqIuKn4cnNOJ0",
+	"meta": {
+		"instanceId": "fcb622cbd5234c565b9b78babeaf0ea2455df9d2aad0d1adff7c1ef99583e685"
+	},
+	"name": "Personal Appointment Booking",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "d55eb539-6cdf-423a-b50b-62b9f10bf252",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"position": [620, 620],
+			"webhookId": "6e9d32dc-f5ad-4101-9512-c1adb5b455d1",
+			"parameters": {
+				"path": "appointment-webhook",
+				"options": {},
+				"httpMethod": "POST",
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "5e8f1544-74c1-40a9-a1db-c9e67295317b",
+			"name": "Respond to Webhook",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [1320, 620],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "b07a2c6d-a08c-4b03-942e-b7c7ab749dbd",
+			"name": "Check available slot in Cal.com",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1040, 520],
+			"parameters": {
+				"url": "https://api.cal.com/v1/slots",
+				"options": {},
+				"sendQuery": true,
+				"authentication": "predefinedCredentialType",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "startTime",
+							"value": "={{ $json.body.startTime }}"
+						},
+						{
+							"name": "endTime",
+							"value": "={{DateTime.fromISO($json.body.startTime, { zone: 'Asia/Kolkata' })\n  .set({ hour: 18, minute: 0, second: 0 })\n.format(\"yyyy-MM-dd'T'HH:mm:ssZZ\")}}"
+						},
+						{
+							"name": "eventTypeId",
+							"value": "event_type_id"
+						},
+						{
+							"name": "timeZone",
+							"value": "Asia/Kolkata"
+						}
+					]
+				},
+				"nodeCredentialType": "calApi"
+			},
+			"credentials": {
+				"calApi": {
+					"id": "credential-id",
+					"name": "calApi Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "1fabd0b8-542b-48ac-b95a-993972cebe88",
+			"name": "Book an Appointment",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1040, 720],
+			"parameters": {
+				"url": "https://api.cal.com/v1/bookings",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"eventTypeId\": event_type_id,\n  \"start\": \"{{ $json.body.startTime }}\",\n  \"end\": \"{{ DateTime.fromISO($json.body.startTime).plus({ minutes: 30 }).format(\"yyyy-MM-dd'T'HH:mm:ssZZ\") }}\",\n  \"responses\": {\n    \"name\": \"{{ $json.body.name }}\",\n    \"email\": \"{{ $json.body.email }}\"\n  },\n  \"timeZone\": \"Asia/Kolkata\",\n  \"language\": \"en\",\n  \"title\": \"Test\",\n\"metadata\":{}\n} ",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "calApi"
+			},
+			"credentials": {
+				"calApi": {
+					"id": "credential-id",
+					"name": "calApi Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "61f129f5-0102-4055-9c9e-7eb6e004a403",
+			"name": "Check Is Request For Available Slot",
+			"type": "n8n-nodes-base.if",
+			"position": [820, 620],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "249d32bd-5a1d-44fe-8b33-975827cef795",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.body.tool }}",
+							"rightValue": "checkAvailableSlot"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "e50b589e-7cf1-424a-b518-5877eee50050",
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Check Is Request For Available Slot",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Book an Appointment": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check available slot in Cal.com": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Is Request For Available Slot": {
+			"main": [
+				[
+					{
+						"node": "Check available slot in Cal.com",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Book an Appointment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

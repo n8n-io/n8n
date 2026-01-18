@@ -1,0 +1,888 @@
+{
+	"meta": {
+		"instanceId": "d6b502dfa4d9dd072cdc5c2bb763558661053f651289291352a84403e01b3d1b"
+	},
+	"nodes": [
+		{
+			"id": "6a36842b-b214-4683-9129-ad44f4b79117",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [440, -180],
+			"parameters": {
+				"options": {
+					"systemMessage": "=You are a helpful assistant.\nCurrent datetime is {{ $now.toString() }}"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "f7c9aaa7-9ba7-4bbe-909b-3085ed60a387",
+			"name": "SearchEvent",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [2060, 180],
+			"parameters": {
+				"limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+				"options": {},
+				"timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+				"timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+				"calendar": {
+					"__rl": true,
+					"mode": "list",
+					"value": "user@example.com",
+					"cachedResultName": "user@example.com"
+				},
+				"operation": "getAll"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "47f6077d-de8a-46f7-8d3a-3a21596dea1f",
+			"name": "CreateEvent",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [2180, 180],
+			"parameters": {
+				"end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+				"start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+				"calendar": {
+					"__rl": true,
+					"mode": "list",
+					"value": "user@example.com",
+					"cachedResultName": "user@example.com"
+				},
+				"additionalFields": {
+					"summary": "={{ $fromAI(\"event_title\", \"The event title\", \"string\") }}",
+					"description": "={{ $fromAI(\"event_description\", \"The event description\", \"string\") }}"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "7e3573c8-d4b5-4bd2-9aac-3bcfca1c8eb4",
+			"name": "UpdateEvent",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [2300, 180],
+			"parameters": {
+				"eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+				"calendar": {
+					"__rl": true,
+					"mode": "list",
+					"value": "user@example.com",
+					"cachedResultName": "user@example.com"
+				},
+				"operation": "update",
+				"updateFields": {
+					"end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+					"start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+					"summary": "={{ $fromAI(\"event_title\", \"The event title\", \"string\") }}",
+					"description": "={{ $fromAI(\"event_description\", \"The event description\", \"string\") }}"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "fae46aa7-02c9-40d3-8f59-b46533e6a93c",
+			"name": "DeleteEvent",
+			"type": "n8n-nodes-base.googleCalendarTool",
+			"position": [2420, 180],
+			"parameters": {
+				"eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+				"options": {},
+				"calendar": {
+					"__rl": true,
+					"mode": "list",
+					"value": "user@example.com",
+					"cachedResultName": "user@example.com"
+				},
+				"operation": "delete"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "da58e521-7e80-4d28-84fd-17732728855e",
+			"name": "Google Calendar MCP",
+			"type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+			"position": [2060, -20],
+			"webhookId": "f9d9d5ea-6f83-42c8-ae50-ee6c71789bca",
+			"parameters": {
+				"path": "my-calendar"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9a8490a0-eacf-4b7a-b6fd-e8d17a5cf25a",
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [1440, 880],
+			"parameters": {
+				"workflowInputs": {
+					"values": [
+						{
+							"name": "function_name"
+						},
+						{
+							"name": "payload",
+							"type": "object"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "c2430651-b604-4aff-bdc8-c51a7de9fcc1",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"position": [1660, 860],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "UPPERCASE",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "ab18304c-4f73-430f-b9fa-2ce4d098e1fa",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.function_name }}",
+										"rightValue": "uppercase"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "LOWERCASE",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "606bda79-f401-4de2-be9d-51368c794479",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.function_name }}",
+										"rightValue": "lowercase"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "RANDOM DATA",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "4b22e689-e652-47d2-b737-7be00da9f185",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.function_name }}",
+										"rightValue": "random_user_data"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "JOKE",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "27a75a2c-8058-4a7c-85c1-898cabeac4a1",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.function_name }}",
+										"rightValue": "joke"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "77df0d2c-ed4d-4da9-a218-acf4fd06cf13",
+			"name": "Convert Text to Upper Case",
+			"type": "n8n-nodes-base.set",
+			"position": [2000, 520],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "42333f26-8e14-438a-9965-eec31bf4b6a3",
+							"name": "converted_text",
+							"type": "string",
+							"value": "={{ $json.payload.text.toUpperCase() }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "15e7489b-b1eb-4be1-80b0-0cb94d05daa3",
+			"name": "Convert Text to Lower Case",
+			"type": "n8n-nodes-base.set",
+			"position": [2000, 720],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "42333f26-8e14-438a-9965-eec31bf4b6a3",
+							"name": "converted_text",
+							"type": "string",
+							"value": "={{ $json.payload.text.toLowerCase() }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "75bc9895-ccad-48b6-bd99-965a62f36f2a",
+			"name": "Convert Text",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [1440, 180],
+			"parameters": {
+				"name": "convert_text_case",
+				"workflowId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $workflow.id }}"
+				},
+				"description": "Call this tool to convert text to lower case or upper case.",
+				"workflowInputs": {
+					"value": {
+						"payload": "={\n  \"text\": \"{{ $fromAI(\"text_to_convert\", \"The text to convert\", \"string\") }}\"\n}\n",
+						"function_name": "={{ $fromAI(\"function_name\", \"Either lowercase or uppercase\", \"string\") }}"
+					},
+					"schema": [
+						{
+							"id": "function_name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "function_name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "payload",
+							"type": "object",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "payload",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "b2b8419d-f068-41ad-bcda-a057ddc82924",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [240, -180],
+			"webhookId": "7b02318f-1c6b-4f2a-9a4f-b17fa69ea680",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "3f4bee1a-18c8-45be-8038-b192f771e4d4",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [540, 40],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "165cd445-13e6-4215-966a-0cd1cc4cb795",
+			"name": "Calendar MCP",
+			"type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+			"position": [1080, 60],
+			"parameters": {
+				"sseEndpoint": "https://n8n.yourdomain/mcp/my-calendar/sse"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3e2e655a-0d95-489e-9e4e-79415db90bbe",
+			"name": "My Functions",
+			"type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+			"position": [920, 60],
+			"parameters": {
+				"sseEndpoint": "https://n8n.yourdomain/mcp/my-functions/sse"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8fbf3a7b-171e-42f1-96f0-b4862a800721",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1320, -180],
+			"parameters": {
+				"color": 3,
+				"width": 620,
+				"height": 520,
+				"content": "## Activate the workflow to make the MCP Trigger work\nIn order to make the MCP server available, you need to activate the workflow.\n\nThen copy the Production URL of the MCP Trigger and paste it in the corresponding MCP Client tool."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "783b47d1-8b6d-4d45-903f-812dc46d80de",
+			"name": "My Functions Server",
+			"type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+			"position": [1440, -20],
+			"webhookId": "83f72547-18b7-4f02-846b-27bf39d1efff",
+			"parameters": {
+				"path": "my-functions"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "31432882-2953-440c-9144-ba129ab2a8f7",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [820, -180],
+			"parameters": {
+				"color": 7,
+				"width": 440,
+				"height": 520,
+				"content": "## MCP Clients\nFor every tool here you need to obtain he corresponding Production URL from the MCP Triggers on the right 👉"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "65269a4d-d6db-4767-b8bc-0992bfe42d17",
+			"name": "Random user data",
+			"type": "n8n-nodes-base.debugHelper",
+			"position": [2000, 1020],
+			"parameters": {
+				"category": "randomData",
+				"randomDataCount": "={{ $json.payload.number }}"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2c97af29-d923-49a4-91e2-b6ff5d0fe322",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-480, -180],
+			"parameters": {
+				"color": 7,
+				"width": 660,
+				"height": 640,
+				"content": "# Try these example requests with the AI Agent\n\n### My Functions MCP\n1. Use your tools to convert this text to lower case: `EXAMPLE TeXt`\n\n2. Use your tools to convert this text to upper case: `example TeXt`\n\n3. Generate 5 random user data, please.\n\n4. Please obtain 3 jokes.\n\n\n\n\n### Calendar MCP\n5. What is my schedule for next week?\n\n6. I have a meeting with John tomorrow at 2pm. Please add it to my Calendar.\n\n7. Adjust the time of my meeting with John tomorrow from 2pm to 4pm, please.\n\n8. Cancel my meeting with John, tomorrow."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "77f8d96d-11da-4323-9925-58267da607c3",
+			"name": "Generate random user data",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [1600, 180],
+			"parameters": {
+				"name": "random_user_data",
+				"workflowId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $workflow.id }}"
+				},
+				"description": "Generate random user data",
+				"workflowInputs": {
+					"value": {
+						"payload": "={\n  \"number\": {{ $fromAI(\"amount\", \"The amount of user data to generate in integer format\", \"number\") }}\n}",
+						"function_name": "random_user_data"
+					},
+					"schema": [
+						{
+							"id": "function_name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "function_name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "payload",
+							"type": "object",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "payload",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "89d36f19-c7b4-4f53-9aec-2977bbd74de8",
+			"name": "Return only some fields",
+			"type": "n8n-nodes-base.set",
+			"position": [2220, 1020],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b4548cbe-f3fc-4911-901a-d73182d710a9",
+							"name": "First name",
+							"type": "string",
+							"value": "={{ $json.firstname }}"
+						},
+						{
+							"id": "6e573a27-ef03-4254-8f9b-2c471e1540c2",
+							"name": "Last name",
+							"type": "string",
+							"value": "={{ $json.lastname }}"
+						},
+						{
+							"id": "ac5b5806-bf8e-4e1a-a47d-e7180d31e98a",
+							"name": "Email",
+							"type": "string",
+							"value": "={{ $json.email }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "a8cf7d60-b3d8-41cd-84d8-5cc1c299f33f",
+			"name": "Joke Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2000, 1220],
+			"parameters": {
+				"url": "=https://official-joke-api.appspot.com/jokes/random/{{ $json.payload.number }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "76847e5d-2cc1-46f6-b0a6-0be81a5d0fea",
+			"name": "Random Jokes",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [1760, 180],
+			"parameters": {
+				"name": "obtain_jokes",
+				"workflowId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $workflow.id }}"
+				},
+				"description": "Call this tool to obtain random jokes",
+				"workflowInputs": {
+					"value": {
+						"payload": "={\n  \"number\": {{ $fromAI(\"amount\", \"The amount of jokes to request\", \"number\") }}\n}",
+						"function_name": "joke"
+					},
+					"schema": [
+						{
+							"id": "function_name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "function_name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "payload",
+							"type": "object",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "payload",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "2a34f767-7bf0-4c7c-8882-6dde62670383",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1320, 360],
+			"parameters": {
+				"color": 7,
+				"width": 1260,
+				"height": 1060,
+				"content": "## The My Functions MCP calls this sub-workflow every time.\nA subworkflow is a separate workflow that can be called by other workflows and is able to receive parameters.\nLearn more about sub-workflows **[here](https://docs.n8n.io/flow-logic/subworkflows/)**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "eda3b2a5-845a-413f-b866-759fe5e1a0b9",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1960, -180],
+			"parameters": {
+				"color": 5,
+				"width": 620,
+				"height": 520,
+				"content": "## Google Calendar tools require credentials\nIf you don't have your Google Credentials set up in n8n yet, watch [this](https://www.youtube.com/watch?v=3Ai1EPznlAc) video to learn how to do it.\n\nIf you are using n8n Cloud plans, it's very intuitive to setup and you may not even need the tutorial."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4b100035-d803-46aa-8540-08e69d7f2179",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-480, 1160],
+			"parameters": {
+				"width": 660,
+				"height": 180,
+				"content": "# Need help?\nFor getting help with this workflow, please create a topic on the community forums here:\nhttps://community.n8n.io/c/questions/"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "74ad0058-87b6-4a91-88a5-a0cb72bce84d",
+			"name": "OpenAI 4o",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [400, 40],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "gpt-4o"
+				},
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "c7f95bf5-23ed-4296-a2e0-dfb9fdebde94",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [240, 160],
+			"parameters": {
+				"color": 7,
+				"height": 240,
+				"content": "## Why model 4o? 👆\nAfter testing 4o-mini it had some difficulties handling the calendar requests, while the 4o model handled it with ease.\n\nDepending on your prompt and tools, 4o-mini might be able to work well too, but it requires further testing."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f5c974cc-4277-4ab4-ada6-cad1d16dda80",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-480, -340],
+			"parameters": {
+				"color": 4,
+				"width": 3060,
+				"height": 140,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a304ab81-9ef6-485d-b35a-76d2cc3d5c91",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [640, -300],
+			"parameters": {
+				"color": 4,
+				"width": 800,
+				"height": 80,
+				"content": "# Learn How to Build an MCP Server and Client"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "148904d6-f94b-4ec0-a026-2e5fb921c07f",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-480, 480],
+			"parameters": {
+				"color": 7,
+				"width": 660,
+				"height": 660,
+				"content": "# Author\n![Solomon](https://gravatar.com/avatar/79aa147f090807fe0f618fb47a1de932669e385bb0c84bf3a7f891ae7d174256?r=pg&d=retro&size=200)\n### Solomon\nFreelance consultant from Brazil, specializing in automations and data analysis. I work with select clients, addressing their toughest projects.\n\nFor business inquiries, email me at automations.solomon@gmail.com\nOr message me on [Telegram](https://t.me/salomaoguilherme) for a faster response.\n\n### Check out my other templates\n### 👉 https://n8n.io/creators/solomon/\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "36aeb3a3-bcc3-4d50-84f9-87065f908248",
+			"name": "Sticky Note16",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-460, 1020],
+			"parameters": {
+				"color": 4,
+				"width": 620,
+				"height": 80,
+				"content": "### 💡 **Want to learn advanced n8n skills and earn money building workflows?**\n‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎Check out [Scrapes Academy](https://www.skool.com/scrapes/about?ref=21f10ad99f4d46ba9b8aaea8c9f58c34)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {
+		"When Executed by Another Workflow": [
+			{
+				"payload": {
+					"number": 5
+				},
+				"function_name": "joke"
+			}
+		]
+	},
+	"connections": {
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Convert Text to Upper Case",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Convert Text to Lower Case",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Random user data",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Joke Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI 4o": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"CreateEvent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Calendar MCP",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"DeleteEvent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Calendar MCP",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"SearchEvent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Calendar MCP",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"UpdateEvent": {
+			"ai_tool": [
+				[
+					{
+						"node": "Google Calendar MCP",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calendar MCP": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert Text": {
+			"ai_tool": [
+				[
+					{
+						"node": "My Functions Server",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"My Functions": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Random Jokes": {
+			"ai_tool": [
+				[
+					{
+						"node": "My Functions Server",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Random user data": {
+			"main": [
+				[
+					{
+						"node": "Return only some fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate random user data": {
+			"ai_tool": [
+				[
+					{
+						"node": "My Functions Server",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,720 @@
+{
+	"id": "w9YVsuUtlNgXOEAQ",
+	"meta": {
+		"instanceId": "58a9e858b82757a75629d435ec0da2448ad5d9e906a9ce3b7dcbb64c90fda9fe",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "LinkedIn Post Generation & Approval Automation",
+	"tags": [
+		{
+			"id": "3bzbXbpZW83y48aK",
+			"name": "content-approval",
+			"createdAt": "2025-05-13T18:45:19.225Z",
+			"updatedAt": "2025-05-13T18:45:19.225Z"
+		},
+		{
+			"id": "9SfWdyKRFVbPxrNL",
+			"name": "post-generator",
+			"createdAt": "2025-05-13T18:45:09.255Z",
+			"updatedAt": "2025-05-13T18:45:09.255Z"
+		},
+		{
+			"id": "VWnkUEKQKJB2WmbL",
+			"name": "linkedin",
+			"createdAt": "2025-05-13T18:45:04.175Z",
+			"updatedAt": "2025-05-13T18:45:04.175Z"
+		}
+	],
+	"nodes": [
+		{
+			"id": "d0f86395-aeec-4284-a2d5-26db2dfebd53",
+			"name": "Get Image",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1592, 2120],
+			"parameters": {
+				"url": "={{ $('Get Data from Sheets').item.json.Image }}",
+				"options": {}
+			},
+			"typeVersion": 4.2,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "b8ca88a6-aaf1-4191-8b75-9a63b746af77",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-260, 2595],
+			"parameters": {
+				"rule": {
+					"interval": [{}]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8e4e294f-56d4-4317-aea8-ea258527f55a",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [268, 2815],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "d262684e-7671-4602-ba77-4270441a69fb",
+			"name": "Get Data from Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-40, 2595],
+			"parameters": {
+				"options": {
+					"returnFirstMatch": true
+				},
+				"filtersUI": {
+					"values": [
+						{
+							"lookupValue": "Pending",
+							"lookupColumn": "Status"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8/edit?usp=drivesdk",
+					"cachedResultName": "LinkedIn Post Automation"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "93d3e57f-a22d-4c04-9ccc-7ee655bedbdb",
+			"name": "Generate Post Content",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [180, 2595],
+			"parameters": {
+				"text": "=# LinkedIn Post Generation\n\n## Post Description:\n{{ $json[\"Post Description\"] }}\n\n## Instructions:\n{{ $json[\"Instructions\"] }}\n\n---\n\n**Task:**\nUsing the information above, generate the content for a LinkedIn post:\n- Use the Description and Instructions to create a new post.\n- Ensure your output is positive, professional, clear, and follows all provided instructions and feedback.\n- Do not include any explanations, just the final post content only, ready to publish on LinkedIn.\n- Limit to 1300 characters.\n- If the user demands to keep the same post as the Post Descrioption (in the instructions), then keep the same post content as provided in the Post Description, and output it.",
+				"messages": {
+					"messageValues": [
+						{
+							"message": "=You are an expert social media and LinkedIn content writer.\n\nYou will be provided with:\n- A brief post description\n- Specific instructions from the user\n\nPlease follow these steps:\n\n1. Initial Creation:\nIf you are given a post description and instructions, write a polished, professionally worded LinkedIn post suitable for sharing. Strictly follow the instructions and ensure the message is engaging and succinct.\nIf instructed, add a call to action or particular phrase (for example, \"Connect with me\" at the bottom).\n\n2. Formatting:\nKeep the tone positive, inclusive, and professional.\nAdd relevant hashtags in small case.\nLimit the content to within 1300 characters.\nPlace the call to action or special instruction at the end if requested.\nOutput ONLY the final LinkedIn post content. Do NOT include any explanations, markdown, headings, or commentary—just the post text, ready to copy and share on LinkedIn."
+						}
+					]
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.6
+		},
+		{
+			"id": "6ea121f4-661c-4dd4-a0bc-7edb8a0b884a",
+			"name": "Data Formatting 1",
+			"type": "n8n-nodes-base.set",
+			"position": [556, 2595],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "bded6f56-99e2-4f1a-be41-27a8dd417844",
+							"name": "Post Content",
+							"type": "string",
+							"value": "={{ $json.text }}"
+						},
+						{
+							"id": "c222c42e-b639-4a74-a1b0-7a3e6e141d55",
+							"name": "Post Description",
+							"type": "string",
+							"value": "={{ $('Get Data from Sheets').item.json['Post Description'] }}"
+						},
+						{
+							"id": "14775ff7-e005-4a86-9623-c322365f7d3a",
+							"name": "Instructions",
+							"type": "string",
+							"value": "={{ $('Get Data from Sheets').item.json.Instructions }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "a00ec081-07c0-4f8a-9139-6606a65236ff",
+			"name": "Send Content Confirmation",
+			"type": "n8n-nodes-base.gmail",
+			"position": [776, 2495],
+			"webhookId": "29614d41-05c1-44af-93a6-4831a27f9331",
+			"parameters": {
+				"sendTo": "user@example.com",
+				"message": "=Generated Post:\n{{ $json['Post Content'] }}\n\n----------\n\nPost Description:\n{{ $json['Post Description'] }}\n\n----------\n\nInstructions:\n{{ $json.Instructions }}",
+				"options": {},
+				"subject": "Approval for LinkedIn Post",
+				"operation": "sendAndWait",
+				"formFields": {
+					"values": [
+						{
+							"fieldType": "dropdown",
+							"fieldLabel": "Confirm  Content?",
+							"fieldOptions": {
+								"values": [
+									{
+										"option": "Yes"
+									},
+									{
+										"option": "No"
+									},
+									{
+										"option": "Cancel"
+									}
+								]
+							},
+							"requiredField": true
+						},
+						{
+							"fieldType": "textarea",
+							"fieldLabel": "Any Changes?"
+						}
+					]
+				},
+				"responseType": "customForm"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "5a1e8061-ef79-4974-888d-8670e60a1b0c",
+			"name": "Content Confirmation Logic",
+			"type": "n8n-nodes-base.switch",
+			"position": [996, 2495],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "Yes",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "99ec185e-80ac-451d-bb69-662f84a7cf52",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data['Confirm  Content?'] }}",
+										"rightValue": "Yes"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "No",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "77031007-a912-4b9b-9cca-846c57ffaec8",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data['Confirm  Content?'] }}",
+										"rightValue": "No"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Cancel",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "e94de530-6451-48aa-892c-924a9c41cfb0",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.data['Confirm  Content?'] }}",
+										"rightValue": "Cancel"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "c139fda0-4be1-4ad7-bb28-802b7150365d",
+			"name": "Regenerate Post Content",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [1216, 2670],
+			"parameters": {
+				"text": "=Apply the modification requests on the following LinkedIn post. Besides applying the reqested modifications, return the same linkedin post.\n\nLinkedIn post:\n```\n{{ $('Data Formatting 1').item.json['Post Content'] }}\n```\n\nChange requests:\n{{ $('Send Content Confirmation').item.json.data['Any Changes?'] }}\n\n**Task:**\nUsing the information above, update the LinkedIn post content:\n- Do not include any explanations, just the final post content only (with all the change requests included in the post), ready to publish on LinkedIn.\n- Limit to 1300 characters.\n- If the user demands to keep the same post as the Post Description (in the instructions), then keep the same post content as provided in the Post Description, and output it.",
+				"promptType": "define"
+			},
+			"typeVersion": 1.6
+		},
+		{
+			"id": "b8587578-03a6-4975-8907-667628dc958a",
+			"name": "If Image Provided",
+			"type": "n8n-nodes-base.if",
+			"position": [1294, 2220],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "9a78220d-35f5-48b6-9ce3-faecaac24b74",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty",
+								"singleValue": true
+							},
+							"leftValue": "={{ $('Get Data from Sheets').item.json.Image }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "30bf76c8-8420-4d77-bc2b-8a1c27fbf36a",
+			"name": "Post With Image",
+			"type": "n8n-nodes-base.linkedIn",
+			"position": [1812, 2120],
+			"parameters": {
+				"text": "={{ $('Data Formatting 1').item.json['Post Content'] }}",
+				"person": "pM247vR8Se",
+				"additionalFields": {},
+				"shareMediaCategory": "IMAGE"
+			},
+			"credentials": {
+				"linkedInOAuth2Api": {
+					"id": "credential-id",
+					"name": "linkedInOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "62bf9597-3e38-45ec-853c-aa2d77c40bc2",
+			"name": "Post Without Image",
+			"type": "n8n-nodes-base.linkedIn",
+			"position": [1812, 2320],
+			"parameters": {
+				"text": "={{ $('Data Formatting 1').item.json['Post Content'] }}",
+				"person": "pM247vR8Se",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"linkedInOAuth2Api": {
+					"id": "credential-id",
+					"name": "linkedInOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0ddd307d-5e54-42cf-b65a-25f111fb4bea",
+			"name": "Update Google Sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2032, 2320],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Output": "={{ $json.urn }}",
+						"Status": "=Completed",
+						"Post Link": "={{ $json.urn }}",
+						"row_number": "={{ $('Get Data from Sheets').item.json.row_number }}"
+					},
+					"schema": [
+						{
+							"id": "Post Description",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Post Description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Instructions",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Instructions",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Image",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Image",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Status",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Output",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Output",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Post Link",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Post Link",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["row_number"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8/edit?usp=drivesdk",
+					"cachedResultName": "LinkedIn Post Automation"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "c4a55beb-8459-4faa-b072-51c500562ae3",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-780, 2480],
+			"parameters": {
+				"width": 420,
+				"height": 380,
+				"content": "## 1. Schedule & Sheet Data Retrieval\n\nThis workflow starts automatically on a defined schedule (e.g., daily or hourly).\n\nIt retrieves the next Google Sheet row marked as ‘Pending’.\n\nThe sheet should include columns like:\n1. Post Description\n2. Instructions\n3. Image\n4. Status\n5. row_number (required for updates)\n\nEnsure your Google Sheets credentials are correctly configured."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "09dade5b-e26a-4b97-9b8a-a5c807cff937",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-220, 3040],
+			"parameters": {
+				"width": 420,
+				"height": 240,
+				"content": "## 2. AI-Powered Post Generation & Formatting\n\nUses OpenAI GPT to generate a LinkedIn post based on the sheet’s Post Description and Instructions.\n\nYou can modify the prompt if needed.\nThe generated post is then formatted along with relevant data for easy reference and consistency."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f373dfd9-f971-4925-8e74-15201c8a47c4",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [440, 3040],
+			"parameters": {
+				"width": 440,
+				"height": 240,
+				"content": "## 3. Gmail Approval Workflow\n\nSends the formatted post to an approver via Gmail.\n\nThe approver can respond with:\n✅ Yes – Approve\n✏️ No – Request changes\n❌ Cancel – Abort the post\n\nSet Gmail credentials and recipient email in the node."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "66d51a35-262e-469b-bcd8-aca3cf60452c",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1120, 3040],
+			"parameters": {
+				"width": 440,
+				"height": 240,
+				"content": "## 4. Approval Handling & Regeneration\n\nHandles all approval responses:\n- If Yes, proceed to post.\n- If No, regenerate content based on the feedback and resend.\n- If Cancel, update the Google Sheet as Cancelled.\n\nThis ensures a complete review cycle before posting."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ad4023af-0e8b-4ec1-be1d-9313ec4f5ca7",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1800, 3040],
+			"parameters": {
+				"width": 460,
+				"height": 320,
+				"content": "## 5. Image Check, Posting & Sheet Update\n\nChecks if an image URL is provided.\n- If present: Downloads the image and posts with it.\n- If not: Posts content without an image.\n\nAfter posting, it updates the Google Sheet with:\n- Status = Completed or Cancelled\n- LinkedIn post link/output\n\nUses row_number for precise sheet updates."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "65685909-274a-4d41-8f8a-fbba9442597b",
+	"connections": {
+		"Get Image": {
+			"main": [
+				[
+					{
+						"node": "Post With Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post With Image": {
+			"main": [
+				[
+					{
+						"node": "Update Google Sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Get Data from Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Data Formatting 1": {
+			"main": [
+				[
+					{
+						"node": "Send Content Confirmation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If Image Provided": {
+			"main": [
+				[
+					{
+						"node": "Get Image",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Post Without Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Generate Post Content",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "Regenerate Post Content",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post Without Image": {
+			"main": [
+				[
+					{
+						"node": "Update Google Sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Data from Sheets": {
+			"main": [
+				[
+					{
+						"node": "Generate Post Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Post Content": {
+			"main": [
+				[
+					{
+						"node": "Data Formatting 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Regenerate Post Content": {
+			"main": [
+				[
+					{
+						"node": "Data Formatting 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Content Confirmation": {
+			"main": [
+				[
+					{
+						"node": "Content Confirmation Logic",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Content Confirmation Logic": {
+			"main": [
+				[
+					{
+						"node": "If Image Provided",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Regenerate Post Content",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Update Google Sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

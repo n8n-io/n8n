@@ -1,0 +1,687 @@
+{
+	"id": "O7BiL9gvzMRGnzco",
+	"meta": {
+		"instanceId": "1a54c41d9050a8f1fa6f74ca858828ad9fb97b9fafa3e9760e576171c531a787",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Development Done - Product Ads via Veo3",
+	"tags": [
+		{
+			"id": "m1paRrANi4GrQXxX",
+			"name": "AI Internal",
+			"createdAt": "2025-09-18T04:05:25.667Z",
+			"updatedAt": "2025-09-18T04:05:25.667Z"
+		}
+	],
+	"nodes": [
+		{
+			"id": "dc93f801-d671-49a1-80a1-a19f3c3d4e8d",
+			"name": "Create a record",
+			"type": "n8n-nodes-base.airtable",
+			"position": [-48, -64],
+			"parameters": {
+				"base": {
+					"__rl": true,
+					"mode": "list",
+					"value": "Your_Airtable_Base_ID",
+					"cachedResultUrl": "https://airtable.com/Your_Airtable_Base_ID",
+					"cachedResultName": "Dynamic Video Content"
+				},
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "Your_Airtable_Table_ID",
+					"cachedResultUrl": "https://airtable.com/Your_Airtable_Base_ID/Your_Airtable_Table_ID",
+					"cachedResultName": "Product Ads"
+				},
+				"columns": {
+					"value": {
+						"Status": "Pending",
+						"Image Prompt": "={{ $json[\"Idea Prompt\"] }}"
+					},
+					"schema": [
+						{
+							"id": "Id",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "Id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Image Prompt",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Image Prompt",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Image",
+							"type": "array",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Image",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Video",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Video",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Status",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "Pending",
+									"value": "Pending"
+								},
+								{
+									"name": "Done",
+									"value": "Done"
+								}
+							],
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "create"
+			},
+			"credentials": {
+				"airtableTokenApi": {
+					"id": "credential-id",
+					"name": "airtableTokenApi Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "2cffa033-d677-4c1a-8bbd-92f10814e14d",
+			"name": "Converting Image file for Storing",
+			"type": "n8n-nodes-base.code",
+			"position": [400, -64],
+			"parameters": {
+				"jsCode": "// Get the first binary key dynamically\nconst binaryKey = Object.keys($input.item.binary || {})[0];\nif (!binaryKey) {\n  throw new Error(\"No binary data found on input item.\");\n}\n\nconst binary = $input.item.binary[binaryKey];\n\n// Convert binary to base64\nconst base64File = binary.data.toString('base64');\n\n// Build JSON payload for Airtable\nreturn [\n  {\n    json: {\n      contentType: binary.mimeType || \"image/jpeg\",\n      file: base64File,\n      filename: binary.fileName || \"upload.jpg\"\n    },\n    pairedItem: { item: 0 }   // 🔑 keeps mapping to original input\n  }\n];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "22250c9d-136c-43cd-be88-8c3423c1c642",
+			"name": "Uploading Image in Airtable",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [624, -64],
+			"parameters": {
+				"url": "=https://content.airtable.com/v0/Your_Airtable_Base_ID/{{ $('Create a record').item.json.id }}/[Your_Column_Name]/uploadAttachment",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"sendHeaders": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "contentType",
+							"value": "={{$json[\"contentType\"]}}"
+						},
+						{
+							"name": "file",
+							"value": "={{$json[\"file\"]}}"
+						},
+						{
+							"name": "filename",
+							"value": "={{$json[\"filename\"]}}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						},
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "3007c7d8-a294-4146-b610-ba10aa344881",
+			"name": "Get a record",
+			"type": "n8n-nodes-base.airtable",
+			"position": [848, -64],
+			"parameters": {
+				"id": "={{ $json.id }}",
+				"base": {
+					"__rl": true,
+					"mode": "list",
+					"value": "Your_Airtable_Base_ID",
+					"cachedResultUrl": "https://airtable.com/Your_Airtable_Base_ID",
+					"cachedResultName": "Dynamic Video Content"
+				},
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "Your_Airtable_Table_ID",
+					"cachedResultUrl": "https://airtable.com/Your_Airtable_Base_ID/Your_Airtable_Table_ID",
+					"cachedResultName": "Product Ads"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"airtableTokenApi": {
+					"id": "credential-id",
+					"name": "airtableTokenApi Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "04a074e2-dd05-4699-b30f-cf1f004170e5",
+			"name": "Analyze image",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1056, -64],
+			"parameters": {
+				"text": "=You are an expert AI creative analyst. Your purpose is to analyze an input image together with the user’s creative request and produce a structured creative brief. Always treat the user’s request as the guiding vision, and reinterpret the image so that the final video concept fulfills that request. Your output must be only the plain text report as described below. Do not include any conversational filler or explanatory text.\n\nUSER REQUEST\n{{ $json[\"Image Prompt\"] }}\n\nIMAGE ANALYSIS\n\nDescription\nWrite a comprehensive, single-paragraph description of the image as it visually appears. Then explicitly describe how this image can be creatively reimagined or transformed to align with the user’s request.\n\nStyle Analysis\n\nCore Subject: Identify the main focus of the image and explain how it connects to the user’s request.\n\nSetting: Describe the environment/background and how it could be reinterpreted in the requested concept.\n\nMedium: Specify the artistic medium (e.g., product photography, 3D render) and suggest how the medium might shift in the video.\n\nLighting: Describe the current light and suggest adjustments to match the requested mood.\n\nMood: Define both the existing atmosphere of the image and the intended emotional tone per the user’s request.\n\nComposition: Describe the current framing/camera angle and how it might evolve in the video.\n\nColor Palette: List the dominant colors, then suggest enhancements or transformations to match the user’s request.\n\nText Overlay\nList and describe each distinct piece of text found in the image. If there is no text, simply write \"None.\"\n\nFor each text element, provide:\n- Text\n- Font\n- Effect\n- Color\n- Placement\n\nCREATIVE VIDEO BRIEF\n\nTranslate the user request and image analysis into a structured video brief suitable for Veo 3 generation:\n\nVideo Style: Describe the final style/genre of the requested video.\n\nTarget Emotion: Define the main emotional impact the video should deliver.\n\nMotion Guidance: Suggest dynamic camera motions, transitions, or visual effects that bring the user’s request to life.\n\nAudio/Music Direction: Suggest music/sound design that fits both the brand identity in the image and the requested theme.\n\nSuggested Script Elements: Provide a draft outline of possible voiceover or on-screen text. Ensure this ties the image (e.g., Pepsi product) with the user’s creative request (e.g., exploding into a disco party).\n",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "models/gemini-2.5-flash",
+					"cachedResultName": "models/gemini-2.5-flash"
+				},
+				"options": {},
+				"resource": "image",
+				"imageUrls": "={{ $json.Image[0].url }}",
+				"operation": "analyze"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e0533567-2b84-414d-b841-97f40163b08d",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [1744, -64],
+			"webhookId": "b98d5051-5f08-4709-9c31-e914da10b4ad",
+			"parameters": {
+				"unit": "minutes",
+				"amount": 1
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "6e0d258e-1e7e-453b-8780-47a959243ff6",
+			"name": "Update record",
+			"type": "n8n-nodes-base.airtable",
+			"position": [1968, -64],
+			"parameters": {
+				"base": {
+					"__rl": true,
+					"mode": "list",
+					"value": "Your_Airtable_Base_ID",
+					"cachedResultUrl": "https://airtable.com/Your_Airtable_Base_ID",
+					"cachedResultName": "Dynamic Video Content"
+				},
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "Your_Airtable_Table_ID",
+					"cachedResultUrl": "https://airtable.com/Your_Airtable_Base_ID/Your_Airtable_Table_ID",
+					"cachedResultName": "Product Ads"
+				},
+				"columns": {
+					"value": {
+						"Id": "={{ $('Get a record').item.json.Id }}",
+						"Status": "Done"
+					},
+					"schema": [
+						{
+							"id": "id",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "id",
+							"defaultMatch": true
+						},
+						{
+							"id": "Id",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": true,
+							"required": false,
+							"displayName": "Id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Image Prompt",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Image Prompt",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Image",
+							"type": "array",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Image",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Status",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "Pending",
+									"value": "Pending"
+								},
+								{
+									"name": "Done",
+									"value": "Done"
+								}
+							],
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Video",
+							"type": "array",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Video",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Id"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update"
+			},
+			"credentials": {
+				"airtableTokenApi": {
+					"id": "credential-id",
+					"name": "airtableTokenApi Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "3ad82fa6-e313-46e3-bfe7-c3505f8ff8f7",
+			"name": "Generate Video Veo 3",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1520, -64],
+			"parameters": {
+				"url": "https://us-central1-aiplatform.googleapis.com/v1/projects/[Project ID]/locations/[Location]/publishers/google/models/veo-3.0-fast-generate-001:predictLongRunning",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={{ $json.veoRequestBody }}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				},
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ee7a1540-5467-4461-b73c-dc4eaeba8812",
+			"name": "Get the Video",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2192, -64],
+			"parameters": {
+				"url": "https://us-central1-aiplatform.googleapis.com/v1/projects/[Project ID]/locations/[Location]/publishers/google/models/veo-3.0-generate-001:fetchPredictOperation",
+				"method": "POST",
+				"options": {
+					"response": {
+						"response": {}
+					}
+				},
+				"sendBody": true,
+				"sendHeaders": true,
+				"authentication": "predefinedCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "operationName",
+							"value": "={{ $('Generate Video Veo 3').item.json.name }}"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						}
+					]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "42d12f7e-34f5-474b-a136-5a6485763bf6",
+			"name": "Downloadable Video",
+			"type": "n8n-nodes-base.convertToFile",
+			"position": [2416, -64],
+			"parameters": {
+				"options": {},
+				"operation": "toBinary",
+				"sourceProperty": "response.videos[0].bytesBase64Encoded"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "097d5ffc-0481-4261-9d68-355ab2ec9266",
+			"name": "Parse Request",
+			"type": "n8n-nodes-base.code",
+			"position": [1296, -64],
+			"parameters": {
+				"jsCode": "// Get the generated prompt text from the previous node\nconst promptText = $json.content.parts[0].text;\n\n// Build the complete JSON body for the VEO API\nconst requestBody = {\n  \"endpoint\": \"projects/personalised-mail/locations/us-central1/publishers/google/models/veo-3.0-generate-001\",\n  \"instances\": [\n    {\n      \"prompt\": promptText\n    }\n  ],\n  \"parameters\": {\n    \"aspectRatio\": \"16:9\",\n    \"sampleCount\": 1,\n    \"durationSeconds\": \"8\",\n    \"personGeneration\": \"allow_all\",\n    \"addWatermark\": true,\n    \"includeRaiReason\": true,\n    \"generateAudio\": true,\n    \"resolution\": \"720p\"\n  }\n};\n\n// Return the final object inside a wrapper\nreturn [\n  {\n    json: {\n      \"veoRequestBody\": requestBody // <-- Wrapped here\n    }\n  }\n];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "f3054ab6-92de-415c-9f72-24feacebb207",
+			"name": "Prompt your Idea",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-272, -64],
+			"webhookId": "5778677c-d323-4bb4-91df-d2870e3aced9",
+			"parameters": {
+				"options": {},
+				"formTitle": "Upload Your File",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Idea Prompt",
+							"requiredField": true
+						}
+					]
+				},
+				"formDescription": "Please give the prompt !"
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "2b288e59-f675-4519-8c74-9014e8ce6479",
+			"name": "Upload Image",
+			"type": "n8n-nodes-base.form",
+			"position": [176, -64],
+			"webhookId": "65fd2f3a-d87c-412e-9f57-15f0720aca1f",
+			"parameters": {
+				"options": {},
+				"formFields": {
+					"values": [
+						{
+							"fieldType": "file",
+							"fieldLabel": "Image"
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "89df8bc5-c051-4c14-9ea3-7f214bdbf1d9",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [128, -336],
+			"parameters": {
+				"color": 5,
+				"width": 528,
+				"height": 192,
+				"content": "## Airtable Configuration\n* **Airtable Credentials**: In the \"Create a record\", \"Get a record\", and \"Update record\" nodes, you must select your own Airtable credentials.\n* **Base and Table IDs**: Update the Base ID and Table ID in all four Airtable-related nodes to match your own setup: \"Create a record\", \"Uploading Image in Airtable\" (in the URL), \"Get a record\", and \"Update record\"."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b4c1f237-6548-44d5-b232-247ac05ee4a8",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1728, -368],
+			"parameters": {
+				"color": 4,
+				"width": 544,
+				"height": 240,
+				"content": "## Google AI Configuration\n* **Gemini Node** (\"Analyze image\"): Select your Google AI (Gemini) API credentials.\n**Veo Nodes (\"Parse Request\" & HTTP Requests):** \n* **Project ID**: In the URLs, replace with your Google Cloud Project ID.\n* **Credentials**: In both HTTP request nodes (\"Generate Video Veo 3\" & \"Get the Video\"), select your Google OAuth2 credentials.\n* **API Info**: For help with endpoints, see the [Google Cloud Vertex AI Studio](https://www.google.com/search?q=https://console.cloud.google.com/vertex-ai/studio/media/generate)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e0741edb-ab0f-445e-a415-aff8e58057f3",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1216, -352],
+			"parameters": {
+				"color": 6,
+				"width": 304,
+				"height": 192,
+				"content": "## Customization\n**Video Generation Parameters**: In the \"Parse Request\" node, you can modify the JavaScript code to change video settings like *aspectRatio*, *durationSeconds*, and *resolution*."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "88471e4e-1558-4a15-9060-712afdb19c0d",
+	"connections": {
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Update record",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get a record": {
+			"main": [
+				[
+					{
+						"node": "Analyze image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload Image": {
+			"main": [
+				[
+					{
+						"node": "Converting Image file for Storing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Analyze image": {
+			"main": [
+				[
+					{
+						"node": "Parse Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get the Video": {
+			"main": [
+				[
+					{
+						"node": "Downloadable Video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse Request": {
+			"main": [
+				[
+					{
+						"node": "Generate Video Veo 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update record": {
+			"main": [
+				[
+					{
+						"node": "Get the Video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a record": {
+			"main": [
+				[
+					{
+						"node": "Upload Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prompt your Idea": {
+			"main": [
+				[
+					{
+						"node": "Create a record",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Downloadable Video": {
+			"main": [[]]
+		},
+		"Generate Video Veo 3": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Uploading Image in Airtable": {
+			"main": [
+				[
+					{
+						"node": "Get a record",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Converting Image file for Storing": {
+			"main": [
+				[
+					{
+						"node": "Uploading Image in Airtable",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

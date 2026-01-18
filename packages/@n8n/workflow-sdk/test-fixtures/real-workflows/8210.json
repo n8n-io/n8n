@@ -1,0 +1,1471 @@
+{
+	"id": "MGxb1ugenLCp7pGW",
+	"meta": {
+		"instanceId": "506e1eb999b7a8cf86103921b3e1b94e371534d9bae39d44754933678dc6697d",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "AI content summarization from URLs, text, and PDFs using OpenAI and n8n",
+	"tags": [
+		{
+			"id": "XnTVyrQY30pP85Ic",
+			"name": "Personal",
+			"createdAt": "2025-07-07T12:25:22.847Z",
+			"updatedAt": "2025-07-07T12:25:22.847Z"
+		}
+	],
+	"nodes": [
+		{
+			"id": "41fb7559-5588-4af7-a843-69f3a6ced08e",
+			"name": "Initial Trigger",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-1344, 1040],
+			"webhookId": "7bd77710-f268-4b33-9101-8de427badd49",
+			"parameters": {
+				"path": "webhook-url",
+				"options": {
+					"rawBody": true
+				},
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "bb2f4efb-accc-4e3d-9a1e-6fc4a8175a8f",
+			"name": "Input Type Switch",
+			"type": "n8n-nodes-base.switch",
+			"position": [-944, 1024],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "url",
+							"conditions": {
+								"options": {
+									"version": 1,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "f2e4855a-2828-4ade-94ac-f06a9e795d54",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.input_type }}",
+										"rightValue": "={{ \"url\" }}"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "text",
+							"conditions": {
+								"options": {
+									"version": 1,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"id": "3a855f49-b559-4ef4-a94e-e7b2dfab3057",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.input_type }}",
+										"rightValue": "={{ \"text\" }}"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "file",
+							"conditions": {
+								"options": {
+									"version": 1,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"id": "0be44b08-67ca-4b5c-9ec1-24ca112fbd53",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.input_type }}",
+										"rightValue": "={{ \"file\" }}"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"executeOnce": false,
+			"typeVersion": 3,
+			"alwaysOutputData": false
+		},
+		{
+			"id": "b38cc7cd-66f7-4d86-8de3-d3088679092c",
+			"name": "Fetch URL Content",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-288, 960],
+			"parameters": {
+				"url": "={{ $json.url }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "9455fbe7-a019-4f5d-8fe7-90f4e4aa19a2",
+			"name": "Fetch PDF File",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-608, 1296],
+			"parameters": {
+				"url": "={{ $json.file_content }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "fc9e62a8-1eb2-4ba3-8a6e-9f49e9de1693",
+			"name": "Extract From File",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [-464, 1296],
+			"parameters": {
+				"options": {},
+				"operation": "pdf"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0b01f016-3673-4401-83f5-aa2e31d2b80b",
+			"name": "Check If Extracted Text Empty",
+			"type": "n8n-nodes-base.if",
+			"position": [-320, 1296],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "88a7fc31-aac6-4e2f-899e-c250feef5f10",
+							"operator": {
+								"type": "string",
+								"operation": "empty"
+							},
+							"leftValue": "={{ $json.text }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "2c5321a0-4040-4ce1-8719-71098eb1f946",
+			"name": "Map Language Code",
+			"type": "n8n-nodes-base.function",
+			"position": [16, 1344],
+			"parameters": {
+				"functionCode": "const lang = $json.language?.toLowerCase() || 'english';\nlet code = 'eng';\nif (lang.includes('spanish')) code = 'spa';\nelse if (lang.includes('french')) code = 'fra';\nelse if (lang.includes('german')) code = 'ger';\nreturn { json: { language_code: code } };"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7727da47-5782-4887-9397-2dbd8c1b8e0e",
+			"name": "OCR.Space",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [176, 1344],
+			"parameters": {
+				"url": "https://api.ocr.space/parse/image",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"sendHeaders": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "language",
+							"value": "={{ $json.language_code }}"
+						},
+						{
+							"name": "isOverlayRequired",
+							"value": "false"
+						},
+						{
+							"name": "file",
+							"parameterType": "formBinaryData"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "apikey",
+							"value": "YOUR_OCR_API_KEY"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "71c47757-c891-4e29-b10e-55503c634bd6",
+			"name": "summarize-url",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-1328, 1664],
+			"webhookId": "7e7f989c-cbf9-4d21-87e3-d85f1bff6649",
+			"parameters": {
+				"path": "7e7f989c-cbf9-4d21-87e3-d85f1bff6649",
+				"options": {
+					"rawBody": true
+				},
+				"responseMode": "responseNode",
+				"authentication": "headerAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "fb8c898f-a11b-4d10-a6ab-777e80cdf802",
+			"name": "summarize-text",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-1312, 2192],
+			"webhookId": "7fd2e79d-a18a-4b4f-a161-ca2bf060c891",
+			"parameters": {
+				"path": "7fd2e79d-a18a-4b4f-a161-ca2bf060c891",
+				"options": {
+					"rawBody": true
+				},
+				"responseMode": "responseNode",
+				"authentication": "headerAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "5e56e512-7e58-4074-b984-7ea13ae48013",
+			"name": "summarize-file",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-1312, 2800],
+			"webhookId": "6e8000d4-56cb-457a-9dfe-5961a75b342f",
+			"parameters": {
+				"path": "6e8000d4-56cb-457a-9dfe-5961a75b342f",
+				"options": {
+					"rawBody": true
+				},
+				"responseMode": "responseNode",
+				"authentication": "headerAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "3652a5dd-7273-42a7-a953-baadc53cde25",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1824, 2800],
+			"parameters": {
+				"color": 5,
+				"width": 400,
+				"height": 96,
+				"content": "# Summarize a PDF file"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "445ffe95-2006-4e44-82e9-912c6bd7cb4c",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1824, 2224],
+			"parameters": {
+				"color": 5,
+				"width": 384,
+				"height": 80,
+				"content": "# Summarize text"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "62fe1311-19dd-4307-b740-b8534461f93e",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1808, 1680],
+			"parameters": {
+				"color": 5,
+				"width": 384,
+				"height": 80,
+				"content": "# Summarize URL"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b59d5d2d-4610-4f46-ac77-156ff8bf93f6",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1824, 1024],
+			"parameters": {
+				"color": 5,
+				"width": 400,
+				"height": 80,
+				"content": "# Summarize All in One"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "063a6c64-8fa5-4a3e-9695-44c2ea5cd894",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2752, 1008],
+			"parameters": {
+				"width": 608,
+				"height": 1008,
+				"content": "# AI Content Summarizer Suite\n\nThis n8n template collection demonstrates how to build a comprehensive AI-powered content summarization system that handles multiple input types: URLs, raw text, and PDF files. Built as 4 separate workflows for maximum flexibility.\nUse cases: Research workflows, content curation, document processing, meeting prep, social media content creation, or integrating smart summarization into any app or platform.\n\n## How it works\n- Multi-input handling: Separate workflows for URLs (web scraping), direct text input, and PDF file processing\n- Smart PDF processing: Attempts text extraction first, falls back to OCR.Space for image-based PDFs\n- AI summarization: Uses OpenAI's GPT-4.1-mini with customizable length (brief/standard/detailed) and focus areas (key points/numbers/conclusions/action items)\n- Language support: Multi-language summaries with automatic language detection\n- Flexible output: Returns clean markdown-formatted summaries via webhook responses\n- Unified option: The all-in-one workflow automatically detects input type and routes accordingly\n\n## How to use\n1. Replace webhook triggers with your preferred method (manual, form, API endpoint)\n2. Each workflow accepts different parameters: URL, text content, or file upload\n3. Customize summary length and focus in the AI prompt nodes\nAuthentication is optional - switch to \"none\" if running internally\n4. Perfect for integration with Bubble, Zapier, or any platform that can make HTTP requests\n\n## Requirements\n- OpenAI API key or OpenRouter Keys\n- OCR.Space API key (for PDF fallback processing)\n- n8n instance (cloud or self-hosted)\n- Any platform that can make HTTP requests.\n\n## Setup Steps\n1. Replace \"Dummy OpenAI\" with your OpenAI credentials\n2. Add your OCR.Space API key in the OCR nodes is not mandatory.\n3. Update webhook authentication as needed\n4. Test each workflow path individually"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "598ed657-da21-44c1-bd1f-1b4a2739636f",
+			"name": "Parse Input Parameters",
+			"type": "n8n-nodes-base.set",
+			"position": [-1120, 1040],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"name": "input_type",
+							"type": "string",
+							"value": "={{ $json.query.input_type || $json.body.input_type || 'url' }}"
+						},
+						{
+							"name": "url",
+							"type": "string",
+							"value": "={{ $json.query.url || $json.body.url || '' }}"
+						},
+						{
+							"name": "text_content",
+							"type": "string",
+							"value": "={{ $json.query.text_content || $json.body.text_content || '' }}"
+						},
+						{
+							"name": "summary_length",
+							"type": "string",
+							"value": "={{ $json.query.summary_length || $json.body.summary_length || 'standard' }}"
+						},
+						{
+							"name": "focus",
+							"type": "string",
+							"value": "={{ $json.query.focus || $json.body.focus || 'key_points' }}"
+						},
+						{
+							"name": "language",
+							"type": "string",
+							"value": "={{ $json.query.language || $json.body.language || 'english' }}"
+						},
+						{
+							"name": "file_content",
+							"type": "string",
+							"value": "={{ $json.query.file_content || $json.body.file_content || '' }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8125ba61-90c6-4b36-baf3-94683db88ce8",
+			"name": "Generate AI Summary (Unified)",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [672, 1040],
+			"parameters": {
+				"text": "=Summarize: {{ $json.raw_content }}",
+				"options": {
+					"systemMessage": "=Current date and time {{ $now }}\n\nYou are an expert content summarizer. \nCreate a {{ $('Parse Input Parameters').item.json.summary_length === 'brief' ? '**brief** (2-3 sentences)' : $('Parse Input Parameters').item.json.summary_length === 'detailed' ? '**detailed** (2-3 paragraphs)' : '**standard** (1 paragraph)' }} summary in markdown format.\n\n**Focus**: \n{{ $('Parse Input Parameters').item.json.focus === 'numbers_data' \n    ? 'Extract key **numbers**, **percentages**, and quantitative data' \n    : $('Parse Input Parameters').item.json.focus === 'conclusions' \n    ? 'Highlight main **conclusions** and findings' \n    : $('Parse Input Parameters').item.json.focus === 'action_items' \n    ? 'List concrete **action items** and recommendations' \n    : 'Capture essential **key points** and main themes' }}\n\n**Formatting Guidelines:**\n- Use **bold** for key terms and important information\n- Use *italics* for emphasis\n- Use bullet points (- ) for lists\n- Use ## for section headers when appropriate\n- Lead with the most important information\n- Include specific details that support main points\n- Ensure the summary is complete and stands alone\n\n**Language**: \n{{ $('Parse Input Parameters').item.json.language === 'spanish' \n    ? 'Spanish' \n    : $('Parse Input Parameters').item.json.language === 'french' \n    ? 'French' \n    : $('Parse Input Parameters').item.json.language === 'german' \n    ? 'German' \n    : 'English' }}\n\nContent: {{ $json.raw_content }}\n"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "0b02b948-24c2-495b-bef7-99901fdd50b6",
+			"name": "OpenAI GPT-4.1 (Unified)",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [752, 1264],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "0da9c053-faaf-4b2c-b089-30d23daab44f",
+			"name": "Clean & Format Content",
+			"type": "n8n-nodes-base.set",
+			"position": [448, 1040],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "80a0f7dc-ee66-4499-ac84-1e21fca8e6c7",
+							"name": "raw_content",
+							"type": "string",
+							"value": "={{ $json.raw_content || $json.data || $json.text || $json.text_content || $json.ParsedResults?.[0]?.ParsedText || '' }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "4992bf8e-fb2a-4ef6-b7cc-c6943a256993",
+			"name": "Structure Final Output",
+			"type": "n8n-nodes-base.set",
+			"position": [1024, 1040],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"name": "content",
+							"type": "string",
+							"value": "={{ $json.output }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "dfd24b35-f6ee-4471-93d9-a1f202a85cce",
+			"name": "Return Summary Response",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [1248, 1040],
+			"parameters": {
+				"options": {},
+				"respondWith": "text",
+				"responseBody": "={{ $json.content }}"
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "9d6d737e-4fe9-4fd4-a8d6-15b566de57f3",
+			"name": "Extract URL Parameters",
+			"type": "n8n-nodes-base.set",
+			"position": [-1104, 1664],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"name": "input_type",
+							"type": "string",
+							"value": "={{ $json.query.input_type || $json.body.input_type || 'url' }}"
+						},
+						{
+							"name": "url",
+							"type": "string",
+							"value": "={{ $json.query.url || $json.body.url || '' }}"
+						},
+						{
+							"name": "text_content",
+							"type": "string",
+							"value": "={{ $json.query.text_content || $json.body.text_content || '' }}"
+						},
+						{
+							"name": "summary_length",
+							"type": "string",
+							"value": "={{ $json.query.summary_length || $json.body.summary_length || 'standard' }}"
+						},
+						{
+							"name": "focus",
+							"type": "string",
+							"value": "={{ $json.query.focus || $json.body.focus || 'key_points' }}"
+						},
+						{
+							"name": "language",
+							"type": "string",
+							"value": "={{ $json.query.language || $json.body.language || 'english' }}"
+						},
+						{
+							"name": "file_content",
+							"type": "string",
+							"value": "={{ $json.query.file_content || $json.body.file_content || '' }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "7852e220-e77c-4b4a-a74b-110e0c733364",
+			"name": "Scrape Web Page Content",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-880, 1664],
+			"parameters": {
+				"url": "={{ $json.url }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "3f933b84-8a3f-441b-8a17-412c63563d2d",
+			"name": "Clean Scraped Content",
+			"type": "n8n-nodes-base.set",
+			"position": [-656, 1664],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "80a0f7dc-ee66-4499-ac84-1e21fca8e6c7",
+							"name": "raw_content",
+							"type": "string",
+							"value": "={{ $json.raw_content || $json.data || $json.text || $json.text_content || $json.ParsedResults?.[0]?.ParsedText || '' }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "282c6c04-0ba1-47b8-a900-1c3416440710",
+			"name": "Summarize URL Content",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-432, 1664],
+			"parameters": {
+				"text": "=Summarize: {{ $json.raw_content }}",
+				"options": {
+					"systemMessage": "=Current date and time {{ $now }}\n\nYou are an expert content summarizer. \nCreate a {{ $('Extract URL Parameters').item.json.summary_length === 'brief' ? '**brief** (2-3 sentences)' : $('Extract URL Parameters').item.json.summary_length === 'detailed' ? '**detailed** (2-3 paragraphs)' : '**standard** (1 paragraph)' }} summary in markdown format.\n\n**Focus**: \n{{ $('Extract URL Parameters').item.json.focus === 'numbers_data' \n    ? 'Extract key **numbers**, **percentages**, and quantitative data' \n    : $('Extract URL Parameters').item.json.focus === 'conclusions' \n    ? 'Highlight main **conclusions** and findings' \n    : $('Extract URL Parameters').item.json.focus === 'action_items' \n    ? 'List concrete **action items** and recommendations' \n    : 'Capture essential **key points** and main themes' }}\n\n**Formatting Guidelines:**\n- Use **bold** for key terms and important information\n- Use *italics* for emphasis\n- Use bullet points (- ) for lists\n- Use ## for section headers when appropriate\n- Lead with the most important information\n- Include specific details that support main points\n- Ensure the summary is complete and stands alone\n\n**Language**: \n{{ $('Extract URL Parameters').item.json.language === 'spanish' \n    ? 'Spanish' \n    : $('Extract URL Parameters').item.json.language === 'french' \n    ? 'French' \n    : $('Extract URL Parameters').item.json.language === 'german' \n    ? 'German' \n    : 'English' }}\n\nContent: {{ $json.raw_content }}\n"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "dcf23318-5a25-43d9-9ccd-a896cc89798e",
+			"name": "OpenAI GPT-4.1 (URL)",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-368, 1888],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "98fa70c1-9594-4d83-bb91-52148d80a450",
+			"name": "Format URL Summary",
+			"type": "n8n-nodes-base.set",
+			"position": [-80, 1664],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"name": "content",
+							"type": "string",
+							"value": "={{ $json.output }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "0d20d017-d4bd-48c4-b931-e30d5ecde720",
+			"name": "Return URL Summary",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [144, 1664],
+			"parameters": {
+				"options": {},
+				"respondWith": "text",
+				"responseBody": "={{ $json.content }}"
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "2f0e7464-f607-4333-b34a-398ad045cf25",
+			"name": "Extract Text Parameters",
+			"type": "n8n-nodes-base.set",
+			"position": [-1088, 2192],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"name": "input_type",
+							"type": "string",
+							"value": "={{ $json.query.input_type || $json.body.input_type || 'url' }}"
+						},
+						{
+							"name": "url",
+							"type": "string",
+							"value": "={{ $json.query.url || $json.body.url || '' }}"
+						},
+						{
+							"name": "text_content",
+							"type": "string",
+							"value": "={{ $json.query.text_content || $json.body.text_content || '' }}"
+						},
+						{
+							"name": "summary_length",
+							"type": "string",
+							"value": "={{ $json.query.summary_length || $json.body.summary_length || 'standard' }}"
+						},
+						{
+							"name": "focus",
+							"type": "string",
+							"value": "={{ $json.query.focus || $json.body.focus || 'key_points' }}"
+						},
+						{
+							"name": "language",
+							"type": "string",
+							"value": "={{ $json.query.language || $json.body.language || 'english' }}"
+						},
+						{
+							"name": "file_content",
+							"type": "string",
+							"value": "={{ $json.query.file_content || $json.body.file_content || '' }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "ec5daf86-5837-4489-b967-ca01fd53259b",
+			"name": "Process Raw Text Input",
+			"type": "n8n-nodes-base.set",
+			"position": [-864, 2192],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "80a0f7dc-ee66-4499-ac84-1e21fca8e6c7",
+							"name": "raw_content",
+							"type": "string",
+							"value": "={{ $json.raw_content || $json.data || $json.text || $json.text_content || $json.ParsedResults?.[0]?.ParsedText || '' }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "4bb0543c-9611-47fa-9e88-46ab3a5e46d4",
+			"name": "Summarize Text Input",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-640, 2192],
+			"parameters": {
+				"text": "=Summarize: {{ $json.raw_content }}",
+				"options": {
+					"systemMessage": "=Current date and time {{ $now }}\n\nYou are an expert content summarizer. \nCreate a {{ $('Extract Text Parameters').item.json.summary_length === 'brief' ? '**brief** (2-3 sentences)' : $('Extract Text Parameters').item.json.summary_length === 'detailed' ? '**detailed** (2-3 paragraphs)' : '**standard** (1 paragraph)' }} summary in markdown format.\n\n**Focus**: \n{{ $('Extract Text Parameters').item.json.focus === 'numbers_data' \n    ? 'Extract key **numbers**, **percentages**, and quantitative data' \n    : $('Extract Text Parameters').item.json.focus === 'conclusions' \n    ? 'Highlight main **conclusions** and findings' \n    : $('Extract Text Parameters').item.json.focus === 'action_items' \n    ? 'List concrete **action items** and recommendations' \n    : 'Capture essential **key points** and main themes' }}\n\n**Formatting Guidelines:**\n- Use **bold** for key terms and important information\n- Use *italics* for emphasis\n- Use bullet points (- ) for lists\n- Use ## for section headers when appropriate\n- Lead with the most important information\n- Include specific details that support main points\n- Ensure the summary is complete and stands alone\n\n**Language**: \n{{ $('Extract Text Parameters').item.json.language === 'spanish' \n    ? 'Spanish' \n    : $('Extract Text Parameters').item.json.language === 'french' \n    ? 'French' \n    : $('Extract Text Parameters').item.json.language === 'german' \n    ? 'German' \n    : 'English' }}\n\nContent: {{ $json.raw_content }}\n"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "144b8cd0-318a-4cd8-9d4c-e3416e59338f",
+			"name": "OpenAI GPT-4.1 (Text)",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-640, 2400],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "2072b47a-130d-417f-8bdf-77ee04f0c39b",
+			"name": "Format Text Summary",
+			"type": "n8n-nodes-base.set",
+			"position": [-288, 2192],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"name": "content",
+							"type": "string",
+							"value": "={{ $json.output }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "9024a142-c034-428e-92b6-3de102474dac",
+			"name": "Return Text Summary",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [-64, 2192],
+			"parameters": {
+				"options": {},
+				"respondWith": "text",
+				"responseBody": "={{ $json.content }}"
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "37c4c9a2-04e6-49e1-a763-86a9cb5f19d2",
+			"name": "Extract File Parameters",
+			"type": "n8n-nodes-base.set",
+			"position": [-1088, 2800],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"name": "input_type",
+							"type": "string",
+							"value": "={{ $json.query.input_type || $json.body.input_type || 'url' }}"
+						},
+						{
+							"name": "url",
+							"type": "string",
+							"value": "={{ $json.query.url || $json.body.url || '' }}"
+						},
+						{
+							"name": "text_content",
+							"type": "string",
+							"value": "={{ $json.query.text_content || $json.body.text_content || '' }}"
+						},
+						{
+							"name": "summary_length",
+							"type": "string",
+							"value": "={{ $json.query.summary_length || $json.body.summary_length || 'standard' }}"
+						},
+						{
+							"name": "focus",
+							"type": "string",
+							"value": "={{ $json.query.focus || $json.body.focus || 'key_points' }}"
+						},
+						{
+							"name": "language",
+							"type": "string",
+							"value": "={{ $json.query.language || $json.body.language || 'english' }}"
+						},
+						{
+							"name": "file_content",
+							"type": "string",
+							"value": "={{ $json.query.file_content || $json.body.file_content || '' }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "6ebe835e-2ef9-45ae-b984-bb21a873ab24",
+			"name": "Download PDF File",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-864, 2800],
+			"parameters": {
+				"url": "={{ $json.file_content }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "49568f41-51f7-4006-84e6-e154ca1e35d4",
+			"name": "Extract Text from PDF",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [-640, 2800],
+			"parameters": {
+				"options": {},
+				"operation": "pdf"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "db8f0fb5-f524-4489-8bb8-70677bbaa03b",
+			"name": "Check PDF Text Extraction",
+			"type": "n8n-nodes-base.if",
+			"position": [-416, 2800],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "88a7fc31-aac6-4e2f-899e-c250feef5f10",
+							"operator": {
+								"type": "string",
+								"operation": "empty"
+							},
+							"leftValue": "={{ $json.text }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "714729b2-4a02-4685-b7db-4b0346928940",
+			"name": "Map OCR Language Code",
+			"type": "n8n-nodes-base.function",
+			"position": [-192, 2624],
+			"parameters": {
+				"functionCode": "const lang = $json.language?.toLowerCase() || 'english';\nlet code = 'eng';\nif (lang.includes('spanish')) code = 'spa';\nelse if (lang.includes('french')) code = 'fra';\nelse if (lang.includes('german')) code = 'ger';\nreturn { json: { language_code: code } };"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ffd527f9-3c97-4eef-9693-be431f79187c",
+			"name": "OCR Fallback Processing",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-32, 2624],
+			"parameters": {
+				"url": "https://api.ocr.space/parse/image",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"sendHeaders": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "language",
+							"value": "={{ $json.language_code }}"
+						},
+						{
+							"name": "isOverlayRequired",
+							"value": "false"
+						},
+						{
+							"name": "file",
+							"parameterType": "formBinaryData"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "apikey",
+							"value": "YOUR_OCR_API_KEY"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "d0ebcb03-9151-4217-8ede-dfcf5d47ff22",
+			"name": "Process Extracted Text",
+			"type": "n8n-nodes-base.set",
+			"position": [160, 2816],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "80a0f7dc-ee66-4499-ac84-1e21fca8e6c7",
+							"name": "raw_content",
+							"type": "string",
+							"value": "={{ $json.raw_content || $json.data || $json.text || $json.text_content || $json.ParsedResults?.[0]?.ParsedText || '' }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "0818caf5-6479-4776-bd9f-d73962a09e29",
+			"name": "Summarize PDF Content",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [480, 2800],
+			"parameters": {
+				"text": "=Summarize: {{ $json.raw_content }}",
+				"options": {
+					"systemMessage": "=Current date and time {{ $now }}\n\nYou are an expert content summarizer. \nCreate a {{ $('Extract File Parameters').item.json.summary_length === 'brief' ? '**brief** (2-3 sentences)' : $('Extract File Parameters').item.json.summary_length === 'detailed' ? '**detailed** (2-3 paragraphs)' : '**standard** (1 paragraph)' }} summary in markdown format.\n\n**Focus**: \n{{ $('Extract File Parameters').item.json.focus === 'numbers_data' \n    ? 'Extract key **numbers**, **percentages**, and quantitative data' \n    : $('Extract File Parameters').item.json.focus === 'conclusions' \n    ? 'Highlight main **conclusions** and findings' \n    : $('Extract File Parameters').item.json.focus === 'action_items' \n    ? 'List concrete **action items** and recommendations' \n    : 'Capture essential **key points** and main themes' }}\n\n**Formatting Guidelines:**\n- Use **bold** for key terms and important information\n- Use *italics* for emphasis\n- Use bullet points (- ) for lists\n- Use ## for section headers when appropriate\n- Lead with the most important information\n- Include specific details that support main points\n- Ensure the summary is complete and stands alone\n\n**Language**: \n{{ $('Extract File Parameters').item.json.language === 'spanish' \n    ? 'Spanish' \n    : $('Extract File Parameters').item.json.language === 'french' \n    ? 'French' \n    : $('Extract File Parameters').item.json.language === 'german' \n    ? 'German' \n    : 'English' }}\n\nContent: {{ $json.raw_content }}\n"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "7120dedb-ac90-4aa3-9f3c-ba65aeb698ff",
+			"name": "OpenAI GPT-4.1 (PDF)",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [560, 3024],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "c3463333-53ed-4a1e-9f57-363a8723409b",
+			"name": "Format PDF Summary",
+			"type": "n8n-nodes-base.set",
+			"position": [832, 2800],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"name": "content",
+							"type": "string",
+							"value": "={{ $json.output }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "6b02e945-6b55-4648-b3b3-7cde2d6d6724",
+			"name": "Return PDF Summary",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [1056, 2800],
+			"parameters": {
+				"options": {},
+				"respondWith": "text",
+				"responseBody": "={{ $json.content }}"
+			},
+			"typeVersion": 1.4
+		},
+		{
+			"id": "a0bfcac9-cfd6-4822-b8a7-5bc0b50b1483",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2752, 2048],
+			"parameters": {
+				"color": 3,
+				"width": 528,
+				"height": 80,
+				"content": "## Important\n- PDF file must be publicly accesible."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"callerPolicy": "workflowsFromSameOwner",
+		"errorWorkflow": "tKU8rgsN4cH2Mv9F",
+		"executionOrder": "v1"
+	},
+	"versionId": "783b71e8-de94-4085-9588-cfdbd63cd25c",
+	"connections": {
+		"OCR.Space": {
+			"main": [
+				[
+					{
+						"node": "Clean & Format Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"summarize-url": {
+			"main": [
+				[
+					{
+						"node": "Extract URL Parameters",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch PDF File": {
+			"main": [
+				[
+					{
+						"node": "Extract From File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"summarize-file": {
+			"main": [
+				[
+					{
+						"node": "Extract File Parameters",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"summarize-text": {
+			"main": [
+				[
+					{
+						"node": "Extract Text Parameters",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Initial Trigger": {
+			"main": [
+				[
+					{
+						"node": "Parse Input Parameters",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download PDF File": {
+			"main": [
+				[
+					{
+						"node": "Extract Text from PDF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract From File": {
+			"main": [
+				[
+					{
+						"node": "Check If Extracted Text Empty",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch URL Content": {
+			"main": [
+				[
+					{
+						"node": "Clean & Format Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Input Type Switch": {
+			"main": [
+				[
+					{
+						"node": "Fetch URL Content",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Clean & Format Content",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Fetch PDF File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Map Language Code": {
+			"main": [
+				[
+					{
+						"node": "OCR.Space",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format PDF Summary": {
+			"main": [
+				[
+					{
+						"node": "Return PDF Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format URL Summary": {
+			"main": [
+				[
+					{
+						"node": "Return URL Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format Text Summary": {
+			"main": [
+				[
+					{
+						"node": "Return Text Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI GPT-4.1 (PDF)": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Summarize PDF Content",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI GPT-4.1 (URL)": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Summarize URL Content",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Summarize Text Input": {
+			"main": [
+				[
+					{
+						"node": "Format Text Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clean Scraped Content": {
+			"main": [
+				[
+					{
+						"node": "Summarize URL Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Text from PDF": {
+			"main": [
+				[
+					{
+						"node": "Check PDF Text Extraction",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Map OCR Language Code": {
+			"main": [
+				[
+					{
+						"node": "OCR Fallback Processing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI GPT-4.1 (Text)": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Summarize Text Input",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Summarize PDF Content": {
+			"main": [
+				[
+					{
+						"node": "Format PDF Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Summarize URL Content": {
+			"main": [
+				[
+					{
+						"node": "Format URL Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clean & Format Content": {
+			"main": [
+				[
+					{
+						"node": "Generate AI Summary (Unified)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract URL Parameters": {
+			"main": [
+				[
+					{
+						"node": "Scrape Web Page Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse Input Parameters": {
+			"main": [
+				[
+					{
+						"node": "Input Type Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Process Extracted Text": {
+			"main": [
+				[
+					{
+						"node": "Summarize PDF Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Process Raw Text Input": {
+			"main": [
+				[
+					{
+						"node": "Summarize Text Input",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structure Final Output": {
+			"main": [
+				[
+					{
+						"node": "Return Summary Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract File Parameters": {
+			"main": [
+				[
+					{
+						"node": "Download PDF File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Text Parameters": {
+			"main": [
+				[
+					{
+						"node": "Process Raw Text Input",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OCR Fallback Processing": {
+			"main": [
+				[
+					{
+						"node": "Process Extracted Text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Scrape Web Page Content": {
+			"main": [
+				[
+					{
+						"node": "Clean Scraped Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI GPT-4.1 (Unified)": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Generate AI Summary (Unified)",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check PDF Text Extraction": {
+			"main": [
+				[
+					{
+						"node": "Map OCR Language Code",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Process Extracted Text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check If Extracted Text Empty": {
+			"main": [
+				[
+					{
+						"node": "Map Language Code",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Clean & Format Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate AI Summary (Unified)": {
+			"main": [
+				[
+					{
+						"node": "Structure Final Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

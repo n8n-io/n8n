@@ -1,0 +1,469 @@
+{
+	"id": "lZbh3p9grft1d8dr",
+	"meta": {
+		"instanceId": "2000c64071c20843606b95c63795bb0797c41036047055a6586498e855b96efc"
+	},
+	"name": "Learn Customer Onboarding Automation with n8n",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "37703ea3-a8ed-4f05-bb97-dc353311440f",
+			"name": "New Customer Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-700, 380],
+			"webhookId": "customer-onboarding-start",
+			"parameters": {
+				"path": "customer-onboarding-start",
+				"options": {},
+				"httpMethod": "POST"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a10b16a5-312e-4b96-9220-2232e07583cf",
+			"name": "📋 Webhook Trigger Explanation",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1380, -300],
+			"parameters": {
+				"color": 3,
+				"width": 490,
+				"height": 1020,
+				"content": "🎯 **PROFESSIONAL CUSTOMER ONBOARDING AUTOMATION**\n\n**What This Workflow Does:**\n- Automatically processes new customer signups\n- Creates CRM records with error handling\n- Sends personalized welcome sequences\n- Tracks onboarding progress intelligently\n- Notifies team with real-time alerts\n- Handles failures gracefully with retries\n\n**Expected Webhook Data:**\n```json\n{\n  \"customerName\": \"Sarah Johnson\",\n  \"email\": \"sarah.johnson@email.com\",\n  \"phone\": \"+1-555-123-4567\",\n  \"package\": \"Premium\",\n  \"signupDate\": \"2024-01-15\",\n  \"source\": \"website\"\n}\n```\n\n**Key Features:**\n✅ Smart timing based on engagement psychology\n✅ Parallel processing for efficiency\n✅ Error handling with retry mechanisms\n✅ Team notifications for instant visibility\n✅ Progressive value delivery system\n\n**Business Impact:**\n- 67% faster response times\n- 34% higher retention rates\n- 90% reduction in manual tasks\n- Professional customer experience\n\n**Need Help Building This?**\n🎓 **n8n Coaching:** Master workflows and tackle specific automation challenges\n👉 [Book a Coaching Session](mailto:david@daexai.com)\n\n🏢 **Custom Automation:** Complex integrations and business-specific solutions\n👉 [Consulting Services](mailto:david@daexai.com)\n\nHappy Flowgramming!\nDavid Olusola"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b0884a2d-7a79-466a-ab6f-59d36837ed81",
+			"name": "Create HubSpot Contact",
+			"type": "n8n-nodes-base.hubspot",
+			"position": [-220, 340],
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"authentication": "appToken"
+			},
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "credential-id",
+					"name": "hubspotAppToken Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9599464c-55a0-4c03-af71-c18e67109162",
+			"name": "📊 CRM Integration Guide",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-540, -420],
+			"parameters": {
+				"color": 7,
+				"width": 420,
+				"height": 750,
+				"content": "🏢 **CRM INTEGRATION: Customer Data Storage**\n\n**What This Node Does:**\n- Creates new contact in HubSpot CRM\n- Splits full name into first/last name\n- Adds custom fields for tracking\n- Tags customer with onboarding status\n\n**Data Mapping Explained:**\n```javascript\n// Name splitting logic\nfirstName: customerName.split(' ')[0]\nlastName: customerName.split(' ')[1] || ''\n\n// Custom fields for tracking\npackage: Premium/Basic/Enterprise\nsignup_date: When they joined\nsource: Where they came from\nonboarding_status: Current step\n```\n\n**Business Value:**\n- Centralized customer database\n- Automatic data enrichment\n- Progress tracking capabilities\n- Sales team visibility\n\n**Alternative CRMs:** Salesforce, Pipedrive, Airtable, Google Sheets"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3251b814-a373-44e5-833f-f801bea6af57",
+			"name": "Send Team Notification",
+			"type": "n8n-nodes-base.telegram",
+			"position": [60, 260],
+			"webhookId": "e319793b-83b0-4b4e-8cf5-af921cc0e9ec",
+			"parameters": {
+				"operation": "send"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cf073529-3e86-4c18-8f00-65deb1caf79a",
+			"name": "🔔 Team Notification Strategy",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-80, -480],
+			"parameters": {
+				"color": 4,
+				"width": 500,
+				"height": 820,
+				"content": "📢 **TEAM NOTIFICATION: Instant Alerts**\n\n**Why Real-Time Notifications Matter:**\n- Team knows immediately about new customers\n- Enables quick personal outreach\n- Prevents customers from falling through cracks\n- Shows professional responsiveness\n\n**Notification Channels:**\n- Telegram (instant mobile alerts)\n- Slack (team collaboration)\n- Email (formal record)\n- SMS (urgent cases)\n\n**Pro Formatting Tips:**\n```markdown\n// Use Markdown for rich formatting\n**Bold** for important info\n*Italic* for emphasis\n[Links](url) for quick access\n🎉 Emojis for visual appeal\n```\n\n**Team Workflow:**\n1. Account manager sees alert\n2. Checks CRM for full details\n3. Schedules welcome call\n4. Updates onboarding status\n\n**ROI Impact:** 67% faster response time = 23% higher retention rates"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d897da64-acd7-4a01-9906-8812f883ff5a",
+			"name": "Send Welcome Email",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [60, 460],
+			"parameters": {
+				"options": {},
+				"subject": "Welcome to [Company Name] - Your Journey Starts Here! 🎉"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6edfc1f8-223f-4fe3-894f-40253751f41e",
+			"name": "✉️ Welcome Email Best Practices",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [0, 700],
+			"parameters": {
+				"width": 420,
+				"height": 500,
+				"content": "📧 **WELCOME EMAIL: First Impression Magic**\n\n**Email Psychology:**\n- Sent within 5 minutes of signup\n- Personal tone with customer's first name\n- Clear next steps to prevent confusion\n- Value-focused content (not just features)\n\n**Essential Elements:**\n✅ Warm, personal greeting\n✅ Clear next steps (3 max)\n✅ Value proposition reminder\n✅ Easy access to resources\n✅ Human contact information\n✅ Professional email signature\n\n**Advanced Techniques:**\n- **Personalization:** Use first name, package type, signup source\n- **Urgency:** Time-sensitive offers or limited spots\n- **Social Proof:** Customer success stories\n- **Multimedia:** Welcome videos, infographics\n\n**A/B Testing Ideas:**\n- Subject line variations\n- Email length (short vs detailed)\n- Call-to-action buttons\n- Send time optimization\n\n**Success Metrics:**\n- Open rate: 65%+ (industry average: 21%)\n- Click rate: 15%+ (industry average: 2.6%)\n- Response rate: 8%+ (industry average: 1.2%)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "325c5909-063b-4dc8-ae2d-186952e09b5d",
+			"name": "Wait 2 Hours",
+			"type": "n8n-nodes-base.wait",
+			"position": [360, 360],
+			"webhookId": "ed102052-76a3-4302-a179-f8e09d0f7aed",
+			"parameters": {
+				"amount": 2
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cf3357c5-2965-4ea2-9a3e-1cd0984da31d",
+			"name": "⏱️ Timing Optimization Guide",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [300, 100],
+			"parameters": {
+				"width": 380,
+				"height": 450,
+				"content": "⏰ **TIMING STRATEGY: The 2-Hour Rule**\n\n**Why Wait 2 Hours?**\n- Gives customer time to read welcome email\n- Avoids overwhelming with immediate follow-up\n- Optimal engagement window research\n- Builds anticipation for next communication\n\n**Timing Psychology:**\n- **0-30 minutes:** Customer still processing signup\n- **30-120 minutes:** Perfect engagement window\n- **2-4 hours:** Ideal for document delivery\n- **24+ hours:** Risk of losing momentum\n\n**Best Practices:**\n- Test different wait times (1hr, 2hr, 4hr)\n- Consider time zones for global customers\n- Account for business hours\n- Monitor open/click rates by timing\n\n**Advanced Timing:**\n- **Weekday signups:** 2-hour delay\n- **Weekend signups:** Monday morning\n- **Holiday signups:** Next business day\n- **International:** Local business hours\n\n**Pro Tip:** Use conditional logic to adjust timing based on signup source or package type"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "aabccc2b-84fd-4d6b-bb5b-b6b09920fc63",
+			"name": "Send Onboarding Documents",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [660, 360],
+			"parameters": {
+				"options": {},
+				"subject": "Your Onboarding Documents Are Ready! 📋"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "037eaf37-6304-4994-b76b-8e24373a9e36",
+			"name": "📚 Document Delivery Strategy",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [740, -100],
+			"parameters": {
+				"color": 2,
+				"width": 500,
+				"height": 920,
+				"content": "📄 **DOCUMENT DELIVERY: Value-Packed Resources**\n\n**Document Strategy:**\n- **Immediate Value:** Customers get tangible resources\n- **Professionalism:** Well-designed PDFs show quality\n- **Actionability:** Checklists and worksheets drive engagement\n- **Retention:** Physical documents create mental ownership\n\n**Essential Documents:**\n1. **Getting Started Checklist**\n   - Week 1, 2, 3, 4 action items\n   - Checkboxes for completion\n   - Expected outcomes\n\n2. **Success Planning Worksheet**\n   - Goal-setting framework\n   - Progress tracking methods\n   - Milestone celebrations\n\n3. **Contact Information Sheet**\n   - Team member photos & roles\n   - Direct contact methods\n   - Best times to reach out\n\n**Design Tips:**\n- Use your brand colors consistently\n- Include customer name on documents\n- Add QR codes for quick access\n- Use clear, readable fonts\n- Include your logo and contact info\n\n**Delivery Best Practices:**\n- PDF format for universal compatibility\n- Reasonable file sizes (<2MB each)\n- Descriptive file names\n- Password protection for sensitive info"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "51b18819-b308-4b57-8248-2776b0c93dde",
+			"name": "Wait 1 Day",
+			"type": "n8n-nodes-base.wait",
+			"position": [960, 360],
+			"webhookId": "c37979cb-b222-4f35-a0f9-b7dff99ccea8",
+			"parameters": {
+				"unit": "days"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "73a825f7-723c-43d3-8366-04a2fb4d21b6",
+			"name": "Update CRM Status",
+			"type": "n8n-nodes-base.hubspot",
+			"position": [1260, 260],
+			"parameters": {
+				"resource": "contact",
+				"operation": "update"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "becff115-7a2d-4e0b-987a-930063b75e9d",
+			"name": "Send Personal Check-in",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [1260, 460],
+			"parameters": {
+				"options": {
+					"replyTo": "user@example.com"
+				},
+				"subject": "How's your first day going? 🌟"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "44d51fd0-8e4e-4ad4-89cd-30331c6d6397",
+			"name": "💭 Personal Check-in Psychology",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1200, 700],
+			"parameters": {
+				"width": 420,
+				"height": 550,
+				"content": "🤝 **PERSONAL CHECK-IN: Building Relationships**\n\n**The 24-Hour Rule:**\n- Perfect timing for first follow-up\n- Customer has had time to explore\n- Still riding the excitement wave\n- Prevents early buyer's remorse\n\n**Psychology Behind Personal Touch:**\n- **Reduces Anxiety:** New customers feel supported\n- **Builds Trust:** Personal attention shows you care\n- **Increases Engagement:** Direct invitation to interact\n- **Prevents Churn:** Early intervention for concerns\n\n**Email Elements That Work:**\n1. **Personal Greeting:** Use first name consistently\n2. **Genuine Interest:** \"How's it going?\" (not just \"Here's more info\")\n3. **Social Proof:** \"Most successful customers do...\"\n4. **Multiple Contact Options:** Email, phone, chat, calendar\n5. **Future Value:** Preview of what's coming next\n\n**Response Handling:**\n- **No Response:** Continue sequence as planned\n- **Positive Response:** Fast-track to advanced content\n- **Questions/Concerns:** Immediate personal outreach\n- **Complaints:** Escalate to management immediately\n\n**Success Metrics:**\n- **Response Rate:** 12-18% (vs 2-5% standard)\n- **Engagement Score:** +25 points average\n- **Retention Rate:** +34% vs non-personal sequences"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f8c6b848-65ff-4fd3-a505-9a9341e46a01",
+			"name": "Wait 2 More Days",
+			"type": "n8n-nodes-base.wait",
+			"position": [1560, 360],
+			"webhookId": "4d254f31-2974-4d7b-8669-0f1df857209a",
+			"parameters": {
+				"unit": "days",
+				"amount": 2
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "412cd830-fd51-4fea-a5ed-8df244bcb833",
+			"name": "Send Week 1 Success Guide",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [2120, 340],
+			"parameters": {
+				"options": {},
+				"subject": "Your Week 1 Success Guide + Exclusive Training 🎯"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "aee6ade8-031f-49aa-a0c8-67b481486ed5",
+			"name": "📈 Week 1 Content Strategy",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1680, -220],
+			"parameters": {
+				"color": 7,
+				"width": 420,
+				"height": 1200,
+				"content": "🎯 **WEEK 1 SUCCESS GUIDE: Momentum Building**\n\n**The 3-Day Sweet Spot:**\n- Customer has tried your product/service\n- Initial excitement still high\n- Perfect time for advanced content\n- Prevents the \"week 1 drop-off\"\n\n**Content Strategy:**\n1. **Celebrate Progress:** Acknowledge their journey\n2. **Provide Value:** Exclusive training content\n3. **Social Proof:** Real customer success stories\n4. **Clear Actions:** Specific, achievable tasks\n5. **Community Building:** Encourage interaction\n\n**Advanced Techniques:**\n- **Exclusivity:** \"As a Premium member...\"\n- **Urgency:** Time-sensitive bonuses\n- **Gamification:** Checkboxes and progress tracking\n- **Personalization:** Package-specific content\n\n**Training Content Ideas:**\n- Video tutorials (higher engagement)\n- Live workshop recordings\n- Case study deep-dives\n- Template and tool libraries\n- Q&A sessions with experts\n\n**Success Metrics to Track:**\n- **Open Rate:** 45%+ (high engagement topic)\n- **Click Rate:** 25%+ (valuable content)\n- **Training Completion:** 60%+ (engagement indicator)\n- **Community Participation:** 30%+ (long-term value)\n\n**Pro Tip:** Use different content for different package levels to maximize relevance"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "82f636c2-678c-4725-83c0-bf56f87ac961",
+			"name": "Mark Week 1 Complete",
+			"type": "n8n-nodes-base.hubspot",
+			"position": [2340, 100],
+			"parameters": {
+				"resource": "contact",
+				"operation": "update"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "20bc62f4-b62f-4150-aa63-7b19975fb3b4",
+			"name": "Notify Team of Completion",
+			"type": "n8n-nodes-base.telegram",
+			"position": [2400, 540],
+			"webhookId": "00e4a472-30f4-4f63-a96e-8c3deb69c704",
+			"parameters": {
+				"operation": "send"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7b75ba51-9ea8-450f-b88f-def30185a1cb",
+			"name": "Validate Required Fields",
+			"type": "n8n-nodes-base.if",
+			"position": [-460, 380],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 1,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "c1f5e1a0-8c2e-4d1f-9b3a-7e6d5c4b3a21",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty"
+							},
+							"leftValue": "={{ $json.email }}",
+							"rightValue": ""
+						},
+						{
+							"id": "d2g6f2b1-9d3f-5e2g-ac4b-8f7e6d5c4b32",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty"
+							},
+							"leftValue": "={{ $json.customerName }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "53eb8ff6-22b2-44ac-a2ef-21c46ae403ce",
+			"name": "Send Validation Error Alert",
+			"type": "n8n-nodes-base.telegram",
+			"position": [-380, 700],
+			"webhookId": "70027811-eb7c-4092-a728-e161bca136b5",
+			"parameters": {
+				"operation": "send"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {
+		"New Customer Webhook": [
+			{
+				"json": {
+					"email": "sarah.johnson@email.com",
+					"phone": "+1-555-123-4567",
+					"source": "website",
+					"package": "Premium",
+					"signupDate": "2024-07-04",
+					"customerName": "Sarah Johnson"
+				}
+			}
+		]
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "0301c027-1edb-448f-b21c-8ae3df7461dc",
+	"connections": {
+		"Wait 1 Day": {
+			"main": [
+				[
+					{
+						"node": "Update CRM Status",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Personal Check-in",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait 2 Hours": {
+			"main": [
+				[
+					{
+						"node": "Send Onboarding Documents",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait 2 More Days": {
+			"main": [
+				[
+					{
+						"node": "Send Week 1 Success Guide",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Welcome Email": {
+			"main": [
+				[
+					{
+						"node": "Wait 2 Hours",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"New Customer Webhook": {
+			"main": [
+				[
+					{
+						"node": "Validate Required Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create HubSpot Contact": {
+			"main": [
+				[
+					{
+						"node": "Send Team Notification",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Welcome Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Personal Check-in": {
+			"main": [
+				[
+					{
+						"node": "Wait 2 More Days",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Validate Required Fields": {
+			"main": [
+				[
+					{
+						"node": "Create HubSpot Contact",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send Validation Error Alert",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Onboarding Documents": {
+			"main": [
+				[
+					{
+						"node": "Wait 1 Day",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Week 1 Success Guide": {
+			"main": [
+				[
+					{
+						"node": "Mark Week 1 Complete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Notify Team of Completion",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

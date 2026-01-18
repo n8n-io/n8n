@@ -1,0 +1,343 @@
+{
+	"id": "pDhufDfHS9qRgtLf",
+	"meta": {
+		"instanceId": "fa52a98dd39f67760c7540fff8a0dd5306d89f766551eb7a7c84b5f43eb33d4c",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Simple RAG",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "93cd13c5-12ad-4c9c-aac7-1886a1d24470",
+			"name": "On form submission",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [0, 0],
+			"webhookId": "cab3dda4-3b49-4f05-a2c1-915ae4c62017",
+			"parameters": {
+				"options": {},
+				"formTitle": "Upload RAG PDF",
+				"formFields": {
+					"values": [
+						{
+							"fieldType": "file",
+							"fieldLabel": "File",
+							"multipleFiles": false,
+							"requiredField": true,
+							"acceptFileTypes": ".pdf"
+						}
+					]
+				},
+				"formDescription": "Upload RAG PDF"
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "13fe2ba5-a24d-4198-8509-882eb4c08e1a",
+			"name": "Pinecone Vector Store",
+			"type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+			"position": [320, 0],
+			"parameters": {
+				"mode": "insert",
+				"options": {},
+				"pineconeIndex": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8n",
+					"cachedResultName": "n8n"
+				}
+			},
+			"credentials": {
+				"pineconeApi": {
+					"id": "credential-id",
+					"name": "pineconeApi Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "aa3d1481-3da7-4ae1-9857-c64a71e28443",
+			"name": "Embeddings OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [920, 460],
+			"parameters": {
+				"options": {
+					"dimensions": 1024
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "17350e15-5b99-493d-acd2-9f44fd661b09",
+			"name": "Default Data Loader",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"position": [440, 220],
+			"parameters": {
+				"options": {},
+				"dataType": "binary",
+				"textSplittingMode": "custom"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "8199713d-cad8-4d17-937c-1b3b604b95ea",
+			"name": "Recursive Character Text Splitter",
+			"type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+			"position": [520, 440],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fcaf5178-4694-4e20-ac62-8da3c1c8279e",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-60, -80],
+			"parameters": {
+				"width": 880,
+				"height": 680,
+				"content": "## Insert Data to Pinecone"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e094ded2-c2e9-4139-b6d0-df086f2e2049",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1440, 80],
+			"parameters": {
+				"options": {
+					"systemMessage": "Hanya jawab berdasarkan data yang ada di tools \"VectorDB\". Kalau data disitu gak ada, jawab saja kamu tidak tahu."
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "015d2a82-3c3d-4604-bbbf-7df57dd24269",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [1200, 80],
+			"webhookId": "c1f8d15b-e096-47f8-922e-a7484ebbc25c",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "a1b26946-9a3f-4aa2-a723-f91e196943cf",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [1280, 300],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1",
+					"cachedResultName": "gpt-4.1"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "6beecd5e-a8fc-4e69-8fbc-a0e0e90c4aa6",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [1480, 300],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "02b1aa4f-a291-4f2c-b6d9-0290d6b563ae",
+			"name": "VectorDB",
+			"type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+			"position": [1640, 300],
+			"parameters": {
+				"mode": "retrieve-as-tool",
+				"topK": 20,
+				"options": {},
+				"useReranker": true,
+				"pineconeIndex": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8n",
+					"cachedResultName": "n8n"
+				},
+				"toolDescription": "Ambil data dari vector database untuk knowledgebase"
+			},
+			"credentials": {
+				"pineconeApi": {
+					"id": "credential-id",
+					"name": "pineconeApi Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "bada58fc-73f4-431f-9702-e742a75ce2c3",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1100, -80],
+			"parameters": {
+				"color": 5,
+				"width": 860,
+				"height": 680,
+				"content": "## Chat AI Agent"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2e572866-dcf7-492f-aebe-35b12bc6b27d",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [840, 300],
+			"parameters": {
+				"color": 4,
+				"height": 300,
+				"content": "## Embedding Model"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6dcbbf3a-3acd-4170-9f79-c2441da18979",
+			"name": "Reranker Cohere",
+			"type": "@n8n/n8n-nodes-langchain.rerankerCohere",
+			"position": [1740, 480],
+			"parameters": {},
+			"credentials": {
+				"cohereApi": {
+					"id": "credential-id",
+					"name": "cohereApi Credential"
+				}
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "6b1d46bd-ed09-4a25-a95e-fa5a3e2950f7",
+	"connections": {
+		"VectorDB": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Reranker Cohere": {
+			"ai_reranker": [
+				[
+					{
+						"node": "VectorDB",
+						"type": "ai_reranker",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Pinecone Vector Store",
+						"type": "ai_embedding",
+						"index": 0
+					},
+					{
+						"node": "VectorDB",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On form submission": {
+			"main": [
+				[
+					{
+						"node": "Pinecone Vector Store",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Default Data Loader": {
+			"ai_document": [
+				[
+					{
+						"node": "Pinecone Vector Store",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pinecone Vector Store": {
+			"main": [[]]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Recursive Character Text Splitter": {
+			"ai_textSplitter": [
+				[
+					{
+						"node": "Default Data Loader",
+						"type": "ai_textSplitter",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

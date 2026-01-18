@@ -1,0 +1,398 @@
+{
+	"id": "mtCQYada6O64BILe",
+	"meta": {
+		"instanceId": "1c6299b01fe56ad80280bbb1a8394f761ca72a9606abe611a4617f9adc407187"
+	},
+	"name": "Building Prospecting Lists",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "2299f88a-bfeb-4d28-8164-704a40c9cdae",
+			"name": "Search ICP Companies",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-1560, 125],
+			"parameters": {
+				"url": "https://api.surfe.com/v2/companies/search",
+				"method": "POST",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"jsonBody": "{\n  \"filters\": {\n    \"industries\": [\"Software\", \"Apps\", \"SaaS\"],\n    \"employeeCount\": {\n        \"from\": 1,\n        \"to\": 35\n      },\n    \"countries\": [\"FR\"],\n    \"revenues\": [\"1-10M\"]\n  },\n  \"limit\": 20\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth"
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "5b7477c1-1a29-42ff-bd2c-207edeb49839",
+			"name": "Search People in Companies",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-1120, 125],
+			"parameters": {
+				"url": "https://api.surfe.com/v2/people/search",
+				"method": "POST",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"jsonBody": "={{ $json }}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth"
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "de26445a-750e-4b12-83f7-4a864e146b8e",
+			"name": "Prepare JSON Payload Enrichment Request",
+			"type": "n8n-nodes-base.code",
+			"position": [-900, 125],
+			"parameters": {
+				"jsCode": "const people = $json.people || [];\n\nreturn [\n  {\n    json: {\n      \"include\": {\n        \"email\": true,\n        \"linkedInUrl\": false,\n        \"mobile\": true\n      },\n      \"notificationOptions\": {\n        \"webhookUrl\": \"\"\n      },\n      people: people.map((person) => ({\n        firstName: person.firstName || \"\",\n        lastName: person.lastName || \"\",\n        companyName: person.companyName || \"\",\n        companyDomain: person.companyDomain || \"\",\n        linkedinUrl: person.linkedInUrl || \"\",\n        externalID: `${person.firstName}_${person.lastName}_${person.companyDomain}`.toLowerCase().replace(/[^a-z0-9_]/g, '_')\n      }))\n    }\n  }\n];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "a4e45b9e-327b-4ca2-9338-c2739ef93841",
+			"name": "Surfe Bulk Enrichments API",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-680, 125],
+			"parameters": {
+				"url": "https://api.surfe.com/v2/people/enrich",
+				"method": "POST",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"jsonBody": "={{ $json }}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth"
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "8ec1dbe8-b0c3-413b-9576-74cabfbaed70",
+			"name": "Surfe check enrichement status",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-460, 125],
+			"parameters": {
+				"url": "=https://api.surfe.com/v2/people/enrich/{{ $json.enrichmentID }}",
+				"options": {
+					"redirect": {
+						"redirect": {}
+					}
+				},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpBearerAuth"
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "b9bba6b6-6d14-400a-bba0-64a06f4ce343",
+			"name": "Is enrichment complete ?",
+			"type": "n8n-nodes-base.if",
+			"position": [-240, 50],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "65a670df-84e8-4c87-956c-96758b8d8d26",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.status }}",
+							"rightValue": "COMPLETED"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "d6a21f33-d87d-4d9f-8d1d-597a943a0391",
+			"name": "Wait 3 secondes",
+			"type": "n8n-nodes-base.wait",
+			"position": [-20, 225],
+			"webhookId": "faddf14b-4e33-4108-a141-c1a172e0a5d1",
+			"parameters": {
+				"amount": 3
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "1f811e79-79b2-46b6-8bac-0e94eb63c2d8",
+			"name": "Extract list of peoples from Surfe API response",
+			"type": "n8n-nodes-base.code",
+			"position": [-20, 0],
+			"parameters": {
+				"jsCode": "const people = $json.people || [];\n\nreturn people.map(person => {\n  return {\n    json: {\n      id: person.id || '',\n      firstName: person.firstName || '',\n      lastName: person.lastName || '',\n      email: person.emails?.[0]?.email || '',\n      phone: person.mobilePhones?.[0]?.mobilePhone || '',\n      jobTitle: person.jobTitle || '',\n      companyName: person.companyName || '',\n      companyWebsite: person.companyDomain || '',\n      linkedinUrl: person.linkedInUrl || '',\n      country: person.country || '',\n      status: person.status || ''\n    }\n  };\n});"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "043348d5-0bb7-40d6-be4d-ad3c2a7658de",
+			"name": "Filter: phone AND email",
+			"type": "n8n-nodes-base.filter",
+			"position": [200, 0],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "4f8f9bec-6eee-4e62-8d5f-e8f5b85620d6",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.phone }}",
+							"rightValue": ""
+						},
+						{
+							"id": "007f5a66-4e2a-42bc-bbed-0fb2b2f39ae7",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.email }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "814c954b-749c-4b9a-93ca-70cdf9a48505",
+			"name": "HubSpot: Create or Update",
+			"type": "n8n-nodes-base.hubspot",
+			"position": [420, 0],
+			"parameters": {
+				"email": "={{ $json.email }}",
+				"options": {
+					"resolveData": false
+				},
+				"authentication": "appToken",
+				"additionalFields": {
+					"country": "={{ $json.country }}",
+					"jobTitle": "={{ $json.jobTitle }}",
+					"lastName": "={{ $json.lastName }}",
+					"firstName": "={{ $json.firstName }}",
+					"websiteUrl": "={{ $json.linkedinUrl }}",
+					"companyName": "={{ $json.companyName }}",
+					"phoneNumber": "={{ $json.phone }}"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "25faa3d0-e800-4a68-a7da-b4295f9b03ae",
+			"name": "Gmail",
+			"type": "n8n-nodes-base.gmail",
+			"notes": "Notify end of enrichement",
+			"position": [640, 0],
+			"webhookId": "b46c028e-8212-40fe-b4d5-0f7c1890585e",
+			"parameters": {
+				"sendTo": "<YOUR_EMAIL>",
+				"message": "Your ICP prospecting enrichment is done.",
+				"options": {},
+				"subject": "Your ICP prospecting enrichment is done."
+			},
+			"executeOnce": true,
+			"notesInFlow": true,
+			"typeVersion": 2.1
+		},
+		{
+			"id": "e6daaf79-f53c-4059-80f7-8bfd2df14ebf",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-1780, 125],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b07b72bb-f631-4e60-9ad8-6cba88df6604",
+			"name": "prepare JSON PAYLOAD WITH Company Domains",
+			"type": "n8n-nodes-base.code",
+			"position": [-1340, 125],
+			"parameters": {
+				"jsCode": "const companies = $json.companyDomains || [];\n\nreturn {\n    \"companies\": {\n      \"domains\": companies\n    },\n    \"limit\": 20\n  };\n\n"
+			},
+			"typeVersion": 2
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "9df5b0c2-a0af-4178-85ce-94fd0b835535",
+	"connections": {
+		"Wait 3 secondes": {
+			"main": [
+				[
+					{
+						"node": "Surfe check enrichement status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search ICP Companies": {
+			"main": [
+				[
+					{
+						"node": "prepare JSON PAYLOAD WITH Company Domains",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter: phone AND email": {
+			"main": [
+				[
+					{
+						"node": "HubSpot: Create or Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Is enrichment complete ?": {
+			"main": [
+				[
+					{
+						"node": "Extract list of peoples from Surfe API response",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait 3 secondes",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HubSpot: Create or Update": {
+			"main": [
+				[
+					{
+						"node": "Gmail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search People in Companies": {
+			"main": [
+				[
+					{
+						"node": "Prepare JSON Payload Enrichment Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Surfe Bulk Enrichments API": {
+			"main": [
+				[
+					{
+						"node": "Surfe check enrichement status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Surfe check enrichement status": {
+			"main": [
+				[
+					{
+						"node": "Is enrichment complete ?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Search ICP Companies",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare JSON Payload Enrichment Request": {
+			"main": [
+				[
+					{
+						"node": "Surfe Bulk Enrichments API",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"prepare JSON PAYLOAD WITH Company Domains": {
+			"main": [
+				[
+					{
+						"node": "Search People in Companies",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract list of peoples from Surfe API response": {
+			"main": [
+				[
+					{
+						"node": "Filter: phone AND email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

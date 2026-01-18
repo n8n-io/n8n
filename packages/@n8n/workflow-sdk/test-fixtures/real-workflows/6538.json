@@ -1,0 +1,1171 @@
+{
+	"meta": {
+		"instanceId": "a88d54d0dc140647df8f628579b3d5aae0dedb13c983a1f5c11ee14f54f18774",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "c9437f3c-edbc-431c-be65-bc485d9fd6ad",
+			"name": "Set ID",
+			"type": "n8n-nodes-base.set",
+			"position": [860, 760],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e556566e-20a1-48b4-b01e-197a402b5a5f",
+							"name": "id",
+							"type": "string",
+							"value": "={{ $json.id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "fc3b2696-d0c1-40e4-a13b-5d274b0b8c69",
+			"name": "Supabase Vector Store",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+			"position": [1600, 760],
+			"parameters": {
+				"mode": "insert",
+				"options": {
+					"queryName": "match_documents"
+				},
+				"tableName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "documents",
+					"cachedResultName": "documents"
+				}
+			},
+			"credentials": {
+				"supabaseApi": {
+					"id": "credential-id",
+					"name": "supabaseApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "71b61728-b87c-40f3-850b-81af6d544b75",
+			"name": "Default Data Loader",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"position": [1740, 980],
+			"parameters": {
+				"options": {
+					"metadata": {
+						"metadataValues": [
+							{
+								"name": "=file_id",
+								"value": "={{ $('Set ID').item.json.id }}"
+							}
+						]
+					}
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "36fdd0a5-b95c-4fc3-9427-e67de0f3985f",
+			"name": "Recursive Character Text Splitter",
+			"type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+			"position": [1840, 1140],
+			"parameters": {
+				"options": {},
+				"chunkSize": 500,
+				"chunkOverlap": 100
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "66dd34df-763f-4497-bd73-b2dd78890eb4",
+			"name": "Embeddings OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [1560, 980],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "3623a178-af67-4f07-b1d6-90ac07857f28",
+			"name": "New File",
+			"type": "n8n-nodes-base.googleDriveTrigger",
+			"position": [560, 760],
+			"parameters": {
+				"event": "fileCreated",
+				"options": {},
+				"pollTimes": {
+					"item": [{}]
+				},
+				"triggerOn": "specificFolder",
+				"folderToWatch": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1UHQhCrwZg_ZEzBIKv4LR_RWtAyHbxZsg",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/1UHQhCrwZg_ZEzBIKv4LR_RWtAyHbxZsg",
+					"cachedResultName": "Marketing Ladder Knowledge Base"
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5a9c99b2-2876-4fd3-82e1-9212303151ae",
+			"name": "Download File",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1100, 760],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $json.id }}"
+				},
+				"options": {
+					"googleFileConversion": {
+						"conversion": {
+							"docsToFormat": "text/plain"
+						}
+					}
+				},
+				"operation": "download"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "2493e003-7c9e-4a98-8148-114abd2899ad",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [500, 560],
+			"parameters": {
+				"color": 4,
+				"width": 820,
+				"height": 80,
+				"content": "# Upload New File into Knowledge Base\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3d7f646d-0de0-44da-8cab-568cfa3ead02",
+			"name": "Extract from File",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1280, 760],
+			"parameters": {
+				"options": {},
+				"operation": "text"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8b949a8f-5dee-4c48-86fa-dc87cdd83198",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [800, 680],
+			"parameters": {
+				"color": 5,
+				"height": 260,
+				"content": "## Fix Formatting\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2ce675ef-7791-4fe4-86d4-0eeabd827531",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1060, 680],
+			"parameters": {
+				"color": 5,
+				"width": 420,
+				"height": 260,
+				"content": "## Extract File Text\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1d23677f-e268-4f66-8170-a5c28b4049b5",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1500, 680],
+			"parameters": {
+				"color": 5,
+				"width": 560,
+				"height": 580,
+				"content": "## Update Vector Database\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f29a335e-e6a5-4a75-8158-0c83e69e25bb",
+			"name": "File Updated",
+			"type": "n8n-nodes-base.googleDriveTrigger",
+			"position": [560, 1500],
+			"parameters": {
+				"event": "fileUpdated",
+				"options": {},
+				"pollTimes": {
+					"item": [{}]
+				},
+				"triggerOn": "specificFolder",
+				"folderToWatch": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1UHQhCrwZg_ZEzBIKv4LR_RWtAyHbxZsg",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/1UHQhCrwZg_ZEzBIKv4LR_RWtAyHbxZsg",
+					"cachedResultName": "Marketing Ladder Knowledge Base"
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ae95c1ce-bcf7-47fb-a3e3-2b6c6d02aa9e",
+			"name": "Delete Row(s)",
+			"type": "n8n-nodes-base.supabase",
+			"position": [840, 1500],
+			"parameters": {
+				"tableId": "documents",
+				"operation": "delete",
+				"filterType": "string",
+				"filterString": "=metadata->>file_id=like.*{{ $json.id }}*"
+			},
+			"credentials": {
+				"supabaseApi": {
+					"id": "credential-id",
+					"name": "supabaseApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c6f252c0-e81c-48f5-9a7b-6507b467c54d",
+			"name": "Get FIle ID",
+			"type": "n8n-nodes-base.set",
+			"position": [1120, 1500],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b4433ac7-0b70-4405-a564-f3f78f784470",
+							"name": "file_id",
+							"type": "string",
+							"value": "={{ $('File Updated').item.json.id }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "4d5bcbf0-fe14-4d24-81f5-72b84712c09d",
+			"name": "Reformat",
+			"type": "n8n-nodes-base.limit",
+			"position": [1320, 1500],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "f55697b5-191d-4865-9970-3462abeb05ef",
+			"name": "Download File1",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1520, 1500],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $('Get FIle ID').item.json.file_id }}"
+				},
+				"options": {
+					"googleFileConversion": {
+						"conversion": {
+							"docsToFormat": "text/plain"
+						}
+					}
+				},
+				"operation": "download"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "4fcc245c-e57c-461e-ba04-18122933eacb",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [480, 1280],
+			"parameters": {
+				"color": 4,
+				"width": 640,
+				"height": 80,
+				"content": "# Update File in Knowledge Base \n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "78e0be5d-aa5b-49b3-8b52-2fb2db7dd8be",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [480, 1400],
+			"parameters": {
+				"color": 5,
+				"width": 280,
+				"height": 260,
+				"content": "## Get File to Update\n \n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "35de9387-b80a-4274-aa57-622d85a60064",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1040, 1400],
+			"parameters": {
+				"color": 5,
+				"width": 400,
+				"height": 260,
+				"content": "## Fix Formatting\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8ffe865f-09ef-426d-9f5c-e7273a13441d",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1460, 1400],
+			"parameters": {
+				"color": 5,
+				"width": 420,
+				"height": 260,
+				"content": "## Extract File Text\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "35aecaa8-b327-493f-8526-fbd019bc078d",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1920, 1400],
+			"parameters": {
+				"color": 5,
+				"width": 600,
+				"height": 580,
+				"content": "## Update Vector Database\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "05d5c49a-8eee-4b90-9ec7-2ac6f20cd259",
+			"name": "Recursive Character Text Splitter1",
+			"type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+			"position": [2320, 1840],
+			"parameters": {
+				"options": {},
+				"chunkSize": 300,
+				"chunkOverlap": 50
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "88c403af-3425-4be3-9cc9-c79196df5115",
+			"name": "Extract from File1",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [1700, 1500],
+			"parameters": {
+				"options": {},
+				"operation": "text"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a4c44cc1-54c8-4d32-9d25-6b9b7bedb7a2",
+			"name": "Embeddings OpenAI1",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [2040, 1700],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "1784fe6a-6b2e-4fc9-9e28-05284e5f9e15",
+			"name": "Default Data Loader1",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"position": [2220, 1700],
+			"parameters": {
+				"options": {
+					"metadata": {
+						"metadataValues": [
+							{
+								"name": "file_id",
+								"value": "={{ $('Reformat').item.json.file_id }}"
+							}
+						]
+					}
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "83950e53-fab5-4f58-af8d-11126c1bfb3f",
+			"name": "Supabase Vector Store1",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+			"position": [2060, 1500],
+			"parameters": {
+				"mode": "insert",
+				"options": {
+					"queryName": "match_documents"
+				},
+				"tableName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "documents",
+					"cachedResultName": "documents"
+				}
+			},
+			"credentials": {
+				"supabaseApi": {
+					"id": "credential-id",
+					"name": "supabaseApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "22c08877-6bb1-4cfa-acda-df2b5814afa0",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [500, 680],
+			"parameters": {
+				"color": 5,
+				"width": 280,
+				"height": 260,
+				"content": "## Get New File \n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d16c74c1-ccdb-4bc2-b607-c846b56b07d1",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [760, 1400],
+			"parameters": {
+				"color": 5,
+				"width": 280,
+				"height": 260,
+				"content": "## Delete Rows\n \n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7d163045-13c3-42d7-9c51-0045c3056a6e",
+			"name": "Transcribe",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [-1060, 840],
+			"parameters": {
+				"options": {},
+				"resource": "audio",
+				"operation": "transcribe"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.6
+		},
+		{
+			"id": "14ac063c-0f77-4e3d-a603-7cf95d3701c4",
+			"name": "Text",
+			"type": "n8n-nodes-base.set",
+			"position": [-1160, 1040],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "fe7ecc99-e1e8-4a5e-bdd6-6fce9757b234",
+							"name": "text",
+							"type": "string",
+							"value": "={{ $json.message.text }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "dccda445-c531-4009-bb3e-19b927d31d01",
+			"name": "Voice or Text",
+			"type": "n8n-nodes-base.switch",
+			"position": [-1460, 980],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "voice",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "281588e5-cab1-47c7-b42a-f75b8e7b659e",
+										"operator": {
+											"type": "string",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.voice.file_id }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Text",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "8c844924-b2ed-48b0-935c-c66a8fd0c778",
+										"operator": {
+											"type": "string",
+											"operation": "exists",
+											"singleValue": true
+										},
+										"leftValue": "={{ $json.message.text }}",
+										"rightValue": ""
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "4ab95976-d1d8-438f-8112-99395823166c",
+			"name": "Response",
+			"type": "n8n-nodes-base.telegram",
+			"position": [-20, 960],
+			"webhookId": "5dced4b9-5066-4036-a4d4-14fc07edd53c",
+			"parameters": {
+				"text": "={{ $json.output }}",
+				"chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e38d614d-09eb-4f42-9229-6b037ecdc264",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1520, 800],
+			"parameters": {
+				"color": 5,
+				"width": 680,
+				"height": 460,
+				"content": "## Convert Message to Text\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "136f7bd7-aa99-4460-b24f-30d65c932cb3",
+			"name": "RAG Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-640, 960],
+			"parameters": {
+				"text": "={{ $json.text }}",
+				"options": {
+					"systemMessage": "=# Overview\nYou are a RAG assistant. Your job is to search for queries from a vector database and pass on the search results.\n\n# Tools\n**MarketingLadder**  \n- This is the vector store that you must query to find answers. \n- Use the search findings from the vector store to create an answer to the input query.\n\n## Final Notes\n- If you can't find an answer from the database, then just say you couldn't find an answer. Never use your own knowledge. "
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "5e87da8f-4677-483e-b41c-a79ff11e2750",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [-1700, 980],
+			"webhookId": "2e5e253b-982e-4fe3-8048-b64897e77535",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "2b8470fb-2b8d-4490-8a40-c3479cb0865e",
+			"name": "Window Buffer Memory1",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-580, 1160],
+			"parameters": {
+				"sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "3e2e080a-62ab-4ab8-889d-d357d250d68d",
+			"name": "Download File2",
+			"type": "n8n-nodes-base.telegram",
+			"position": [-1240, 840],
+			"webhookId": "83bb7385-33f6-4105-8294-1a91c0ebbee5",
+			"parameters": {
+				"fileId": "={{ $json.message.voice.file_id }}",
+				"resource": "file"
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "da9bebc8-452f-493f-aefc-81dcd789f355",
+			"name": "Supabase Vector Store3",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+			"position": [-620, 1340],
+			"parameters": {
+				"options": {
+					"queryName": "match_documents"
+				},
+				"tableName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "documents",
+					"cachedResultName": "documents"
+				}
+			},
+			"credentials": {
+				"supabaseApi": {
+					"id": "credential-id",
+					"name": "supabaseApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0360fb6a-ac93-4e83-abb3-b19a5e614a76",
+			"name": "OpenAI Chat Model2",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-240, 1340],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "302c2316-d91e-4b57-80d1-8678bcdc718a",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1800, 700],
+			"parameters": {
+				"color": 4,
+				"width": 280,
+				"height": 80,
+				"content": "# RAG Chatbot\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9d0d4d0d-ec09-4f0f-bb14-bd6d5ea56c5a",
+			"name": "Embeddings OpenAI3",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [-660, 1520],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ea8349d1-8566-4f67-9e83-3a9b41f94d6b",
+			"name": "Sticky Note13",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1820, 920],
+			"parameters": {
+				"color": 5,
+				"width": 280,
+				"height": 260,
+				"content": "## Get New Message\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d1a77833-3d99-4cc3-80a8-2d9b9c440175",
+			"name": "Sticky Note14",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-820, 800],
+			"parameters": {
+				"color": 5,
+				"width": 720,
+				"height": 860,
+				"content": "## RAG System\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "366a89d0-dd1d-4cd8-9de4-d7caa0433cab",
+			"name": "Sticky Note15",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-80, 900],
+			"parameters": {
+				"color": 5,
+				"width": 320,
+				"height": 260,
+				"content": "## Send Output as Message\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "11f88e16-7ef0-484f-b7d1-e74e0e639da3",
+			"name": "OpenAI Chat Model3",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-760, 1160],
+			"parameters": {
+				"model": "gpt-4o",
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "5992f547-5327-4091-b4a8-37d6aec6b75e",
+			"name": "MarketingLadder",
+			"type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+			"position": [-440, 1160],
+			"parameters": {
+				"name": "MarketingLadder",
+				"description": "This vector store holds information about Marketing Ladder agency"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "10baf4fe-5497-4fcc-b624-155b56d17dbe",
+			"name": "Sticky Note16",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2320, 1900],
+			"parameters": {
+				"color": 5,
+				"width": 440,
+				"height": 240,
+				"content": "## Hey, I'm Abdul 👋\n### I build growth systems for consultants & agencies. If you want to work together or need help automating your business, check out my website: \n### **https://www.builtbyabdul.com/**\n### Or email me at **abdul@buildabdul.com**\n### Have a lovely day ;)`"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "98e8b14c-ea04-4e08-9c3f-3e1510197e03",
+			"name": "Sticky Note17",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2660, 420],
+			"parameters": {
+				"width": 780,
+				"height": 1420,
+				"content": "# Company RAG Knowledge Base Agent\n## Overview\nTurn your docs into an AI-powered internal or public-facing assistant. This chatbot workflow uses RAG (Retrieval-Augmented Generation) with Supabase vector search to answer employee or customer questions based on your company documents—automatically updated via Google Drive.\n\nWhether it’s deployed in Telegram or embedded on your website, this agent supports voice and text input, transcribes voice messages, pulls relevant context from your internal files, and responds with a helpful, AI-generated answer. Two additional workflows listen for file changes in a shared Google Drive folder, convert them into embeddings using OpenAI, and sync them with your Supabase vector DB—so your knowledge base is always up to date.\n\n### Who’s it for\n- Startups building an internal ops or HR assistant  \n- SaaS companies deploying help bots on their websites  \n- Customer support teams reducing repetitive questions  \n- Knowledge-driven teams needing internal AI assistants  \n\n### How it works\n- Triggered via Telegram bot (or easily swapped for website chatbot or “on chat message”)  \n- If user sends a voice message, it’s transcribed to text using OpenAI Whisper  \n- Input is passed to a RAG agent that:\n  - Searches a Supabase vector store for relevant docs  \n  - Pulls context from matching chunks using OpenAI embeddings  \n  - Responds with an LLM-powered answer  \n- The response is sent back as a Telegram message  \n- Two separate workflows:\n  - **New File Workflow**: Listens for file uploads in Google Drive, extracts and splits text, then sends to Supabase with embeddings  \n  - **Update File Workflow**: Detects file edits, deletes old rows, and updates embeddings for the revised file  \n\n### Example use case\n> You upload your internal policy docs and client FAQs into a Google Drive folder.  \n>  \n> Employees or customers can now ask:  \n> - “What’s the refund policy for annual plans?”  \n> - “How do I request a day off?”  \n> - “What tools are approved for use by the engineering team?”  \n>  \n> The chatbot instantly pulls up the right section and responds with a smart, confident answer.\n\n### How to set up\n1. Connect a Telegram bot or use n8n’s webchat / chatbot widget  \n2. Hook up OpenAI for transcription, embeddings, and completion  \n3. Set up a Supabase project and connect it as a vector store  \n4. Upload your internal docs to Google Drive  \n5. Deploy the “Add File” and “Update File” automations to manage embedding sync  \n6. Customize the chatbot’s tone and personality with prompt tweaks  \n\n### Requirements\n- Telegram bot (or n8n Chat widget)  \n- Google Drive integration  \n- Supabase with pgvector or similar enabled  \n- OpenAI API key (Whisper, Embeddings, ChatGPT)  \n- Two folders: one for raw documents and one for tracking updates  \n\n### How to customize\n- Swap Supabase for Pinecone, Weaviate, or Qdrant  \n- Replace Telegram with web chat, Slack, Intercom, or Discord  \n- Add logic to handle fallback answers or escalate to human  \n- Embed the chat widget on your site for public customer use  \n- Add filters (e.g. department, date, author) to narrow down context\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Text": {
+			"main": [
+				[
+					{
+						"node": "RAG Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set ID": {
+			"main": [
+				[
+					{
+						"node": "Download File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"New File": {
+			"main": [
+				[
+					{
+						"node": "Set ID",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Reformat": {
+			"main": [
+				[
+					{
+						"node": "Download File1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RAG Agent": {
+			"main": [
+				[
+					{
+						"node": "Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Transcribe": {
+			"main": [
+				[
+					{
+						"node": "RAG Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get FIle ID": {
+			"main": [
+				[
+					{
+						"node": "Reformat",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"File Updated": {
+			"main": [
+				[
+					{
+						"node": "Delete Row(s)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete Row(s)": {
+			"main": [
+				[
+					{
+						"node": "Get FIle ID",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download File": {
+			"main": [
+				[
+					{
+						"node": "Extract from File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Voice or Text": {
+			"main": [
+				[
+					{
+						"node": "Download File2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download File1": {
+			"main": [
+				[
+					{
+						"node": "Extract from File1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download File2": {
+			"main": [
+				[
+					{
+						"node": "Transcribe",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MarketingLadder": {
+			"ai_tool": [
+				[
+					{
+						"node": "RAG Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "Voice or Text",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Supabase Vector Store",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from File": {
+			"main": [
+				[
+					{
+						"node": "Supabase Vector Store",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI1": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Supabase Vector Store1",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI3": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Supabase Vector Store3",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from File1": {
+			"main": [
+				[
+					{
+						"node": "Supabase Vector Store1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model2": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "MarketingLadder",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model3": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "RAG Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Default Data Loader": {
+			"ai_document": [
+				[
+					{
+						"node": "Supabase Vector Store",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Default Data Loader1": {
+			"ai_document": [
+				[
+					{
+						"node": "Supabase Vector Store1",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Window Buffer Memory1": {
+			"ai_memory": [
+				[
+					{
+						"node": "RAG Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Supabase Vector Store3": {
+			"ai_vectorStore": [
+				[
+					{
+						"node": "MarketingLadder",
+						"type": "ai_vectorStore",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Recursive Character Text Splitter": {
+			"ai_textSplitter": [
+				[
+					{
+						"node": "Default Data Loader",
+						"type": "ai_textSplitter",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Recursive Character Text Splitter1": {
+			"ai_textSplitter": [
+				[
+					{
+						"node": "Default Data Loader1",
+						"type": "ai_textSplitter",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

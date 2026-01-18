@@ -1,0 +1,743 @@
+{
+	"id": "uOMGyPBvAP5ytb64",
+	"meta": {
+		"instanceId": "dd69efaf8212c74ad206700d104739d3329588a6f3f8381a46a481f34c9cc281",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "AI-Powered Invoice Reminder & Payment Tracker for Finance & Accounting",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "5e70b579-3fec-471f-8788-2205c066e21f",
+			"name": "Schedule Daily Check",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"notes": "Runs every day at 9 AM",
+			"position": [0, -304],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "cronExpression",
+							"expression": "0 9 * * *"
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 1.2
+		},
+		{
+			"id": "75c19552-8451-4c27-978c-54d6ea422b84",
+			"name": "Fetch Pending Invoices",
+			"type": "n8n-nodes-base.postgres",
+			"notes": "Query database for unpaid/overdue invoices",
+			"position": [224, -304],
+			"parameters": {
+				"query": "SELECT \n  invoice_id,\n  client_name,\n  client_email,\n  invoice_number,\n  invoice_amount,\n  currency,\n  issue_date,\n  due_date,\n  payment_status,\n  days_overdue,\n  last_reminder_sent\nFROM invoices \nWHERE payment_status != 'paid' \nAND due_date <= CURRENT_DATE + INTERVAL '7 days'\nORDER BY due_date ASC;",
+				"options": {},
+				"operation": "executeQuery"
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 2.4
+		},
+		{
+			"id": "3bf276a9-2041-4f5c-995c-ca3ffb4f0cd0",
+			"name": "Filter Overdue Invoices",
+			"type": "n8n-nodes-base.if",
+			"notes": "Separate overdue from upcoming",
+			"position": [448, -304],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "condition-1",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.payment_status }}",
+							"rightValue": "unpaid"
+						},
+						{
+							"id": "condition-2",
+							"operator": {
+								"type": "number",
+								"operation": "gte"
+							},
+							"leftValue": "={{ $json.days_overdue }}",
+							"rightValue": 0
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "000ea7a3-3db4-409d-bdea-b416590933e4",
+			"name": "Calculate Reminder Logic",
+			"type": "n8n-nodes-base.code",
+			"notes": "Smart logic for reminder timing",
+			"position": [672, -304],
+			"parameters": {
+				"jsCode": "const invoices = $input.all();\nconst today = new Date();\nconst results = [];\n\nfor (const invoice of invoices) {\n  const dueDate = new Date(invoice.json.due_date);\n  const issueDate = new Date(invoice.json.issue_date);\n  const lastReminder = invoice.json.last_reminder_sent ? new Date(invoice.json.last_reminder_sent) : null;\n  \n  // Calculate days overdue\n  const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));\n  \n  // Calculate days since last reminder\n  const daysSinceReminder = lastReminder ? Math.floor((today - lastReminder) / (1000 * 60 * 60 * 24)) : 999;\n  \n  // Determine reminder type and urgency\n  let reminderType = '';\n  let urgencyLevel = '';\n  let shouldSendReminder = false;\n  \n  if (daysOverdue > 30 && daysSinceReminder >= 3) {\n    reminderType = 'final_notice';\n    urgencyLevel = 'critical';\n    shouldSendReminder = true;\n  } else if (daysOverdue > 14 && daysSinceReminder >= 5) {\n    reminderType = 'second_reminder';\n    urgencyLevel = 'high';\n    shouldSendReminder = true;\n  } else if (daysOverdue > 0 && daysSinceReminder >= 7) {\n    reminderType = 'first_reminder';\n    urgencyLevel = 'medium';\n    shouldSendReminder = true;\n  } else if (daysOverdue === 0) {\n    reminderType = 'due_today';\n    urgencyLevel = 'medium';\n    shouldSendReminder = true;\n  } else if (daysOverdue < 0 && daysOverdue >= -3 && !lastReminder) {\n    reminderType = 'upcoming_reminder';\n    urgencyLevel = 'low';\n    shouldSendReminder = true;\n  }\n  \n  if (shouldSendReminder) {\n    results.push({\n      json: {\n        ...invoice.json,\n        daysOverdue,\n        daysSinceReminder,\n        reminderType,\n        urgencyLevel,\n        shouldSendReminder\n      }\n    });\n  }\n}\n\nreturn results;"
+			},
+			"notesInFlow": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "2879e970-5943-4a87-b74c-dd92e9c83662",
+			"name": "Prepare AI Prompt",
+			"type": "n8n-nodes-base.set",
+			"position": [896, -304],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ai-prompt",
+							"name": "aiPrompt",
+							"type": "string",
+							"value": "=Generate a professional and friendly payment reminder email for the following invoice:\n\nClient Name: {{ $json.client_name }}\nInvoice Number: {{ $json.invoice_number }}\nAmount: {{ $json.currency }} {{ $json.invoice_amount }}\nIssue Date: {{ $json.issue_date }}\nDue Date: {{ $json.due_date }}\nDays Overdue: {{ $json.daysOverdue }}\nReminder Type: {{ $json.reminderType }}\nUrgency: {{ $json.urgencyLevel }}\n\nThe email should:\n- Be courteous and professional\n- Clearly state the outstanding amount and invoice details\n- Mention the due date and overdue status if applicable\n- Include a polite call-to-action for payment\n- Provide payment instructions or link\n- Be appropriately urgent based on the reminder type\n- End with a professional signature\n\nFormat the response as a complete email with subject line."
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "5e61c6ea-62df-4c69-95d8-5b5dd7a0eb66",
+			"name": "Format Email",
+			"type": "n8n-nodes-base.code",
+			"notes": "Format email with HTML styling",
+			"position": [1472, -304],
+			"parameters": {
+				"jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const aiResponse = item.json.message?.content || item.json.response || '';\n  \n  // Extract subject and body from AI response\n  const subjectMatch = aiResponse.match(/Subject:(.+?)\\n/i);\n  const subject = subjectMatch ? subjectMatch[1].trim() : `Payment Reminder - Invoice ${item.json.invoice_number}`;\n  \n  // Remove subject line from body\n  let body = aiResponse.replace(/Subject:(.+?)\\n/i, '').trim();\n  \n  // Add invoice details table\n  const invoiceTable = `\n  <div style=\"background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;\">\n    <h3 style=\"color: #333; margin-top: 0;\">Invoice Details</h3>\n    <table style=\"width: 100%; border-collapse: collapse;\">\n      <tr>\n        <td style=\"padding: 8px; font-weight: bold;\">Invoice Number:</td>\n        <td style=\"padding: 8px;\">${item.json.invoice_number}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px; font-weight: bold;\">Amount:</td>\n        <td style=\"padding: 8px;\">${item.json.currency} ${item.json.invoice_amount}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px; font-weight: bold;\">Due Date:</td>\n        <td style=\"padding: 8px;\">${item.json.due_date}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px; font-weight: bold;\">Status:</td>\n        <td style=\"padding: 8px; color: ${item.json.daysOverdue > 0 ? '#d32f2f' : '#f57c00'};\">\n          ${item.json.daysOverdue > 0 ? `Overdue by ${item.json.daysOverdue} days` : 'Due Soon'}\n        </td>\n      </tr>\n    </table>\n  </div>\n  `;\n  \n  // Convert body to HTML format\n  body = body.replace(/\\n/g, '<br>').replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');\n  \n  // Combine into HTML email\n  const htmlBody = `\n  <html>\n    <body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">\n      ${body.split('<br>')[0]}\n      ${invoiceTable}\n      ${body.split('<br>').slice(1).join('<br>')}\n      <div style=\"margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;\">\n        <p>This is an automated reminder. If you have already made the payment, please disregard this email.</p>\n      </div>\n    </body>\n  </html>\n  `;\n  \n  results.push({\n    json: {\n      ...item.json,\n      emailSubject: subject,\n      emailBody: htmlBody,\n      emailBodyPlain: body.replace(/<[^>]*>/g, '')\n    }\n  });\n}\n\nreturn results;"
+			},
+			"notesInFlow": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "49d9b854-ffda-4125-b07f-9997b799d5aa",
+			"name": "Send Email Reminder",
+			"type": "n8n-nodes-base.emailSend",
+			"notes": "Send the reminder email",
+			"position": [1696, -304],
+			"webhookId": "b74f682a-e6cc-452f-b8ba-2d4390c6e61a",
+			"parameters": {
+				"options": {
+					"appendAttribution": false,
+					"allowUnauthorizedCerts": false
+				},
+				"subject": "={{ $json.emailSubject }}",
+				"toEmail": "user@example.com",
+				"fromEmail": "user@example.com"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 2.1
+		},
+		{
+			"id": "6f307b3e-9222-4df7-a92b-9c7dbcea6d79",
+			"name": "Update Reminder Status",
+			"type": "n8n-nodes-base.postgres",
+			"notes": "Log reminder sent in database",
+			"position": [1920, -304],
+			"parameters": {
+				"query": "=UPDATE invoices \nSET \n  last_reminder_sent = CURRENT_TIMESTAMP,\n  reminder_count = reminder_count + 1,\n  last_reminder_type = '{{ $json.reminderType }}'\nWHERE invoice_id = '{{ $json.invoice_id }}';",
+				"options": {},
+				"operation": "executeQuery"
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 2.4
+		},
+		{
+			"id": "07f23377-e924-49b1-b803-88aedd3de5bd",
+			"name": "Create Activity Log",
+			"type": "n8n-nodes-base.set",
+			"position": [2144, -304],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "log-entry",
+							"name": "logEntry",
+							"type": "object",
+							"value": "={\n  \"timestamp\": \"{{ $now.toISO() }}\",\n  \"invoice_id\": \"{{ $json.invoice_id }}\",\n  \"invoice_number\": \"{{ $json.invoice_number }}\",\n  \"client_name\": \"{{ $json.client_name }}\",\n  \"client_email\": \"{{ $json.client_email }}\",\n  \"amount\": \"{{ $json.invoice_amount }}\",\n  \"reminder_type\": \"{{ $json.reminderType }}\",\n  \"urgency_level\": \"{{ $json.urgencyLevel }}\",\n  \"days_overdue\": {{ $json.daysOverdue }},\n  \"status\": \"reminder_sent\"\n}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "5884f963-de92-4613-ab16-5fc5bff620cd",
+			"name": "Save to Activity Log",
+			"type": "n8n-nodes-base.postgres",
+			"position": [2368, -304],
+			"parameters": {
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "invoice_activity_log"
+				},
+				"schema": {
+					"__rl": true,
+					"mode": "list",
+					"value": "public"
+				},
+				"columns": {
+					"value": {},
+					"schema": [],
+					"mappingMode": "autoMapInputData",
+					"matchingColumns": []
+				},
+				"options": {}
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 2.4
+		},
+		{
+			"id": "473efd7a-44f7-4724-a638-731e337e21e2",
+			"name": "Generate Daily Summary",
+			"type": "n8n-nodes-base.code",
+			"notes": "Create summary report",
+			"position": [2592, -304],
+			"parameters": {
+				"jsCode": "const allItems = $input.all();\nconst summary = {\n  totalReminders: allItems.length,\n  byUrgency: {},\n  byType: {},\n  totalAmountOutstanding: 0,\n  clients: []\n};\n\nfor (const item of allItems) {\n  // Count by urgency\n  summary.byUrgency[item.json.urgencyLevel] = (summary.byUrgency[item.json.urgencyLevel] || 0) + 1;\n  \n  // Count by type\n  summary.byType[item.json.reminderType] = (summary.byType[item.json.reminderType] || 0) + 1;\n  \n  // Sum outstanding amounts\n  summary.totalAmountOutstanding += parseFloat(item.json.invoice_amount);\n  \n  // Collect client info\n  summary.clients.push({\n    name: item.json.client_name,\n    invoice: item.json.invoice_number,\n    amount: item.json.invoice_amount,\n    daysOverdue: item.json.daysOverdue,\n    urgency: item.json.urgencyLevel\n  });\n}\n\nreturn [{ json: summary }];"
+			},
+			"notesInFlow": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "6a8c062f-093c-40cd-869f-e459ea3b0eac",
+			"name": "Send Summary to Finance Team",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [2816, -304],
+			"webhookId": "ed662db6-84a8-4c6c-bef4-2ac72009a056",
+			"parameters": {
+				"options": {},
+				"subject": "=Daily Invoice Reminder Report - {{ $now.toFormat('yyyy-MM-dd') }}",
+				"toEmail": "user@example.com",
+				"fromEmail": "user@example.com"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "29cc7161-00b3-4ad6-8df4-e582296fc2ed",
+			"name": "Webhook: Payment Received",
+			"type": "n8n-nodes-base.webhook",
+			"notes": "Trigger when payment is received",
+			"position": [-48, 368],
+			"webhookId": "invoice-payment-webhook",
+			"parameters": {
+				"path": "invoice-paid",
+				"options": {},
+				"httpMethod": "POST",
+				"responseMode": "responseNode"
+			},
+			"notesInFlow": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "7338b886-106f-4aad-86b7-dd4cb743d8d1",
+			"name": "Update Payment Status",
+			"type": "n8n-nodes-base.postgres",
+			"position": [208, 368],
+			"parameters": {
+				"query": "=UPDATE invoices \nSET \n  payment_status = 'paid',\n  payment_date = CURRENT_TIMESTAMP,\n  payment_amount = {{ $json.body.amount }},\n  payment_method = '{{ $json.body.payment_method }}'\nWHERE invoice_number = '{{ $json.body.invoice_number }}'\nRETURNING *;",
+				"options": {},
+				"operation": "executeQuery"
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 2.4
+		},
+		{
+			"id": "f1699fe0-c7fe-48f7-9e39-62e983a7b063",
+			"name": "Webhook Response",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [464, 144],
+			"parameters": {
+				"options": {},
+				"respondWith": "json",
+				"responseBody": "={\n  \"success\": true,\n  \"message\": \"Payment recorded successfully\",\n  \"invoice_number\": \"{{ $json.invoice_number }}\",\n  \"amount_paid\": {{ $json.payment_amount }},\n  \"status\": \"{{ $json.payment_status }}\"\n}"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "5554a9a8-1fc3-4743-9f98-896ae8a2b146",
+			"name": "Send Payment Confirmation",
+			"type": "n8n-nodes-base.emailSend",
+			"position": [480, 576],
+			"webhookId": "11ecce72-7466-43e6-8c05-d5f181c5ced7",
+			"parameters": {
+				"options": {},
+				"subject": "=Payment Confirmation - Invoice {{ $json.invoice_number }}",
+				"toEmail": "user@example.com",
+				"fromEmail": "user@example.com"
+			},
+			"credentials": {
+				"smtp": {
+					"id": "credential-id",
+					"name": "smtp Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "8a45b060-fd84-4e2f-a880-5bb2db6e5cb4",
+			"name": "Generate Email",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"notes": "Use AI to generate personalized email",
+			"position": [1200, -80],
+			"parameters": {
+				"model": "=gpt-4o-mini",
+				"options": {
+					"maxTokens": 500,
+					"temperature": 0.7
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "51c1516e-e53b-4435-ab0f-a8c147b3478a",
+			"name": "AI Agent For Generate Email Content",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1120, -304],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "278e2272-baa8-4c0e-81db-836db7204219",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-32, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Starts the workflow automatically each morning."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "77598975-6120-472e-b9a1-d1b23c64f651",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [640, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Decides when and how to send reminders.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "98bbe714-19b0-4be2-8610-95074be891e8",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [416, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Keeps only overdue invoices.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d4b28ef6-da2a-4d6a-8486-5cb60c272115",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [192, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Gets unpaid invoices from the database.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7789557b-f95a-4336-ae2a-2247b215cc6e",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [864, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Creates a personalized AI prompt for each client.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9e5d7552-ab77-48bd-9f64-78a82f9676b1",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2096, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Records reminder activity for audit.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "63b897b8-e59e-42c4-9d3f-194c52c850e6",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1872, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Marks reminder as sent in the database.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9ea47eb5-9b59-47df-873f-1f1060ae9bf5",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1648, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Sends the email via Gmail or SMTP.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9e881563-1895-40a0-8b1b-9f8fe886e284",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1424, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Converts AI text to a professional HTML email.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1b036318-bfc1-4bef-bde8-06c3523c5ccf",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1104, -416],
+			"parameters": {
+				"width": 272,
+				"height": 288,
+				"content": "Uses AI to draft reminder emails.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b570ef63-5ee6-4605-b461-429f1d817b8b",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2544, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Prepares a report of reminders sent.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "10b172aa-f4bb-4ccc-a102-2593e0d78ff8",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2768, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Emails summary to the finance team.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a0c95551-0747-4c97-9cf7-d61ff9c12fd8",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2320, -416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Stores raw workflow data for review.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4e422ead-f833-4de8-8f86-3b78116b2eab",
+			"name": "Sticky Note13",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [432, 0],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Generates thank-you massage via AI.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0816a7b8-03bd-4416-aa58-a30f1e3af0f5",
+			"name": "Sticky Note14",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-96, 240],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Captures payment notifications.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0f6e79b9-107d-4ddb-bbaa-421a07d47078",
+			"name": "Sticky Note15",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [160, 240],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Updates invoice as “paid.”\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ce1221dd-7976-47d1-9cc9-81389efc72fe",
+			"name": "Sticky Note16",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [448, 416],
+			"parameters": {
+				"width": 192,
+				"height": 288,
+				"content": "Sends payment receipt to client."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "cb6d5397-a382-40d3-92c0-69022ceec1a5",
+	"connections": {
+		"Format Email": {
+			"main": [
+				[
+					{
+						"node": "Send Email Reminder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Email": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent For Generate Email Content",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare AI Prompt": {
+			"main": [
+				[
+					{
+						"node": "AI Agent For Generate Email Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Activity Log": {
+			"main": [
+				[
+					{
+						"node": "Save to Activity Log",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Email Reminder": {
+			"main": [
+				[
+					{
+						"node": "Update Reminder Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Save to Activity Log": {
+			"main": [
+				[
+					{
+						"node": "Generate Daily Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Daily Check": {
+			"main": [
+				[
+					{
+						"node": "Fetch Pending Invoices",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Payment Status": {
+			"main": [
+				[
+					{
+						"node": "Webhook Response",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Payment Confirmation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Pending Invoices": {
+			"main": [
+				[
+					{
+						"node": "Filter Overdue Invoices",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Daily Summary": {
+			"main": [
+				[
+					{
+						"node": "Send Summary to Finance Team",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Reminder Status": {
+			"main": [
+				[
+					{
+						"node": "Create Activity Log",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter Overdue Invoices": {
+			"main": [
+				[
+					{
+						"node": "Calculate Reminder Logic",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculate Reminder Logic": {
+			"main": [
+				[
+					{
+						"node": "Prepare AI Prompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook: Payment Received": {
+			"main": [
+				[
+					{
+						"node": "Update Payment Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent For Generate Email Content": {
+			"main": [
+				[
+					{
+						"node": "Format Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,295 @@
+{
+	"id": "d43MQMcUi1o2LV9P",
+	"meta": {
+		"instanceId": "cc97e277471243407a97fac722dd43bf90ad12b9c39cedf2f3471404a5d5cf65"
+	},
+	"name": "ProBanana: AI Product Mockup Generator using Gemini 2.5 Flash Image (Nano Banana)",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "37bf3601-5310-4405-940e-0c6eea007e71",
+			"name": "On form submission",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-272, -48],
+			"webhookId": "f0d09c32-e0a1-4bcc-95f5-c02d8f5db384",
+			"parameters": {
+				"options": {},
+				"formTitle": "Nano Banana ",
+				"formFields": {
+					"values": [
+						{
+							"fieldType": "file",
+							"fieldLabel": "Upload your product image",
+							"requiredField": true,
+							"acceptFileTypes": ".jpg, .png, .jpeg"
+						},
+						{
+							"fieldType": "file",
+							"fieldLabel": "Upload your template/playground image",
+							"requiredField": true,
+							"acceptFileTypes": ".jpg, .png, .jpeg"
+						},
+						{
+							"fieldLabel": "Pls describe what you want to do?",
+							"placeholder": "Prompt",
+							"requiredField": true
+						}
+					]
+				}
+			},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "d1c1f126-3c07-4121-bba9-bd625b914fd6",
+			"name": "User Asset Base64",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [-48, -48],
+			"parameters": {
+				"options": {},
+				"operation": "binaryToPropery",
+				"binaryPropertyName": "=Upload_your_product_image"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e2c0e978-9511-4952-b5f6-631a8d72def2",
+			"name": "Template Base64",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [176, -48],
+			"parameters": {
+				"options": {},
+				"operation": "binaryToPropery",
+				"binaryPropertyName": "=Upload_your_template_playground_image"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3981098c-c9ca-45b8-8242-d8511e68ae8f",
+			"name": "Assemble Final Data",
+			"type": "n8n-nodes-base.set",
+			"position": [400, -48],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "4208831c-38dc-44ce-a7a0-f832a3c8c148",
+							"name": "promptText",
+							"type": "string",
+							"value": "={{ $('On form submission').item.json['Pls describe what you want to do?'] }}"
+						},
+						{
+							"id": "5cb7a52f-2e3f-4b1e-972e-e07f31c5c3a2",
+							"name": "assetBase64",
+							"type": "string",
+							"value": "={{ $('User Asset Base64').item.json.data }}"
+						},
+						{
+							"id": "60ac2edd-25de-4fda-a12b-fa0fd321e188",
+							"name": "templateBase64",
+							"type": "string",
+							"value": "={{ $json.data }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "02ea84df-3688-491b-bc0c-801155e9fe1c",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [624, -48],
+			"parameters": {
+				"url": "https://openrouter.ai/api/v1/chat/completions",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"model\": \"google/gemini-2.5-flash-image-preview:free\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"text\",\n          \"text\": \"{{ $json.promptText }}\"\n        },\n        {\n          \"type\": \"image_url\",\n          \"image_url\": {\n            \"url\": \"data:image/jpeg;base64,{{ $json.assetBase64 }}\"\n          }\n        },\n        {\n          \"type\": \"image_url\",\n          \"image_url\": {\n            \"url\": \"data:image/jpeg;base64,{{ $json.templateBase64 }}\"\n          }\n        }\n      ]\n    }\n  ]\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "predefinedCredentialType",
+				"nodeCredentialType": "openRouterApi"
+			},
+			"credentials": {
+				"openRouterApi": {
+					"id": "credential-id",
+					"name": "openRouterApi Credential"
+				},
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "a8efdcb7-cc46-4936-bdb8-8608abd94688",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [848, -48],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "84544a25-271b-4c63-ade5-06af10150d12",
+							"name": "outputfile",
+							"type": "string",
+							"value": "={{ $json.choices[0].message.images[0].image_url.url.split(\",\")[1] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "42c886b5-559e-4e51-9180-fbb52fd9f47a",
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"position": [1072, -48],
+			"parameters": {
+				"options": {},
+				"operation": "toBinary",
+				"sourceProperty": "outputfile"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "a6713708-22d2-4abd-8505-5cf169b2a0e0",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-576, -160],
+			"parameters": {
+				"width": 448,
+				"height": 240,
+				"content": "## Workflow Initiation\n### Form to take the user asset image and the template image along with the prompt(describing of what is to be done)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "df9ddb5d-7c9f-4e5b-a8e8-5839ddbe5da0",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1008, 112],
+			"parameters": {
+				"color": 4,
+				"width": 244,
+				"height": 364,
+				"content": "## Final Output\n![image](https://n3wstorage.b-cdn.net/n3witalia/result_sport.jpeg)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "98a1e947-d3d1-4dfd-8183-27e3ae3095f6",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [544, -480],
+			"parameters": {
+				"width": 256,
+				"height": 592,
+				"content": "## Core AI Generation Step\n### Sends a `POST` request to the OpenRouter API with a multimodal prompt containing:\n### 1. The user's text instruction.\n### 2. The user's asset image (Base64).\n### 3. The template image (Base64).\n\n### Uses the `google/gemini-2.5-flash-image-preview` model to generate the new image."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7fc736d5-2f57-4748-9fb6-9ec0fc3ea783",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [112, 112],
+			"parameters": {
+				"color": 6,
+				"width": 228,
+				"height": 364,
+				"content": "## Template Model\n![image](https://n3wstorage.b-cdn.net/n3witalia/model.jpg)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d39b2682-e418-4eb5-868c-cf1448791894",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-112, -432],
+			"parameters": {
+				"color": 5,
+				"width": 232,
+				"height": 364,
+				"content": "## Product (User Asset)\n![image](https://n3wstorage.b-cdn.net/n3witalia/tshirt.jpg)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "eef2aa5d-6d3c-43fd-a1bf-ef7cbb6ddbc9",
+	"connections": {
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Template Base64": {
+			"main": [
+				[
+					{
+						"node": "Assemble Final Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"User Asset Base64": {
+			"main": [
+				[
+					{
+						"node": "Template Base64",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On form submission": {
+			"main": [
+				[
+					{
+						"node": "User Asset Base64",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Assemble Final Data": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

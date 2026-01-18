@@ -1,0 +1,1118 @@
+{
+	"id": "V994vNilogCvoCug",
+	"meta": {
+		"instanceId": "YOUR_ID"
+	},
+	"name": "News_Tech_EN",
+	"tags": [
+		{
+			"id": "7FnQEcGVfEQxsJCK",
+			"name": "AI",
+			"createdAt": "2025-09-04T13:51:20.972Z",
+			"updatedAt": "2025-09-04T13:51:20.972Z"
+		},
+		{
+			"id": "DNVBijE9cEya3mqW",
+			"name": "PROD",
+			"createdAt": "2025-11-23T13:34:14.752Z",
+			"updatedAt": "2025-11-23T13:34:14.752Z"
+		},
+		{
+			"id": "O6GI5lYnoKbDq2aN",
+			"name": "News",
+			"createdAt": "2025-12-02T14:30:28.623Z",
+			"updatedAt": "2025-12-02T14:30:28.623Z"
+		},
+		{
+			"id": "dsb6ypU8KgN6sZTl",
+			"name": "creator-to-publish",
+			"createdAt": "2025-11-23T13:36:30.079Z",
+			"updatedAt": "2025-11-23T13:36:30.079Z"
+		}
+	],
+	"nodes": [
+		{
+			"id": "4da74104-9743-462b-8919-9cd595ce683a",
+			"name": "RSS_TheHackersNews",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, -448],
+			"parameters": {
+				"url": "https://feeds.feedburner.com/TheHackersNews",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "d6c68cbe-61a3-4217-a90c-34da70f91ac7",
+			"name": "RSS_GrahamCluley",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, -64],
+			"parameters": {
+				"url": "https://feeds.feedburner.com/TheHackersNews",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "9f7c8f2f-5261-4918-95bb-d3fba6420773",
+			"name": "RSS_cybersecuritynews",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, -320],
+			"parameters": {
+				"url": "https://cybersecuritynews.com/feed/",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "301a3616-d053-4816-aafa-a7099f33eecb",
+			"name": "RSS_ilsole24ore Tech",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 1040],
+			"parameters": {
+				"url": "https://www.ilsole24ore.com/rss/tecnologia.xml",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "67a27f78-8f18-4c01-ba07-9175b7b35396",
+			"name": "RSS_ilsole24ore Cyber",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 912],
+			"parameters": {
+				"url": "https://www.ilsole24ore.com/rss/tecnologia--cybersicurezza.xml",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "73d381f7-0589-4b1c-b5f0-3601b8ff32b3",
+			"name": "RSS_cybersecurity360",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 1168],
+			"parameters": {
+				"url": "https://www.cybersecurity360.it/feed/",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e872dc6b-e6bf-4da1-82bc-9218914722a4",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1104, -512],
+			"parameters": {
+				"color": 7,
+				"height": 2096,
+				"content": "### CyberSecurity"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "aafe97e9-8bcd-44f8-b486-e51ef3e438cf",
+			"name": "RSS_artificialintelligence-news.",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 1632],
+			"parameters": {
+				"url": "https://www.artificialintelligence-news.com/feed/",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "85ebe282-13f3-484d-a4ac-27115596c0d8",
+			"name": "RSS_GoogleResearch",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 1760],
+			"parameters": {
+				"url": "https://research.google/blog/rss/",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "68ab41cb-f7f7-4de1-8e89-c3d437d01a0d",
+			"name": "RSS_MIT",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 1888],
+			"parameters": {
+				"url": "https://news.mit.edu/rss/topic/artificial-intelligence2",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "4c11828a-01e7-41e4-8271-1a61db3b6838",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1104, 1600],
+			"parameters": {
+				"color": 7,
+				"height": 560,
+				"content": "### AI"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f43023df-1b86-4c72-878f-b6558dddba9d",
+			"name": "Filter",
+			"type": "n8n-nodes-base.filter",
+			"position": [160, 1216],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "05cbdcd8-582a-460b-bbb2-f55c76b39ae3",
+							"operator": {
+								"type": "dateTime",
+								"operation": "after"
+							},
+							"leftValue": "={{ $json.isoDate }}",
+							"rightValue": "={{ DateTime.now().minus({ hours: 24 }).toISO() }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "1cb69db6-d8ff-4b90-875d-f54720058744",
+			"name": "Sort - Articles by Date",
+			"type": "n8n-nodes-base.sort",
+			"position": [400, 1216],
+			"parameters": {
+				"options": {},
+				"sortFieldsUi": {
+					"sortField": [
+						{
+							"order": "descending",
+							"fieldName": "isoDate"
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "64d14789-8049-4476-aa7a-9b92c5075c92",
+			"name": "Build Final Newsletter HTML",
+			"type": "n8n-nodes-base.code",
+			"position": [1168, 1216],
+			"parameters": {
+				"jsCode": "// Take the output from the LLM - News Summarizer node\nconst item = items[0].json;\n\n// 1. Get raw text from Gemini format\nlet text = item?.content?.parts?.[0]?.text;\nif (!text) {\n  throw new Error(\n    \"Unexpected LLM output, missing content.parts[0].text:\\n\" +\n    JSON.stringify(item, null, 2)\n  );\n}\n\n// 2. If there is ```json ... ``` remove the fences\nconst fenced = text.match(/```json?[\\s\\n]*([\\s\\S]*?)```/i);\nif (fenced) {\n  text = fenced[1].trim();\n}\n\n// 3. Extract the first { ... } block (in case the model adds text before/after)\nlet candidate = text;\nconst start = candidate.indexOf(\"{\");\nconst end = candidate.lastIndexOf(\"}\");\nif (start === -1 || end === -1) {\n  throw new Error(\n    \"No JSON object found in LLM output:\\n\" + text\n  );\n}\ncandidate = candidate.slice(start, end + 1);\n\n// 4. Clean trailing commas before } or ]\ncandidate = candidate.replace(/,\\s*([}\\]])/g, \"$1\");\n\n// 5. Parse JSON\nlet data;\ntry {\n  data = JSON.parse(candidate);\n} catch (err) {\n  throw new Error(\n    \"JSON parse error (inner payload from LLM):\\n\" +\n    err.message +\n    \"\\n\\nPayload was:\\n\" +\n    candidate\n  );\n}\n\n// 6. Special cases: { \"text\": \"{...}\" } etc.\nif (data.text && (!data.subject || !data.html)) {\n  try {\n    const inner = JSON.parse(data.text);\n    if (inner.subject && inner.html) {\n      data = inner;\n    }\n  } catch {\n    // if it fails, keep data as-is and proceed\n  }\n}\n\n// 7. Final validation\nif (!data.subject || !data.html) {\n  throw new Error(\n    \"LLM JSON does not contain subject/html as expected:\\n\" +\n    JSON.stringify(data, null, 2)\n  );\n}\n\n// 8. HTML email template\nconst htmlEmail = `\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>${data.subject}</title>\n  <style>\n    body { font-family: Arial, sans-serif; line-height:1.5; color:#333; background-color:#f7f9fa; margin:0; padding:20px; }\n    .container { max-width:700px; margin:0 auto; background:#fff; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); overflow:hidden; }\n    .header { background:#2c3e50; color:#fff; padding:20px; text-align:center; }\n    .header h1 { margin:0; font-size:24px; }\n    .content { padding:20px; }\n    h2 { color:#e74c3c; border-bottom:2px solid #e74c3c; padding-bottom:5px; }\n    ul { padding-left:20px; }\n    li { margin-bottom:10px; }\n    a { color:#2980b9; text-decoration:none; }\n    a:hover { text-decoration:underline; }\n    .footer { background:#ecf0f1; text-align:center; padding:10px; font-size:12px; color:#7f8c8d; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>${data.subject}</h1>\n    </div>\n    <div class=\"content\">\n      ${data.html}\n    </div>\n    <div class=\"footer\">\n      <em>Briefing automatically sent on ${new Date().toLocaleDateString('en-US', {\n        year: 'numeric', month: 'long', day: 'numeric'\n      })}.</em>\n    </div>\n  </div>\n</body>\n</html>\n`.trim();\n\n// 9. Return data for the Gmail node\nreturn [\n  {\n    json: {\n      subject: data.subject,\n      html: htmlEmail,\n    },\n  },\n];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "f6e41658-fcb0-4b07-99cf-1c9df1ca2e99",
+			"name": "Send Final Digest Email",
+			"type": "n8n-nodes-base.gmail",
+			"position": [1520, 1216],
+			"webhookId": "2dc19d78-fe57-437a-8ce2-6337f6ceff87",
+			"parameters": {
+				"sendTo": "user@example.com",
+				"message": "={{ $json.html }}",
+				"options": {
+					"senderName": "n8n News"
+				},
+				"subject": "=News_Tech | n8n RSS"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "84e2fce2-bbac-4a12-badb-1275dde45e4b",
+			"name": "Code in JavaScript",
+			"type": "n8n-nodes-base.code",
+			"position": [608, 1216],
+			"parameters": {
+				"jsCode": "// Trasforma i 68 item in UN solo item con un array \"articles\"\nreturn [\n  {\n    json: {\n      articles: items.map(i => ({\n        title: i.json.title,\n        content: i.json.contentSnippet || i.json.content,\n        link: i.json.link,\n        isoDate: i.json.isoDate,\n      })),\n    },\n  },\n];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "e6b6c2c8-876b-4023-b2ec-b2242ee98060",
+			"name": "LLM - News Summarizer",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [816, 1216],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "models/gemini-2.5-flash",
+					"cachedResultName": "models/gemini-2.5-flash"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=You are the editor-in-chief of a major technology newspaper.\n\nEvery day you receive dozens of tech, AI and cybersecurity news articles, but your job is NOT to summarize everything.\nYour job is to decide WHAT REALLY MATTERS for a smart reader interested in technology, innovation and digital power.\n\nThink like a front-page editor of a tech newspaper.\n\n━━━━━━━━━━━━━━━━━━━━\nEDITORIAL RULES\n━━━━━━━━━━━━━━━━━━━━\n\n### 1. SELECTION (most important rule)\n\n* From ALL provided articles, select at most 8–10 total news items.\n* Selecting fewer is perfectly acceptable.\n* Ignore minor updates, marketing announcements, product rumors, curiosities, lifestyle tech, speculative hype.\n\n---\n\n### 2. RELEVANCE CRITERIA (at least one)\n\nSelect only news that have real strategic importance, such as:\n\n* Artificial Intelligence (foundation models, regulation, major deployments, scientific or industrial breakthroughs)\n* Big Tech companies (OpenAI, Google, Microsoft, Meta, Apple, Amazon, Nvidia, etc.)\n* Cybersecurity incidents (data breaches, ransomware, state-sponsored cyberwarfare, critical infrastructure attacks)\n* Regulation & digital policy (EU AI Act, privacy, antitrust, platform regulation)\n* Semiconductors, cloud, digital infrastructure, networks\n* National or European technological sovereignty\n* Major industrial or economic impacts of technology\n* Democracy, misinformation, surveillance, digital rights\n\n---\n\n### 3. DEDUPLICATION\n\n* If multiple articles refer to the same event, keep only one.\n* Prefer the most complete, clear and authoritative article.\n\n---\n\n### 4. STRUCTURE BY TOPIC\n\nGroup the selected news into the following categories\n(use only those with at least one item):\n\n* AI & Machine Learning\n* Big Tech & Digital Industry\n* Cybersecurity & Cyberwar\n* Regulation & Digital Policy\n* Tech Economy & Markets\n* Infrastructure, Cloud & Chips\n* Digital Society & Rights\n\nDo NOT invent new categories.\n\n---\n\n### 5. WRITING STYLE + LINK (CRITICAL RULES)\n\n* Each news item: 1–2 sentences, journalistic and factual tone\n* No opinions, no commentary, no hype\n* Prefer context and implications over technical details\n\nMANDATORY LINK\n\n* Every news item must end with ONE source, formatted as a clickable HTML link on the name of the outlet only\n* DO NOT show the URL in plain text\n* DO NOT use markdown\n* DO NOT use parentheses, brackets or braces\n\n✅ ONLY ALLOWED FORMAT:\n\n<a href=\"ORIGINAL_URL\" target=\"_blank\">Outlet Name</a>\n\n✅ Correct example:\n\nAmazon Web Services introduced new chips and strengthened its AI services at the Re:Invent event, focusing on the integration of generative models for enterprises. <a href=\"https://www.ilsole24ore.com/...\" target=\"_blank\">Il Sole 24 Ore</a>\n\n---\n\n━━━━━━━━━━━━━━━━━━━━\nINPUT DATA\n━━━━━━━━━━━━━━━━━━━━\n\nYou receive the last 24 hours of tech news as a JSON array of articles:\n\n{{ JSON.stringify($json.articles) }}\n\nEach article includes:\n\n* title\n* content\n* link\n* isoDate\n\n---\n\n━━━━━━━━━━━━━━━━━━━━\nTASK\n━━━━━━━━━━━━━━━━━━━━\n\n1. Read all articles in \"articles\".\n2. Select only the most relevant tech / AI / cyber news (max 8–10).\n3. Deduplicate articles covering the same event.\n4. Organize the selected news into the defined categories.\n5. Build a clean, readable HTML output, ensuring every news item includes its formatted source link.\n\n---\n\n━━━━━━━━━━━━━━━━━━━━\nOUTPUT (MANDATORY)\n━━━━━━━━━━━━━━━━━━━━\n\nYou must return ONLY a valid JSON object.\nNo additional text, no explanations, no markdown, no code fences.\n\nExact format:\n\n{\n  \"subject\": \"Tech & AI Briefing – [Day Month Year]\",\n  \"html\": \"<h2>🧠 Tech, AI & Cyber – Top Stories</h2>...<p><em>Tech briefing automatically generated on [Day Month Year].</em></p>\"\n}\n\nIf you include even a single word outside this JSON object, the response is INVALID."
+						}
+					]
+				}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4bcab353-1ec6-46ce-b06f-0c20f25b51b8",
+			"name": "RSS_darkreading",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 320],
+			"parameters": {
+				"url": "https://www.darkreading.com/rss.xml",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "6b138749-4c9c-4050-af9f-a02e078fe408",
+			"name": "RSS_GoogleCloudBlog",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 64],
+			"parameters": {
+				"url": "https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f3c1b42e-14fb-49bf-ac07-ba54359ee235",
+			"name": "RSS_krebsonsecurity",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, -192],
+			"parameters": {
+				"url": "https://krebsonsecurity.com/feed/",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "1b1f01a4-1e4c-464f-92c8-6a33dedf030f",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1104, 2176],
+			"parameters": {
+				"color": 7,
+				"height": 416,
+				"content": "### Nvidia"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a52e25c6-42e7-41bf-b379-1dfc74b51ac3",
+			"name": "RSS_Nvidia1",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 2208],
+			"parameters": {
+				"url": "https://nvidianews.nvidia.com/releases.xml",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "6d17fd5a-1fe5-4922-b3e1-caa63a16cbb6",
+			"name": "RSS_Nvidia2",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 2336],
+			"parameters": {
+				"url": "https://developer.nvidia.com/blog/feed",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "4df9ae9a-a0dc-4dc5-afb5-77cc75a3d305",
+			"name": "RSS_Nvidia3",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 2464],
+			"parameters": {
+				"url": "https://feeds.feedburner.com/nvidiablog",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "d740fd2e-7407-439a-982a-91a69d2e974b",
+			"name": "RSS_OpenAI",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 2016],
+			"parameters": {
+				"url": "https://openai.com/news/rss.xml",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e101e47a-b74c-4239-98ad-5dc934a71496",
+			"name": "RSS_cve1",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 624],
+			"parameters": {
+				"url": "https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "9bf9fe97-16ae-4afa-8a1a-2c34b9665d5b",
+			"name": "RSS_cve2",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 752],
+			"parameters": {
+				"url": "https://cvefeed.io/rssfeed/latest.xml",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "4c5f021e-91bd-4d04-a618-9f9ed5185049",
+			"name": "Merge_Nvidia",
+			"type": "n8n-nodes-base.merge",
+			"position": [-736, 2336],
+			"parameters": {
+				"numberInputs": 3
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "31dd05a0-007f-420a-b998-861c4fde049e",
+			"name": "Merge_AI",
+			"type": "n8n-nodes-base.merge",
+			"position": [-736, 1808],
+			"parameters": {
+				"numberInputs": 4
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "2021a80f-c837-4a47-a0fd-b3a542cd153b",
+			"name": "Merge_Cyber1",
+			"type": "n8n-nodes-base.merge",
+			"position": [-736, -16],
+			"parameters": {
+				"numberInputs": 8
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "f62fbf89-cfd0-4051-867d-0bc0253eff45",
+			"name": "Merge_Cyber2",
+			"type": "n8n-nodes-base.merge",
+			"position": [-736, 704],
+			"parameters": {},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "d75ca9e8-257b-4ec4-92cc-174ccb13372e",
+			"name": "Merge_Cyber3",
+			"type": "n8n-nodes-base.merge",
+			"position": [-736, 1104],
+			"parameters": {
+				"numberInputs": 5
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "96a345b0-bc85-4c9a-bd54-2576ad5f3177",
+			"name": "Merge_All",
+			"type": "n8n-nodes-base.merge",
+			"position": [-48, 1168],
+			"parameters": {
+				"numberInputs": 5
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "efa61ecf-3f45-4aed-8cd6-0125ce530d07",
+			"name": "RSS_darkreading1",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 192],
+			"parameters": {
+				"url": "https://research.checkpoint.com/feed/",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "9bf679c2-a256-4d9f-88a7-1c88f3a0a242",
+			"name": "RSS_Sans",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 464],
+			"parameters": {
+				"url": "https://isc.sans.edu/rssfeed_full.xml",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "4293ac0a-21aa-4a7c-a8c4-500f0f494d68",
+			"name": "RSS_CiscoTalos",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 1440],
+			"parameters": {
+				"url": "https://blog.talosintelligence.com/rss/",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8f95b809-f398-4cd3-bb32-2b395282bc8b",
+			"name": "RSS Read",
+			"type": "n8n-nodes-base.rssFeedRead",
+			"position": [-1040, 1296],
+			"parameters": {
+				"url": "https://feeds.feedburner.com/eset/blog",
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "5b07023a-66af-4b91-b587-76f837f4f076",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-2032, 1248],
+			"parameters": {
+				"rule": {
+					"interval": [{}]
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "dabb8fc9-b658-4617-9534-b541baee78c7",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-224, -528],
+			"parameters": {
+				"width": 592,
+				"height": 992,
+				"content": "## RSS Tech News to your inbox\n\nThis workflow automates the collection, normalization, and publication of content from a broad set of RSS feeds. The execution begins with a Schedule Trigger, which activates the entire pipeline at recurring intervals. Each feed is handled by its own individual RSS node, allowing full separation of sources and easier monitoring or troubleshooting. The collected items flow into a structured series of Merge nodes that consolidate all outputs into one unified data stream.\n\nAfter aggregation, the workflow performs filtering and transformation. A dedicated filtering step removes invalid or duplicate entries, while a custom Function node standardizes fields such as title, URL, timestamp, and raw content. This ensures that data coming from heterogeneous sources is normalized before further processing. The workflow also includes an AI-powered enrichment stage—via an OpenAI node—which generates summaries, tags, categories, or any other metadata needed to enhance the collected articles.\n\nThe pipeline concludes by delivering the processed content to a chosen destination (email, database, Notion, API endpoint, or social platform). The modular design allows new sources to be added effortlessly without altering the core logic, making the workflow scalable and easy to maintain.\nThis setup is ideal for automated newsletters, content curation, topic monitoring, or internal knowledge management systems.\n\nRead: [Full setup Guide](https://paoloronco.it/n8n-template-rss-tech-news-to-your-inbox/)\n\n#### Youtube Video: \n[![RSS Tech News](https://img.youtube.com/vi/Gck8nmvx1UA/0.jpg)](https://www.youtube.com/watch?v=Gck8nmvx1UA \"RSS Tech News\")"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a7afaeb6-90ed-41e9-98da-acc7dcd53a6a",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2064, 1104],
+			"parameters": {
+				"color": 7,
+				"width": 192,
+				"height": 288,
+				"content": "📌 Schedule Trigger\nStarts the entire workflow automatically at defined intervals—no manual execution required."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b589cb54-d7dd-4dbc-a796-3a840f647307",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1408, -512],
+			"parameters": {
+				"color": 7,
+				"width": 192,
+				"height": 192,
+				"content": "📌 RSS Nodes (Multiple Sources)\n\nEach node fetches the latest entries from one feed. Using isolated nodes keeps the flow stable and simplifies debugging."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0bcdb515-2676-45ae-b6fd-631ad65febd8",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-96, 992],
+			"parameters": {
+				"color": 7,
+				"width": 192,
+				"height": 416,
+				"content": "📌 Merge Nodes\n\nCombine all feed outputs into one coherent dataset, preparing the workflow for global filtering and processing."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "82e0d9b0-99f7-48c8-9e34-a1d6b31a4718",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [112, 992],
+			"parameters": {
+				"color": 7,
+				"width": 208,
+				"height": 352,
+				"content": "📌 Filter\n\nFilters out everything older than 24 hours by comparing each article’s isoDate to “now minus 24 hours”. Only fresh news is allowed through to keep the briefing truly daily and relevant."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e8f58b9c-f8c1-43fe-8347-c9ab83fb7528",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [800, 992],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 352,
+				"content": "📌 Gemini Node (AI Enrichment)\n\nGenerates summaries, keywords, topics, or enhanced textual representations of each article."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f3dcffd2-acb7-4a46-ab22-fd95b606909e",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1472, 992],
+			"parameters": {
+				"color": 7,
+				"width": 256,
+				"height": 368,
+				"content": "📌 Final Output Node (Email / Notion / API / etc.)\n\nSends the finished newsletter via Gmail.\nUses the subject from the Code node and the generated html as the email body, so you receive a curated Tech & AI briefing directly in your inbox with no manual work required."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "214a64fc-a382-4080-b2c5-55efe456a4c5",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [336, 992],
+			"parameters": {
+				"color": 7,
+				"width": 208,
+				"height": 352,
+				"content": "📌Sort – Articles by Date\n\nSorts all remaining articles by isoDate in descending order. This ensures that the most recent and time-sensitive stories are processed first and shown higher in the final briefing."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1ebc2fb4-1105-4edf-92b1-8909e3d072d0",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [560, 992],
+			"parameters": {
+				"color": 7,
+				"width": 224,
+				"height": 352,
+				"content": "📌Sort – Code in JavaScript\n\nTakes all incoming RSS items and packs them into a single item with an articles array.\nFor each article it keeps: title, content or contentSnippet, link, isoDate\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "93992ebf-d965-4db0-a30f-933369648275",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1072, 992],
+			"parameters": {
+				"color": 7,
+				"width": 368,
+				"height": 368,
+				"content": "📌 Build Final Newsletter HTML (Code)\n\nThis Code node takes the JSON returned by the LLM and prepares the final email.\nIt removes any ```json wrappers, parses the JSON safely, and checks that subject and html exist.\nThen it inserts both fields into a clean, responsive HTML email template.\nThe output is a single item containing the final subject and html, ready for the Gmail node."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "01915da8-1071-4cf1-811d-9ec164adc58b",
+	"connections": {
+		"Filter": {
+			"main": [
+				[
+					{
+						"node": "Sort - Articles by Date",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RSS_MIT": {
+			"main": [
+				[
+					{
+						"node": "Merge_AI",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Merge_AI": {
+			"main": [
+				[
+					{
+						"node": "Merge_All",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"RSS Read": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber3",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"RSS_Sans": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber1",
+						"type": "main",
+						"index": 7
+					}
+				]
+			]
+		},
+		"RSS_cve1": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RSS_cve2": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber2",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Merge_All": {
+			"main": [
+				[
+					{
+						"node": "Filter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RSS_OpenAI": {
+			"main": [
+				[
+					{
+						"node": "Merge_AI",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"RSS_Nvidia1": {
+			"main": [
+				[
+					{
+						"node": "Merge_Nvidia",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RSS_Nvidia2": {
+			"main": [
+				[
+					{
+						"node": "Merge_Nvidia",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"RSS_Nvidia3": {
+			"main": [
+				[
+					{
+						"node": "Merge_Nvidia",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Merge_Cyber1": {
+			"main": [
+				[
+					{
+						"node": "Merge_All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge_Cyber2": {
+			"main": [
+				[
+					{
+						"node": "Merge_All",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Merge_Cyber3": {
+			"main": [
+				[
+					{
+						"node": "Merge_All",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Merge_Nvidia": {
+			"main": [
+				[
+					{
+						"node": "Merge_All",
+						"type": "main",
+						"index": 4
+					}
+				]
+			]
+		},
+		"RSS_CiscoTalos": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber3",
+						"type": "main",
+						"index": 4
+					}
+				]
+			]
+		},
+		"RSS_darkreading": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber1",
+						"type": "main",
+						"index": 6
+					}
+				]
+			]
+		},
+		"RSS_GrahamCluley": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber1",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"RSS_darkreading1": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber1",
+						"type": "main",
+						"index": 5
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "RSS_TheHackersNews",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_cybersecuritynews",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_krebsonsecurity",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_GrahamCluley",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_GoogleCloudBlog",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_darkreading1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_Sans",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_cve1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_cve2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_ilsole24ore Cyber",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_ilsole24ore Tech",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_cybersecurity360",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS Read",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_CiscoTalos",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_artificialintelligence-news.",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_GoogleResearch",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_MIT",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_OpenAI",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_Nvidia1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_Nvidia2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_Nvidia3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RSS_darkreading",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code in JavaScript": {
+			"main": [
+				[
+					{
+						"node": "LLM - News Summarizer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RSS_GoogleResearch": {
+			"main": [
+				[
+					{
+						"node": "Merge_AI",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"RSS_TheHackersNews": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RSS_GoogleCloudBlog": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber1",
+						"type": "main",
+						"index": 4
+					}
+				]
+			]
+		},
+		"RSS_krebsonsecurity": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber1",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"RSS_cybersecurity360": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber3",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"RSS_ilsole24ore Tech": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber3",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"LLM - News Summarizer": {
+			"main": [
+				[
+					{
+						"node": "Build Final Newsletter HTML",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RSS_cybersecuritynews": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber1",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"RSS_ilsole24ore Cyber": {
+			"main": [
+				[
+					{
+						"node": "Merge_Cyber3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sort - Articles by Date": {
+			"main": [
+				[
+					{
+						"node": "Code in JavaScript",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Build Final Newsletter HTML": {
+			"main": [
+				[
+					{
+						"node": "Send Final Digest Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"RSS_artificialintelligence-news.": {
+			"main": [
+				[
+					{
+						"node": "Merge_AI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

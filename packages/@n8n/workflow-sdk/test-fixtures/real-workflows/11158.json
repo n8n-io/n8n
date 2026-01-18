@@ -1,0 +1,480 @@
+{
+	"id": "B01FguFGfZeVurIi",
+	"meta": {
+		"instanceId": "6f81894254c2852bfe28b07fc1f6652b03481706dd714d6609cc88e8521956d2",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Olostep Amazon scraper",
+	"tags": [
+		{
+			"id": "DLTmSowiHFKnMssa",
+			"name": "Work",
+			"createdAt": "2025-10-23T05:10:39.770Z",
+			"updatedAt": "2025-10-23T05:10:39.770Z"
+		}
+	],
+	"nodes": [
+		{
+			"id": "2d3bc36e-a7fe-49a5-95e4-591edcfa2fbf",
+			"name": "scrape amazon products",
+			"type": "n8n-nodes-base.httpRequest",
+			"onError": "continueRegularOutput",
+			"position": [-608, 496],
+			"parameters": {
+				"url": "https://api.olostep.com/v1/scrapes",
+				"method": "POST",
+				"options": {
+					"allowUnauthorizedCerts": true
+				},
+				"jsonBody": "={\n  \"url_to_scrape\": \"https://www.amazon.com/s?k={{ $('On form submission').item.json['search query'] }}&page={{ $json.counter }}\",\n  \"formats\": [\n    \"json\"\n  ],\n  \"wait_before_scraping\": 6000,\n  \"remove_css_selectors\": \"default\",\n  \"llm_extract\": {\n    \"schema\": {\n      \"type\": \"array\",\n      \"description\": \"A list of products listed on Amazon.\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"title\": {\n            \"type\": \"string\",\n            \"description\": \"The title of the product.\"\n          },\n          \"url\": {\n            \"type\": \"string\",\n            \"description\": \"The full url for the product.\"\n          }\n        },\n        \"required\": [\n          \"title\",\n          \"url\"\n        ]\n      }\n    }\n  },\n  \"screen_size\": {\n    \"screen_type\": \"desktop\",\n    \"screen_width\": 1920,\n    \"screen_height\": 1080\n  }\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer <token>"
+						}
+					]
+				}
+			},
+			"retryOnFail": false,
+			"typeVersion": 4.2
+		},
+		{
+			"id": "677f2c1e-f3a6-44dd-8a2b-b82b6012aa69",
+			"name": "parsedInfo",
+			"type": "n8n-nodes-base.set",
+			"position": [-432, 496],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "21d26317-c9bc-4a56-a3ca-962254a23329",
+							"name": "parsedJson",
+							"type": "array",
+							"value": "={{ $json.result.json_content.replace(/\\\\/g, '') }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "e17f4dda-9920-48b0-b96f-ed698cbf5c8c",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [-224, 496],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "parsedJson"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e36e8a82-df64-492f-ad01-064e8e91bc5b",
+			"name": "Loop Over Items",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [-832, 480],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "3a5b06c3-81b4-4719-a5de-988e5949252b",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [-16, 496],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "62b69c0a-ad68-4fbd-8ecd-9f3b50f5ca2d",
+							"operator": {
+								"type": "string",
+								"operation": "notStartsWith"
+							},
+							"leftValue": "={{ $json.url }}",
+							"rightValue": "https://www.amazon.com"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "8167a2bf-5e6d-4616-808d-32fa51f62202",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [576, 512],
+			"webhookId": "ede90236-0935-4406-bba0-a02cd28e7c03",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "224ae802-2110-4e97-9fcb-83c7ec29d4d2",
+			"name": "Insert row",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [368, 512],
+			"parameters": {
+				"columns": {
+					"value": {
+						"url": "={{ $json.url }}",
+						"title": "={{ $json.title }}"
+					},
+					"schema": [
+						{
+							"id": "title",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "title",
+							"defaultMatch": false
+						},
+						{
+							"id": "url",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "url",
+							"defaultMatch": false
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "hCFSIc5S243rctOO",
+					"cachedResultUrl": "/projects/V9LxWBdY4sxeqAOs/datatables/hCFSIc5S243rctOO",
+					"cachedResultName": "amazon products"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f4792914-40f3-44bc-95ff-87f352fa00b0",
+			"name": "On form submission",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-1424, 480],
+			"webhookId": "3d10fbd7-747f-4f49-9467-8a77a0adac0c",
+			"parameters": {
+				"options": {},
+				"formTitle": "Olostep Amazon Products Scraper",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "search query",
+							"placeholder": "wireless bluetooth headphones"
+						}
+					]
+				},
+				"formDescription": "please fill all fields"
+			},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "d0d689c4-39f9-495e-9803-f6978d578a1e",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [-1248, 480],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "9cb88c80-de98-43d5-af5a-d3b9897ebe9b",
+							"name": "counter",
+							"type": "array",
+							"value": "[1,2,3,4,5,6,7,8,9,10]"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "6956396a-acf8-4dd7-8ee0-3564151c1fa3",
+			"name": "Split Out2",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [-1040, 480],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "counter"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "34a55dec-685b-44ad-b761-9b3030954567",
+			"name": "Edit Fields1",
+			"type": "n8n-nodes-base.set",
+			"position": [176, 368],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "dde443ff-9f08-459a-a3a2-6301cba3c9b8",
+							"name": "url",
+							"type": "string",
+							"value": "=https://www.amazon.com{{ $json.url }}"
+						},
+						{
+							"id": "d895888d-ac1d-4a4e-90d6-97e2d0fbc7ed",
+							"name": "title",
+							"type": "string",
+							"value": "={{ $json.title }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "45623202-f500-4dbf-93f8-c3a5401a48ed",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1264, 384],
+			"parameters": {
+				"color": 7,
+				"width": 352,
+				"height": 256,
+				"content": "## Pagination  \nIterates through multiple Amazon pages (1–10).\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "119dbd07-ce62-4c2c-a429-b8755d7cf2d0",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-896, 352],
+			"parameters": {
+				"color": 7,
+				"width": 416,
+				"height": 368,
+				"content": "## Olostep Amazon Scrape  \nExtracts product title + URL."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b64a15cf-4adf-4d4a-853f-01aa142cc420",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-464, 352],
+			"parameters": {
+				"color": 7,
+				"width": 784,
+				"height": 368,
+				"content": "## Parse & Split  \nConverts JSON output into individual products."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "648d3650-2c1d-42f6-9781-a32a8f43b4ad",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [336, 352],
+			"parameters": {
+				"color": 7,
+				"width": 384,
+				"height": 368,
+				"content": "## Insert Row  \nSaves each product to a Google Sheet / Data Table.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "422c00b9-25d5-488c-b931-43ccadde67ba",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2096, 64],
+			"parameters": {
+				"width": 608,
+				"height": 1152,
+				"content": "# Olostep Amazon Products Scraper  \n\nThis n8n template automates Amazon product scraping using the Olostep API.  \nSimply enter a **search query**, and the workflow scrapes multiple Amazon search pages to extract product titles and URLs.  \nResults are cleaned, normalized, and saved into a Google Sheet or Data Table.\n\n## How it works / What it does  \n1. **Form Trigger**  \n   - User enters a search query (e.g., “wireless bluetooth headphones”).  \n   - The query is used to build the Amazon search URL.\n\n2. **Pagination Setup**  \n   - A list of page numbers (1–10) is generated automatically.  \n   - Each number loads the corresponding Amazon search results page.\n\n3. **Scrape Amazon with Olostep**  \n   - For each page, Olostep scrapes Amazon search results.  \n   - Olostep’s LLM extraction returns:  \n     - **title** — product title  \n     - **url** — product link  \n\n4. **Parse & Split Results**  \n   - The JSON output is decoded and turned into individual product items.\n\n5. **URL Normalization**  \n   - If the product URL is relative, it is automatically converted into a full Amazon URL.\n\n6. **Conditional Check (IF node)**  \n   - Ensures only valid product URLs are stored.  \n   - Helps avoid scraping Amazon navigation links or invalid items.\n\n7. **Insert into Sheet / Data Table**  \n   - Each valid product is saved in:  \n     - title  \n     - url  \n\n8. **Automatic Looping & Rate Management**  \n   - A wait step ensures API rate limits are respected while scraping multiple pages.\n\nThis workflow gives you a complete, reliable Amazon scraper with no browser automation and no manual copy/paste — everything runs through the Olostep API and n8n.\n\n## How to set up  \n1. Import this template into your n8n account.  \n2. Add your **Olostep API key**.  \n3. Connect your **Google Sheets** or **Data Table**.  \n4. Deploy the form and start scraping with any Amazon search phrase."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f7aa6ef0-6c75-4b39-9ec1-c18a029d8047",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1472, 352],
+			"parameters": {
+				"color": 7,
+				"width": 192,
+				"height": 272,
+				"content": "## Enter a search query  \nExample: “wireless bluetooth headphones”."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1f000c8d-fe6a-41ed-948c-83dac32c66c4",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-864, 736],
+			"parameters": {
+				"color": 3,
+				"width": 384,
+				"height": 128,
+				"content": "## WARNING\nIf the http request runs through a 504 gateway timeout error try to execute again or set the node settings to retry on failure."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "fb5d0313-434f-465d-b4b5-1b6b0b03df7a",
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Insert row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Insert row": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out2": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"parsedInfo": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Split Out2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Insert row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[],
+				[
+					{
+						"node": "scrape amazon products",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On form submission": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"scrape amazon products": {
+			"main": [
+				[
+					{
+						"node": "parsedInfo",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,273 @@
+{
+	"id": "M4IIL41O16twgImq",
+	"meta": {
+		"instanceId": "51be389492931e958da1ec3c4cc03c8044ac06dd89d9465126f3cdb442363742",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Image Reader",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "a5d05f82-eb64-4abb-82d8-c2365fea90e8",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [-400, -220],
+			"webhookId": "b957dd8b-8f10-40e9-a041-56b3f7a176b9",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {
+					"download": true
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "9c8d3318-b6f8-4fe5-8d19-10388087beb7",
+			"name": "Clean Input Data",
+			"type": "n8n-nodes-base.set",
+			"position": [-180, -220],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "c8cd1608-2326-401d-9c47-79a6a72f5fc7",
+							"name": "chatID",
+							"type": "number",
+							"value": "={{ $json.message.chat.id }}"
+						},
+						{
+							"id": "0f1a41cb-8630-4e10-b445-f6bbbcf91d33",
+							"name": "Image",
+							"type": "string",
+							"value": "={{ $json[\"message\"][\"photo\"][$json[\"message\"][\"photo\"].length - 1][\"file_id\"] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "ffb53d49-3a5f-4a65-95bd-0788f5005fc7",
+			"name": "get file",
+			"type": "n8n-nodes-base.telegram",
+			"position": [40, -220],
+			"webhookId": "089cb9a3-a383-4e1d-b732-b877833ef538",
+			"parameters": {
+				"fileId": "={{ $json.Image.replace(/\\n/g, '') }}",
+				"resource": "file"
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e77fb512-c83c-4d18-9ded-13c02abfef45",
+			"name": "Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1076, -220],
+			"webhookId": "1c599e35-fb24-4cae-9177-61fa09e0b5ca",
+			"parameters": {
+				"text": "={{ $json.output }}",
+				"chatId": "={{ $('Clean Input Data').item.json.chatID }}",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "5badb159-c0e8-4129-8387-409541cdcc20",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [480, -220],
+			"parameters": {
+				"text": "={{ $json.text }}",
+				"options": {
+					"systemMessage": "Kamu adalah asisten AI yang dirancang untuk memperjelas teks hasil ekstraksi gambar melalui OCR.\n\nTujuan utamamu adalah membuat hasil OCR menjadi mudah dibaca dan dipahami oleh pengguna dengan cara merapikan format, memperbaiki kesalahan pengenalan karakter, dan menyusun ulang konten agar lebih logis.\n\n🧠 Panduan Perilaku:\nJika teks hasil OCR menyerupai tabel atau data terstruktur, jangan buat ulang dalam bentuk tabel. Sebagai gantinya, ubah menjadi poin-poin ringkas agar lebih mudah dibaca.\n\nFokus pada kejelasan, akurasi, dan format yang ramah pengguna.\n\nPerbaiki masalah umum pada hasil OCR seperti:\n\n- Kata atau kalimat yang terpotong\n- Karakter yang salah dikenali \n𝑐\n𝑜\n𝑛\n𝑡\n𝑜\nℎ\n:\n\"\n0\n\"\n𝑑\n𝑎\n𝑛\n\"\n𝑂\n\"\n,\n\"\n1\n\"\n𝑑\n𝑎\n𝑛\n\"\n𝐼\n\"\ncontoh:\"0\"dan\"O\",\"1\"dan\"I\"\n- Simbol yang salah tempat atau format yang berantakan\n\nWAJIB Perhatikan, karena pesan ini akan dikirim ke Telegram maka hindari penggunaan karakter markdown seperti _, *, \n,\n,, \n,\n,, ~, >, #, +, -, =, |, {, }, ., !"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "76959791-ff08-4f0f-94c1-55b6f6807a00",
+			"name": "Google Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [568, 0],
+			"parameters": {
+				"options": {},
+				"modelName": "models/gemini-2.0-flash"
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c807e0eb-566b-46fb-8772-33cb6ab883df",
+			"name": "Replace",
+			"type": "n8n-nodes-base.code",
+			"position": [856, -220],
+			"parameters": {
+				"jsCode": "let text = $json.output;\n\ntext = text\n  .replace(/[_*[\\]()~`>#+\\-=|{}.!]/g, '\\\\$&'); // Escape karakter markdown V2\n\nreturn { json: { output: text } };\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "f2faea2c-3a9c-4275-b92b-5fae4e04f2d1",
+			"name": "Tesseract OCR",
+			"type": "n8n-nodes-tesseractjs.tesseractNode",
+			"position": [260, -220],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": true,
+	"pinData": {
+		"Telegram Trigger": [
+			{
+				"json": {
+					"message": {
+						"chat": {
+							"id": 1335515855,
+							"type": "private",
+							"username": "VextCode",
+							"first_name": "Vext"
+						},
+						"date": 1751331862,
+						"from": {
+							"id": 1335515855,
+							"is_bot": false,
+							"username": "VextCode",
+							"first_name": "Vext",
+							"language_code": "en"
+						},
+						"photo": [
+							{
+								"width": 60,
+								"height": 90,
+								"file_id": "AgACAgUAAxkBAAM6aGM0FnhSd_ThwreRtlPz1FwRHkIAAvrHMRuQCxlXPe0X3IyKdDkBAAMCAANzAAM2BA",
+								"file_size": 1512,
+								"file_unique_id": "AQAD-scxG5ALGVd4"
+							},
+							{
+								"width": 161,
+								"height": 241,
+								"file_id": "AgACAgUAAxkBAAM6aGM0FnhSd_ThwreRtlPz1FwRHkIAAvrHMRuQCxlXPe0X3IyKdDkBAAMCAANtAAM2BA",
+								"file_size": 7969,
+								"file_unique_id": "AQAD-scxG5ALGVdy"
+							}
+						],
+						"message_id": 58
+					},
+					"update_id": 413913356
+				}
+			}
+		]
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "93aeb6de-96dc-47f7-8bc7-218b283234f7",
+	"connections": {
+		"Replace": {
+			"main": [
+				[
+					{
+						"node": "Telegram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Replace",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"get file": {
+			"main": [
+				[
+					{
+						"node": "Tesseract OCR",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tesseract OCR": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clean Input Data": {
+			"main": [
+				[
+					{
+						"node": "get file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "Clean Input Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,451 @@
+{
+	"id": "39xV6u2Xhx3NHIYt",
+	"meta": {
+		"instanceId": "8f0fd7c1a0033c2fb0bbd085ee2e931912ace7a1ffe6b3ccacfd5d810111ba3e",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "{Template} kaizenCrypto",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "b787c008-e2cd-45b3-948f-69297380e5ee",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [-240, 192],
+			"webhookId": "0a90e7e5-1383-4286-90d2-e66b82087df9",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "dca0ece3-b874-4b61-803b-3fa40ad7c1bf",
+			"name": "Code in JavaScript",
+			"type": "n8n-nodes-base.code",
+			"position": [80, 192],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "e2b2b2d6-0760-4b97-86ff-45cd754470ea",
+			"name": "1 hour",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [400, 192],
+			"parameters": {},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "73cf8b7a-6d41-4fd8-a257-53d25e8e5fa1",
+			"name": "15 min",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [400, 0],
+			"parameters": {},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "c902278d-a9f8-4aa7-9693-32cb14955239",
+			"name": "1 day",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [400, 400],
+			"parameters": {},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "5935eae6-3445-4ed0-987a-111409f33a9b",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [608, 0],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8cb5465d-f9d5-4ec0-a53b-b9db3993025c",
+			"name": "Edit Fields1",
+			"type": "n8n-nodes-base.set",
+			"position": [608, 192],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "a1556ffd-3df6-483f-8763-f2ccb7d3d975",
+			"name": "Edit Fields2",
+			"type": "n8n-nodes-base.set",
+			"position": [608, 400],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "5a36b577-9a57-474e-887e-7cc2a57085d5",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [1088, 176],
+			"parameters": {},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "97a9cb02-6f61-4b59-89a9-4216c904703e",
+			"name": "News",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [512, 704],
+			"parameters": {},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "7fcc5fb1-4a0e-47f5-af68-4c0c8134c733",
+			"name": "Filtering News",
+			"type": "n8n-nodes-base.code",
+			"position": [768, 704],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "ea0e64e0-fd5b-4408-bbe4-daf82516f5fd",
+			"name": "Merge1",
+			"type": "n8n-nodes-base.merge",
+			"position": [1664, 464],
+			"parameters": {},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "660b2b77-1f32-47d8-8793-a82901a1d754",
+			"name": "Google Gemini Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [2064, 688],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "7fe76d5c-e458-41f0-ac0d-9e5e51cbaeb6",
+			"name": "Combine candlestick",
+			"type": "n8n-nodes-base.code",
+			"position": [1312, 192],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "c12e01bf-57e9-4f4e-a1be-3bdcfa6a5c64",
+			"name": "Send a text message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [2464, 464],
+			"webhookId": "f14be7be-4506-4178-bd61-a557e2584a06",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "1518cb12-2447-432b-85cb-493479add72a",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [368, -256],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "960083b7-ac5b-4597-afed-08f53fda229b",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [368, 656],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a4c59aca-e37c-471a-bd86-d21eaf91bce7",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1024, 656],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "69f21712-4b9f-46a6-ad2e-84e7c5daccaa",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2000, 192],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "57c3c30c-60d4-4e66-877e-7a48daa1a715",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2368, 192],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0f5c3561-cf54-4b0e-87cb-328afebbaacf",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-304, -16],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5ed20f54-43f9-45ce-a378-4cdfa2a32db1",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1056, -16],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "05105e4e-4553-4fc1-a153-85354874a7fd",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [720, 656],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "11bda322-6c9c-484d-97a2-89e199b00078",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1600, 288],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e91f83b9-3dff-48de-9211-63700f7ec8c5",
+			"name": "News sentiment Analyzer",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1072, 704],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "2bb4a8c6-ce7c-4b97-892e-312cccd85a31",
+			"name": "Crypto Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2064, 464],
+			"parameters": {},
+			"executeOnce": false,
+			"retryOnFail": false,
+			"typeVersion": 3,
+			"alwaysOutputData": false
+		},
+		{
+			"id": "93b0b1df-0d4f-4f3b-909f-86527af6ae3a",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1552, -48],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "cc8b5fd6-d05d-4203-b5dc-5b33675c58f0",
+	"connections": {
+		"News": {
+			"main": [
+				[
+					{
+						"node": "Filtering News",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"1 day": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Combine candlestick",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"1 hour": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"15 min": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge1": {
+			"main": [
+				[
+					{
+						"node": "Crypto Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Crypto Agent": {
+			"main": [
+				[
+					{
+						"node": "Send a text message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Edit Fields2": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Filtering News": {
+			"main": [
+				[
+					{
+						"node": "News sentiment Analyzer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "Code in JavaScript",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code in JavaScript": {
+			"main": [
+				[
+					{
+						"node": "15 min",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "1 hour",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "1 day",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "News",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Combine candlestick": {
+			"main": [
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"News sentiment Analyzer": {
+			"main": [
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Crypto Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

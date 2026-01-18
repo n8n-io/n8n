@@ -1,0 +1,224 @@
+{
+	"meta": {
+		"instanceId": "a09b543763e855b68b4ed52d00ba35f11887d45eaf642b193f6d127dc1c99de2",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "1dbacde4-6cb5-46c1-8542-57803ecce72d",
+			"name": "Trigger: Food Emoji Form Submission",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-180, -400],
+			"webhookId": "b831ae2a-64bc-4444-8034-1974477655fd",
+			"parameters": {
+				"options": {},
+				"formTitle": "Submit a food item",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "What food emoji would you like to generate?",
+							"placeholder": "a green apple",
+							"requiredField": true
+						}
+					]
+				},
+				"formDescription": "Enter a food name (e.g. avocado, donut) to generate a 400×400-pixel 3D emoji 🥑"
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "586fb2f5-0190-4118-a0d5-1aff2ad54eab",
+			"name": "Prepare Style‑JSON Prompt",
+			"type": "n8n-nodes-base.set",
+			"position": [60, -400],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b6d8f708-9e12-4002-8800-0c32b7fe27ee",
+							"name": "=json_generator",
+							"type": "string",
+							"value": "=Given the food item: \"{{ $json['What food emoji would you like to generate?'] }}\", generate a JSON object describing how it should be styled as a 3D-rendered emoji-style icon suitable for use in a digital food icon set. The style should be modern, playful, and semi-realistic, with a transparent background and a 400x400 pixel size.\n\nThe JSON should include these sections:\n\n- form (shape, outline, detail)\n\n- lighting (gloss, shadow, detail)\n\n- texture (surface, detail)\n\n- background (type, detail)\n\n- color_handling (strategy, look, detail)\n\n- color_palette (detail)\n\nAdapt each parameter thoughtfully based on the physical properties and personality of the given food item."
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "b1baad14-1ac6-42ca-9c4c-90aec4e3581d",
+			"name": "LLM: Generate Style‑JSON",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [260, -400],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini",
+					"cachedResultName": "GPT-4.1-MINI"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "={{ $json.json_generator }}"
+						}
+					]
+				},
+				"jsonOutput": true
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "b120e2ce-b91b-4b8b-a869-e3fc7c5dcf11",
+			"name": "Image‑Gen: Render Food Emoji Icon",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [600, -400],
+			"parameters": {
+				"model": "gpt-image-1",
+				"prompt": "=Generate a 3D-rendered emoji-style digital icon of a {{ $('Trigger: Food Emoji Form Submission').item.json['What food emoji would you like to generate?'] }}, designed with the following visual specifications:\n{{ $json.message.content.toJsonString() }}\n\nRender the icon centered in a 400x400 pixel square, isolated on a transparent background, with no props or text. The result should look like a high-quality digital food emoji: slightly exaggerated, clean, friendly, and polished — consistent with a modern mobile icon set.\n",
+				"options": {},
+				"resource": "image"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "0b04e850-a174-46f6-b9df-28a81eae24cb",
+			"name": "Save to Google Drive",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [820, -400],
+			"parameters": {
+				"name": "={{ $('Trigger: Food Emoji Form Submission').item.json['What food emoji would you like to generate?'] }}",
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "root",
+					"cachedResultName": "/ (Root folder)"
+				},
+				"inputDataFieldName": "=data"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "420a9a11-a714-4489-bb9d-4c8398244a83",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-260, -520],
+			"parameters": {
+				"height": 340,
+				"content": "## | INPUT: Intake Form"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "79e68bf4-aeb1-46cd-a18c-e0ed9ac9ecb5",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [20, -520],
+			"parameters": {
+				"color": 4,
+				"width": 720,
+				"height": 340,
+				"content": "## | Step 1: Generate Image"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7eb01630-14cf-4782-a6d0-a5f7d5a06bab",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [780, -520],
+			"parameters": {
+				"color": 5,
+				"height": 340,
+				"content": "## | Step 2: Upload to Google Drive"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "80517e7d-8511-42b5-9e24-774c22e0a2fe",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-260, -140],
+			"parameters": {
+				"color": 7,
+				"width": 1280,
+				"height": 380,
+				"content": "## 🚀 Setup Requirements\n\nTo get started with this workflow, follow these steps:\n\n1. **🔑 Configure Credentials**: Set up your API credentials for OpenAI and Google Drive\n2. **💳 Add OpoenAI Credit**: Make sure to add credit to your OpenAI account, verify your organization (required for generating images)\n3. **📊 Connect Google Drive**: Authenticate your Google Drive account\n4. **⚙️ (Optional) Customize Prompts**: Adjust the prompts within the workflow to better suit your specific needs\n\n**Note: Each image generation will cost you about $0.17**"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"LLM: Generate Style‑JSON": {
+			"main": [
+				[
+					{
+						"node": "Image‑Gen: Render Food Emoji Icon",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare Style‑JSON Prompt": {
+			"main": [
+				[
+					{
+						"node": "LLM: Generate Style‑JSON",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Image‑Gen: Render Food Emoji Icon": {
+			"main": [
+				[
+					{
+						"node": "Save to Google Drive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Trigger: Food Emoji Form Submission": {
+			"main": [
+				[
+					{
+						"node": "Prepare Style‑JSON Prompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

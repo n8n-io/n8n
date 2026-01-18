@@ -1,0 +1,265 @@
+{
+	"id": "DMhzwW0cXxIdPi3r",
+	"meta": {
+		"instanceId": "1b8bade2e81d2b01b38a4fc553808b07daa66e884c23e6b6d0e9831b1e2bab33"
+	},
+	"name": "Template Supabase Postgres",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "01e09572-b92d-4c8e-8412-aaa4137f10b9",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-208, 336],
+			"webhookId": "500a2766-6c8a-4d51-ba0b-4a369c361801",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "dde6692c-d5ee-4618-9028-e51395a8eac6",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-48, 432],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8f0998ee-0015-4071-a28d-c02334793118",
+			"name": "Embeddings OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [528, 640],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "74d6eb44-e969-4593-8a1c-efb6e8158d09",
+			"name": "Google Drive",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [16, 992],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "ba604fc5-2568-4b23-85c0-666aafb087dc",
+			"name": "Embeddings OpenAI1",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [240, 1216],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "d4d2f11d-caf6-4295-ad4d-31f3bf1ecabb",
+			"name": "Default Data Loader",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"position": [368, 1216],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "2bb7a1e7-7532-44a5-97c2-6fde044ccaf0",
+			"name": "Recursive Character Text Splitter",
+			"type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+			"position": [448, 1408],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "c78dd913-985d-4dc7-a4cc-bff6ba5ad021",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-208, 992],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "8bd15dce-b53b-4ae6-af98-4aa44e4069b2",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-64, 848],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cb672ca3-5bbc-4549-ad2f-4f603ff273b8",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [224, 848],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "14fdc026-c175-463d-90e4-efdeb2a65d92",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [432, 208],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "50e4915d-2c95-47f1-87a8-50336bccd4c2",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [96, 320],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "bcad805d-b22d-493b-986d-9581a45a6635",
+			"name": "RAG AI Assistant",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [48, 128],
+			"parameters": {},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "3f229289-2053-4c38-9b8c-9756f9222d1f",
+			"name": "Retrieve and push documents",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+			"position": [432, 416],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "92b2dad8-6c52-4b66-9b36-3b5da91ed4cc",
+			"name": "Storing documents",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+			"position": [256, 992],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "7b1884b5-a7b8-45ce-bac9-0489381366e8",
+			"name": "Your Chat Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+			"position": [176, 336],
+			"parameters": {},
+			"typeVersion": 1.3
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "a61c4ddc-ad2b-4d6a-94ea-f84787d3e56c",
+	"connections": {
+		"Google Drive": {
+			"main": [
+				[
+					{
+						"node": "Storing documents",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Your Chat Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "RAG AI Assistant",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Retrieve and push documents",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "RAG AI Assistant",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI1": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Storing documents",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Default Data Loader": {
+			"ai_document": [
+				[
+					{
+						"node": "Storing documents",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "RAG AI Assistant",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Retrieve and push documents": {
+			"ai_tool": [
+				[
+					{
+						"node": "RAG AI Assistant",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Recursive Character Text Splitter": {
+			"ai_textSplitter": [
+				[
+					{
+						"node": "Default Data Loader",
+						"type": "ai_textSplitter",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Google Drive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

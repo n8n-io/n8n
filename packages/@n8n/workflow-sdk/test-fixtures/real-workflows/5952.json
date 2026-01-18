@@ -1,0 +1,329 @@
+{
+	"id": "PYTm8uU9m0FN8tG9",
+	"meta": {
+		"instanceId": "c38e3b8a7e4240e6cdca062743f016c1029f385bf40345b6291939dfd83bfd77",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "9 Monitor Customer Support Forums",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "4830a8a6-6e76-47e0-abdc-7c72ebfda985",
+			"name": "🚦 Start Workflow (Manual Trigger)",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-440, -80],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "8d2279c3-8d49-4dc1-87df-47e3e077b2d5",
+			"name": "🔗 Enter Forum URL",
+			"type": "n8n-nodes-base.set",
+			"position": [-240, -80],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e53f8457-1c2c-41ff-8621-4f7ebee981a8",
+							"name": "URL",
+							"type": "string",
+							"value": "https://api.stackexchange.com/2.3/search?order=desc&sort=activity&intitle=openai&site=superuser"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8f3b47c7-1a6e-4084-91ce-f805b75146d2",
+			"name": "🧠 Chat Model Reasoning1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [0, 200],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "a98d95c6-67f7-49b3-8a25-45a08576ee5e",
+			"name": "🤖 Agent: Scrape Forum & Extract Insights",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [60, -80],
+			"parameters": {
+				"text": "=scrape the question and answers forum about openAi from this below URL:\n{{ $json.URL }}\nand i want to include in my output are platform name , author name , question , answer_snippet , link , pain point\ncheck if any question have no answer than dont scrape it search for those which have question , its answer_snippet and also customer pain point\n",
+				"options": {},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "a3ea338d-cf2b-4399-92f6-5865a9a725c7",
+			"name": "🌐 Web Scraper Tool ",
+			"type": "n8n-nodes-mcp.mcpClientTool",
+			"position": [160, 200],
+			"parameters": {
+				"toolName": "scrape_as_markdown",
+				"operation": "executeTool",
+				"toolParameters": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}"
+			},
+			"credentials": {
+				"mcpClientApi": {
+					"id": "credential-id",
+					"name": "mcpClientApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8bf7a8cd-ae02-4aa6-a7bf-e8aee16ce3ea",
+			"name": "✉️ Send Insights to Product Team (Gmail)",
+			"type": "n8n-nodes-base.gmail",
+			"position": [580, -80],
+			"webhookId": "6531f16e-ae66-4e1f-bc87-fd87863c6f96",
+			"parameters": {
+				"sendTo": "user@example.com",
+				"message": "=Hello Product Team,\n\nHere are recent customer pain points and technical discussions about OpenAI from the SuperUser forum:\n\nQuestion:       {{$json[\"output\"][0][\"question\"]}}\nAsked by:       {{$json[\"output\"][0][\"author_name\"]}}\nLink:           {{$json[\"output\"][0][\"link\"]}}{{$json[\"output\"][0]                         [\"link\"]}}\nAnswer Snippet: {{$json[\"output\"][0][\"answer_snippet\"]}}\nPain Point:     {{$json[\"output\"][0][\"pain_point\"]}}\n  \nQuestion:       {{$json[\"output\"][1][\"question\"]}}\nAsked by:       {{$json[\"output\"][1][\"author_name\"]}}\nLink:           {{$json[\"output\"][1][\"link\"]}}{{$json[\"output\"][1]                         [\"link\"]}}\nAnswer Snippet: {{$json[\"output\"][1][\"answer_snippet\"]}}\nPain Point:     {{$json[\"output\"][1][\"pain_point\"]}}\n\nBest regards,\nYour Automation Workflow\n",
+				"options": {
+					"appendAttribution": false
+				},
+				"subject": "=Customer Forum Insights: OpenAI Pain Points from {{ $json.output[0].platform_name }}",
+				"emailType": "text"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "265273a0-7996-43c2-a6e0-4515cef83b08",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-500, -580],
+			"parameters": {
+				"color": 5,
+				"width": 420,
+				"height": 720,
+				"content": "## 1️⃣ **Section 1: Start & Input**\n\n* **🚦 Start Workflow (Manual Trigger)**\n\n  * *Node: When clicking ‘Execute workflow’*\n  * **What happens:**\n    You begin the automation by clicking the \"Execute workflow\" button in n8n. This makes the process fully manual and secure—you decide when to run it.\n\n* **🔗 Enter Forum URL**\n\n  * *Node: Edit Fields (manual)*\n  * **What happens:**\n    You paste the URL of the specific Superuser Q\\&A forum post you want to analyze. No coding or technical setup—just copy and paste!\n\n**🟢 Why this is great for beginners:**\nYou only need to provide the link and click a button. No scripts, no complex setup.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dcabff56-7666-4e76-9032-43893588bfd6",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [480, -520],
+			"parameters": {
+				"color": 6,
+				"width": 340,
+				"height": 680,
+				"content": "## 3️⃣ **Section 3: Share Insights with Your Team**\n\n* **✉️ Send Insights to Product Team**\n\n  * *Node: Gmail (send: message)*\n  * **What happens:**\n    The final, cleaned, and structured insights are sent as an email to your Product Team. This means the right people get the right information at the right time—automatically.\n\n**🟢 Why this is great for beginners:**\nNo more compiling or sending emails yourself! The system takes care of communicating findings—saving time and ensuring nothing is forgotten.\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "beb64fb0-4b77-490d-8386-8048ba951617",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-20, -940],
+			"parameters": {
+				"color": 2,
+				"width": 460,
+				"height": 1080,
+				"content": "## 2️⃣ **Section 2: AI Agent Scrapes & Analyzes**\n\n* **🤖 Agent: Extract Forum Insights**\n\n  * *Node: AI Agent*\n\n  This is where all the magic happens! The AI agent coordinates a team of tools to read the forum post, pick out the most important details, and structure everything perfectly.\n\n  **Sub-nodes powering the agent:**\n\n  * **🧠 Chat Model Reasoning**\n    *Node: OpenAI Chat Model*\n    — Understands what you want and plans the scraping/analysis logic.\n  * **🌐 Web Scraper Tool (scrape\\_as\\_markdown)**\n    *Node: MCP Client (executeTool)*\n    — Securely visits the forum page and fetches the Q\\&A content in a readable format.\n  * **📦 Format Forum Data as JSON**\n    *Node: Structured Output Parser*\n    — Transforms messy forum data into a well-structured JSON object including:\n\n    * Platform name\n    * Author name\n    * Question\n    * Answer snippet\n    * Link\n    * **Identified customer pain points!**\n\n**🟢 Why this is great for beginners:**\nYou don’t have to read, sort, or copy any forum data. The agent does everything: reading, understanding, summarizing, and structuring—just like a human analyst, but automated!\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "02f867d6-a2d3-4d1c-868a-674475bac53a",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [860, -520],
+			"parameters": {
+				"color": 7,
+				"width": 380,
+				"height": 240,
+				"content": "## I’ll receive a tiny commission if you join Bright Data through this link—thanks for fueling more free content!\n\n### https://get.brightdata.com/1tndi4600b25"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3ef9e897-85d0-436a-b2c4-e9e3734a5d6b",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2580, -1320],
+			"parameters": {
+				"color": 4,
+				"width": 1300,
+				"height": 320,
+				"content": "=======================================\n            WORKFLOW ASSISTANCE\n=======================================\nFor any questions or support, please contact:\n    Yaron@nofluff.online\n\nExplore more tips and tutorials here:\n   - YouTube: https://www.youtube.com/@YaronBeen/videos\n   - LinkedIn: https://www.linkedin.com/in/yaronbeen/\n=======================================\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9b4535e8-e49b-4af2-8e18-bfbdec7db961",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2580, -980],
+			"parameters": {
+				"color": 4,
+				"width": 1300,
+				"height": 1880,
+				"content": "# 🚀 Monitor Customer Support Forums\n\n### Instantly turn forum questions about OpenAI into actionable product insights—delivered right to your Product Team’s inbox!\n\n---\n\n## 1️⃣ **Section 1: Start & Input**\n\n* **🚦 Start Workflow (Manual Trigger)**\n\n  * *Node: When clicking ‘Execute workflow’*\n  * **What happens:**\n    You begin the automation by clicking the \"Execute workflow\" button in n8n. This makes the process fully manual and secure—you decide when to run it.\n\n* **🔗 Enter Forum URL**\n\n  * *Node: Edit Fields (manual)*\n  * **What happens:**\n    You paste the URL of the specific Superuser Q\\&A forum post you want to analyze. No coding or technical setup—just copy and paste!\n\n**🟢 Why this is great for beginners:**\nYou only need to provide the link and click a button. No scripts, no complex setup.\n\n---\n\n## 2️⃣ **Section 2: AI Agent Scrapes & Analyzes**\n\n* **🤖 Agent: Extract Forum Insights**\n\n  * *Node: AI Agent*\n\n  This is where all the magic happens! The AI agent coordinates a team of tools to read the forum post, pick out the most important details, and structure everything perfectly.\n\n  **Sub-nodes powering the agent:**\n\n  * **🧠 Chat Model Reasoning**\n    *Node: OpenAI Chat Model*\n    — Understands what you want and plans the scraping/analysis logic.\n  * **🌐 Web Scraper Tool (scrape\\_as\\_markdown)**\n    *Node: MCP Client (executeTool)*\n    — Securely visits the forum page and fetches the Q\\&A content in a readable format.\n  * **📦 Format Forum Data as JSON**\n    *Node: Structured Output Parser*\n    — Transforms messy forum data into a well-structured JSON object including:\n\n    * Platform name\n    * Author name\n    * Question\n    * Answer snippet\n    * Link\n    * **Identified customer pain points!**\n\n**🟢 Why this is great for beginners:**\nYou don’t have to read, sort, or copy any forum data. The agent does everything: reading, understanding, summarizing, and structuring—just like a human analyst, but automated!\n\n---\n\n## 3️⃣ **Section 3: Share Insights with Your Team**\n\n* **✉️ Send Insights to Product Team**\n\n  * *Node: Gmail (send: message)*\n  * **What happens:**\n    The final, cleaned, and structured insights are sent as an email to your Product Team. This means the right people get the right information at the right time—automatically.\n\n**🟢 Why this is great for beginners:**\nNo more compiling or sending emails yourself! The system takes care of communicating findings—saving time and ensuring nothing is forgotten.\n\n---\n\n## 🌟 **How Beginners Can Use This Workflow**\n\n| Step                | What to Do                                     | What Happens                                               |\n| ------------------- | ---------------------------------------------- | ---------------------------------------------------------- |\n| 🚦 Start            | Click **Execute workflow** in n8n              | The automation begins                                      |\n| 🔗 Input URL        | Paste a Superuser Q\\&A forum link about OpenAI | The workflow targets this exact forum question             |\n| 🤖 AI Agent Scrapes | (You wait for a moment)                        | The AI extracts question, answer, author, pain points…     |\n| ✉️ Receive Insights | (No action needed)                             | An email with all structured insights is sent to your team |\n\n---\n\n## 💡 **Benefits**\n\n* 🕐 **Save Hours:** No manual copying or summarizing forum content\n* 📊 **Actionable Insights:** Quickly see customer pain points for product improvement\n* 📧 **Automated Communication:** Ensure your team never misses key feedback\n* 🧑‍💻 **Zero Coding:** Designed for anyone—no technical experience needed\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ac6abf38-249b-4e83-9f49-f9545e75b65b",
+			"name": "Auto-fixing Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+			"position": [300, 200],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3914b950-6f76-4304-9db3-29504051ab2d",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [300, 400],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "d050c092-20c5-469f-8922-db7e880ffed2",
+			"name": "📦 Format Forum Data as JSON1",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [460, 400],
+			"parameters": {
+				"jsonSchemaExample": "{\n  \"platform\": \"SuperUser\",\n  \"questions\": [\n    {\n      \"author\": \"Tolure\",\n      \"question\": \"How to use Azure OpenAI as a pseudo DB\",\n      \"answer_snippet\": \"(Answer is available but not fully provided in the current data; question is marked as answered)\",\n      \"link\": \"https://superuser.com/questions/1824019/how-to-use-azure-openai-as-a-pseudo-db\",\n      \"pain_point\": \"Difficulty in using Azure OpenAI for database-like functionality\"\n    },\n    {\n      \"author\": \"Point Clear Media\",\n      \"question\": \"How do I use FFmpeg and OpenAI Whisper to transcribe a RTMP stream?\",\n      \"answer_snippet\": \"(Answer is available but not fully provided in the current data)\",\n      \"link\": \"https://superuser.com/questions/1778870/how-do-i-use-ffmpeg-and-openai-whisper-to-transcribe-a-rtmp-stream\",\n      \"pain_point\": \"Challenges in setting up transcription using FFmpeg and OpenAI Whisper for streaming media\"\n    }\n  ]\n}\n"
+			},
+			"typeVersion": 1.3
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "2e8bc642-072c-490f-9f24-8b9e60f6a33e",
+	"connections": {
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Auto-fixing Output Parser",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"🔗 Enter Forum URL": {
+			"main": [
+				[
+					{
+						"node": "🤖 Agent: Scrape Forum & Extract Insights",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"🌐 Web Scraper Tool ": {
+			"ai_tool": [
+				[
+					{
+						"node": "🤖 Agent: Scrape Forum & Extract Insights",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Auto-fixing Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "🤖 Agent: Scrape Forum & Extract Insights",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"🧠 Chat Model Reasoning1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "🤖 Agent: Scrape Forum & Extract Insights",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"📦 Format Forum Data as JSON1": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Auto-fixing Output Parser",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"🚦 Start Workflow (Manual Trigger)": {
+			"main": [
+				[
+					{
+						"node": "🔗 Enter Forum URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"🤖 Agent: Scrape Forum & Extract Insights": {
+			"main": [
+				[
+					{
+						"node": "✉️ Send Insights to Product Team (Gmail)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

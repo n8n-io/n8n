@@ -1,0 +1,310 @@
+{
+	"id": "59a8WDMIKKo9faYP",
+	"meta": {
+		"instanceId": "c87a766eb8ed4a39121cf119a5038250a8ca0a11ed90cdd244f6beb7336758b3",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Posting",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "81d2b01a-b0a6-4361-9eb5-00251031a289",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [0, 135],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"triggerAtHour": 22
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "5551acd6-a6d7-4c89-b7b8-104163d2c7a7",
+			"name": "Message a model",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [220, 135],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4",
+					"cachedResultName": "GPT-4"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "Create a 50 character title of a topic related to very specific problem related to n8n or automation."
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "f3c8267e-df8c-40d2-aa91-7fa21e2b30b0",
+			"name": "Message a model1",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [580, -140],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "chatgpt-4o-latest",
+					"cachedResultName": "CHATGPT-4O-LATEST"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=Based on the title: {{ $json.message.content }}\nWrite a tweet that breaks this topic down.\n\nBe solution oriented and make it easily readable with easy vocabulary\n\nAdd some hashtags too "
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "0524af9f-0d39-4304-922d-a8c2807a9fa3",
+			"name": "Generate an image",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [940, 385],
+			"parameters": {
+				"prompt": "=Based on the title: {{ $json.message.content }}\nGenerate a japanese anime style image ",
+				"options": {},
+				"resource": "image"
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "c836e49a-9d69-4e59-8a91-40a6c049dda6",
+			"name": "Append or update row in sheet1",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [940, -15],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Title": "={{ $json.message.content }}",
+						"Description": "={{ $json.message.content }}"
+					},
+					"schema": [
+						{
+							"id": "Title",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Title",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Description",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Image",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Image",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Title"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1P18TjyEEsgUey_gqXoNsE5GlsaGDmJYVl0ZWVzxCU7U/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1P18TjyEEsgUey_gqXoNsE5GlsaGDmJYVl0ZWVzxCU7U",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1P18TjyEEsgUey_gqXoNsE5GlsaGDmJYVl0ZWVzxCU7U/edit?usp=drivesdk",
+					"cachedResultName": "Automation inbound content"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "34959513-e476-4956-bf7c-70c4d777e166",
+			"name": "Create Tweet",
+			"type": "n8n-nodes-base.twitter",
+			"position": [1160, 185],
+			"parameters": {
+				"text": "={{ $json.Description }}",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "credential-id",
+					"name": "twitterOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "637145e8-189d-46c6-be02-cfe000446da1",
+			"name": "Create a post",
+			"type": "n8n-nodes-base.linkedIn",
+			"position": [1160, -15],
+			"parameters": {
+				"additionalFields": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "40f14ed0-4935-43b0-9b8d-d11ef83a821c",
+			"name": "Facebook Graph API",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [1160, 385],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "credential-id",
+					"name": "facebookGraphApi Credential"
+				}
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "1971493f-a9ab-4d24-97ab-05ef1fad00fc",
+	"connections": {
+		"Message a model": {
+			"main": [
+				[
+					{
+						"node": "Message a model1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Generate an image",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Append or update row in sheet1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Message a model1": {
+			"main": [
+				[
+					{
+						"node": "Append or update row in sheet1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Message a model",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate an image": {
+			"main": [
+				[
+					{
+						"node": "Create Tweet",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create a post",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Facebook Graph API",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Append or update row in sheet1": {
+			"main": [
+				[
+					{
+						"node": "Create Tweet",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create a post",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Facebook Graph API",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

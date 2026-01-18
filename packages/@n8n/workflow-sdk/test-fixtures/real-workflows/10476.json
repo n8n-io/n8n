@@ -1,0 +1,832 @@
+{
+	"meta": {
+		"instanceId": "7d85123b3a1d956ac2c27d1a99710fba4936b72780f7dd11e84a21b5ef2fadcb",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "b18c85dc-9e56-42ad-b775-ef8da3b93f0a",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-336, -848],
+			"parameters": {
+				"path": "c851e840-457c-4050-8803-4e6d258580e1",
+				"options": {},
+				"httpMethod": "POST"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "487f642b-5e4f-4499-b3da-b5d50c4e1494",
+			"name": "Message a model",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [1312, -368],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini",
+					"cachedResultName": "GPT-4.1-MINI"
+				},
+				"options": {},
+				"responses": {
+					"values": [
+						{
+							"role": "system",
+							"content": "You are a senior IT specialist experienced in debugging distributed systems, containers, Linux services, and application logs. When the user provides log output or an error message, you must:\n\nAnalyze the logs carefully and respond in a structured format:\n\nSummary\nShort, concise explanation of what's happening.\n\nMost Likely Root Cause\nOne clear sentence. If unknown, say so and state what’s missing.\n\nImpact\nExplain if functionality is broken, partially limited, or unaffected.\n\nKey Evidence From Logs\nList only the relevant log lines and briefly explain each.\n\nSeverity Level\nRate 1–5 (1 negligible, 5 critical). Include a one-line justification.\n\nRecommended Next Steps\nBullet actionable steps. Include different paths if needed (example: “If you use USB devices…”).\n\nFollow-up / What to Monitor\nOne or two items the user should watch for or collect next.\n\nGuidelines:\n\nBe concise and structured. No long essays.\n\nNever just quote logs back. Interpret them.\n\nIf assumptions are required, state them explicitly.\n\nIf the logs do not contain enough info, say so and request specifics.\n\nTone should be calm, confident, and clear like a senior engineer helping a teammate.\n\nAvoid unnecessary technical jargon unless required.\n\nFocus on actionable clarity."
+						},
+						{
+							"content": "={{ $('get logs').item.json.stdout }}"
+						}
+					]
+				},
+				"builtInTools": {}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "9bf441ad-c65f-496f-b5cb-8f75f35a6169",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [-304, -336],
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "45602d61-92d9-4df1-95e5-4482b218eb56",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"position": [16, 80],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "a4f85833-5791-4513-bef5-f31c582bf26a",
+										"operator": {
+											"type": "string",
+											"operation": "contains"
+										},
+										"leftValue": "={{ $json.message.text.toLowerCase() }}",
+										"rightValue": "logs"
+									}
+								]
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "52a99c27-c2bb-49b5-9ca9-27c3de1aa9ac",
+										"operator": {
+											"type": "string",
+											"operation": "contains"
+										},
+										"leftValue": "={{ $json.message.text.toLowerCase() }}",
+										"rightValue": "restart"
+									}
+								]
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "f12f78c4-e959-4e50-9b1d-2a605169387d",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.message.text.toLowerCase() }}",
+										"rightValue": "status"
+									}
+								]
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "3e13d044-3bfe-4669-a107-ace1b573240e",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.message.text.toLowerCase() }}",
+										"rightValue": "update"
+									}
+								]
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.3
+		},
+		{
+			"id": "c407c82e-763f-4007-9ebf-a42831e550b1",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [640, -368],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "da335286-a8fc-4ede-9ab6-f2760e74bb9a",
+			"name": "Merge1",
+			"type": "n8n-nodes-base.merge",
+			"position": [640, 0],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition"
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "2a535b9d-11d6-439c-a440-f0f90bc2fc86",
+			"name": "Switch1",
+			"type": "n8n-nodes-base.switch",
+			"position": [-112, -848],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "5f956f73-4789-4fae-bedc-7c1f0edfc2d2",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.body.heartbeat.msg }}",
+										"rightValue": "running"
+									}
+								]
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "d1ec668d-53e8-44b2-9cb6-6a4de3bcec07",
+										"operator": {
+											"type": "string",
+											"operation": "notEquals"
+										},
+										"leftValue": "={{ $json.body.heartbeat.msg }}",
+										"rightValue": "running"
+									}
+								]
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.3
+		},
+		{
+			"id": "32eac2eb-7cf9-4d90-a719-7bafa7a4537a",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [1376, 0],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "30a53424-65b9-4a9b-a4cd-e78933c8441b",
+							"operator": {
+								"type": "string",
+								"operation": "empty",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.stderr }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "13342b76-df0b-4810-bec7-e8ac0926d038",
+			"name": "OK Message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [112, -944],
+			"parameters": {
+				"text": "={{ $json.body.msg }}",
+				"chatId": "123456789",
+				"replyMarkup": "replyKeyboard",
+				"additionalFields": {
+					"appendAttribution": false,
+					"reply_to_message_id": 0
+				},
+				"replyKeyboardOptions": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "08e46910-e286-424c-9877-c50d2b966044",
+			"name": "ERROR Message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [112, -752],
+			"parameters": {
+				"text": "={{ $json.body.monitor.docker_container }} reported an issue : {{ $json.body.heartbeat.msg }} at {{ $json.body.heartbeat.time }}",
+				"chatId": "123456789",
+				"replyMarkup": "replyKeyboard",
+				"replyKeyboard": {
+					"rows": [
+						{
+							"row": {
+								"buttons": [
+									{
+										"text": "={{ $json.body.monitor.docker_container }} Logs",
+										"additionalFields": {}
+									},
+									{
+										"text": "={{ $json.body.monitor.docker_container }} Restart",
+										"additionalFields": {}
+									}
+								]
+							}
+						}
+					]
+				},
+				"additionalFields": {
+					"appendAttribution": false,
+					"reply_to_message_id": 0
+				},
+				"replyKeyboardOptions": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "b66aa8c3-71e0-4c1d-973a-c3aeee7c9b04",
+			"name": "Status Update",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1088, -368],
+			"parameters": {
+				"text": "=Analyzing Log File...",
+				"chatId": "123456789",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "c23aa34e-a6be-47f8-a9c0-f42c40cb5b29",
+			"name": "Log Analysis",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1664, -368],
+			"parameters": {
+				"text": "={{ $json.output[0].content[0].text }}",
+				"chatId": "123456789",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "28dc5172-8521-4ebe-932b-ba7a27d594fe",
+			"name": "Restart Message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [864, 0],
+			"parameters": {
+				"text": "=Attempting to restart...",
+				"chatId": "123456789",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ccacd643-662d-42b4-a298-50670aed45dd",
+			"name": "Success restart",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1664, -96],
+			"parameters": {
+				"text": "=Successfull restarting {{ $json.stdout }}",
+				"chatId": "123456789",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "07aa5b92-a6f3-4d3f-8805-0ef9bee295cc",
+			"name": "Restart Failed",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1664, 96],
+			"parameters": {
+				"text": "=Restart failed\n{{ $('restart container').item.json.stderr }}",
+				"chatId": "123456789",
+				"additionalFields": {
+					"appendAttribution": false
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "88514140-3fbf-4644-a0f1-baf092ebe300",
+			"name": "Docker Status",
+			"type": "n8n-nodes-base.telegram",
+			"position": [672, 448],
+			"parameters": {
+				"text": "={{ $json.stdout }}",
+				"chatId": "123456789",
+				"additionalFields": {
+					"parse_mode": "HTML",
+					"appendAttribution": false
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "3da786e4-4591-44f9-8389-82da4ac53932",
+			"name": "get logs",
+			"type": "n8n-nodes-base.ssh",
+			"position": [864, -368],
+			"parameters": {
+				"cwd": "",
+				"command": "=docker logs --tail 100 {{ $json.service_name }}"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b91ccb85-58cc-457e-8cbe-b2a2bf2856ec",
+			"name": "restart container",
+			"type": "n8n-nodes-base.ssh",
+			"position": [1088, 0],
+			"parameters": {
+				"cwd": "",
+				"command": "=docker restart {{ $('Merge1').item.json.service_name }}"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ca38de10-1c2b-4e0c-ac7d-5c0fcf9ba534",
+			"name": "docker ps",
+			"type": "n8n-nodes-base.ssh",
+			"position": [448, 448],
+			"parameters": {
+				"cwd": "",
+				"command": "docker ps --format \"{{.Names}}\\t{{.Status}}\""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7c674372-8f06-4fc5-98f4-1131a56d55ad",
+			"name": "Code in Python (Beta)",
+			"type": "n8n-nodes-base.code",
+			"position": [848, 848],
+			"parameters": {
+				"language": "python",
+				"pythonCode": "import re\nimport json\n\ndef extract_update_summary(stdout):\n    match = re.search(r'Update Summary:\\n({.*?\\})', stdout, re.DOTALL)\n    if not match:\n        return {}\n    update_json = match.group(1)\n    update_json_clean = re.sub(r',\\s*([\\]\\}])', r'\\1', update_json)\n    return json.loads(update_json_clean)\n\ndef format_update_message(update_summary):\n    status_parts = []\n    for compose_file, updates in update_summary.items():\n        service = compose_file.replace('-compose.yaml', '')\n        if updates == [\"none\"]:\n            status_parts.append(f\"{service}: No updates\")\n        else:\n            status_parts.append(f\"{service}: Updated ({', '.join(updates)})\")\n    return \"; \".join(status_parts)\n\n# n8n passes items as a list of dicts; get the \"stdout\" field from the input\nstdout = _input.first().json.stdout\nupdate_summary = extract_update_summary(stdout)\nmessage = format_update_message(update_summary)\nreturn [{\"message\": message}]\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "18e00083-2c70-48ca-adec-d6883456cb3f",
+			"name": "Update Docker",
+			"type": "n8n-nodes-base.ssh",
+			"position": [624, 848],
+			"parameters": {
+				"cwd": "",
+				"command": "./update-all-docker-compose.sh"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "28fa6554-6062-4369-b08c-313da9c5da5d",
+			"name": "Update Msg",
+			"type": "n8n-nodes-base.telegram",
+			"position": [400, 848],
+			"parameters": {
+				"text": "=Running Update...",
+				"chatId": "123456789",
+				"additionalFields": {
+					"parse_mode": "HTML",
+					"appendAttribution": false
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "887c4a0e-37f5-4a35-8a33-bf7c202b01c1",
+			"name": "Update Msg1",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1136, 848],
+			"parameters": {
+				"text": "={{ $json.message }}",
+				"chatId": "123456789",
+				"additionalFields": {
+					"parse_mode": "HTML",
+					"appendAttribution": false
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "a0357748-6516-47e0-a626-7fab48afdf4e",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-400, -1008],
+			"parameters": {
+				"height": 384,
+				"content": "## Incoming Webhook\n\nuse a webhook from tools like Uptime Kuma"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "56fb8580-a18d-4660-9b57-eb9f54857562",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-400, -448],
+			"parameters": {
+				"width": 352,
+				"height": 304,
+				"content": "## User Interaction\n\nAllow users to triggers events directly from Telegram"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "aadc3881-5a4c-415c-a567-39350f07520e",
+			"name": "Extract the Service Name",
+			"type": "n8n-nodes-base.code",
+			"position": [400, -368],
+			"parameters": {
+				"language": "python",
+				"pythonCode": "def extract_service_name(message):\n    # Split by spaces\n    parts = message.split()\n    # Take the first part (service name)\n    if parts:\n        return parts[0]\n    else:\n        return ''\n\n# Example usage:\nincoming_message = _input.first().json.message.text\nservice_name = extract_service_name(incoming_message)\nreturn {\n    \"service_name\": service_name\n}"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "177a270a-8b0c-4dbe-9e01-9edfafaf4668",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [384, -496],
+			"parameters": {
+				"width": 1488,
+				"height": 320,
+				"content": "## Issue Analyzer\nAutomatically analyse the log file for a docker container and provide feedback to the user"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "adbdf635-c739-491b-8374-6c29ac00bc8a",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [368, -112],
+			"parameters": {
+				"width": 1488,
+				"height": 352,
+				"content": "## Docker Restart Service\nAutomatically restart a given docker container"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "49230022-6b62-4c3f-b498-6e90860f26da",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [368, 320],
+			"parameters": {
+				"width": 752,
+				"height": 352,
+				"content": "## Allow the user to get all current deployed docker container\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3ad0679c-b841-42c5-b85c-7f736b6de37c",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [368, 720],
+			"parameters": {
+				"width": 1232,
+				"height": 352,
+				"content": "## Automatically update all docker images on the server"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "79dcda25-eac3-4c2a-88b6-be597637ef5d",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [368, 1104],
+			"parameters": {
+				"width": 464,
+				"height": 944,
+				"content": "## Custom Script for your Docker server\n\n''bash\nProcessing hompage-compose.yaml\n  GNU nano 7.2                                                                update-all-docker-compose.sh\n#!/bin/bash\ndeclare -A UPDATED_CONTAINERS\nN8N_FILE=\"n8n-compose.yaml\"  # Adjust to your n8n compose filename\n\nfor file in *-compose.yaml; do\n  if [[ \"$file\" == \"$N8N_FILE\" ]]; then\n    echo \"Skipping $file (n8n instance)\"\n    continue\n  fi\n\n  echo \"Processing $file\"\n  UPDATED_IMAGES=()\n\n  OUTPUT=$(docker compose -f \"$file\" pull 2>&1)\n  echo \"$OUTPUT\"\n\n  while IFS= read -r line; do\n    if [[ $line =~ \"Downloaded newer image\" ]]; then\n      IMAGE=$(echo \"$line\" | awk '{print $2}')\n      UPDATED_IMAGES+=(\"$IMAGE: updated\")\n    elif [[ $line =~ \"Image is up to date\" ]]; then\n      IMAGE=$(echo \"$line\" | awk '{print $2}')\n      UPDATED_IMAGES+=(\"$IMAGE: already up-to-date\")\n    fi\n  done <<< \"$OUTPUT\"\n\n  docker compose -f \"$file\" up -d\n\n  UPDATED_CONTAINERS[\"$file\"]=${UPDATED_IMAGES[@]:-none}\ndone\n\necho \"Update Summary:\"\necho \"{\"\nfor file in \"${!UPDATED_CONTAINERS[@]}\"; do\n  echo \"  \\\"$file\\\": [\"\n  for status in ${UPDATED_CONTAINERS[$file]}; do\n    echo \"    \\\"$status\\\",\"\n  done\n  echo \"  ],\"\ndone\necho \"}\"\n''"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Success restart",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Restart Failed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "get logs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge1": {
+			"main": [
+				[
+					{
+						"node": "Restart Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "docker ps",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Update Msg",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch1": {
+			"main": [
+				[
+					{
+						"node": "OK Message",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "ERROR Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Switch1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"get logs": {
+			"main": [
+				[
+					{
+						"node": "Status Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"docker ps": {
+			"main": [
+				[
+					{
+						"node": "Docker Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OK Message": {
+			"main": [[]]
+		},
+		"Update Msg": {
+			"main": [
+				[
+					{
+						"node": "Update Docker",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Status Update": {
+			"main": [
+				[
+					{
+						"node": "Message a model",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Docker": {
+			"main": [
+				[
+					{
+						"node": "Code in Python (Beta)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Message a model": {
+			"main": [
+				[
+					{
+						"node": "Log Analysis",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Restart Message": {
+			"main": [
+				[
+					{
+						"node": "restart container",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Extract the Service Name",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"restart container": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code in Python (Beta)": {
+			"main": [
+				[
+					{
+						"node": "Update Msg1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract the Service Name": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	}
+}

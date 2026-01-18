@@ -1,0 +1,568 @@
+{
+	"meta": {
+		"instanceId": "efb474b59b0341d7791932605bd9ff04a6c7ed9941fdd53dc4a2e4b99a6f9439",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "bd247a8c-fa46-4b86-ad4b-977b73c35d4e",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-540, 1340],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e97ac821-6da8-4bea-875c-a4ccdf0d53b2",
+			"name": "Tool: Inject Creativity1",
+			"type": "@n8n/n8n-nodes-langchain.toolThink",
+			"position": [-440, 1520],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "312c5a50-8c9b-4aa9-b3b4-9b682e757bc1",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [-300, 1320],
+			"parameters": {
+				"jsonSchemaExample": "{\n  \"column1\": [\n    \"2025-08-01\",\n    \"2025-08-02\",\n    \"2025-08-03\"\n  ],\n  \"column2\": [\n    \"Instagram\",\n    \"LinkedIn\",\n    \"Twitter\"\n  ],\n  \"column3\": [\n    \"Image Post\",\n    \"Blog Link\",\n    \"Video Snippet\"\n  ],\n  \"column4\": [\n    \"Workflow Automation\",\n    \"AI Agent Demo\",\n    \"Case Study\"\n  ],\n  \"column5\": [\n    \"Alice\",\n    \"Bob\",\n    \"Charlie\"\n  ]\n}\n"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "975b4e46-656d-4128-88c9-c8dc385e2fb8",
+			"name": "OpenAI Chat Model2",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [240, 1740],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "052b20f4-8724-41fe-b2c1-937ece4003ea",
+			"name": "Structured Output Parser1",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [420, 1760],
+			"parameters": {
+				"jsonSchemaExample": "{\n  \"columnnames\": [\n    \"first\",\n    \"second\",\n    \"third\"\n  ]\n}\n"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "a523d13f-653d-4a91-a672-b0bd5d558f27",
+			"name": "Run Workflow",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-1080, 1440],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "ae8bc30f-c16e-435c-a875-8c02287d4855",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1160, 540],
+			"parameters": {
+				"color": 5,
+				"width": 420,
+				"height": 1340,
+				"content": "### 🥇 Step 1: Setup OpenAI API Credentials\n\n1. Go to [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys)\n2. Click **“Create new secret key”**\n3. Copy your API key\n4. In n8n:\n   - Go to **Credentials**\n   - Click **“New Credential”**\n   - Select `OpenAI API`\n   - Paste your API key\n   - Name it something like `OpenAI account`\n\n➡️ You will use this credential in:\n- `OpenAI Chat Model1`\n- `OpenAI Chat Model2`\n\n---\n\n### 🥈 Step 2: Add a Manual Trigger Node\n\n- Type: `Manual Trigger`\n- Purpose: Starts the workflow manually for testing\n- No configuration required\n\n---\n\n### 🥉 Step 3: Set Your Topic (Set Node)\n\n- Node: `Set Topic to Search`\n- Type: `Set`\n- Add a new string field:\n  - Name: `Topic`\n  - Value: e.g., `n8n use cases`\n\nThis is the topic the workflow will generate data for.\n\n---"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "42d4c54f-bb88-4c0d-a31c-0beb1814b0b7",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-700, 540],
+			"parameters": {
+				"color": 6,
+				"width": 780,
+				"height": 1340,
+				"content": "\n### ✨ Step 4: Generate Structured Data\n- **LangChain Agent** node `Generate Random Data`\n- Connect to **OpenAI Chat Model1** and **Tool: Inject Creativity1**  \n- System prompt: instruct AI to output 5 columns of realistic values in JSON  \n\n### 🔧 Step 5: Parse AI Output\n- **Structured Output Parser** to validate JSON  \n\n### 🔄 Step 6: Flatten Data\n- **Code** node `Outpt all Data to One Field`  \n- Joins all values into a comma-separated string for column naming"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4c48281e-5c67-4b71-8b20-23ff69d50582",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [100, 540],
+			"parameters": {
+				"color": 3,
+				"width": 640,
+				"height": 1340,
+				"content": "### 🧠 Step 7: Generate Column Names\n- **LangChain Agent** `Generate Column Names`  \n- Connect to **OpenAI Chat Model2**  \n- Prompt: infer 5 column names from the string  \n\n### 🔢 Step 8: Pivot Names Row\n- **Code** node `Pivot Column Names` transforms array into `{ column1: name1, … }`\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6c6774de-9bb1-4c19-b121-fc6ccb2dcdc5",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [760, 540],
+			"parameters": {
+				"color": 2,
+				"width": 1460,
+				"height": 1340,
+				"content": "### 🪓 Step 9: Split Columns\n- 5 `SplitOut` nodes to break each array back into rows per column\n\n### 🔗 Step 10: Merge Rows\n- **Merge** node `Merge Columns together` using `combineByPosition`  \n\n### 🏷️ Step 11: Rename Columns\n- **Set** node `Rename Columns` assigns the AI-generated names to each column\n\n### 🔗 Step 12: Final Output\n- **Merge** `Append Column Names` combines data and header row"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "014107b1-ff36-438f-8c88-8196ad4f48f7",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1160, 340],
+			"parameters": {
+				"width": 3380,
+				"content": "## 📬 Need Help or Want to Customize This?\n📧 [robert@ynteractive.com](mailto:robert@ynteractive.com)  \n🔗 [LinkedIn](https://www.linkedin.com/in/robert-breen-29429625/)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cc11756c-f453-4cce-b148-49879bced88b",
+			"name": "Set Topic to Search",
+			"type": "n8n-nodes-base.set",
+			"position": [-920, 1620],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "23fed7d1-74bb-487a-bd39-59abb02b9373",
+							"name": "Topic",
+							"type": "string",
+							"value": "n8n use cases"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "7b0ab29e-8d4e-4576-8933-101142364284",
+			"name": "Generate Random Data",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-520, 1020],
+			"parameters": {
+				"text": "=idea: {{ $json.Topic }}",
+				"options": {
+					"systemMessage": "You are a tool that generates structured sample data in JSON format.\n\nWhen given a topic or a description of the type of data the user needs (e.g., \"marketing campaigns\", \"customer feedback\", \"blog ideas\"), do the following:\n\n1. Identify 5 relevant columns that would make up a realistic dataset for the topic.\n2. Generate 3–5 realistic values for each column.\n3. Output the result in a JSON object using the following structure:\n   - Each key should be labeled as \"columnX (Column Name)\" where X is the column number from 1 to 5.\n   - Each value should be a list of 3–5 strings representing data for that column.\n\nDo not explain your output. Do not include anything outside the JSON.\n\nOutput 5 columns of data like this. \n\nExample format:\n{\n  \"column1 (Date)\": [\n    \"2025-08-01\",\n    \"2025-08-02\",\n    \"2025-08-03\"\n  ],\n  \"column2 (Platform)\": [\n    \"Instagram\",\n    \"LinkedIn\",\n    \"Twitter\"\n  ],\n  \"column3 (Content Type)\": [\n    \"Image Post\",\n    \"Blog Link\",\n    \"Video Snippet\"\n  ],\n  \"column4 (Topic)\": [\n    \"Workflow Automation\",\n    \"AI Agent Demo\",\n    \"Case Study\"\n  ],\n  \"column5 (Owner)\": [\n    \"Alice\",\n    \"Bob\",\n    \"Charlie\"\n  ]\n}\n\n\nMake sure the data is contextually relevant to the user's input.\n"
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "843589b2-36cd-4c3e-b710-c683de9ebdd8",
+			"name": "Outpt all Data to One Field",
+			"type": "n8n-nodes-base.code",
+			"position": [-120, 1260],
+			"parameters": {
+				"jsCode": "// Get the object from input\nconst data = $input.first().json.output;\n\n// Flatten all column values into one array\nconst allValues = Object.values(data).flat();\n\n// Join all values with commas\nconst result = allValues.join(', ');\n\n// Return the final text as a single field\nreturn [\n  {\n    json: {\n      text: result\n    }\n  }\n];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "87405d02-b882-403e-bf5a-9d125b1536b8",
+			"name": "Generate Column Names",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [260, 1480],
+			"parameters": {
+				"text": "=output: {{ $json.text }}",
+				"options": {
+					"systemMessage": "Take the input and output relevent column names for the data. there are 5 columns. give each of them a name that makes sense for the values in the column. "
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "419ce3c1-1fe5-4d8a-8330-e8afca8c94f5",
+			"name": "Pivot Column Names",
+			"type": "n8n-nodes-base.code",
+			"position": [600, 1660],
+			"parameters": {
+				"jsCode": "const columnNames = $input.first().json.output.columnnames;\n\n// Build a single row with column1, column2, etc. as keys and names as values\nconst row = {};\n\ncolumnNames.forEach((name, index) => {\n  row[`column${index + 1}`] = name;\n});\n\nreturn [\n  { json: row }\n];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "1b3f150e-60a5-466b-9874-c2f98f411eaa",
+			"name": "Split Column 1",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [1100, 1020],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "output.column1"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dfee12fe-f157-48e0-8b6c-71a1bc0eeac4",
+			"name": "Split Column 2",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [920, 1120],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "output.column2"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "effd383c-a799-4500-be47-1052549e8cf9",
+			"name": "Split Column 3",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [1120, 1240],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "output.column3"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e346941b-8b34-467c-ae42-02dd0c6f45e8",
+			"name": "Split Column 4",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [880, 1320],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "output.column4"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6a7384d7-f615-4ed0-8f20-8a6a010f4984",
+			"name": "Split Column 5",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [1100, 1480],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "output.column5"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "daeede53-e473-47bd-836e-9bbabba95697",
+			"name": "Merge Columns together",
+			"type": "n8n-nodes-base.merge",
+			"position": [1380, 1260],
+			"parameters": {
+				"mode": "combine",
+				"options": {},
+				"combineBy": "combineByPosition",
+				"numberInputs": 5
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "b703dffd-ee3e-41da-b883-34e806fb56d9",
+			"name": "Rename Columns",
+			"type": "n8n-nodes-base.set",
+			"position": [1620, 1300],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "3b6cd7c0-b2ab-48bd-9d3d-c6f577d43a32",
+							"name": "column1",
+							"type": "string",
+							"value": "={{ $('Split Column 1').item.json['output.column1'] }}"
+						},
+						{
+							"id": "e19027d6-5ebd-43ed-922c-bb5183844875",
+							"name": "column2",
+							"type": "string",
+							"value": "={{ $('Split Column 2').item.json['output.column2'] }}"
+						},
+						{
+							"id": "81339019-9a39-4e7c-a3a1-53e7370ce7c1",
+							"name": "column3",
+							"type": "string",
+							"value": "={{ $('Split Column 3').item.json['output.column3'] }}"
+						},
+						{
+							"id": "7cfb8fa4-e25c-49e6-96dc-66da82f95882",
+							"name": "column4",
+							"type": "string",
+							"value": "={{ $('Split Column 4').item.json['output.column4'] }}"
+						},
+						{
+							"id": "3301a0dc-ff0c-42a1-8df0-e3dcafed4001",
+							"name": "column5",
+							"type": "string",
+							"value": "={{ $('Split Column 5').item.json['output.column5'] }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "587fbb98-a687-43e6-89dc-dd71d98b5211",
+			"name": "Append Column Names",
+			"type": "n8n-nodes-base.merge",
+			"position": [1840, 1680],
+			"parameters": {},
+			"typeVersion": 3.2
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Run Workflow": {
+			"main": [
+				[
+					{
+						"node": "Set Topic to Search",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Rename Columns": {
+			"main": [
+				[
+					{
+						"node": "Append Column Names",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Split Column 1": {
+			"main": [
+				[
+					{
+						"node": "Merge Columns together",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Column 2": {
+			"main": [
+				[
+					{
+						"node": "Merge Columns together",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Split Column 3": {
+			"main": [
+				[
+					{
+						"node": "Merge Columns together",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Split Column 4": {
+			"main": [
+				[
+					{
+						"node": "Merge Columns together",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"Split Column 5": {
+			"main": [
+				[
+					{
+						"node": "Merge Columns together",
+						"type": "main",
+						"index": 4
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Generate Random Data",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model2": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Generate Column Names",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pivot Column Names": {
+			"main": [
+				[
+					{
+						"node": "Append Column Names",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Append Column Names": {
+			"main": [[]]
+		},
+		"Set Topic to Search": {
+			"main": [
+				[
+					{
+						"node": "Generate Random Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Random Data": {
+			"main": [
+				[
+					{
+						"node": "Split Column 1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Split Column 2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Split Column 3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Split Column 4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Split Column 5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Outpt all Data to One Field",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Column Names": {
+			"main": [
+				[
+					{
+						"node": "Pivot Column Names",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge Columns together": {
+			"main": [
+				[
+					{
+						"node": "Rename Columns",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Generate Random Data",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tool: Inject Creativity1": {
+			"ai_tool": [
+				[
+					{
+						"node": "Generate Random Data",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser1": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Generate Column Names",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Outpt all Data to One Field": {
+			"main": [
+				[
+					{
+						"node": "Generate Column Names",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

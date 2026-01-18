@@ -1,0 +1,406 @@
+{
+	"id": "51mGQheuAtcpMIni",
+	"meta": {
+		"instanceId": "bc8ca75c203589705ae2e446cad7181d6f2a7cc1766f958ef9f34810e53b8cb2",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "TikTok Influencer Scraper (URL Input) via Bright Data + n8n & Sheets",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "cecd9054-e1b1-4653-8523-667abb4f34de",
+			"name": "Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-1160, -585],
+			"parameters": {
+				"columns": {
+					"value": {},
+					"schema": [
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "message",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "message",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 1469389487,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1OeqtCFm4Wek9DI5YFOWQXTpQJS-SJxC10iAPKEKkmiY/edit#gid=1469389487",
+					"cachedResultName": "TikTok profile by url"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1OeqtCFm4Wek9DI5YFOWQXTpQJS-SJxC10iAPKEKkmiY",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1OeqtCFm4Wek9DI5YFOWQXTpQJS-SJxC10iAPKEKkmiY/edit?usp=drivesdk",
+					"cachedResultName": "TikTok Data"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "fff3bf36-657c-41ce-a8f8-a616fa37e74e",
+			"name": "Search by Profile URL",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-2480, -585],
+			"webhookId": "cb6792a6-1554-48b0-9884-9c8d4dcda539",
+			"parameters": {
+				"options": {},
+				"formTitle": "TikTok Scraper",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Search by Profile"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "ee105b60-53ca-4dc5-9e2c-9d585f517014",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2520, -660],
+			"parameters": {
+				"color": 2,
+				"width": 180,
+				"height": 240,
+				"content": "📝 Trigger – Start on TikTok profile form submit\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a119bb40-0f68-4dbb-ad3f-6bc9011480d3",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2320, -660],
+			"parameters": {
+				"color": 3,
+				"width": 200,
+				"height": 260,
+				"content": "📤 Trigger API – Send TikTok profile to scrape"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7e0d239b-6a30-4286-9aeb-220565556341",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2100, -660],
+			"parameters": {
+				"color": 4,
+				"width": 200,
+				"height": 260,
+				"content": "⏳ Check Status – Is profile data ready?\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "63fab444-eed4-4501-a46c-3c5f6889cfdd",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1860, -660],
+			"parameters": {
+				"color": 5,
+				"width": 200,
+				"height": 240,
+				"content": "⏱️ Wait – Pause before retrying Bright Data\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "841414e5-8258-4c07-83ec-ccb489061019",
+			"name": "Sends profile URLs to Bright Data to trigger scraping",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-2280, -580],
+			"parameters": {
+				"url": "https://api.brightdata.com/datasets/v3/trigger",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"input\": [\n    {\n      \"search_url\": \"https://www.tiktok.com/explore?lang=en\",\n      \"country\": \"US\"\n    },\n    {\n      \"search_url\": \"https://www.tiktok.com/search?lang=en&q=music&t=1685628060008\",\n      \"country\": \"FR\"\n    }\n  ],\n  \"custom_output_fields\": [\n    \"account_id\",\n    \"nickname\",\n    \"biography\",\n    \"like_engagement_rate\",\n    \"bio_link\",\n    \"is_verified\",\n    \"followers\",\n    \"following\",\n    \"likes\",\n    \"videos_count\",\n    \"id\",\n    \"url\",\n    \"profile_pic_url\",\n    \"profile_pic_url_hd\",\n    \"relation\",\n    \"open_favorite\",\n    \"top_videos\",\n    \"comment_engagement_rate\",\n    \"is_under_age_18\",\n    \"region\"\n  ]\n}",
+				"sendBody": true,
+				"sendQuery": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "dataset_id",
+							"value": "gd_l1villgoiiidt09ci"
+						},
+						{
+							"name": "include_errors",
+							"value": "true"
+						},
+						{
+							"name": "type",
+							"value": "discover_new"
+						},
+						{
+							"name": "discover_by",
+							"value": "search_url"
+						},
+						{
+							"name": "limit_per_input",
+							"value": "2"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "f1ee39f7-bd6d-4d05-bfa2-fffb66b5a025",
+			"name": "Checks scraping progress from Bright Data",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-2040, -585],
+			"parameters": {
+				"url": "=https://api.brightdata.com/datasets/v3/progress/{{ $json.snapshot_id }}",
+				"options": {},
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "2805c806-a09f-41c9-a434-395c48ab7ab3",
+			"name": "Waits 30 seconds before retrying snapshot check",
+			"type": "n8n-nodes-base.wait",
+			"position": [-1820, -580],
+			"webhookId": "10b45556-5e91-4387-abd0-f9078b220286",
+			"parameters": {
+				"amount": 30
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "45721340-9da7-4ff9-bf09-686ff1765a1b",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1640, -680],
+			"parameters": {
+				"color": 6,
+				"width": 200,
+				"height": 260,
+				"content": "✅ Is Ready? – Yes: proceed, No: retry\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6786e251-2416-4dc5-94d5-5d45d4eb57c0",
+			"name": "IF condition to check if Bright Data returned ready status",
+			"type": "n8n-nodes-base.if",
+			"position": [-1600, -585],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "or",
+					"conditions": [
+						{
+							"id": "35ed620d-b5d5-4e97-bcc5-52b283d85616",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.status }}",
+							"rightValue": "ready"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "764cc1d3-0d20-4199-8172-cfb028a474ff",
+			"name": "Gets TikTok influencer details from Bright Data using snapshot ID",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-1380, -585],
+			"parameters": {
+				"url": "=https://api.brightdata.com/datasets/v3/snapshot/{{ $json.snapshot_id }}",
+				"options": {},
+				"sendQuery": true,
+				"sendHeaders": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "format",
+							"value": "json"
+						}
+					]
+				},
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Authorization",
+							"value": "Bearer YOUR_TOKEN_HERE"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ce911e6e-1e73-4d8f-a247-60bfe7ddbd09",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1420, -680],
+			"parameters": {
+				"color": 7,
+				"width": 200,
+				"height": 260,
+				"content": "📥 Get Data – Extract scraped influencer info\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e724a597-7cf9-4b4c-b1d3-f279e2e8ac93",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1200, -680],
+			"parameters": {
+				"color": 2,
+				"width": 200,
+				"height": 260,
+				"content": "📄 Save to Sheet – Write data to Google Sheet\n\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "ff15a117-2c54-4463-a28d-06c41605b475",
+	"connections": {
+		"Google Sheets": {
+			"main": [[]]
+		},
+		"Search by Profile URL": {
+			"main": [
+				[
+					{
+						"node": "Sends profile URLs to Bright Data to trigger scraping",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Checks scraping progress from Bright Data": {
+			"main": [
+				[
+					{
+						"node": "Waits 30 seconds before retrying snapshot check",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Waits 30 seconds before retrying snapshot check": {
+			"main": [
+				[
+					{
+						"node": "IF condition to check if Bright Data returned ready status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sends profile URLs to Bright Data to trigger scraping": {
+			"main": [
+				[
+					{
+						"node": "Checks scraping progress from Bright Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF condition to check if Bright Data returned ready status": {
+			"main": [
+				[
+					{
+						"node": "Gets TikTok influencer details from Bright Data using snapshot ID",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Checks scraping progress from Bright Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Gets TikTok influencer details from Bright Data using snapshot ID": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

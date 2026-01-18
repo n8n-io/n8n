@@ -1,0 +1,896 @@
+{
+	"meta": {
+		"instanceId": "a88d54d0dc140647df8f628579b3d5aae0dedb13c983a1f5c11ee14f54f18774",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "7e429f94-db91-4528-9e82-b97377ceaf9f",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [800, 80],
+			"parameters": {
+				"color": 6,
+				"width": 980,
+				"height": 480,
+				"content": "## Generate a New Post Idea and All Materials"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "22549258-77e8-48f4-af3f-29454f18eab8",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1800, 80],
+			"parameters": {
+				"color": 6,
+				"width": 1140,
+				"height": 480,
+				"content": "## Generate an Image and Save"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ab409172-c356-4a62-a3f5-c89c0000cc14",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [1620, 380],
+			"parameters": {
+				"jsonSchemaExample": "{\n  \"about\": \"One-sentence summary of what the post is about\",\n  \"copy\": \"Full LinkedIn post in story format. Strong hook, clear pacing, valuable insight. Use spacing for readability.\",\n  \"image\": \"Renaissance-style visual metaphor of the idea. Simple, clear, symbolic.\"\n}"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "59379e0f-9cea-4d3d-8d16-a16c6f461bd4",
+			"name": "Anthropic Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"position": [1280, 380],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-3-7-sonnet-20250219",
+					"cachedResultName": "Claude 3.7 Sonnet"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"anthropicApi": {
+					"id": "credential-id",
+					"name": "anthropicApi Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "4d98425c-2fa4-454c-abfb-198470252b58",
+			"name": "Perplexity Research",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [1440, 400],
+			"parameters": {
+				"name": "web_search",
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "eALld0YaOZuUCU5q",
+					"cachedResultName": "Perplexity Research"
+				},
+				"description": "Call this tool to make a web search query using Perplexity AI. It will automatically look at multiple relevant websites and combine all the valuable information in one clean response.",
+				"workflowInputs": {
+					"value": {},
+					"schema": [
+						{
+							"id": "query",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "query",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["query"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "d322e98b-bc90-4e83-a57e-4132b789d099",
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"position": [2280, 260],
+			"parameters": {
+				"options": {},
+				"operation": "toBinary",
+				"sourceProperty": "data[0].b64_json",
+				"binaryPropertyName": "=data"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "603da07c-d6f5-4cfd-9550-e2ac4664e5fc",
+			"name": "Schedule",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [1000, 340],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"triggerAtHour": 5
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "7150ed77-389b-4640-b7fd-9254a2031dcb",
+			"name": "Join Ideas",
+			"type": "n8n-nodes-base.code",
+			"position": [1140, 180],
+			"parameters": {
+				"jsCode": "// Get all incoming items\nconst items = $input.all();\n\n// Extract the text field from each item\nconst texts = items.map(item => item.json.idea);\n\n// Concatenate them (adjust the separator as needed)\nconst concatenated = texts.join(\", \");\n\n// Return a single item with the concatenated text\nreturn [{ json: { mergedText: concatenated } }];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "10fd372f-c530-49be-9537-0e48a20babcd",
+			"name": "Pick One",
+			"type": "n8n-nodes-base.limit",
+			"position": [1240, 680],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b2e7772c-6fb6-4cb1-ad05-b83547de43ea",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [800, 580],
+			"parameters": {
+				"color": 4,
+				"width": 1340,
+				"height": 300,
+				"content": "## Auto Posting"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "71581593-926d-4d2f-bc6a-0398fe3fa9f3",
+			"name": "Image Style",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1860, 260],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "url",
+					"value": "=https://drive.google.com/file/d/1Bt2wh1a3IkWrf8VRIMJL4sRwiKDbWfhC/view?usp=sharing"
+				},
+				"options": {},
+				"operation": "download"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "4d21c685-03b5-4402-994a-0b5ff6ae16c7",
+			"name": "Get Past Ideas",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [960, 180],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A/edit#gid=0",
+					"cachedResultName": "LinkedIn Posts"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A/edit?usp=drivesdk",
+					"cachedResultName": "AI Content Database"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "992241e7-7e0b-4d5a-95b3-b3177a28de5c",
+			"name": "Save Image",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [2500, 260],
+			"parameters": {
+				"name": "={{ $('LinkedIn Creator Agent').item.json.output.name }}",
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive",
+					"cachedResultUrl": "https://drive.google.com/drive/my-drive",
+					"cachedResultName": "My Drive"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1e1USeEsOByu-n5cR5o1IeyzJFfkf8O4i",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/1e1USeEsOByu-n5cR5o1IeyzJFfkf8O4i",
+					"cachedResultName": "LinkedIn AI Posts"
+				},
+				"inputDataFieldName": "=data"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "db22923e-7126-4b7e-9767-db14441cf2c4",
+			"name": "Save Post",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2700, 260],
+			"parameters": {
+				"columns": {
+					"value": {
+						"text": "={{ $('LinkedIn Creator Agent').item.json.output.copy }}",
+						"about": "={{ $('LinkedIn Creator Agent').item.json.output.about }}",
+						"image": "={{ $json.webViewLink.replace(/usp=[^&]+/, 'usp=sharing') }}",
+						"status": "review"
+					},
+					"schema": [
+						{
+							"id": "about",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "about",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "text",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "text",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "image",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A/edit#gid=0",
+					"cachedResultName": "LinkedIn Posts"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A/edit?usp=drivesdk",
+					"cachedResultName": "AI Content Database"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "0b4150f1-e5cb-4c96-bbcd-c7d53b77113f",
+			"name": "Schedule 2",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [880, 680],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"daysInterval": 3,
+							"triggerAtHour": 14
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "98814b85-63ec-4f8e-9307-d77775f863ea",
+			"name": "Get Ready Posts",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1060, 680],
+			"parameters": {
+				"options": {},
+				"filtersUI": {
+					"values": [
+						{
+							"lookupValue": "ready",
+							"lookupColumn": "status"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A/edit#gid=0",
+					"cachedResultName": "LinkedIn Posts"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A/edit?usp=drivesdk",
+					"cachedResultName": "AI Content Database"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "9fc8674b-3b89-4079-abf3-11b9602fd118",
+			"name": "Download Image",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1440, 680],
+			"parameters": {
+				"fileId": {
+					"__rl": true,
+					"mode": "url",
+					"value": "={{ $json.image }}"
+				},
+				"options": {},
+				"operation": "download"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "e222b823-c2bb-4012-a99d-942fee2bead9",
+			"name": "Publish Post",
+			"type": "n8n-nodes-base.linkedIn",
+			"position": [1640, 680],
+			"parameters": {
+				"text": "={{ $json.text }}",
+				"person": "rBxbEv1ziJ",
+				"additionalFields": {
+					"visibility": "PUBLIC"
+				},
+				"shareMediaCategory": "IMAGE"
+			},
+			"credentials": {
+				"linkedInOAuth2Api": {
+					"id": "credential-id",
+					"name": "linkedInOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d253e5bd-6994-483a-a2fb-8245ce135e55",
+			"name": "Update Status",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1840, 680],
+			"parameters": {
+				"columns": {
+					"value": {
+						"about": "={{ $('Pick One').item.json.about }}",
+						"status": "posted"
+					},
+					"schema": [
+						{
+							"id": "about",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "about",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "text",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "text",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "image",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "image",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "status",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["about"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A/edit#gid=0",
+					"cachedResultName": "LinkedIn Posts"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S3vi0R9cjbB1A7ZXFz7jCwrBbBjn-lqEVP78QsfMS_A/edit?usp=drivesdk",
+					"cachedResultName": "AI Content Database"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "d863c4df-9fbe-4b3a-87dc-dd4cbcb2e386",
+			"name": "OpenAI Image1",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2080, 260],
+			"parameters": {
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "model",
+							"value": "gpt-image-1"
+						},
+						{
+							"name": "image",
+							"parameterType": "formBinaryData",
+							"inputDataFieldName": "data"
+						},
+						{
+							"name": "prompt",
+							"value": "=You're a professional artist/designer.\n\nMake a new image in the style very very similar to the reference.\n\nCopy the art style, theme, painting look, etc.\n\nMake it vertical 3x4.\n\nIt will be an image for a LinkedIn post.\n\nHere is the description of the new image:\n{{ $('LinkedIn Creator Agent').item.json.output.image }}"
+						}
+					]
+				},
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "c219bf1f-fba2-471c-882e-742ac73fb27a",
+			"name": "LinkedIn Creator Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1420, 180],
+			"parameters": {
+				"text": "=Generate my next LinkedIn post.\n\nReturn only:\n\nabout (1-sentence summary)\n\ncopy (LinkedIn post content)\n\nimage (simple description for AI image generation)\n\nBegin:\n",
+				"options": {
+					"systemMessage": "=ROLE:\nYou are a world-class content strategist for Abdul, an agency owner who helps B2B businesses scale through smart AI automation.\n\nOBJECTIVE:\nYour mission is to write high-performing LinkedIn posts that:\n\n-Build Abdul’s authority and personal brand\n-Spark interest in his services\n-Deliver real value to startup founders, marketers, and B2B operators\n-Subtly showcase how automation is the smart growth edge of today\n\nABOUT BUILTBYABDUL:\nAbdul is the founder of BuiltByAbdul, an AI automation agency focused on helping businesses scale without burnout.\n\nHe builds & sells:\n-AI-powered personalized lead generation systems\n-Automated ClickUp CRMs and project management workflows\n-AI Content agents that repurpose and schedule high-volume content\n-Client onboarding automations (proposals, forms, contracts, etc.)\n-Other AI workflows that save founders dozens of hours per month\n\nYour content should feel valuable and entertaining—but also act like a Trojan horse for demand. Make readers go: “Damn, I should be using this.”\n\n\nAudience:\nStartup founders, marketing agency owners, B2B consultants, fractional CMOs, and solopreneurs trying to scale smarter.\n\nTone:\nSharp, clear, valuable. Feels like Hormozi meets Naval—wise, practical, and a little bold.\n\nThere are 2 CONTENT BUCKETS: \n1. Timeless Principles (Story Format)\nShare a story-driven post (not a quote dump or tweet-style list) based on a timeless principle from greats like Hormozi, Ogilvy, Naval, Munger, Housel, or Paul Graham\n• Use real examples, mini-narratives, or metaphors to make the lesson hit harder\n• Insight should relate to business, sales, leverage, brand, or growth\n\n2. Real-World AI/Automation Use Case\nTeach how smart businesses are saving time/money with automation\nExamples: AI cold outreach, ClickUp CRM builds, automated onboarding, content repurposing, proposal generation\nEmphasize time saved, hours unlocked, revenue gained\n\nMake the post:\n-Scroll-stopping from the first line\n-Easy to consume with line spacing\n-Tied to growth, marketing, or automation\n-Subtly highlight Abdul’s expertise through storytelling or lesson"
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"retryOnFail": true,
+			"typeVersion": 1.7
+		},
+		{
+			"id": "ba43756f-86e1-4e6f-99cb-7c128aa02bcc",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [120, 80],
+			"parameters": {
+				"width": 660,
+				"height": 1180,
+				"content": "# Create and auto-post branded LinkedIn content with AI and Perplexity\n\n## Overview \nAutomate your entire LinkedIn content machine — from research and image generation to scheduling and posting — with this AI-powered workflow.\n\nThis workflow pulls in past content ideas, researches new ones using Perplexity, generates a new post (with image) using your brand's voice and style, saves the output to Google Sheets, and auto-posts twice a week to LinkedIn. It’s perfect for founders, creators, and marketers who want to stay consistent on LinkedIn without manually writing or designing every post.\n\n### Who’s it for\n- Solo founders or marketers building a LinkedIn presence  \n- Content creators growing their audience  \n- Agencies managing client content calendars  \n- Anyone who wants to post consistently without spending hours on content  \n\n### How it works\n- Pulls old ideas from a Google Sheet  \n- Schedules content creation using n8n’s cron node  \n- Uses Perplexity to research current topics and trends  \n- Feeds the data into an AI agent (like Claude or GPT) to generate post copy  \n- Creates a branded image using a reference style and OpenAI’s image model  \n- Saves post content + image URL into Google Sheets  \n- Twice a week, selects one ready post, downloads the image, and publishes it to LinkedIn\n\n### How to set up\n1. Add your Google Sheet ID and column names for posts  \n2. Connect your OpenAI (or Claude) and Perplexity API keys  \n3. Upload a brand-style reference image to Google Drive  \n4. Configure your LinkedIn account and connect the node  \n5. Adjust the cron schedule for both post creation and auto-posting  \n6. (Optional) Edit the AI prompt to match your personal voice or niche  \n\n### Requirements\n- Google Drive & Sheets access  \n- OpenAI or Claude API key  \n- Perplexity API key  \n- LinkedIn credentials (via n8n’s LinkedIn integration)\n\n### How to customize\n- Change the prompt for the AI to fit your voice or audience  \n- Swap out Perplexity for another research method  \n- Adjust how often you want posts scheduled or published  \n- Swap LinkedIn for Twitter, Slack, or another platform  \n- Add Notion or Airtable as your CMS backend\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "be022618-daa6-4418-ad82-1e8bc75994bb",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [820, 940],
+			"parameters": {
+				"color": 5,
+				"width": 440,
+				"height": 240,
+				"content": "## Hey, I'm Abdul 👋\n### I build growth systems for consultants & agencies. If you want to work together or need help automating your business, check out my website: \n### **https://www.builtbyabdul.com/**\n### Or email me at **abdul@buildabdul.com**\n### Have a lovely day ;)`"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {
+		"Save Image": [
+			{
+				"id": "1jO0zil_Xd_6YhIvierAKOdPxVEtsC8ub",
+				"kind": "drive#file",
+				"name": "file.png",
+				"size": "2797218",
+				"owners": [
+					{
+						"me": true,
+						"kind": "drive#user",
+						"photoLink": "https://lh3.googleusercontent.com/a/ACg8ocJtoBu7dotVvAIUrpnyLWQ9o5BmRC-Qc95bEwAQ0ZAYRZIFX14=s64",
+						"displayName": "Abdul",
+						"emailAddress": "builtbyabdul@gmail.com",
+						"permissionId": "14381026284177692350"
+					}
+				],
+				"shared": false,
+				"spaces": ["drive"],
+				"parents": ["1e1USeEsOByu-n5cR5o1IeyzJFfkf8O4i"],
+				"starred": false,
+				"trashed": false,
+				"version": "2",
+				"iconLink": "https://drive-thirdparty.googleusercontent.com/16/type/image/png",
+				"mimeType": "image/png",
+				"ownedByMe": true,
+				"viewedByMe": false,
+				"createdTime": "2025-06-30T18:47:40.356Z",
+				"md5Checksum": "11bfaac653eb97d1485255e0e2bf3bbc",
+				"permissions": [
+					{
+						"id": "14381026284177692350",
+						"kind": "drive#permission",
+						"role": "owner",
+						"type": "user",
+						"deleted": false,
+						"displayName": "builtbyabdul",
+						"emailAddress": "builtbyabdul@gmail.com",
+						"pendingOwner": false
+					}
+				],
+				"webViewLink": "https://drive.google.com/file/d/1jO0zil_Xd_6YhIvierAKOdPxVEtsC8ub/view?usp=drivesdk",
+				"capabilities": {
+					"canCopy": true,
+					"canEdit": true,
+					"canShare": true,
+					"canTrash": true,
+					"canDelete": true,
+					"canRename": true,
+					"canComment": true,
+					"canUntrash": true,
+					"canDownload": true,
+					"canReadLabels": false,
+					"canAddChildren": false,
+					"canListChildren": false,
+					"canModifyLabels": false,
+					"canModifyContent": true,
+					"canReadRevisions": true,
+					"canRemoveChildren": false,
+					"canAcceptOwnership": false,
+					"canAddMyDriveParent": false,
+					"canMoveItemOutOfDrive": true,
+					"canMoveItemWithinDrive": true,
+					"canRemoveMyDriveParent": true,
+					"canMoveItemIntoTeamDrive": true,
+					"canMoveChildrenWithinDrive": false,
+					"canModifyContentRestriction": true,
+					"canRemoveContentRestriction": false,
+					"canEnableInheritedPermissions": true,
+					"canChangeSecurityUpdateEnabled": false,
+					"canChangeViewersCanCopyContent": true,
+					"canDisableInheritedPermissions": false,
+					"canModifyOwnerContentRestriction": true,
+					"canModifyEditorContentRestriction": true,
+					"canChangeCopyRequiresWriterPermission": true
+				},
+				"hasThumbnail": true,
+				"modifiedByMe": true,
+				"modifiedTime": "2025-06-30T18:47:41.798Z",
+				"sha1Checksum": "1dcbd3de5e81144f6dfbad9686d6fcc53b46ac6e",
+				"fileExtension": "png",
+				"permissionIds": ["14381026284177692350"],
+				"thumbnailLink": "https://lh3.googleusercontent.com/drive-storage/AJQWtBPtTGei7w7n00L-0a4N2ZNRhpG5cPLalPTfnPxEiQR_VlKl-xho4Kn0oVBtH5XQadIBpoDCZK8aqjohDJW2ikcoZMHWoNTUcrZuxd4J2l8SwYI=s220",
+				"headRevisionId": "0Bybd6kkOpTCuVnVrNDBWLzBlM3NKNmh6enkxVER6aWFrU2wwPQ",
+				"quotaBytesUsed": "2797218",
+				"sha256Checksum": "633a6397617da50f4017a081d0a428b8c74e0c74f4eaf026c0e26b7ef780e455",
+				"webContentLink": "https://drive.google.com/uc?id=1jO0zil_Xd_6YhIvierAKOdPxVEtsC8ub&export=download",
+				"isAppAuthorized": true,
+				"writersCanShare": true,
+				"modifiedByMeTime": "2025-06-30T18:47:41.798Z",
+				"originalFilename": "Untitled",
+				"thumbnailVersion": "2",
+				"explicitlyTrashed": false,
+				"fullFileExtension": "png",
+				"lastModifyingUser": {
+					"me": true,
+					"kind": "drive#user",
+					"photoLink": "https://lh3.googleusercontent.com/a/ACg8ocJtoBu7dotVvAIUrpnyLWQ9o5BmRC-Qc95bEwAQ0ZAYRZIFX14=s64",
+					"displayName": "Abdul",
+					"emailAddress": "builtbyabdul@gmail.com",
+					"permissionId": "14381026284177692350"
+				},
+				"linkShareMetadata": {
+					"securityUpdateEnabled": true,
+					"securityUpdateEligible": false
+				},
+				"imageMediaMetadata": {
+					"width": 1024,
+					"height": 1536,
+					"rotation": 0
+				},
+				"viewersCanCopyContent": true,
+				"copyRequiresWriterPermission": false,
+				"inheritedPermissionsDisabled": false
+			}
+		],
+		"Convert to File": [{}],
+		"LinkedIn Creator Agent": [
+			{
+				"output": {
+					"copy": "I was working with a founder last week who was spending 3 hours every day on client communication and follow-ups.\n\n\"I don't have time for automation,\" he told me. \"I'm drowning in operational tasks.\"\n\nThis is like saying you're too thirsty to find water.\n\nHere's what we did instead:\n\n1) Mapped his entire client communication flow\n2) Built an AI responder for common questions\n3) Created automated follow-up sequences\n4) Set up a ClickUp dashboard that tracked it all\n\nTotal setup time: 7 hours\n\nResults after 30 days:\n• Client communication down from 3 hours to 40 minutes daily\n• 13 hours per week reclaimed\n• 52+ hours per month back in his calendar\n• First vacation in 2 years scheduled\n\nThe math is simple but profound:\n\nA one-time 7-hour investment → 624+ hours saved per year\n\nThat's a 8,914% ROI on time.\n\nThis is why Charlie Munger said: \"The first rule of compounding is to never interrupt it unnecessarily.\"\n\nThe same applies to your time and systems.\n\nMost founders focus on optimizing the wrong part of their business. They try to:\n\n• Work faster instead of building systems\n• Hire more instead of automating first\n• Sacrifice sleep instead of eliminating waste\n\nThe highest leverage activity isn't doing more work—it's building systems that multiply your output while reducing your input.\n\nWhat's one task you're doing daily that shouldn't require your time at all?",
+					"about": "A story-driven post about the compounding value of automating the right tasks in business, highlighting how small time savings accumulate into massive growth opportunities.",
+					"image": "A business owner sitting relaxed with coffee while robotic arms handle multiple tasks in the background, with a large clock showing time being saved"
+				}
+			}
+		]
+	},
+	"connections": {
+		"Pick One": {
+			"main": [
+				[
+					{
+						"node": "Download Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule": {
+			"main": [
+				[
+					{
+						"node": "LinkedIn Creator Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Join Ideas": {
+			"main": [[]]
+		},
+		"Save Image": {
+			"main": [
+				[
+					{
+						"node": "Save Post",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule 2": {
+			"main": [
+				[
+					{
+						"node": "Get Ready Posts",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Image Style": {
+			"main": [
+				[
+					{
+						"node": "OpenAI Image1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Publish Post": {
+			"main": [
+				[
+					{
+						"node": "Update Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Image1": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Image": {
+			"main": [
+				[
+					{
+						"node": "Publish Post",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Past Ideas": {
+			"main": [
+				[
+					{
+						"node": "Join Ideas",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "Save Image",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Ready Posts": {
+			"main": [
+				[
+					{
+						"node": "Pick One",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Perplexity Research": {
+			"ai_tool": [
+				[
+					{
+						"node": "LinkedIn Creator Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Anthropic Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "LinkedIn Creator Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LinkedIn Creator Agent": {
+			"main": [
+				[
+					{
+						"node": "Image Style",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "LinkedIn Creator Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

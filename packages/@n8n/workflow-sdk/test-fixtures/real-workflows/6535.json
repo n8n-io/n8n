@@ -1,0 +1,949 @@
+{
+	"meta": {
+		"instanceId": "a88d54d0dc140647df8f628579b3d5aae0dedb13c983a1f5c11ee14f54f18774",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "3bd60fa4-f156-4db0-88f7-d01ba5bf3b42",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [280, 0],
+			"parameters": {
+				"color": 6,
+				"width": 1520,
+				"height": 360,
+				"content": "# Research Prospect\n- LinkedIn \n- Perplexity Web Research"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b47bf548-d72a-4a54-8cee-12befb434073",
+			"name": "Citations",
+			"type": "n8n-nodes-base.code",
+			"position": [1300, 140],
+			"parameters": {
+				"jsCode": "// Retrieve the JSON from the previous node\nconst input = items[0].json;\n\n// Extract the citations array; default to an empty array if not present\nconst citations = input.citations || [];\n\n// Build an HTML unordered list for the citations\nlet citationsHTML = '<ul>';\nif (Array.isArray(citations)) {\n  citations.forEach(citation => {\n    citationsHTML += `<li><a href=\"${citation}\" target=\"_blank\">${citation}</a></li>`;\n  });\n}\ncitationsHTML += '</ul>';\n\n// Return a new JSON object containing the generated HTML snippet\nreturn [{ json: { citationsHTML } }];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "0f3062ab-3343-46d1-9292-94b1a12be928",
+			"name": "Person + Company Profile",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [400, 560],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "o1-mini",
+					"cachedResultName": "O1-MINI"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=You are part of the business development team at Built by Abdul which is an AI Automation Agency.\n\nWhen a new leads book a consultation with Built by Abdul, your team researches the leads and provides the research + extracted insights to the consultants so they can read it prior to the consult. \n\nYour job is to create the following sections from the research:\n\n- Personal Profile: The personal profile is a one paragraph summary of the person (lead) extracted from researching their LinkedIn profile.\n- Interests: In this section you must identify a few of the leads interests from their most recent LinkedIn posts + their LinkedIn profile. \n- Unique Facts: In this section you must extract at least 2 unique facts about the lead that tells them you've really put time to research who they are. These facts should be things that are unique to the lead and out of the ordinary.\n- Company Profile: The company profile is a one paragraph summary of the company the person represents, extracted from researching their company LinkedIn profile and available information on the web. \n\nYour output must be in HTML, following this format: \n\nPerson Profile (Heading 2)\n[Details]\n\nCompany Profile (Heading 2)\n[Details]\n\nInterests (Heading 2)\n[List of interests in dot point format]\n\nUnique Facts (Heading 2)\n[List of unique facts in dot point format]\n\n\n- Don't wrap the output in ```html``` since the output will go into the middle of another HTML document. Just make sure its in HTML language.\n\nCreate this output for the following research: \n\nLinkedIn Profile About:\n{{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.about }}\n\nMost Recent LinkedIn Posts: \n{{ $('Scrape Profiles + Posts - Relevance AI').item.json.last_30_days_posts_transformed.toJsonString() }}\n\nWeb Research: \n{{ $('Perplexity').last().json.choices[0].message.content }}"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "e7385120-6881-4fc9-be56-6e072df58998",
+			"name": "Pain Points + Solutions",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [780, 560],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "o1-mini",
+					"cachedResultName": "O1-MINI"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=You are part of the business development team at Built by Abdul which is an AI Automation agency that provides the following services: \n\n-AI-powered personalized lead generation systems\n-Automated ClickUp CRMs and project management workflows\n-AI Content agents that repurpose and schedule high-volume content\n-Client onboarding automations (proposals, forms, contracts, etc.)\n-Other AI workflows that save founders dozens of hours per month\n\nBuilt by Abdul's consultants are the first point of contact for a new lead. So when a new lead is interested in their solutions, they book a free call with their consultants. The consultants are then responsible for exploring the highest ROI opportunities for automation.\n\nOnce a call is booked, your team does in depth research on the lead so that the consultants can read through it in preparation for the consultation. \n\nAs part of the business development team you are provided with the following research: \n\n- LinkedIn Profile: This is the result of scraping the leads LinkedIn profile. This will give you the leads bio, experiences, education and company description.\n- LinkedIn Posts: This gives you the leads LinkedIn posts over the past 30 days. \n- Company Google Search: This gives you the research found from searching the leads company on Google and their website. \n- Reviews: This gives you the most recent bad reviews the leads company received on TrustPilot.\n\n\nYour job is to analyse the research and extract following information: \n\n- Pain Points: By looking through the companies negative reviews and also considering their line of business and the leads position in the company, you must identify the biggest pain points the leads company could be facing. \n- Solutions to Pain Points: In this section you must come up with solutions Built by Abdul can offer to solve each of the pain points completely. \n- Highest ROI Opportunities: Considering the info you have about the lead and his company, you must come up with the 5 highest ROI opportunities that Built by Abdul can offer them. These automations have to be realisitic, yet extremely high ROI. Sort them in order of best opportunity at the top of the list.  \n\nThe insights you extract must be in HTML format as they will be going in the middle of a HTML document. \n\nPlease use the following output format: \n\nOpportunities (Heading 1)\n\nPain Points and Solutions: (Heading 2)\n[Table with 3 columns: \n1. Pain Point: Explains the pain point theyre facing. \n2. Evidence: Explains why we think this is the case. \n3. Solution: Explains the solution to the pain point by Kamexa.\nEach row is a new pain point.]\n\nOpportunities: (Heading 2)\n[5 Highest ROI automation opportunities for the leads company sorted with the best solution at the top. This must be in dotpoint format:\n- Opportunity#1 Name: Details\n- Opportunity#2 Name: Details\n...\n\n- Don't wrap the output in ```html``` since the output will go into the middle of another HTML document.\n\nSomeone just booked a call. Here's the research your team found. Create the output as per the above requirements: \n\nLinkedIn Profile Scraped Summary in HTML format: \n{{ $('Person + Company Profile').last().json.message.content }}\n\nWeb Research Results for Leads Company: \n{{ $('Perplexity').last().json.choices[0].message.content }} "
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "37a3ea79-018f-4af8-8502-67e671ee46a0",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [320, 420],
+			"parameters": {
+				"color": 6,
+				"width": 780,
+				"height": 360,
+				"content": "# Analysis\n- Summary \n- Pain Points + Solutions\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1b5aacf1-8b81-4d12-b276-88f2e8089110",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1140, 420],
+			"parameters": {
+				"color": 6,
+				"width": 300,
+				"height": 360,
+				"content": "# Create Report\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "246b8f2f-094a-4484-8448-c972400b6467",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1460, 420],
+			"parameters": {
+				"color": 5,
+				"width": 300,
+				"height": 360,
+				"content": "# Email Report\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9735bb92-74ab-4541-8557-99fe6e67fec5",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-580, 0],
+			"parameters": {
+				"color": 5,
+				"height": 360,
+				"content": "# New Call Booked \n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "27cbbf0f-d30f-4d15-82da-78321a9879ff",
+			"name": "Create HTML Report",
+			"type": "n8n-nodes-base.html",
+			"position": [1220, 560],
+			"parameters": {
+				"html": "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\">\n    <title>Consultant Research Report</title>\n    <style>\n      body {\n        font-family: Arial, sans-serif;\n        margin: 20px;\n        line-height: 1.6;\n        color: #333;\n      }\n      h1, h2, h3 {\n        color: #222;\n      }\n      .section {\n        margin-bottom: 40px;\n      }\n      .profile-details p {\n        margin: 5px 0;\n      }\n      table {\n        width: 100%;\n        border-collapse: collapse;\n        margin-top: 10px;\n      }\n      th, td {\n        border: 1px solid #ddd;\n        padding: 8px;\n        vertical-align: top;\n      }\n      th {\n        background-color: #f2f2f2;\n      }\n      .card {\n        border: 1px solid #ddd;\n        padding: 10px;\n        margin-bottom: 10px;\n        border-radius: 4px;\n      }\n      a {\n        color: #1a0dab;\n        text-decoration: none;\n      }\n      a:hover {\n        text-decoration: underline;\n      }\n      /* New styles for the header images container */\n      .header-images {\n        display: flex;\n        margin-bottom: 20px;\n      }\n      .header-images img {\n        width: 50%;\n        height: auto;\n        max-width: 300px;\n\n      }\n    </style>\n  </head>\n  <body>\n        <!-- Header Images -->\n<div class=\"header-images\">\n  <img src=\"{{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.profile_image_url }}\" alt=\"Profile Picture\">\n  <img src=\"{{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.company_logo_url }}\" alt=\"Company Logo\">\n</div>\n\n\n    <!-- Analysis & Key Facts -->\n    <div class=\"section\" id=\"analysis\">\n      <h1>Analysis & Key Facts</h1>\n      {{ $('Person + Company Profile').last().json.message.content }}\n      {{ $('Pain Points + Solutions').last().json.message.content }}\n    </div>\n\n\n    <!-- Detailed Research Report -->\n    <div class=\"section\" id=\"research-report\">\n      <h1>Research Report</h1>\n      \n      <!-- LinkedIn Profile Details -->\n      <div id=\"linkedin-profile\" class=\"profile-details\">\n        <h2>LinkedIn Profile Details</h2>\n        <p><strong>Name:</strong> {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.full_name }}</p>\n        <p><strong>Headline:</strong> {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.headline }}</p>\n        <p><strong>Location:</strong> {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.location }}</p>\n        <p><strong>About:</strong> {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.about }}</p>\n        <p><strong>City:</strong> {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.city }}</p>\n        <p><strong>Country:</strong> {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.country }}</p>\n        <p><strong>Job Title:</strong> {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.job_title }}</p>\n        <p><strong>Company:</strong> {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.company }}</p>\n        <p><strong>Company Description:</strong> {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.company_description }}</p>\n        <p>\n          <strong>Company Website:</strong>\n         <a href=\"{{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.company_website }}\">\n  {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.company_website }}\n</a>\n\n        </p>\n        <p><strong>Industry:</strong> {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.company_industry }}</p>\n        <p>\n          <strong>LinkedIn URL:</strong>\n         <a href=\"{{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.linkedin_url }}\">\n  {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.linkedin_url }}\n</a>\n\n        </p>\n      </div>\n      \n      <!-- Education -->\n      <div id=\"education\">\n        <h2>Education</h2>\n        <table>\n          <thead>\n            <tr>\n              <th>School</th>\n              <th>Degree</th>\n              <th>Field of Study</th>\n            </tr>\n          </thead>\n          <tbody>\n            {{ $node[\"Education\"].json.educationTable }}\n          </tbody>\n        </table>\n      </div>\n      \n      <!-- Experience -->\n      <div id=\"experience\">\n        <h2>Experience</h2>\n        <table>\n          <thead>\n            <tr>\n              <th>Company</th>\n              <th>Title</th>\n              <th>Date Range</th>\n              <th>Location</th>\n            </tr>\n          </thead>\n          <tbody>\n            {{ $node[\"Experiences\"].json.experiencesTable }}\n          </tbody>\n        </table>\n      </div>\n      \n      <!-- Recent LinkedIn Posts -->\n      <div id=\"linkedin-posts\">\n        <h2>Recent LinkedIn Posts</h2>\n        {{ $node[\"Posts\"].json.postsHTML }}\n      </div>\n      \n      <!-- Google Research Analysis -->\n      <div id=\"google-research\">\n        <h2>Google Research Analysis</h2>\n        <p>{{ $node[\"Perplexity\"].json.choices[0].message.content.removeMarkdown().removeMarkdown() }}</p>\n      </div>\n    \n      \n      <!-- Citations -->\n      <div id=\"citations\">\n        <h2>Citations</h2>\n        {{ $node[\"Citations\"].json.citationsHTML }}\n      </div>\n      \n    </div>\n  </body>\n</html>\n"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "421be165-8046-4ea0-b0e1-08e2cf48343f",
+			"name": "Email Report",
+			"type": "n8n-nodes-base.gmail",
+			"position": [1540, 560],
+			"webhookId": "dca350c8-6c75-4013-9621-f36e4c15aafd",
+			"parameters": {
+				"sendTo": "user@example.com",
+				"message": "={{ $json.html }}",
+				"options": {
+					"appendAttribution": false
+				},
+				"subject": "={{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.full_name }} Research Report"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "24d64258-1822-44c0-9608-db80e1185d14",
+			"name": "Cal.com Trigger",
+			"type": "n8n-nodes-base.calTrigger",
+			"position": [-500, 140],
+			"webhookId": "367ac6bb-138a-48c9-9d5e-9654c0d65a5d",
+			"parameters": {
+				"events": ["BOOKING_CREATED"],
+				"options": {
+					"eventTypeId": 2098128
+				}
+			},
+			"credentials": {
+				"calApi": {
+					"id": "credential-id",
+					"name": "calApi Credential"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "4bcfc35f-a04d-43d1-bb45-cae5fab16a72",
+			"name": "Perplexity",
+			"type": "n8n-nodes-base.perplexity",
+			"position": [1100, 140],
+			"parameters": {
+				"model": "sonar-pro",
+				"options": {},
+				"messages": {
+					"message": [
+						{
+							"role": "system",
+							"content": "=You are a researcher in a business development team. Your job is to find as much research as you can about the prospect company. You must ensure your research is for the correct company and is highly accurate. Your research must always include what the prospect company does."
+						},
+						{
+							"content": "=\nFind as much info as you can about {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.company }}. }} This is their website URL: {{ $('Scrape Profiles + Posts - Relevance AI').item.json.linkedin_profile_details_data.company_website }}"
+						}
+					]
+				},
+				"requestOptions": {}
+			},
+			"credentials": {
+				"perplexityApi": {
+					"id": "credential-id",
+					"name": "perplexityApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b864dc4f-43a9-49ba-933f-1f547f2bdf2c",
+			"name": "Scrape Profiles + Posts - Relevance AI",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [340, 140],
+			"parameters": {
+				"url": "https://api-bcbe5a.stack.tryrelevance.com/latest/studios/8ac2aaa8-3d38-4d92-9b6f-65a19a5cc17a/trigger_webhook?project=4518f8138206-4b6c-8b8a-8dd5b17d95fa",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\"linkedin_url\":\"{{ $json.profileUrl }}\",\"last_x_days\":30}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "ed7af17f-a319-46ea-918a-d42284c102c1",
+			"name": "Posts",
+			"type": "n8n-nodes-base.code",
+			"position": [560, 140],
+			"parameters": {
+				"jsCode": "const input = $node[\"Scrape Profiles + Posts - Relevance AI\"].json;\n\n// Getting posts from output, then fallback to top-level.\nconst posts = (input.output && input.output.last_30_days_posts_transformed) \n  || input.last_30_days_posts_transformed \n  || [];\n\n// Build HTML for each LinkedIn post\nlet postsHTML = '';\nif (Array.isArray(posts)) {\n  posts.forEach(post => {\n    postsHTML += `<div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>${post.user_post}</p>\n      <p><em>Posted on: ${post.posted}</em></p>\n    </div>`;\n  });\n}\n\n// Return only the generated HTML\nreturn [{ json: { postsHTML } }];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "28edd7ed-bccc-4c4d-a13a-0343a7e50d04",
+			"name": "Experiences",
+			"type": "n8n-nodes-base.code",
+			"position": [740, 140],
+			"parameters": {
+				"jsCode": "// Get the input data from the first item\nconst input = $node[\"Scrape Profiles + Posts - Relevance AI\"].json;\n\n// Navigate to the experiences array within the \"output\" object\nconst experiences = input.linkedin_profile_details_data?.experiences || [];\n// Build the HTML table rows string\nlet htmlRows = '';\nexperiences.forEach(exp => {\n  htmlRows += `<tr>\n      <td>${exp.company}</td>\n      <td>${exp.title}</td>\n      <td>${exp.date_range}</td>\n      <td>${exp.location}</td>\n    </tr>`;\n});\n\n// Return a new object that only contains the experiencesTable field\nreturn [{ json: { experiencesTable: htmlRows } }];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "3094aea6-2b9c-45cd-80e5-2fbb51812477",
+			"name": "Education",
+			"type": "n8n-nodes-base.code",
+			"position": [900, 140],
+			"parameters": {
+				"jsCode": "// Get the input data from the first item\nconst input = $node[\"Scrape Profiles + Posts - Relevance AI\"].json;\n\n// Navigate to the educations array in the output object\nconst educations = input.linkedin_profile_details_data?.educations || [];\n// Build the HTML table rows for education\nlet educationRows = '';\neducations.forEach(edu => {\n  educationRows += `<tr>\n      <td>${edu.school}</td>\n      <td>${edu.degree}</td>\n      <td>${edu.field_of_study}</td>\n    </tr>`;\n});\n\n// Return a new object that only contains the educationTable key\nreturn [{ json: { educationTable: educationRows } }];\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "e52e4e83-6172-47b8-bd84-b116926c0683",
+			"name": "Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-220, 100],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 1167434515,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uGw7lJteEbjDzgVyZ0yG2gs7yx0AcJOaTdZ7Q5q0Y9c/edit#gid=1167434515",
+					"cachedResultName": "Data"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1uGw7lJteEbjDzgVyZ0yG2gs7yx0AcJOaTdZ7Q5q0Y9c",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uGw7lJteEbjDzgVyZ0yG2gs7yx0AcJOaTdZ7Q5q0Y9c/edit?usp=drivesdk",
+					"cachedResultName": "Apollo, Marketing Consultants, May 20 FINAL"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "64ce03df-11d8-40ca-bb5d-5c6a7ed3502c",
+			"name": "Google Sheets1",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-220, 280],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1bSGJXsHnl6Cs9DOV9Q0iwWf_TAbgaeZdQxNSLn_kJPQ/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1bSGJXsHnl6Cs9DOV9Q0iwWf_TAbgaeZdQxNSLn_kJPQ",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1bSGJXsHnl6Cs9DOV9Q0iwWf_TAbgaeZdQxNSLn_kJPQ/edit?usp=drivesdk",
+					"cachedResultName": "Content Agencies 5-20 FINAL"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "f1705281-19c0-47b1-b89a-780508c8c52b",
+			"name": "Google Sheets2",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-220, 480],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 275187821,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1REdyrlO0rJ9y7T_CQLZtLHDE7fUdPc222rzywSEzE6M/edit#gid=275187821",
+					"cachedResultName": "Validated Data"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1REdyrlO0rJ9y7T_CQLZtLHDE7fUdPc222rzywSEzE6M",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1REdyrlO0rJ9y7T_CQLZtLHDE7fUdPc222rzywSEzE6M/edit?usp=drivesdk",
+					"cachedResultName": "Fractional CMO FINAL"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "11a8373f-ed82-4185-9ba1-be5950471fb2",
+			"name": "Google Sheets3",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [-220, 660],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 1248286451,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ozF4HA8LpZVKY62B8MoxVshKKnLvUKachs8XARaLbDk/edit#gid=1248286451",
+					"cachedResultName": "Data"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1ozF4HA8LpZVKY62B8MoxVshKKnLvUKachs8XARaLbDk",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ozF4HA8LpZVKY62B8MoxVshKKnLvUKachs8XARaLbDk/edit?usp=drivesdk",
+					"cachedResultName": "High ticket coaching FINAL"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "6b8c9641-c2e4-4116-994d-86589157eae5",
+			"name": "Filter",
+			"type": "n8n-nodes-base.filter",
+			"position": [80, 140],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "d4bbf33f-a2fb-4d96-b1c8-ebb0958bae33",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.email }}",
+							"rightValue": "user@example.com"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "e2ff2723-fc36-4bbc-b0ec-25e8097afbcd",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-320, 0],
+			"parameters": {
+				"color": 4,
+				"width": 580,
+				"height": 840,
+				"content": "# Find LinkedIn URL from Database\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "afc7adbd-066b-4a8d-92b1-4771b4f4944b",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1280, 0],
+			"parameters": {
+				"width": 660,
+				"height": 1560,
+				"content": "# Auto-generate prospect research reports after a call is booked using LinkedIn + Perplexity\n## Overview\nThis workflow auto-generates a personalized research report on any prospect who books a call with you—using their LinkedIn profile and advanced web research.\n\nWhen a call is booked in your calendar, the system looks up the lead’s LinkedIn URL from a Google Sheets database. That profile is then scraped using Relevance AI to extract posts, experiences, and education. It also runs a deep-dive query on the person using Perplexity to uncover relevant news, insights, and context. This structured data is passed to an AI model that produces a clean profile summary, suggested pain points, and solution ideas. Finally, the system builds and sends you a fully formatted HTML report via email—ready to review before your meeting.\n\n### Who’s it for\n- Founders taking high-stakes sales calls  \n- SDRs/BDRs booking back-to-back meetings  \n- Agencies and consultants who want to personalize discovery calls  \n- Teams doing high-touch enterprise sales or B2B outreach  \n\n### How it works\n- Triggered when a new call is booked via Cal.com  \n- Finds matching LinkedIn URL from a local database (Google Sheets)  \n- Scrapes public LinkedIn data via Relevance AI  \n- Runs a Perplexity query on the prospect for deeper context  \n- Formats the scraped data using Code nodes  \n- Sends structured info to AI to generate:\n  - A company + person profile  \n  - Suggested pain points and solutions  \n- Formats everything into a clean HTML report  \n- Emails you the final summary to prep for the call\n\n### Example use case\n> Someone books a call. You receive a report 2 minutes later in your inbox with:  \n> - Their role, company, and latest posts  \n> - What their business does  \n> - Recent news and context from Perplexity  \n> - Predicted pain points and how you might help  \n>  \n> You show up to the call prepped and ready\n\n### How to set up\n1. Connect your Cal.com trigger (or replace with any booking tool)  \n2. Set up your Google Sheet(s) with contact info + LinkedIn profiles  \n3. Add Relevance AI API key and configure LinkedIn scraping (they have free credits)  \n4. Link Perplexity API for web research  \n5. Customize the AI prompts and report formatting  \n6. Connect Gmail or preferred email provider to send reports\n\n### Requirements\n- Cal.com or other booking platform  \n- Google Sheets for lead storage  \n- Relevance AI account and API access  \n- Perplexity API key  \n- OpenAI or similar LLM for summarization  \n- Email integration (e.g. Gmail)\n\n### How to customize\n- Replace Cal.com with Calendly, SavvyCal, etc.  \n- Change AI prompt tone and structure of the report  \n- Add CRM push (e.g. log into HubSpot, Notion, or Airtable)  \n- Add Slack or Telegram notifications for call alerts  \n- Format reports as PDF instead of HTML for download\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8c641eb3-2abd-4076-a175-aecfc1ce7736",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1060, -300],
+			"parameters": {
+				"color": 5,
+				"width": 440,
+				"height": 240,
+				"content": "## Hey, I'm Abdul 👋\n### I build growth systems for consultants & agencies. If you want to work together or need help automating your business, check out my website: \n### **https://www.builtbyabdul.com/**\n### Or email me at **abdul@buildabdul.com**\n### Have a lovely day ;)`"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6d4fd1a5-2299-4599-bbce-988c304f3bb3",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-580, -640],
+			"parameters": {
+				"color": 5,
+				"width": 840,
+				"height": 580,
+				"content": "## Example Output\n![](https://i.imgur.com/q3pN5im.png)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1c3a8cbf-f250-461d-b09d-01534603ded7",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [280, -640],
+			"parameters": {
+				"color": 5,
+				"width": 840,
+				"height": 580,
+				"content": "## Continued...\n![](https://i.imgur.com/tcpVfxV.png)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "77f1f91e-2b7b-4fa0-a4d8-fae1b90e5f96",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1140, -640],
+			"parameters": {
+				"color": 5,
+				"width": 840,
+				"height": 580,
+				"content": "## Continued\n![](https://i.imgur.com/Jaaxdt2.png)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {
+		"Posts": [
+			{
+				"postsHTML": "<div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>Cluely's interns make between $50/hour to $200/hour. \n \nHere’s why you should be paying your interns more money:\n  \nIn the past two months since launch, our interns have helped us scale to $6M ARR. \n\nThey’ve gotten millions of views on social media, managed a crazy marketing budget, and helped us solve some of our hardest technical challenges. \n\nThis wasn't an accident.\n\nIt's what happens when you:\n- Hire extremely talented people\n- Pay them what they're actually worth\n- Hold them to super high standards\n\nI've never understood founders who expect 12-hour days and exceptional results from interns while paying them minimum wage.\n\nIf you're underpaying high-performing interns, you're actively sabotaging your company's potential – and not saving your company much money. \n\nPeople work harder when they’re paid what they’re worth. \n\nP.S. We're hiring interns who want to be part of something insane. If you're ready to perform at the highest level, apply here: https://cluely.com/careers</p>\n      <p><em>Posted on: 2025-06-30</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>Cluely (almost) got sued…\n\nAfter getting kicked out of Columbia and building an AI “cheating” tool, we’ve been in multiple situations where we could've had lawsuits thrown at us.  \n\nDespite this, we've broken $6M ARR and are growing faster than ever.\n\nLooking back, this was mainly possible because of one person: \n\nOur lawyer.\n\nKevin Cergol-Plotkin makes up the entire legal team at Cluely, and he’s gotten us out of ~5 insane lawsuits in the past 2 months.  \n\nHe’s hands-down the best lawyer I’ve ever worked with (or seen) and is extremely diligent with his work. \n\nIf you’re trying to build a startup and need legal help, I couldn’t recommend anyone more. \n\nTake it from me: he will fight for your company like his life depends on it.</p>\n      <p><em>Posted on: 2025-06-30</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>Introducing Cluely.\n\nToday marks the dawn of a world where you never have to think again.\n\nI’ve been kicked out of Columbia, blacklisted by Amazon, and gained billions of impressions in the past few months. Every single person I knew told me I was ruining my life.\n\nBut I swung big, turned my side project into a real company, and turned controversy into over $5M ARR in 2 months.\n\nNow, I’m swinging bigger than I’ve ever done before.\n\nCluely will transform the way humans use AI.\n\nCluely lives in the background of your computer—reading your screen, eavesdropping on your calls, and surfacing the exact insights and questions you need before you even know you need them. No prompts. No delays. Pure, proactive superintelligence at your fingertips.\n\nThe era of “ask and wait” is over. Proactive AI is here.\n\nP.S. Cluely isn’t in beta. It’s live and ready. Crash our site and see for yourself: https://cluely.com</p>\n      <p><em>Posted on: 2025-06-27</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>Cluely gives every employee free HingeX (highest tier subscription). \n\nEvery company would perform better if their employees weren’t single. \n\nWhen you’re single (and lonely), you simply can’t get work done efficiently.\n\nI speak from experience: \n\nThe worst time of my life was when I got rescinded from Harvard and spent a year locked in my room, not speaking to anyone outside of my immediate family.\n\nI became super lonely and started losing my motivation to do anything meaningful. \n\nHaving a partner would’ve solved this.\n\nWhen your employees aren’t lonely, they’ll work harder and be happier. \n\nAnd yes, we expense all dates on the corporate Brex card :) \n\nP.S If you want to join our team (and find a partner), apply here: https://cluely.com/careers</p>\n      <p><em>Posted on: 2025-06-25</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>I’ve gone to community college, had my Harvard admission revoked, and gotten kicked out of Columbia. \n\nHere’s why I think college is a joke: \n\n- Everyone “cheats”\n\nWhen I was at Columbia, I used ChatGPT to cheat on pretty much every assignment – and I wasn’t alone. I never met a single student who didn’t use AI to get through their classes.\n\nThe information you get with a “college education” is becoming increasingly irrelevant.\n\n- Admissions are a lottery\n\nI think it’s pretty clear that admissions promote diversity over true merit. \n\nThe greatest example of this I’ve seen is from Zach Yadegari (18 y.o. with a 4.0 GPA & $30M ARR business who got rejected by 15/18 top colleges). \n\nThere are countless stories like his that show how meaningless a college acceptance really is. \n\n- Top talent can be found anywhere\n\nElite schools love to brand themselves as the birthplace for people who change the world. \n\nThe truth is, the most talented people I’ve seen (and hired) didn’t come from prestigious universities – one of our best engineers is a random furry I met in community college. \n\nTalented people can be found anywhere, and your school name shouldn’t dictate where you’re able to work or your potential for success. \n\nI’ve said it before, and I’ll say it again: \n\nYou go to college to find a co-founder and a wife. That’s it. \n\nP.S. We’re hiring – and we couldn’t care less about your college education. \n\n👉 Apply here: https://cluely.com/careers</p>\n      <p><em>Posted on: 2025-06-24</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>A year ago, I sent an email that changed the course of my life…\n\nAfter getting rejected from Nucleus Genomics for a SWE internship, I cold-emailed the CEO and offered to work for free.\n\nHe said yes. \n\nThat summer changed everything. \n\nFor the first time in my life, I saw people my age building things that I didn’t even know were possible. \n\nBefore that, I assumed I’d just take the safe route and get a full-time job in tech.\n\nBut doing that single internship gave me the confidence to pursue building something of my own.\n\nFast forward a year – I’m now building Cluely, one of the fastest-growing AI startups in the world. \n\nIf I hadn’t taken the time to send that cold email, none of this would’ve happened. \n\nTake this as a reminder: rejection isn’t real, and you should always go after the things you want.</p>\n      <p><em>Posted on: 2025-06-23</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>Announcing Cluely's $15M fundraise, led by Andreessen Horowitz.\n\nI started this company three months ago with my best friend Neel Shanmugam and my roommate Alex Chen. \n\nSince then, we've done over a billion impressions across social media and generated millions of dollars in revenue.\n\nCluely started as a tool to cheat on technical interviews. I used it to get offers at top tech companies, like Amazon, Meta, Tiktok, and Capital One. After posting about it publicly to market the tool, I got blacklisted from big tech and kicked out of Columbia University.\n\nBut I immediately realized that the technology we built wasn't just a great tool for cheating on technical interviews; it's likely the future of how humans will interact with AI.\n\nToday, people are using Cluely in sales calls, meetings, recruiting, and so much more.\n\nThe potential for AI is limited because it's stuck behind a chatbot.\n\nWe're just getting started.\n\nIf you're excited about the potential of AI beyond the limits of a textbox, and in our unique ability to consistently go hyper viral, check us out.\n\nWe're hiring: www.cluely.com/careers.</p>\n      <p><em>Posted on: 2025-06-20</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>Cluely just threw the most legendary party that never happened.\n\nWe spent $20,000.\n\nOver 2,000 people showed up within 16 minutes.\n\nAnd then... the whole thing got shut down.\n\nEvery single unit of SFPD (and even the National Guard) came to tell people to leave. \n\nIf there’s anything to take away from this, you should just know that Cluely’s aura makes anything go viral… \n\nP.S. The drinks will be waiting for next time. \n\n\nhttps://lnkd.in/gHi7tY9f</p>\n      <p><em>Posted on: 2025-06-19</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>Excited to introduce the Cluely marketing team.</p>\n      <p><em>Posted on: 2025-06-16</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>Cluely is throwing the biggest YC Startup School afterparty.\n\nMon Jun 16 10PM.\n\nInvite only.\n\nDm me for a link.</p>\n      <p><em>Posted on: 2025-06-14</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>I’m building the future of AI with Cluely. In <2 months since our launch, we’ve scaled to over $5M ARR. \n\nIf you’re scared of AI replacing your job, here are two things I recommend: \n\n1) Take more risks. \n\nI don’t know what the world is going to look like in 5 years. Nobody does. \n\nBut I do know that AI is quickly giving everyone access to the same tools, code, and creative shortcuts.\n\nThis means that you if you want to set yourself apart, you need to be willing to take risks.  \n\nEvery single piece of success I’ve had over the past few months has come from trusting my gut when everyone else told me not to. \n\n2) Learn how to go viral. \n\nAI makes it easier than ever to replicate products. What’s hard now is getting attention.\n\nThat’s what people mean when they say “distribution is the last moat”. \n\nWhen we were brainstorming our first product (Interview Coder), we thought about what kind of product would go viral – and worked backwards. This strategy worked extremely well, and helped us break over $3M in ARR after getting hundreds of millions of views on social media. \n\nIf you can learn to take massive risks and get the right people to see it, I genuinely believe the AI era will become the most rewarding time for you to be alive.\n\nP.S. If you want to see what the future of AI looks like, go here: https://cluely.com/</p>\n      <p><em>Posted on: 2025-06-13</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>I asked over 40 strangers to start a company with me before I met my co-founder… \n\nHere’s the story of how I met Neel: \n\nWhen I first transferred to Columbia (Fall 2024) I went up to every single person that I thought looked smart and asked them if they wanted to be my co-founder.\n\nI got tons of weird looks, “no’s”, and people telling me they weren’t interested.  \n\nNeel was one of them.\n\nIt was only after meeting again at a party that we started working together on small side projects (notetaking app, AI agent for liquor distributors etc) and realized we worked surprisingly well together. \n\nEventually, we both decided that working a corporate job wasn’t for us and went all-in on startups. \n\nWe launched Interview Coder (AI for cheating on technical interviews), farmed a ton of big-tech offers to go viral, and hit $1M ARR in 36 days.\n\nAfter that, we decided to build something much bigger.\n\nThat’s when Cluely was born – an undetectable desktop assistant that feeds you answers in real time.\n\nIt’s been under 2 months, and we already broke $5M in revenue and are on pace to become the fastest company to ever hit $100M ARR.\n\nShoutout Neel 🫡\n\nP.S. I partly made this post because he’s desperately single. If you’re interested, Neel’s DMs are open…</p>\n      <p><em>Posted on: 2025-06-13</em></p>\n    </div><div class=\"linkedin-post\" style=\"border:1px solid #ddd; padding:10px; margin-bottom:10px;\">\n      <p>Earlier this year, I got kicked out of Columbia University, blacklisted at Amazon, and was questioning everything…\n\nFor about a month. \n\nWhen I launched Interview Coder (AI for cheating on technical interviews), I live-recorded using it to pass my Amazon interviews, hoping it would go viral. \n\nIt didn’t.\n\nThe video flopped, Amazon rescinded my offer, and they contacted Columbia asking them to kick me out (which they eventually did).\n\nAt this point, everyone in my life (including my co-founder) was telling me it wasn’t worth it to continue.\n\nThis was probably the most stressful month of my life. \n\nI had no idea if things were going to work out, but I decided to listen to a voice in my head that was telling me to keep going.\n\nSoon after, Interview Coder went mega viral when I posted Columbia’s disciplinary notice online. \n\nWe got millions of views on social media, broke 1M in revenue, and were later able to use the virality to springboard the launch of Cluely, our biggest bet in AI. \n\nOur vision is to create the ultimate desktop assistant, allowing you to directly integrate AI into sales meetings, video calls, and more. Since launching less than 2 months ago, we’ve gotten over 70,000 active users and hit $5M ARR. \n\nIf there’s something I learned, it’s that you need to really swing big if you want a big result. \n\nCutting off all my other opportunities (college, big-tech, etc) was the biggest risk I’d taken at the time, and I’m more glad than ever that I went all in. \n\nP.S. If you want to see the product that I’ve bet my life on, try it free here: https://cluely.com/</p>\n      <p><em>Posted on: 2025-06-11</em></p>\n    </div>"
+			}
+		],
+		"Citations": [
+			{
+				"citationsHTML": "<ul><li><a href=\"https://www.sourcery.vc/p/deep-dive-cluely-raises-15m-from\" target=\"_blank\">https://www.sourcery.vc/p/deep-dive-cluely-raises-15m-from</a></li><li><a href=\"https://cluely.com/privacy-policy\" target=\"_blank\">https://cluely.com/privacy-policy</a></li><li><a href=\"https://techcrunch.com/2025/06/20/cluely-a-startup-that-helps-cheat-on-everything-raises-15m-from-a16z/\" target=\"_blank\">https://techcrunch.com/2025/06/20/cluely-a-startup-that-helps-cheat-on-everything-raises-15m-from-a16z/</a></li><li><a href=\"https://www.youtube.com/watch?v=qHg3_4bU1Dw\" target=\"_blank\">https://www.youtube.com/watch?v=qHg3_4bU1Dw</a></li><li><a href=\"https://cluely.com\" target=\"_blank\">https://cluely.com</a></li></ul>"
+			}
+		],
+		"Education": [
+			{
+				"educationTable": "<tr>\n      <td>Columbia University</td>\n      <td>Bachelor's degree</td>\n      <td>Computer Science</td>\n    </tr><tr>\n      <td>Z Fellows</td>\n      <td></td>\n      <td></td>\n    </tr><tr>\n      <td>Diablo Valley College</td>\n      <td>Associate's degree</td>\n      <td>Mathematics</td>\n    </tr><tr>\n      <td>Harvard University</td>\n      <td>Bachelor's degree</td>\n      <td>Applied Math and Economics</td>\n    </tr>"
+			}
+		],
+		"Perplexity": [
+			{
+				"id": "ebc5f10a-fc21-4a91-8f41-84334f1d4693",
+				"model": "sonar-pro",
+				"usage": {
+					"total_tokens": 1037,
+					"prompt_tokens": 76,
+					"completion_tokens": 961,
+					"search_context_size": "low"
+				},
+				"object": "chat.completion",
+				"choices": [
+					{
+						"delta": {
+							"role": "assistant",
+							"content": ""
+						},
+						"index": 0,
+						"message": {
+							"role": "assistant",
+							"content": "**Cluely** is a technology startup developing a novel **AI interface that serves as an ambient desktop layer**, providing **real-time, context-aware answers** directly over the user's screen. Its solution is designed to be **undetectable**, meaning it overlays information during high-context tasks—such as sales calls, interviews, exams, or other forms of deep work—without requiring users to switch apps or windows[1][3][5]. Here are the core aspects of Cluely based on current research:\n\n**What Cluely Does**\n- **Ambient AI Overlay:** Cluely's software listens to audio, sees what is on the user's screen, and proactively surfaces contextual information or responses, such as definitions, talking points, or answers, via simple keyboard prompts[1][5].\n- **Real-Time Assistance:** The AI instantly delivers help in real time during conversations or workflows, supporting users in scenarios that demand quick, informed responses, especially for **call centers, customer support teams, sales, recruiting, meetings, and exams**[1][3][4][5].\n- **Undetectable & Confidential:** Its functionality is built to be discreet, enabling users to receive information during live calls or tests without being noticed, which the founders have controversially pitched as helping people \"cheat\" on interviews, exams, and sales calls[1][3][4][5].\n\n**Target Users and Use Cases**\n- **Enterprise Adoption:** Cluely is seeing significant adoption in enterprise environments, particularly in **call centers and customer support**, where real-time contextual assistance can improve employee performance[1].\n- **Consumer Awareness:** While enterprise usage is its primary revenue driver, Cluely also targets individual users (e.g., students, sales professionals, job seekers) who benefit from unobtrusive on-screen support[1][3][4].\n\n**Founders and Backstory**\n- **Founded by Roy Lee and Neel Shanmugam** in early 2025. Both were previously suspended from Columbia University for creating \"Interview Coder,\" an undetectable AI tool for technical interviews. Lee is known for a provocative social media style and producing attention-grabbing videos that have attracted significant attention to the company[3].\n- Cluely's CEO, Roy Lee, has publicly emphasized the tool's ability to provide invisible guidance, a feature that sets it apart from traditional chatbot or sidebar-based assistants[1][3].\n\n**Funding and Growth**\n- **Raised $15 million in a Series A round** in June 2025, led by Andreessen Horowitz (a16z), bringing total funding to over $20 million. The round followed a $5.3 million seed round co-led by Abstract Ventures and Susa Ventures[1][3].\n- The company's post-money valuation is estimated to be around $120 million, according to outside investors[3].\n- The company claims to be profitable, with rapidly growing enterprise contracts surpassing consumer revenue[1][3].\n\n**Product Experience**\n- Users can customize the AI's assistance by sharing personal information or using default templates for common scenarios (school, meetings, sales, recruiting, customer support), allowing for highly personalized real-time help[4].\n- The company markets itself with the slogan: **\"Everything You Need. Before You Ask.\"**[5]\n\n**Legal and Ethical Stance**\n- Cluely emphasizes privacy in its policy and reserves the right to update these practices as its services evolve[2].\n- Due to its undetectable nature and focus on enabling users to \"cheat\" in various settings, Cluely has generated controversy and debate about its ethical implications, especially regarding academic and professional integrity[3].\n\n**Summary Table**\n\n| Aspect                  | Details                                                                 | Sources   |\n|-------------------------|-------------------------------------------------------------------------|-----------|\n| Product                 | Undetectable AI overlay for real-time, on-screen assistance             | [1][3][5] |\n| Target Markets          | Call centers, customer support, sales, recruiting, education, consumers | [1][3][4] |\n| Funding                 | $20M+ total; $15M Series A (a16z)                                       | [1][3]    |\n| Founders                | Roy Lee, Neel Shanmugam                                                 | [3]       |\n| Differentiators         | Sees screen, hears calls, surfaces answers undetectably                 | [1][3][5] |\n| Controversy             | Used to \"cheat\" on interviews, exams, and calls; ethical debates        | [3][4]    |\n| Profitability           | Company claims to be profitable                                         | [3]       |\n\nFor more information, their official website is [cluely.com][5]."
+						},
+						"finish_reason": "stop"
+					}
+				],
+				"created": 1751412033,
+				"citations": [
+					"https://www.sourcery.vc/p/deep-dive-cluely-raises-15m-from",
+					"https://cluely.com/privacy-policy",
+					"https://techcrunch.com/2025/06/20/cluely-a-startup-that-helps-cheat-on-everything-raises-15m-from-a16z/",
+					"https://www.youtube.com/watch?v=qHg3_4bU1Dw",
+					"https://cluely.com"
+				],
+				"search_results": [
+					{
+						"url": "https://www.sourcery.vc/p/deep-dive-cluely-raises-15m-from",
+						"date": "2025-06-23",
+						"title": "DEEP DIVE: Cluely Raises $15M From a16z - by Molly O'Shea",
+						"last_updated": "2025-06-23"
+					},
+					{
+						"url": "https://cluely.com/privacy-policy",
+						"date": "2025-06-10",
+						"title": "Privacy Policy - Cluely",
+						"last_updated": "2025-06-29"
+					},
+					{
+						"url": "https://techcrunch.com/2025/06/20/cluely-a-startup-that-helps-cheat-on-everything-raises-15m-from-a16z/",
+						"date": "2025-06-20",
+						"title": "Cluely, a startup that helps 'cheat on everything,' raises $15M from ...",
+						"last_updated": "2025-06-20"
+					},
+					{
+						"url": "https://www.youtube.com/watch?v=qHg3_4bU1Dw",
+						"date": "2025-06-29",
+						"title": "Introducing Cluely, the Cheat On Everything App - YouTube",
+						"last_updated": "2025-06-29"
+					},
+					{
+						"url": "https://cluely.com",
+						"date": null,
+						"title": "Cluely",
+						"last_updated": null
+					}
+				]
+			}
+		],
+		"Experiences": [
+			{
+				"experiencesTable": "<tr>\n      <td>Cluely</td>\n      <td>CEO, Co-Founder</td>\n      <td>Apr 2025 - Present</td>\n      <td>San Francisco, California, United States · On-site</td>\n    </tr><tr>\n      <td>Interview Coder</td>\n      <td>CEO, Founder</td>\n      <td>Feb 2025 - Present</td>\n      <td>New York, United States · On-site</td>\n    </tr><tr>\n      <td>Nucleus Genomics</td>\n      <td>Software Engineer</td>\n      <td>Sep 2024 - Nov 2024</td>\n      <td></td>\n    </tr><tr>\n      <td>Nucleus Genomics</td>\n      <td>Software Engineer</td>\n      <td>Jun 2024 - Sep 2024</td>\n      <td></td>\n    </tr>"
+			}
+		],
+		"Cal.com Trigger": [
+			{
+				"uid": "s9GFJZAWpu8fex7S62FHJL",
+				"type": "freeconsultation",
+				"price": 0,
+				"title": "Intro Call between Abdul and Roy Lee",
+				"length": 30,
+				"status": "ACCEPTED",
+				"endTime": "2025-07-02T15:30:00Z",
+				"iCalUID": "s9GFJZAWpu8fex7S62FHJL@Cal.com",
+				"currency": "usd",
+				"location": "integrations:google:meet",
+				"metadata": {
+					"videoCallUrl": "https://meet.google.com/aao-yfgd-xcx"
+				},
+				"attendees": [
+					{
+						"name": "Roy Lee",
+						"email": "amirlanbekuulu@gmail.com",
+						"language": {
+							"locale": "en"
+						},
+						"lastName": "",
+						"timeZone": "America/Chicago",
+						"firstName": "",
+						"utcOffset": -300
+					}
+				],
+				"bookerUrl": "https://cal.com",
+				"bookingId": 8972001,
+				"createdAt": "2025-07-01T23:19:54.733Z",
+				"organizer": {
+					"id": 1437790,
+					"name": "Abdul",
+					"email": "builtbyabdul@gmail.com",
+					"language": {
+						"locale": "en"
+					},
+					"timeZone": "America/Chicago",
+					"username": "builtbyabdul",
+					"utcOffset": -300,
+					"timeFormat": "h:mma"
+				},
+				"responses": {
+					"name": {
+						"label": "your_name",
+						"value": "Roy Lee",
+						"isHidden": false
+					},
+					"email": {
+						"label": "email_address",
+						"value": "amirlanbekuulu@gmail.com",
+						"isHidden": false
+					},
+					"notes": {
+						"label": "additional_notes",
+						"isHidden": false
+					},
+					"title": {
+						"label": "what_is_this_meeting_about",
+						"isHidden": true
+					},
+					"guests": {
+						"label": "additional_guests",
+						"value": [],
+						"isHidden": false
+					},
+					"location": {
+						"label": "location",
+						"value": {
+							"value": "integrations:google:meet",
+							"optionValue": ""
+						},
+						"isHidden": false
+					},
+					"linkedinurl": {
+						"label": "Copy paste your LinkedIn URL",
+						"value": "https://www.linkedin.com/in/roy-lee-goat/",
+						"isHidden": false
+					},
+					"rescheduleReason": {
+						"label": "reason_for_reschedule",
+						"isHidden": true
+					},
+					"attendeePhoneNumber": {
+						"label": "phone_number",
+						"isHidden": true
+					}
+				},
+				"startTime": "2025-07-02T15:00:00Z",
+				"appsStatus": [
+					{
+						"type": "google_calendar",
+						"errors": [],
+						"appName": "google-calendar",
+						"success": 1,
+						"failures": 0,
+						"warnings": []
+					},
+					{
+						"type": "conferencing",
+						"errors": [],
+						"appName": "Google Meet",
+						"success": 1,
+						"failures": 0
+					}
+				],
+				"eventTitle": "Intro Call",
+				"description": "Short coffee chat on Google Meet to get to know each other, learn more about the project, & discuss potential solutions.",
+				"eventTypeId": 2098128,
+				"customInputs": {},
+				"iCalSequence": 0,
+				"triggerEvent": "BOOKING_CREATED",
+				"conferenceData": {
+					"createRequest": {
+						"requestId": "8a0ce172-f69a-51b5-8481-93feb73d58e2"
+					}
+				},
+				"schedulingType": null,
+				"additionalNotes": "",
+				"oneTimePassword": null,
+				"eventDescription": "Short coffee chat on Google Meet to get to know each other, learn more about the project, & discuss potential solutions.",
+				"seatsPerTimeSlot": null,
+				"hideCalendarNotes": false,
+				"customReplyToEmail": null,
+				"hideOrganizerEmail": false,
+				"seatsShowAttendees": true,
+				"destinationCalendar": [
+					{
+						"id": 526403,
+						"userId": 1437790,
+						"externalId": "builtbyabdul@gmail.com",
+						"eventTypeId": null,
+						"integration": "google_calendar",
+						"credentialId": 866696,
+						"primaryEmail": "builtbyabdul@gmail.com",
+						"delegationCredentialId": null,
+						"domainWideDelegationCredentialId": null
+					}
+				],
+				"userFieldsResponses": {
+					"linkedinurl": {
+						"label": "Copy paste your LinkedIn URL",
+						"value": "https://www.linkedin.com/in/roy-lee-goat/",
+						"isHidden": false
+					}
+				},
+				"requiresConfirmation": false,
+				"hideCalendarEventDetails": false,
+				"seatsShowAvailabilityCount": true
+			}
+		],
+		"Pain Points + Solutions": [
+			{
+				"index": 0,
+				"message": {
+					"role": "assistant",
+					"content": "<h1>Opportunities</h1>\n\n<h2>Pain Points and Solutions:</h2>\n<table>\n  <tr>\n    <th>Pain Point</th>\n    <th>Evidence</th>\n    <th>Solution</th>\n  </tr>\n  <tr>\n    <td>Reputation Management and Ethical Concerns</td>\n    <td>Cluely's undetectable AI tool has sparked controversy regarding its ethical implications, particularly in enabling users to \"cheat\" during interviews, exams, and sales calls.</td>\n    <td>Implement automated reputation monitoring and management systems to proactively address negative sentiment and manage public relations. Utilize AI content agents to generate positive content and manage social media strategies to mitigate backlash.</td>\n  </tr>\n  <tr>\n    <td>Scalability of Operations</td>\n    <td>Cluely has rapidly scaled to over $6M in ARR within months of launch, indicating a high growth rate that may strain existing processes and workflows.</td>\n    <td>Deploy Automated ClickUp CRMs and project management workflows to streamline operations, ensuring that the company can efficiently handle rapid growth without sacrificing quality or performance.</td>\n  </tr>\n  <tr>\n    <td>Efficient Lead Generation</td>\n    <td>As an innovative AI startup, maintaining a consistent and high-quality lead pipeline is crucial for sustaining growth and attracting enterprise clients.</td>\n    <td>Utilize AI-powered personalized lead generation systems to identify and engage potential clients more effectively, ensuring a steady flow of qualified leads to support ongoing expansion.</td>\n  </tr>\n  <tr>\n    <td>Content Management and Marketing</td>\n    <td>Roy Lee's provocative social media presence requires consistent and high-volume content creation to maintain brand visibility and engagement.</td>\n    <td>Implement AI Content agents to repurpose and schedule high-volume content across various platforms, ensuring continuous and efficient content marketing efforts without overburdening the team.</td>\n  </tr>\n  <tr>\n    <td>Client Onboarding Efficiency</td>\n    <td>With rapid growth and increasing client base, managing client onboarding processes manually can lead to delays and inconsistencies.</td>\n    <td>Automate client onboarding workflows, including proposals, forms, and contracts, to streamline the onboarding process, enhance client experience, and reduce administrative overhead.</td>\n  </tr>\n</table>\n\n<h2>Opportunities:</h2>\n<ul>\n  <li><strong>AI-Powered Personalized Lead Generation:</strong> Implement advanced AI systems to identify and engage high-potential leads tailored to Cluely's target markets, ensuring a steady and qualified lead pipeline to support rapid growth.</li>\n  <li><strong>Automated ClickUp CRM and Project Management:</strong> Streamline Cluely's operations by automating CRM and project management workflows, enhancing efficiency, collaboration, and scalability to handle rapid increases in business activity.</li>\n  <li><strong>AI Content Agents for Social Media Management:</strong> Deploy AI-driven content agents to generate, repurpose, and schedule high-volume content across Cluely's social media channels, maintaining a strong and consistent online presence while mitigating reputational risks.</li>\n  <li><strong>Client Onboarding Automation:</strong> Automate the entire client onboarding process, including proposal creation, form management, and contract handling, to ensure a seamless and efficient experience for new clients, reducing time and administrative burdens on the team.</li>\n  <li><strong>Reputation Monitoring and Management Automation:</strong> Utilize AI tools to continuously monitor online reviews and social media sentiment, automatically addressing negative feedback and enhancing positive engagement to maintain and improve Cluely's reputation.</li>\n</ul>",
+					"refusal": null,
+					"annotations": []
+				},
+				"finish_reason": "stop"
+			}
+		],
+		"Person + Company Profile": [
+			{
+				"index": 0,
+				"message": {
+					"role": "assistant",
+					"content": "<h2>Person Profile</h2>\n<p>Roy Lee is the dynamic CEO and co-founder of Cluely, an innovative AI automation agency. Despite early setbacks, including being expelled from Columbia University and facing blacklisting from major tech companies like Amazon, Roy has showcased remarkable resilience and entrepreneurial drive. He has successfully transformed controversial projects into thriving businesses, rapidly scaling Cluely to over $6M in ARR within months of its launch. Roy is known for his provocative social media presence and his commitment to empowering talented individuals through forward-thinking initiatives.</p>\n\n<h2>Company Profile</h2>\n<p>Cluely is a cutting-edge technology startup that has developed an undetectable AI overlay, serving as an ambient desktop layer to provide real-time, context-aware assistance directly over the user's screen. Designed to discreetly support high-context tasks such as sales calls, interviews, and exams, Cluely integrates seamlessly into the user’s workflow without the need to switch applications. Founded by Roy Lee and Neel Shanmugam in early 2025, Cluely has quickly raised over $20 million in funding, led by Andreessen Horowitz, and is valued at approximately $120 million. The company prides itself on its discreet and confidential AI solutions, positioning itself as a leader in the proactive AI assistance market.</p>\n\n<h2>Interests</h2>\n<ul>\n  <li>Artificial Intelligence and Automation</li>\n  <li>Startup Growth and Scaling</li>\n  <li>Innovative Recruiting Strategies</li>\n  <li>Tech Entrepreneurship</li>\n  <li>Viral Marketing and Social Media Strategies</li>\n</ul>\n\n<h2>Unique Facts</h2>\n<ul>\n  <li>Cluely offers its interns exceptionally high pay rates ranging from $50 to $200 per hour, a strategy that has significantly contributed to their rapid scaling to $6M ARR within two months of launch.</li>\n  <li>Roy Lee provides every employee with a free HingeX highest tier subscription, believing that non-single employees are more motivated and productive, and even expenses all dates on the corporate Brex card to encourage this.</li>\n</ul>",
+					"refusal": null,
+					"annotations": []
+				},
+				"finish_reason": "stop"
+			}
+		]
+	},
+	"connections": {
+		"Posts": {
+			"main": [
+				[
+					{
+						"node": "Experiences",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter": {
+			"main": [
+				[
+					{
+						"node": "Scrape Profiles + Posts - Relevance AI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Citations": {
+			"main": [
+				[
+					{
+						"node": "Person + Company Profile",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Education": {
+			"main": [
+				[
+					{
+						"node": "Perplexity",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Perplexity": {
+			"main": [
+				[
+					{
+						"node": "Citations",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Experiences": {
+			"main": [
+				[
+					{
+						"node": "Education",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Filter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets1": {
+			"main": [
+				[
+					{
+						"node": "Filter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets2": {
+			"main": [
+				[
+					{
+						"node": "Filter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets3": {
+			"main": [
+				[
+					{
+						"node": "Filter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Cal.com Trigger": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Google Sheets1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Google Sheets2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Google Sheets3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create HTML Report": {
+			"main": [
+				[
+					{
+						"node": "Email Report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pain Points + Solutions": {
+			"main": [
+				[
+					{
+						"node": "Create HTML Report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Person + Company Profile": {
+			"main": [
+				[
+					{
+						"node": "Pain Points + Solutions",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Scrape Profiles + Posts - Relevance AI": {
+			"main": [
+				[
+					{
+						"node": "Posts",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

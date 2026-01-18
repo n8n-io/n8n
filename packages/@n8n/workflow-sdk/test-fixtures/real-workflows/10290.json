@@ -1,0 +1,537 @@
+{
+	"name": "Track & Query expenses via Telegram (voice,text) to Google Sheets using AI",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "928d4973-7705-45a1-af7f-6c371c15c53a",
+			"name": "Telegram Input",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [1136, 624],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "66532cda-8c54-4d31-85ae-b45446c6eadb",
+			"name": "Route by Message Type",
+			"type": "n8n-nodes-base.switch",
+			"position": [1120, 992],
+			"parameters": {},
+			"typeVersion": 3.3
+		},
+		{
+			"id": "9dda6df0-0fee-4915-9fe4-4c92db2b509d",
+			"name": "Check Voice Quality",
+			"type": "n8n-nodes-base.switch",
+			"position": [1392, 720],
+			"parameters": {},
+			"typeVersion": 3.3
+		},
+		{
+			"id": "153bd166-5b09-4ff3-915a-336b8ee7d324",
+			"name": "Send Processing Notification (Voice)",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1600, 592],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e232b913-1fa2-4a1a-86d2-40610ddec858",
+			"name": "🎙️ Download Voice File",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1600, 848],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "08f5bd90-2114-411f-ad25-caf8bab96526",
+			"name": "Upload to AssemblyAI",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1792, 848],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "afc541b4-95a5-463a-955e-886df059f716",
+			"name": "Start Transcription",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1952, 784],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "28660a57-ba29-4d2d-8707-92d161e5d1ff",
+			"name": "Get Transcription Result",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2304, 784],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "e9dff5cb-bc4a-41ce-808e-e89b51e5f07a",
+			"name": "Check Transcription Status",
+			"type": "n8n-nodes-base.if",
+			"position": [2480, 848],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "038f48cd-31a4-4260-8a4b-00df77f2d6d8",
+			"name": "Send Processing Notification (Text)",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1424, 1248],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "83705fc8-e107-4ae2-8ee3-eaeeda79388f",
+			"name": "Read Transaction History",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2784, 1248],
+			"parameters": {},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "32632cc1-c07e-4540-a43a-c0d77add2ea2",
+			"name": "Calculate Starting Balance",
+			"type": "n8n-nodes-base.code",
+			"position": [2992, 880],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "6131fee5-c38a-4747-8cc0-1278d50643aa",
+			"name": "Append Transaction to Sheet",
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"position": [3296, 1376],
+			"parameters": {},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "abffd5e5-5e62-479e-bc88-af3ee0b905d7",
+			"name": "Read Sheet for Queries",
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"notes": "Use this tool to read transaction data from the expense tracker sheet. You can retrieve all rows to answer questions about past transactions, spending patterns, categories, etc",
+			"position": [3504, 1440],
+			"parameters": {},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "c6e7ad47-880e-4367-b113-c684ccbca564",
+			"name": "Send Low Balance Alert",
+			"type": "n8n-nodes-base.gmailTool",
+			"position": [3664, 1408],
+			"parameters": {},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "fc266481-df01-4290-b9c2-6f6641dfc64e",
+			"name": "GPT-4.1 Mini Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [2944, 1392],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e9096a27-8871-40d0-957a-14eb3d55e771",
+			"name": "Conversation Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [3104, 1424],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "8a70e794-f277-46d0-adf3-e267099b85fd",
+			"name": "Generate Voice Response",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3920, 1152],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "14fe0eec-939d-484a-8596-c73bde3d1d21",
+			"name": "Send Voice to Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"position": [4256, 1008],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "6243945a-fdee-4b23-a1a3-eb3a4e097c65",
+			"name": "Send Text to Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"position": [4272, 1280],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "94fb4c69-b912-49a8-9352-eca8e33df3c5",
+			"name": "AI Expense Analyzer",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [3248, 880],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "1604833f-0ae6-4a24-945e-bf8155993bf1",
+			"name": "Wait for Transcription",
+			"type": "n8n-nodes-base.wait",
+			"position": [2128, 848],
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "b0f405ba-57a6-491d-a670-2e99c31db2cb",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1040, 400],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "154c57ad-7b0e-4c30-b421-6a192515d6a4",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1344, 400],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "66792e3d-2ca6-4188-aa36-067f92d53b7d",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1344, 1104],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0b47e1f5-7df9-47c4-b9fd-ac4a6bf52ae9",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2656, 400],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a0fe4d11-718b-46fa-b6bf-efaac2b9ae09",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3792, 400],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6673d4bf-2a4a-4539-abac-a5c625541f7d",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3824, 944],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4d5f85bd-70fa-4ede-b4e1-bbfaebd0c6b0",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3824, 608],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a892b23a-920e-4d29-ae59-6d06b6e61f45",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [0, 0],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "02d8a9e8-e6eb-4ec8-93da-4266954653af",
+			"name": "Track API Costs",
+			"type": "n8n-nodes-base.code",
+			"position": [3920, 704],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "cd0f2050-720d-4ba1-8e26-63fc541c9c20",
+			"name": "Log Cost to Sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [4208, 704],
+			"parameters": {},
+			"typeVersion": 4.7
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"connections": {
+		"Telegram Input": {
+			"main": [
+				[
+					{
+						"node": "Route by Message Type",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Track API Costs": {
+			"main": [
+				[
+					{
+						"node": "Log Cost to Sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"GPT-4.1 Mini Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Expense Analyzer",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Expense Analyzer": {
+			"main": [
+				[
+					{
+						"node": "Generate Voice Response",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Track API Costs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Voice Quality": {
+			"main": [
+				[
+					{
+						"node": "Send Processing Notification (Voice)",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "🎙️ Download Voice File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Conversation Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Expense Analyzer",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start Transcription": {
+			"main": [
+				[
+					{
+						"node": "Wait for Transcription",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload to AssemblyAI": {
+			"main": [
+				[
+					{
+						"node": "Start Transcription",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Route by Message Type": {
+			"main": [
+				[
+					{
+						"node": "Check Voice Quality",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send Processing Notification (Text)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Sheet for Queries": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Expense Analyzer",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Low Balance Alert": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Expense Analyzer",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait for Transcription": {
+			"main": [
+				[
+					{
+						"node": "Get Transcription Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Voice Response": {
+			"main": [
+				[
+					{
+						"node": "Send Voice to Telegram",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Text to Telegram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Transcription Result": {
+			"main": [
+				[
+					{
+						"node": "Check Transcription Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Transaction History": {
+			"main": [
+				[
+					{
+						"node": "Calculate Starting Balance",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculate Starting Balance": {
+			"main": [
+				[
+					{
+						"node": "AI Expense Analyzer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Transcription Status": {
+			"main": [
+				[
+					{
+						"node": "Read Transaction History",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait for Transcription",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Append Transaction to Sheet": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Expense Analyzer",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"🎙️ Download Voice File": {
+			"main": [
+				[
+					{
+						"node": "Upload to AssemblyAI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Processing Notification (Text)": {
+			"main": [
+				[
+					{
+						"node": "Read Transaction History",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
