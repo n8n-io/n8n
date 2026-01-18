@@ -236,4 +236,67 @@ describe('Workflow Builder', () => {
 			expect(exported.nodes).toHaveLength(2);
 		});
 	});
+
+	describe('AI nodes with subnodes', () => {
+		it('should include subnodes in exported JSON', () => {
+			const modelNode = node('n8n-nodes-langchain.lmChatOpenAi', 'v1', {
+				parameters: { model: 'gpt-4' },
+			});
+			const memoryNode = node('n8n-nodes-langchain.memoryBufferWindow', 'v1', {
+				parameters: { windowSize: 5 },
+			});
+			const toolNode = node('n8n-nodes-langchain.toolCalculator', 'v1', {});
+
+			const agentNode = node('n8n-nodes-langchain.agent', 'v1.6', {
+				parameters: { text: '={{ $json.prompt }}' },
+				subnodes: {
+					model: modelNode,
+					memory: memoryNode,
+					tools: [toolNode],
+				},
+			});
+
+			const triggerNode = trigger('n8n-nodes-base.manualTrigger', 'v1', {});
+
+			const wf = workflow('ai-test', 'AI Agent Test').add(triggerNode).then(agentNode);
+
+			const json = wf.toJSON();
+
+			// Should include all nodes: trigger + agent + model + memory + tool
+			expect(json.nodes).toHaveLength(5);
+
+			// Verify all node types are present
+			const nodeTypes = json.nodes.map((n) => n.type);
+			expect(nodeTypes).toContain('n8n-nodes-base.manualTrigger');
+			expect(nodeTypes).toContain('n8n-nodes-langchain.agent');
+			expect(nodeTypes).toContain('n8n-nodes-langchain.lmChatOpenAi');
+			expect(nodeTypes).toContain('n8n-nodes-langchain.memoryBufferWindow');
+			expect(nodeTypes).toContain('n8n-nodes-langchain.toolCalculator');
+		});
+
+		it('should create AI connections for subnodes', () => {
+			const modelNode = node('n8n-nodes-langchain.lmChatOpenAi', 'v1', {
+				parameters: { model: 'gpt-4' },
+			});
+
+			const agentNode = node('n8n-nodes-langchain.agent', 'v1.6', {
+				parameters: {},
+				subnodes: {
+					model: modelNode,
+				},
+			});
+
+			const triggerNode = trigger('n8n-nodes-base.manualTrigger', 'v1', {});
+
+			const wf = workflow('ai-test', 'AI Agent Test').add(triggerNode).then(agentNode);
+
+			const json = wf.toJSON();
+
+			// Model node should have ai_languageModel connection to agent
+			const modelConnections = json.connections[modelNode.name];
+			expect(modelConnections).toBeDefined();
+			expect(modelConnections.ai_languageModel).toBeDefined();
+			expect(modelConnections.ai_languageModel[0][0].node).toBe(agentNode.name);
+		});
+	});
 });

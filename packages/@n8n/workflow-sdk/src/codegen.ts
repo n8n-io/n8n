@@ -1,7 +1,7 @@
 /**
  * Code generator for creating TypeScript SDK code from workflow JSON.
  */
-import type { WorkflowJSON, NodeJSON, ConnectionTarget } from './types/base';
+import type { WorkflowJSON, NodeJSON, IConnection } from './types/base';
 
 /**
  * Escapes a string for use in a single-quoted TypeScript string literal.
@@ -117,7 +117,7 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 		for (const [_connType, outputs] of Object.entries(connectionTypes)) {
 			if (!Array.isArray(outputs)) continue;
 
-			outputs.forEach((targets: ConnectionTarget[], outputIndex: number) => {
+			outputs.forEach((targets: IConnection[] | null, outputIndex: number) => {
 				if (!Array.isArray(targets)) return;
 
 				const targetList: { to: string; inputIndex: number }[] = [];

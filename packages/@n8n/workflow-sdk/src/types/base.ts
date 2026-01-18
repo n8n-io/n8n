@@ -1,4 +1,61 @@
-import type { IDataObject, INode, IConnections } from 'n8n-workflow';
+// =============================================================================
+// Duplicates from n8n-workflow (to avoid external dependency in SDK types)
+// =============================================================================
+
+/**
+ * Generic value type for data objects
+ * Duplicate of n8n-workflow GenericValue
+ */
+export type GenericValue = string | object | number | boolean | undefined | null;
+
+/**
+ * Generic data object with string keys
+ * Duplicate of n8n-workflow IDataObject
+ */
+export interface IDataObject {
+	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
+}
+
+/**
+ * Single connection target in n8n workflow
+ * Duplicate of n8n-workflow IConnection
+ */
+export interface IConnection {
+	/** The node the connection is to */
+	node: string;
+	/** The type of the input on destination node (e.g., "main", "ai_tool") */
+	type: string;
+	/** The output/input-index of destination node */
+	index: number;
+}
+
+/**
+ * Array of connections for each output index
+ * Duplicate of n8n-workflow NodeInputConnections
+ */
+export type NodeInputConnections = Array<IConnection[] | null>;
+
+/**
+ * Node connections organized by input type
+ * Duplicate of n8n-workflow INodeConnections
+ */
+export interface INodeConnections {
+	/** Input name -> connections */
+	[key: string]: NodeInputConnections;
+}
+
+/**
+ * All connections in a workflow, organized by source node
+ * Duplicate of n8n-workflow IConnections
+ */
+export interface IConnections {
+	/** Node name -> node connections */
+	[key: string]: INodeConnections;
+}
+
+// =============================================================================
+// SDK Types
+// =============================================================================
 
 /**
  * Workflow settings configuration
@@ -44,6 +101,20 @@ export interface CredentialReference {
 export type OnError = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 
 /**
+ * Subnode configuration for AI nodes
+ */
+export interface SubnodeConfig {
+	/** Language model subnode */
+	model?: NodeInstance<string, string, unknown>;
+	/** Memory subnode */
+	memory?: NodeInstance<string, string, unknown>;
+	/** Tool subnodes */
+	tools?: NodeInstance<string, string, unknown>[];
+	/** Output parser subnode */
+	outputParser?: NodeInstance<string, string, unknown>;
+}
+
+/**
  * Configuration options for creating a node
  */
 export interface NodeConfig<TParams = IDataObject> {
@@ -71,6 +142,8 @@ export interface NodeConfig<TParams = IDataObject> {
 	onError?: OnError;
 	/** Pinned output data for testing */
 	pinData?: IDataObject[];
+	/** Subnodes for AI agent nodes (model, memory, tools, outputParser) */
+	subnodes?: SubnodeConfig;
 }
 
 /**
@@ -184,21 +257,6 @@ export interface WorkflowContext {
  * Expression function type
  */
 export type Expression<T> = ($: ExpressionContext) => T;
-
-/**
- * Node reference function for accessing other node outputs
- */
-export interface NodeReferenceFunction {
-	(nodeName: string): { json: IDataObject; item: { json: IDataObject } };
-}
-
-/**
- * Extended expression context with node reference function
- */
-export interface ExpressionContextWithRefs extends ExpressionContext {
-	/** Reference another node's output */
-	(nodeName: string): { json: IDataObject; item: { json: IDataObject } };
-}
 
 /**
  * Node instance representing a configured node in the workflow
@@ -367,12 +425,53 @@ export interface WorkflowBuilderStatic {
 }
 
 /**
+ * Node JSON representation (for serialization)
+ */
+export interface NodeJSON {
+	id: string;
+	name: string;
+	type: string;
+	typeVersion: number;
+	position: [number, number];
+	parameters?: IDataObject;
+	credentials?: Record<string, { id?: string; name: string }>;
+	disabled?: boolean;
+	notes?: string;
+	notesInFlow?: boolean;
+	executeOnce?: boolean;
+	retryOnFail?: boolean;
+	alwaysOutputData?: boolean;
+	onError?: OnError;
+}
+
+/**
+ * Connection target in workflow connections
+ */
+export interface ConnectionTarget {
+	/** Target node name */
+	node: string;
+	/** Connection type (main, ai_tool, ai_memory, ai_languageModel, etc.) */
+	type: string;
+	/** Input index on the target node */
+	index: number;
+}
+
+/**
+ * Internal graph node representation for workflow builder
+ */
+export interface GraphNode {
+	instance: NodeInstance<string, string, unknown>;
+	// connectionType -> outputIndex -> targets
+	connections: Map<string, Map<number, ConnectionTarget[]>>;
+}
+
+/**
  * n8n workflow JSON format
  */
 export interface WorkflowJSON {
 	id?: string;
 	name: string;
-	nodes: INode[];
+	nodes: NodeJSON[];
 	connections: IConnections;
 	settings?: WorkflowSettings;
 	pinData?: Record<string, IDataObject[]>;
@@ -380,28 +479,6 @@ export interface WorkflowJSON {
 		templateId?: string;
 		instanceId?: string;
 	};
-}
-
-/**
- * Subnode configuration for AI nodes
- */
-export interface SubnodeConfig {
-	/** Language model subnode */
-	model?: NodeInstance<string, string, unknown>;
-	/** Memory subnode */
-	memory?: NodeInstance<string, string, unknown>;
-	/** Tool subnodes */
-	tools?: NodeInstance<string, string, unknown>[];
-	/** Output parser subnode */
-	outputParser?: NodeInstance<string, string, unknown>;
-}
-
-/**
- * Extended node config for AI nodes with subnodes
- */
-export interface AINodeConfig<TParams = IDataObject> extends NodeConfig<TParams> {
-	/** Subnodes for AI agent nodes */
-	subnodes?: SubnodeConfig;
 }
 
 /**
@@ -462,3 +539,151 @@ export interface CodeResult<T> {
 	jsCode: string;
 	_outputType?: T;
 }
+
+// =============================================================================
+// Factory Function Types
+// =============================================================================
+
+/**
+ * Creates a workflow builder
+ *
+ * @example
+ * ```typescript
+ * const wf = workflow('my-id', 'My Workflow', { timezone: 'UTC' })
+ *   .add(trigger(...))
+ *   .then(node(...));
+ *
+ * // Import existing workflow
+ * const imported = workflow.fromJSON(existingJson);
+ * ```
+ */
+export type WorkflowFn = WorkflowBuilderStatic;
+
+/**
+ * Creates a node instance
+ *
+ * @example
+ * ```typescript
+ * const httpNode = node('n8n-nodes-base.httpRequest', 'v4.2', {
+ *   parameters: { url: 'https://api.example.com', method: 'GET' }
+ * });
+ * ```
+ */
+export type NodeFn = <TType extends string, TVersion extends string, TOutput = unknown>(
+	type: TType,
+	version: TVersion,
+	config: NodeConfig,
+) => NodeInstance<TType, TVersion, TOutput>;
+
+/**
+ * Creates a trigger node instance
+ *
+ * @example
+ * ```typescript
+ * const schedule = trigger('n8n-nodes-base.scheduleTrigger', 'v1.1', {
+ *   parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } }
+ * });
+ * ```
+ */
+export type TriggerFn = <TType extends string, TVersion extends string, TOutput = unknown>(
+	type: TType,
+	version: TVersion,
+	config: NodeConfig,
+) => TriggerInstance<TType, TVersion, TOutput>;
+
+/**
+ * Creates a sticky note for workflow documentation
+ *
+ * @example
+ * ```typescript
+ * const note = sticky('## API Integration', { color: 4, position: [80, -176] });
+ * ```
+ */
+export type StickyFn = (
+	content: string,
+	config?: StickyNoteConfig,
+) => NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>;
+
+/**
+ * Creates a placeholder value for template parameters
+ *
+ * @example
+ * ```typescript
+ * const slackNode = node('n8n-nodes-base.slack', 'v2.2', {
+ *   parameters: { channel: placeholder('Enter Channel') }
+ * });
+ * ```
+ */
+export type PlaceholderFn = (hint: string) => PlaceholderValue;
+
+/**
+ * Creates a merge composite for parallel branch execution
+ *
+ * @example
+ * ```typescript
+ * workflow('id', 'Test')
+ *   .add(trigger(...))
+ *   .then(merge([api1, api2, api3], { mode: 'combine' }))
+ *   .then(processResults);
+ * ```
+ */
+export type MergeFn = <TBranches extends NodeInstance<string, string, unknown>[]>(
+	branches: TBranches,
+	config?: MergeConfig,
+) => MergeComposite<TBranches>;
+
+/**
+ * Creates a split in batches builder for processing items in chunks
+ *
+ * @example
+ * ```typescript
+ * workflow('id', 'Test')
+ *   .add(trigger(...))
+ *   .then(
+ *     splitInBatches('v3', { parameters: { batchSize: 10 } })
+ *       .done().then(finalizeNode)
+ *       .each().then(processNode).loop()
+ *   );
+ * ```
+ */
+export type SplitInBatchesFn = (
+	version: string,
+	config?: NodeConfig,
+) => SplitInBatchesBuilder<unknown>;
+
+/**
+ * Creates a code helper for executing once with access to all items
+ *
+ * @example
+ * ```typescript
+ * node('n8n-nodes-base.code', 'v2', {
+ *   parameters: {
+ *     ...runOnceForAllItems<{ sum: number }>((ctx) => {
+ *       const total = ctx.$input.all().reduce((acc, i) => acc + i.json.value, 0);
+ *       return [{ json: { sum: total } }];
+ *     })
+ *   }
+ * });
+ * ```
+ */
+export type RunOnceForAllItemsFn = <T = unknown>(
+	fn: (ctx: AllItemsContext) => Array<{ json: T }>,
+) => CodeResult<T>;
+
+/**
+ * Creates a code helper for executing once per item
+ *
+ * @example
+ * ```typescript
+ * node('n8n-nodes-base.code', 'v2', {
+ *   parameters: {
+ *     ...runOnceForEachItem<{ doubled: number }>((ctx) => {
+ *       return { json: { doubled: ctx.$input.item.json.value * 2 } };
+ *     })
+ *   }
+ * });
+ * ```
+ */
+export type RunOnceForEachItemFn = <T = unknown>(
+	fn: (ctx: EachItemContext) => { json: T } | null,
+) => CodeResult<T>;

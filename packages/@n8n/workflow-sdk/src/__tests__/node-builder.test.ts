@@ -146,4 +146,47 @@ describe('Node Builder', () => {
 			expect(String(p)).toBe('<__PLACEHOLDER_VALUE__API Key__>');
 		});
 	});
+
+	describe('AI nodes with subnodes', () => {
+		it('should create an AI node with subnodes', () => {
+			const modelNode = node('n8n-nodes-langchain.lmChatOpenAi', 'v1', {
+				parameters: { model: 'gpt-4' },
+			});
+			const memoryNode = node('n8n-nodes-langchain.memoryBufferWindow', 'v1', {
+				parameters: { windowSize: 5 },
+			});
+			const toolNode = node('n8n-nodes-langchain.toolCalculator', 'v1', {});
+
+			const agentNode = node('n8n-nodes-langchain.agent', 'v1.6', {
+				parameters: { text: '={{ $json.prompt }}' },
+				subnodes: {
+					model: modelNode,
+					memory: memoryNode,
+					tools: [toolNode],
+				},
+			});
+
+			expect(agentNode.type).toBe('n8n-nodes-langchain.agent');
+			expect(agentNode.config.subnodes).toBeDefined();
+			expect(agentNode.config.subnodes?.model).toBe(modelNode);
+			expect(agentNode.config.subnodes?.memory).toBe(memoryNode);
+			expect(agentNode.config.subnodes?.tools).toHaveLength(1);
+			expect(agentNode.config.subnodes?.tools?.[0]).toBe(toolNode);
+		});
+
+		it('should create an AI node with output parser', () => {
+			const parserNode = node('n8n-nodes-langchain.outputParserStructured', 'v1.3', {
+				parameters: { schemaType: 'manual', inputSchema: '{}' },
+			});
+
+			const chainNode = node('n8n-nodes-langchain.chainLlm', 'v1', {
+				parameters: {},
+				subnodes: {
+					outputParser: parserNode,
+				},
+			});
+
+			expect(chainNode.config.subnodes?.outputParser).toBe(parserNode);
+		});
+	});
 });

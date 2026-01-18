@@ -1,36 +1,60 @@
 // Core types
 export type {
+	// Workflow and node types
 	WorkflowBuilder,
 	WorkflowBuilderStatic,
 	WorkflowSettings,
 	WorkflowJSON,
+	NodeJSON,
 	NodeInstance,
 	TriggerInstance,
 	NodeConfig,
-	AINodeConfig,
 	SubnodeConfig,
 	CredentialReference,
 	OnError,
+	// Expression types
 	Expression,
 	ExpressionContext,
-	ExpressionContextWithRefs,
 	BinaryContext,
 	BinaryField,
 	InputContext,
 	ExecutionContext,
 	WorkflowContext,
+	// Merge types
 	MergeComposite,
 	MergeConfig,
 	MergeMode,
+	// Sticky note types
 	StickyNoteConfig,
+	// Split in batches types
 	SplitInBatchesBuilder,
 	SplitInBatchesDoneChain,
 	SplitInBatchesEachChain,
+	// Other types
 	OutputSelector,
 	PlaceholderValue,
 	AllItemsContext,
 	EachItemContext,
 	CodeResult,
+	ConnectionTarget,
+	GraphNode,
+	// Factory function types
+	WorkflowFn,
+	NodeFn,
+	TriggerFn,
+	StickyFn,
+	PlaceholderFn,
+	MergeFn,
+	SplitInBatchesFn,
+	RunOnceForAllItemsFn,
+	RunOnceForEachItemFn,
+	// n8n-workflow type duplicates (self-contained in SDK)
+	GenericValue,
+	IDataObject,
+	IConnection,
+	NodeInputConnections,
+	INodeConnections,
+	IConnections,
 } from './types/base';
 
 // Workflow builder

@@ -1,20 +1,18 @@
 import type {
-	INode,
-	IConnections,
-	IDataObject,
-	INodeParameters,
-	INodeCredentials,
-	NodeConnectionType,
-} from 'n8n-workflow';
-import type {
 	WorkflowBuilder,
 	WorkflowBuilderStatic,
 	WorkflowSettings,
 	WorkflowJSON,
+	NodeJSON,
 	NodeInstance,
 	TriggerInstance,
 	OutputSelector,
 	MergeComposite,
+	ConnectionTarget,
+	GraphNode,
+	SubnodeConfig,
+	IConnections,
+	IDataObject,
 } from './types/base';
 
 /**
@@ -38,24 +36,6 @@ const START_X = 100;
 function parseVersion(version: string): number {
 	const match = version.match(/v?(\d+(?:\.\d+)?)/);
 	return match ? parseFloat(match[1]) : 1;
-}
-
-/**
- * Connection target with type information
- */
-interface ConnectionTarget {
-	node: string;
-	type: string; // 'main', 'ai_tool', 'ai_memory', 'ai_languageModel', etc.
-	index: number; // input index on target node
-}
-
-/**
- * Internal representation of a node in the graph
- */
-interface GraphNode {
-	instance: NodeInstance<string, string, unknown>;
-	// connectionType -> outputIndex -> targets
-	connections: Map<string, Map<number, ConnectionTarget[]>>;
 }
 
 /**
@@ -113,12 +93,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		node: N,
 	): WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
-		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
-		connectionsMap.set('main', new Map());
-		newNodes.set(node.name, {
-			instance: node,
-			connections: connectionsMap,
-		});
+		this.addNodeWithSubnodes(newNodes, node);
 		return this.clone({
 			nodes: newNodes,
 			currentNode: node.name,
@@ -142,13 +117,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const node = nodeOrMerge as N;
 		const newNodes = new Map(this._nodes);
 
-		// Add the new node
-		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
-		connectionsMap.set('main', new Map());
-		newNodes.set(node.name, {
-			instance: node,
-			connections: connectionsMap,
-		});
+		// Add the new node and its subnodes
+		this.addNodeWithSubnodes(newNodes, node);
 
 		// Connect from current node if exists
 		if (this._currentNode) {
@@ -177,13 +147,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			then<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder {
 				const newNodes = new Map(self._nodes);
 
-				// Add the new node
-				const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
-				connectionsMap.set('main', new Map());
-				newNodes.set(node.name, {
-					instance: node,
-					connections: connectionsMap,
-				});
+				// Add the new node and its subnodes
+				self.addNodeWithSubnodes(newNodes, node);
 
 				// Connect from current node at specified output
 				if (self._currentNode) {
@@ -230,7 +195,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	toJSON(): WorkflowJSON {
-		const nodes: INode[] = [];
+		const nodes: NodeJSON[] = [];
 		const connections: IConnections = {};
 
 		// Calculate positions for nodes without explicit positions
@@ -243,18 +208,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
 
 			// Use the actual node name from the instance, not the map key
-			const n8nNode: INode = {
+			const n8nNode: NodeJSON = {
 				id: instance.id,
 				name: instance.name,
 				type: instance.type,
 				typeVersion: parseVersion(instance.version),
 				position,
-				parameters: (instance.config.parameters ?? {}) as INodeParameters,
+				parameters: instance.config.parameters,
 			};
 
 			// Add optional properties
 			if (instance.config.credentials) {
-				n8nNode.credentials = instance.config.credentials as unknown as INodeCredentials;
+				n8nNode.credentials = instance.config.credentials;
 			}
 			if (instance.config.disabled) {
 				n8nNode.disabled = instance.config.disabled;
@@ -297,15 +262,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 					// Get max output index to ensure array is properly sized
 					const maxOutput = Math.max(...outputMap.keys());
-					const outputArray: Array<
-						Array<{ node: string; type: NodeConnectionType; index: number }>
-					> = [];
+					const outputArray: Array<Array<{ node: string; type: string; index: number }>> = [];
 
 					for (let i = 0; i <= maxOutput; i++) {
 						const targets = outputMap.get(i) || [];
 						outputArray[i] = targets.map((target) => ({
 							node: target.node,
-							type: target.type as NodeConnectionType,
+							type: target.type,
 							index: target.index,
 						}));
 					}
@@ -357,6 +320,62 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			'_doneNodes' in value &&
 			'_eachNodes' in value
 		);
+	}
+
+	/**
+	 * Add a node and its subnodes to the nodes map, creating AI connections
+	 */
+	private addNodeWithSubnodes(
+		nodes: Map<string, GraphNode>,
+		nodeInstance: NodeInstance<string, string, unknown>,
+	): void {
+		// Add the main node
+		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
+		connectionsMap.set('main', new Map());
+		nodes.set(nodeInstance.name, {
+			instance: nodeInstance,
+			connections: connectionsMap,
+		});
+
+		// Process subnodes if present
+		const subnodes = nodeInstance.config.subnodes as SubnodeConfig | undefined;
+		if (!subnodes) return;
+
+		// Helper to add a subnode with its AI connection
+		const addSubnode = (subnode: NodeInstance<string, string, unknown>, connectionType: string) => {
+			const subnodeConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			subnodeConns.set('main', new Map());
+			// Create AI connection from subnode to parent node
+			const aiConnMap = new Map<number, ConnectionTarget[]>();
+			aiConnMap.set(0, [{ node: nodeInstance.name, type: connectionType, index: 0 }]);
+			subnodeConns.set(connectionType, aiConnMap);
+			nodes.set(subnode.name, {
+				instance: subnode,
+				connections: subnodeConns,
+			});
+		};
+
+		// Add model subnode
+		if (subnodes.model) {
+			addSubnode(subnodes.model, 'ai_languageModel');
+		}
+
+		// Add memory subnode
+		if (subnodes.memory) {
+			addSubnode(subnodes.memory, 'ai_memory');
+		}
+
+		// Add tool subnodes
+		if (subnodes.tools) {
+			for (const tool of subnodes.tools) {
+				addSubnode(tool, 'ai_tool');
+			}
+		}
+
+		// Add output parser subnode
+		if (subnodes.outputParser) {
+			addSubnode(subnodes.outputParser, 'ai_outputParser');
+		}
 	}
 
 	/**
