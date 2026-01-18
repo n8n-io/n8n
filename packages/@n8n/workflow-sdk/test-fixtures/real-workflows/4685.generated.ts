@@ -55,11 +55,7 @@ const wf = workflow('Dbzu6lmK6zWsyyQP', 'Lead 1', { executionOrder: 'v1' })
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'people' },
-				position: [660, 140],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'people' }, position: [660, 140] },
 		}),
 	)
 	.then(
@@ -456,7 +452,6 @@ const wf = workflow('Dbzu6lmK6zWsyyQP', 'Lead 1', { executionOrder: 'v1' })
 					looseTypeValidation: true,
 				},
 				position: [1000, 580],
-				name: 'If',
 			},
 		}),
 	)
@@ -924,7 +919,7 @@ const wf = workflow('Dbzu6lmK6zWsyyQP', 'Lead 1', { executionOrder: 'v1' })
 		node({
 			type: 'n8n-nodes-base.limit',
 			version: 1,
-			config: { parameters: { maxItems: 2 }, position: [440, 1060], name: 'Limit' },
+			config: { parameters: { maxItems: 2 }, position: [440, 1060] },
 		}),
 	)
 	.then(
@@ -1955,7 +1950,6 @@ const wf = workflow('Dbzu6lmK6zWsyyQP', 'Lead 1', { executionOrder: 'v1' })
 					},
 				},
 				position: [1320, 1980],
-				name: 'Google Sheets',
 			},
 		}),
 	)
@@ -2941,7 +2935,6 @@ const wf = workflow('Dbzu6lmK6zWsyyQP', 'Lead 1', { executionOrder: 'v1' })
 					},
 				},
 				position: [260, 380],
-				name: 'Google Sheets Trigger',
 			},
 		}),
 	)
@@ -3218,7 +3211,6 @@ const wf = workflow('Dbzu6lmK6zWsyyQP', 'Lead 1', { executionOrder: 'v1' })
 					options: {},
 				},
 				position: [520, 5040],
-				name: 'HTTP Request',
 			},
 		}),
 	)

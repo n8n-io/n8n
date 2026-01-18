@@ -14,7 +14,6 @@ const wf = workflow('', '')
 					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
 				},
 				position: [-220, 1560],
-				name: 'Gmail Trigger',
 			},
 		}),
 	)
@@ -375,7 +374,6 @@ const wf = workflow('', '')
 			config: {
 				parameters: { path: 'email-feedback', options: {}, httpMethod: 'POST' },
 				position: [360, 2160],
-				name: 'Webhook',
 			},
 		}),
 	)

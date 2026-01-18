@@ -385,7 +385,6 @@ const wf = workflow('g1hmK8jw38TOYX7D', 'Create Video with Google Veo3 and Uploa
 					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
 				},
 				position: [680, 1320],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -493,11 +492,7 @@ const wf = workflow('g1hmK8jw38TOYX7D', 'Create Video with Google Veo3 and Uploa
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{ field: 'minutes' }] } },
-				position: [-220, 700],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{ field: 'minutes' }] } }, position: [-220, 700] },
 		}),
 	)
 	.add(

@@ -36,7 +36,6 @@ const wf = workflow(
 					},
 				},
 				position: [464, 2000],
-				name: 'Google Sheets Trigger',
 			},
 		}),
 	)

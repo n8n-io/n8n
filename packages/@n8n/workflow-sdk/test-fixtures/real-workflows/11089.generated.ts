@@ -13,7 +13,6 @@ const wf = workflow('mXgQJT7qXMEFQAow', 'Server-Side Meta Ads Tracking Template 
 					responseMode: 'responseNode',
 				},
 				position: [-976, 0],
-				name: 'Webhook',
 			},
 		}),
 	)
@@ -234,21 +233,7 @@ const wf = workflow('mXgQJT7qXMEFQAow', 'Server-Side Meta Ads Tracking Template 
 		}),
 	)
 	.then(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.4,
-			config: {
-				parameters: {
-					options: { responseCode: 200 },
-					respondWith: 'allIncomingItems',
-				},
-				position: [1072, 0],
-				name: 'Respond to Webhook',
-			},
-		}),
-	)
-	.add(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.4,
 			config: {

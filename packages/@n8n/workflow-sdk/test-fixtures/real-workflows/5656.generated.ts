@@ -23,7 +23,6 @@ const wf = workflow(
 			config: {
 				parameters: { options: {}, fieldToSplitOut: '={{ $json.field }}' },
 				position: [-280, 500],
-				name: 'Split Out',
 			},
 		}),
 	)
@@ -82,7 +81,6 @@ const wf = workflow(
 					options: {},
 				},
 				position: [-60, 500],
-				name: 'Switch',
 			},
 		}),
 	)
@@ -120,7 +118,6 @@ const wf = workflow(
 					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
 				},
 				position: [380, 400],
-				name: 'HTTP Request',
 			},
 		}),
 	)

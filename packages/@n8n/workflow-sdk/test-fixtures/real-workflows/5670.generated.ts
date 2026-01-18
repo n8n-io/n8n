@@ -11,7 +11,6 @@ const wf = workflow('JoBrqIuKn4cnNOJ0', 'Personal Appointment Booking', { execut
 					responseMode: 'responseNode',
 				},
 				position: [620, 620],
-				name: 'Webhook',
 			},
 		}),
 	)
@@ -81,7 +80,7 @@ const wf = workflow('JoBrqIuKn4cnNOJ0', 'Personal Appointment Booking', { execut
 		}),
 	)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.2,
 			config: { parameters: { options: {} }, position: [1320, 620], name: 'Respond to Webhook' },
@@ -108,12 +107,5 @@ const wf = workflow('JoBrqIuKn4cnNOJ0', 'Personal Appointment Booking', { execut
 				position: [1040, 720],
 				name: 'Book an Appointment',
 			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.2,
-			config: { parameters: { options: {} }, position: [1320, 620], name: 'Respond to Webhook' },
 		}),
 	);

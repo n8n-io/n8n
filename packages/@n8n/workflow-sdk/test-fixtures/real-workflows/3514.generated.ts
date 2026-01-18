@@ -229,7 +229,6 @@ const wf = workflow('', '')
 					options: {},
 				},
 				position: [1660, 860],
-				name: 'Switch',
 			},
 		}),
 	)

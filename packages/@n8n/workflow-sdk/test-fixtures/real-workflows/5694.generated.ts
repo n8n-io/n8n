@@ -301,11 +301,7 @@ const wf = workflow('TEMPLATE_WORKFLOW_ID', 'Newsletter', { executionOrder: 'v1'
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{}] } },
-				position: [-40, 230],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{}] } }, position: [-40, 230] },
 		}),
 	)
 	.then(

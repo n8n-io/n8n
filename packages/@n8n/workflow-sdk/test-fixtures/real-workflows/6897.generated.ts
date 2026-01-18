@@ -104,11 +104,7 @@ const wf = workflow('[WORKFLOW_ID_REMOVED]', 'HR CVs Filter', { executionOrder: 
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
-			config: {
-				parameters: { mode: 'chooseBranch', useDataOfInput: 2 },
-				position: [0, 544],
-				name: 'Merge',
-			},
+			config: { parameters: { mode: 'chooseBranch', useDataOfInput: 2 }, position: [0, 544] },
 		}),
 	)
 	.then(

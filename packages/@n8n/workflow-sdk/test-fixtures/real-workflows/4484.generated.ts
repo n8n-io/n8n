@@ -15,7 +15,6 @@ const wf = workflow(
 					responseMode: 'responseNode',
 				},
 				position: [60, 60],
-				name: 'Webhook',
 			},
 		}),
 	)
@@ -195,14 +194,7 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.2,
-			config: { parameters: { options: {} }, position: [1060, -20], name: 'Respond to Webhook' },
-		}),
-	)
-	.add(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.2,
 			config: { parameters: { options: {} }, position: [1060, -20], name: 'Respond to Webhook' },

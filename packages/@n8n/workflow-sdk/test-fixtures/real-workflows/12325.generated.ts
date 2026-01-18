@@ -7,11 +7,7 @@ const wf = workflow(
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{}] } },
-				position: [-224, 240],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{}] } }, position: [-224, 240] },
 		}),
 	)
 	.then(

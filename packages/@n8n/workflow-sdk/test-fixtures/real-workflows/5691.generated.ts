@@ -129,7 +129,6 @@ const wf = workflow('', '')
 					destinationFieldName: 'results',
 				},
 				position: [820, -80],
-				name: 'Aggregate',
 			},
 		}),
 	)
@@ -356,7 +355,6 @@ const wf = workflow('', '')
 					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
 				},
 				position: [900, 1060],
-				name: 'Gmail',
 			},
 		}),
 	)

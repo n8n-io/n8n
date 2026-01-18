@@ -229,7 +229,6 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 					},
 				},
 				position: [660, 1020],
-				name: 'If',
 			},
 		}),
 	)
@@ -474,6 +473,7 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 					},
 				},
 				position: [2780, 1020],
+				name: 'if',
 			},
 		}),
 	)
@@ -600,7 +600,6 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 					options: {},
 				},
 				position: [3000, 1120],
-				name: 'Switch',
 			},
 		}),
 	)

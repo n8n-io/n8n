@@ -191,27 +191,67 @@ const wf = workflow('abSdfsaYgkssXX7g', 'Dynamically Selects Models Based on Inp
 								numberInputs: 4,
 							},
 							subnodes: {
-								model: languageModel({
-									type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-									version: 1.3,
-									config: {
-										parameters: {
-											model: {
-												__rl: true,
-												mode: 'list',
-												value: 'claude-sonnet-4-20250514',
-												cachedResultName: 'Claude 4 Sonnet',
+								model: [
+									languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+										version: 1.3,
+										config: {
+											parameters: {
+												model: {
+													__rl: true,
+													mode: 'list',
+													value: 'claude-sonnet-4-20250514',
+													cachedResultName: 'Claude 4 Sonnet',
+												},
+												options: {},
 											},
-											options: {},
+											credentials: {
+												anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+											},
+											name: 'Opus 4',
 										},
-										credentials: {
-											anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+									}),
+									languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+										version: 1,
+										config: {
+											parameters: { model: 'perplexity/sonar', options: {} },
+											credentials: {
+												openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+											},
+											name: 'Perplexity',
 										},
-										name: 'Opus 4',
-									},
-								}),
+									}),
+									languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.2,
+										config: {
+											parameters: {
+												model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+												options: {},
+											},
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'GPT 4.1 mini',
+										},
+									}),
+									languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+										version: 1,
+										config: {
+											parameters: {
+												options: {},
+												modelName: 'models/gemini-2.0-flash-thinking-exp',
+											},
+											credentials: {
+												googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+											},
+											name: 'Gemini Thinking Pro',
+										},
+									}),
+								],
 							},
-							name: 'Model Selector',
 						},
 					}),
 				},

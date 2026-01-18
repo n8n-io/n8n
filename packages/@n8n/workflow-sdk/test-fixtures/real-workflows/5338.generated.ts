@@ -581,11 +581,7 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
-			config: {
-				parameters: { mode: 'chooseBranch', numberInputs: 9 },
-				position: [1792, 1264],
-				name: 'Merge',
-			},
+			config: { parameters: { mode: 'chooseBranch', numberInputs: 9 }, position: [1792, 1264] },
 		}),
 	)
 	.then(

@@ -731,7 +731,6 @@ const wf = workflow(
 					},
 				},
 				position: [640, 1920],
-				name: 'Google Sheets',
 			},
 		}),
 	)

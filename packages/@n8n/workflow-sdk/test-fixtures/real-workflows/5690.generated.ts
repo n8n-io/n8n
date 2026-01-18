@@ -161,11 +161,7 @@ const wf = workflow('XVI3nC7HVl7JU6C5', 'Youtube - Get Video Comments', { execut
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'body.items' },
-				position: [-620, 340],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'body.items' }, position: [-620, 340] },
 		}),
 	)
 	.then(

@@ -5,7 +5,7 @@ const wf = workflow('8dpOtivR6zGMa8Nf', 'Automated Lead Scraper: Apify to Google
 		trigger({
 			type: 'n8n-nodes-base.manualTrigger',
 			version: 1,
-			config: { position: [-1740, -300], name: 'Manual Trigger' },
+			config: { position: [-1740, -300] },
 		}),
 	)
 	.add(

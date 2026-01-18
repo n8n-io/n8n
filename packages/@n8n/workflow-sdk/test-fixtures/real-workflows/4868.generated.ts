@@ -102,7 +102,6 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 					},
 				},
 				position: [1780, 140],
-				name: 'If',
 			},
 		}),
 	)

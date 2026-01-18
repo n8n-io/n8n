@@ -51,7 +51,6 @@ const wf = workflow(
 					nodeCredentialType: 'gmailOAuth2',
 				},
 				position: [1320, 920],
-				name: 'HTTP Request',
 			},
 		}),
 	)

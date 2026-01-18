@@ -10,7 +10,6 @@ const wf = workflow('', '')
 					responseMode: 'responseNode',
 				},
 				position: [-80, -240],
-				name: 'Webhook',
 			},
 		}),
 	)
@@ -35,7 +34,7 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.4,
 			config: {
@@ -91,7 +90,7 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.4,
 			config: {
@@ -165,7 +164,7 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.4,
 			config: {
@@ -228,39 +227,6 @@ const wf = workflow('', '')
 				},
 				position: [-80, 928],
 				name: 'Webhook5',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.4,
-			config: {
-				parameters: { options: {}, respondWith: 'allIncomingItems' },
-				position: [512, -240],
-				name: 'Respond to Webhook',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.4,
-			config: {
-				parameters: { options: {}, respondWith: 'allIncomingItems' },
-				position: [752, 64],
-				name: 'Respond to Webhook1',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.4,
-			config: {
-				parameters: { options: {}, respondWith: 'allIncomingItems' },
-				position: [752, 352],
-				name: 'Respond to Webhook2',
 			},
 		}),
 	)

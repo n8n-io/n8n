@@ -83,7 +83,6 @@ const wf = workflow(
 					jsCode: 'return $input.first().json.output.structure.chapters',
 				},
 				position: [40, 0],
-				name: 'Code',
 			},
 		}),
 	)

@@ -262,7 +262,6 @@ const wf = workflow(
 					combineBy: 'combineByPosition',
 				},
 				position: [700, 20],
-				name: 'Merge',
 			},
 		}),
 	)
@@ -374,7 +373,6 @@ const wf = workflow(
 			config: {
 				parameters: { options: {}, aggregate: 'aggregateAllItemData' },
 				position: [-240, 520],
-				name: 'Aggregate',
 			},
 		}),
 	)

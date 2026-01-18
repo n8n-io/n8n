@@ -227,7 +227,6 @@ const wf = workflow(
 					uploadPostApi: { id: 'credential-id', name: 'uploadPostApi Credential' },
 				},
 				position: [960, 352],
-				name: 'Upload Post',
 			},
 		}),
 	)

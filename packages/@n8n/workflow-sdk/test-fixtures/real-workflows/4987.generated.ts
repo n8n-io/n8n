@@ -450,7 +450,7 @@ const wf = workflow('Njfc4Qsoi6p35Bfj', '3D Product Video', { executionOrder: 'v
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 40 }, position: [1120, 180], name: 'Wait' },
+			config: { parameters: { amount: 40 }, position: [1120, 180] },
 		}),
 	)
 	.then(

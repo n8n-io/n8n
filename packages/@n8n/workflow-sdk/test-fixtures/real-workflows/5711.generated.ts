@@ -12,7 +12,6 @@ const wf = workflow('6Bn6KSpg1le9mG4Y', 'Alapaca Trade automation', {
 					rule: { interval: [{ triggerAtHour: 16, triggerAtMinute: 45 }] },
 				},
 				position: [-360, 680],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)
@@ -339,7 +338,6 @@ const wf = workflow('6Bn6KSpg1le9mG4Y', 'Alapaca Trade automation', {
 					},
 				},
 				position: [2060, 680],
-				name: 'Google Sheets',
 			},
 		}),
 	)
@@ -362,7 +360,7 @@ const wf = workflow('6Bn6KSpg1le9mG4Y', 'Alapaca Trade automation', {
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 2 }, position: [1400, 780], name: 'Wait' },
+			config: { parameters: { unit: 'minutes', amount: 2 }, position: [1400, 780] },
 		}),
 	)
 	.then(

@@ -6,7 +6,6 @@ const wf = workflow('', '')
 			config: {
 				parameters: { path: 'discord-pa', options: {}, httpMethod: 'POST' },
 				position: [1020, -220],
-				name: 'Webhook',
 			},
 		}),
 	)
@@ -166,7 +165,6 @@ const wf = workflow('', '')
 						'const maxLength = 2000;\nconst fullText = $input.first().json.output;\n\nconst messages = [];\nfor (let i = 0; i < fullText.length; i += maxLength) {\n  messages.push({ content: fullText.slice(i, i + maxLength) });\n}\n\nreturn messages;\n',
 				},
 				position: [3320, -260],
-				name: 'Code',
 			},
 		}),
 	)

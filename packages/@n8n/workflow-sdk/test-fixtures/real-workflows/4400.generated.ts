@@ -119,7 +119,6 @@ const wf = workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR'
 					},
 				},
 				position: [1160, -280],
-				name: 'Execute Workflow',
 			},
 		}),
 	)
@@ -320,7 +319,6 @@ const wf = workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR'
 						'const data = $json.pages;\n\nreturn data.map(entry => ({\n  json: {\n    markdown: entry.markdown\n  }\n}));',
 				},
 				position: [1140, 520],
-				name: 'Code',
 			},
 		}),
 	)
@@ -408,13 +406,7 @@ const wf = workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR'
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [2860, 540], name: 'Wait' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [2860, 540] } }))
 	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',

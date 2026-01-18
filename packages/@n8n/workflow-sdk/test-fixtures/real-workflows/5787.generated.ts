@@ -29,7 +29,6 @@ const wf = workflow(
 					},
 				},
 				position: [-2760, 420],
-				name: 'Google Drive Trigger',
 			},
 		}),
 	)
@@ -55,7 +54,6 @@ const wf = workflow(
 					},
 				},
 				position: [-2600, 420],
-				name: 'Google Drive',
 			},
 		}),
 	)
@@ -644,7 +642,7 @@ const wf = workflow(
 		trigger({
 			type: 'n8n-nodes-base.errorTrigger',
 			version: 1,
-			config: { position: [-2260, 760], name: 'Error Trigger' },
+			config: { position: [-2260, 760] },
 		}),
 	)
 	.then(
@@ -673,7 +671,6 @@ const wf = workflow(
 					},
 				},
 				position: [-2120, 760],
-				name: 'If',
 			},
 		}),
 	)
@@ -690,7 +687,6 @@ const wf = workflow(
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [-1920, 740],
-				name: 'Telegram',
 			},
 		}),
 	)

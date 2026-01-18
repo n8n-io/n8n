@@ -266,7 +266,6 @@ const wf = workflow('yNlNZi8P0wL4Tj5u', 'Google Text-to-Speech Generator', { exe
 					},
 				},
 				position: [1000, 40],
-				name: 'If',
 			},
 		}),
 	)
@@ -506,7 +505,7 @@ const wf = workflow('yNlNZi8P0wL4Tj5u', 'Google Text-to-Speech Generator', { exe
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 1 }, position: [1180, 180], name: 'Wait' },
+			config: { parameters: { amount: 1 }, position: [1180, 180] },
 		}),
 	)
 	.add(

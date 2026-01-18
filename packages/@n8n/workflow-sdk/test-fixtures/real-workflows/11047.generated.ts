@@ -216,7 +216,7 @@ const wf = workflow('P2I09TDwHXkMSQ7Q', 'Automated AI Music Generation with Elev
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 1 }, position: [800, 208], name: 'Wait' },
+			config: { parameters: { unit: 'minutes', amount: 1 }, position: [800, 208] },
 		}),
 	)
 	.add(

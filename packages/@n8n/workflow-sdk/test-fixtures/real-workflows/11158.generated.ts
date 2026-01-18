@@ -113,11 +113,7 @@ const wf = workflow('B01FguFGfZeVurIi', 'Olostep Amazon scraper', { executionOrd
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'parsedJson' },
-				position: [-224, 496],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'parsedJson' }, position: [-224, 496] },
 		}),
 	)
 	.then(
@@ -146,7 +142,6 @@ const wf = workflow('B01FguFGfZeVurIi', 'Olostep Amazon scraper', { executionOrd
 					},
 				},
 				position: [-16, 496],
-				name: 'If',
 			},
 		}),
 	)
@@ -229,13 +224,7 @@ const wf = workflow('B01FguFGfZeVurIi', 'Olostep Amazon scraper', { executionOrd
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [576, 512], name: 'Wait' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [576, 512] } }))
 	.add(
 		sticky('## Pagination  \nIterates through multiple Amazon pages (1–10).\n', {
 			name: 'Sticky Note1',

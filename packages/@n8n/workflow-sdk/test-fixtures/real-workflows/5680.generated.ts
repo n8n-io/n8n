@@ -9,7 +9,6 @@ const wf = workflow('', '')
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [-2160, -100],
-				name: 'Telegram Trigger',
 			},
 		}),
 	)
@@ -186,7 +185,6 @@ const wf = workflow('', '')
 					fieldsToAggregate: { fieldToAggregate: [{ fieldToAggregate: 'chunk' }] },
 				},
 				position: [360, -140],
-				name: 'Aggregate',
 			},
 		}),
 	)

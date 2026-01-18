@@ -223,7 +223,6 @@ const wf = workflow('h81ddl7uooV3eLBq', 'Hybrid Search with Qdrant & n8n, Legal 
 			config: {
 				parameters: { mode: 'combine', options: {}, combineBy: 'combineAll' },
 				position: [2320, 608],
-				name: 'Merge',
 			},
 		}),
 	)

@@ -10,7 +10,6 @@ const wf = workflow('', '')
 					httpMethod: 'POST',
 				},
 				position: [-336, -848],
-				name: 'Webhook',
 			},
 		}),
 	)
@@ -130,7 +129,6 @@ const wf = workflow('', '')
 			config: {
 				parameters: { updates: ['message'], additionalFields: {} },
 				position: [-304, -336],
-				name: 'Telegram Trigger',
 			},
 		}),
 	)
@@ -232,7 +230,6 @@ const wf = workflow('', '')
 					options: {},
 				},
 				position: [16, 80],
-				name: 'Switch',
 			},
 		}),
 	)
@@ -248,7 +245,6 @@ const wf = workflow('', '')
 					combineBy: 'combineByPosition',
 				},
 				position: [640, -368],
-				name: 'Merge',
 			},
 		}),
 	)
@@ -397,7 +393,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [1376, 0],
-				name: 'If',
 			},
 		}),
 	)

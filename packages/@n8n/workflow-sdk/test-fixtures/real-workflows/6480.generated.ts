@@ -17,7 +17,6 @@ const wf = workflow('0eQvHzKKVrYZMyyZ', 'Invoice Workflow', { executionOrder: 'v
 						cachedResultName: 'n8n Invoices Folder',
 					},
 				},
-				name: 'Google Drive Trigger',
 			},
 		}),
 	)
@@ -32,7 +31,6 @@ const wf = workflow('0eQvHzKKVrYZMyyZ', 'Invoice Workflow', { executionOrder: 'v
 					operation: 'download',
 				},
 				position: [260, 0],
-				name: 'Google Drive',
 			},
 		}),
 	)
@@ -100,7 +98,6 @@ const wf = workflow('0eQvHzKKVrYZMyyZ', 'Invoice Workflow', { executionOrder: 'v
 					}),
 				},
 				position: [740, 0],
-				name: 'Information Extractor',
 			},
 		}),
 	)
@@ -216,7 +213,6 @@ const wf = workflow('0eQvHzKKVrYZMyyZ', 'Invoice Workflow', { executionOrder: 'v
 					},
 				},
 				position: [1100, 0],
-				name: 'Google Sheets',
 			},
 		}),
 	)
@@ -272,7 +268,6 @@ const wf = workflow('0eQvHzKKVrYZMyyZ', 'Invoice Workflow', { executionOrder: 'v
 					additionalFields: {},
 				},
 				position: [1700, 0],
-				name: 'Telegram',
 			},
 		}),
 	)

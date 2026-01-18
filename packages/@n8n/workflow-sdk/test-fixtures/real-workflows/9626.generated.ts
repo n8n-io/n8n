@@ -77,7 +77,6 @@ const wf = workflow('', '')
 					fieldsToAggregate: { fieldToAggregate: [{ fieldToAggregate: 'chunk' }] },
 				},
 				position: [2064, 64],
-				name: 'Aggregate',
 			},
 		}),
 	)

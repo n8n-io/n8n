@@ -428,13 +428,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.limit',
-			version: 1,
-			config: { position: [240, -128], name: 'Limit' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.limit', version: 1, config: { position: [240, -128] } }))
 	.then(
 		node({
 			type: 'n8n-nodes-base.telegram',

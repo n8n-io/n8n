@@ -117,7 +117,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [1100, 340],
-				name: 'If',
 			},
 		}),
 	)
@@ -150,11 +149,7 @@ const wf = workflow('', '')
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'line_items' },
-				position: [1276, 280],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'line_items' }, position: [1276, 280] },
 		}),
 	)
 	.then(

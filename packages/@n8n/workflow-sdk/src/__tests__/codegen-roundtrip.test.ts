@@ -102,7 +102,7 @@ describe('parseWorkflowCode', () => {
 
 		// Verify connections
 		expect(parsedJson.connections['Manual Trigger']).toBeDefined();
-		expect(parsedJson.connections['Manual Trigger'].main[0][0].node).toBe('HTTP Request');
+		expect(parsedJson.connections['Manual Trigger']!.main[0]![0]!.node).toBe('HTTP Request');
 	});
 
 	it('should parse workflow with settings', () => {
@@ -249,8 +249,8 @@ describe('parseWorkflowCode', () => {
 
 		// Check branching connections
 		expect(parsedJson.connections['IF']).toBeDefined();
-		expect(parsedJson.connections['IF'].main[0][0].node).toBe('True Branch');
-		expect(parsedJson.connections['IF'].main[1][0].node).toBe('False Branch');
+		expect(parsedJson.connections['IF']!.main[0]![0]!.node).toBe('True Branch');
+		expect(parsedJson.connections['IF']!.main[1]![0]!.node).toBe('False Branch');
 	});
 });
 
@@ -266,7 +266,8 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 	}
 
 	describe('generateWorkflowCode -> parseWorkflowCode roundtrip', () => {
-		workflows.slice(0, 20).forEach(({ id, name, json, nodeCount }) => {
+		// Test ALL workflows - AI connections are now preserved via subnode factories
+		workflows.forEach(({ id, name, json, nodeCount }) => {
 			it(`should roundtrip workflow ${id}: "${name}" (${nodeCount} nodes)`, () => {
 				// Generate TypeScript code
 				const code = generateWorkflowCode(json);
@@ -293,7 +294,9 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				expect(parsedJson.nodes).toHaveLength(json.nodes.length);
 
 				// Verify all nodes are present by name
+				// Skip nodes with undefined names - they get generated names after roundtrip
 				for (const originalNode of json.nodes) {
+					if (originalNode.name === undefined) continue;
 					const parsedNode = parsedJson.nodes.find((n) => n.name === originalNode.name);
 					expect(parsedNode).toBeDefined();
 
@@ -304,10 +307,20 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 
 						// Parameters should be deeply equal
 						// Treat {} and undefined as equivalent (codegen doesn't output empty params)
-						const normalizeParams = (p: unknown) =>
-							p && typeof p === 'object' && Object.keys(p).length === 0 ? undefined : p;
-						expect(normalizeParams(parsedNode.parameters)).toEqual(
-							normalizeParams(originalNode.parameters),
+						// For sticky notes, treat content: '' as equivalent to no content
+						const normalizeParams = (p: unknown, nodeType: string) => {
+							if (!p || typeof p !== 'object') return p;
+							const obj = p as Record<string, unknown>;
+							if (Object.keys(obj).length === 0) return undefined;
+							// For sticky notes, normalize empty content
+							if (nodeType === 'n8n-nodes-base.stickyNote' && obj.content === '') {
+								const { content, ...rest } = obj;
+								return Object.keys(rest).length === 0 ? undefined : rest;
+							}
+							return p;
+						};
+						expect(normalizeParams(parsedNode.parameters, parsedNode.type)).toEqual(
+							normalizeParams(originalNode.parameters, originalNode.type),
 						);
 
 						// Credentials should match (if any)
@@ -324,20 +337,15 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				}
 
 				// Verify connection structure
-				// Note: AI connection types (ai_tool, ai_languageModel, ai_memory, ai_outputParser)
-				// cannot be preserved through codegen roundtrip - the generated code uses .add()/.then()
-				// which only creates 'main' connections
-				const filterEmptyConnections = (conns: Record<string, unknown>, includeAiTypes = true) => {
-					const aiConnectionTypes = ['ai_tool', 'ai_languageModel', 'ai_memory', 'ai_outputParser'];
+				// AI connection types (ai_tool, ai_languageModel, ai_memory, ai_outputParser, etc.)
+				// ARE now preserved through codegen roundtrip using subnode factory functions
+				const filterEmptyConnections = (conns: Record<string, unknown>) => {
 					const result: Record<string, unknown> = {};
 					for (const [nodeName, nodeConns] of Object.entries(conns)) {
 						const nonEmptyTypes: Record<string, unknown> = {};
 						for (const [connType, outputs] of Object.entries(
 							nodeConns as Record<string, unknown[]>,
 						)) {
-							// Skip AI connection types if requested
-							if (!includeAiTypes && aiConnectionTypes.includes(connType)) continue;
-
 							const nonEmptyOutputs = (outputs || []).filter(
 								(arr: unknown) => Array.isArray(arr) && arr.length > 0,
 							);
@@ -352,18 +360,29 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					return result;
 				};
 
-				// Check if the workflow has AI connections
-				const hasAiConnections = Object.values(json.connections).some((nodeConns) =>
-					Object.keys(nodeConns).some((connType) =>
-						['ai_tool', 'ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(connType),
-					),
-				);
-
 				// Check if workflow has complex patterns that codegen cannot preserve:
 				// - Merge nodes (multiple nodes connecting to same merge)
+				// - Fan-in (multiple source nodes connecting to the same target)
 				// - Fan-out (single output going to multiple nodes)
 				// - Multi-output branching (IF nodes with chained nodes after branches)
 				const hasMergeNode = json.nodes.some((n) => n.type === 'n8n-nodes-base.merge');
+
+				// Check for fan-in: multiple nodes connecting to the same target
+				const targetInputCounts = new Map<string, number>();
+				for (const nodeConns of Object.values(json.connections)) {
+					for (const outputs of Object.values(nodeConns)) {
+						if (!Array.isArray(outputs)) continue;
+						for (const targets of outputs) {
+							if (!Array.isArray(targets)) continue;
+							for (const target of targets) {
+								const count = targetInputCounts.get(target.node) || 0;
+								targetInputCounts.set(target.node, count + 1);
+							}
+						}
+					}
+				}
+				const hasFanIn = [...targetInputCounts.values()].some((count) => count > 1);
+
 				const hasFanOut = Object.values(json.connections).some((nodeConns) =>
 					Object.values(nodeConns).some(
 						(outputs) =>
@@ -388,20 +407,21 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				);
 
 				// Only verify connections for simple workflows:
-				// - No AI connections (ai_* types cannot be preserved)
 				// - No Merge nodes (complex fan-in patterns cannot be preserved)
+				// - No fan-in (multiple sources to same target cannot be preserved)
 				// - No fan-out (single output to multiple nodes cannot be preserved)
 				// - No multi-output branching (IF chains cannot be preserved correctly)
 				// - No orphaned connection keys (data quality issues)
+				// Note: AI connections ARE now preserved via subnode factory functions
 				if (
-					!hasAiConnections &&
 					!hasMergeNode &&
+					!hasFanIn &&
 					!hasFanOut &&
 					!hasMultiOutputBranching &&
 					orphanedConnectionKeys.length === 0
 				) {
-					const filteredOriginal = filterEmptyConnections(json.connections, true);
-					const filteredParsed = filterEmptyConnections(parsedJson.connections, true);
+					const filteredOriginal = filterEmptyConnections(json.connections);
+					const filteredParsed = filterEmptyConnections(parsedJson.connections);
 
 					expect(Object.keys(filteredParsed).sort()).toEqual(Object.keys(filteredOriginal).sort());
 				}

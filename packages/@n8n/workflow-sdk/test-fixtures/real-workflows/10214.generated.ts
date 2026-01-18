@@ -183,17 +183,30 @@ const wf = workflow('', '')
 								},
 							},
 							subnodes: {
-								model: languageModel({
-									type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-									version: 1,
-									config: {
-										parameters: { options: {} },
-										credentials: {
-											googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+								model: [
+									languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+										version: 1,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+											},
+											name: 'Google Gemini Chat Model',
 										},
-										name: 'Google Gemini Chat Model',
-									},
-								}),
+									}),
+									languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+										version: 1,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+											},
+											name: 'Google Gemini Chat Model1',
+										},
+									}),
+								],
 							},
 							name: 'Choose Model',
 						},

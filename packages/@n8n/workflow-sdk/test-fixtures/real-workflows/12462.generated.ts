@@ -7,11 +7,7 @@ const wf = workflow(
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.3,
-			config: {
-				parameters: { rule: { interval: [{}] } },
-				position: [80, 1664],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{}] } }, position: [80, 1664] },
 		}),
 	)
 	.then(
@@ -82,11 +78,7 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.editImage',
 			version: 1,
-			config: {
-				parameters: { operation: 'information' },
-				position: [1008, 1664],
-				name: 'Edit Image',
-			},
+			config: { parameters: { operation: 'information' }, position: [1008, 1664] },
 		}),
 	)
 	.output(0)
@@ -360,7 +352,7 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1264], name: 'Wait' },
+			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1264] },
 		}),
 	)
 	.then(
@@ -3414,7 +3406,6 @@ const wf = workflow(
 					combineBy: 'combineByPosition',
 				},
 				position: [2304, 288],
-				name: 'Merge',
 			},
 		}),
 	)

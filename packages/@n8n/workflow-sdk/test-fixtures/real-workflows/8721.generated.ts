@@ -270,11 +270,7 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'items' },
-				position: [1200, 1168],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'items' }, position: [1200, 1168] },
 		}),
 	)
 	.then(

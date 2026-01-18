@@ -146,18 +146,7 @@ const wf = workflow('83Ad0ngUzuJQHqb6', 'AI Voice Assistant | Shareable', { exec
 		}),
 	)
 	.then(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.4,
-			config: {
-				parameters: { options: {} },
-				position: [1552, 400],
-				name: 'Webhook: Return AI Response (ElevenLabs)',
-			},
-		}),
-	)
-	.add(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.4,
 			config: {

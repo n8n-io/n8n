@@ -1001,7 +1001,6 @@ const wf = workflow('', '')
 					rule: { interval: [{ field: 'minutes', minutesInterval: 1 }] },
 				},
 				position: [-100, 740],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)
@@ -1015,7 +1014,6 @@ const wf = workflow('', '')
 						"const items = $input.all();\nconst updatedItems = items.map((item) => {\n  item.json.chatInput =\n    `Initiate Autonomous User Information Gathering\n\n\"Please initiate the autonomous information gathering process for the first comment auther youtube user. My objective is to obtain all publicly available information concerning this user.\n\nYou are to operate with complete autonomy, without requiring any intermediate confirmations from me during the investigation phase.\n\nYour operational guidelines are as follows:\n\nExhaustive Search: Systematically search for all relevant information. This includes, but is not limited to, social media profiles (Instagram, Twitter/X, LinkedIn, Facebook, TikTok, GitHub, etc.), personal or company websites, publicly available contact details (especially email addresses), and any other professional or personal affiliations that can help identify or understand the user.\n\nAutonomous Decision-Making: You are empowered to make all necessary decisions regarding search queries, tool usage (e.g., Google Search, Browse), and navigation between different information sources, without my intervention.\n\nMandatory Information Update & Save:\n\nYou must not stop the process for a user until you have updated their information.\n\nOnce you have gathered all available information, or determined that there are no further options to collect more data for this user, you must save everything you have found. This involves populating all target fields with collected data.\n\nIf no information is collected for a specific target field (e.g., no Instagram profile found, no email address), you must explicitly put 'N/A' in that field.\n\nProcess Completion & Reporting:\n\nAfter saving all information, you must provide a short description about the process you undertook for this user (e.g., \"Investigation for [User ID/Name] completed. Found LinkedIn profile and a personal blog. No public email or other social media accounts were identified.\").\n\nCrucially, you are to then consider the comment (or user's investigation) as 'processed'. Do not ask me for any further confirmation regarding this user once these steps are completed.\n\n`;\n  item.json.sessionId =\n    Date.now().toString(36) + Math.random().toString(36).substring(2);\n  return item;\n});\nreturn updatedItems;\n",
 				},
 				position: [80, 740],
-				name: 'Code',
 			},
 		}),
 	)

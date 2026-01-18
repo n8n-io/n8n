@@ -9,7 +9,6 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [-576, -480],
-				name: 'Telegram Trigger',
 			},
 		}),
 	)
@@ -129,7 +128,6 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 					},
 				},
 				position: [-496, 192],
-				name: 'Google Sheets Trigger',
 			},
 		}),
 	)
@@ -165,7 +163,6 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 					},
 				},
 				position: [-288, 192],
-				name: 'Filter',
 			},
 		}),
 	)
@@ -201,7 +198,6 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 					},
 				},
 				position: [-64, 192],
-				name: 'If',
 			},
 		}),
 	)
@@ -221,7 +217,6 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 					specifyBody: 'json',
 				},
 				position: [144, 48],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -416,11 +411,7 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 		node({
 			type: 'n8n-nodes-base.markdown',
 			version: 1,
-			config: {
-				parameters: { html: '={{ $json.data }}', options: {} },
-				position: [352, 288],
-				name: 'Markdown',
-			},
+			config: { parameters: { html: '={{ $json.data }}', options: {} }, position: [352, 288] },
 		}),
 	)
 	.then(
@@ -461,7 +452,6 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 					}),
 				},
 				position: [560, 288],
-				name: 'Information Extractor',
 			},
 		}),
 	)

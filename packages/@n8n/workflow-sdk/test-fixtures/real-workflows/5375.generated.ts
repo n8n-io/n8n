@@ -19,7 +19,6 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 					formDescription: 'Please enter the core keywords you want to analyze, then click Submit.',
 				},
 				position: [-3340, 300],
-				name: 'Form Trigger',
 			},
 		}),
 	)
@@ -100,11 +99,7 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'items' },
-				position: [-2760, 340],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'items' }, position: [-2760, 340] },
 		}),
 	)
 	.then(

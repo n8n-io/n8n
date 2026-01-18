@@ -196,7 +196,6 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 					options: {},
 				},
 				position: [1424, 736],
-				name: 'Switch',
 			},
 		}),
 	)

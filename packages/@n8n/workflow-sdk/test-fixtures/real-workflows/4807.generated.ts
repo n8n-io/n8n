@@ -14,7 +14,6 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
 				},
 				position: [1480, 220],
-				name: 'Gmail Trigger',
 			},
 		}),
 	)
@@ -121,7 +120,6 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 					}),
 				},
 				position: [1820, 400],
-				name: 'Text Classifier',
 			},
 		}),
 	)
@@ -154,7 +152,6 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 					},
 				},
 				position: [2100, 160],
-				name: 'Google Calendar',
 			},
 		}),
 	)
@@ -176,7 +173,6 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 						"const triggerJson = $('Gmail Trigger').item.json;\nconst headersFrom  = triggerJson.headers.from;      // \"Name <user@example.com>\"\n\n// Split into name and address\nconst namePart = headersFrom.split('<')[0].replace(/^From:\\s*/i, '').trim();\nconst emailPart = headersFrom.match(/<([^>]+)>/)?.[1] || headersFrom;\n\nconst slotTimes = items.map(i =>\n  new Date(i.json.start.dateTime || i.json.start.date).toLocaleString(\n    'en-US',\n    { weekday:'short', month:'short', day:'numeric', hour:'numeric',\n      minute:'2-digit', hour12:true }\n  )\n);\n\nreturn [{\n  json: {\n    slotTimes,\n    senderName:  namePart,\n    senderEmail: emailPart,\n    originalSub: triggerJson.subject               // pass the subject along\n  }\n}];\n",
 				},
 				position: [2520, 140],
-				name: 'Code',
 			},
 		}),
 	)

@@ -170,22 +170,7 @@ const wf = workflow('vMvm0kfL6V7u4bPO', 'Client Responder IG/TG', { executionOrd
 		}),
 	)
 	.then(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.3,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'text',
-					responseBody: '={{ $json.text }}',
-				},
-				position: [1140, 0],
-				name: 'Send Response',
-			},
-		}),
-	)
-	.add(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.3,
 			config: {

@@ -5,11 +5,7 @@ const wf = workflow('w9YVsuUtlNgXOEAQ', 'LinkedIn Post Generation & Approval Aut
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{}] } },
-				position: [-260, 2595],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{}] } }, position: [-260, 2595] },
 		}),
 	)
 	.then(

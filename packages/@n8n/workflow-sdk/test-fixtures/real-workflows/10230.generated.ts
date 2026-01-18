@@ -3,11 +3,7 @@ const wf = workflow('', '')
 		trigger({
 			type: '@n8n/n8n-nodes-langchain.chatTrigger',
 			version: 1.3,
-			config: {
-				parameters: { options: { responseMode: 'responseNodes' } },
-				position: [-48, -240],
-				name: 'Chat Trigger',
-			},
+			config: { parameters: { options: { responseMode: 'responseNodes' } }, position: [-48, -240] },
 		}),
 	)
 	.then(

@@ -179,7 +179,6 @@ const wf = workflow('', 'Reels Trends Watcher')
 					options: {},
 				},
 				position: [680, 600],
-				name: 'Switch',
 			},
 		}),
 	)
@@ -330,7 +329,6 @@ const wf = workflow('', 'Reels Trends Watcher')
 						"const existingPages = {};\nfor (const page of $items('Get Reels')) {\n  const source = page.json.property_url ?? '';\n  if (source) existingPages[source] = page.json;\n}\n\nconst output = [];\nconst accountsMap = $('Many to One').first().json.accountsMap;\n\nfor (const reel of $items('Map Reels')) {\n\n  const source   = reel.json.url;          \n\n  const views = reel.json.videoViewCount;\n  var update = {\n    \"Code\": reel.json.shortCode,\n    \"SignedCode\": reel.json.shortCode + '-' + Math.random(),\n    \"IsCreated\" : false,\n    \"notionAccountPageId\" : accountsMap[ reel.json.ownerUsername.toLowerCase() ],\n          \"Views\"       : views ? views : reel.json.videoPlayCount,\n          \"Likes\"       : reel.json.likesCount,\n          \"Comments\"    : reel.json.commentsCount,\n          \"Saves\"       : reel.json.savesCount ?? 0,\n          \"Shares\"      : reel.json.sharesCount ?? 0,\n          \"Updated\"   : new Date().toISOString()\n  };\n\n  /* ------------------------------------------------- */\n  if (existingPages[source]) {\n    \n    update.notionPageId = existingPages[source].id;\n\n  } else {\n    update['IsCreated'] = true;\n    update['Caption'] = reel.json.caption;\n    update['URL'] = reel.json.url;\n    update['Hashtags'] = reel.json.hashtags.join(', ');\n    update['Duration'] = reel.json.videoDuration;\n    update['Date'] = reel.json.timestamp;\n    update['videoUrl'] = reel.json.videoUrl;\n    \n  }\n\n  output.push({json: update});\n}\n\nreturn output;   // n8n continues with one array containing both kinds of items\n",
 				},
 				position: [2220, 540],
-				name: 'Code',
 			},
 		}),
 	)
@@ -678,18 +676,14 @@ const wf = workflow('', 'Reels Trends Watcher')
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 1 }, position: [900, 760], name: 'Wait' },
+			config: { parameters: { unit: 'minutes', amount: 1 }, position: [900, 760] },
 		}),
 	)
 	.add(
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{ triggerAtHour: 4 }] } },
-				position: [-640, 440],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{ triggerAtHour: 4 }] } }, position: [-640, 440] },
 		}),
 	)
 	.add(

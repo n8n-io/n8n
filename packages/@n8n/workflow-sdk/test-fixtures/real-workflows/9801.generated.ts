@@ -19,7 +19,6 @@ const wf = workflow('7O3XDyjnKZuQ1iOB', 'Email_Summarizer', { executionOrder: 'v
 					},
 				},
 				position: [416, -32],
-				name: 'Google Drive Trigger',
 			},
 		}),
 	)
@@ -53,7 +52,6 @@ const wf = workflow('7O3XDyjnKZuQ1iOB', 'Email_Summarizer', { executionOrder: 'v
 					},
 				},
 				position: [640, -32],
-				name: 'If',
 			},
 		}),
 	)
@@ -90,13 +88,7 @@ const wf = workflow('7O3XDyjnKZuQ1iOB', 'Email_Summarizer', { executionOrder: 'v
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [1312, -32], name: 'Merge' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [1312, -32] } }))
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',

@@ -74,7 +74,6 @@ const wf = workflow('REDACTED_WORKFLOW_ID', 'insta Reel publish', {
 						'// Code (Function) Node Script - Focused on Input Debugging\nconst inputItem = items[0]; // Get the whole item, not just .json yet\n\n// Log the entire incoming item to see its structure, including binary properties if any\nconsole.log("Full Input Item to Code Node:", JSON.stringify(inputItem, null, 2));\n\nconst itemJson = inputItem.json; // Now get the JSON part\n\nlet fileId;\nlet fileName;\nlet webContentLink;\n\nif (typeof itemJson !== \'object\' || itemJson === null) {\n    console.error("Input item.json is not an object or is null. Input was:", JSON.stringify(inputItem, null, 2));\n    fileName = "Unknown Video (Input not an object)";\n} else {\n    // Try to access properties directly, assuming Google Drive File Resource structure\n    fileId = itemJson.id;\n    fileName = itemJson.name;\n    webContentLink = \'REDACTED_WEBHOOK_URL\'; // Fallback to webViewLink\n\n    console.log(`Attempting to extract: id=\'${fileId}\', name=\'${fileName}\', webContentLink=\'${webContentLink}\'`);\n\n    if (typeof fileName !== \'string\' || fileName.trim() === "") {\n        console.warn("fileName is missing or invalid in Code Node input. Actual item.json.name was:", itemJson.name, ". Setting to \'Unknown Video\'.");\n        fileName = "Unknown Video";\n    } else {\n        console.log("Successfully extracted fileName:", fileName);\n    }\n\n    if (typeof fileId !== \'string\' || fileId.trim() === "") {\n        console.warn("fileId is missing or invalid.");\n        // fileId remains as extracted or undefined\n    }\n\n    if (typeof webContentLink !== \'string\' || webContentLink.trim() === "") {\n        console.warn("webContentLink (and webViewLink) is missing or invalid.");\n        // webContentLink remains as extracted or undefined\n    }\n}\n\nconst outputData = {\n  processedFileId: fileId,\n  processedFileName: fileName,\n  processedWebContentLink: webContentLink\n};\n\nconsole.log("Output from Code Node:", JSON.stringify(outputData, null, 2));\n\n// Return structure expected by n8n\nreturn [{ json: outputData }];',
 				},
 				position: [-208, -304],
-				name: 'Code',
 			},
 		}),
 	)
@@ -218,7 +217,7 @@ const wf = workflow('REDACTED_WORKFLOW_ID', 'insta Reel publish', {
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 90 }, position: [688, -624], name: 'Wait' },
+			config: { parameters: { amount: 90 }, position: [688, -624] },
 		}),
 	)
 	.then(
@@ -317,7 +316,6 @@ const wf = workflow('REDACTED_WORKFLOW_ID', 'insta Reel publish', {
 					googleOAuth2Api: { id: 'credential-id', name: 'googleOAuth2Api Credential' },
 				},
 				position: [-1248, -384],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -378,17 +376,6 @@ const wf = workflow('REDACTED_WORKFLOW_ID', 'insta Reel publish', {
 	)
 	.add(
 		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.4,
-			config: {
-				parameters: { options: {}, respondWith: 'binary' },
-				position: [976, -32],
-				name: 'Respond to Webhook',
-			},
-		}),
-	)
-	.add(
-		trigger({
 			type: 'n8n-nodes-base.webhook',
 			version: 2,
 			config: {
@@ -398,7 +385,6 @@ const wf = workflow('REDACTED_WORKFLOW_ID', 'insta Reel publish', {
 					responseMode: 'responseNode',
 				},
 				position: [640, -32],
-				name: 'Webhook',
 			},
 		}),
 	)
@@ -410,6 +396,17 @@ const wf = workflow('REDACTED_WORKFLOW_ID', 'insta Reel publish', {
 				parameters: { options: {}, fileSelector: '/tmp/video.mp4' },
 				position: [800, -32],
 				name: 'Read/Write Files from Disk1',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.respondToWebhook',
+			version: 1.4,
+			config: {
+				parameters: { options: {}, respondWith: 'binary' },
+				position: [976, -32],
+				name: 'Respond to Webhook',
 			},
 		}),
 	)

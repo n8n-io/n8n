@@ -3,11 +3,7 @@ const wf = workflow('WczQxQgtvjjk1HC1', 'LinkedIn Profile Enrichment With Error 
 	saveManualExecutions: true,
 })
 	.add(
-		trigger({
-			type: 'n8n-nodes-base.manualTrigger',
-			version: 1,
-			config: { position: [160, 80], name: 'Manual Trigger' },
-		}),
+		trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [160, 80] } }),
 	)
 	.then(
 		node({
@@ -237,11 +233,7 @@ const wf = workflow('WczQxQgtvjjk1HC1', 'LinkedIn Profile Enrichment With Error 
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{}] } },
-				position: [160, 280],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{}] } }, position: [160, 280] },
 		}),
 	)
 	.add(

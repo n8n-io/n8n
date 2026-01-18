@@ -305,7 +305,6 @@ const wf = workflow('gMlV2BS7Aj3XlgCC', 'Lead Magnet Agent - Trigify', { executi
 			config: {
 				parameters: { options: {}, fieldToSplitOut: 'output.chapters' },
 				position: [3320, 280],
-				name: 'Split Out',
 			},
 		}),
 	)
@@ -410,7 +409,6 @@ const wf = workflow('gMlV2BS7Aj3XlgCC', 'Lead Magnet Agent - Trigify', { executi
 					combineBy: 'combineByPosition',
 				},
 				position: [3900, 280],
-				name: 'Merge',
 			},
 		}),
 	)
@@ -424,7 +422,6 @@ const wf = workflow('gMlV2BS7Aj3XlgCC', 'Lead Magnet Agent - Trigify', { executi
 						'const mergeData = $input.all().map((item) => item.json);\nconst combinedData = [];\n\nmergeData.forEach((item) => {\n  combinedData.push(item.title, item.output);\n});\n\nreturn { combinedData };\n',
 				},
 				position: [4060, 280],
-				name: 'Code',
 			},
 		}),
 	)
@@ -473,7 +470,6 @@ const wf = workflow('gMlV2BS7Aj3XlgCC', 'Lead Magnet Agent - Trigify', { executi
 					googleDocsOAuth2Api: { id: 'credential-id', name: 'googleDocsOAuth2Api Credential' },
 				},
 				position: [4560, 280],
-				name: 'Google Docs',
 			},
 		}),
 	)
@@ -520,7 +516,6 @@ const wf = workflow('gMlV2BS7Aj3XlgCC', 'Lead Magnet Agent - Trigify', { executi
 					},
 				},
 				position: [4880, 280],
-				name: 'Google Drive',
 			},
 		}),
 	)

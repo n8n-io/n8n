@@ -93,14 +93,14 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.removeDuplicates',
 			version: 2,
-			config: { parameters: { options: {} }, position: [940, 0], name: 'Remove Duplicates' },
+			config: { parameters: { options: {} }, position: [940, 0] },
 		}),
 	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.limit',
 			version: 1,
-			config: { parameters: { maxItems: 10 }, position: [1120, 0], name: 'Limit' },
+			config: { parameters: { maxItems: 10 }, position: [1120, 0] },
 		}),
 	)
 	.then(
@@ -152,11 +152,7 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'emails' },
-				position: [1880, -60],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'emails' }, position: [1880, -60] },
 		}),
 	)
 	.then(
@@ -238,7 +234,7 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 1 }, position: [1700, 100], name: 'Wait' },
+			config: { parameters: { amount: 1 }, position: [1700, 100] },
 		}),
 	)
 	.then(

@@ -105,22 +105,22 @@ export type OnError = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorO
  * Uses typed subnode instances for type safety.
  */
 export interface SubnodeConfig {
-	/** Language model subnode (ai_languageModel connection type) */
-	model?: LanguageModelInstance;
+	/** Language model subnode(s) (ai_languageModel connection type) - array for modelSelector, single for most nodes */
+	model?: LanguageModelInstance | LanguageModelInstance[];
 	/** Memory subnode (ai_memory connection type) */
 	memory?: MemoryInstance;
 	/** Tool subnodes (ai_tool connection type) */
 	tools?: ToolInstance[];
 	/** Output parser subnode (ai_outputParser connection type) */
 	outputParser?: OutputParserInstance;
-	/** Embedding subnode (ai_embedding connection type) */
-	embedding?: EmbeddingInstance;
+	/** Embedding subnode(s) (ai_embedding connection type) */
+	embedding?: EmbeddingInstance | EmbeddingInstance[];
 	/** Vector store subnode (ai_vectorStore connection type) */
 	vectorStore?: VectorStoreInstance;
 	/** Retriever subnode (ai_retriever connection type) */
 	retriever?: RetrieverInstance;
-	/** Document loader subnode (ai_document connection type) */
-	documentLoader?: DocumentLoaderInstance;
+	/** Document loader subnode(s) (ai_document connection type) */
+	documentLoader?: DocumentLoaderInstance | DocumentLoaderInstance[];
 	/** Text splitter subnode (ai_textSplitter connection type) */
 	textSplitter?: TextSplitterInstance;
 }

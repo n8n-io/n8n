@@ -263,7 +263,7 @@ const wf = workflow('', '')
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.1,
-			config: { parameters: { numberInputs: 3 }, position: [1820, 960], name: 'Merge' },
+			config: { parameters: { numberInputs: 3 }, position: [1820, 960] },
 		}),
 	)
 	.then(

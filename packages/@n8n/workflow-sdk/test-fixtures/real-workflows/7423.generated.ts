@@ -58,7 +58,6 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 					specifyBody: 'json',
 				},
 				position: [320, 96],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -88,7 +87,6 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 					},
 				},
 				position: [576, 96],
-				name: 'Filter',
 			},
 		}),
 	)
@@ -119,7 +117,6 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 					}),
 				},
 				position: [-64, 448],
-				name: 'Information Extractor',
 			},
 		}),
 	)
@@ -149,7 +146,6 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 					},
 				},
 				position: [352, 448],
-				name: 'If',
 			},
 		}),
 	)
@@ -284,7 +280,7 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 1 }, position: [32, 864], name: 'Wait' },
+			config: { parameters: { amount: 1 }, position: [32, 864] },
 		}),
 	)
 	.then(

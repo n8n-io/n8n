@@ -67,7 +67,6 @@ const wf = workflow('', '')
 					markdown: '={{ $json.report }}',
 				},
 				position: [1552, 400],
-				name: 'Markdown',
 			},
 		}),
 	)

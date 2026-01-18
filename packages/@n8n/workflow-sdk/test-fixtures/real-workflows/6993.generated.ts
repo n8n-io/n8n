@@ -460,13 +460,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [880, 384], name: 'Merge' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [880, 384] } }))
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.chainLlm',
@@ -683,7 +677,7 @@ const wf = workflow('', '')
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 10 }, position: [-912, 592], name: 'Wait' },
+			config: { parameters: { amount: 10 }, position: [-912, 592] },
 		}),
 	)
 	.output(1)

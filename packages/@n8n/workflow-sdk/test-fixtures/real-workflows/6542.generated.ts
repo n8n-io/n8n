@@ -816,7 +816,6 @@ const wf = workflow('', '')
 					cohereApi: { id: 'credential-id', name: 'cohereApi Credential' },
 				},
 				position: [1296, 560],
-				name: 'Reranker Cohere',
 			},
 		}),
 	)

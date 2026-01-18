@@ -112,7 +112,7 @@ const wf = workflow('dLrtZMRZzusZDlpa', 'GoogleVertex_template', { executionOrde
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 2 }, position: [360, 0], name: 'Wait' },
+			config: { parameters: { unit: 'minutes', amount: 2 }, position: [360, 0] },
 		}),
 	)
 	.then(
@@ -189,7 +189,6 @@ const wf = workflow('dLrtZMRZzusZDlpa', 'GoogleVertex_template', { executionOrde
 					},
 				},
 				position: [980, 0],
-				name: 'Google Drive',
 			},
 		}),
 	)

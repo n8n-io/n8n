@@ -232,7 +232,6 @@ const wf = workflow('mtCQYada6O64BILe', 'Building Prospecting Lists', { executio
 					subject: 'Your ICP prospecting enrichment is done.',
 				},
 				position: [640, 0],
-				name: 'Gmail',
 			},
 		}),
 	)

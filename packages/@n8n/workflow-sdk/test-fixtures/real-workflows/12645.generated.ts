@@ -86,7 +86,6 @@ const wf = workflow(
 					looseTypeValidation: true,
 				},
 				position: [-384, -320],
-				name: 'If',
 			},
 		}),
 	)
@@ -182,7 +181,6 @@ const wf = workflow(
 					numberInputs: 3,
 				},
 				position: [528, -352],
-				name: 'Merge',
 			},
 		}),
 	)
@@ -277,7 +275,7 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { unit: 'minutes' }, position: [1552, -336], name: 'Wait' },
+			config: { parameters: { unit: 'minutes' }, position: [1552, -336] },
 		}),
 	)
 	.then(

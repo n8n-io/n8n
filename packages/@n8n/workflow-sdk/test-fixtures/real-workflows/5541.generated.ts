@@ -156,7 +156,6 @@ const wf = workflow('', '')
 					fieldToSplitOut: 'tokenUsage',
 				},
 				position: [120, 180],
-				name: 'Split Out',
 			},
 		}),
 	)

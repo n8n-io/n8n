@@ -12,7 +12,6 @@ const wf = workflow(
 					rule: { interval: [{ triggerAtHour: 6 }, { triggerAtHour: 18 }] },
 				},
 				position: [-3420, -200],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)
@@ -134,7 +133,7 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 10 }, position: [-1940, -200], name: 'Wait' },
+			config: { parameters: { amount: 10 }, position: [-1940, -200] },
 		}),
 	)
 	.then(
@@ -144,7 +143,6 @@ const wf = workflow(
 			config: {
 				parameters: { options: {}, fieldToSplitOut: 'choices[0].message.content' },
 				position: [-1720, -200],
-				name: 'Split Out',
 			},
 		}),
 	)

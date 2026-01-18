@@ -3,7 +3,7 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 		trigger({
 			type: 'n8n-nodes-base.telegramTrigger',
 			version: 1.2,
-			config: { position: [272, 1904], name: 'Telegram Trigger' },
+			config: { position: [272, 1904] },
 		}),
 	)
 	.then(
@@ -81,19 +81,9 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 			config: { position: [2192, 1568], name: 'Label URL 1' },
 		}),
 	)
+	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [2416, 2272] } }))
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [2416, 2272], name: 'Merge' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.3,
-			config: { position: [2640, 2304], name: 'HTTP Request' },
-		}),
+		node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { position: [2640, 2304] } }),
 	)
 	.then(
 		node({
@@ -102,13 +92,7 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 			config: { position: [2864, 2304], name: 'HTTP Request1' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { position: [3088, 2224], name: 'If' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.if', version: 2.2, config: { position: [3088, 2224] } }))
 	.output(0)
 	.then(
 		node({
@@ -174,13 +158,7 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 		}),
 	)
 	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [3312, 2400], name: 'Wait' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [3312, 2400] } }))
 	.output(0)
 	.then(
 		node({

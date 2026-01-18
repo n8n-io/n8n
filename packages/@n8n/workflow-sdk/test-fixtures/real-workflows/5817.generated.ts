@@ -6,7 +6,6 @@ const wf = workflow('sgcKe5gsmJFdEAe3', 'ai-trend-email-alerter-weaviate', { exe
 			config: {
 				parameters: { rule: { interval: [{ daysInterval: 7 }, {}] } },
 				position: [-128, 752],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)
@@ -125,11 +124,7 @@ const wf = workflow('sgcKe5gsmJFdEAe3', 'ai-trend-email-alerter-weaviate', { exe
 		node({
 			type: 'n8n-nodes-base.removeDuplicates',
 			version: 2,
-			config: {
-				parameters: { compare: '={{ $json.id }}', options: {} },
-				position: [1424, 752],
-				name: 'Remove Duplicates',
-			},
+			config: { parameters: { compare: '={{ $json.id }}', options: {} }, position: [1424, 752] },
 		}),
 	)
 	.output(0)
@@ -201,7 +196,6 @@ const wf = workflow('sgcKe5gsmJFdEAe3', 'ai-trend-email-alerter-weaviate', { exe
 					combineBy: 'combineByPosition',
 				},
 				position: [2704, 752],
-				name: 'Merge',
 			},
 		}),
 	)
@@ -532,7 +526,6 @@ const wf = workflow('sgcKe5gsmJFdEAe3', 'ai-trend-email-alerter-weaviate', { exe
 					destinationKey: '=data',
 				},
 				position: [1088, 1584],
-				name: 'Markdown',
 			},
 		}),
 	)

@@ -9,7 +9,6 @@ const wf = workflow(
 			config: {
 				parameters: { updates: ['message'], additionalFields: {} },
 				position: [-2144, 4032],
-				name: 'Telegram Trigger',
 			},
 		}),
 	)
@@ -76,7 +75,6 @@ const wf = workflow(
 					fieldsToCompare: 'title',
 				},
 				position: [-1200, 4032],
-				name: 'Remove Duplicates',
 			},
 		}),
 	)

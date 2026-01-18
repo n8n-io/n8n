@@ -6,7 +6,6 @@ const wf = workflow('C4GyUqmPvAFtDBbG', '[IG] Carousel on IG', { executionOrder:
 			config: {
 				parameters: { rule: { interval: [{ field: 'minutes' }] } },
 				position: [-1020, 360],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)

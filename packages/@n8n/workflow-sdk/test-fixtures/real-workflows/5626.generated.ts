@@ -215,11 +215,7 @@ const wf = workflow(
 		trigger({
 			type: 'n8n-nodes-base.telegramTrigger',
 			version: 1.2,
-			config: {
-				parameters: { updates: ['message'], additionalFields: {} },
-				position: [20, 0],
-				name: 'Telegram Trigger',
-			},
+			config: { parameters: { updates: ['message'], additionalFields: {} }, position: [20, 0] },
 		}),
 	)
 	.add(

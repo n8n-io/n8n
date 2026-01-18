@@ -220,7 +220,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [496, 320],
-				name: 'If',
 			},
 		}),
 	)

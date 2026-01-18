@@ -502,7 +502,6 @@ const wf = workflow('', '')
 					options: {},
 				},
 				position: [400, 2336],
-				name: 'Switch',
 			},
 		}),
 	)

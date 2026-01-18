@@ -133,11 +133,7 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: { position: [4020, 2580], name: 'HTTP Request' },
-		}),
+		node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { position: [4020, 2580] } }),
 	)
 	.then(
 		node({
@@ -153,13 +149,7 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 			config: { position: [5280, 2580], name: 'LinkedIn' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.1,
-			config: { position: [6720, 2540], name: 'Merge' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.merge', version: 3.1, config: { position: [6720, 2540] } }))
 	.then(
 		node({
 			type: 'n8n-nodes-base.aggregate',
@@ -167,13 +157,7 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 			config: { position: [6980, 2560], name: 'Aggregate1' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.gmail',
-			version: 2.1,
-			config: { position: [7360, 2560], name: 'Gmail' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.gmail', version: 2.1, config: { position: [7360, 2560] } }))
 	.output(0)
 	.then(
 		node({
@@ -315,20 +299,8 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 			config: { position: [340, 2080], name: 'When Executed by Another Workflow' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.notion',
-			version: 2.2,
-			config: { position: [560, 2080], name: 'Notion' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.aggregate',
-			version: 1,
-			config: { position: [780, 2080], name: 'Aggregate' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.notion', version: 2.2, config: { position: [560, 2080] } }))
+	.then(node({ type: 'n8n-nodes-base.aggregate', version: 1, config: { position: [780, 2080] } }))
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -347,16 +319,10 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: { position: [-1320, 440], name: 'Schedule Trigger' },
+			config: { position: [-1320, 440] },
 		}),
 	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleDocs',
-			version: 2,
-			config: { position: [560, 2460], name: 'Google Docs' },
-		}),
-	)
+	.add(node({ type: 'n8n-nodes-base.googleDocs', version: 2, config: { position: [560, 2460] } }))
 	.add(sticky('', { position: [-940, 300] }))
 	.add(sticky('', { name: 'Sticky Note1', position: [1880, 300] }))
 	.add(sticky('', { name: 'Sticky Note7', position: [-40, 1860] }))

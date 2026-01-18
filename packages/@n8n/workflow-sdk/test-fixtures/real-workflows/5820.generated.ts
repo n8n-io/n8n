@@ -3,11 +3,7 @@ const wf = workflow('', 'AI Gmail: Prioritize What You Should Read')
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{ field: 'hours' }] } },
-				position: [-1264, 0],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{ field: 'hours' }] } }, position: [-1264, 0] },
 		}),
 	)
 	.then(
@@ -79,22 +75,40 @@ const wf = workflow('', 'AI Gmail: Prioritize What You Should Read')
 					promptType: 'define',
 				},
 				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: {
-									__rl: true,
-									mode: 'list',
-									value: 'gpt-4o',
-									cachedResultName: 'gpt-4o',
+					model: [
+						languageModel({
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							version: 1.2,
+							config: {
+								parameters: {
+									model: {
+										__rl: true,
+										mode: 'list',
+										value: 'gpt-4o',
+										cachedResultName: 'gpt-4o',
+									},
+									options: {},
 								},
-								options: {},
+								name: 'OpenAI Chat Model',
 							},
-							name: 'OpenAI Chat Model',
-						},
-					}),
+						}),
+						languageModel({
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							version: 1.2,
+							config: {
+								parameters: {
+									model: {
+										__rl: true,
+										mode: 'list',
+										value: 'gpt-3.5-turbo',
+										cachedResultName: 'gpt-3.5-turbo',
+									},
+									options: {},
+								},
+								name: 'OpenAI Fall Back Model',
+							},
+						}),
+					],
 					outputParser: outputParser({
 						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
 						version: 1.3,
@@ -197,7 +211,6 @@ const wf = workflow('', 'AI Gmail: Prioritize What You Should Read')
 					options: { fallbackOutput: 'extra' },
 				},
 				position: [-128, -32],
-				name: 'Switch',
 			},
 		}),
 	)

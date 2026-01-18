@@ -5,7 +5,7 @@ const wf = workflow('uALIwhmZBIsiTqvl', 'Instagram Auto Liking - Creators Hub', 
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: { position: [-688, -1984], name: 'Schedule Trigger' },
+			config: { position: [-688, -1984] },
 		}),
 	)
 	.then(
@@ -77,13 +77,7 @@ const wf = workflow('uALIwhmZBIsiTqvl', 'Instagram Auto Liking - Creators Hub', 
 			config: { position: [-80, -1568], name: 'Launch Agent' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [80, -1568], name: 'Wait' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [80, -1568] } }))
 	.then(
 		node({
 			type: 'n8n-nodes-base.phantombuster',
@@ -126,13 +120,7 @@ const wf = workflow('uALIwhmZBIsiTqvl', 'Instagram Auto Liking - Creators Hub', 
 			config: { position: [-928, -1120], name: 'Check if in List' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { position: [-752, -1120], name: 'If' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.if', version: 2.2, config: { position: [-752, -1120] } }))
 	.output(1)
 	.then(
 		node({

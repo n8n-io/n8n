@@ -361,10 +361,26 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			}
 		};
 
-		// Add model subnode
-		if (subnodes.model) {
-			addSubnode(subnodes.model, 'ai_languageModel');
-		}
+		// Helper to add single or array of subnodes
+		const addSubnodeOrArray = (
+			subnodeOrArray:
+				| NodeInstance<string, string, unknown>
+				| NodeInstance<string, string, unknown>[]
+				| undefined,
+			connectionType: string,
+		) => {
+			if (!subnodeOrArray) return;
+			if (Array.isArray(subnodeOrArray)) {
+				for (const subnode of subnodeOrArray) {
+					addSubnode(subnode, connectionType);
+				}
+			} else {
+				addSubnode(subnodeOrArray, connectionType);
+			}
+		};
+
+		// Add model subnode(s) - can be array for modelSelector
+		addSubnodeOrArray(subnodes.model, 'ai_languageModel');
 
 		// Add memory subnode
 		if (subnodes.memory) {
@@ -383,10 +399,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			addSubnode(subnodes.outputParser, 'ai_outputParser');
 		}
 
-		// Add embedding subnode
-		if (subnodes.embedding) {
-			addSubnode(subnodes.embedding, 'ai_embedding');
-		}
+		// Add embedding subnode(s)
+		addSubnodeOrArray(subnodes.embedding, 'ai_embedding');
 
 		// Add vector store subnode
 		if (subnodes.vectorStore) {
@@ -398,10 +412,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			addSubnode(subnodes.retriever, 'ai_retriever');
 		}
 
-		// Add document loader subnode
-		if (subnodes.documentLoader) {
-			addSubnode(subnodes.documentLoader, 'ai_document');
-		}
+		// Add document loader subnode(s)
+		addSubnodeOrArray(subnodes.documentLoader, 'ai_document');
 
 		// Add text splitter subnode
 		if (subnodes.textSplitter) {
@@ -440,8 +452,26 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			}
 		};
 
+		// Helper to add single or array of nested subnodes
+		const addNestedSubnodeOrArray = (
+			subnodeOrArray:
+				| NodeInstance<string, string, unknown>
+				| NodeInstance<string, string, unknown>[]
+				| undefined,
+			connectionType: string,
+		) => {
+			if (!subnodeOrArray) return;
+			if (Array.isArray(subnodeOrArray)) {
+				for (const subnode of subnodeOrArray) {
+					addNestedSubnode(subnode, connectionType);
+				}
+			} else {
+				addNestedSubnode(subnodeOrArray, connectionType);
+			}
+		};
+
 		// Process all subnode types
-		if (subnodes.model) addNestedSubnode(subnodes.model, 'ai_languageModel');
+		addNestedSubnodeOrArray(subnodes.model, 'ai_languageModel');
 		if (subnodes.memory) addNestedSubnode(subnodes.memory, 'ai_memory');
 		if (subnodes.tools) {
 			for (const tool of subnodes.tools) {
@@ -449,10 +479,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			}
 		}
 		if (subnodes.outputParser) addNestedSubnode(subnodes.outputParser, 'ai_outputParser');
-		if (subnodes.embedding) addNestedSubnode(subnodes.embedding, 'ai_embedding');
+		addNestedSubnodeOrArray(subnodes.embedding, 'ai_embedding');
 		if (subnodes.vectorStore) addNestedSubnode(subnodes.vectorStore, 'ai_vectorStore');
 		if (subnodes.retriever) addNestedSubnode(subnodes.retriever, 'ai_retriever');
-		if (subnodes.documentLoader) addNestedSubnode(subnodes.documentLoader, 'ai_document');
+		addNestedSubnodeOrArray(subnodes.documentLoader, 'ai_document');
 		if (subnodes.textSplitter) addNestedSubnode(subnodes.textSplitter, 'ai_textSplitter');
 	}
 

@@ -417,11 +417,7 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'output' },
-				position: [944, 528],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'output' }, position: [944, 528] },
 		}),
 	)
 	.then(

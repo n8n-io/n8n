@@ -24,7 +24,6 @@ const wf = workflow('', '')
 						name: 'googleDriveOAuth2Api Credential',
 					},
 				},
-				name: 'Google Drive Trigger',
 			},
 		}),
 	)
@@ -46,7 +45,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [208, 0],
-				name: 'HTTP Request',
 			},
 		}),
 	)

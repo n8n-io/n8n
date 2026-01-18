@@ -125,7 +125,6 @@ const wf = workflow(
 					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
 				},
 				position: [624, -48],
-				name: 'HTTP Request',
 			},
 		}),
 	)

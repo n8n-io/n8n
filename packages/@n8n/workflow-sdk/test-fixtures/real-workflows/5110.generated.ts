@@ -10,7 +10,6 @@ const wf = workflow('LPUpZtHK7gGRA5wa', 'Automated AI YouTube Shorts Factory for
 					rule: { interval: [{ field: 'minutes', minutesInterval: 30 }] },
 				},
 				position: [1500, 220],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)

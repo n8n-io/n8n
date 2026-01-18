@@ -7,11 +7,7 @@ const wf = workflow(
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{}] } },
-				position: [1040, 400],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{}] } }, position: [1040, 400] },
 		}),
 	)
 	.then(
@@ -39,7 +35,6 @@ const wf = workflow(
 					},
 				},
 				position: [1240, 480],
-				name: 'Google Sheets',
 			},
 		}),
 	)
@@ -90,7 +85,6 @@ const wf = workflow(
 					options: { response: { response: { responseFormat: 'file' } } },
 				},
 				position: [1860, 520],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -107,7 +101,6 @@ const wf = workflow(
 					resizeOption: 'percent',
 				},
 				position: [2020, 520],
-				name: 'Edit Image',
 			},
 		}),
 	)
@@ -394,7 +387,6 @@ const wf = workflow(
 					},
 				},
 				position: [1040, 600],
-				name: 'Google Sheets Trigger',
 			},
 		}),
 	)

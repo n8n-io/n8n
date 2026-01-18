@@ -547,7 +547,6 @@ const wf = workflow('zcYVtmH3JmlnFoOB', 'Jarvis template', { executionOrder: 'v1
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [-960, 416],
-				name: 'Telegram Trigger',
 			},
 		}),
 	)
@@ -640,7 +639,6 @@ const wf = workflow('zcYVtmH3JmlnFoOB', 'Jarvis template', { executionOrder: 'v1
 					options: {},
 				},
 				position: [-528, 416],
-				name: 'Switch',
 			},
 		}),
 	)

@@ -82,7 +82,7 @@ const wf = workflow('Tq4g5UK8c3GZ8tm7', 'Ade_Technical_Analyst', { executionOrde
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 2.1,
-			config: { parameters: { mode: 'chooseBranch' }, position: [-240, 60], name: 'Merge' },
+			config: { parameters: { mode: 'chooseBranch' }, position: [-240, 60] },
 		}),
 	)
 	.then(

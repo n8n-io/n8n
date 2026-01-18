@@ -51,13 +51,7 @@ const wf = workflow('DMhzwW0cXxIdPi3r', 'Template Supabase Postgres', { executio
 			config: { position: [-208, 992], name: 'When clicking ‘Test workflow’' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: { position: [16, 992], name: 'Google Drive' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.googleDrive', version: 3, config: { position: [16, 992] } }))
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',

@@ -137,7 +137,6 @@ const wf = workflow('', '')
 					responseMode: 'responseNode',
 				},
 				position: [1000, 860],
-				name: 'Webhook',
 			},
 		}),
 	)
@@ -193,7 +192,7 @@ const wf = workflow('', '')
 	)
 	.output(0)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.1,
 			config: {
@@ -229,21 +228,6 @@ const wf = workflow('', '')
 				},
 				position: [1800, 1000],
 				name: 'Error page',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'text',
-					responseBody: '={{ $json.html }}',
-				},
-				position: [2020, 860],
-				name: 'Respond to Webhook',
 			},
 		}),
 	)

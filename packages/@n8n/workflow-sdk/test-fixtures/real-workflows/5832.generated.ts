@@ -73,7 +73,6 @@ const wf = workflow('szS5RoHWF5QAzxqk', 'B2B AI Leads Automation', { executionOr
 					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
 				},
 				position: [-320, -20],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -131,7 +130,6 @@ const wf = workflow('szS5RoHWF5QAzxqk', 'B2B AI Leads Automation', { executionOr
 					},
 				},
 				position: [260, -20],
-				name: 'If',
 			},
 		}),
 	)
@@ -314,7 +312,6 @@ const wf = workflow('szS5RoHWF5QAzxqk', 'B2B AI Leads Automation', { executionOr
 			config: {
 				parameters: { path: '17cfab42-90df-4af6-88ff-6ed925f861cc', options: {} },
 				position: [-540, 180],
-				name: 'Webhook',
 			},
 		}),
 	)
@@ -331,7 +328,6 @@ const wf = workflow('szS5RoHWF5QAzxqk', 'B2B AI Leads Automation', { executionOr
 					documentId: { __rl: true, mode: 'list', value: '' },
 				},
 				position: [-560, -240],
-				name: 'Google Sheets Trigger',
 			},
 		}),
 	);

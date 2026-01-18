@@ -11,7 +11,6 @@ const wf = workflow('', '')
 					pollTimes: { item: [{ mode: '=everyHour', minute: 59 }] },
 				},
 				position: [-600, 1600],
-				name: 'Gmail Trigger',
 			},
 		}),
 	)

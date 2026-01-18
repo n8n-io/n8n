@@ -5,11 +5,7 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{}] } },
-				position: [-1120, 2425],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{}] } }, position: [-1120, 2425] },
 		}),
 	)
 	.then(

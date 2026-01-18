@@ -11,7 +11,6 @@ const wf = workflow('', '')
 						"This workflow uses AI to automatically generate clear and descriptive names for every node in your n8n workflows.\nIt analyzes each node's type, parameters, and connections to create meaningful names, making your workflows instantly readable.",
 				},
 				position: [2176, -1568],
-				name: 'Form Trigger',
 			},
 		}),
 	)
@@ -471,7 +470,7 @@ const wf = workflow('', '')
 		trigger({
 			type: 'n8n-nodes-base.manualTrigger',
 			version: 1,
-			config: { position: [2176, -1888], name: 'Manual Trigger' },
+			config: { position: [2176, -1888] },
 		}),
 	)
 	.then(

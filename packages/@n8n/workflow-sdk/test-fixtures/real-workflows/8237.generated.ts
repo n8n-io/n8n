@@ -60,7 +60,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [1328, 208],
-				name: 'If',
 			},
 		}),
 	)
@@ -257,7 +256,6 @@ const wf = workflow('', '')
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [2688, 192],
-				name: 'Telegram',
 			},
 		}),
 	)

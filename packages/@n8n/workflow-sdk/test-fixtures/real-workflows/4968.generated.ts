@@ -6,7 +6,6 @@ const wf = workflow('', 'LinkedIn AI Content Automation - Agentic Vibe', { execu
 			config: {
 				parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 6 }] } },
 				position: [-840, 640],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)
@@ -116,13 +115,7 @@ const wf = workflow('', 'LinkedIn AI Content Automation - Agentic Vibe', { execu
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [780, 640], name: 'Merge' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [780, 640] } }))
 	.then(
 		node({
 			type: 'n8n-nodes-base.linkedIn',

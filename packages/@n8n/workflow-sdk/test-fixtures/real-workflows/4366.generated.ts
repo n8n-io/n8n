@@ -426,7 +426,6 @@ const wf = workflow('leftLsw8mj6dIDBp', '[AOE]  Inbox & Calendar Management Agen
 					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
 				},
 				position: [240, -540],
-				name: 'Gmail Trigger',
 			},
 		}),
 	)

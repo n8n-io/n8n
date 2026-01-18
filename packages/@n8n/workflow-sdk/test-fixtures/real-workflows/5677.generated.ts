@@ -44,7 +44,6 @@ const wf = workflow(
 					additionalFields: {},
 				},
 				position: [60, 0],
-				name: 'Hacker News',
 			},
 		}),
 	)

@@ -294,7 +294,6 @@ const wf = workflow('', '')
 						'// Ensure there\'s at least one input item.\nif (!items || items.length === 0) {\n  throw new Error("No input items found.");\n}\n\n// Our input is expected to have a \'data\' property containing the JSONP string.\nconst input = items[0].json;\n\nif (!input.data) {\n  throw new Error("Input JSON does not have a \'data\' property.");\n}\n\nconst rawData = input.data;\n\n// Use a regex to extract the JSON content from the Google Visualization JSONP response.\nconst regex = /google\\.visualization\\.Query\\.setResponse\\((.*)\\);?$/s;\nconst match = rawData.match(regex);\n\nif (!match) {\n  throw new Error("Input data does not match the expected Google Visualization JSONP format.");\n}\n\nconst jsonString = match[1];\n\n// Parse the extracted JSON string.\nlet parsed;\ntry {\n  parsed = JSON.parse(jsonString);\n} catch (error) {\n  throw new Error("Failed to parse JSON: " + error.message);\n}\n\n// Verify that the parsed JSON has the expected \'table\' structure with \'cols\' and \'rows\'.\nif (!parsed.table || !Array.isArray(parsed.table.cols) || !Array.isArray(parsed.table.rows)) {\n  throw new Error("Parsed JSON does not have the expected \'table\' structure with \'cols\' and \'rows\'.");\n}\n\nconst cols = parsed.table.cols;\nconst rows = parsed.table.rows;\n\n// Helper function to convert date string from "Date(YYYY,M,D)" to "YYYY-MM-DD"\nfunction formatDate(dateStr) {\n  const match = dateStr.match(/^Date\\((\\d+),(\\d+),(\\d+)\\)$/);\n  if (!match) return dateStr;\n  const year = parseInt(match[1], 10);\n  const month = parseInt(match[2], 10) + 1; // JavaScript months are 0-indexed\n  const day = parseInt(match[3], 10);\n  // Format with leading zeros\n  return `${year}-${String(month).padStart(2, \'0\')}-${String(day).padStart(2, \'0\')}`;\n}\n\n// Map each row into an object using the column labels as keys.\nconst newItems = rows.map(row => {\n  const obj = {};\n  cols.forEach((col, index) => {\n    let value = row.c && row.c[index] ? row.c[index].v : null;\n    // If the column type is "date" and the value is a string that looks like "Date(YYYY,M,D)"\n    if (col.type === "date" && typeof value === "string") {\n      value = formatDate(value);\n    }\n    obj[col.label] = value;\n  });\n  return { json: obj };\n});\n\n// Return the new array of items.\nreturn newItems;\n',
 				},
 				position: [840, 640],
-				name: 'Code',
 			},
 		}),
 	)
@@ -335,7 +334,6 @@ const wf = workflow('', '')
 			config: {
 				parameters: { options: {}, aggregate: 'aggregateAllItemData' },
 				position: [1280, 640],
-				name: 'Aggregate',
 			},
 		}),
 	)

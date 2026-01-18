@@ -31,11 +31,7 @@ const wf = workflow('', 'Daily Digest', { executionOrder: 'v1' })
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'url' },
-				position: [-1632, 336],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'url' }, position: [-1632, 336] },
 		}),
 	)
 	.then(

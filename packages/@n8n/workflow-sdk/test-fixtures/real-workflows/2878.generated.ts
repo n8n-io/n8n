@@ -451,7 +451,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [-1700, 820],
-				name: 'Execution Data',
 			},
 		}),
 	)

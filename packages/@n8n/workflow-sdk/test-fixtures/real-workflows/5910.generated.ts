@@ -128,7 +128,6 @@ const wf = workflow('', 'Veo3 Instagram Agent Workflow', { executionOrder: 'v1' 
 					},
 				},
 				position: [1060, -20],
-				name: 'If',
 			},
 		}),
 	)

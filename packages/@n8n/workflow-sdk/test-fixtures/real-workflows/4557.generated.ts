@@ -12,7 +12,6 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 					rule: { interval: [{ field: 'minutes', minutesInterval: 2 }] },
 				},
 				position: [-2340, -580],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)
@@ -107,17 +106,10 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 					},
 				},
 				position: [-1140, -600],
-				name: 'If',
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.1,
-			config: { position: [-920, -700], name: 'Merge' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.merge', version: 3.1, config: { position: [-920, -700] } }))
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',

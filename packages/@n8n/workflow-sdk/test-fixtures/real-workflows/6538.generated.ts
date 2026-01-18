@@ -343,7 +343,6 @@ const wf = workflow('', '')
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [-1700, 980],
-				name: 'Telegram Trigger',
 			},
 		}),
 	)

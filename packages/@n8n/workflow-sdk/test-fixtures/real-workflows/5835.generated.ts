@@ -366,7 +366,6 @@ const wf = workflow(
 					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
 				},
 				position: [688, 1328],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -505,11 +504,7 @@ const wf = workflow(
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{ field: 'minutes' }] } },
-				position: [-224, 704],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{ field: 'minutes' }] } }, position: [-224, 704] },
 		}),
 	)
 	.add(

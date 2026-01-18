@@ -3,11 +3,7 @@ const wf = workflow('', '')
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{}] } },
-				position: [-2220, 2160],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{}] } }, position: [-2220, 2160] },
 		}),
 	)
 	.then(
@@ -56,7 +52,6 @@ const wf = workflow('', '')
 					destinationFieldName: 'settings',
 				},
 				position: [-1800, 2160],
-				name: 'Aggregate',
 			},
 		}),
 	)
@@ -176,7 +171,7 @@ const wf = workflow('', '')
 		node({
 			type: 'n8n-nodes-base.limit',
 			version: 1,
-			config: { parameters: { maxItems: 100 }, position: [-960, 2160], name: 'Limit' },
+			config: { parameters: { maxItems: 100 }, position: [-960, 2160] },
 		}),
 	)
 	.then(
@@ -983,7 +978,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [-1060, 1100],
-				name: 'If',
 			},
 		}),
 	)

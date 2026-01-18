@@ -246,7 +246,6 @@ const wf = workflow(
 			config: {
 				parameters: { options: {}, aggregate: 'aggregateAllItemData' },
 				position: [3000, 40],
-				name: 'Aggregate',
 			},
 		}),
 	)

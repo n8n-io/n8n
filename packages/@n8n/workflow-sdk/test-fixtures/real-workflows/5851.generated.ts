@@ -5,11 +5,7 @@ const wf = workflow('gkf2gpDVeNbAoCYO', 'Save_your_workflows_into_a_GitHub_repos
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{}] } },
-				position: [-1180, 240],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{}] } }, position: [-1180, 240] },
 		}),
 	)
 	.then(
@@ -111,7 +107,6 @@ const wf = workflow('gkf2gpDVeNbAoCYO', 'Save_your_workflows_into_a_GitHub_repos
 					},
 				},
 				position: [-300, 240],
-				name: 'Filter',
 			},
 		}),
 	)
@@ -327,7 +322,6 @@ const wf = workflow('gkf2gpDVeNbAoCYO', 'Save_your_workflows_into_a_GitHub_repos
 					options: {},
 				},
 				position: [1240, 240],
-				name: 'Switch',
 			},
 		}),
 	)

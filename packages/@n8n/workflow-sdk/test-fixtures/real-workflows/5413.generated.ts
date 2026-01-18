@@ -9,7 +9,6 @@ const wf = workflow('M4IIL41O16twgImq', 'Image Reader', { executionOrder: 'v1' }
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [-400, -220],
-				name: 'Telegram Trigger',
 			},
 		}),
 	)
@@ -126,7 +125,6 @@ const wf = workflow('M4IIL41O16twgImq', 'Image Reader', { executionOrder: 'v1' }
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [1076, -220],
-				name: 'Telegram',
 			},
 		}),
 	);

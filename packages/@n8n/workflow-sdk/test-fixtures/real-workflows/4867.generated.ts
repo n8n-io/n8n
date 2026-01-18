@@ -14,7 +14,6 @@ const wf = workflow('e5XxiuYXr5atCH64', 'Stock Analysis Assistant', {
 					},
 				},
 				position: [120, 0],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)

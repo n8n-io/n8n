@@ -130,7 +130,6 @@ const wf = workflow('M7saccCy1gO4g2zr', 'Agent_Builder', { executionOrder: 'v1' 
 						'const items = $input.all();\nconst extractedJsons = items.map((item) => {\n  const content = item?.json?.message?.content;\n  const jsonStart = content.indexOf("```json") + 7;\n  const jsonEnd = content.indexOf("```", jsonStart);\n  const jsonContent = content.slice(jsonStart, jsonEnd);\n  try {\n    const parsedJson = JSON.parse(jsonContent);\n    return { extractedJson: parsedJson };\n  } catch (error) {\n    console.log("Failed to parse JSON:", error);\n    return { extractedJson: null };\n  }\n});\nreturn extractedJsons;\n',
 				},
 				position: [-1160, 240],
-				name: 'Code',
 			},
 		}),
 	)
@@ -224,7 +223,7 @@ const wf = workflow('M7saccCy1gO4g2zr', 'Agent_Builder', { executionOrder: 'v1' 
 		node({
 			type: 'n8n-nodes-base.if',
 			version: 2.2,
-			config: { parameters: { options: {} }, position: [-1240, -1060], name: 'If' },
+			config: { parameters: { options: {} }, position: [-1240, -1060] },
 		}),
 	)
 	.output(0)

@@ -25,7 +25,6 @@ const wf = workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
 					},
 				},
 				position: [3500, 580],
-				name: 'Google Drive Trigger',
 			},
 		}),
 	)
@@ -413,11 +412,7 @@ const wf = workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
 		trigger({
 			type: 'n8n-nodes-base.webhook',
 			version: 2,
-			config: {
-				parameters: { path: '<your webhook>', options: {} },
-				position: [2080, 380],
-				name: 'Webhook',
-			},
+			config: { parameters: { path: '<your webhook>', options: {} }, position: [2080, 380] },
 		}),
 	)
 	.then(
@@ -717,7 +712,6 @@ const wf = workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
 					},
 				},
 				position: [3480, 1060],
-				name: 'Google Sheets Trigger',
 			},
 		}),
 	)
@@ -1075,7 +1069,6 @@ const wf = workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
 					cohereApi: { id: 'credential-id', name: 'cohereApi Credential' },
 				},
 				position: [2720, 1660],
-				name: 'Reranker Cohere',
 			},
 		}),
 	)

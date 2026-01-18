@@ -385,7 +385,6 @@ const wf = workflow('IIQhSqMWv4u6e0Jh', 'Create Video with Sora2 Pro and Upload 
 					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
 				},
 				position: [384, 1456],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -493,11 +492,7 @@ const wf = workflow('IIQhSqMWv4u6e0Jh', 'Create Video with Sora2 Pro and Upload 
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{ field: 'minutes' }] } },
-				position: [-528, 832],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{ field: 'minutes' }] } }, position: [-528, 832] },
 		}),
 	)
 	.add(

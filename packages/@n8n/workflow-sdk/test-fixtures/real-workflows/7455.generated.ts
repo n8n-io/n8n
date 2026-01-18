@@ -279,7 +279,6 @@ const wf = workflow('', '')
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [608, 1392],
-				name: 'Telegram Trigger',
 			},
 		}),
 	)
@@ -1045,7 +1044,7 @@ const wf = workflow('', '')
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 2 }, position: [2832, 1600], name: 'Wait' },
+			config: { parameters: { amount: 2 }, position: [2832, 1600] },
 		}),
 	)
 	.then(
@@ -1533,7 +1532,6 @@ const wf = workflow('', '')
 					options: { fallbackOutput: 'extra' },
 				},
 				position: [784, 2720],
-				name: 'Switch',
 			},
 		}),
 	)
@@ -1571,7 +1569,6 @@ const wf = workflow('', '')
 			config: {
 				parameters: { options: {}, aggregate: 'aggregateAllItemData' },
 				position: [1488, 2048],
-				name: 'Aggregate',
 			},
 		}),
 	)
@@ -1968,11 +1965,7 @@ const wf = workflow('', '')
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
-			config: {
-				parameters: { mode: 'chooseBranch', useDataOfInput: 2 },
-				position: [1312, 2928],
-				name: 'Merge',
-			},
+			config: { parameters: { mode: 'chooseBranch', useDataOfInput: 2 }, position: [1312, 2928] },
 		}),
 	)
 	.then(

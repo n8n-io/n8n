@@ -168,11 +168,7 @@ const wf = workflow('', '')
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'data' },
-				position: [1232, -128],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'data' }, position: [1232, -128] },
 		}),
 	)
 	.then(
@@ -225,7 +221,7 @@ const wf = workflow('', '')
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 1 }, position: [288, 32], name: 'Wait' },
+			config: { parameters: { amount: 1 }, position: [288, 32] },
 		}),
 	)
 	.add(

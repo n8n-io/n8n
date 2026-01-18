@@ -226,7 +226,6 @@ const wf = workflow('iuPhSS8Dr2Dl7Hbo', 'VEO3 Video Generator TEMPLATE', { execu
 					combineBy: 'combineByPosition',
 				},
 				position: [1616, 150],
-				name: 'Merge',
 			},
 		}),
 	)

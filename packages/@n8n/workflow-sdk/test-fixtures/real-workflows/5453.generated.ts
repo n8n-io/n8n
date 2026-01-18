@@ -327,7 +327,6 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 					},
 				},
 				position: [2520, 460],
-				name: 'Google Sheets',
 			},
 		}),
 	)
@@ -442,7 +441,6 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 			config: {
 				parameters: { mode: 'combine', options: {}, combineBy: 'combineAll' },
 				position: [1220, 460],
-				name: 'Merge',
 			},
 		}),
 	)

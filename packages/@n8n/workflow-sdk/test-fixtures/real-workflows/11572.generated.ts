@@ -243,13 +243,7 @@ const wf = workflow('aRW40LTNzG8bWwiu', 'TEMPLATE - R1 - News Aggregators', {
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [1680, -448], name: 'Wait' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [1680, -448] } }))
 	.add(
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',

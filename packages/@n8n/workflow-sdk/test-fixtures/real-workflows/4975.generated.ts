@@ -187,7 +187,6 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					options: {},
 				},
 				position: [1140, -120],
-				name: 'Switch',
 			},
 		}),
 	)
@@ -724,7 +723,6 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
 				},
 				position: [5000, -740],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -861,11 +859,7 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
-			config: {
-				parameters: { mode: 'chooseBranch', useDataOfInput: 2 },
-				position: [1720, 40],
-				name: 'Merge',
-			},
+			config: { parameters: { mode: 'chooseBranch', useDataOfInput: 2 }, position: [1720, 40] },
 		}),
 	)
 	.then(
@@ -1523,7 +1517,6 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					},
 				},
 				position: [4660, 1800],
-				name: 'If',
 			},
 		}),
 	)

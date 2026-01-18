@@ -129,7 +129,7 @@ const wf = workflow(
 	)
 	.output(0)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.1,
 			config: {
@@ -184,26 +184,6 @@ const wf = workflow(
 				},
 				position: [304, 304],
 				name: 'Gmail Email Trigger',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {
-						responseCode: 200,
-						responseHeaders: {
-							entries: [{ name: 'Content-Type', value: 'application/json' }],
-						},
-					},
-					respondWith: 'json',
-					responseBody: '={{ JSON.stringify($json.trackingDetails) }}',
-				},
-				position: [1600, 112],
-				name: 'Webhook Response',
 			},
 		}),
 	)

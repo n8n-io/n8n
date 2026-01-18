@@ -9,7 +9,6 @@ const wf = workflow('uf6t5qhnQMgilteE', 'Email Manager', { executionOrder: 'v1' 
 					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
 				},
 				position: [-20, -60],
-				name: 'Gmail Trigger',
 			},
 		}),
 	)
@@ -28,7 +27,6 @@ const wf = workflow('uf6t5qhnQMgilteE', 'Email Manager', { executionOrder: 'v1' 
 					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
 				},
 				position: [200, -20],
-				name: 'Gmail',
 			},
 		}),
 	)

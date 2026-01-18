@@ -3,7 +3,7 @@ const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOr
 		trigger({
 			type: 'n8n-nodes-base.telegramTrigger',
 			version: 1.2,
-			config: { position: [-240, 192], name: 'Telegram Trigger' },
+			config: { position: [-240, 192] },
 		}),
 	)
 	.then(
@@ -28,13 +28,7 @@ const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOr
 			config: { position: [608, 0], name: 'Edit Fields' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [1088, 176], name: 'Merge' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [1088, 176] } }))
 	.then(
 		node({
 			type: 'n8n-nodes-base.code',

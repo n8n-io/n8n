@@ -19,7 +19,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [944, 560],
-				name: 'Google Drive Trigger',
 			},
 		}),
 	)

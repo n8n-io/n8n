@@ -140,7 +140,6 @@ const wf = workflow('N3fK4Vfe4OHmEujy', 'Anthropic Agent Skills API v2', { execu
 					options: {},
 				},
 				position: [480, 288],
-				name: 'Switch',
 			},
 		}),
 	)

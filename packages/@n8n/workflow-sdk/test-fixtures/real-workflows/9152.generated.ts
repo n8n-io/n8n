@@ -282,7 +282,7 @@ const wf = workflow('O7BiL9gvzMRGnzco', 'Development Done - Product Ads via Veo3
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 1 }, position: [1744, -64], name: 'Wait' },
+			config: { parameters: { unit: 'minutes', amount: 1 }, position: [1744, -64] },
 		}),
 	)
 	.then(

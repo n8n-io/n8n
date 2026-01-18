@@ -461,7 +461,6 @@ const wf = workflow('F0DFXdSTdGjIk0V5', 'Email - PA', { executionOrder: 'v1' })
 					},
 				},
 				position: [2760, -220],
-				name: 'Google Sheets',
 			},
 		}),
 	)
@@ -506,7 +505,6 @@ const wf = workflow('F0DFXdSTdGjIk0V5', 'Email - PA', { executionOrder: 'v1' })
 					},
 				},
 				position: [440, -240],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)

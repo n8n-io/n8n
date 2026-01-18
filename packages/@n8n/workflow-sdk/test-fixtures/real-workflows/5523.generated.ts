@@ -250,7 +250,6 @@ const wf = workflow('OvYZQiWH2KlJsFbK', 'Multi-Agent Evaluation (eval nodes)', {
 					operation: 'setMetrics',
 				},
 				position: [980, -160],
-				name: 'Evaluation',
 			},
 		}),
 	)

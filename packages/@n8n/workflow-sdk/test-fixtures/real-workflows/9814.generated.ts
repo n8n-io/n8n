@@ -88,7 +88,7 @@ const wf = workflow('', '')
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { unit: 'minutes' }, position: [1808, -336], name: 'Wait' },
+			config: { parameters: { unit: 'minutes' }, position: [1808, -336] },
 		}),
 	)
 	.then(

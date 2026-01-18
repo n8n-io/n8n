@@ -8,7 +8,6 @@ const wf = workflow('I7d4x1yTzFgp0Eib', 'Smart Inventory Replenishment & Auto-Pu
 			config: {
 				parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 6 }] } },
 				position: [-144, 384],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)

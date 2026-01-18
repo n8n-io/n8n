@@ -218,7 +218,6 @@ const wf = workflow('icW2uoM7g7pFZhsR', 'AI-Powered Product Research & SEO Conte
 					googleApi: { id: 'credential-id', name: 'googleApi Credential' },
 				},
 				position: [1660, -140],
-				name: 'Google Sheets',
 			},
 		}),
 	)

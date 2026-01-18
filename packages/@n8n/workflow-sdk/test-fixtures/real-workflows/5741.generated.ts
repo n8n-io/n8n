@@ -183,11 +183,7 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'scenes' },
-				position: [940, -180],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'scenes' }, position: [940, -180] },
 		}),
 	)
 	.then(

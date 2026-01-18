@@ -256,13 +256,7 @@ const wf = workflow('', 'YTB Metadata Generator', { executionOrder: 'v1' })
 		}),
 	)
 	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [180, 120], name: 'Wait' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [180, 120] } }))
 	.output(1)
 	.then(
 		node({

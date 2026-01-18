@@ -181,7 +181,6 @@ const wf = workflow('', '')
 						'=<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8" />\n  <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n  <title>Course Recommendation</title>\n  <style>\n    body {\n      font-family: Arial, sans-serif;\n      margin: 40px;\n      background-color: #f9f9f9;\n      color: #333;\n    }\n    .container {\n      background: #fff;\n      padding: 20px 30px;\n      border-radius: 10px;\n      box-shadow: 0 4px 12px rgba(0,0,0,0.1);\n      max-width: 600px;\n      margin: auto;\n    }\n    h1 {\n      color: #0066cc;\n    }\n    a {\n      color: #0066cc;\n      text-decoration: none;\n      font-weight: bold;\n    }\n    .reasoning {\n      margin-top: 20px;\n      font-style: italic;\n    }\n  </style>\n</head>\n<body>\n  <div class="container">\n    <h1>Recommended Course</h1>\n    <p>\n      We recommend the following course:\n      <strong>{{ $json.output.course }}</strong>\n    </p>\n    <p>\n      You can view it here:\n      <a href="{{ $json.output.url }}" target="_blank">{{ $json.output.url }}</a>\n    </p>\n    <div class="reasoning">\n      <p>Reasoning: {{ $json.output.reasoning }}</p>\n    </div>\n  </div>\n</body>\n</html>\n',
 				},
 				position: [3392, 16],
-				name: 'Form',
 			},
 		}),
 	)

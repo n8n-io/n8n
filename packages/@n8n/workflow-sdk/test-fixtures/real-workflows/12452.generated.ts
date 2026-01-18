@@ -160,7 +160,6 @@ const wf = workflow('', '')
 			config: {
 				parameters: { rule: { interval: [{ field: 'minutes' }] } },
 				position: [2704, 7248],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)

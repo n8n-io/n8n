@@ -10,7 +10,6 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 					httpMethod: 'POST',
 				},
 				position: [-1456, -112],
-				name: 'Webhook',
 			},
 		}),
 	)
@@ -147,7 +146,6 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 			config: {
 				parameters: { url: '=https://thebuckethat.nl/sitemap.xml', options: {} },
 				position: [-2320, 336],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -155,7 +153,7 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 		node({
 			type: 'n8n-nodes-base.xml',
 			version: 1,
-			config: { parameters: { options: {} }, position: [-2144, 336], name: 'XML' },
+			config: { parameters: { options: {} }, position: [-2144, 336] },
 		}),
 	)
 	.then(
@@ -165,7 +163,6 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 			config: {
 				parameters: { options: {}, fieldToSplitOut: 'sitemapindex.sitemap' },
 				position: [-1968, 336],
-				name: 'Split Out',
 			},
 		}),
 	)
@@ -198,7 +195,6 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 					fieldsToAggregate: { fieldToAggregate: [{}] },
 				},
 				position: [-1392, 336],
-				name: 'Aggregate',
 			},
 		}),
 	)
@@ -1544,7 +1540,6 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 					},
 				},
 				position: [144, 1376],
-				name: 'Google Drive',
 			},
 		}),
 	)

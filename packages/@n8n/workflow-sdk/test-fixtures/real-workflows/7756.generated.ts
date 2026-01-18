@@ -123,7 +123,6 @@ const wf = workflow('', '')
 					combineBy: 'combineByPosition',
 				},
 				position: [3616, 2048],
-				name: 'Merge',
 			},
 		}),
 	)
@@ -218,7 +217,6 @@ const wf = workflow('', '')
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [1072, 1200],
-				name: 'Telegram Trigger',
 			},
 		}),
 	)
@@ -292,7 +290,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [1472, 1200],
-				name: 'If',
 			},
 		}),
 	)

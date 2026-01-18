@@ -30,6 +30,35 @@ function escapeString(str: string | null | undefined): string {
 }
 
 /**
+ * Generate the default node name from a type string.
+ * This must match the logic in node-builder.ts generateNodeName().
+ */
+function generateDefaultNodeName(type: string): string {
+	// Extract the node name after the package prefix
+	const parts = type.split('.');
+	const nodeName = parts[parts.length - 1];
+
+	// Convert camelCase/PascalCase to Title Case with spaces
+	return nodeName
+		.replace(/([a-z])([A-Z])/g, '$1 $2') // Insert space before capitals
+		.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // Handle consecutive capitals
+		.replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
+		.replace(/Http/g, 'HTTP') // Fix common acronyms
+		.replace(/Api/g, 'API')
+		.replace(/Url/g, 'URL')
+		.replace(/Id/g, 'ID')
+		.replace(/Json/g, 'JSON')
+		.replace(/Xml/g, 'XML')
+		.replace(/Sql/g, 'SQL')
+		.replace(/Ai/g, 'AI')
+		.replace(/Aws/g, 'AWS')
+		.replace(/Gcp/g, 'GCP')
+		.replace(/Ssh/g, 'SSH')
+		.replace(/Ftp/g, 'FTP')
+		.replace(/Csv/g, 'CSV');
+}
+
+/**
  * Formats a value as TypeScript code.
  */
 function formatValue(value: unknown, indent: number = 0): string {
@@ -73,12 +102,15 @@ function formatValue(value: unknown, indent: number = 0): string {
  */
 function isTriggerNode(node: NodeJSON): boolean {
 	const type = node.type.toLowerCase();
-	return (
-		type.includes('trigger') ||
-		type.includes('webhook') ||
-		type === 'n8n-nodes-base.start' ||
-		type === 'n8n-nodes-base.manualTrigger'
-	);
+	// Check for explicit trigger types
+	if (type.includes('trigger') || type === 'n8n-nodes-base.start') {
+		return true;
+	}
+	// Webhook is a trigger, but respondToWebhook is an action node
+	if (type === 'n8n-nodes-base.webhook') {
+		return true;
+	}
+	return false;
 }
 
 /**
@@ -336,7 +368,7 @@ function generateSubnodeCall(
 	}
 
 	// Name (if different from type)
-	const defaultName = nodeJson.type.split('.').pop() ?? nodeJson.type;
+	const defaultName = generateDefaultNodeName(nodeJson.type);
 	if (nodeJson.name !== defaultName) {
 		configParts.push(`name: '${escapeString(nodeJson.name)}'`);
 	}
@@ -380,10 +412,10 @@ function generateSubnodesConfig(
 
 	// Generate each subnode config entry
 	for (const [configKey, { factory, nodes }] of byConfigKey) {
-		if (configKey === 'tools') {
-			// Tools is always an array
-			const toolCalls = nodes.map((n) => generateSubnodeCall(n, factory, nodeInfoMap));
-			parts.push(`${configKey}: [${toolCalls.join(', ')}]`);
+		if (configKey === 'tools' || nodes.length > 1) {
+			// Tools is always an array, other types become arrays when multiple nodes are connected
+			const calls = nodes.map((n) => generateSubnodeCall(n, factory, nodeInfoMap));
+			parts.push(`${configKey}: [${calls.join(', ')}]`);
 		} else {
 			// Single subnode
 			parts.push(`${configKey}: ${generateSubnodeCall(nodes[0], factory, nodeInfoMap)}`);
@@ -426,7 +458,7 @@ function generateNodeCall(nodeJson: NodeJSON, nodeInfoMap?: Map<string, NodeInfo
 	}
 
 	// Name (if different from type)
-	const defaultName = nodeJson.type.split('.').pop() ?? nodeJson.type;
+	const defaultName = generateDefaultNodeName(nodeJson.type);
 	if (nodeJson.name !== defaultName) {
 		configParts.push(`name: '${escapeString(nodeJson.name)}'`);
 	}

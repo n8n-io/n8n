@@ -174,7 +174,6 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 					combineBy: 'combineByPosition',
 				},
 				position: [2240, 540],
-				name: 'Merge',
 			},
 		}),
 	)
@@ -540,7 +539,6 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 			config: {
 				parameters: { options: {}, fieldToSplitOut: 'output.detalle_productos' },
 				position: [2280, -100],
-				name: 'Split Out',
 			},
 		}),
 	)
@@ -692,7 +690,7 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 3 }, position: [1620, 100], name: 'Wait' },
+			config: { parameters: { amount: 3 }, position: [1620, 100] },
 		}),
 	)
 	.add(

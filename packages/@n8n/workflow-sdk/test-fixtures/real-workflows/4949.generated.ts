@@ -460,7 +460,7 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.1,
 			config: {
@@ -639,7 +639,7 @@ const wf = workflow(
 	)
 	.output(0)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.1,
 			config: {
@@ -814,50 +814,7 @@ const wf = workflow(
 	)
 	.output(1)
 	.then(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'json',
-					responseBody:
-						'[\n{\n"output": "Il semble que le créneau horaire que vous avez choisi ne soit plus disponible. Veuillez en sélectionner un autre."\n}\n]',
-				},
-				position: [700, 280],
-				name: 'Webhook Response: Booking Failed',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.1,
-			config: {
-				parameters: { options: {}, respondWith: 'allIncomingItems' },
-				position: [700, -460],
-				name: 'Send Response to WhatsApp',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'json',
-					responseBody:
-						'\n[\n{\n"output": "Votre réservation a été effectuée avec succès. Vous recevrez bientôt un e-mail de confirmation pour votre massage, RDV : ."\n}\n]',
-				},
-				position: [700, -20],
-				name: 'Webhook Response: Booking Confirmed',
-			},
-		}),
-	)
-	.add(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.1,
 			config: {

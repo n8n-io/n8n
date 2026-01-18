@@ -398,7 +398,6 @@ const wf = workflow('', '')
 					options: {},
 				},
 				position: [64, 488],
-				name: 'Switch',
 			},
 		}),
 	)
@@ -491,7 +490,6 @@ const wf = workflow('', '')
 					numberInputs: 4,
 				},
 				position: [960, 584],
-				name: 'Merge',
 			},
 		}),
 	)
@@ -506,7 +504,6 @@ const wf = workflow('', '')
 						"return {\n  campaigns: $('account: campaigns').item.json.data,\n  adsets: $('account: adsets').item.json.data,\n  ads:   $('account: ads').item.json.data,\n  account_insights: $('account insights').item.json.data\n}",
 				},
 				position: [1184, 616],
-				name: 'Code',
 			},
 		}),
 	)

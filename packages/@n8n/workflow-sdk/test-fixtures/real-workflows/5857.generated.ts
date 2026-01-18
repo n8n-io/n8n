@@ -40,7 +40,6 @@ const wf = workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
 					},
 				},
 				position: [-1180, -420],
-				name: 'If',
 			},
 		}),
 	)

@@ -3,11 +3,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.3,
-			config: {
-				parameters: { rule: { interval: [{}] } },
-				position: [-2032, 1248],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{}] } }, position: [-2032, 1248] },
 		}),
 	)
 	.output(0)
@@ -65,7 +61,6 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 					},
 				},
 				position: [160, 1216],
-				name: 'Filter',
 			},
 		}),
 	)

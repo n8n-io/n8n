@@ -7,7 +7,7 @@ const wf = workflow(
 		trigger({
 			type: 'n8n-nodes-base.manualTrigger',
 			version: 1,
-			config: { position: [-1600, 60], name: 'Manual Trigger' },
+			config: { position: [-1600, 60] },
 		}),
 	)
 	.then(

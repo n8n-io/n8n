@@ -24,7 +24,6 @@ const wf = workflow('', 'UGC Nano Banana', { executionOrder: 'v1' })
 					},
 				},
 				position: [-592, -16],
-				name: 'Google Drive Trigger',
 			},
 		}),
 	)
@@ -107,7 +106,6 @@ const wf = workflow('', 'UGC Nano Banana', { executionOrder: 'v1' })
 			config: {
 				parameters: { options: {}, fieldToSplitOut: 'output.ugc_prompts' },
 				position: [144, -16],
-				name: 'Split Out',
 			},
 		}),
 	)

@@ -42,7 +42,6 @@ const wf = workflow('HQcHQhEaig6JXOH4', 'AI Virtual TryOn for WooCommerce Nano B
 					},
 				},
 				position: [-256, 1600],
-				name: 'Google Sheets',
 			},
 		}),
 	)

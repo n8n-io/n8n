@@ -21,7 +21,6 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 					redditOAuth2Api: { id: 'credential-id', name: 'redditOAuth2Api Credential' },
 				},
 				position: [220, 0],
-				name: 'Reddit',
 			},
 		}),
 	)
@@ -35,7 +34,6 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 						"const questionWords = ['who', 'what', 'when', 'where', 'why', 'how', 'can', 'does', 'is', 'should', 'do', 'are', 'could', 'would'];\n\nreturn $input.all().filter(item => {\n  const rawTitle = item.json.title;\n  if (!rawTitle) return false;\n\n  const title = rawTitle.trim().toLowerCase();\n\n  const isQuestion =\n    title.endsWith('?') ||\n    questionWords.some(word =>\n      title.startsWith(word + ' ') ||\n      title.includes(' ' + word + ' ')\n    );\n\n  // 🪵 Debug log goes here:\n  if (isQuestion) console.log('✅ Question found:', title);\n\n  return isQuestion;\n});\n",
 				},
 				position: [440, 0],
-				name: 'Code',
 			},
 		}),
 	)
@@ -100,7 +98,6 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 					},
 				},
 				position: [660, 0],
-				name: 'Google Sheets',
 			},
 		}),
 	)

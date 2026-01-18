@@ -11,7 +11,6 @@ const wf = workflow('e63GF6KHkhFUFKfz', 'Build your first email agent with fall 
 					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
 				},
 				position: [-32, 0],
-				name: 'Gmail Trigger',
 			},
 		}),
 	)
@@ -30,20 +29,33 @@ const wf = workflow('e63GF6KHkhFUFKfz', 'Build your first email agent with fall 
 					needsFallback: true,
 				},
 				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-								options: {},
+					model: [
+						languageModel({
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							version: 1.2,
+							config: {
+								parameters: {
+									model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+									options: {},
+								},
+								credentials: {
+									openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+								},
+								name: 'OpenAI  Model',
 							},
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						}),
+						languageModel({
+							type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+							version: 1,
+							config: {
+								parameters: { options: {} },
+								credentials: {
+									googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+								},
+								name: 'Gemini Chat Model',
 							},
-							name: 'OpenAI  Model',
-						},
-					}),
+						}),
+					],
 					memory: memory({
 						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
 						version: 1.3,

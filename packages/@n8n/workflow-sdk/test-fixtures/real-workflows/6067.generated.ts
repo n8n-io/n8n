@@ -12,7 +12,6 @@ const wf = workflow('OcdRRO25OfTnrILJ', 'Blog Post : Tendencias Ecosistema', {
 					},
 				},
 				position: [-1480, 610],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)
@@ -163,7 +162,6 @@ const wf = workflow('OcdRRO25OfTnrILJ', 'Blog Post : Tendencias Ecosistema', {
 					},
 				},
 				position: [-20, 560],
-				name: 'If',
 			},
 		}),
 	)
@@ -393,13 +391,7 @@ const wf = workflow('OcdRRO25OfTnrILJ', 'Blog Post : Tendencias Ecosistema', {
 		}),
 	)
 	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [200, 560], name: 'Wait' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [200, 560] } }))
 	.add(
 		sticky(
 			'## Problem in node ‘Get Title, Content, and Image FileName‘\nIf this happens, is because the Json file was not created successfully before on Perplexity. IA Models still struggles with this.',

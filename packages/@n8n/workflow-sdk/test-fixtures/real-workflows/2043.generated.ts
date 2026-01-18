@@ -3,11 +3,7 @@ const wf = workflow('', '')
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.1,
-			config: {
-				parameters: { rule: { interval: [{ field: 'minutes' }] } },
-				position: [520, 1279],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{ field: 'minutes' }] } }, position: [520, 1279] },
 		}),
 	)
 	.then(
@@ -45,7 +41,6 @@ const wf = workflow('', '')
 			config: {
 				parameters: { options: {}, aggregate: 'aggregateAllItemData' },
 				position: [1020, 1279],
-				name: 'Aggregate',
 			},
 		}),
 	)

@@ -122,7 +122,6 @@ const wf = workflow('CXHBDt6tSiHrMyZj', '🎬 AI YouTube Video Generator - One-C
 					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
 				},
 				position: [-760, -180],
-				name: 'HTTP Request',
 			},
 		}),
 	)
@@ -137,7 +136,6 @@ const wf = workflow('CXHBDt6tSiHrMyZj', '🎬 AI YouTube Video Generator - One-C
 					fieldToSplitOut: 'result.data',
 				},
 				position: [-540, -180],
-				name: 'Split Out',
 			},
 		}),
 	)
@@ -341,7 +339,6 @@ const wf = workflow('CXHBDt6tSiHrMyZj', '🎬 AI YouTube Video Generator - One-C
 					destinationFieldName: 'Videos',
 				},
 				position: [2060, -180],
-				name: 'Aggregate',
 			},
 		}),
 	)
@@ -356,7 +353,6 @@ const wf = workflow('CXHBDt6tSiHrMyZj', '🎬 AI YouTube Video Generator - One-C
 					combineBy: 'combineByPosition',
 				},
 				position: [2300, 0],
-				name: 'Merge',
 			},
 		}),
 	)

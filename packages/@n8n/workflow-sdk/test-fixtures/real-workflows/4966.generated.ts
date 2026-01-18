@@ -392,7 +392,6 @@ const wf = workflow('e0BX3fhHvcBuQTBU', 'whats app agent community', { execution
 					},
 				},
 				position: [1640, 440],
-				name: 'Google Sheets',
 			},
 		}),
 	)
@@ -436,7 +435,6 @@ const wf = workflow('e0BX3fhHvcBuQTBU', 'whats app agent community', { execution
 					},
 				},
 				position: [2080, 440],
-				name: 'If',
 			},
 		}),
 	)

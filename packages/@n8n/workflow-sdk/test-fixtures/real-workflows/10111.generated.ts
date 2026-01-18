@@ -303,7 +303,7 @@ const wf = workflow(
 	)
 	.output(0)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.1,
 			config: {
@@ -333,22 +333,6 @@ const wf = workflow(
 				credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
 				position: [480, 576],
 				name: 'Send Payment Confirmation',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'json',
-					responseBody:
-						'={\n  "success": true,\n  "message": "Payment recorded successfully",\n  "invoice_number": "{{ $json.invoice_number }}",\n  "amount_paid": {{ $json.payment_amount }},\n  "status": "{{ $json.payment_status }}"\n}',
-				},
-				position: [464, 144],
-				name: 'Webhook Response',
 			},
 		}),
 	)

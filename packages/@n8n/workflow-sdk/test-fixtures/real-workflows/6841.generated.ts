@@ -185,7 +185,6 @@ const wf = workflow(
 					},
 				},
 				position: [896, 1248],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)

@@ -182,7 +182,6 @@ const wf = workflow('pDhufDfHS9qRgtLf', 'Simple RAG', { executionOrder: 'v1' })
 					cohereApi: { id: 'credential-id', name: 'cohereApi Credential' },
 				},
 				position: [1740, 480],
-				name: 'Reranker Cohere',
 			},
 		}),
 	)

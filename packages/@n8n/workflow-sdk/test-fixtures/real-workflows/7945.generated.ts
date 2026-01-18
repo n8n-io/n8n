@@ -167,7 +167,7 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 		node({
 			type: 'n8n-nodes-base.limit',
 			version: 1,
-			config: { parameters: { maxItems: 500 }, position: [1440, 1264], name: 'Limit' },
+			config: { parameters: { maxItems: 500 }, position: [1440, 1264] },
 		}),
 	)
 	.then(
@@ -237,7 +237,6 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			config: {
 				parameters: { mode: 'combine', options: {}, combineBy: 'combineAll' },
 				position: [2224, 784],
-				name: 'Merge',
 			},
 		}),
 	)
@@ -421,11 +420,7 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'data' },
-				position: [3520, 1104],
-				name: 'Split Out',
-			},
+			config: { parameters: { options: {}, fieldToSplitOut: 'data' }, position: [3520, 1104] },
 		}),
 	)
 	.output(0)
@@ -478,7 +473,6 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 					looseTypeValidation: true,
 				},
 				position: [400, 288],
-				name: 'If',
 			},
 		}),
 	)

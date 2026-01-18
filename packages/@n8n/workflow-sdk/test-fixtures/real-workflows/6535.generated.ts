@@ -46,7 +46,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [-220, 100],
-				name: 'Google Sheets',
 			},
 		}),
 	)
@@ -80,7 +79,6 @@ const wf = workflow('', '')
 					},
 				},
 				position: [80, 140],
-				name: 'Filter',
 			},
 		}),
 	)
@@ -176,7 +174,6 @@ const wf = workflow('', '')
 					perplexityApi: { id: 'credential-id', name: 'perplexityApi Credential' },
 				},
 				position: [1100, 140],
-				name: 'Perplexity',
 			},
 		}),
 	)

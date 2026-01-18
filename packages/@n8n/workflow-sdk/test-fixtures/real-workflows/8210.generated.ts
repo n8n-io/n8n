@@ -246,7 +246,7 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.4,
 			config: {
@@ -276,11 +276,7 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.extractFromFile',
 			version: 1,
-			config: {
-				parameters: { options: {}, operation: 'pdf' },
-				position: [-464, 1296],
-				name: 'Extract From File',
-			},
+			config: { parameters: { options: {}, operation: 'pdf' }, position: [-464, 1296] },
 		}),
 	)
 	.then(
@@ -518,7 +514,7 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.4,
 			config: {
@@ -685,7 +681,7 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.4,
 			config: {
@@ -945,67 +941,7 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.4,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'text',
-					responseBody: '={{ $json.content }}',
-				},
-				position: [1056, 2800],
-				name: 'Return PDF Summary',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.4,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'text',
-					responseBody: '={{ $json.content }}',
-				},
-				position: [1248, 1040],
-				name: 'Return Summary Response',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.4,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'text',
-					responseBody: '={{ $json.content }}',
-				},
-				position: [144, 1664],
-				name: 'Return URL Summary',
-			},
-		}),
-	)
-	.add(
-		trigger({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.4,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'text',
-					responseBody: '={{ $json.content }}',
-				},
-				position: [-64, 2192],
-				name: 'Return Text Summary',
-			},
-		}),
-	)
-	.add(
-		trigger({
+		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.4,
 			config: {

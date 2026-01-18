@@ -9,7 +9,6 @@ const wf = workflow('kZ3wJtLi5OI0WzFF', 'HTX AI Agent v1.02', { executionOrder: 
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [-1008, 240],
-				name: 'Telegram Trigger',
 			},
 		}),
 	)
@@ -332,7 +331,6 @@ const wf = workflow('kZ3wJtLi5OI0WzFF', 'HTX AI Agent v1.02', { executionOrder: 
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [896, 240],
-				name: 'Telegram',
 			},
 		}),
 	)

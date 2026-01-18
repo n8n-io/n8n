@@ -348,7 +348,7 @@ const wf = workflow(
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 2 }, position: [2192, 640], name: 'Wait' },
+			config: { parameters: { amount: 2 }, position: [2192, 640] },
 		}),
 	)
 	.then(

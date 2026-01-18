@@ -29,13 +29,7 @@ const wf = workflow('', '')
 		}),
 	)
 	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [304, 896], name: 'Merge' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [304, 896] } }))
 	.then(
 		node({
 			type: 'n8n-nodes-base.if',
@@ -55,7 +49,7 @@ const wf = workflow('', '')
 		node({
 			type: 'n8n-nodes-base.compareDatasets',
 			version: 2.3,
-			config: { position: [768, 848], name: 'Compare Datasets' },
+			config: { position: [768, 848] },
 		}),
 	)
 	.then(
@@ -144,13 +138,7 @@ const wf = workflow('', '')
 			config: { position: [2400, 1104], name: 'Merge1' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.aggregate',
-			version: 1,
-			config: { position: [2400, 1296], name: 'Aggregate' },
-		}),
-	)
+	.then(node({ type: 'n8n-nodes-base.aggregate', version: 1, config: { position: [2400, 1296] } }))
 	.then(
 		node({
 			type: 'n8n-nodes-base.dataTable',

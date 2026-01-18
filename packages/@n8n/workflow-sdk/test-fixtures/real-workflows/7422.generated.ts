@@ -28,7 +28,6 @@ const wf = workflow('EPSFcDt1f8LdRzZU', 'Amazon Affiliate Marketing Automation',
 					},
 				},
 				position: [-2000, 384],
-				name: 'Google Sheets Trigger',
 			},
 		}),
 	)
@@ -221,7 +220,7 @@ const wf = workflow('EPSFcDt1f8LdRzZU', 'Amazon Affiliate Marketing Automation',
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
-			config: { parameters: { amount: 10 }, position: [736, 464], name: 'Wait' },
+			config: { parameters: { amount: 10 }, position: [736, 464] },
 		}),
 	)
 	.then(
@@ -248,7 +247,6 @@ const wf = workflow('EPSFcDt1f8LdRzZU', 'Amazon Affiliate Marketing Automation',
 					binaryPropertyName: 'data',
 				},
 				position: [960, 464],
-				name: 'Facebook Graph API',
 			},
 		}),
 	)
@@ -320,7 +318,6 @@ const wf = workflow('EPSFcDt1f8LdRzZU', 'Amazon Affiliate Marketing Automation',
 					},
 				},
 				position: [1168, 464],
-				name: 'Google Sheets',
 			},
 		}),
 	)

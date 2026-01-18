@@ -44,7 +44,6 @@ const wf = workflow('L9nteAq0NLYqIGxH', 'RAG Pipeline', { executionOrder: 'v1' }
 							credentials: {
 								ollamaApi: { id: 'credential-id', name: 'ollamaApi Credential' },
 							},
-							name: 'Embeddings Ollama',
 						},
 					}),
 					documentLoader: documentLoader({

@@ -3,11 +3,7 @@ const wf = workflow('59a8WDMIKKo9faYP', 'Posting', { executionOrder: 'v1' })
 		trigger({
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
-			config: {
-				parameters: { rule: { interval: [{ triggerAtHour: 22 }] } },
-				position: [0, 135],
-				name: 'Schedule Trigger',
-			},
+			config: { parameters: { rule: { interval: [{ triggerAtHour: 22 }] } }, position: [0, 135] },
 		}),
 	)
 	.then(
@@ -185,7 +181,6 @@ const wf = workflow('59a8WDMIKKo9faYP', 'Posting', { executionOrder: 'v1' })
 					facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
 				},
 				position: [1160, 385],
-				name: 'Facebook Graph API',
 			},
 		}),
 	)

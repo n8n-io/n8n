@@ -10,7 +10,6 @@ const wf = workflow(
 			config: {
 				parameters: { rule: { interval: [{ triggerAtHour: 9 }] } },
 				position: [1800, -220],
-				name: 'Schedule Trigger',
 			},
 		}),
 	)
@@ -138,7 +137,6 @@ const wf = workflow(
 			config: {
 				parameters: { options: {}, fieldToSplitOut: 'choices[0].message.content' },
 				position: [3640, -140],
-				name: 'Split Out',
 			},
 		}),
 	)
@@ -196,7 +194,6 @@ const wf = workflow(
 					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
 				},
 				position: [4180, -320],
-				name: 'Telegram',
 			},
 		}),
 	)
@@ -243,7 +240,6 @@ const wf = workflow(
 					},
 				},
 				position: [1800, 380],
-				name: 'Google Sheets Trigger',
 			},
 		}),
 	)
