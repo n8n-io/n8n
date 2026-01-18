@@ -5,6 +5,7 @@ import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 import type { KeycloakResult } from './services/keycloak';
+import type { MailpitResult } from './services/mailpit';
 import type { TracingResult } from './services/tracing';
 import type { ServiceName } from './services/types';
 import type { VictoriaLogsResult } from './services/victoria-logs';
@@ -47,6 +48,7 @@ ${colors.yellow}Options:${colors.reset}
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
   --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
   --tracing         Enable tracing stack (n8n-tracer + Jaeger) for workflow visualization
+  --mailpit         Enable Mailpit for email testing
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -123,6 +125,7 @@ async function main() {
 			oidc: { type: 'boolean' },
 			observability: { type: 'boolean' },
 			tracing: { type: 'boolean' },
+			mailpit: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -144,6 +147,7 @@ async function main() {
 	if (values.oidc) services.push('keycloak');
 	if (values.observability) services.push('victoriaLogs', 'victoriaMetrics', 'vector');
 	if (values.tracing) services.push('tracing');
+	if (values.mailpit) services.push('mailpit');
 
 	// Build configuration
 	const config: N8NConfig = {
@@ -164,10 +168,6 @@ async function main() {
 
 		config.mains = mains;
 		config.workers = workers;
-
-		if (!values.queue && (values.mains ?? values.workers)) {
-			log.warn('--mains and --workers imply queue mode');
-		}
 	}
 
 	if (values.plan) {
@@ -230,7 +230,6 @@ async function main() {
 			throw error;
 		}
 
-		log.success('All containers started successfully!');
 		console.log('');
 		log.info(`n8n URL: ${colors.bright}${colors.green}${stack.baseUrl}${colors.reset}`);
 
@@ -276,10 +275,12 @@ async function main() {
 			log.info(`Jaeger UI: ${colors.cyan}${tracingResult.meta.jaeger.uiUrl}${colors.reset}`);
 		}
 
-		console.log('');
-		log.info('Containers are running in the background');
-		log.info('Cleanup with: pnpm stack:clean:all (stops containers and removes networks)');
-		console.log('');
+		const mailpitResult = stack.serviceResults.mailpit as MailpitResult | undefined;
+		if (mailpitResult) {
+			console.log('');
+			log.header('Email Testing (Mailpit)');
+			log.info(`Mailpit UI: ${colors.cyan}${mailpitResult.meta.apiBaseUrl}${colors.reset}`);
+		}
 	} catch (error) {
 		log.error(`Failed to start: ${error as string}`);
 		process.exit(1);
@@ -288,83 +289,43 @@ async function main() {
 
 function displayConfig(config: N8NConfig) {
 	const dockerImage = getDockerImageFromEnv();
-	log.info(`Docker image: ${dockerImage}`);
-
 	const mains = config.mains ?? 1;
 	const workers = config.workers ?? 0;
 	const isQueueMode = mains > 1 || workers > 0;
 	const services = config.services ?? [];
 
-	// Determine actual database
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	const usePostgres = config.postgres || isQueueMode || services.includes('keycloak');
-	log.info(`Database: ${usePostgres ? 'PostgreSQL' : 'SQLite'}`);
 
+	let modeStr: string;
 	if (isQueueMode) {
-		log.info(`Queue mode: ${mains} main(s), ${workers} worker(s)`);
-		if (!config.postgres) {
-			log.info('(PostgreSQL automatically enabled for queue mode)');
-		}
-		if (mains > 1) {
-			log.info('(load balancer will be configured)');
-		}
+		const parts = [`${mains}M/${workers}W`, usePostgres ? 'PostgreSQL' : 'SQLite'];
+		if (mains > 1) parts.push('load-balanced');
+		modeStr = parts.join(', ');
 	} else {
-		log.info('Queue mode: disabled');
+		modeStr = usePostgres ? 'single, PostgreSQL' : 'single, SQLite';
 	}
 
-	log.info('Task runner: enabled');
+	log.info(`Image: ${dockerImage}`);
+	log.info(`Mode: ${modeStr}`);
 
-	// Display source control status
-	if (services.includes('gitea')) {
-		log.info('Source Control: enabled (Git server - Gitea 1.24.6)');
-		log.info('  Admin: giteaadmin / giteapassword');
-		log.info('  Repository: n8n-test-repo');
-	} else {
-		log.info('Source Control: disabled');
-	}
+	const enabledFeatures: string[] = [];
+	if (services.includes('gitea')) enabledFeatures.push('Source Control (Gitea)');
+	if (services.includes('keycloak')) enabledFeatures.push('OIDC (Keycloak)');
+	if (services.includes('victoriaLogs')) enabledFeatures.push('Observability');
+	if (services.includes('tracing')) enabledFeatures.push('Tracing (Jaeger)');
+	if (services.includes('mailpit')) enabledFeatures.push('Email (Mailpit)');
 
-	// Display OIDC status
-	if (services.includes('keycloak')) {
-		log.info('OIDC: enabled (Keycloak)');
-		if (!config.postgres && !isQueueMode) {
-			log.info('(PostgreSQL automatically enabled for OIDC)');
-		}
-	} else {
-		log.info('OIDC: disabled');
-	}
-
-	// Display observability status
-	if (services.includes('victoriaLogs')) {
-		log.info('Observability: enabled (VictoriaLogs + VictoriaMetrics + Vector)');
-	} else {
-		log.info('Observability: disabled');
-	}
-
-	// Display tracing status
-	if (services.includes('tracing')) {
-		log.info('Tracing: enabled (n8n-tracer + Jaeger)');
-	} else {
-		log.info('Tracing: disabled');
+	if (enabledFeatures.length > 0) {
+		log.info(`Services: ${enabledFeatures.join(', ')}`);
 	}
 
 	if (config.resourceQuota) {
-		log.info(
-			`Resource limits: ${config.resourceQuota.memory}GB RAM, ${config.resourceQuota.cpu} CPU cores`,
-		);
+		log.info(`Resources: ${config.resourceQuota.memory}GB RAM, ${config.resourceQuota.cpu} CPU`);
 	}
 
-	if (config.env) {
-		const envCount = Object.keys(config.env).length;
-		if (envCount > 0) {
-			log.info(`Environment variables: ${envCount} custom variable(s)`);
-			Object.entries(config.env).forEach(([key, value]) => {
-				console.log(`  ${key}=${value}`);
-			});
-		}
-	}
-
-	if (process.env.TESTCONTAINERS_REUSE_ENABLE === 'true') {
-		log.info('Container reuse: enabled (containers will persist)');
+	if (config.env && Object.keys(config.env).length > 0) {
+		log.info(`Custom env: ${Object.keys(config.env).join(', ')}`);
 	}
 }
 
