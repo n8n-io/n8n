@@ -150,112 +150,77 @@ const wf = workflow('My Workflow')
 
 Sticky notes are added to the workflow but don't participate in the node chain.
 
-### `splitInBatches(config, branches)`
+### `splitInBatches(version, config)`
 
-Creates a batch processing loop. The Split In Batches node has two outputs:
-- **Output 0 (done):** Fires once when all batches have been processed
-- **Output 1 (each):** Fires for each batch; typically loops back to continue processing
+Creates a Split In Batches node with semantic `.done()` and `.each()` methods for the two output branches.
 
 ```typescript
-const loop = splitInBatches({
-  batchSize: 1,
-  options: {}
-}, {
-  done: [initFinishedSet],                    // Nodes to run when loop completes
-  each: [startSubWorkflow]                    // Nodes to process each batch (auto-loops back)
-});
-
-wf.add(trigger(...))
-  .then(simulateItems)
-  .then(loop);
-```
-
-**Full example (matching the workflow):**
-
-```typescript
-const initFinishedSet = node('n8n-nodes-base.set', 'v3.4', {
+const batchNode = splitInBatches('v3', {
   parameters: {
-    assignments: {
-      assignments: [{ name: 'finishedSet', type: 'array', value: '[]' }]
-    }
-  },
-  executeOnce: true
-});
-
-const startSubWorkflow = node('n8n-nodes-base.httpRequest', 'v4.2', {
-  parameters: {
-    method: 'POST',
-    url: $ => `${$.env.WEBHOOK_URL}/webhook/parallel-subworkflow-target`,
-    sendHeaders: true,
-    headerParameters: {
-      parameters: [{ name: 'callbackurl', value: $ => $.execution.resumeUrl }]
-    },
-    sendBody: true,
-    bodyParameters: {
-      parameters: [{ name: 'requestItemId', value: $ => $.json.requestId }]
-    }
+    batchSize: 10,
+    options: {}
   }
 });
 
-const loop = splitInBatches({
-  batchSize: 1,
-  options: {}
-}, {
-  done: [initFinishedSet],
-  each: [startSubWorkflow]   // Automatically connects back to loop
-});
-
-const wf = workflow('loop-123', 'Parallel Processing')
-  .add(trigger('n8n-nodes-base.manualTrigger', 'v1', {}))
-  .then(node('n8n-nodes-base.code', 'v2', {
-    parameters: {
-      jsCode: runOnceForAllItems(() => [
-        { json: { requestId: 'req4567' } },
-        { json: { requestId: 'req8765' } },
-        { json: { requestId: 'req1234' } }
-      ])
-    }
-  }))
-  .then(loop);
+wf.add(trigger(...))
+  .then(codeNode)  // Produces multiple items
+  .then(batchNode)
+  .done().then(finalizeNode)   // Output 0: All items processed
+  .each().then(processNode)    // Output 1: Each batch
+    .then(batchNode);          // Loop back
 ```
 
 **Parameters:**
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
-| `batchSize` | `number` | No | Items per batch (default: 1) |
-| `options` | `object` | No | Reset behavior, etc. |
+| `version` | `string` | Yes | Node version (e.g., `'v3'`) |
+| `config.parameters` | `object` | No | Node parameters (batchSize, options) |
+| `config.name` | `string` | No | Custom node name |
+| `config.position` | `[x, y]` | No | Canvas position |
+| `config.disabled` | `boolean` | No | Whether node is disabled |
 
-**Branch configuration:**
+**Methods:**
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `done` | `Node[]` | No | Flow when all batches complete (output 0) |
-| `each` | `Node[]` | Yes | Flow for each batch (output 1), auto-connects back |
+| Method | Output | Description |
+|--------|--------|-------------|
+| `.done()` | 0 | Chain from "done" branch (all items processed) |
+| `.each()` | 1 | Chain from "each" branch (current batch) |
 
-**Behavior:**
-- The `each` branch automatically creates a connection back to the splitInBatches node, forming the loop
-- The `done` branch receives all items once processing completes
-- Use `executeOnce: true` on done-branch nodes to initialize once before looping
+**Loop pattern:** The `.each()` branch typically loops back to the split node after processing:
 
-**Serialization:**
+```typescript
+const batcher = splitInBatches('v3', {
+  parameters: { batchSize: 5 }
+});
 
-```json
-{
-  "connections": {
-    "Loop Over Items": {
-      "main": [
-        [{ "node": "Initialize finishedSet", "type": "main", "index": 0 }],
-        [{ "node": "Start Sub-Workflow via Webhook", "type": "main", "index": 0 }]
-      ]
-    },
-    "Start Sub-Workflow via Webhook": {
-      "main": [
-        [{ "node": "Loop Over Items", "type": "main", "index": 0 }]
-      ]
-    }
-  }
-}
+const initOnce = node('n8n-nodes-base.set', 'v3.4', {
+  parameters: { ... },
+  executeOnce: true  // Only run on first iteration
+});
+
+const processItem = node('n8n-nodes-base.httpRequest', 'v4.2', {
+  parameters: { url: $ => $.json.apiUrl }
+});
+
+wf.add(trigger(...))
+  .then(generateItems)
+  .then(batcher)
+  .done().then(finalReport)
+  .each().then(initOnce)
+    .then(processItem)
+    .then(batcher);  // Loop back to process next batch
+```
+
+This is equivalent to using `node()` with `.output(0)` and `.output(1)`:
+
+```typescript
+// These are equivalent:
+batchNode.done().then(...)   // Semantic
+batchNode.output(0).then(...) // Generic
+
+batchNode.each().then(...)   // Semantic
+batchNode.output(1).then(...) // Generic
 ```
 
 ---
