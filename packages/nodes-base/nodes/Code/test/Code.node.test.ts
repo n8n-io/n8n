@@ -1,8 +1,9 @@
 import { NodeVM } from '@n8n/vm2';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import type { MockProxy } from 'jest-mock-extended';
 import { anyNumber, mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
-import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, IWorkflowDataProxyData } from 'n8n-workflow';
 import { ApplicationError } from '@n8n/errors';
 
 import { Code } from '../Code.node';
@@ -146,13 +147,12 @@ describe('Code Node unit test', () => {
 
 	describe('python language routing', () => {
 		it('should route legacy `python` language to native Python runner', async () => {
-			const pythonThisArg = mock<IExecuteFunctions>({
-				getNode: () => mock({ typeVersion: 2 }),
-				helpers: { normalizeItems },
-				getMode: () => 'manual',
-				getRunnerStatus: () => ({ available: true }),
-			});
+			const pythonThisArg: MockProxy<IExecuteFunctions> = mock<IExecuteFunctions>();
+			pythonThisArg.helpers = { normalizeItems } as IExecuteFunctions['helpers'];
+			pythonThisArg.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
 			pythonThisArg.getWorkflowDataProxy.mockReturnValue(workflowDataProxy);
+			pythonThisArg.getMode.mockReturnValue('manual');
+			pythonThisArg.getRunnerStatus.mockReturnValue({ available: true });
 			pythonThisArg.getNodeParameter.calledWith('language', 0).mockReturnValue('python');
 			pythonThisArg.getNodeParameter.calledWith('mode', 0).mockReturnValue('runOnceForAllItems');
 			pythonThisArg.getNodeParameter.calledWith('pythonCode', 0).mockReturnValue('return []');
