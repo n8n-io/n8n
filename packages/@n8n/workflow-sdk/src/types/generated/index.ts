@@ -6,9 +6,1021 @@
  *
  * To regenerate:
  *   pnpm generate-types
+ *
+ * @generated
  */
 
-// Placeholder - full type generation is a future enhancement
-// For now, use generic parameters with the SDK
+// n8n-nodes-base
+export * from './nodes/n8n-nodes-base/actionNetwork';
+export * from './nodes/n8n-nodes-base/activeCampaign';
+export * from './nodes/n8n-nodes-base/activeCampaignTrigger';
+export * from './nodes/n8n-nodes-base/acuitySchedulingTrigger';
+export * from './nodes/n8n-nodes-base/adalo';
+export * from './nodes/n8n-nodes-base/affinity';
+export * from './nodes/n8n-nodes-base/affinityTrigger';
+export * from './nodes/n8n-nodes-base/aggregate';
+export * from './nodes/n8n-nodes-base/agileCrm';
+export * from './nodes/n8n-nodes-base/airtable';
+export * from './nodes/n8n-nodes-base/airtableTrigger';
+export * from './nodes/n8n-nodes-base/airtop';
+export * from './nodes/n8n-nodes-base/aiTransform';
+export * from './nodes/n8n-nodes-base/amqp';
+export * from './nodes/n8n-nodes-base/amqpTrigger';
+export * from './nodes/n8n-nodes-base/apiTemplateIo';
+export * from './nodes/n8n-nodes-base/asana';
+export * from './nodes/n8n-nodes-base/asanaTrigger';
+export * from './nodes/n8n-nodes-base/autopilot';
+export * from './nodes/n8n-nodes-base/autopilotTrigger';
+export * from './nodes/n8n-nodes-base/awsCertificateManager';
+export * from './nodes/n8n-nodes-base/awsCognito';
+export * from './nodes/n8n-nodes-base/awsComprehend';
+export * from './nodes/n8n-nodes-base/awsDynamoDb';
+export * from './nodes/n8n-nodes-base/awsElb';
+export * from './nodes/n8n-nodes-base/awsIam';
+export * from './nodes/n8n-nodes-base/awsLambda';
+export * from './nodes/n8n-nodes-base/awsRekognition';
+export * from './nodes/n8n-nodes-base/awsS3';
+export * from './nodes/n8n-nodes-base/awsSes';
+export * from './nodes/n8n-nodes-base/awsSns';
+export * from './nodes/n8n-nodes-base/awsSnsTrigger';
+export * from './nodes/n8n-nodes-base/awsSqs';
+export * from './nodes/n8n-nodes-base/awsTextract';
+export * from './nodes/n8n-nodes-base/awsTranscribe';
+export * from './nodes/n8n-nodes-base/azureCosmosDb';
+export * from './nodes/n8n-nodes-base/azureStorage';
+export * from './nodes/n8n-nodes-base/bambooHr';
+export * from './nodes/n8n-nodes-base/bannerbear';
+export * from './nodes/n8n-nodes-base/baserow';
+export * from './nodes/n8n-nodes-base/beeminder';
+export * from './nodes/n8n-nodes-base/bitbucketTrigger';
+export * from './nodes/n8n-nodes-base/bitly';
+export * from './nodes/n8n-nodes-base/bitwarden';
+export * from './nodes/n8n-nodes-base/box';
+export * from './nodes/n8n-nodes-base/boxTrigger';
+export * from './nodes/n8n-nodes-base/Brandfetch';
+export * from './nodes/n8n-nodes-base/bubble';
+export * from './nodes/n8n-nodes-base/calendlyTrigger';
+export * from './nodes/n8n-nodes-base/calTrigger';
+export * from './nodes/n8n-nodes-base/chargebee';
+export * from './nodes/n8n-nodes-base/chargebeeTrigger';
+export * from './nodes/n8n-nodes-base/circleCi';
+export * from './nodes/n8n-nodes-base/ciscoWebex';
+export * from './nodes/n8n-nodes-base/ciscoWebexTrigger';
+export * from './nodes/n8n-nodes-base/citrixAdc';
+export * from './nodes/n8n-nodes-base/clearbit';
+export * from './nodes/n8n-nodes-base/clickUp';
+export * from './nodes/n8n-nodes-base/clickUpTrigger';
+export * from './nodes/n8n-nodes-base/clockify';
+export * from './nodes/n8n-nodes-base/clockifyTrigger';
+export * from './nodes/n8n-nodes-base/cloudflare';
+export * from './nodes/n8n-nodes-base/cockpit';
+export * from './nodes/n8n-nodes-base/coda';
+export * from './nodes/n8n-nodes-base/code';
+export * from './nodes/n8n-nodes-base/coinGecko';
+export * from './nodes/n8n-nodes-base/compareDatasets';
+export * from './nodes/n8n-nodes-base/compression';
+export * from './nodes/n8n-nodes-base/contentful';
+export * from './nodes/n8n-nodes-base/convertKit';
+export * from './nodes/n8n-nodes-base/convertKitTrigger';
+export * from './nodes/n8n-nodes-base/convertToFile';
+export * from './nodes/n8n-nodes-base/copper';
+export * from './nodes/n8n-nodes-base/copperTrigger';
+export * from './nodes/n8n-nodes-base/cortex';
+export * from './nodes/n8n-nodes-base/crateDb';
+export * from './nodes/n8n-nodes-base/crypto';
+export * from './nodes/n8n-nodes-base/customerIo';
+export * from './nodes/n8n-nodes-base/customerIoTrigger';
+export * from './nodes/n8n-nodes-base/dataTable';
+export * from './nodes/n8n-nodes-base/dateTime';
+export * from './nodes/n8n-nodes-base/debugHelper';
+export * from './nodes/n8n-nodes-base/deepL';
+export * from './nodes/n8n-nodes-base/demio';
+export * from './nodes/n8n-nodes-base/dhl';
+export * from './nodes/n8n-nodes-base/discord';
+export * from './nodes/n8n-nodes-base/discourse';
+export * from './nodes/n8n-nodes-base/disqus';
+export * from './nodes/n8n-nodes-base/drift';
+export * from './nodes/n8n-nodes-base/dropbox';
+export * from './nodes/n8n-nodes-base/dropcontact';
+export * from './nodes/n8n-nodes-base/e2eTest';
+export * from './nodes/n8n-nodes-base/editImage';
+export * from './nodes/n8n-nodes-base/egoi';
+export * from './nodes/n8n-nodes-base/elasticsearch';
+export * from './nodes/n8n-nodes-base/elasticSecurity';
+export * from './nodes/n8n-nodes-base/emailReadImap';
+export * from './nodes/n8n-nodes-base/emailSend';
+export * from './nodes/n8n-nodes-base/emelia';
+export * from './nodes/n8n-nodes-base/emeliaTrigger';
+export * from './nodes/n8n-nodes-base/erpNext';
+export * from './nodes/n8n-nodes-base/errorTrigger';
+export * from './nodes/n8n-nodes-base/evaluation';
+export * from './nodes/n8n-nodes-base/evaluationTrigger';
+export * from './nodes/n8n-nodes-base/eventbriteTrigger';
+export * from './nodes/n8n-nodes-base/executeCommand';
+export * from './nodes/n8n-nodes-base/executeWorkflow';
+export * from './nodes/n8n-nodes-base/executeWorkflowTrigger';
+export * from './nodes/n8n-nodes-base/executionData';
+export * from './nodes/n8n-nodes-base/extractFromFile';
+export * from './nodes/n8n-nodes-base/facebookGraphApi';
+export * from './nodes/n8n-nodes-base/facebookLeadAdsTrigger';
+export * from './nodes/n8n-nodes-base/facebookTrigger';
+export * from './nodes/n8n-nodes-base/figmaTrigger';
+export * from './nodes/n8n-nodes-base/filemaker';
+export * from './nodes/n8n-nodes-base/filter';
+export * from './nodes/n8n-nodes-base/flow';
+export * from './nodes/n8n-nodes-base/flowTrigger';
+export * from './nodes/n8n-nodes-base/form';
+export * from './nodes/n8n-nodes-base/formIoTrigger';
+export * from './nodes/n8n-nodes-base/formstackTrigger';
+export * from './nodes/n8n-nodes-base/formTrigger';
+export * from './nodes/n8n-nodes-base/freshdesk';
+export * from './nodes/n8n-nodes-base/freshservice';
+export * from './nodes/n8n-nodes-base/freshworksCrm';
+export * from './nodes/n8n-nodes-base/ftp';
+export * from './nodes/n8n-nodes-base/getResponse';
+export * from './nodes/n8n-nodes-base/getResponseTrigger';
+export * from './nodes/n8n-nodes-base/ghost';
+export * from './nodes/n8n-nodes-base/git';
+export * from './nodes/n8n-nodes-base/github';
+export * from './nodes/n8n-nodes-base/githubTrigger';
+export * from './nodes/n8n-nodes-base/gitlab';
+export * from './nodes/n8n-nodes-base/gitlabTrigger';
+export * from './nodes/n8n-nodes-base/gmail';
+export * from './nodes/n8n-nodes-base/gmailTrigger';
+export * from './nodes/n8n-nodes-base/gong';
+export * from './nodes/n8n-nodes-base/googleAds';
+export * from './nodes/n8n-nodes-base/googleAnalytics';
+export * from './nodes/n8n-nodes-base/googleBigQuery';
+export * from './nodes/n8n-nodes-base/googleBooks';
+export * from './nodes/n8n-nodes-base/googleBusinessProfile';
+export * from './nodes/n8n-nodes-base/googleBusinessProfileTrigger';
+export * from './nodes/n8n-nodes-base/googleCalendar';
+export * from './nodes/n8n-nodes-base/googleCalendarTrigger';
+export * from './nodes/n8n-nodes-base/googleChat';
+export * from './nodes/n8n-nodes-base/googleCloudNaturalLanguage';
+export * from './nodes/n8n-nodes-base/googleCloudStorage';
+export * from './nodes/n8n-nodes-base/googleContacts';
+export * from './nodes/n8n-nodes-base/googleDocs';
+export * from './nodes/n8n-nodes-base/googleDrive';
+export * from './nodes/n8n-nodes-base/googleDriveTrigger';
+export * from './nodes/n8n-nodes-base/googleFirebaseCloudFirestore';
+export * from './nodes/n8n-nodes-base/googleFirebaseRealtimeDatabase';
+export * from './nodes/n8n-nodes-base/googlePerspective';
+export * from './nodes/n8n-nodes-base/googleSheets';
+export * from './nodes/n8n-nodes-base/googleSheetsTrigger';
+export * from './nodes/n8n-nodes-base/googleSlides';
+export * from './nodes/n8n-nodes-base/googleTasks';
+export * from './nodes/n8n-nodes-base/googleTranslate';
+export * from './nodes/n8n-nodes-base/gotify';
+export * from './nodes/n8n-nodes-base/goToWebinar';
+export * from './nodes/n8n-nodes-base/grafana';
+export * from './nodes/n8n-nodes-base/graphql';
+export * from './nodes/n8n-nodes-base/grist';
+export * from './nodes/n8n-nodes-base/gSuiteAdmin';
+export * from './nodes/n8n-nodes-base/gumroadTrigger';
+export * from './nodes/n8n-nodes-base/hackerNews';
+export * from './nodes/n8n-nodes-base/haloPSA';
+export * from './nodes/n8n-nodes-base/harvest';
+export * from './nodes/n8n-nodes-base/helpScout';
+export * from './nodes/n8n-nodes-base/helpScoutTrigger';
+export * from './nodes/n8n-nodes-base/highLevel';
+export * from './nodes/n8n-nodes-base/homeAssistant';
+export * from './nodes/n8n-nodes-base/html';
+export * from './nodes/n8n-nodes-base/httpRequest';
+export * from './nodes/n8n-nodes-base/hubspot';
+export * from './nodes/n8n-nodes-base/hubspotTrigger';
+export * from './nodes/n8n-nodes-base/humanticAi';
+export * from './nodes/n8n-nodes-base/hunter';
+export * from './nodes/n8n-nodes-base/if';
+export * from './nodes/n8n-nodes-base/intercom';
+export * from './nodes/n8n-nodes-base/invoiceNinja';
+export * from './nodes/n8n-nodes-base/invoiceNinjaTrigger';
+export * from './nodes/n8n-nodes-base/iterable';
+export * from './nodes/n8n-nodes-base/jenkins';
+export * from './nodes/n8n-nodes-base/jinaAi';
+export * from './nodes/n8n-nodes-base/jira';
+export * from './nodes/n8n-nodes-base/jiraTrigger';
+export * from './nodes/n8n-nodes-base/jotFormTrigger';
+export * from './nodes/n8n-nodes-base/jwt';
+export * from './nodes/n8n-nodes-base/kafka';
+export * from './nodes/n8n-nodes-base/kafkaTrigger';
+export * from './nodes/n8n-nodes-base/keap';
+export * from './nodes/n8n-nodes-base/keapTrigger';
+export * from './nodes/n8n-nodes-base/koBoToolbox';
+export * from './nodes/n8n-nodes-base/koBoToolboxTrigger';
+export * from './nodes/n8n-nodes-base/ldap';
+export * from './nodes/n8n-nodes-base/lemlist';
+export * from './nodes/n8n-nodes-base/lemlistTrigger';
+export * from './nodes/n8n-nodes-base/limit';
+export * from './nodes/n8n-nodes-base/line';
+export * from './nodes/n8n-nodes-base/linear';
+export * from './nodes/n8n-nodes-base/linearTrigger';
+export * from './nodes/n8n-nodes-base/lingvaNex';
+export * from './nodes/n8n-nodes-base/linkedIn';
+export * from './nodes/n8n-nodes-base/localFileTrigger';
+export * from './nodes/n8n-nodes-base/loneScale';
+export * from './nodes/n8n-nodes-base/loneScaleTrigger';
+export * from './nodes/n8n-nodes-base/magento2';
+export * from './nodes/n8n-nodes-base/mailcheck';
+export * from './nodes/n8n-nodes-base/mailchimp';
+export * from './nodes/n8n-nodes-base/mailchimpTrigger';
+export * from './nodes/n8n-nodes-base/mailerLite';
+export * from './nodes/n8n-nodes-base/mailerLiteTrigger';
+export * from './nodes/n8n-nodes-base/mailgun';
+export * from './nodes/n8n-nodes-base/mailjet';
+export * from './nodes/n8n-nodes-base/mailjetTrigger';
+export * from './nodes/n8n-nodes-base/mandrill';
+export * from './nodes/n8n-nodes-base/manualTrigger';
+export * from './nodes/n8n-nodes-base/markdown';
+export * from './nodes/n8n-nodes-base/marketstack';
+export * from './nodes/n8n-nodes-base/matrix';
+export * from './nodes/n8n-nodes-base/mattermost';
+export * from './nodes/n8n-nodes-base/mautic';
+export * from './nodes/n8n-nodes-base/mauticTrigger';
+export * from './nodes/n8n-nodes-base/medium';
+export * from './nodes/n8n-nodes-base/merge';
+export * from './nodes/n8n-nodes-base/messageBird';
+export * from './nodes/n8n-nodes-base/metabase';
+export * from './nodes/n8n-nodes-base/microsoftDynamicsCrm';
+export * from './nodes/n8n-nodes-base/microsoftEntra';
+export * from './nodes/n8n-nodes-base/microsoftExcel';
+export * from './nodes/n8n-nodes-base/microsoftGraphSecurity';
+export * from './nodes/n8n-nodes-base/microsoftOneDrive';
+export * from './nodes/n8n-nodes-base/microsoftOneDriveTrigger';
+export * from './nodes/n8n-nodes-base/microsoftOutlook';
+export * from './nodes/n8n-nodes-base/microsoftOutlookTrigger';
+export * from './nodes/n8n-nodes-base/microsoftSharePoint';
+export * from './nodes/n8n-nodes-base/microsoftSql';
+export * from './nodes/n8n-nodes-base/microsoftTeams';
+export * from './nodes/n8n-nodes-base/microsoftTeamsTrigger';
+export * from './nodes/n8n-nodes-base/microsoftToDo';
+export * from './nodes/n8n-nodes-base/mindee';
+export * from './nodes/n8n-nodes-base/misp';
+export * from './nodes/n8n-nodes-base/mistralAi';
+export * from './nodes/n8n-nodes-base/mocean';
+export * from './nodes/n8n-nodes-base/mondayCom';
+export * from './nodes/n8n-nodes-base/mongoDb';
+export * from './nodes/n8n-nodes-base/monicaCrm';
+export * from './nodes/n8n-nodes-base/mqtt';
+export * from './nodes/n8n-nodes-base/mqttTrigger';
+export * from './nodes/n8n-nodes-base/msg91';
+export * from './nodes/n8n-nodes-base/mySql';
+export * from './nodes/n8n-nodes-base/n8n';
+export * from './nodes/n8n-nodes-base/n8nTrainingCustomerDatastore';
+export * from './nodes/n8n-nodes-base/n8nTrainingCustomerMessenger';
+export * from './nodes/n8n-nodes-base/n8nTrigger';
+export * from './nodes/n8n-nodes-base/nasa';
+export * from './nodes/n8n-nodes-base/netlify';
+export * from './nodes/n8n-nodes-base/netlifyTrigger';
+export * from './nodes/n8n-nodes-base/nextCloud';
+export * from './nodes/n8n-nodes-base/nocoDb';
+export * from './nodes/n8n-nodes-base/noOp';
+export * from './nodes/n8n-nodes-base/notion';
+export * from './nodes/n8n-nodes-base/notionTrigger';
+export * from './nodes/n8n-nodes-base/npm';
+export * from './nodes/n8n-nodes-base/odoo';
+export * from './nodes/n8n-nodes-base/okta';
+export * from './nodes/n8n-nodes-base/oneSimpleApi';
+export * from './nodes/n8n-nodes-base/onfleet';
+export * from './nodes/n8n-nodes-base/onfleetTrigger';
+export * from './nodes/n8n-nodes-base/openThesaurus';
+export * from './nodes/n8n-nodes-base/openWeatherMap';
+export * from './nodes/n8n-nodes-base/oracleDatabase';
+export * from './nodes/n8n-nodes-base/oura';
+export * from './nodes/n8n-nodes-base/paddle';
+export * from './nodes/n8n-nodes-base/pagerDuty';
+export * from './nodes/n8n-nodes-base/payPal';
+export * from './nodes/n8n-nodes-base/payPalTrigger';
+export * from './nodes/n8n-nodes-base/peekalink';
+export * from './nodes/n8n-nodes-base/perplexity';
+export * from './nodes/n8n-nodes-base/phantombuster';
+export * from './nodes/n8n-nodes-base/philipsHue';
+export * from './nodes/n8n-nodes-base/pipedrive';
+export * from './nodes/n8n-nodes-base/pipedriveTrigger';
+export * from './nodes/n8n-nodes-base/plivo';
+export * from './nodes/n8n-nodes-base/postBin';
+export * from './nodes/n8n-nodes-base/postgres';
+export * from './nodes/n8n-nodes-base/postgresTrigger';
+export * from './nodes/n8n-nodes-base/postHog';
+export * from './nodes/n8n-nodes-base/postmarkTrigger';
+export * from './nodes/n8n-nodes-base/profitWell';
+export * from './nodes/n8n-nodes-base/pushbullet';
+export * from './nodes/n8n-nodes-base/pushcut';
+export * from './nodes/n8n-nodes-base/pushcutTrigger';
+export * from './nodes/n8n-nodes-base/pushover';
+export * from './nodes/n8n-nodes-base/questDb';
+export * from './nodes/n8n-nodes-base/quickbase';
+export * from './nodes/n8n-nodes-base/quickbooks';
+export * from './nodes/n8n-nodes-base/quickChart';
+export * from './nodes/n8n-nodes-base/rabbitmq';
+export * from './nodes/n8n-nodes-base/rabbitmqTrigger';
+export * from './nodes/n8n-nodes-base/raindrop';
+export * from './nodes/n8n-nodes-base/readWriteFile';
+export * from './nodes/n8n-nodes-base/reddit';
+export * from './nodes/n8n-nodes-base/redis';
+export * from './nodes/n8n-nodes-base/redisTrigger';
+export * from './nodes/n8n-nodes-base/removeDuplicates';
+export * from './nodes/n8n-nodes-base/renameKeys';
+export * from './nodes/n8n-nodes-base/respondToWebhook';
+export * from './nodes/n8n-nodes-base/rocketchat';
+export * from './nodes/n8n-nodes-base/rssFeedRead';
+export * from './nodes/n8n-nodes-base/rssFeedReadTrigger';
+export * from './nodes/n8n-nodes-base/rundeck';
+export * from './nodes/n8n-nodes-base/s3';
+export * from './nodes/n8n-nodes-base/salesforce';
+export * from './nodes/n8n-nodes-base/salesforceTrigger';
+export * from './nodes/n8n-nodes-base/salesmate';
+export * from './nodes/n8n-nodes-base/scheduleTrigger';
+export * from './nodes/n8n-nodes-base/seaTable';
+export * from './nodes/n8n-nodes-base/seaTableTrigger';
+export * from './nodes/n8n-nodes-base/securityScorecard';
+export * from './nodes/n8n-nodes-base/segment';
+export * from './nodes/n8n-nodes-base/sendGrid';
+export * from './nodes/n8n-nodes-base/sendInBlue';
+export * from './nodes/n8n-nodes-base/sendInBlueTrigger';
+export * from './nodes/n8n-nodes-base/sendy';
+export * from './nodes/n8n-nodes-base/sentryIo';
+export * from './nodes/n8n-nodes-base/serviceNow';
+export * from './nodes/n8n-nodes-base/set';
+export * from './nodes/n8n-nodes-base/shopify';
+export * from './nodes/n8n-nodes-base/shopifyTrigger';
+export * from './nodes/n8n-nodes-base/signl4';
+export * from './nodes/n8n-nodes-base/slack';
+export * from './nodes/n8n-nodes-base/slackTrigger';
+export * from './nodes/n8n-nodes-base/sms77';
+export * from './nodes/n8n-nodes-base/snowflake';
+export * from './nodes/n8n-nodes-base/sort';
+export * from './nodes/n8n-nodes-base/splitInBatches';
+export * from './nodes/n8n-nodes-base/splitOut';
+export * from './nodes/n8n-nodes-base/splunk';
+export * from './nodes/n8n-nodes-base/spotify';
+export * from './nodes/n8n-nodes-base/sseTrigger';
+export * from './nodes/n8n-nodes-base/ssh';
+export * from './nodes/n8n-nodes-base/stackby';
+export * from './nodes/n8n-nodes-base/stickyNote';
+export * from './nodes/n8n-nodes-base/stopAndError';
+export * from './nodes/n8n-nodes-base/storyblok';
+export * from './nodes/n8n-nodes-base/strapi';
+export * from './nodes/n8n-nodes-base/strava';
+export * from './nodes/n8n-nodes-base/stravaTrigger';
+export * from './nodes/n8n-nodes-base/stripe';
+export * from './nodes/n8n-nodes-base/stripeTrigger';
+export * from './nodes/n8n-nodes-base/summarize';
+export * from './nodes/n8n-nodes-base/supabase';
+export * from './nodes/n8n-nodes-base/surveyMonkeyTrigger';
+export * from './nodes/n8n-nodes-base/switch';
+export * from './nodes/n8n-nodes-base/syncroMsp';
+export * from './nodes/n8n-nodes-base/taiga';
+export * from './nodes/n8n-nodes-base/taigaTrigger';
+export * from './nodes/n8n-nodes-base/tapfiliate';
+export * from './nodes/n8n-nodes-base/telegram';
+export * from './nodes/n8n-nodes-base/telegramTrigger';
+export * from './nodes/n8n-nodes-base/theHive';
+export * from './nodes/n8n-nodes-base/theHiveProject';
+export * from './nodes/n8n-nodes-base/theHiveProjectTrigger';
+export * from './nodes/n8n-nodes-base/theHiveTrigger';
+export * from './nodes/n8n-nodes-base/timeSaved';
+export * from './nodes/n8n-nodes-base/timescaleDb';
+export * from './nodes/n8n-nodes-base/todoist';
+export * from './nodes/n8n-nodes-base/togglTrigger';
+export * from './nodes/n8n-nodes-base/totp';
+export * from './nodes/n8n-nodes-base/travisCi';
+export * from './nodes/n8n-nodes-base/trello';
+export * from './nodes/n8n-nodes-base/trelloTrigger';
+export * from './nodes/n8n-nodes-base/twake';
+export * from './nodes/n8n-nodes-base/twilio';
+export * from './nodes/n8n-nodes-base/twilioTrigger';
+export * from './nodes/n8n-nodes-base/twist';
+export * from './nodes/n8n-nodes-base/twitter';
+export * from './nodes/n8n-nodes-base/typeformTrigger';
+export * from './nodes/n8n-nodes-base/unleashedSoftware';
+export * from './nodes/n8n-nodes-base/uplead';
+export * from './nodes/n8n-nodes-base/uproc';
+export * from './nodes/n8n-nodes-base/uptimeRobot';
+export * from './nodes/n8n-nodes-base/urlScanIo';
+export * from './nodes/n8n-nodes-base/venafiTlsProtectCloud';
+export * from './nodes/n8n-nodes-base/venafiTlsProtectCloudTrigger';
+export * from './nodes/n8n-nodes-base/venafiTlsProtectDatacenter';
+export * from './nodes/n8n-nodes-base/vero';
+export * from './nodes/n8n-nodes-base/vonage';
+export * from './nodes/n8n-nodes-base/wait';
+export * from './nodes/n8n-nodes-base/webflow';
+export * from './nodes/n8n-nodes-base/webflowTrigger';
+export * from './nodes/n8n-nodes-base/webhook';
+export * from './nodes/n8n-nodes-base/wekan';
+export * from './nodes/n8n-nodes-base/whatsApp';
+export * from './nodes/n8n-nodes-base/whatsAppTrigger';
+export * from './nodes/n8n-nodes-base/wise';
+export * from './nodes/n8n-nodes-base/wiseTrigger';
+export * from './nodes/n8n-nodes-base/wooCommerce';
+export * from './nodes/n8n-nodes-base/wooCommerceTrigger';
+export * from './nodes/n8n-nodes-base/wordpress';
+export * from './nodes/n8n-nodes-base/workableTrigger';
+export * from './nodes/n8n-nodes-base/wufooTrigger';
+export * from './nodes/n8n-nodes-base/xero';
+export * from './nodes/n8n-nodes-base/xml';
+export * from './nodes/n8n-nodes-base/yourls';
+export * from './nodes/n8n-nodes-base/youTube';
+export * from './nodes/n8n-nodes-base/zammad';
+export * from './nodes/n8n-nodes-base/zendesk';
+export * from './nodes/n8n-nodes-base/zendeskTrigger';
+export * from './nodes/n8n-nodes-base/zohoCrm';
+export * from './nodes/n8n-nodes-base/zoom';
+export * from './nodes/n8n-nodes-base/zulip';
 
-export {};
+// n8n-nodes-langchain
+export * from './nodes/n8n-nodes-langchain/agent';
+export * from './nodes/n8n-nodes-langchain/agentTool';
+export * from './nodes/n8n-nodes-langchain/anthropic';
+export * from './nodes/n8n-nodes-langchain/chainLlm';
+export * from './nodes/n8n-nodes-langchain/chainRetrievalQa';
+export * from './nodes/n8n-nodes-langchain/chainSummarization';
+export * from './nodes/n8n-nodes-langchain/chat';
+export * from './nodes/n8n-nodes-langchain/chatTrigger';
+export * from './nodes/n8n-nodes-langchain/code';
+export * from './nodes/n8n-nodes-langchain/documentDefaultDataLoader';
+export * from './nodes/n8n-nodes-langchain/embeddingsAwsBedrock';
+export * from './nodes/n8n-nodes-langchain/embeddingsAzureOpenAi';
+export * from './nodes/n8n-nodes-langchain/embeddingsCohere';
+export * from './nodes/n8n-nodes-langchain/embeddingsGoogleGemini';
+export * from './nodes/n8n-nodes-langchain/embeddingsGoogleVertex';
+export * from './nodes/n8n-nodes-langchain/embeddingsHuggingFaceInference';
+export * from './nodes/n8n-nodes-langchain/embeddingsLemonade';
+export * from './nodes/n8n-nodes-langchain/embeddingsMistralCloud';
+export * from './nodes/n8n-nodes-langchain/embeddingsOllama';
+export * from './nodes/n8n-nodes-langchain/embeddingsOpenAi';
+export * from './nodes/n8n-nodes-langchain/googleGemini';
+export * from './nodes/n8n-nodes-langchain/guardrails';
+export * from './nodes/n8n-nodes-langchain/informationExtractor';
+export * from './nodes/n8n-nodes-langchain/lmChatAnthropic';
+export * from './nodes/n8n-nodes-langchain/lmChatAwsBedrock';
+export * from './nodes/n8n-nodes-langchain/lmChatAzureOpenAi';
+export * from './nodes/n8n-nodes-langchain/lmChatCohere';
+export * from './nodes/n8n-nodes-langchain/lmChatDeepSeek';
+export * from './nodes/n8n-nodes-langchain/lmChatGoogleGemini';
+export * from './nodes/n8n-nodes-langchain/lmChatGoogleVertex';
+export * from './nodes/n8n-nodes-langchain/lmChatGroq';
+export * from './nodes/n8n-nodes-langchain/lmChatLemonade';
+export * from './nodes/n8n-nodes-langchain/lmChatMistralCloud';
+export * from './nodes/n8n-nodes-langchain/lmChatOllama';
+export * from './nodes/n8n-nodes-langchain/lmChatOpenAi';
+export * from './nodes/n8n-nodes-langchain/lmChatOpenRouter';
+export * from './nodes/n8n-nodes-langchain/lmChatVercelAiGateway';
+export * from './nodes/n8n-nodes-langchain/lmChatXAiGrok';
+export * from './nodes/n8n-nodes-langchain/lmCohere';
+export * from './nodes/n8n-nodes-langchain/lmLemonade';
+export * from './nodes/n8n-nodes-langchain/lmOllama';
+export * from './nodes/n8n-nodes-langchain/lmOpenHuggingFaceInference';
+export * from './nodes/n8n-nodes-langchain/mcpClient';
+export * from './nodes/n8n-nodes-langchain/mcpClientTool';
+export * from './nodes/n8n-nodes-langchain/mcpTrigger';
+export * from './nodes/n8n-nodes-langchain/memoryBufferWindow';
+export * from './nodes/n8n-nodes-langchain/memoryManager';
+export * from './nodes/n8n-nodes-langchain/memoryMongoDbChat';
+export * from './nodes/n8n-nodes-langchain/memoryMotorhead';
+export * from './nodes/n8n-nodes-langchain/memoryPostgresChat';
+export * from './nodes/n8n-nodes-langchain/memoryRedisChat';
+export * from './nodes/n8n-nodes-langchain/memoryXata';
+export * from './nodes/n8n-nodes-langchain/modelSelector';
+export * from './nodes/n8n-nodes-langchain/ollama';
+export * from './nodes/n8n-nodes-langchain/openAi';
+export * from './nodes/n8n-nodes-langchain/outputParserAutofixing';
+export * from './nodes/n8n-nodes-langchain/outputParserItemList';
+export * from './nodes/n8n-nodes-langchain/outputParserStructured';
+export * from './nodes/n8n-nodes-langchain/rerankerCohere';
+export * from './nodes/n8n-nodes-langchain/retrieverContextualCompression';
+export * from './nodes/n8n-nodes-langchain/retrieverMultiQuery';
+export * from './nodes/n8n-nodes-langchain/retrieverVectorStore';
+export * from './nodes/n8n-nodes-langchain/retrieverWorkflow';
+export * from './nodes/n8n-nodes-langchain/sentimentAnalysis';
+export * from './nodes/n8n-nodes-langchain/textClassifier';
+export * from './nodes/n8n-nodes-langchain/textSplitterCharacterTextSplitter';
+export * from './nodes/n8n-nodes-langchain/textSplitterRecursiveCharacterTextSplitter';
+export * from './nodes/n8n-nodes-langchain/textSplitterTokenSplitter';
+export * from './nodes/n8n-nodes-langchain/toolCalculator';
+export * from './nodes/n8n-nodes-langchain/toolCode';
+export * from './nodes/n8n-nodes-langchain/toolSearXng';
+export * from './nodes/n8n-nodes-langchain/toolSerpApi';
+export * from './nodes/n8n-nodes-langchain/toolThink';
+export * from './nodes/n8n-nodes-langchain/toolVectorStore';
+export * from './nodes/n8n-nodes-langchain/toolWikipedia';
+export * from './nodes/n8n-nodes-langchain/toolWolframAlpha';
+export * from './nodes/n8n-nodes-langchain/toolWorkflow';
+export * from './nodes/n8n-nodes-langchain/vectorStoreAzureAISearch';
+export * from './nodes/n8n-nodes-langchain/vectorStoreInMemory';
+export * from './nodes/n8n-nodes-langchain/vectorStoreMilvus';
+export * from './nodes/n8n-nodes-langchain/vectorStoreMongoDBAtlas';
+export * from './nodes/n8n-nodes-langchain/vectorStorePGVector';
+export * from './nodes/n8n-nodes-langchain/vectorStorePinecone';
+export * from './nodes/n8n-nodes-langchain/vectorStoreQdrant';
+export * from './nodes/n8n-nodes-langchain/vectorStoreRedis';
+export * from './nodes/n8n-nodes-langchain/vectorStoreSupabase';
+export * from './nodes/n8n-nodes-langchain/vectorStoreWeaviate';
+export * from './nodes/n8n-nodes-langchain/vectorStoreZep';
+
+// Combined type union
+export type KnownNodeType =
+	| 'n8n-nodes-base.actionNetwork'
+	| 'n8n-nodes-base.activeCampaign'
+	| 'n8n-nodes-base.activeCampaignTrigger'
+	| 'n8n-nodes-base.acuitySchedulingTrigger'
+	| 'n8n-nodes-base.adalo'
+	| 'n8n-nodes-base.affinity'
+	| 'n8n-nodes-base.affinityTrigger'
+	| 'n8n-nodes-base.agileCrm'
+	| 'n8n-nodes-base.airtable'
+	| 'n8n-nodes-base.airtableTrigger'
+	| 'n8n-nodes-base.airtop'
+	| 'n8n-nodes-base.aiTransform'
+	| 'n8n-nodes-base.amqp'
+	| 'n8n-nodes-base.amqpTrigger'
+	| 'n8n-nodes-base.apiTemplateIo'
+	| 'n8n-nodes-base.asana'
+	| 'n8n-nodes-base.asanaTrigger'
+	| 'n8n-nodes-base.autopilot'
+	| 'n8n-nodes-base.autopilotTrigger'
+	| 'n8n-nodes-base.awsLambda'
+	| 'n8n-nodes-base.awsSns'
+	| 'n8n-nodes-base.awsSnsTrigger'
+	| 'n8n-nodes-base.awsCertificateManager'
+	| 'n8n-nodes-base.awsCognito'
+	| 'n8n-nodes-base.awsComprehend'
+	| 'n8n-nodes-base.awsDynamoDb'
+	| 'n8n-nodes-base.awsElb'
+	| 'n8n-nodes-base.awsIam'
+	| 'n8n-nodes-base.awsRekognition'
+	| 'n8n-nodes-base.awsS3'
+	| 'n8n-nodes-base.awsSes'
+	| 'n8n-nodes-base.awsSqs'
+	| 'n8n-nodes-base.awsTextract'
+	| 'n8n-nodes-base.awsTranscribe'
+	| 'n8n-nodes-base.bambooHr'
+	| 'n8n-nodes-base.bannerbear'
+	| 'n8n-nodes-base.baserow'
+	| 'n8n-nodes-base.beeminder'
+	| 'n8n-nodes-base.bitbucketTrigger'
+	| 'n8n-nodes-base.bitly'
+	| 'n8n-nodes-base.bitwarden'
+	| 'n8n-nodes-base.box'
+	| 'n8n-nodes-base.boxTrigger'
+	| 'n8n-nodes-base.Brandfetch'
+	| 'n8n-nodes-base.bubble'
+	| 'n8n-nodes-base.calTrigger'
+	| 'n8n-nodes-base.calendlyTrigger'
+	| 'n8n-nodes-base.chargebee'
+	| 'n8n-nodes-base.chargebeeTrigger'
+	| 'n8n-nodes-base.circleCi'
+	| 'n8n-nodes-base.ciscoWebex'
+	| 'n8n-nodes-base.ciscoWebexTrigger'
+	| 'n8n-nodes-base.cloudflare'
+	| 'n8n-nodes-base.clearbit'
+	| 'n8n-nodes-base.clickUp'
+	| 'n8n-nodes-base.clickUpTrigger'
+	| 'n8n-nodes-base.clockify'
+	| 'n8n-nodes-base.clockifyTrigger'
+	| 'n8n-nodes-base.cockpit'
+	| 'n8n-nodes-base.coda'
+	| 'n8n-nodes-base.code'
+	| 'n8n-nodes-base.coinGecko'
+	| 'n8n-nodes-base.compareDatasets'
+	| 'n8n-nodes-base.compression'
+	| 'n8n-nodes-base.contentful'
+	| 'n8n-nodes-base.convertKit'
+	| 'n8n-nodes-base.convertKitTrigger'
+	| 'n8n-nodes-base.copper'
+	| 'n8n-nodes-base.copperTrigger'
+	| 'n8n-nodes-base.cortex'
+	| 'n8n-nodes-base.crateDb'
+	| 'n8n-nodes-base.crypto'
+	| 'n8n-nodes-base.customerIo'
+	| 'n8n-nodes-base.customerIoTrigger'
+	| 'n8n-nodes-base.dataTable'
+	| 'n8n-nodes-base.dateTime'
+	| 'n8n-nodes-base.debugHelper'
+	| 'n8n-nodes-base.deepL'
+	| 'n8n-nodes-base.demio'
+	| 'n8n-nodes-base.dhl'
+	| 'n8n-nodes-base.discord'
+	| 'n8n-nodes-base.discourse'
+	| 'n8n-nodes-base.disqus'
+	| 'n8n-nodes-base.drift'
+	| 'n8n-nodes-base.dropbox'
+	| 'n8n-nodes-base.dropcontact'
+	| 'n8n-nodes-base.editImage'
+	| 'n8n-nodes-base.e2eTest'
+	| 'n8n-nodes-base.egoi'
+	| 'n8n-nodes-base.elasticsearch'
+	| 'n8n-nodes-base.elasticSecurity'
+	| 'n8n-nodes-base.emailReadImap'
+	| 'n8n-nodes-base.emailSend'
+	| 'n8n-nodes-base.emelia'
+	| 'n8n-nodes-base.emeliaTrigger'
+	| 'n8n-nodes-base.erpNext'
+	| 'n8n-nodes-base.errorTrigger'
+	| 'n8n-nodes-base.evaluationTrigger'
+	| 'n8n-nodes-base.evaluation'
+	| 'n8n-nodes-base.eventbriteTrigger'
+	| 'n8n-nodes-base.executeCommand'
+	| 'n8n-nodes-base.executeWorkflow'
+	| 'n8n-nodes-base.executeWorkflowTrigger'
+	| 'n8n-nodes-base.executionData'
+	| 'n8n-nodes-base.facebookGraphApi'
+	| 'n8n-nodes-base.facebookTrigger'
+	| 'n8n-nodes-base.facebookLeadAdsTrigger'
+	| 'n8n-nodes-base.figmaTrigger'
+	| 'n8n-nodes-base.filemaker'
+	| 'n8n-nodes-base.readWriteFile'
+	| 'n8n-nodes-base.convertToFile'
+	| 'n8n-nodes-base.extractFromFile'
+	| 'n8n-nodes-base.filter'
+	| 'n8n-nodes-base.flow'
+	| 'n8n-nodes-base.flowTrigger'
+	| 'n8n-nodes-base.form'
+	| 'n8n-nodes-base.formTrigger'
+	| 'n8n-nodes-base.formIoTrigger'
+	| 'n8n-nodes-base.formstackTrigger'
+	| 'n8n-nodes-base.freshdesk'
+	| 'n8n-nodes-base.freshservice'
+	| 'n8n-nodes-base.freshworksCrm'
+	| 'n8n-nodes-base.ftp'
+	| 'n8n-nodes-base.getResponse'
+	| 'n8n-nodes-base.getResponseTrigger'
+	| 'n8n-nodes-base.ghost'
+	| 'n8n-nodes-base.git'
+	| 'n8n-nodes-base.github'
+	| 'n8n-nodes-base.githubTrigger'
+	| 'n8n-nodes-base.gitlab'
+	| 'n8n-nodes-base.gitlabTrigger'
+	| 'n8n-nodes-base.gong'
+	| 'n8n-nodes-base.googleAds'
+	| 'n8n-nodes-base.googleAnalytics'
+	| 'n8n-nodes-base.googleBigQuery'
+	| 'n8n-nodes-base.googleBooks'
+	| 'n8n-nodes-base.googleCalendar'
+	| 'n8n-nodes-base.googleCalendarTrigger'
+	| 'n8n-nodes-base.googleChat'
+	| 'n8n-nodes-base.googleCloudNaturalLanguage'
+	| 'n8n-nodes-base.googleCloudStorage'
+	| 'n8n-nodes-base.googleContacts'
+	| 'n8n-nodes-base.googleDocs'
+	| 'n8n-nodes-base.googleDrive'
+	| 'n8n-nodes-base.googleDriveTrigger'
+	| 'n8n-nodes-base.googleFirebaseCloudFirestore'
+	| 'n8n-nodes-base.googleFirebaseRealtimeDatabase'
+	| 'n8n-nodes-base.gmail'
+	| 'n8n-nodes-base.gmailTrigger'
+	| 'n8n-nodes-base.gSuiteAdmin'
+	| 'n8n-nodes-base.googleBusinessProfile'
+	| 'n8n-nodes-base.googleBusinessProfileTrigger'
+	| 'n8n-nodes-base.googlePerspective'
+	| 'n8n-nodes-base.googleSheets'
+	| 'n8n-nodes-base.googleSheetsTrigger'
+	| 'n8n-nodes-base.googleSlides'
+	| 'n8n-nodes-base.googleTasks'
+	| 'n8n-nodes-base.googleTranslate'
+	| 'n8n-nodes-base.youTube'
+	| 'n8n-nodes-base.gotify'
+	| 'n8n-nodes-base.goToWebinar'
+	| 'n8n-nodes-base.grafana'
+	| 'n8n-nodes-base.graphql'
+	| 'n8n-nodes-base.grist'
+	| 'n8n-nodes-base.gumroadTrigger'
+	| 'n8n-nodes-base.hackerNews'
+	| 'n8n-nodes-base.haloPSA'
+	| 'n8n-nodes-base.harvest'
+	| 'n8n-nodes-base.helpScout'
+	| 'n8n-nodes-base.helpScoutTrigger'
+	| 'n8n-nodes-base.highLevel'
+	| 'n8n-nodes-base.homeAssistant'
+	| 'n8n-nodes-base.html'
+	| 'n8n-nodes-base.httpRequest'
+	| 'n8n-nodes-base.hubspot'
+	| 'n8n-nodes-base.hubspotTrigger'
+	| 'n8n-nodes-base.humanticAi'
+	| 'n8n-nodes-base.hunter'
+	| 'n8n-nodes-base.if'
+	| 'n8n-nodes-base.intercom'
+	| 'n8n-nodes-base.invoiceNinja'
+	| 'n8n-nodes-base.invoiceNinjaTrigger'
+	| 'n8n-nodes-base.iterable'
+	| 'n8n-nodes-base.jenkins'
+	| 'n8n-nodes-base.jinaAi'
+	| 'n8n-nodes-base.jira'
+	| 'n8n-nodes-base.jiraTrigger'
+	| 'n8n-nodes-base.jotFormTrigger'
+	| 'n8n-nodes-base.jwt'
+	| 'n8n-nodes-base.kafka'
+	| 'n8n-nodes-base.kafkaTrigger'
+	| 'n8n-nodes-base.keap'
+	| 'n8n-nodes-base.keapTrigger'
+	| 'n8n-nodes-base.koBoToolbox'
+	| 'n8n-nodes-base.koBoToolboxTrigger'
+	| 'n8n-nodes-base.ldap'
+	| 'n8n-nodes-base.lemlist'
+	| 'n8n-nodes-base.lemlistTrigger'
+	| 'n8n-nodes-base.line'
+	| 'n8n-nodes-base.linear'
+	| 'n8n-nodes-base.linearTrigger'
+	| 'n8n-nodes-base.lingvaNex'
+	| 'n8n-nodes-base.linkedIn'
+	| 'n8n-nodes-base.localFileTrigger'
+	| 'n8n-nodes-base.loneScaleTrigger'
+	| 'n8n-nodes-base.loneScale'
+	| 'n8n-nodes-base.magento2'
+	| 'n8n-nodes-base.mailcheck'
+	| 'n8n-nodes-base.mailchimp'
+	| 'n8n-nodes-base.mailchimpTrigger'
+	| 'n8n-nodes-base.mailerLite'
+	| 'n8n-nodes-base.mailerLiteTrigger'
+	| 'n8n-nodes-base.mailgun'
+	| 'n8n-nodes-base.mailjet'
+	| 'n8n-nodes-base.mailjetTrigger'
+	| 'n8n-nodes-base.mandrill'
+	| 'n8n-nodes-base.manualTrigger'
+	| 'n8n-nodes-base.markdown'
+	| 'n8n-nodes-base.marketstack'
+	| 'n8n-nodes-base.matrix'
+	| 'n8n-nodes-base.mattermost'
+	| 'n8n-nodes-base.mautic'
+	| 'n8n-nodes-base.mauticTrigger'
+	| 'n8n-nodes-base.medium'
+	| 'n8n-nodes-base.merge'
+	| 'n8n-nodes-base.messageBird'
+	| 'n8n-nodes-base.metabase'
+	| 'n8n-nodes-base.azureCosmosDb'
+	| 'n8n-nodes-base.microsoftDynamicsCrm'
+	| 'n8n-nodes-base.microsoftEntra'
+	| 'n8n-nodes-base.microsoftExcel'
+	| 'n8n-nodes-base.microsoftGraphSecurity'
+	| 'n8n-nodes-base.microsoftOneDrive'
+	| 'n8n-nodes-base.microsoftOneDriveTrigger'
+	| 'n8n-nodes-base.microsoftOutlook'
+	| 'n8n-nodes-base.microsoftOutlookTrigger'
+	| 'n8n-nodes-base.microsoftSharePoint'
+	| 'n8n-nodes-base.microsoftSql'
+	| 'n8n-nodes-base.azureStorage'
+	| 'n8n-nodes-base.microsoftTeams'
+	| 'n8n-nodes-base.microsoftTeamsTrigger'
+	| 'n8n-nodes-base.microsoftToDo'
+	| 'n8n-nodes-base.mindee'
+	| 'n8n-nodes-base.misp'
+	| 'n8n-nodes-base.mistralAi'
+	| 'n8n-nodes-base.mocean'
+	| 'n8n-nodes-base.mondayCom'
+	| 'n8n-nodes-base.mongoDb'
+	| 'n8n-nodes-base.monicaCrm'
+	| 'n8n-nodes-base.mqtt'
+	| 'n8n-nodes-base.mqttTrigger'
+	| 'n8n-nodes-base.msg91'
+	| 'n8n-nodes-base.mySql'
+	| 'n8n-nodes-base.n8n'
+	| 'n8n-nodes-base.n8nTrainingCustomerDatastore'
+	| 'n8n-nodes-base.n8nTrainingCustomerMessenger'
+	| 'n8n-nodes-base.n8nTrigger'
+	| 'n8n-nodes-base.nasa'
+	| 'n8n-nodes-base.netlify'
+	| 'n8n-nodes-base.netlifyTrigger'
+	| 'n8n-nodes-base.nextCloud'
+	| 'n8n-nodes-base.nocoDb'
+	| 'n8n-nodes-base.sendInBlue'
+	| 'n8n-nodes-base.sendInBlueTrigger'
+	| 'n8n-nodes-base.stickyNote'
+	| 'n8n-nodes-base.noOp'
+	| 'n8n-nodes-base.onfleet'
+	| 'n8n-nodes-base.onfleetTrigger'
+	| 'n8n-nodes-base.citrixAdc'
+	| 'n8n-nodes-base.notion'
+	| 'n8n-nodes-base.notionTrigger'
+	| 'n8n-nodes-base.npm'
+	| 'n8n-nodes-base.odoo'
+	| 'n8n-nodes-base.okta'
+	| 'n8n-nodes-base.oneSimpleApi'
+	| 'n8n-nodes-base.openThesaurus'
+	| 'n8n-nodes-base.openWeatherMap'
+	| 'n8n-nodes-base.oracleDatabase'
+	| 'n8n-nodes-base.oura'
+	| 'n8n-nodes-base.paddle'
+	| 'n8n-nodes-base.pagerDuty'
+	| 'n8n-nodes-base.payPal'
+	| 'n8n-nodes-base.payPalTrigger'
+	| 'n8n-nodes-base.peekalink'
+	| 'n8n-nodes-base.perplexity'
+	| 'n8n-nodes-base.phantombuster'
+	| 'n8n-nodes-base.philipsHue'
+	| 'n8n-nodes-base.pipedrive'
+	| 'n8n-nodes-base.pipedriveTrigger'
+	| 'n8n-nodes-base.plivo'
+	| 'n8n-nodes-base.postBin'
+	| 'n8n-nodes-base.postgres'
+	| 'n8n-nodes-base.postgresTrigger'
+	| 'n8n-nodes-base.postHog'
+	| 'n8n-nodes-base.postmarkTrigger'
+	| 'n8n-nodes-base.profitWell'
+	| 'n8n-nodes-base.pushbullet'
+	| 'n8n-nodes-base.pushcut'
+	| 'n8n-nodes-base.pushcutTrigger'
+	| 'n8n-nodes-base.pushover'
+	| 'n8n-nodes-base.questDb'
+	| 'n8n-nodes-base.quickbase'
+	| 'n8n-nodes-base.quickbooks'
+	| 'n8n-nodes-base.quickChart'
+	| 'n8n-nodes-base.rabbitmq'
+	| 'n8n-nodes-base.rabbitmqTrigger'
+	| 'n8n-nodes-base.raindrop'
+	| 'n8n-nodes-base.reddit'
+	| 'n8n-nodes-base.redis'
+	| 'n8n-nodes-base.redisTrigger'
+	| 'n8n-nodes-base.renameKeys'
+	| 'n8n-nodes-base.respondToWebhook'
+	| 'n8n-nodes-base.rocketchat'
+	| 'n8n-nodes-base.rssFeedRead'
+	| 'n8n-nodes-base.rssFeedReadTrigger'
+	| 'n8n-nodes-base.rundeck'
+	| 'n8n-nodes-base.s3'
+	| 'n8n-nodes-base.salesforce'
+	| 'n8n-nodes-base.salesforceTrigger'
+	| 'n8n-nodes-base.salesmate'
+	| 'n8n-nodes-base.scheduleTrigger'
+	| 'n8n-nodes-base.seaTable'
+	| 'n8n-nodes-base.seaTableTrigger'
+	| 'n8n-nodes-base.securityScorecard'
+	| 'n8n-nodes-base.segment'
+	| 'n8n-nodes-base.sendGrid'
+	| 'n8n-nodes-base.sendy'
+	| 'n8n-nodes-base.sentryIo'
+	| 'n8n-nodes-base.serviceNow'
+	| 'n8n-nodes-base.set'
+	| 'n8n-nodes-base.shopify'
+	| 'n8n-nodes-base.shopifyTrigger'
+	| 'n8n-nodes-base.signl4'
+	| 'n8n-nodes-base.slack'
+	| 'n8n-nodes-base.slackTrigger'
+	| 'n8n-nodes-base.sms77'
+	| 'n8n-nodes-base.snowflake'
+	| 'n8n-nodes-base.splitInBatches'
+	| 'n8n-nodes-base.splunk'
+	| 'n8n-nodes-base.spotify'
+	| 'n8n-nodes-base.sseTrigger'
+	| 'n8n-nodes-base.ssh'
+	| 'n8n-nodes-base.stackby'
+	| 'n8n-nodes-base.stopAndError'
+	| 'n8n-nodes-base.storyblok'
+	| 'n8n-nodes-base.strapi'
+	| 'n8n-nodes-base.strava'
+	| 'n8n-nodes-base.stravaTrigger'
+	| 'n8n-nodes-base.stripe'
+	| 'n8n-nodes-base.stripeTrigger'
+	| 'n8n-nodes-base.supabase'
+	| 'n8n-nodes-base.surveyMonkeyTrigger'
+	| 'n8n-nodes-base.switch'
+	| 'n8n-nodes-base.syncroMsp'
+	| 'n8n-nodes-base.taiga'
+	| 'n8n-nodes-base.taigaTrigger'
+	| 'n8n-nodes-base.tapfiliate'
+	| 'n8n-nodes-base.telegram'
+	| 'n8n-nodes-base.telegramTrigger'
+	| 'n8n-nodes-base.theHiveProject'
+	| 'n8n-nodes-base.theHiveProjectTrigger'
+	| 'n8n-nodes-base.theHive'
+	| 'n8n-nodes-base.theHiveTrigger'
+	| 'n8n-nodes-base.timescaleDb'
+	| 'n8n-nodes-base.todoist'
+	| 'n8n-nodes-base.togglTrigger'
+	| 'n8n-nodes-base.totp'
+	| 'n8n-nodes-base.travisCi'
+	| 'n8n-nodes-base.trello'
+	| 'n8n-nodes-base.trelloTrigger'
+	| 'n8n-nodes-base.timeSaved'
+	| 'n8n-nodes-base.twake'
+	| 'n8n-nodes-base.twilio'
+	| 'n8n-nodes-base.twilioTrigger'
+	| 'n8n-nodes-base.twist'
+	| 'n8n-nodes-base.twitter'
+	| 'n8n-nodes-base.typeformTrigger'
+	| 'n8n-nodes-base.unleashedSoftware'
+	| 'n8n-nodes-base.uplead'
+	| 'n8n-nodes-base.uproc'
+	| 'n8n-nodes-base.uptimeRobot'
+	| 'n8n-nodes-base.urlScanIo'
+	| 'n8n-nodes-base.vero'
+	| 'n8n-nodes-base.venafiTlsProtectCloud'
+	| 'n8n-nodes-base.venafiTlsProtectCloudTrigger'
+	| 'n8n-nodes-base.venafiTlsProtectDatacenter'
+	| 'n8n-nodes-base.vonage'
+	| 'n8n-nodes-base.wait'
+	| 'n8n-nodes-base.webflow'
+	| 'n8n-nodes-base.webflowTrigger'
+	| 'n8n-nodes-base.webhook'
+	| 'n8n-nodes-base.wekan'
+	| 'n8n-nodes-base.whatsAppTrigger'
+	| 'n8n-nodes-base.whatsApp'
+	| 'n8n-nodes-base.wise'
+	| 'n8n-nodes-base.wiseTrigger'
+	| 'n8n-nodes-base.wooCommerce'
+	| 'n8n-nodes-base.wooCommerceTrigger'
+	| 'n8n-nodes-base.wordpress'
+	| 'n8n-nodes-base.workableTrigger'
+	| 'n8n-nodes-base.wufooTrigger'
+	| 'n8n-nodes-base.xero'
+	| 'n8n-nodes-base.xml'
+	| 'n8n-nodes-base.yourls'
+	| 'n8n-nodes-base.zammad'
+	| 'n8n-nodes-base.zendesk'
+	| 'n8n-nodes-base.zendeskTrigger'
+	| 'n8n-nodes-base.zohoCrm'
+	| 'n8n-nodes-base.zoom'
+	| 'n8n-nodes-base.zulip'
+	| 'n8n-nodes-base.aggregate'
+	| 'n8n-nodes-base.limit'
+	| 'n8n-nodes-base.removeDuplicates'
+	| 'n8n-nodes-base.splitOut'
+	| 'n8n-nodes-base.sort'
+	| 'n8n-nodes-base.summarize'
+	| '@n8n/n8n-nodes-langchain.anthropic'
+	| '@n8n/n8n-nodes-langchain.googleGemini'
+	| '@n8n/n8n-nodes-langchain.ollama'
+	| '@n8n/n8n-nodes-langchain.openAi'
+	| '@n8n/n8n-nodes-langchain.agent'
+	| '@n8n/n8n-nodes-langchain.agentTool'
+	| '@n8n/n8n-nodes-langchain.chainSummarization'
+	| '@n8n/n8n-nodes-langchain.chainLlm'
+	| '@n8n/n8n-nodes-langchain.chainRetrievalQa'
+	| '@n8n/n8n-nodes-langchain.sentimentAnalysis'
+	| '@n8n/n8n-nodes-langchain.informationExtractor'
+	| '@n8n/n8n-nodes-langchain.textClassifier'
+	| '@n8n/n8n-nodes-langchain.code'
+	| '@n8n/n8n-nodes-langchain.documentDefaultDataLoader'
+	| '@n8n/n8n-nodes-langchain.embeddingsCohere'
+	| '@n8n/n8n-nodes-langchain.embeddingsAwsBedrock'
+	| '@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi'
+	| '@n8n/n8n-nodes-langchain.embeddingsGoogleGemini'
+	| '@n8n/n8n-nodes-langchain.embeddingsGoogleVertex'
+	| '@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference'
+	| '@n8n/n8n-nodes-langchain.embeddingsMistralCloud'
+	| '@n8n/n8n-nodes-langchain.embeddingsOpenAi'
+	| '@n8n/n8n-nodes-langchain.embeddingsLemonade'
+	| '@n8n/n8n-nodes-langchain.embeddingsOllama'
+	| '@n8n/n8n-nodes-langchain.lmChatAnthropic'
+	| '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi'
+	| '@n8n/n8n-nodes-langchain.lmChatAwsBedrock'
+	| '@n8n/n8n-nodes-langchain.lmChatCohere'
+	| '@n8n/n8n-nodes-langchain.lmChatDeepSeek'
+	| '@n8n/n8n-nodes-langchain.lmChatGoogleGemini'
+	| '@n8n/n8n-nodes-langchain.lmChatGoogleVertex'
+	| '@n8n/n8n-nodes-langchain.lmChatGroq'
+	| '@n8n/n8n-nodes-langchain.lmChatMistralCloud'
+	| '@n8n/n8n-nodes-langchain.lmChatLemonade'
+	| '@n8n/n8n-nodes-langchain.lmChatOllama'
+	| '@n8n/n8n-nodes-langchain.lmChatOpenRouter'
+	| '@n8n/n8n-nodes-langchain.lmChatVercelAiGateway'
+	| '@n8n/n8n-nodes-langchain.lmChatXAiGrok'
+	| '@n8n/n8n-nodes-langchain.lmChatOpenAi'
+	| '@n8n/n8n-nodes-langchain.lmCohere'
+	| '@n8n/n8n-nodes-langchain.lmLemonade'
+	| '@n8n/n8n-nodes-langchain.lmOllama'
+	| '@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference'
+	| '@n8n/n8n-nodes-langchain.mcpClient'
+	| '@n8n/n8n-nodes-langchain.mcpClientTool'
+	| '@n8n/n8n-nodes-langchain.mcpTrigger'
+	| '@n8n/n8n-nodes-langchain.memoryBufferWindow'
+	| '@n8n/n8n-nodes-langchain.memoryMotorhead'
+	| '@n8n/n8n-nodes-langchain.memoryPostgresChat'
+	| '@n8n/n8n-nodes-langchain.memoryMongoDbChat'
+	| '@n8n/n8n-nodes-langchain.memoryRedisChat'
+	| '@n8n/n8n-nodes-langchain.memoryManager'
+	| '@n8n/n8n-nodes-langchain.memoryXata'
+	| '@n8n/n8n-nodes-langchain.outputParserAutofixing'
+	| '@n8n/n8n-nodes-langchain.outputParserItemList'
+	| '@n8n/n8n-nodes-langchain.outputParserStructured'
+	| '@n8n/n8n-nodes-langchain.rerankerCohere'
+	| '@n8n/n8n-nodes-langchain.retrieverContextualCompression'
+	| '@n8n/n8n-nodes-langchain.retrieverVectorStore'
+	| '@n8n/n8n-nodes-langchain.retrieverMultiQuery'
+	| '@n8n/n8n-nodes-langchain.retrieverWorkflow'
+	| '@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter'
+	| '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter'
+	| '@n8n/n8n-nodes-langchain.textSplitterTokenSplitter'
+	| '@n8n/n8n-nodes-langchain.toolCalculator'
+	| '@n8n/n8n-nodes-langchain.toolCode'
+	| '@n8n/n8n-nodes-langchain.toolSearXng'
+	| '@n8n/n8n-nodes-langchain.toolSerpApi'
+	| '@n8n/n8n-nodes-langchain.toolThink'
+	| '@n8n/n8n-nodes-langchain.toolVectorStore'
+	| '@n8n/n8n-nodes-langchain.toolWikipedia'
+	| '@n8n/n8n-nodes-langchain.toolWolframAlpha'
+	| '@n8n/n8n-nodes-langchain.toolWorkflow'
+	| '@n8n/n8n-nodes-langchain.chatTrigger'
+	| '@n8n/n8n-nodes-langchain.chat'
+	| '@n8n/n8n-nodes-langchain.vectorStoreAzureAISearch'
+	| '@n8n/n8n-nodes-langchain.vectorStoreInMemory'
+	| '@n8n/n8n-nodes-langchain.vectorStoreMilvus'
+	| '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas'
+	| '@n8n/n8n-nodes-langchain.vectorStorePGVector'
+	| '@n8n/n8n-nodes-langchain.vectorStorePinecone'
+	| '@n8n/n8n-nodes-langchain.vectorStoreRedis'
+	| '@n8n/n8n-nodes-langchain.vectorStoreQdrant'
+	| '@n8n/n8n-nodes-langchain.vectorStoreSupabase'
+	| '@n8n/n8n-nodes-langchain.vectorStoreWeaviate'
+	| '@n8n/n8n-nodes-langchain.vectorStoreZep'
+	| '@n8n/n8n-nodes-langchain.modelSelector'
+	| '@n8n/n8n-nodes-langchain.guardrails';

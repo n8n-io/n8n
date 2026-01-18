@@ -1,0 +1,233 @@
+/**
+ * Anthropic Node Types
+ *
+ * Interact with Anthropic AI models
+ * @see https://docs.n8n.io/integrations/builtin/app-nodes/anthropic/
+ *
+ * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
+ */
+
+// @ts-nocheck - Generated file may have unused imports
+
+import type { Expression, CredentialReference, NodeConfig } from '../../../base';
+
+// Helper types for special n8n fields
+type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };
+
+// ===========================================================================
+// Parameters
+// ===========================================================================
+
+/** Take in documents and answer questions about them */
+export type LcAnthropicV1DocumentAnalyzeConfig = {
+	resource: 'document';
+	operation: 'analyze';
+	modelId: ResourceLocatorValue;
+	text?: string | Expression<string>;
+	inputType?: 'url' | 'binary' | Expression<string>;
+	/**
+	 * URL(s) of the document(s) to analyze, multiple URLs can be added separated by comma
+	 */
+	documentUrls?: string | Expression<string>;
+	/**
+	 * Name of the binary field(s) which contains the document(s), seperate multiple field names with commas
+	 * @default data
+	 */
+	binaryPropertyName?: string | Expression<string>;
+	/**
+	 * Whether to simplify the response or not
+	 * @default true
+	 */
+	simplify?: boolean | Expression<boolean>;
+	options?: Record<string, unknown>;
+};
+
+/** Upload a file to the Anthropic API for later use */
+export type LcAnthropicV1FileUploadConfig = {
+	resource: 'file';
+	operation: 'upload';
+	inputType?: 'url' | 'binary' | Expression<string>;
+	/**
+	 * URL of the file to upload
+	 */
+	fileUrl?: string | Expression<string>;
+	/**
+	 * Name of the binary field which contains the file
+	 * @default data
+	 */
+	binaryPropertyName?: string | Expression<string>;
+	options?: Record<string, unknown>;
+};
+
+/** Get metadata for a file from the Anthropic API */
+export type LcAnthropicV1FileGetConfig = {
+	resource: 'file';
+	operation: 'get';
+	/**
+	 * ID of the file to get metadata for
+	 */
+	fileId?: string | Expression<string>;
+};
+
+/** List files from the Anthropic API */
+export type LcAnthropicV1FileListConfig = {
+	resource: 'file';
+	operation: 'list';
+	/**
+	 * Whether to return all results or only up to a given limit
+	 * @default false
+	 */
+	returnAll?: boolean | Expression<boolean>;
+	/**
+	 * Max number of results to return
+	 * @default 50
+	 */
+	limit?: number | Expression<number>;
+};
+
+/** Delete a file from the Anthropic API */
+export type LcAnthropicV1FileDeleteFileConfig = {
+	resource: 'file';
+	operation: 'deleteFile';
+	/**
+	 * ID of the file to delete
+	 */
+	fileId?: string | Expression<string>;
+};
+
+/** Take in documents and answer questions about them */
+export type LcAnthropicV1ImageAnalyzeConfig = {
+	resource: 'image';
+	operation: 'analyze';
+	modelId: ResourceLocatorValue;
+	text?: string | Expression<string>;
+	inputType?: 'url' | 'binary' | Expression<string>;
+	/**
+	 * URL(s) of the image(s) to analyze, multiple URLs can be added separated by comma
+	 */
+	imageUrls?: string | Expression<string>;
+	/**
+	 * Name of the binary field(s) which contains the image(s), seperate multiple field names with commas
+	 * @default data
+	 */
+	binaryPropertyName?: string | Expression<string>;
+	/**
+	 * Whether to simplify the response or not
+	 * @default true
+	 */
+	simplify?: boolean | Expression<boolean>;
+	options?: Record<string, unknown>;
+};
+
+/** Generate a prompt for a model */
+export type LcAnthropicV1PromptGenerateConfig = {
+	resource: 'prompt';
+	operation: 'generate';
+	/**
+	 * Description of the prompt's purpose
+	 */
+	task?: string | Expression<string>;
+	/**
+	 * Whether to return a simplified version of the response instead of the raw data
+	 * @default true
+	 */
+	simplify?: boolean | Expression<boolean>;
+};
+
+/** Improve a prompt for a model */
+export type LcAnthropicV1PromptImproveConfig = {
+	resource: 'prompt';
+	operation: 'improve';
+	/**
+	 * Messages that constitute the prompt to be improved
+	 * @default {"values":[{"content":"","role":"user"}]}
+	 */
+	messages?: Record<string, unknown>;
+	/**
+	 * Whether to return a simplified version of the response instead of the raw data
+	 * @default true
+	 */
+	simplify?: boolean | Expression<boolean>;
+	options?: Record<string, unknown>;
+};
+
+/** Templatize a prompt for a model */
+export type LcAnthropicV1PromptTemplatizeConfig = {
+	resource: 'prompt';
+	operation: 'templatize';
+	/**
+	 * Messages that constitute the prompt to be templatized
+	 * @default {"values":[{"content":"","role":"user"}]}
+	 */
+	messages?: Record<string, unknown>;
+	/**
+	 * Whether to return a simplified version of the response instead of the raw data
+	 * @default true
+	 */
+	simplify?: boolean | Expression<boolean>;
+	options?: Record<string, unknown>;
+};
+
+/** Create a completion with Anthropic model */
+export type LcAnthropicV1TextMessageConfig = {
+	resource: 'text';
+	operation: 'message';
+	modelId: ResourceLocatorValue;
+	messages?: Record<string, unknown>;
+	/**
+	 * Whether to add attachments to the message
+	 * @default false
+	 */
+	addAttachments?: boolean | Expression<boolean>;
+	/**
+	 * The type of input to use for the attachments
+	 * @default url
+	 */
+	attachmentsInputType?: 'url' | 'binary' | Expression<string>;
+	/**
+	 * URL(s) of the file(s) to attach, multiple URLs can be added separated by comma
+	 */
+	attachmentsUrls?: string | Expression<string>;
+	/**
+	 * Name of the binary field(s) which contains the file(s) to attach, multiple field names can be added separated by comma
+	 * @default data
+	 */
+	binaryPropertyName?: string | Expression<string>;
+	/**
+	 * Whether to return a simplified version of the response instead of the raw data
+	 * @default true
+	 */
+	simplify?: boolean | Expression<boolean>;
+	options?: Record<string, unknown>;
+};
+
+export type LcAnthropicV1Params =
+	| LcAnthropicV1DocumentAnalyzeConfig
+	| LcAnthropicV1FileUploadConfig
+	| LcAnthropicV1FileGetConfig
+	| LcAnthropicV1FileListConfig
+	| LcAnthropicV1FileDeleteFileConfig
+	| LcAnthropicV1ImageAnalyzeConfig
+	| LcAnthropicV1PromptGenerateConfig
+	| LcAnthropicV1PromptImproveConfig
+	| LcAnthropicV1PromptTemplatizeConfig
+	| LcAnthropicV1TextMessageConfig;
+
+// ===========================================================================
+// Credentials
+// ===========================================================================
+
+export interface LcAnthropicV1Credentials {
+	anthropicApi: CredentialReference;
+}
+
+// ===========================================================================
+// Node Type
+// ===========================================================================
+
+export type LcAnthropicNode = {
+	type: '@n8n/n8n-nodes-langchain.anthropic';
+	version: 1;
+	config: NodeConfig<LcAnthropicV1Params>;
+	credentials?: LcAnthropicV1Credentials;
+};

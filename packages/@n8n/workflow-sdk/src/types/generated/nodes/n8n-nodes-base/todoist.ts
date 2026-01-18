@@ -1,0 +1,542 @@
+/**
+ * Todoist Node Types
+ *
+ * Consume Todoist API
+ * @see https://docs.n8n.io/integrations/builtin/app-nodes/todoist/
+ *
+ * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
+ */
+
+// @ts-nocheck - Generated file may have unused imports
+
+import type { Expression, CredentialReference, NodeConfig } from '../../../base';
+
+// Helper types for special n8n fields
+type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };
+
+// ===========================================================================
+// Parameters
+// ===========================================================================
+
+/** Task resource */
+export type TodoistV22TaskCloseConfig = {
+	resource: 'task';
+	operation: 'close';
+	taskId: string | Expression<string>;
+};
+
+/** Task resource */
+export type TodoistV22TaskCreateConfig = {
+	resource: 'task';
+	operation: 'create';
+	/**
+	 * The destination project. Choose from the list, or specify an ID.
+	 * @default {"mode":"list","value":""}
+	 */
+	project: ResourceLocatorValue;
+	/**
+	 * Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @default []
+	 */
+	labels?: string[];
+	/**
+	 * Task content
+	 */
+	content: string | Expression<string>;
+	options?: Record<string, unknown>;
+};
+
+/** Task resource */
+export type TodoistV22TaskDeleteConfig = {
+	resource: 'task';
+	operation: 'delete';
+	taskId: string | Expression<string>;
+};
+
+/** Task resource */
+export type TodoistV22TaskGetConfig = {
+	resource: 'task';
+	operation: 'get';
+	taskId: string | Expression<string>;
+};
+
+/** Task resource */
+export type TodoistV22TaskGetAllConfig = {
+	resource: 'task';
+	operation: 'getAll';
+	/**
+	 * Whether to return all results or only up to a given limit
+	 * @default false
+	 */
+	returnAll?: boolean | Expression<boolean>;
+	/**
+	 * Max number of results to return
+	 * @default 50
+	 */
+	limit?: number | Expression<number>;
+	filters?: Record<string, unknown>;
+};
+
+/** Task resource */
+export type TodoistV22TaskMoveConfig = {
+	resource: 'task';
+	operation: 'move';
+	taskId: string | Expression<string>;
+	/**
+	 * The destination project. Choose from the list, or specify an ID.
+	 * @default {"mode":"list","value":""}
+	 */
+	project: ResourceLocatorValue;
+	/**
+	 * Section to which you want move the task. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 */
+	section?: string | Expression<string>;
+	options?: Record<string, unknown>;
+};
+
+/** Task resource */
+export type TodoistV22TaskQuickAddConfig = {
+	resource: 'task';
+	operation: 'quickAdd';
+	/**
+	 * Natural language text for quick adding task (e.g., "Buy milk @Grocery #shopping tomorrow"). It can include a due date in free form text, a project name starting with the "#" character (without spaces), a label starting with the "@" character, an assignee starting with the "+" character, a priority (e.g., p1), a deadline between "{}" (e.g. {in 3 days}), or a description starting from "//" until the end of the text.
+	 */
+	text: string | Expression<string>;
+	options?: Record<string, unknown>;
+};
+
+/** Task resource */
+export type TodoistV22TaskReopenConfig = {
+	resource: 'task';
+	operation: 'reopen';
+	taskId: string | Expression<string>;
+};
+
+/** Task resource */
+export type TodoistV22TaskUpdateConfig = {
+	resource: 'task';
+	operation: 'update';
+	taskId: string | Expression<string>;
+	updateFields?: Record<string, unknown>;
+};
+
+/** Project resource */
+export type TodoistV22ProjectArchiveConfig = {
+	resource: 'project';
+	operation: 'archive';
+	/**
+	 * The project ID - can be either a string or number
+	 */
+	projectId: string | Expression<string>;
+};
+
+/** Project resource */
+export type TodoistV22ProjectCreateConfig = {
+	resource: 'project';
+	operation: 'create';
+	/**
+	 * Name of the project
+	 */
+	name: string | Expression<string>;
+	projectOptions?: Record<string, unknown>;
+};
+
+/** Project resource */
+export type TodoistV22ProjectDeleteConfig = {
+	resource: 'project';
+	operation: 'delete';
+	/**
+	 * The project ID - can be either a string or number
+	 */
+	projectId: string | Expression<string>;
+};
+
+/** Project resource */
+export type TodoistV22ProjectGetConfig = {
+	resource: 'project';
+	operation: 'get';
+	/**
+	 * The project ID - can be either a string or number
+	 */
+	projectId: string | Expression<string>;
+};
+
+/** Project resource */
+export type TodoistV22ProjectGetCollaboratorsConfig = {
+	resource: 'project';
+	operation: 'getCollaborators';
+	/**
+	 * The project ID - can be either a string or number
+	 */
+	projectId: string | Expression<string>;
+};
+
+/** Project resource */
+export type TodoistV22ProjectGetAllConfig = {
+	resource: 'project';
+	operation: 'getAll';
+};
+
+/** Project resource */
+export type TodoistV22ProjectUnarchiveConfig = {
+	resource: 'project';
+	operation: 'unarchive';
+	/**
+	 * The project ID - can be either a string or number
+	 */
+	projectId: string | Expression<string>;
+};
+
+/** Project resource */
+export type TodoistV22ProjectUpdateConfig = {
+	resource: 'project';
+	operation: 'update';
+	/**
+	 * The project ID - can be either a string or number
+	 */
+	projectId: string | Expression<string>;
+	projectUpdateFields?: Record<string, unknown>;
+};
+
+/** Section resource */
+export type TodoistV22SectionCreateConfig = {
+	resource: 'section';
+	operation: 'create';
+	/**
+	 * The project to add the section to
+	 * @default {"mode":"list","value":""}
+	 */
+	sectionProject: ResourceLocatorValue;
+	/**
+	 * Name of the section
+	 */
+	sectionName: string | Expression<string>;
+	sectionOptions?: Record<string, unknown>;
+};
+
+/** Section resource */
+export type TodoistV22SectionDeleteConfig = {
+	resource: 'section';
+	operation: 'delete';
+	sectionId: string | Expression<string>;
+};
+
+/** Section resource */
+export type TodoistV22SectionGetConfig = {
+	resource: 'section';
+	operation: 'get';
+	sectionId: string | Expression<string>;
+};
+
+/** Section resource */
+export type TodoistV22SectionGetAllConfig = {
+	resource: 'section';
+	operation: 'getAll';
+	sectionFilters?: Record<string, unknown>;
+};
+
+/** Section resource */
+export type TodoistV22SectionUpdateConfig = {
+	resource: 'section';
+	operation: 'update';
+	sectionId: string | Expression<string>;
+	sectionUpdateFields?: Record<string, unknown>;
+};
+
+/** Comment resource */
+export type TodoistV22CommentCreateConfig = {
+	resource: 'comment';
+	operation: 'create';
+	/**
+	 * The ID of the task to comment on
+	 */
+	commentTaskId: string | Expression<string>;
+	/**
+	 * Comment content
+	 */
+	commentContent: string | Expression<string>;
+};
+
+/** Comment resource */
+export type TodoistV22CommentDeleteConfig = {
+	resource: 'comment';
+	operation: 'delete';
+	commentId: string | Expression<string>;
+};
+
+/** Comment resource */
+export type TodoistV22CommentGetConfig = {
+	resource: 'comment';
+	operation: 'get';
+	commentId: string | Expression<string>;
+};
+
+/** Comment resource */
+export type TodoistV22CommentGetAllConfig = {
+	resource: 'comment';
+	operation: 'getAll';
+	commentFilters?: Record<string, unknown>;
+};
+
+/** Comment resource */
+export type TodoistV22CommentUpdateConfig = {
+	resource: 'comment';
+	operation: 'update';
+	commentId: string | Expression<string>;
+	commentUpdateFields?: Record<string, unknown>;
+};
+
+/** Label resource */
+export type TodoistV22LabelCreateConfig = {
+	resource: 'label';
+	operation: 'create';
+	/**
+	 * Name of the label
+	 */
+	labelName: string | Expression<string>;
+	labelOptions?: Record<string, unknown>;
+};
+
+/** Label resource */
+export type TodoistV22LabelDeleteConfig = {
+	resource: 'label';
+	operation: 'delete';
+	labelId: string | Expression<string>;
+};
+
+/** Label resource */
+export type TodoistV22LabelGetConfig = {
+	resource: 'label';
+	operation: 'get';
+	labelId: string | Expression<string>;
+};
+
+/** Label resource */
+export type TodoistV22LabelGetAllConfig = {
+	resource: 'label';
+	operation: 'getAll';
+};
+
+/** Label resource */
+export type TodoistV22LabelUpdateConfig = {
+	resource: 'label';
+	operation: 'update';
+	labelId: string | Expression<string>;
+	labelUpdateFields?: Record<string, unknown>;
+};
+
+/** Reminder resource */
+export type TodoistV22ReminderCreateConfig = {
+	resource: 'reminder';
+	operation: 'create';
+	/**
+	 * The ID of the task to attach reminder to
+	 */
+	itemId: string | Expression<string>;
+	/**
+	 * How to specify when the reminder should trigger
+	 * @default natural_language
+	 */
+	dueDateType:
+		| 'natural_language'
+		| 'full_day'
+		| 'floating_time'
+		| 'fixed_timezone'
+		| Expression<string>;
+	/**
+	 * Human-readable date and time
+	 */
+	natural_language_representation: string | Expression<string>;
+	/**
+	 * Full-day date in YYYY-MM-DD format
+	 */
+	date: string | Expression<string>;
+	/**
+	 * Floating date and time (no timezone)
+	 */
+	datetime: string | Expression<string>;
+	/**
+	 * Timezone for the fixed timezone date
+	 */
+	timezone: string | Expression<string>;
+	reminderOptions?: Record<string, unknown>;
+};
+
+/** Reminder resource */
+export type TodoistV22ReminderDeleteConfig = {
+	resource: 'reminder';
+	operation: 'delete';
+	reminderId: string | Expression<string>;
+};
+
+/** Reminder resource */
+export type TodoistV22ReminderGetAllConfig = {
+	resource: 'reminder';
+	operation: 'getAll';
+};
+
+/** Reminder resource */
+export type TodoistV22ReminderUpdateConfig = {
+	resource: 'reminder';
+	operation: 'update';
+	reminderId: string | Expression<string>;
+	reminderUpdateFields?: Record<string, unknown>;
+};
+
+export type TodoistV22Params =
+	| TodoistV22TaskCloseConfig
+	| TodoistV22TaskCreateConfig
+	| TodoistV22TaskDeleteConfig
+	| TodoistV22TaskGetConfig
+	| TodoistV22TaskGetAllConfig
+	| TodoistV22TaskMoveConfig
+	| TodoistV22TaskQuickAddConfig
+	| TodoistV22TaskReopenConfig
+	| TodoistV22TaskUpdateConfig
+	| TodoistV22ProjectArchiveConfig
+	| TodoistV22ProjectCreateConfig
+	| TodoistV22ProjectDeleteConfig
+	| TodoistV22ProjectGetConfig
+	| TodoistV22ProjectGetCollaboratorsConfig
+	| TodoistV22ProjectGetAllConfig
+	| TodoistV22ProjectUnarchiveConfig
+	| TodoistV22ProjectUpdateConfig
+	| TodoistV22SectionCreateConfig
+	| TodoistV22SectionDeleteConfig
+	| TodoistV22SectionGetConfig
+	| TodoistV22SectionGetAllConfig
+	| TodoistV22SectionUpdateConfig
+	| TodoistV22CommentCreateConfig
+	| TodoistV22CommentDeleteConfig
+	| TodoistV22CommentGetConfig
+	| TodoistV22CommentGetAllConfig
+	| TodoistV22CommentUpdateConfig
+	| TodoistV22LabelCreateConfig
+	| TodoistV22LabelDeleteConfig
+	| TodoistV22LabelGetConfig
+	| TodoistV22LabelGetAllConfig
+	| TodoistV22LabelUpdateConfig
+	| TodoistV22ReminderCreateConfig
+	| TodoistV22ReminderDeleteConfig
+	| TodoistV22ReminderGetAllConfig
+	| TodoistV22ReminderUpdateConfig;
+
+/** Task resource */
+export type TodoistV1TaskCloseConfig = {
+	resource: 'task';
+	operation: 'close';
+	taskId: string | Expression<string>;
+};
+
+/** Task resource */
+export type TodoistV1TaskCreateConfig = {
+	resource: 'task';
+	operation: 'create';
+	/**
+	 * The project you want to operate on. Choose from the list, or specify an ID.
+	 * @default {"mode":"list","value":""}
+	 */
+	project: ResourceLocatorValue;
+	/**
+	 * Optional labels that will be assigned to a created task. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 * @default []
+	 */
+	labels?: string[];
+	/**
+	 * Task content
+	 */
+	content: string | Expression<string>;
+	options?: Record<string, unknown>;
+};
+
+/** Task resource */
+export type TodoistV1TaskDeleteConfig = {
+	resource: 'task';
+	operation: 'delete';
+	taskId: string | Expression<string>;
+};
+
+/** Task resource */
+export type TodoistV1TaskGetConfig = {
+	resource: 'task';
+	operation: 'get';
+	taskId: string | Expression<string>;
+};
+
+/** Task resource */
+export type TodoistV1TaskGetAllConfig = {
+	resource: 'task';
+	operation: 'getAll';
+	/**
+	 * Whether to return all results or only up to a given limit
+	 * @default false
+	 */
+	returnAll?: boolean | Expression<boolean>;
+	/**
+	 * Max number of results to return
+	 * @default 50
+	 */
+	limit?: number | Expression<number>;
+	filters?: Record<string, unknown>;
+};
+
+/** Task resource */
+export type TodoistV1TaskMoveConfig = {
+	resource: 'task';
+	operation: 'move';
+	taskId: string | Expression<string>;
+	/**
+	 * The project you want to operate on. Choose from the list, or specify an ID.
+	 * @default {"mode":"list","value":""}
+	 */
+	project: ResourceLocatorValue;
+	/**
+	 * Section to which you want move the task. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
+	 */
+	section?: string | Expression<string>;
+};
+
+/** Task resource */
+export type TodoistV1TaskReopenConfig = {
+	resource: 'task';
+	operation: 'reopen';
+	taskId: string | Expression<string>;
+};
+
+/** Task resource */
+export type TodoistV1TaskUpdateConfig = {
+	resource: 'task';
+	operation: 'update';
+	taskId: string | Expression<string>;
+	updateFields?: Record<string, unknown>;
+};
+
+export type TodoistV1Params =
+	| TodoistV1TaskCloseConfig
+	| TodoistV1TaskCreateConfig
+	| TodoistV1TaskDeleteConfig
+	| TodoistV1TaskGetConfig
+	| TodoistV1TaskGetAllConfig
+	| TodoistV1TaskMoveConfig
+	| TodoistV1TaskReopenConfig
+	| TodoistV1TaskUpdateConfig;
+
+// ===========================================================================
+// Credentials
+// ===========================================================================
+
+export interface TodoistV22Credentials {
+	todoistApi: CredentialReference;
+	todoistOAuth2Api: CredentialReference;
+}
+
+// ===========================================================================
+// Node Type
+// ===========================================================================
+
+export type TodoistNode = {
+	type: 'n8n-nodes-base.todoist';
+	version: 1 | 2 | 2.1 | 2.2;
+	config: NodeConfig<TodoistV22Params>;
+	credentials?: TodoistV22Credentials;
+};

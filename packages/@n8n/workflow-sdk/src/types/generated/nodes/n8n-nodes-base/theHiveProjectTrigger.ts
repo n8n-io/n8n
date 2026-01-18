@@ -1,0 +1,64 @@
+/**
+ * TheHive 5 Trigger Node Types
+ *
+ * Starts the workflow when TheHive events occur
+ * @see https://docs.n8n.io/integrations/builtin/app-nodes/thehiveprojecttrigger/
+ *
+ * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
+ */
+
+// @ts-nocheck - Generated file may have unused imports
+
+import type { NodeConfig } from '../../../base';
+
+// ===========================================================================
+// Parameters
+// ===========================================================================
+
+export interface TheHiveProjectTriggerV1Params {
+	/**
+	 * Events types
+	 * @default []
+	 */
+	events: Array<
+		| '*'
+		| 'alert_create'
+		| 'alert_delete'
+		| 'alert_update'
+		| 'case_create'
+		| 'case_delete'
+		| 'case_update'
+		| 'comment_create'
+		| 'comment_delete'
+		| 'comment_update'
+		| 'observable_create'
+		| 'observable_delete'
+		| 'observable_update'
+		| 'page_create'
+		| 'page_delete'
+		| 'page_update'
+		| 'task_create'
+		| 'task_update'
+		| 'log_create'
+		| 'log_delete'
+		| 'log_update'
+	>;
+	/**
+	 * Filter any incoming events based on their fields
+	 * @default {}
+	 */
+	filters?: Record<string, unknown>;
+	options?: Record<string, unknown>;
+}
+
+// ===========================================================================
+// Node Type
+// ===========================================================================
+
+export type TheHiveProjectTriggerNode = {
+	type: 'n8n-nodes-base.theHiveProjectTrigger';
+	version: 1;
+	config: NodeConfig<TheHiveProjectTriggerV1Params>;
+	credentials?: Record<string, never>;
+	isTrigger: true;
+};

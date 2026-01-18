@@ -1,0 +1,89 @@
+/**
+ * HTML Node Types
+ *
+ * Work with HTML
+ * @see https://docs.n8n.io/integrations/builtin/app-nodes/html/
+ *
+ * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
+ */
+
+// @ts-nocheck - Generated file may have unused imports
+
+import type { Expression, NodeConfig } from '../../../base';
+
+// ===========================================================================
+// Parameters
+// ===========================================================================
+
+export interface HtmlV12Params {
+	operation?:
+		| 'generateHtmlTemplate'
+		| 'extractHtmlContent'
+		| 'convertToHtmlTable'
+		| Expression<string>;
+	/**
+ * HTML template to render
+ * @default <!DOCTYPE html>
+
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>My HTML document</title>
+</head>
+<body>
+  <div class="container">
+    <h1>This is an H1 heading</h1>
+    <h2>This is an H2 heading</h2>
+    <p>This is a paragraph</p>
+  </div>
+</body>
+</html>
+
+<style>
+.container {
+  background-color: #ffffff;
+  text-align: center;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+h1 {
+  color: #ff6d5a;
+  font-size: 24px;
+  font-weight: bold;
+  padding: 8px;
+}
+
+h2 {
+  color: #909399;
+  font-size: 18px;
+  font-weight: bold;
+  padding: 8px;
+}
+</style>
+
+<script>
+console.log("Hello World!");
+</script>
+ */
+	html?: string | Expression<string>;
+	/**
+	 * If HTML should be read from binary or JSON data
+	 * @default json
+	 */
+	sourceData?: 'binary' | 'json' | Expression<string>;
+	dataPropertyName: string | Expression<string>;
+	extractionValues?: Record<string, unknown>;
+	options?: Record<string, unknown>;
+}
+
+// ===========================================================================
+// Node Type
+// ===========================================================================
+
+export type HtmlNode = {
+	type: 'n8n-nodes-base.html';
+	version: 1 | 1.1 | 1.2;
+	config: NodeConfig<HtmlV12Params>;
+	credentials?: Record<string, never>;
+};

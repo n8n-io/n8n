@@ -1,0 +1,91 @@
+/**
+ * Microsoft Dynamics CRM Node Types
+ *
+ * Consume Microsoft Dynamics CRM API
+ * @see https://docs.n8n.io/integrations/builtin/app-nodes/microsoftdynamicscrm/
+ *
+ * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
+ */
+
+// @ts-nocheck - Generated file may have unused imports
+
+import type { Expression, CredentialReference, NodeConfig } from '../../../base';
+
+// ===========================================================================
+// Parameters
+// ===========================================================================
+
+export type MicrosoftDynamicsCrmV1AccountCreateConfig = {
+	resource: 'account';
+	operation: 'create';
+	/**
+	 * Company or business name
+	 */
+	name: string | Expression<string>;
+	additionalFields?: Record<string, unknown>;
+	options?: Record<string, unknown>;
+};
+
+export type MicrosoftDynamicsCrmV1AccountDeleteConfig = {
+	resource: 'account';
+	operation: 'delete';
+	accountId: string | Expression<string>;
+};
+
+export type MicrosoftDynamicsCrmV1AccountGetConfig = {
+	resource: 'account';
+	operation: 'get';
+	accountId: string | Expression<string>;
+	options?: Record<string, unknown>;
+};
+
+export type MicrosoftDynamicsCrmV1AccountGetAllConfig = {
+	resource: 'account';
+	operation: 'getAll';
+	/**
+	 * Whether to return all results or only up to a given limit
+	 * @default false
+	 */
+	returnAll?: boolean | Expression<boolean>;
+	/**
+	 * Max number of results to return
+	 * @default 5
+	 */
+	limit?: number | Expression<number>;
+	options?: Record<string, unknown>;
+	filters?: Record<string, unknown>;
+};
+
+export type MicrosoftDynamicsCrmV1AccountUpdateConfig = {
+	resource: 'account';
+	operation: 'update';
+	accountId: string | Expression<string>;
+	updateFields?: Record<string, unknown>;
+	options?: Record<string, unknown>;
+};
+
+export type MicrosoftDynamicsCrmV1Params =
+	| MicrosoftDynamicsCrmV1AccountCreateConfig
+	| MicrosoftDynamicsCrmV1AccountDeleteConfig
+	| MicrosoftDynamicsCrmV1AccountGetConfig
+	| MicrosoftDynamicsCrmV1AccountGetAllConfig
+	| MicrosoftDynamicsCrmV1AccountUpdateConfig;
+
+// ===========================================================================
+// Credentials
+// ===========================================================================
+
+export interface MicrosoftDynamicsCrmV1Credentials {
+	microsoftDynamicsOAuth2Api: CredentialReference;
+}
+
+// ===========================================================================
+// Node Type
+// ===========================================================================
+
+export type MicrosoftDynamicsCrmNode = {
+	type: 'n8n-nodes-base.microsoftDynamicsCrm';
+	version: 1;
+	config: NodeConfig<MicrosoftDynamicsCrmV1Params>;
+	credentials?: MicrosoftDynamicsCrmV1Credentials;
+};

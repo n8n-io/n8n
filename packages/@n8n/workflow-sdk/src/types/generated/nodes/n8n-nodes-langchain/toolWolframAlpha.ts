@@ -1,0 +1,38 @@
+/**
+ * Wolfram|Alpha Node Types
+ *
+ * Connects to WolframAlpha's computational intelligence engine.
+ * @see https://docs.n8n.io/integrations/builtin/app-nodes/toolwolframalpha/
+ *
+ * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
+ */
+
+// @ts-nocheck - Generated file may have unused imports
+
+import type { CredentialReference, NodeConfig } from '../../../base';
+
+// ===========================================================================
+// Parameters
+// ===========================================================================
+
+export interface LcToolWolframAlphaV1Params {}
+
+// ===========================================================================
+// Credentials
+// ===========================================================================
+
+export interface LcToolWolframAlphaV1Credentials {
+	wolframAlphaApi: CredentialReference;
+}
+
+// ===========================================================================
+// Node Type
+// ===========================================================================
+
+export type LcToolWolframAlphaNode = {
+	type: '@n8n/n8n-nodes-langchain.toolWolframAlpha';
+	version: 1;
+	config: NodeConfig<LcToolWolframAlphaV1Params>;
+	credentials?: LcToolWolframAlphaV1Credentials;
+	isTrigger: true;
+};

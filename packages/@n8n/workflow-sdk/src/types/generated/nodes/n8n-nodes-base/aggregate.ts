@@ -1,0 +1,41 @@
+/**
+ * Aggregate Node Types
+ *
+ * Combine a field from many items into a list in a single item
+ * @see https://docs.n8n.io/integrations/builtin/app-nodes/aggregate/
+ *
+ * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
+ */
+
+// @ts-nocheck - Generated file may have unused imports
+
+import type { Expression, NodeConfig } from '../../../base';
+
+// ===========================================================================
+// Parameters
+// ===========================================================================
+
+export interface AggregateV1Params {
+	aggregate?: 'aggregateIndividualFields' | 'aggregateAllItemData' | Expression<string>;
+	fieldsToAggregate?: Record<string, unknown>;
+	/**
+	 * The name of the output field to put the data in
+	 * @default data
+	 */
+	destinationFieldName?: string | Expression<string>;
+	include?: 'allFields' | 'specifiedFields' | 'allFieldsExcept' | Expression<string>;
+	fieldsToExclude?: string | Expression<string>;
+	fieldsToInclude?: string | Expression<string>;
+	options?: Record<string, unknown>;
+}
+
+// ===========================================================================
+// Node Type
+// ===========================================================================
+
+export type AggregateNode = {
+	type: 'n8n-nodes-base.aggregate';
+	version: 1;
+	config: NodeConfig<AggregateV1Params>;
+	credentials?: Record<string, never>;
+};
