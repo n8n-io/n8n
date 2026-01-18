@@ -82,7 +82,7 @@
     "tsc-watch": "^6.2.0",
     "turbo": "2.7.3",
     "typescript": "*",
-    "zx": "^8.1.4"
+    "zx": "^8.8.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -129,7 +129,9 @@
       "jws@4": "4.0.1",
       "qs@6": "6.14.1",
       "@smithy/config-resolver": ">=4.4.0",
-      "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0"
+      "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
+      "word-wrap@<=1.2.4": "1.2.4",
+      "undici@<=7.18.2": "7.18.2"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
