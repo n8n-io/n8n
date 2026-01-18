@@ -4,7 +4,6 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
 import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
-import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants';
 
 const resourceCenterStore = useResourceCenterStore();
 const { isCollapsed } = useSidebarLayout();
@@ -23,11 +22,7 @@ const tooltipKey = ref(0);
 const shouldShow = computed(() => resourceCenterStore.shouldShowResourceCenterTooltip);
 
 const tooltipText = computed(() => {
-	const variant = resourceCenterStore.getCurrentVariant();
-	if (variant === RESOURCE_CENTER_EXPERIMENT.variantInspiration) {
-		return locale.baseText('experiments.resourceCenter.tooltip.getInspired');
-	}
-	return locale.baseText('experiments.resourceCenter.tooltip.learnHere');
+	return locale.baseText('experiments.resourceCenter.tooltip.text');
 });
 
 const calculatePosition = () => {
