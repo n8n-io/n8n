@@ -45,5 +45,8 @@ export { merge } from './merge';
 // Split in batches
 export { splitInBatches } from './split-in-batches';
 
+// Expression utilities
+export { serializeExpression, parseExpression, isExpression, expr } from './expression';
+
 // Code helpers (to be implemented)
 // export { runOnceForAllItems, runOnceForEachItem } from './code-helpers';

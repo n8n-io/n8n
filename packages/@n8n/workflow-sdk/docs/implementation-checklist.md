@@ -135,49 +135,53 @@
 
 ## Expression System (`src/expression/`)
 
-### Context Types (`context.ts`)
+### Context Types (via proxy-based serialization)
 
-- [ ] `$.json` - current item JSON data (typed from upstream)
-- [ ] `$.binary` - current item binary data
-- [ ] `$.input.first()` - first input item
-- [ ] `$.input.all()` - all input items
-- [ ] `$.input.item` - current item
-- [ ] `$('nodeName')` - reference another node's output
-- [ ] `$.env.VAR_NAME` - environment variables
-- [ ] `$.vars.VAR_NAME` - workflow variables
-- [ ] `$.secrets.PROVIDER.SECRET` - external secrets
-- [ ] `$.now` - current DateTime
-- [ ] `$.itemIndex` - current item index
-- [ ] `$.runIndex` - current run index
-- [ ] `$.execution.id` - execution ID
-- [ ] `$.execution.mode` - execution mode
+- [x] `$.json` - current item JSON data (typed from upstream)
+- [x] `$.binary` - current item binary data
+- [x] `$.input.first()` - first input item
+- [x] `$.input.all()` - all input items
+- [x] `$.input.item` - current item
+- [ ] `$('nodeName')` - reference another node's output (use `expr()` helper)
+- [x] `$.env.VAR_NAME` - environment variables
+- [x] `$.vars.VAR_NAME` - workflow variables
+- [x] `$.secrets.PROVIDER.SECRET` - external secrets
+- [x] `$.now` - current DateTime
+- [x] `$.itemIndex` - current item index
+- [x] `$.runIndex` - current run index
+- [x] `$.execution.id` - execution ID
+- [x] `$.execution.mode` - execution mode
 - [ ] `$.execution.resumeUrl` - resume URL
-- [ ] `$.workflow.id` - workflow ID
-- [ ] `$.workflow.name` - workflow name
+- [x] `$.workflow.id` - workflow ID
+- [x] `$.workflow.name` - workflow name
 - [ ] `$.workflow.active` - workflow active status
 
 ### Binary Data Support
 
-- [ ] `$.binary[fieldName].fileName`
-- [ ] `$.binary[fieldName].directory`
-- [ ] `$.binary[fieldName].mimeType`
-- [ ] `$.binary[fieldName].fileExtension`
-- [ ] `$.binary[fieldName].fileSize`
-- [ ] `$.binary.keys()` method
+- [x] `$.binary[fieldName].fileName`
+- [x] `$.binary[fieldName].directory`
+- [x] `$.binary[fieldName].mimeType`
+- [x] `$.binary[fieldName].fileExtension`
+- [x] `$.binary[fieldName].fileSize`
+- [ ] `$.binary.keys()` method (use `expr()` helper)
 
 ### Parser (`parser.ts`)
 
-- [ ] Parse `={{ ... }}` expression strings to AST
-- [ ] Handle `$json.foo` syntax
-- [ ] Handle `$('NodeName').item.json.x` syntax
-- [ ] Handle `$now`, `$env.VAR`, `$itemIndex` etc.
-- [ ] Preserve JavaScript expressions (map, filter, join, etc.)
+- [x] Parse `={{ ... }}` expression strings to AST
+- [x] Handle `$json.foo` syntax
+- [x] Handle `$('NodeName').item.json.x` syntax
+- [x] Handle `$now`, `$env.VAR`, `$itemIndex` etc.
+- [x] Preserve JavaScript expressions (map, filter, join, etc.)
 
 ### Serializer (`serializer.ts`)
 
-- [ ] Convert expression functions `$ => ...` to `={{ ... }}` strings
+- [x] Convert expression functions `$ => ...` to `={{ ... }}` strings
 - [ ] Handle nested expressions in parameters
 - [ ] Handle expressions in arrays/objects
+
+### Raw Expression Helper
+
+- [x] `expr()` - create raw n8n expression strings for complex cases
 
 ---
 
