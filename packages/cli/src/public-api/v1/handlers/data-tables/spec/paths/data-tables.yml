@@ -1,0 +1,76 @@
+get:
+  x-eov-operation-id: listDataTables
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
+  tags:
+    - DataTable
+  summary: List all data tables
+  description: Retrieve a list of all data tables with optional filtering, sorting, and pagination.
+  operationId: list-data-tables
+  parameters:
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+    - name: filter
+      in: query
+      description: JSON string of filter conditions
+      schema:
+        type: string
+        format: jsonString
+      example: '{"name":"my-table"}'
+    - name: sortBy
+      in: query
+      description: 'Sort format: field:asc or field:desc'
+      schema:
+        type: string
+      example: 'name:asc'
+  responses:
+    '200':
+      description: Successfully retrieved data tables
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/dataTableList.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+  security:
+    - ApiKeyAuth: []
+
+post:
+  x-eov-operation-id: createDataTable
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
+  tags:
+    - DataTable
+  summary: Create a new data table
+  description: Create a new data table in your workspace.
+  operationId: create-data-table
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/createDataTableRequest.yml'
+        example:
+          name: 'customers'
+          columns:
+            - name: 'email'
+              type: 'string'
+            - name: 'status'
+              type: 'string'
+            - name: 'age'
+              type: 'number'
+  responses:
+    '201':
+      description: Data table created successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/dataTable.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'
+  security:
+    - ApiKeyAuth: []
