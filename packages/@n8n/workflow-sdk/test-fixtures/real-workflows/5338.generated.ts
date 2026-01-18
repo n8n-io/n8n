@@ -28,6 +28,45 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-5-mini',
+									cachedResultName: 'gpt-5-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'LLM: Generate Raw Idea (GPT-5)',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Tool: Inject Creative Perspective (Idea)' },
+						}),
+					],
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'[\n  {\n    "Caption": "Diver Removes Nets Off Whale 🐋 #whalerescue #marinelife #oceanrescue #seahelpers #love #nature #instagood #explore #viral #savenature #oceanguardians #cleanoceans",\n    "Idea": "Diver carefully cuts tangled net from distressed whale in open sea",\n    "Environment": "Open ocean, sunlight beams through water, diver and whale, cinematic realism",\n    "Sound": "Primary sound description under 15 words",\n    "Status": "for production"\n  }\n]\n',
+							},
+							name: 'Parse AI Output (Idea, Environment, Sound)',
+						},
+					}),
+				},
 				position: [960, 0],
 				name: 'Generate Creative Video Idea',
 			},
@@ -149,6 +188,45 @@ const wf = workflow(
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Tool: Refine and Validate Prompts1' },
+						}),
+					],
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "Idea": "An obsidian rock being sliced with a shimmering knife",\n  "Environment": "Clean studio table, subtle light reflections",\n  "Sound": "Crisp slicing, deep grinding, and delicate crumbling",\n  "Scene 1": "Extreme macro shot: a razor-sharp, polished knife blade presses into the dark, granular surface of an obsidian rock, just beginning to indent.",\n  "Scene 2": "Close-up: fine, iridescent dust particles erupt from the point of contact as the blade cuts deeper into the obsidian, catching the studio light.",\n  "Scene 3": "Mid-shot: the knife, held perfectly steady, has formed a shallow, clean groove across the obsidian\'s shimmering surface, revealing a new, smooth texture."\n}',
+							},
+							name: 'Parse Structured Video Prompt Output',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1',
+									cachedResultName: 'gpt-4.1',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'LLM: Draft Video Prompt Details (GPT-4.1)',
+						},
+					}),
 				},
 				position: [1760, 0],
 				name: 'Generate Detailed Video Prompts',
@@ -839,92 +917,6 @@ const wf = workflow(
 				},
 				position: [1504, 1568],
 				name: 'Pinterest',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [1088, 288], name: 'Tool: Inject Creative Perspective (Idea)' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'[\n  {\n    "Caption": "Diver Removes Nets Off Whale 🐋 #whalerescue #marinelife #oceanrescue #seahelpers #love #nature #instagood #explore #viral #savenature #oceanguardians #cleanoceans",\n    "Idea": "Diver carefully cuts tangled net from distressed whale in open sea",\n    "Environment": "Open ocean, sunlight beams through water, diver and whale, cinematic realism",\n    "Sound": "Primary sound description under 15 words",\n    "Status": "for production"\n  }\n]\n',
-				},
-				position: [1248, 288],
-				name: 'Parse AI Output (Idea, Environment, Sound)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1',
-						cachedResultName: 'gpt-4.1',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1664, 288],
-				name: 'LLM: Draft Video Prompt Details (GPT-4.1)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [1840, 288], name: 'Tool: Refine and Validate Prompts1' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "Idea": "An obsidian rock being sliced with a shimmering knife",\n  "Environment": "Clean studio table, subtle light reflections",\n  "Sound": "Crisp slicing, deep grinding, and delicate crumbling",\n  "Scene 1": "Extreme macro shot: a razor-sharp, polished knife blade presses into the dark, granular surface of an obsidian rock, just beginning to indent.",\n  "Scene 2": "Close-up: fine, iridescent dust particles erupt from the point of contact as the blade cuts deeper into the obsidian, catching the studio light.",\n  "Scene 3": "Mid-shot: the knife, held perfectly steady, has formed a shallow, clean groove across the obsidian\'s shimmering surface, revealing a new, smooth texture."\n}',
-				},
-				position: [2000, 288],
-				name: 'Parse Structured Video Prompt Output',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-5-mini',
-						cachedResultName: 'gpt-5-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [912, 288],
-				name: 'LLM: Generate Raw Idea (GPT-5)',
 			},
 		}),
 	)

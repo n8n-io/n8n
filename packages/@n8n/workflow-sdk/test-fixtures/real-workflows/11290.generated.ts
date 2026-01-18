@@ -47,6 +47,13 @@ const wf = workflow('', '')
 						},
 					},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: { parameters: { options: {} }, name: 'Gemini 2.5 flash' },
+					}),
+				},
 				position: [-336, 368],
 				name: 'Guardrail: Is Finance?',
 			},
@@ -209,6 +216,19 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: { temperature: 0.2, responseFormat: 'json_object' },
+							},
+							name: 'gpt 4o mini',
+						},
+					}),
 				},
 				position: [-32, 800],
 				name: 'AI Agent (PDF OCR)',
@@ -653,30 +673,22 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: { temperature: 0.2, responseFormat: 'json_object' },
+							},
+							name: 'gpt 4o mini',
+						},
+					}),
+				},
 				position: [-32, 1088],
 				name: 'AI Agent (Email OCR)',
 			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: { temperature: 0.2, responseFormat: 'json_object' },
-				},
-				position: [-32, 960],
-				name: 'gpt 4o mini',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: { parameters: { options: {} }, position: [-336, 480], name: 'Gemini 2.5 flash' },
 		}),
 	)
 	.add(

@@ -883,7 +883,6 @@ const wf = workflow('', '')
 			config: { parameters: { options: {} }, position: [1104, 432], name: 'Main Loop' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
@@ -899,6 +898,29 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample: '{\n	"email_subject": "text",\n	"email_content": "text"\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
 				},
 				position: [1264, 448],
 				name: 'Agent One',
@@ -954,6 +976,30 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n	"approval": "APPROVED OR REVISE",\n	"feedback": "Context"\n}',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
 				},
 				position: [1728, 448],
 				name: 'Judge Agent',
@@ -1181,46 +1227,6 @@ const wf = workflow('', '')
 				},
 				position: [2256, 416],
 				name: 'Update row(s)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample: '{\n	"email_subject": "text",\n	"email_content": "text"\n}',
-				},
-				position: [1408, 640],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample: '{\n	"approval": "APPROVED OR REVISE",\n	"feedback": "Context"\n}',
-				},
-				position: [1888, 640],
-				name: 'Structured Output Parser1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [1584, 720],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

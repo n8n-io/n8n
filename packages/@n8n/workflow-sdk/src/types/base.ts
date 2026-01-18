@@ -101,17 +101,28 @@ export interface CredentialReference {
 export type OnError = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
 
 /**
- * Subnode configuration for AI nodes
+ * Subnode configuration for AI nodes.
+ * Uses typed subnode instances for type safety.
  */
 export interface SubnodeConfig {
-	/** Language model subnode */
-	model?: NodeInstance<string, string, unknown>;
-	/** Memory subnode */
-	memory?: NodeInstance<string, string, unknown>;
-	/** Tool subnodes */
-	tools?: NodeInstance<string, string, unknown>[];
-	/** Output parser subnode */
-	outputParser?: NodeInstance<string, string, unknown>;
+	/** Language model subnode (ai_languageModel connection type) */
+	model?: LanguageModelInstance;
+	/** Memory subnode (ai_memory connection type) */
+	memory?: MemoryInstance;
+	/** Tool subnodes (ai_tool connection type) */
+	tools?: ToolInstance[];
+	/** Output parser subnode (ai_outputParser connection type) */
+	outputParser?: OutputParserInstance;
+	/** Embedding subnode (ai_embedding connection type) */
+	embedding?: EmbeddingInstance;
+	/** Vector store subnode (ai_vectorStore connection type) */
+	vectorStore?: VectorStoreInstance;
+	/** Retriever subnode (ai_retriever connection type) */
+	retriever?: RetrieverInstance;
+	/** Document loader subnode (ai_document connection type) */
+	documentLoader?: DocumentLoaderInstance;
+	/** Text splitter subnode (ai_textSplitter connection type) */
+	textSplitter?: TextSplitterInstance;
 }
 
 /**
@@ -289,6 +300,104 @@ export interface TriggerInstance<TType extends string, TVersion extends string, 
 	/** Marker indicating this is a trigger node */
 	readonly isTrigger: true;
 }
+
+// =============================================================================
+// Subnode Instance Types (for AI/LangChain nodes)
+// =============================================================================
+
+/**
+ * Base interface for subnode instances with a category marker
+ */
+export interface SubnodeInstance<
+	TType extends string,
+	TVersion extends string,
+	TOutput,
+	TSubnodeType extends string,
+> extends NodeInstance<TType, TVersion, TOutput> {
+	/** Marker indicating the subnode category */
+	readonly _subnodeType: TSubnodeType;
+}
+
+/**
+ * Language model subnode instance (ai_languageModel)
+ */
+export interface LanguageModelInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends SubnodeInstance<TType, TVersion, TOutput, 'ai_languageModel'> {}
+
+/**
+ * Memory subnode instance (ai_memory)
+ */
+export interface MemoryInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends SubnodeInstance<TType, TVersion, TOutput, 'ai_memory'> {}
+
+/**
+ * Tool subnode instance (ai_tool)
+ */
+export interface ToolInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends SubnodeInstance<TType, TVersion, TOutput, 'ai_tool'> {}
+
+/**
+ * Output parser subnode instance (ai_outputParser)
+ */
+export interface OutputParserInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends SubnodeInstance<TType, TVersion, TOutput, 'ai_outputParser'> {}
+
+/**
+ * Embedding subnode instance (ai_embedding)
+ */
+export interface EmbeddingInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends SubnodeInstance<TType, TVersion, TOutput, 'ai_embedding'> {}
+
+/**
+ * Vector store subnode instance (ai_vectorStore)
+ */
+export interface VectorStoreInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends SubnodeInstance<TType, TVersion, TOutput, 'ai_vectorStore'> {}
+
+/**
+ * Retriever subnode instance (ai_retriever)
+ */
+export interface RetrieverInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends SubnodeInstance<TType, TVersion, TOutput, 'ai_retriever'> {}
+
+/**
+ * Document loader subnode instance (ai_document)
+ */
+export interface DocumentLoaderInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends SubnodeInstance<TType, TVersion, TOutput, 'ai_document'> {}
+
+/**
+ * Text splitter subnode instance (ai_textSplitter)
+ */
+export interface TextSplitterInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends SubnodeInstance<TType, TVersion, TOutput, 'ai_textSplitter'> {}
 
 /**
  * Merge composite representing parallel branches merging into one node

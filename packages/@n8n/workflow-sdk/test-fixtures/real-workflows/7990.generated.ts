@@ -75,6 +75,33 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n	"invoiceNumber": "INV123",\n	"From": "John street 23, 12443 Berlin, Germany",\n    "To": "Smith street 33, 23222 Berlin, Germany",\n    "invoiceDate": "20/08/2025",\n    "dueDate": "25/08/2025",\n    "shortDescription": "It is an invoice about web development costs"\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [624, 0],
 				name: 'AI Agent',
 			},
@@ -193,37 +220,6 @@ const wf = workflow('', '')
 				},
 				position: [976, 0],
 				name: 'Append row in sheet',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [528, 208],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n	"invoiceNumber": "INV123",\n	"From": "John street 23, 12443 Berlin, Germany",\n    "To": "Smith street 33, 23222 Berlin, Germany",\n    "invoiceDate": "20/08/2025",\n    "dueDate": "25/08/2025",\n    "shortDescription": "It is an invoice about web development costs"\n}',
-				},
-				position: [832, 208],
-				name: 'Structured Output Parser',
 			},
 		}),
 	)

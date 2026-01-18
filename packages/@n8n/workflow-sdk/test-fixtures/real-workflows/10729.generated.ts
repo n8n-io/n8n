@@ -121,6 +121,28 @@ const wf = workflow('', '')
 						secretKeys: { value: { permissiveness: 'balanced' } },
 					},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-mini',
+									cachedResultName: 'gpt-4o-mini',
+								},
+								options: {},
+								builtInTools: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [1120, 992],
 				name: 'Check Guardrails',
 			},
@@ -160,29 +182,6 @@ const wf = workflow('', '')
 				},
 				position: [1632, 1168],
 				name: 'Format Fail Result',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-mini',
-						cachedResultName: 'gpt-4o-mini',
-					},
-					options: {},
-					builtInTools: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1120, 1120],
-				name: 'OpenAI Chat Model',
 			},
 		}),
 	)

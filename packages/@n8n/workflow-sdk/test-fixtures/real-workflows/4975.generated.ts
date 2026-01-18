@@ -27,6 +27,27 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					batching: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model7',
+						},
+					}),
+				},
 				position: [120, -80],
 				name: 'Delegatory LLM',
 			},
@@ -211,6 +232,197 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									sendTo:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+									message:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+									options: {
+										ccList:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('CC', ``, 'string') }}",
+										senderName: 'AI HR ',
+									},
+									subject:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+									emailType: 'text',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Gmail',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 1608741360,
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1608741360',
+										cachedResultName: 'leaves',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+										cachedResultName: 'Untitled spreadsheet',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'get leaves',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									columns: {
+										value: { name: '={{ $json.contacts[0].profile.name }}' },
+										schema: [
+											{
+												id: 'name',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'name',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'email',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'email',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'department head  email',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'department head  email',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'available leaves',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'available leaves',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'last leave ',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'last leave ',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'attendance ',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'attendance ',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'department',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'department',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['name'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+									options: {},
+									operation: 'appendOrUpdate',
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 1608741360,
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1608741360',
+										cachedResultName: 'leaves',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+										cachedResultName: 'Untitled spreadsheet',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'update leaves',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1-nano',
+									cachedResultName: 'gpt-4.1-nano',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model2',
+						},
+					}),
+				},
 				position: [2760, -1460],
 				name: 'Leave Agent',
 			},
@@ -362,6 +574,116 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 						returnIntermediateSteps: true,
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=0',
+										cachedResultName: 'rec shortlist sheet',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+										cachedResultName: 'Untitled spreadsheet',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'read sheets',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolVectorStore',
+							version: 1.1,
+							config: {
+								parameters: {
+									description: '"toolDescription": " policy document search tool"\n',
+								},
+								subnodes: {
+									model: languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.2,
+										config: {
+											parameters: {
+												model: {
+													__rl: true,
+													mode: 'list',
+													value: 'gpt-4.1-nano',
+													cachedResultName: 'gpt-4.1-nano',
+												},
+												options: {},
+											},
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'OpenAI Chat Model1',
+										},
+									}),
+									vectorStore: vectorStore({
+										type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+										version: 1.2,
+										config: {
+											parameters: {
+												options: {},
+												tableName: {
+													__rl: true,
+													mode: 'list',
+													value: 'data',
+													cachedResultName: 'data',
+												},
+											},
+											credentials: {
+												supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
+											},
+											subnodes: {
+												embedding: embedding({
+													type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+													version: 1.2,
+													config: {
+														parameters: { options: {} },
+														credentials: {
+															openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+														},
+														name: 'Embeddings OpenAI',
+													},
+												}),
+											},
+											name: 'Supabase Vector Store',
+										},
+									}),
+								},
+								name: 'policy_vector_store',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { model: 'gpt-4.1-nano', options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
 				},
 				position: [5600, -1000],
 				name: 'HR Chatbot',
@@ -571,6 +893,163 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									options: {},
+									filtersUI: {
+										values: [
+											{
+												lookupValue:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values0_Value', ``, 'string') }}",
+												lookupColumn: 'Name',
+											},
+											{
+												lookupValue:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values1_Value', ``, 'string') }}",
+												lookupColumn: 'Entry Time',
+											},
+										],
+									},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=0',
+										cachedResultName: 'rec shortlist sheet',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+										cachedResultName: 'Untitled spreadsheet',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'getrows',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									columns: {
+										value: {
+											Name: '={{ $json.contacts[0].profile.name }}',
+											'Exit Time':
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Exit_Time', ``, 'string') }}",
+											'Entry Time':
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Entry_Time', ``, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'Name',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'Name',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Entry Time',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Entry Time',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Exit Time',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Exit Time',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['Name'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+									options: {},
+									operation: 'appendOrUpdate',
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=0',
+										cachedResultName: 'rec shortlist sheet',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+										cachedResultName: 'Untitled spreadsheet',
+									},
+									descriptionType: 'manual',
+									toolDescription: 'Append or update row in sheet in Google Sheets',
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'putrows',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model3',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample: '{\n	"message" : "Exit time updated: 18:10, 11-06-202"\n}',
+							},
+							name: 'Structured Output Parser2',
+						},
+					}),
+				},
 				position: [3300, 420],
 				name: 'Attendance Agent',
 			},
@@ -586,6 +1065,76 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					text: "=based on {{ $('WhatsApp Trigger').item.json.messages[0].text.body }} , you need to generate an email for the users dept head from the google sheets tool and generate a mail based on whats in the whatspp message body \nitll be to the dept head email from the sheet and cc the user email.\nmatch using {{ $('WhatsApp Trigger').item.json.contacts[0].profile.name }}\nand generate a proper mail and send it with the gmail tool \n",
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									sendTo:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+									message:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+									options: {},
+									subject:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+									emailType: 'text',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Gmail2',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 1608741360,
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1608741360',
+										cachedResultName: 'leaves',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+										cachedResultName: 'Untitled spreadsheet',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'dept head email',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model6',
+						},
+					}),
 				},
 				position: [3340, 1120],
 				name: 'Email Agent',
@@ -603,6 +1152,118 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					options: {},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.2,
+							config: {
+								parameters: {
+									source: 'parameter',
+									description: 'call this tool to get downloaded and extracted cv',
+									workflowJson:
+										'={\n  "name": "My workflow 3",\n  "nodes": [\n    {\n      "parameters": {\n        "operation": "download",\n        "fileId": {\n          "__rl": true,\n          "value": "=https://drive.google.com/file/d/1_lAwQBG7BITidr8DPXclZSxWp_2ZPJ3H/view?usp=sharing",\n          "mode": "url"\n        },\n        "options": {}\n      },\n      "id": "9feaa5fc-b85a-41d5-8e37-4c52fd0fddee",\n      "name": "download CV",\n      "type": "n8n-nodes-base.googleDrive",\n      "position": [\n        -1520,\n        160\n      ],\n      "typeVersion": 3,\n      "credentials": {\n        "googleDriveOAuth2Api": {\n          "id": "LQx4eK8lTDnFORcL",\n          "name": "Google Drive account 3"\n        }\n      }\n    },\n    {\n      "parameters": {\n        "operation": "pdf",\n        "options": {}\n      },\n      "id": "18774bfe-6a10-4a3f-a12b-ae374ad9d928",\n      "name": "Extract from File",\n      "type": "n8n-nodes-base.extractFromFile",\n      "position": [\n        -1060,\n        160\n      ],\n      "typeVersion": 1\n    },\n    {\n      "parameters": {\n        "documentId": {\n          "__rl": true,\n          "value": "1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc",\n          "mode": "list",\n          "cachedResultName": "Untitled spreadsheet",\n          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk"\n        },\n        "sheetName": {\n          "__rl": true,\n          "value": 1214220799,\n          "mode": "list",\n          "cachedResultName": "applicants",\n          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1214220799"\n        },\n        "options": {}\n      },\n      "type": "n8n-nodes-base.googleSheets",\n      "typeVersion": 4.6,\n      "position": [\n        -1800,\n        160\n      ],\n      "id": "88198974-6f9a-4a4c-a400-1efe61634584",\n      "name": "Google Sheets",\n      "credentials": {\n        "googleSheetsOAuth2Api": {\n          "id": "U3oQStbFsePTfOCg",\n          "name": "Google Sheets account 3"\n        }\n      }\n    },\n    {\n      "parameters": {},\n      "type": "n8n-nodes-base.manualTrigger",\n      "typeVersion": 1,\n      "position": [\n        -2040,\n        160\n      ],\n      "id": "444d8fb5-f167-4228-8870-cc8c6ee5d2e7",\n      "name": "When clicking ‘Execute workflow’"\n    }\n  ],\n  "pinData": {},\n  "connections": {\n    "download CV": {\n      "main": [\n        [\n          {\n            "node": "Extract from File",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    },\n    "Extract from File": {\n      "main": [\n        []\n      ]\n    },\n    "Google Sheets": {\n      "main": [\n        [\n          {\n            "node": "download CV",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    },\n    "When clicking ‘Execute workflow’": {\n      "main": [\n        [\n          {\n            "node": "Google Sheets",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    }\n  },\n  "active": false,\n  "settings": {\n    "executionOrder": "v1"\n  },\n  "versionId": "b83a5fe1-8ad2-48cc-8d2a-778c0131c618",\n  "meta": {\n    "templateCredsSetupCompleted": true,\n    "instanceId": "60ec675227f8b8ddf9f06a67b49cab3340ac72df709fd0ce0a5249b51b99f4fe"\n  },\n  "id": "ljyzZaJUlYFCG9go",\n  "tags": [\n    {\n      "createdAt": "2025-06-06T05:05:58.931Z",\n      "updatedAt": "2025-06-06T05:05:58.931Z",\n      "id": "cGamkQygZH77eaiZ",\n      "name": "AI Assistant"\n    }\n  ]\n}',
+								},
+								name: 'n8n',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 1467426312,
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1467426312',
+										cachedResultName: 'jd sheet',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+										cachedResultName: 'Untitled spreadsheet',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'JD tool',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									options: {},
+									filtersUI: {
+										values: [
+											{
+												lookupValue:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values0_Value', ``, 'string') }}",
+												lookupColumn: 'Applying for',
+											},
+										],
+									},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 1214220799,
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1214220799',
+										cachedResultName: 'applicants',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+										cachedResultName: 'Untitled spreadsheet',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'applicants',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model4',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "name": "tanay",\n  "email" : "user@example.com",\n  "score": 0.8,\n  "shortlist" : "yes",\n  "reason": "Does not meet required number of experience in years",\n  "missing skills": "list of missing skills"\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
 				},
 				position: [3200, 1780],
 				name: 'Shortlist Agent',
@@ -757,6 +1418,60 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.2,
+							config: {
+								parameters: {
+									end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', `The end time for the meeting`, 'string') }}",
+									start:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', `The start time for the meeting`, 'string') }}",
+									calendar: {
+										__rl: true,
+										mode: 'list',
+										value: 'user@example.com',
+										cachedResultName: 'user@example.com',
+									},
+									additionalFields: { location: '=Online' },
+								},
+								credentials: {
+									googleCalendarOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleCalendarOAuth2Api Credential',
+									},
+								},
+								name: 'Google Calendar',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model5',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n	"message" : "meeting has been scheduled from 11am to 11.30 am on 13th june 26 using google calendar.",\n  "link" :"This is the meeting link - hdawodianwdawd.com"\n}',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
+				},
 				position: [4000, 1780],
 				name: 'Book Meeting',
 			},
@@ -834,820 +1549,65 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 				credentials: {
 					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									sendTo:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+									message:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+									options: {},
+									subject:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+									emailType: 'text',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Gmail1',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									options: {},
+									filtersUI: { values: [{ lookupColumn: 'Name' }] },
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=0',
+										cachedResultName: 'rec shortlist sheet',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+										cachedResultName: 'Untitled spreadsheet',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'get mail',
+							},
+						}),
+					],
+				},
 				position: [4980, 1920],
 				name: 'Personalize email',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { model: 'gpt-4.1-nano', options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [5460, -780],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [3260, 600],
-				name: 'OpenAI Chat Model3',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-nano',
-						cachedResultName: 'gpt-4.1-nano',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [5860, -560],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolVectorStore',
-			version: 1.1,
-			config: {
-				parameters: {
-					description: '"toolDescription": " policy document search tool"\n',
-				},
-				position: [5800, -700],
-				name: 'policy_vector_store',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [5660, -320],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
-			version: 1.2,
-			config: {
-				parameters: {
-					options: {},
-					tableName: {
-						__rl: true,
-						mode: 'list',
-						value: 'data',
-						cachedResultName: 'data',
-					},
-				},
-				credentials: {
-					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
-				},
-				position: [5560, -480],
-				name: 'Supabase Vector Store',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-nano',
-						cachedResultName: 'gpt-4.1-nano',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2740, -1240],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
-					message: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
-					options: {
-						ccList: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('CC', ``, 'string') }}",
-						senderName: 'AI HR ',
-					},
-					subject: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-					emailType: 'text',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [3140, -1240],
-				name: 'Gmail',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "name": "tanay",\n  "email" : "user@example.com",\n  "score": 0.8,\n  "shortlist" : "yes",\n  "reason": "Does not meet required number of experience in years",\n  "missing skills": "list of missing skills"\n}',
-				},
-				position: [3700, 2000],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.2,
-			config: {
-				parameters: {
-					end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', `The end time for the meeting`, 'string') }}",
-					start:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', `The start time for the meeting`, 'string') }}",
-					calendar: {
-						__rl: true,
-						mode: 'list',
-						value: 'user@example.com',
-						cachedResultName: 'user@example.com',
-					},
-					additionalFields: { location: '=Online' },
-				},
-				credentials: {
-					googleCalendarOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleCalendarOAuth2Api Credential',
-					},
-				},
-				position: [4160, 2060],
-				name: 'Google Calendar',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [3120, 2000],
-				name: 'OpenAI Chat Model4',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
-					message: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
-					options: {},
-					subject: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-					emailType: 'text',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [5240, 2140],
-				name: 'Gmail1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 1467426312,
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1467426312',
-						cachedResultName: 'jd sheet',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-						cachedResultName: 'Untitled spreadsheet',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [3260, 2120],
-				name: 'JD tool',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [
-							{
-								lookupValue:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values0_Value', ``, 'string') }}",
-								lookupColumn: 'Applying for',
-							},
-						],
-					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 1214220799,
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1214220799',
-						cachedResultName: 'applicants',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-						cachedResultName: 'Untitled spreadsheet',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [3400, 2160],
-				name: 'applicants',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.2,
-			config: {
-				parameters: {
-					source: 'parameter',
-					description: 'call this tool to get downloaded and extracted cv',
-					workflowJson:
-						'={\n  "name": "My workflow 3",\n  "nodes": [\n    {\n      "parameters": {\n        "operation": "download",\n        "fileId": {\n          "__rl": true,\n          "value": "=https://drive.google.com/file/d/1_lAwQBG7BITidr8DPXclZSxWp_2ZPJ3H/view?usp=sharing",\n          "mode": "url"\n        },\n        "options": {}\n      },\n      "id": "9feaa5fc-b85a-41d5-8e37-4c52fd0fddee",\n      "name": "download CV",\n      "type": "n8n-nodes-base.googleDrive",\n      "position": [\n        -1520,\n        160\n      ],\n      "typeVersion": 3,\n      "credentials": {\n        "googleDriveOAuth2Api": {\n          "id": "LQx4eK8lTDnFORcL",\n          "name": "Google Drive account 3"\n        }\n      }\n    },\n    {\n      "parameters": {\n        "operation": "pdf",\n        "options": {}\n      },\n      "id": "18774bfe-6a10-4a3f-a12b-ae374ad9d928",\n      "name": "Extract from File",\n      "type": "n8n-nodes-base.extractFromFile",\n      "position": [\n        -1060,\n        160\n      ],\n      "typeVersion": 1\n    },\n    {\n      "parameters": {\n        "documentId": {\n          "__rl": true,\n          "value": "1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc",\n          "mode": "list",\n          "cachedResultName": "Untitled spreadsheet",\n          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk"\n        },\n        "sheetName": {\n          "__rl": true,\n          "value": 1214220799,\n          "mode": "list",\n          "cachedResultName": "applicants",\n          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1214220799"\n        },\n        "options": {}\n      },\n      "type": "n8n-nodes-base.googleSheets",\n      "typeVersion": 4.6,\n      "position": [\n        -1800,\n        160\n      ],\n      "id": "88198974-6f9a-4a4c-a400-1efe61634584",\n      "name": "Google Sheets",\n      "credentials": {\n        "googleSheetsOAuth2Api": {\n          "id": "U3oQStbFsePTfOCg",\n          "name": "Google Sheets account 3"\n        }\n      }\n    },\n    {\n      "parameters": {},\n      "type": "n8n-nodes-base.manualTrigger",\n      "typeVersion": 1,\n      "position": [\n        -2040,\n        160\n      ],\n      "id": "444d8fb5-f167-4228-8870-cc8c6ee5d2e7",\n      "name": "When clicking ‘Execute workflow’"\n    }\n  ],\n  "pinData": {},\n  "connections": {\n    "download CV": {\n      "main": [\n        [\n          {\n            "node": "Extract from File",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    },\n    "Extract from File": {\n      "main": [\n        []\n      ]\n    },\n    "Google Sheets": {\n      "main": [\n        [\n          {\n            "node": "download CV",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    },\n    "When clicking ‘Execute workflow’": {\n      "main": [\n        [\n          {\n            "node": "Google Sheets",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    }\n  },\n  "active": false,\n  "settings": {\n    "executionOrder": "v1"\n  },\n  "versionId": "b83a5fe1-8ad2-48cc-8d2a-778c0131c618",\n  "meta": {\n    "templateCredsSetupCompleted": true,\n    "instanceId": "60ec675227f8b8ddf9f06a67b49cab3340ac72df709fd0ce0a5249b51b99f4fe"\n  },\n  "id": "ljyzZaJUlYFCG9go",\n  "tags": [\n    {\n      "createdAt": "2025-06-06T05:05:58.931Z",\n      "updatedAt": "2025-06-06T05:05:58.931Z",\n      "id": "cGamkQygZH77eaiZ",\n      "name": "AI Assistant"\n    }\n  ]\n}',
-				},
-				position: [3480, 2060],
-				name: 'n8n',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [3980, 2020],
-				name: 'OpenAI Chat Model5',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n	"message" : "meeting has been scheduled from 11am to 11.30 am on 13th june 26 using google calendar.",\n  "link" :"This is the meeting link - hdawodianwdawd.com"\n}',
-				},
-				position: [4280, 2000],
-				name: 'Structured Output Parser1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [3220, 1320],
-				name: 'OpenAI Chat Model6',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
-					message: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
-					options: {},
-					subject: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-					emailType: 'text',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [3520, 1320],
-				name: 'Gmail2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 1608741360,
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1608741360',
-						cachedResultName: 'leaves',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-						cachedResultName: 'Untitled spreadsheet',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [3380, 1360],
-				name: 'dept head email',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [140, 200],
-				name: 'OpenAI Chat Model7',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample: '{\n	"message" : "Exit time updated: 18:10, 11-06-202"\n}',
-				},
-				position: [3620, 580],
-				name: 'Structured Output Parser2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [
-							{
-								lookupValue:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values0_Value', ``, 'string') }}",
-								lookupColumn: 'Name',
-							},
-							{
-								lookupValue:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values1_Value', ``, 'string') }}",
-								lookupColumn: 'Entry Time',
-							},
-						],
-					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=0',
-						cachedResultName: 'rec shortlist sheet',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-						cachedResultName: 'Untitled spreadsheet',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [3480, 600],
-				name: 'getrows',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							Name: '={{ $json.contacts[0].profile.name }}',
-							'Exit Time':
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Exit_Time', ``, 'string') }}",
-							'Entry Time':
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Entry_Time', ``, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'Name',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Entry Time',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Entry Time',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Exit Time',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Exit Time',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['Name'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=0',
-						cachedResultName: 'rec shortlist sheet',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-						cachedResultName: 'Untitled spreadsheet',
-					},
-					descriptionType: 'manual',
-					toolDescription: 'Append or update row in sheet in Google Sheets',
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [3400, 680],
-				name: 'putrows',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					columns: {
-						value: { name: '={{ $json.contacts[0].profile.name }}' },
-						schema: [
-							{
-								id: 'name',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'email',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'email',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'department head  email',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'department head  email',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'available leaves',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'available leaves',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'last leave ',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'last leave ',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'attendance ',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'attendance ',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'department',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'department',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['name'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 1608741360,
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1608741360',
-						cachedResultName: 'leaves',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-						cachedResultName: 'Untitled spreadsheet',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [3020, -1240],
-				name: 'update leaves',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 1608741360,
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1608741360',
-						cachedResultName: 'leaves',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-						cachedResultName: 'Untitled spreadsheet',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [2900, -1240],
-				name: 'get leaves',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=0',
-						cachedResultName: 'rec shortlist sheet',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-						cachedResultName: 'Untitled spreadsheet',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [6040, -840],
-				name: 'read sheets',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: { values: [{ lookupColumn: 'Name' }] },
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=0',
-						cachedResultName: 'rec shortlist sheet',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-						cachedResultName: 'Untitled spreadsheet',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [5100, 2160],
-				name: 'get mail',
 			},
 		}),
 	)

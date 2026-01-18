@@ -1,5 +1,6 @@
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
+import { languageModel, memory, tool } from '../subnode-builders';
 
 describe('Workflow Builder', () => {
 	describe('workflow()', () => {
@@ -259,17 +260,17 @@ describe('Workflow Builder', () => {
 
 	describe('AI nodes with subnodes', () => {
 		it('should include subnodes in exported JSON', () => {
-			const modelNode = node({
+			const modelNode = languageModel({
 				type: 'n8n-nodes-langchain.lmChatOpenAi',
 				version: 1,
 				config: { parameters: { model: 'gpt-4' } },
 			});
-			const memoryNode = node({
+			const memoryNode = memory({
 				type: 'n8n-nodes-langchain.memoryBufferWindow',
 				version: 1,
 				config: { parameters: { windowSize: 5 } },
 			});
-			const toolNode = node({
+			const toolNode = tool({
 				type: 'n8n-nodes-langchain.toolCalculator',
 				version: 1,
 				config: {},
@@ -311,7 +312,7 @@ describe('Workflow Builder', () => {
 		});
 
 		it('should create AI connections for subnodes', () => {
-			const modelNode = node({
+			const modelNode = languageModel({
 				type: 'n8n-nodes-langchain.lmChatOpenAi',
 				version: 1,
 				config: { parameters: { model: 'gpt-4' } },

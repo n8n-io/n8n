@@ -30,6 +30,19 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOllama',
+						version: 1,
+						config: {
+							parameters: { model: 'llama3.2-16000:latest', options: {} },
+							credentials: {
+								ollamaApi: { id: 'credential-id', name: 'ollamaApi Credential' },
+							},
+							name: 'Generate Reply with AI',
+						},
+					}),
+				},
 				position: [-180, -240],
 				name: 'Extract Customer Query',
 			},
@@ -141,20 +154,6 @@ const wf = workflow(
 				},
 				position: [636, -140],
 				name: 'Send Reply to Customer',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOllama',
-			version: 1,
-			config: {
-				parameters: { model: 'llama3.2-16000:latest', options: {} },
-				credentials: {
-					ollamaApi: { id: 'credential-id', name: 'ollamaApi Credential' },
-				},
-				position: [-92, -20],
-				name: 'Generate Reply with AI',
 			},
 		}),
 	)

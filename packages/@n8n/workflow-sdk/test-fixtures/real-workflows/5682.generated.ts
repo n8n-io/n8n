@@ -141,7 +141,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.splitOut',
@@ -173,6 +172,39 @@ const wf = workflow(
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { name: 'Simple Memory' },
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "object",\n  "properties": {\n    "data": {\n      "type": "object",\n      "properties": {\n        "ai_name": {\n          "type": "string",\n          "description": "The name of the AI Agent."\n        },\n        "ai_status": {\n          "type": "string",\n          "description": "The current state of the AI Agent. Can be their tone, their psyche, a hardware status, an emotional state or others related to the idea of status."\n        },\n        "ai_targets": {\n          "type": "string",\n          "description": "Who are they debating. Can be just the input itself, other AI Agents in the debate, the current state of the inputs...can be one to more targets at once."\n        },\n        "reply": {\n          "type": "string",\n          "description": "The AI agent reply to the text, considering their given attributes."\n        },\n        "cause_for_reply": {\n          "type": "string",\n          "description": "The AI agent motivation for their reply to the text, considering their given attributes."\n        }\n      },\n      "required": ["ai_name", "ai_status", "ai_targets", "reply", "cause_for_reply"],\n      "additionalProperties": false\n  }\n  },\n  "required": ["data"],\n  "additionalProperties": false\n}',
+							},
+							name: 'JSON Output Parser',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						version: 1,
+						config: {
+							parameters: {
+								model: 'mistral-small-latest',
+								options: { safeMode: true, maxRetries: 2 },
+							},
+							credentials: {
+								mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
+							},
+							name: 'Mistral Cloud Chat Model',
+						},
+					}),
 				},
 				position: [1740, 380],
 				name: 'Debate Actor Abstraction',
@@ -207,7 +239,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.aggregate',
@@ -232,6 +263,46 @@ const wf = workflow(
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey:
+									"={{ $('Configure Workflow Args').item.json.constants.ai_environment.sessionId }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory 2',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "object",\n  "properties": {\n    "data": {\n        "type": "object",\n        "properties": {\n          "round_result": {\n			"type": "string",\n            "description": "The result of the round."\n          },\n          "round_summary": {\n			"type": "string",\n            "description": "The resume of the round, keeping the input from every agent while making the text as short as possible."\n          },\n          "rewritten_input": {\n			"type": "string",\n            "description": "A rewritten input, following the results of the round. Keep it as short as possible."\n          }\n        },\n        "required": ["round_result", "round_summary", "optimized_input"],\n        "additionalProperties": false\n      }\n  },\n  "required": ["data"],\n  "additionalProperties": false\n}',
+							},
+							name: 'JSON Output Parser 2',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						version: 1,
+						config: {
+							parameters: {
+								model: 'mistral-small-latest',
+								options: { safeMode: true, maxRetries: 2 },
+							},
+							credentials: {
+								mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
+							},
+							name: 'Mistral Cloud Chat Model 2',
+						},
+					}),
 				},
 				position: [3220, -60],
 				name: 'Debate Environment',
@@ -340,92 +411,6 @@ const wf = workflow(
 				credentials: { imap: { id: 'credential-id', name: 'imap Credential' } },
 				position: [-280, 580],
 				name: 'Email Trigger (IMAP)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
-			version: 1,
-			config: {
-				parameters: {
-					model: 'mistral-small-latest',
-					options: { safeMode: true, maxRetries: 2 },
-				},
-				credentials: {
-					mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
-				},
-				position: [1620, 740],
-				name: 'Mistral Cloud Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: { position: [1820, 580], name: 'Simple Memory' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "object",\n  "properties": {\n    "data": {\n      "type": "object",\n      "properties": {\n        "ai_name": {\n          "type": "string",\n          "description": "The name of the AI Agent."\n        },\n        "ai_status": {\n          "type": "string",\n          "description": "The current state of the AI Agent. Can be their tone, their psyche, a hardware status, an emotional state or others related to the idea of status."\n        },\n        "ai_targets": {\n          "type": "string",\n          "description": "Who are they debating. Can be just the input itself, other AI Agents in the debate, the current state of the inputs...can be one to more targets at once."\n        },\n        "reply": {\n          "type": "string",\n          "description": "The AI agent reply to the text, considering their given attributes."\n        },\n        "cause_for_reply": {\n          "type": "string",\n          "description": "The AI agent motivation for their reply to the text, considering their given attributes."\n        }\n      },\n      "required": ["ai_name", "ai_status", "ai_targets", "reply", "cause_for_reply"],\n      "additionalProperties": false\n  }\n  },\n  "required": ["data"],\n  "additionalProperties": false\n}',
-				},
-				position: [1980, 580],
-				name: 'JSON Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
-			version: 1,
-			config: {
-				parameters: {
-					model: 'mistral-small-latest',
-					options: { safeMode: true, maxRetries: 2 },
-				},
-				credentials: {
-					mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
-				},
-				position: [3160, 180],
-				name: 'Mistral Cloud Chat Model 2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "object",\n  "properties": {\n    "data": {\n        "type": "object",\n        "properties": {\n          "round_result": {\n			"type": "string",\n            "description": "The result of the round."\n          },\n          "round_summary": {\n			"type": "string",\n            "description": "The resume of the round, keeping the input from every agent while making the text as short as possible."\n          },\n          "rewritten_input": {\n			"type": "string",\n            "description": "A rewritten input, following the results of the round. Keep it as short as possible."\n          }\n        },\n        "required": ["round_result", "round_summary", "optimized_input"],\n        "additionalProperties": false\n      }\n  },\n  "required": ["data"],\n  "additionalProperties": false\n}',
-				},
-				position: [3420, 180],
-				name: 'JSON Output Parser 2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey:
-						"={{ $('Configure Workflow Args').item.json.constants.ai_environment.sessionId }}",
-					sessionIdType: 'customKey',
-				},
-				position: [3280, 220],
-				name: 'Simple Memory 2',
 			},
 		}),
 	)

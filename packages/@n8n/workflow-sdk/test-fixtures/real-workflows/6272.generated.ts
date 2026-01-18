@@ -43,7 +43,17 @@ const wf = workflow(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2,
-			config: { position: [288, -16], name: 'AI Agent' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: { name: 'OpenAI Chat Model' },
+					}),
+				},
+				position: [288, -16],
+				name: 'AI Agent',
+			},
 		}),
 	)
 	.then(
@@ -73,13 +83,6 @@ const wf = workflow(
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
 			config: { position: [-336, 320], name: 'Get Twitter Trends' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: { position: [288, 192], name: 'OpenAI Chat Model' },
 		}),
 	)
 	.add(sticky('', { position: [-832, -208] }))

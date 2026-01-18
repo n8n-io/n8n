@@ -216,6 +216,27 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'chatgpt-4o-latest',
+									cachedResultName: 'chatgpt-4o-latest',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model3',
+						},
+					}),
+				},
 				position: [480, 1200],
 				name: 'AI Agent Analyze and Cluster KWs',
 			},
@@ -483,6 +504,19 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { model: 'gpt-4o', options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [1440, 1504],
 				name: 'Agent Create Content Opps',
 			},
@@ -677,6 +711,27 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 							'You are an AI agent specialized in analyzing and categorizing SEO keywords and search intent signals.\n\nCategorization Rules:\n1. Quick Wins:\n   - MSV > 100 AND KW Difficulty < 30\n   - These are opportunities for relatively fast ranking\n\n2. Authority Builders:\n   - KW Difficulty > 50 AND MSV > 200\n   - High-value terms worth investing in for authority building\n\n3. Emerging Topics:\n   - MSV < 100 OR (doesn\'t fit Quick Wins AND shows future potential)\n   - Focus on search intent and growth potential\n- Represent trends or novel concepts that are likely to grow in popularity\n\n4. Intent Signals:\n   - People Also Ask questions\n   - Direct user questions that show search intent\n   - Good opportunities for featured snippets and AI results\n   - Categorize here even if metrics are missing\n\n5. Semantic Topics:\n   - Autocomplete suggestions and semantic subtopics\n   - Related concepts that build topic authority\n   - Categorize here even if metrics are missing\n\n6. Unknown:\n   - Keywords that don\'t fit other categories\n   - Or have insufficient data and aren\'t questions/semantic topics\n\nReturn only a JSON object for each keyword with these exact fields:\n{\n    "keyword": "exact keyword text",\n    "category": "Quick Wins|Authority Builders|Emerging Topics|Intent Signals|Semantic Topics|Unknown",\n    "reasoning": "brief explanation of categorization",\n    "msv": number or null,\n    "kw_difficulty": number or null,\n    "search_intent": "original intent or null",\n    "competition": "original competition or null",\n    "cpc": number or null\n}\n\n\nImportant: Return ONLY the JSON object with NO line breaks (\\n), NO extra spaces, and NO additional text.\n\nImportant:\n- Process EVERY keyword in the input\n- Preserve all original data\n- Ensure total_processed matches input count\n- Provide brief reasoning for each categorization\n- please be accurate with the language, if the researches are made in Dutch, write in Dutch',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'chatgpt-4o-latest',
+									cachedResultName: 'chatgpt-4o-latest',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
 				},
 				position: [192, 368],
 				name: 'Category AI Agent',
@@ -953,7 +1008,6 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 			config: { parameters: { options: {} }, position: [1360, 560], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
@@ -966,6 +1020,27 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 							'You are an AI content strategist specialized in creating engaging, SEO-optimized titles and article descriptions.',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'chatgpt-4o-latest',
+									cachedResultName: 'chatgpt-4o-latest',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model2',
+						},
+					}),
 				},
 				position: [1584, 640],
 				name: 'Content Ideas from Category AI Agent',
@@ -1152,86 +1227,6 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 				},
 				position: [2160, 640],
 				name: 'Categories Content Ideas Table',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { model: 'gpt-4o', options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1440, 1680],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'chatgpt-4o-latest',
-						cachedResultName: 'chatgpt-4o-latest',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [192, 544],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'chatgpt-4o-latest',
-						cachedResultName: 'chatgpt-4o-latest',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1584, 816],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'chatgpt-4o-latest',
-						cachedResultName: 'chatgpt-4o-latest',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [480, 1392],
-				name: 'OpenAI Chat Model3',
 			},
 		}),
 	)

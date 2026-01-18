@@ -51,7 +51,6 @@ const wf = workflow('P2I09TDwHXkMSQ7Q', 'Automated AI Music Generation with Elev
 			config: { parameters: { options: {} }, position: [-192, 192], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',

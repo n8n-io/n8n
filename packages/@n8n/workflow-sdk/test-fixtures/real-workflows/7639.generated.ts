@@ -18,64 +18,60 @@ const wf = workflow('', '')
 					},
 					hasOutputParser: true,
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { name: 'Memory' },
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.7,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 365710158,
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1UDWt0-Z9fHqwnSNfU3vvhSoYCFG6EG3E-ZewJC_CLq4/edit#gid=365710158',
+										cachedResultName: 'Data',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1UDWt0-Z9fHqwnSNfU3vvhSoYCFG6EG3E-ZewJC_CLq4',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1UDWt0-Z9fHqwnSNfU3vvhSoYCFG6EG3E-ZewJC_CLq4/edit?usp=drivesdk',
+										cachedResultName: 'Sample Marketing Data - n8n',
+									},
+								},
+								name: 'Analyze Data',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1-nano',
+									cachedResultName: 'gpt-4.1-nano',
+								},
+								options: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [704, 688],
 				name: 'Talk to Your Data',
 			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.7,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 365710158,
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1UDWt0-Z9fHqwnSNfU3vvhSoYCFG6EG3E-ZewJC_CLq4/edit#gid=365710158',
-						cachedResultName: 'Data',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1UDWt0-Z9fHqwnSNfU3vvhSoYCFG6EG3E-ZewJC_CLq4',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1UDWt0-Z9fHqwnSNfU3vvhSoYCFG6EG3E-ZewJC_CLq4/edit?usp=drivesdk',
-						cachedResultName: 'Sample Marketing Data - n8n',
-					},
-				},
-				position: [784, 1328],
-				name: 'Analyze Data',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-nano',
-						cachedResultName: 'gpt-4.1-nano',
-					},
-					options: {},
-				},
-				position: [224, 1312],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: { position: [736, 880], name: 'Memory' },
 		}),
 	)
 	.add(

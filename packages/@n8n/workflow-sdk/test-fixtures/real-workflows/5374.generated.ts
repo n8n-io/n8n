@@ -91,6 +91,27 @@ const wf = workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', 
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-3-5-haiku-20241022',
+									cachedResultName: 'Claude Haiku 3.5',
+								},
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Haiku ',
+						},
+					}),
+				},
 				position: [100, 160],
 				name: 'Page structure analiser',
 			},
@@ -106,6 +127,92 @@ const wf = workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', 
 					options: {},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.webflowTool',
+							version: 2,
+							config: {
+								parameters: {
+									siteId: '648717e882e5860a12ab9d1c',
+									operation: 'getAll',
+									collectionId: '64b1bae9c2d06f1241365376',
+									descriptionType: 'manual',
+									toolDescription:
+										'Get URLs of current related articles on productai.photo so they can be used ad internal links.',
+								},
+								credentials: {
+									webflowOAuth2Api: { id: 'credential-id', name: 'webflowOAuth2Api Credential' },
+								},
+								name: 'Get Articles',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-sonnet-4-20250514',
+									cachedResultName: 'Claude Sonnet 4',
+								},
+								options: { thinking: false, maxTokensToSample: 4096 },
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Thinking Claude',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
+						version: 1,
+						config: {
+							parameters: {
+								options: {
+									prompt:
+										'Instructions:\n--------------\nOutput the format as:\n{\n"article": "long article text",\n"summary": "summary of article"\n}\n\n--------------\nCompletion:\n--------------\nAll attibutes are full field is {{completed}}\n\n--------------\n\nAbove, the Completion did not satisfy the constraints given in the Instructions.\nError:\n--------------\n{error}\n--------------\n\nPlease try again. Please only respond with an answer that satisfies the constraints laid out in the Instructions:\n\nWrite the article and give output',
+								},
+							},
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+									version: 1.2,
+									config: {
+										parameters: {
+											model: {
+												__rl: true,
+												mode: 'list',
+												value: 'o4-mini',
+												cachedResultName: 'o4-mini',
+											},
+											options: {},
+										},
+										credentials: {
+											openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+										},
+										name: 'OpenAI Mini model',
+									},
+								}),
+								outputParser: outputParser({
+									type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+									version: 1.2,
+									config: {
+										parameters: {
+											jsonSchemaExample:
+												'{\n"article": "long article text",\n"summary": "summary of article",\n"author": "Marko Balažic"\n}',
+										},
+										name: 'Structured Output Parser1',
+									},
+								}),
+							},
+							name: 'Auto-fixing Output Parser',
+						},
+					}),
 				},
 				position: [540, 100],
 				name: 'Content writer',
@@ -142,7 +249,6 @@ const wf = workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', 
 			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.executeWorkflow',
@@ -244,6 +350,27 @@ const wf = workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', 
 					text: "=You are an expert at generating detailed prompts for AI image generators (like Midjourney or DALL-E) to create eye-catching, clickable thumbnail images.\n\nYour Task:\nGiven the full text of an article, analyze and identify its main topic and tone. Based on your analysis, create a clear, visually descriptive prompt suitable for generating a thumbnail image that will attract viewers and convey the essence of the article.\n\nGuidelines:\n\nHighlight the article’s key theme, main characters or elements, and any emotions you want the image to evoke.\nSuggest specific visuals, colors, moods, and, if suitable, stylish text overlays.\nKeep the prompt concise but rich in visual detail so the resulting image will be engaging and informative.\nAvoid vague terms—be as specific as possible.\nExample Input:\n(Article about the rise of electric vehicles and their impact on the auto industry.)\n\nExample Output:\n\"Create a bold, modern thumbnail depicting a sleek electric car zooming down a futuristic highway with city skyscrapers in the background. Use vibrant blues and greens to symbolize innovation and eco-friendliness. Add stylized lightning bolts and a glowing 'EV Revolution' text overlay. Convey excitement and progress.\"\n\nArticle:\n{{ $('Content writer').item.json.output.article }}",
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'o4-mini',
+									cachedResultName: 'o4-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Mini model',
+						},
+					}),
 				},
 				position: [1420, -340],
 				name: 'Prompt engineer',
@@ -502,58 +629,6 @@ const wf = workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', 
 	)
 	.add(
 		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n"article": "long article text",\n"summary": "summary of article",\n"author": "Marko Balažic"\n}',
-				},
-				position: [1000, 360],
-				name: 'Structured Output Parser1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
-			version: 1,
-			config: {
-				parameters: {
-					options: {
-						prompt:
-							'Instructions:\n--------------\nOutput the format as:\n{\n"article": "long article text",\n"summary": "summary of article"\n}\n\n--------------\nCompletion:\n--------------\nAll attibutes are full field is {{completed}}\n\n--------------\n\nAbove, the Completion did not satisfy the constraints given in the Instructions.\nError:\n--------------\n{error}\n--------------\n\nPlease try again. Please only respond with an answer that satisfies the constraints laid out in the Instructions:\n\nWrite the article and give output',
-					},
-				},
-				position: [960, 180],
-				name: 'Auto-fixing Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'o4-mini',
-						cachedResultName: 'o4-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1160, 360],
-				name: 'OpenAI Mini model',
-			},
-		}),
-	)
-	.add(
-		node({
 			type: 'n8n-nodes-base.slack',
 			version: 2.3,
 			config: {
@@ -574,71 +649,6 @@ const wf = workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', 
 				},
 				position: [1560, 440],
 				name: 'Send error',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-3-5-haiku-20241022',
-						cachedResultName: 'Claude Haiku 3.5',
-					},
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [80, 320],
-				name: 'Haiku ',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-sonnet-4-20250514',
-						cachedResultName: 'Claude Sonnet 4',
-					},
-					options: { thinking: false, maxTokensToSample: 4096 },
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [520, 360],
-				name: 'Thinking Claude',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.webflowTool',
-			version: 2,
-			config: {
-				parameters: {
-					siteId: '648717e882e5860a12ab9d1c',
-					operation: 'getAll',
-					collectionId: '64b1bae9c2d06f1241365376',
-					descriptionType: 'manual',
-					toolDescription:
-						'Get URLs of current related articles on productai.photo so they can be used ad internal links.',
-				},
-				credentials: {
-					webflowOAuth2Api: { id: 'credential-id', name: 'webflowOAuth2Api Credential' },
-				},
-				position: [680, 360],
-				name: 'Get Articles',
 			},
 		}),
 	)

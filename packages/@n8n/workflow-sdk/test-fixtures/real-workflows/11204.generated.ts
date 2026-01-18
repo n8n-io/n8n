@@ -107,6 +107,30 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'LLM: OpenAI Chat',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: { jsonSchemaExample: '{\n	"image_prompt": "string"\n}' },
+							name: 'LLM: Structured Output Parser',
+						},
+					}),
+				},
 				position: [1648, 192],
 				name: 'Generate Image Prompt',
 			},
@@ -196,6 +220,40 @@ const wf = workflow(
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Think' },
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "prompt": "string",\n  "caption": "string",\n  "title": "string", \n  "hashtags": "string"\n}\n',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
 				},
 				position: [1008, 640],
 				name: 'AI Agent: Generate Video Script',
@@ -541,72 +599,6 @@ const wf = workflow(
 				},
 				position: [1872, 1216],
 				name: 'Youtube',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [928, 832],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [1072, 832], name: 'Think' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "prompt": "string",\n  "caption": "string",\n  "title": "string", \n  "hashtags": "string"\n}\n',
-				},
-				position: [1200, 832],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: { jsonSchemaExample: '{\n	"image_prompt": "string"\n}' },
-				position: [1824, 384],
-				name: 'LLM: Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1600, 384],
-				name: 'LLM: OpenAI Chat',
 			},
 		}),
 	)

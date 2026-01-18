@@ -72,7 +72,6 @@ const wf = workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR'
 			config: { parameters: { options: {} }, position: [540, -300], name: 'Loop Over Items1' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -141,6 +140,60 @@ const wf = workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR'
 			version: 1.5,
 			config: {
 				parameters: { options: {} },
+				subnodes: {
+					retriever: retriever({
+						type: '@n8n/n8n-nodes-langchain.retrieverVectorStore',
+						version: 1,
+						config: {
+							subnodes: {
+								vectorStore: vectorStore({
+									type: '@n8n/n8n-nodes-langchain.vectorStoreQdrant',
+									version: 1.1,
+									config: {
+										parameters: {
+											options: {},
+											qdrantCollection: {
+												__rl: true,
+												mode: 'list',
+												value: 'ocr_mistral_test',
+												cachedResultName: 'ocr_mistral_test',
+											},
+										},
+										credentials: {
+											qdrantApi: { id: 'credential-id', name: 'qdrantApi Credential' },
+										},
+										subnodes: {
+											embedding: embedding({
+												type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+												version: 1.2,
+												config: {
+													parameters: { options: {} },
+													credentials: {
+														openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+													},
+													name: 'Embeddings OpenAI1',
+												},
+											}),
+										},
+										name: 'Qdrant Vector Store1',
+									},
+								}),
+							},
+							name: 'Vector Store Retriever',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-1.5-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [-160, 960],
 				name: 'Question and Answer Chain',
 			},
@@ -278,7 +331,6 @@ const wf = workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR'
 			config: { parameters: { options: {} }, position: [1540, 520], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -320,6 +372,37 @@ const wf = workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR'
 				credentials: {
 					qdrantApi: { id: 'credential-id', name: 'qdrantApi Credential' },
 				},
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { options: { stripNewLines: false } },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Embeddings OpenAI',
+						},
+					}),
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterTokenSplitter',
+									version: 1,
+									config: {
+										parameters: { chunkSize: 400, chunkOverlap: 40 },
+										name: 'Token Splitter',
+									},
+								}),
+							},
+							name: 'Default Data Loader',
+						},
+					}),
+				},
 				position: [2380, 540],
 				name: 'Qdrant Vector Store',
 			},
@@ -330,95 +413,6 @@ const wf = workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR'
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
 			config: { position: [2860, 540], name: 'Wait' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { options: { stripNewLines: false } },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2320, 800],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterTokenSplitter',
-			version: 1,
-			config: {
-				parameters: { chunkSize: 400, chunkOverlap: 40 },
-				position: [2560, 940],
-				name: 'Token Splitter',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: { parameters: { options: {} }, position: [2460, 760], name: 'Default Data Loader' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-1.5-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-220, 1160],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-100, 1520],
-				name: 'Embeddings OpenAI1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreQdrant',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {},
-					qdrantCollection: {
-						__rl: true,
-						mode: 'list',
-						value: 'ocr_mistral_test',
-						cachedResultName: 'ocr_mistral_test',
-					},
-				},
-				credentials: {
-					qdrantApi: { id: 'credential-id', name: 'qdrantApi Credential' },
-				},
-				position: [20, 1380],
-				name: 'Qdrant Vector Store1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.retrieverVectorStore',
-			version: 1,
-			config: { position: [0, 1180], name: 'Vector Store Retriever' },
 		}),
 	)
 	.add(
@@ -451,20 +445,6 @@ const wf = workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR'
 	)
 	.add(
 		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash-exp' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [1840, 320],
-				name: 'Google Gemini Chat Model1',
-			},
-		}),
-	)
-	.then(
-		node({
 			type: '@n8n/n8n-nodes-langchain.chainSummarization',
 			version: 2,
 			config: {
@@ -479,6 +459,19 @@ const wf = workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR'
 							},
 						},
 					},
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash-exp' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model1',
+						},
+					}),
 				},
 				position: [1820, 140],
 				name: 'Summarization Chain',

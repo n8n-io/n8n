@@ -55,7 +55,6 @@ const wf = workflow(
 			config: { parameters: { options: {} }, position: [280, 0], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -106,6 +105,19 @@ const wf = workflow(
 					batching: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash-exp' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [980, 20],
 				name: 'Extract Human Readable Data',
 			},
@@ -150,20 +162,6 @@ const wf = workflow(
 				},
 				position: [1500, 20],
 				name: 'Update Google Docs',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash-exp' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [940, 240],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

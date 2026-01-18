@@ -155,6 +155,34 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "=memory_{{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+								sessionIdType: 'customKey',
+								contextWindowLength: 10,
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [160, 1220],
 				name: 'AI Agent1',
 			},
@@ -576,38 +604,6 @@ const wf = workflow(
 				},
 				position: [-260, 360],
 				name: 'Not supported',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [160, 1440],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "=memory_{{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
-					sessionIdType: 'customKey',
-					contextWindowLength: 10,
-				},
-				position: [300, 1440],
-				name: 'Simple Memory',
 			},
 		}),
 	)

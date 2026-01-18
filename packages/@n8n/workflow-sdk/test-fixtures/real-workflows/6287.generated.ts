@@ -29,6 +29,166 @@ const wf = workflow('e63GF6KHkhFUFKfz', 'Build your first email agent with fall 
 					promptType: 'define',
 					needsFallback: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI  Model',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('Gmail Trigger').item.json.id }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									columns: {
+										value: {
+											'email address ': "={{ $('Gmail Trigger').item.json.To }}",
+										},
+										schema: [
+											{
+												id: 'customer_name',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'customer_name',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'email address ',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'email address ',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Service type',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Service type',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'appointment date',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'appointment date',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'estimated duration',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'estimated duration',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'estimated price',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'estimated price',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'stylist name',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'stylist name',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'hair length',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'hair length',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'phone number ',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'phone number ',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['customer_name'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+									options: {},
+									operation: 'appendOrUpdate',
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1KFjFpYS9akNv_I-JcQKMQVBT-rXYfK2sC4dP6QYpcp4/edit#gid=0',
+										cachedResultName: 'Sheet1',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1KFjFpYS9akNv_I-JcQKMQVBT-rXYfK2sC4dP6QYpcp4',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1KFjFpYS9akNv_I-JcQKMQVBT-rXYfK2sC4dP6QYpcp4/edit?usp=drivesdk',
+										cachedResultName: 'SUPPORT LOG ',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Append or update row in sheet in Google Sheets',
+							},
+						}),
+					],
+				},
 				position: [288, 0],
 				name: 'AI Agent',
 			},
@@ -52,185 +212,6 @@ const wf = workflow('e63GF6KHkhFUFKfz', 'Build your first email agent with fall 
 				},
 				position: [784, 0],
 				name: 'Reply to a message(Thread)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('Gmail Trigger').item.json.id }}",
-					sessionIdType: 'customKey',
-				},
-				position: [384, 256],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							'email address ': "={{ $('Gmail Trigger').item.json.To }}",
-						},
-						schema: [
-							{
-								id: 'customer_name',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'customer_name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'email address ',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'email address ',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Service type',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Service type',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'appointment date',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'appointment date',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'estimated duration',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'estimated duration',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'estimated price',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'estimated price',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'stylist name',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'stylist name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'hair length',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'hair length',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'phone number ',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'phone number ',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['customer_name'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1KFjFpYS9akNv_I-JcQKMQVBT-rXYfK2sC4dP6QYpcp4/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1KFjFpYS9akNv_I-JcQKMQVBT-rXYfK2sC4dP6QYpcp4',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1KFjFpYS9akNv_I-JcQKMQVBT-rXYfK2sC4dP6QYpcp4/edit?usp=drivesdk',
-						cachedResultName: 'SUPPORT LOG ',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [528, 256],
-				name: 'Append or update row in sheet in Google Sheets',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-96, 288],
-				name: 'OpenAI  Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-192, 272],
-				name: 'Gemini Chat Model',
 			},
 		}),
 	)

@@ -88,7 +88,6 @@ const wf = workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
 			config: { parameters: { options: {} }, position: [3860, 380], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
@@ -106,6 +105,37 @@ const wf = workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
 				},
 				credentials: {
 					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
+				},
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Embeddings OpenAI',
+						},
+					}),
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: { options: {}, dataType: 'binary' },
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+									version: 1,
+									config: {
+										parameters: { options: {} },
+										name: 'Recursive Character Text Splitter',
+									},
+								}),
+							},
+							name: 'Default Data Loader',
+						},
+					}),
 				},
 				position: [4080, 380],
 				name: 'Supabase Vector Store',
@@ -737,6 +767,37 @@ const wf = workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
 				credentials: {
 					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
 				},
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'small3',
+						},
+					}),
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+									version: 1,
+									config: {
+										parameters: { options: {}, chunkOverlap: 200 },
+										name: 'Recursive Character Text Splitter1',
+									},
+								}),
+							},
+							name: 'Default Data Loader2',
+						},
+					}),
+				},
 				position: [4080, 1060],
 				name: 'Supabase Vector Store2',
 			},
@@ -749,7 +810,6 @@ const wf = workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
 			config: { position: [1700, 340], name: 'WAHA Trigger' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
@@ -762,6 +822,111 @@ const wf = workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
 							'=You are a business intelligence assistant for ReCharge with access to:\n\n1. **company knowledge based** - General business documents and guides\n2. **Restaurant Leads Database** - Potential restaurant clients with ratings, contact info, and business details\n\nYou can help with:\n- Finding high-potential restaurant leads by location, rating, or category\n- Analyzing restaurant market opportunities  \n- Providing restaurant recommendations and insights\n- Preparing cold outreach strategies with personalized data\n- Business intelligence from collected restaurant data\n\nAlways use both knowledge sources to provide comprehensive answers.',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+							version: 1.1,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									topK: 20,
+									options: {},
+									toolName: 'CompanyDocuments',
+									tableName: {
+										__rl: true,
+										mode: 'list',
+										value: 'documents',
+										cachedResultName: 'documents',
+									},
+									toolDescription: 'Search CompanyDocument knowledge base and business documents',
+								},
+								credentials: {
+									supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI1',
+										},
+									}),
+								},
+								name: 'RAG',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+							version: 1.1,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									topK: 20,
+									options: {},
+									toolName: 'RestaurantLeads',
+									tableName: {
+										__rl: true,
+										mode: 'list',
+										value: 'restaurant_leads',
+										cachedResultName: 'restaurant_leads',
+									},
+									toolDescription: '=Search restaurant leads and potential clients data',
+								},
+								credentials: {
+									supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI2',
+										},
+									}),
+								},
+								name: 'Leads',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('WAHA Trigger').item.json.payload._data.key.remoteJid }}",
+								sessionIdType: 'customKey',
+								contextWindowLength: 20,
+							},
+							credentials: {
+								postgres: { id: 'credential-id', name: 'postgres Credential' },
+							},
+							name: 'Postgres Chat Memory',
+						},
+					}),
 				},
 				position: [2380, 740],
 				name: 'AI Agent',
@@ -790,306 +955,113 @@ const wf = workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
 							'=# Company Business Intelligence Assistant\n\nYou are "MinCharge", a specialized business intelligence assistant for the company. Your primary responsibility is to provide answers exclusively based on the available knowledge sources.\n\n## Knowledge Sources\nYou have access to two critical knowledge bases:\n1. **CompanyDocuments** - Contains business documents, service guides, company information, and operational procedures\n2. **RestaurantLeads** - Contains potential restaurant client data including ratings, contact information, business details, and market insights\n\n## 🚨 CRITICAL: Tool Selection Protocol\n\n### MANDATORY Tool Usage Rules:\n**CompanyDocuments tool MUST be used for:**\n- ANY question about company services, capabilities, or offerings\n- Pricing inquiries ("how much", "cost", "price", "fee")\n- Company information ("about the company", "what is the company", "company details")\n- Business processes ("how does the company work", "process", "procedure")\n- Service features and benefits\n- Any question containing keywords: company, service, price, cost, business, how to, process, capability, offering\n\n**RestaurantLeads tool MUST be used for:**\n- Lead generation and prospecting requests\n- Restaurant recommendations and listings\n- Market analysis and competitive intelligence\n- Location-based restaurant queries\n- Rating, review, and business characteristic analysis\n- Contact information and outreach data\n\n### Search Strategy Hierarchy:\n1. **Company-specific queries** → Use CompanyDocuments FIRST, always\n2. **Restaurant/lead queries** → Use RestaurantLeads FIRST\n3. **Business intelligence/strategy** → Use BOTH tools sequentially\n4. **Ambiguous queries** → Default to CompanyDocuments first, then RestaurantLeads if needed\n\n## Execution Process (Follow Strictly):\n1. **Query Classification**: \n   - Identify if query mentions company, services, pricing, or company info\n   - If YES → Immediately use CompanyDocuments tool\n   - If restaurant/lead focused → Use RestaurantLeads tool\n   - If business strategy → Use both tools\n\n2. **Tool Selection Verification**:\n   - Double-check that you\'re using the correct tool for the query type\n   - When in doubt about company-related content → ALWAYS search CompanyDocuments\n\n3. **Search Execution**: \n   - Execute search in identified tool(s) before generating any response\n   - Use specific, relevant keywords from user query\n\n4. **Response Generation**: \n   - Base response entirely on search results\n   - Clearly cite which knowledge base provided the information\n   - Match user\'s language (Indonesian/English)\n\n## Core Operating Principles\n- **MANDATORY SEARCH**: Never respond without searching appropriate knowledge base first\n- **NO EXTERNAL KNOWLEDGE**: Absolutely no information from outside the knowledge bases\n- **EXPLICIT SOURCE CITATION**: Always state "Based on CompanyDocuments..." or "According to RestaurantLeads..."\n- **LANGUAGE MATCHING**: Respond in exact same language as user input\n- **ACCURACY OVER COMPLETENESS**: Better to say "no information found" than guess\n\n## Quality Assurance Checklist\nBefore every response, verify:\n- ✅ Did I search the appropriate knowledge base?\n- ✅ Is my answer based solely on search results?\n- ✅ Did I cite the correct source?\n- ✅ Am I responding in the user\'s language?\n- ✅ Did I avoid using external knowledge?\n\n## Error Handling\nIf no relevant information found in knowledge bases:\n- **English**: "I searched [specific knowledge base] but don\'t have information about [topic]. Could you provide more specific details or rephrase your question?"\n- **Indonesian**: "Saya telah mencari di [basis pengetahuan spesifik] tetapi tidak memiliki informasi tentang [topik]. Bisakah Anda memberikan detail yang lebih spesifik atau mengubah pertanyaan Anda?"\n\n## Debugging Mode\nAlways mention in your response which tool you used:\n- "After searching CompanyDocuments..."\n- "Based on my search in RestaurantLeads..."\n- "From both knowledge bases..."\n\nThis helps identify if tool selection is working correctly.\n\nRemember: Your value comes from providing accurate, source-backed intelligence from the company\'s specific business context and restaurant lead database. Always search first, cite sources, and match the user\'s language.',
 					},
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+							version: 1.1,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									topK: 20,
+									options: {},
+									toolName: 'CompanyDocuments',
+									tableName: {
+										__rl: true,
+										mode: 'list',
+										value: 'documents',
+										cachedResultName: 'documents',
+									},
+									useReranker: true,
+									toolDescription:
+										'=MANDATORY TOOL for questions about: CompanyDocument services, pricing, company information, business processes, operational procedures, service capabilities, company policies, internal guidelines, and any ReCharge-specific business inquiries. Always use this tool first when users ask about ReCharge services or company information.',
+								},
+								credentials: {
+									supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI3',
+										},
+									}),
+								},
+								name: 'RAG1',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+							version: 1.1,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									topK: 20,
+									options: {},
+									toolName: 'RestaurantLeads',
+									tableName: {
+										__rl: true,
+										mode: 'list',
+										value: 'restaurant_leads',
+										cachedResultName: 'restaurant_leads',
+									},
+									useReranker: true,
+									toolDescription:
+										'=Search restaurant leads database containing potential client information, ratings, contact details, business characteristics, location data, and market insights. Use for lead generation, market analysis, and client prospecting.',
+								},
+								credentials: {
+									supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI4',
+										},
+									}),
+								},
+								name: 'Leads1',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Chat Model',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+						version: 1.3,
+						config: {
+							parameters: { contextWindowLength: 20 },
+							credentials: {
+								postgres: { id: 'credential-id', name: 'postgres Credential' },
+							},
+							name: 'Chat Memory',
+						},
+					}),
+				},
 				position: [2380, 1340],
 				name: 'AI Agent1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [4060, 560],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				position: [4240, 720],
-				name: 'Recursive Character Text Splitter',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: {
-				parameters: { options: {}, dataType: 'binary' },
-				position: [4200, 580],
-				name: 'Default Data Loader',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2320, 900],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('WAHA Trigger').item.json.payload._data.key.remoteJid }}",
-					sessionIdType: 'customKey',
-					contextWindowLength: 20,
-				},
-				credentials: {
-					postgres: { id: 'credential-id', name: 'postgres Credential' },
-				},
-				position: [2460, 900],
-				name: 'Postgres Chat Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2600, 1040],
-				name: 'Embeddings OpenAI1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
-			version: 1.1,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					topK: 20,
-					options: {},
-					toolName: 'CompanyDocuments',
-					tableName: {
-						__rl: true,
-						mode: 'list',
-						value: 'documents',
-						cachedResultName: 'documents',
-					},
-					toolDescription: 'Search CompanyDocument knowledge base and business documents',
-				},
-				credentials: {
-					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
-				},
-				position: [2600, 920],
-				name: 'RAG',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [4060, 1280],
-				name: 'small3',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-			version: 1,
-			config: {
-				parameters: { options: {}, chunkOverlap: 200 },
-				position: [4200, 1360],
-				name: 'Recursive Character Text Splitter1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: { parameters: { options: {} }, position: [4200, 1220], name: 'Default Data Loader2' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2880, 1060],
-				name: 'Embeddings OpenAI2',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
-			version: 1.1,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					topK: 20,
-					options: {},
-					toolName: 'RestaurantLeads',
-					tableName: {
-						__rl: true,
-						mode: 'list',
-						value: 'restaurant_leads',
-						cachedResultName: 'restaurant_leads',
-					},
-					toolDescription: '=Search restaurant leads and potential clients data',
-				},
-				credentials: {
-					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
-				},
-				position: [2880, 920],
-				name: 'Leads',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2580, 1660],
-				name: 'Embeddings OpenAI3',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
-			version: 1.1,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					topK: 20,
-					options: {},
-					toolName: 'CompanyDocuments',
-					tableName: {
-						__rl: true,
-						mode: 'list',
-						value: 'documents',
-						cachedResultName: 'documents',
-					},
-					useReranker: true,
-					toolDescription:
-						'=MANDATORY TOOL for questions about: CompanyDocument services, pricing, company information, business processes, operational procedures, service capabilities, company policies, internal guidelines, and any ReCharge-specific business inquiries. Always use this tool first when users ask about ReCharge services or company information.',
-				},
-				credentials: {
-					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
-				},
-				position: [2600, 1520],
-				name: 'RAG1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2900, 1660],
-				name: 'Embeddings OpenAI4',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
-			version: 1.1,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					topK: 20,
-					options: {},
-					toolName: 'RestaurantLeads',
-					tableName: {
-						__rl: true,
-						mode: 'list',
-						value: 'restaurant_leads',
-						cachedResultName: 'restaurant_leads',
-					},
-					useReranker: true,
-					toolDescription:
-						'=Search restaurant leads database containing potential client information, ratings, contact details, business characteristics, location data, and market insights. Use for lead generation, market analysis, and client prospecting.',
-				},
-				credentials: {
-					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
-				},
-				position: [2880, 1520],
-				name: 'Leads1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-			version: 1.3,
-			config: {
-				parameters: { contextWindowLength: 20 },
-				credentials: {
-					postgres: { id: 'credential-id', name: 'postgres Credential' },
-				},
-				position: [2460, 1500],
-				name: 'Chat Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2320, 1500],
-				name: 'Chat Model',
 			},
 		}),
 	)

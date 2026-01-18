@@ -381,6 +381,33 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: {},
+								modelName: 'models/gemini-2.5-pro-preview-06-05',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'[\n  {\n    "ad_id": "XXX",\n    "ad_name": "Insert Ad Name",\n    "total_spend_creative": 490.01,\n    "performance_category": "HELL YES",\n    "justification": "This ad is a \'HELL YES\' performer. With a significant spend of $490.01 driving 93 purchases, its ROAS of 19.82 massively outperforms the benchmark ROAS of 8.5. Furthermore, its Cost Per Purchase of $5.27 is well below the benchmark $7.50, and its 5.26% conversion rate is substantially higher than the benchmark 3.1%. The combination of high volume, exceptional ROAS, and efficiency makes it a clear top driver.",\n    "key_performance_indicators": {\n      "ad_spend": 490.01,\n      "ad_total_purchases": 93,\n      "ad_total_purchase_value": 9709.6,\n      "ad_roas": 19.82,\n      "benchmark_roas": 8.5,\n      "ad_conversion_rate": "5.26%",\n      "benchmark_conversion_rate": "3.1%",\n      "ad_cost_per_purchase": 5.27,\n      "benchmark_cost_per_purchase": 7.50\n    },\n    "recommendation": "Aggressively Scale Budget & Explore New Audiences"\n  }\n]',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [608, 528],
 				name: 'Senior Facebook Ads Media Buyer',
 			},
@@ -808,37 +835,6 @@ const wf = workflow(
 				},
 				position: [-1872, 976],
 				name: 'Getting Long-Term Token1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: {},
-					modelName: 'models/gemini-2.5-pro-preview-06-05',
-				},
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [560, 720],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'[\n  {\n    "ad_id": "XXX",\n    "ad_name": "Insert Ad Name",\n    "total_spend_creative": 490.01,\n    "performance_category": "HELL YES",\n    "justification": "This ad is a \'HELL YES\' performer. With a significant spend of $490.01 driving 93 purchases, its ROAS of 19.82 massively outperforms the benchmark ROAS of 8.5. Furthermore, its Cost Per Purchase of $5.27 is well below the benchmark $7.50, and its 5.26% conversion rate is substantially higher than the benchmark 3.1%. The combination of high volume, exceptional ROAS, and efficiency makes it a clear top driver.",\n    "key_performance_indicators": {\n      "ad_spend": 490.01,\n      "ad_total_purchases": 93,\n      "ad_total_purchase_value": 9709.6,\n      "ad_roas": 19.82,\n      "benchmark_roas": 8.5,\n      "ad_conversion_rate": "5.26%",\n      "benchmark_conversion_rate": "3.1%",\n      "ad_cost_per_purchase": 5.27,\n      "benchmark_cost_per_purchase": 7.50\n    },\n    "recommendation": "Aggressively Scale Budget & Explore New Audiences"\n  }\n]',
-				},
-				position: [752, 720],
-				name: 'Structured Output Parser',
 			},
 		}),
 	)

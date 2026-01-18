@@ -139,6 +139,113 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'AI Model: GPT-4o',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey:
+									"={{ $('Start: Receive Message on Telegram').item.json.message.chat.id }}",
+								sessionIdType: 'customKey',
+								contextWindowLength: 10,
+							},
+							name: 'Memory for Chat Context',
+						},
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.5,
+							config: {
+								parameters: {
+									columns: {
+										value: {
+											Date: '={{ $now.toFormat("dd-MM-yyyy HH:mm") }}',
+											Script:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('______', `Scenario Reels`, 'string') }}",
+											Status: 'Note',
+											Description:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('________', `Description Reels`, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'Script',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Script',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Description',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Description',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Status',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Status',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Date',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Date',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+									options: {},
+									operation: 'append',
+									sheetName: { __rl: true, mode: 'list', value: '' },
+									documentId: { __rl: true, mode: 'id', value: '' },
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Optional: Log Ideas to Google Sheets',
+							},
+						}),
+					],
+				},
 				position: [1232, -180],
 				name: 'Generate Reels Scenario with AI',
 			},
@@ -223,117 +330,6 @@ const wf = workflow(
 				},
 				position: [980, 120],
 				name: 'Send Error Message to Telegram',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1180, 40],
-				name: 'AI Model: GPT-4o',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('Start: Receive Message on Telegram').item.json.message.chat.id }}",
-					sessionIdType: 'customKey',
-					contextWindowLength: 10,
-				},
-				position: [1340, 40],
-				name: 'Memory for Chat Context',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.5,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							Date: '={{ $now.toFormat("dd-MM-yyyy HH:mm") }}',
-							Script:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('______', `Scenario Reels`, 'string') }}",
-							Status: 'Note',
-							Description:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('________', `Description Reels`, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'Script',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Script',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Description',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Description',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Status',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Date',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Date',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'append',
-					sheetName: { __rl: true, mode: 'list', value: '' },
-					documentId: { __rl: true, mode: 'id', value: '' },
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [1500, 40],
-				name: 'Optional: Log Ideas to Google Sheets',
 			},
 		}),
 	)

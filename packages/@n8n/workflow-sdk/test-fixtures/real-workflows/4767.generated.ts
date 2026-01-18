@@ -53,6 +53,39 @@ const wf = workflow('iuPhSS8Dr2Dl7Hbo', 'VEO3 Video Generator TEMPLATE', { execu
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-sonnet-4-20250514',
+									cachedResultName: 'Claude 4 Sonnet',
+								},
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Anthropic Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "object",\n  "properties": {\n    "title": {\n      "type": "string",\n      "description": "Creative, meaningful title for the video - short, concise and matching the content",\n      "minLength": 5,\n      "maxLength": 80\n    },\n    "prompt": {\n      "type": "string",\n      "description": "Detailed VEO3 prompt with Subject, Context, Action, Style, Camera Motion, Composition, Ambiance and Audio elements",\n      "minLength": 50,\n      "maxLength": 2000\n    },\n    "aspect_ratio": {\n      "type": "string",\n      "enum": ["16:9"],\n      "description": "Video aspect ratio - currently only 16:9 Landscape/Cinema supported"\n    },\n    "duration": {\n      "type": "string",\n      "enum": ["8s"],\n      "description": "Video duration in seconds - currently only 8s supported"\n    }\n  },\n  "required": ["title", "prompt", "aspect_ratio", "duration"],\n  "additionalProperties": false\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [-80, 150],
 				name: 'Video Prompt Generator',
 			},
@@ -240,43 +273,6 @@ const wf = workflow('iuPhSS8Dr2Dl7Hbo', 'VEO3 Video Generator TEMPLATE', { execu
 				},
 				position: [2056, 150],
 				name: 'Video Output',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-sonnet-4-20250514',
-						cachedResultName: 'Claude 4 Sonnet',
-					},
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [-52, 370],
-				name: 'Anthropic Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "object",\n  "properties": {\n    "title": {\n      "type": "string",\n      "description": "Creative, meaningful title for the video - short, concise and matching the content",\n      "minLength": 5,\n      "maxLength": 80\n    },\n    "prompt": {\n      "type": "string",\n      "description": "Detailed VEO3 prompt with Subject, Context, Action, Style, Camera Motion, Composition, Ambiance and Audio elements",\n      "minLength": 50,\n      "maxLength": 2000\n    },\n    "aspect_ratio": {\n      "type": "string",\n      "enum": ["16:9"],\n      "description": "Video aspect ratio - currently only 16:9 Landscape/Cinema supported"\n    },\n    "duration": {\n      "type": "string",\n      "enum": ["8s"],\n      "description": "Video duration in seconds - currently only 8s supported"\n    }\n  },\n  "required": ["title", "prompt", "aspect_ratio", "duration"],\n  "additionalProperties": false\n}',
-				},
-				position: [68, 370],
-				name: 'Structured Output Parser',
 			},
 		}),
 	)

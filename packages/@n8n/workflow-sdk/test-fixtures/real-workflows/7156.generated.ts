@@ -55,6 +55,30 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model4',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: { jsonSchemaExample: '{\n	"description": "description"\n}' },
+							name: 'Structured Output Parser3',
+						},
+					}),
+				},
 				position: [1232, 608],
 				name: 'Write description',
 			},
@@ -291,34 +315,6 @@ const wf = workflow('', '')
 				},
 				position: [752, 848],
 				name: 'Append Data to google',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1120, 784],
-				name: 'OpenAI Chat Model4',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: { jsonSchemaExample: '{\n	"description": "description"\n}' },
-				position: [1360, 832],
-				name: 'Structured Output Parser3',
 			},
 		}),
 	)

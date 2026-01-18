@@ -80,7 +80,6 @@ const wf = workflow('XVI3nC7HVl7JU6C5', 'Youtube - Get Video Comments', { execut
 			config: { parameters: { options: {} }, position: [-1440, 480], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',

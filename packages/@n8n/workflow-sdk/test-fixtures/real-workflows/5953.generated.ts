@@ -41,6 +41,75 @@ const wf = workflow('P6LeLqxzbkO3FiPE', '10 Track Email Campaign Performance', {
 			version: 2,
 			config: {
 				parameters: { options: {}, promptType: 'define', hasOutputParser: true },
+				subnodes: {
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+									version: 1.2,
+									config: {
+										parameters: {
+											model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+											options: {},
+										},
+										credentials: {
+											openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+										},
+										name: 'OpenAI Chat Model',
+									},
+								}),
+								outputParser: outputParser({
+									type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+									version: 1.2,
+									config: {
+										parameters: {
+											jsonSchemaExample:
+												'{\n  "campaign_name": "Summer Promo Blast",\n  "campaign_id": "123456789",\n  "date_sent": "2025-06-29",\n  "unique_opens": 1230,\n  "total_opens": 1590,\n  "open_rate": 47,\n  "unique_clicks": 530,\n  "total_clicks": 670,\n  "ctr": 20,\n  "soft_bounces": 25,\n  "hard_bounces": 10,\n  "bounce_rate": 1.8,\n  "unsubscribed": 15,\n  "unsubscribe_rate": 0.6\n}\n',
+										},
+										name: 'Structured Output Parser',
+									},
+								}),
+							},
+							name: 'Auto-fixing Output Parser',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: '🧠 LLM: Summarize & Format',
+						},
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-mcp.mcpClientTool',
+							version: 1,
+							config: {
+								parameters: {
+									toolName: 'scrape_as_markdown',
+									operation: 'executeTool',
+									toolParameters:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}",
+								},
+								credentials: {
+									mcpClientApi: { id: 'credential-id', name: 'mcpClientApi Credential' },
+								},
+								name: '🌐 Bright Data MCP: Scrape Report',
+							},
+						}),
+					],
+				},
 				position: [520, 0],
 				name: '🤖 Agent: Scrape & Analyze Campaign Performance',
 			},
@@ -110,84 +179,6 @@ const wf = workflow('P6LeLqxzbkO3FiPE', '10 Track Email Campaign Performance', {
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
 			config: { position: [1340, 100], name: '🚫 Skip — No Action Needed' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [500, 300],
-				name: '🧠 LLM: Summarize & Format',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-mcp.mcpClientTool',
-			version: 1,
-			config: {
-				parameters: {
-					toolName: 'scrape_as_markdown',
-					operation: 'executeTool',
-					toolParameters:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}",
-				},
-				credentials: {
-					mcpClientApi: { id: 'credential-id', name: 'mcpClientApi Credential' },
-				},
-				position: [680, 300],
-				name: '🌐 Bright Data MCP: Scrape Report',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [800, 560],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				position: [840, 300],
-				name: 'Auto-fixing Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "campaign_name": "Summer Promo Blast",\n  "campaign_id": "123456789",\n  "date_sent": "2025-06-29",\n  "unique_opens": 1230,\n  "total_opens": 1590,\n  "open_rate": 47,\n  "unique_clicks": 530,\n  "total_clicks": 670,\n  "ctr": 20,\n  "soft_bounces": 25,\n  "hard_bounces": 10,\n  "bounce_rate": 1.8,\n  "unsubscribed": 15,\n  "unsubscribe_rate": 0.6\n}\n',
-				},
-				position: [980, 560],
-				name: 'Structured Output Parser',
-			},
 		}),
 	)
 	.add(

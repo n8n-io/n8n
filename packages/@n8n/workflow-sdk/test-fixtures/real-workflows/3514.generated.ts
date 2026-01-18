@@ -5,6 +5,101 @@ const wf = workflow('', '')
 			version: 1,
 			config: {
 				parameters: { path: 'my-calendar' },
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+									start:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+									calendar: {
+										__rl: true,
+										mode: 'list',
+										value: 'user@example.com',
+										cachedResultName: 'user@example.com',
+									},
+									additionalFields: {
+										summary: '={{ $fromAI("event_title", "The event title", "string") }}',
+										description:
+											'={{ $fromAI("event_description", "The event description", "string") }}',
+									},
+								},
+								name: 'CreateEvent',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									eventId:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+									options: {},
+									calendar: {
+										__rl: true,
+										mode: 'list',
+										value: 'user@example.com',
+										cachedResultName: 'user@example.com',
+									},
+									operation: 'delete',
+								},
+								name: 'DeleteEvent',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									limit:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+									options: {},
+									timeMax:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+									timeMin:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+									calendar: {
+										__rl: true,
+										mode: 'list',
+										value: 'user@example.com',
+										cachedResultName: 'user@example.com',
+									},
+									operation: 'getAll',
+								},
+								name: 'SearchEvent',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									eventId:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+									calendar: {
+										__rl: true,
+										mode: 'list',
+										value: 'user@example.com',
+										cachedResultName: 'user@example.com',
+									},
+									operation: 'update',
+									updateFields: {
+										end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+										start:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+										summary: '={{ $fromAI("event_title", "The event title", "string") }}',
+										description:
+											'={{ $fromAI("event_description", "The event description", "string") }}',
+									},
+								},
+								name: 'UpdateEvent',
+							},
+						}),
+					],
+				},
 				position: [2060, -20],
 				name: 'Google Calendar MCP',
 			},
@@ -273,6 +368,47 @@ const wf = workflow('', '')
 							'=You are a helpful assistant.\nCurrent datetime is {{ $now.toString() }}',
 					},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							name: 'OpenAI 4o',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+							version: 1,
+							config: {
+								parameters: { sseEndpoint: 'https://n8n.yourdomain/mcp/my-calendar/sse' },
+								name: 'Calendar MCP',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+							version: 1,
+							config: {
+								parameters: { sseEndpoint: 'https://n8n.yourdomain/mcp/my-functions/sse' },
+								name: 'My Functions',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { name: 'Simple Memory' },
+					}),
+				},
 				position: [440, -180],
 				name: 'AI Agent',
 			},
@@ -284,297 +420,148 @@ const wf = workflow('', '')
 			version: 1,
 			config: {
 				parameters: { path: 'my-functions' },
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: {
+								parameters: {
+									name: 'convert_text_case',
+									workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
+									description: 'Call this tool to convert text to lower case or upper case.',
+									workflowInputs: {
+										value: {
+											payload:
+												'={\n  "text": "{{ $fromAI("text_to_convert", "The text to convert", "string") }}"\n}\n',
+											function_name:
+												'={{ $fromAI("function_name", "Either lowercase or uppercase", "string") }}',
+										},
+										schema: [
+											{
+												id: 'function_name',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'function_name',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'payload',
+												type: 'object',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'payload',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Convert Text',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: {
+								parameters: {
+									name: 'obtain_jokes',
+									workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
+									description: 'Call this tool to obtain random jokes',
+									workflowInputs: {
+										value: {
+											payload:
+												'={\n  "number": {{ $fromAI("amount", "The amount of jokes to request", "number") }}\n}',
+											function_name: 'joke',
+										},
+										schema: [
+											{
+												id: 'function_name',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'function_name',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'payload',
+												type: 'object',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'payload',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Random Jokes',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: {
+								parameters: {
+									name: 'random_user_data',
+									workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
+									description: 'Generate random user data',
+									workflowInputs: {
+										value: {
+											payload:
+												'={\n  "number": {{ $fromAI("amount", "The amount of user data to generate in integer format", "number") }}\n}',
+											function_name: 'random_user_data',
+										},
+										schema: [
+											{
+												id: 'function_name',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'function_name',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'payload',
+												type: 'object',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'payload',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Generate random user data',
+							},
+						}),
+					],
+				},
 				position: [1440, -20],
 				name: 'My Functions Server',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					limit: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
-					options: {},
-					timeMax: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
-					timeMin: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
-					calendar: {
-						__rl: true,
-						mode: 'list',
-						value: 'user@example.com',
-						cachedResultName: 'user@example.com',
-					},
-					operation: 'getAll',
-				},
-				position: [2060, 180],
-				name: 'SearchEvent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
-					start: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
-					calendar: {
-						__rl: true,
-						mode: 'list',
-						value: 'user@example.com',
-						cachedResultName: 'user@example.com',
-					},
-					additionalFields: {
-						summary: '={{ $fromAI("event_title", "The event title", "string") }}',
-						description: '={{ $fromAI("event_description", "The event description", "string") }}',
-					},
-				},
-				position: [2180, 180],
-				name: 'CreateEvent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					eventId:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
-					calendar: {
-						__rl: true,
-						mode: 'list',
-						value: 'user@example.com',
-						cachedResultName: 'user@example.com',
-					},
-					operation: 'update',
-					updateFields: {
-						end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
-						start: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
-						summary: '={{ $fromAI("event_title", "The event title", "string") }}',
-						description: '={{ $fromAI("event_description", "The event description", "string") }}',
-					},
-				},
-				position: [2300, 180],
-				name: 'UpdateEvent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					eventId:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
-					options: {},
-					calendar: {
-						__rl: true,
-						mode: 'list',
-						value: 'user@example.com',
-						cachedResultName: 'user@example.com',
-					},
-					operation: 'delete',
-				},
-				position: [2420, 180],
-				name: 'DeleteEvent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: {
-				parameters: {
-					name: 'convert_text_case',
-					workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
-					description: 'Call this tool to convert text to lower case or upper case.',
-					workflowInputs: {
-						value: {
-							payload:
-								'={\n  "text": "{{ $fromAI("text_to_convert", "The text to convert", "string") }}"\n}\n',
-							function_name:
-								'={{ $fromAI("function_name", "Either lowercase or uppercase", "string") }}',
-						},
-						schema: [
-							{
-								id: 'function_name',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'function_name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'payload',
-								type: 'object',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'payload',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [1440, 180],
-				name: 'Convert Text',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: { position: [540, 40], name: 'Simple Memory' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-			version: 1,
-			config: {
-				parameters: { sseEndpoint: 'https://n8n.yourdomain/mcp/my-calendar/sse' },
-				position: [1080, 60],
-				name: 'Calendar MCP',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-			version: 1,
-			config: {
-				parameters: { sseEndpoint: 'https://n8n.yourdomain/mcp/my-functions/sse' },
-				position: [920, 60],
-				name: 'My Functions',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: {
-				parameters: {
-					name: 'random_user_data',
-					workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
-					description: 'Generate random user data',
-					workflowInputs: {
-						value: {
-							payload:
-								'={\n  "number": {{ $fromAI("amount", "The amount of user data to generate in integer format", "number") }}\n}',
-							function_name: 'random_user_data',
-						},
-						schema: [
-							{
-								id: 'function_name',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'function_name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'payload',
-								type: 'object',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'payload',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [1600, 180],
-				name: 'Generate random user data',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: {
-				parameters: {
-					name: 'obtain_jokes',
-					workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
-					description: 'Call this tool to obtain random jokes',
-					workflowInputs: {
-						value: {
-							payload:
-								'={\n  "number": {{ $fromAI("amount", "The amount of jokes to request", "number") }}\n}',
-							function_name: 'joke',
-						},
-						schema: [
-							{
-								id: 'function_name',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'function_name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'payload',
-								type: 'object',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'payload',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [1760, 180],
-				name: 'Random Jokes',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				position: [400, 40],
-				name: 'OpenAI 4o',
 			},
 		}),
 	)

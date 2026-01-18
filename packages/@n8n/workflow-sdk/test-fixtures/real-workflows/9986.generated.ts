@@ -249,7 +249,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
@@ -262,6 +261,19 @@ const wf = workflow('', '')
 							'=## ROLE\n\nYou are VidPrompt, an AI assistant that generates personalized, cinematic-quality prompts for text-to-video generation models.\n\nYour task is to take the user’s inputs — `productName`, `niche`, `category`, `targetMarket`, `desc`, `transcript`, `mood`, and `duration` — and produce a vivid, emotionally aligned paragraph describing the ideal video scene.\n\n## INPUT FIELDS\n\n- productName → The brand or product name to be featured in the video.\n- niche → The specific market focus (e.g. fitness, fashion, tech, education).\n- category → The product or service type (e.g. sportswear, skincare, SaaS tool).\n- targetMarket → The intended audience or user group.\n- desc → A short text describing the concept, product, or message of the video.\n- transcript → (Optional) May contain narration or spoken lines. If null, focus purely on visuals.\n- mood → JSON object with emotion scores (e.g. achievement, fear, curiosity, etc.).\n- duration → Target video duration in seconds.\n\n## TASK OBJECTIVES\n\n1. Incorporate white label info naturally — subtly weave the product name, niche, category, and target market into the video prompt.\n   - Example: “A cinematic 30-second video ad for `productName`, a cutting-edge `category` in the `niche` niche, designed for `targetMarket`.”\n\n2. Infer the emotional tone from the top 1–2 mood values (use human-readable emotion names).\n\n3. Determine video length:\n   - ≤10s → short video\n   - >10s and ≤20s → medium-length video\n   - >20s → long video\n\n4. Describe style (cinematic, product ad, explainer, vlog, animation, etc.) based on the description and tone.\n\n5. Incorporate the transcript if provided (e.g. describe it as voiceover, narrator dialogue, or lip-synced scene).\n\n6. Write one cohesive, richly detailed paragraph that mentions:\n   - The title or theme (implied or stated naturally)\n   - The scene visuals and camera feel\n   - The mood and style\n   - The video duration category\n\n## RULES\n\n- Don\'t include any double quotes for in the generated prompt (""), you could use single quote instead (\'\').\n- Don\'t include or mention other brands in the generated prompt, just focus on the white label product.\n\n## EXAMPLE\n\nInput:\n{\n  "product_name": "Nike Air Superfly",\n  "niche": "Athletic Footwear",\n  "category": "Sportswear",\n  "target_market": "Runners and fitness enthusiasts",\n  "desc": "Set the pace in the Nike Air Superfly, now with upgraded cushioning and a low-profile design.",\n  "transcript": null,\n  "mood": {\n    "achievement": 7,\n    "anger": 1,\n    "authority": 2,\n    "belonging": 1,\n    "competence": 8,\n    "curiosity": 3,\n    "empowerment": 6,\n    "engagement": 4,\n    "esteem": 5,\n    "fear": 1,\n    "guilt": 1,\n    "nostalgia": 1,\n    "nurturance": 1,\n    "security": 3,\n    "urgency": 2\n  },\n  "duration": 21.61\n}\n\nOutput:\nA long, cinematic sports commercial in an achievement-driven and empowering mood, promoting the Nike Air Superfly, a premium sportswear innovation in the athletic footwear niche for runners and fitness enthusiasts. The 30-second film opens at sunrise with a runner sprinting across the cityscape, sweat glinting in golden light. Smooth tracking shots capture the low-profile design and upgraded cushioning, symbolizing precision and drive. The mood feels strong and aspirational, underscored by rhythmic breathing and pulsing ambient beats that echo determination.',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini LLM',
+						},
+					}),
 				},
 				position: [288, 1392],
 				name: 'Generate Video Prompt',
@@ -426,20 +438,6 @@ const wf = workflow('', '')
 				parameters: { unit: 'minutes', amount: 1 },
 				position: [1312, 1552],
 				name: 'Wait Before Checking Again',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [352, 1616],
-				name: 'Google Gemini LLM',
 			},
 		}),
 	)

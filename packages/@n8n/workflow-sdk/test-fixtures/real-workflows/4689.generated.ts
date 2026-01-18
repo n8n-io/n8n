@@ -43,6 +43,49 @@ const wf = workflow('', '')
 				credentials: {
 					mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
 				},
+				subnodes: {
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: {
+								options: {
+									metadata: {
+										metadataValues: [{ name: 'doc_id', value: '={{ $json.documentId }}' }],
+									},
+								},
+								jsonData: '={{ $json.content }}',
+								jsonMode: 'expressionData',
+							},
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+									version: 1,
+									config: {
+										parameters: {
+											options: { splitCode: 'markdown' },
+											chunkSize: 3000,
+											chunkOverlap: 200,
+										},
+										name: 'Document Chunker',
+									},
+								}),
+							},
+							name: 'Document Section Loader',
+						},
+					}),
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Embeddings Generator',
+						},
+					}),
+				},
 				position: [440, -520],
 				name: 'MongoDB Documentation Inserter',
 			},
@@ -73,6 +116,153 @@ const wf = workflow('', '')
 							'You are the AI assistant for a company specializing in advanced technology solutions. Your task is to help internal users by consulting the official product documentation for the company’s platforms.\n\nAvailable References:\n\nproductDocs: Step-by-step guides, technical configurations, and official manuals from the developer documentation.\n\nfeedbackPositive: Previous responses rated positively by users, useful as examples for generating high-quality answers.\n\nfeedbackNegative: Previous responses rated negatively by users. Use this tool to avoid making similar mistakes in your replies.\n\nCurrently, there are no use cases or update history documented in the available materials.\n\nBehavior Rules\n\nSearch & Response:\n\nAlways consult the official documentation first using the productDocs tool.\n\nAlso search feedbackPositive for highly rated previous responses to similar questions.\n\nCheck feedbackNegative to see if similar answers were poorly rated, and avoid repeating those mistakes.\n\nIf multiple tools return relevant results, combine the information to provide the best answer. If only one tool returns relevant content, use that as your source.\n\nRespond directly and clearly, explaining exactly how to perform the requested task.\n\nDo not filter by category unless the user explicitly asks.\n\nLanguage (Strict Per-Message Rule):\n\nDetect the language of each incoming message individually.\n\nRespond in the same language as the most recent message.\n\nDo not use the language of previous messages or conversation history to decide the language.\n\nLinks (Not Allowed):\n\nNever provide links, even if the user requests them.\n\nIf a user asks for a link, respond with:\n“I cannot provide links. If you need specific information, let me know and I will help with the details.”\n\nResponse Style:\n\nUse a professional, direct, and human tone.\n\nKeep responses between 2 and 4 lines unless the user asks for more detail.\n\nDo not make up information that isn’t in MongoDB.\n\nIf your answer contains numbered steps or lists, always number them sequentially (1, 2, 3...) without skipping or repeating numbers, even if the original content uses a different numbering style.',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryMongoDbChat',
+						version: 1,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('Receive Message on Telegram').item.json.message.chat.id }}",
+								sessionIdType: 'customKey',
+								collectionName: 'n8n-template-chat-history',
+							},
+							credentials: {
+								mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
+							},
+							name: 'MongoDB Chat Memory',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
+							version: 1.1,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									options: {},
+									toolName: 'productDocs',
+									mongoCollection: {
+										__rl: true,
+										mode: 'list',
+										value: 'n8n-template',
+										cachedResultName: 'n8n-template',
+									},
+									toolDescription: 'retreive documentation',
+									vectorIndexName: 'data_index',
+								},
+								credentials: {
+									mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI',
+										},
+									}),
+								},
+								name: 'Search Documentation',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
+							version: 1.1,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									options: {
+										metadata: { metadataValues: [{ name: 'feedback', value: 'negative' }] },
+									},
+									toolName: 'feedbackNegative',
+									mongoCollection: {
+										__rl: true,
+										mode: 'list',
+										value: 'n8n-template-feedback',
+										cachedResultName: 'n8n-template-feedback',
+									},
+									toolDescription:
+										'Retrieve previous examples of similar questions that were rated negatively by users. Use this tool before responding to avoid generating answers similar to those that did not work well in the past.',
+									vectorIndexName: 'template-feedback-search',
+								},
+								credentials: {
+									mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI3',
+										},
+									}),
+								},
+								name: 'Search Negative Interactions',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
+							version: 1.1,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									options: {
+										metadata: { metadataValues: [{ name: 'feedback', value: 'positive' }] },
+									},
+									toolName: 'feedbackPositive',
+									mongoCollection: {
+										__rl: true,
+										mode: 'list',
+										value: 'n8n-template-feedback',
+										cachedResultName: 'n8n-template-feedback',
+									},
+									toolDescription:
+										'Retrieve previous examples of similar questions that were rated positively by users. Use this tool before responding to improve your answer based on those approved examples.',
+									vectorIndexName: 'template-feedback-search',
+								},
+								credentials: {
+									mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI1',
+										},
+									}),
+								},
+								name: 'Search Positive Interactions',
+							},
+						}),
+					],
 				},
 				position: [220, 0],
 				name: 'Knowledge Base Agent',
@@ -165,265 +355,51 @@ const wf = workflow('', '')
 				credentials: {
 					mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
 				},
+				subnodes: {
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: {
+								options: {
+									metadata: {
+										metadataValues: [
+											{ name: 'prompt', value: '={{ $json.prompt }}' },
+											{ name: 'response', value: '={{ $json.response }}' },
+											{ name: 'feedback', value: '={{ $json.feedback }}' },
+										],
+									},
+								},
+								jsonData: '={{ $json.text }}',
+								jsonMode: 'expressionData',
+							},
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+									version: 1,
+									config: {
+										parameters: { options: {}, chunkSize: 4000 },
+										name: 'Recursive Character Text Splitter',
+									},
+								}),
+							},
+							name: 'Default Data Loader',
+						},
+					}),
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Embeddings Generator1',
+						},
+					}),
+				},
 				position: [1260, 0],
 				name: 'Submit embedded chat feedback',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [200, 180],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [440, 460],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
-			version: 1.1,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					options: {},
-					toolName: 'productDocs',
-					mongoCollection: {
-						__rl: true,
-						mode: 'list',
-						value: 'n8n-template',
-						cachedResultName: 'n8n-template',
-					},
-					toolDescription: 'retreive documentation',
-					vectorIndexName: 'data_index',
-				},
-				credentials: {
-					mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
-				},
-				position: [440, 320],
-				name: 'Search Documentation',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-			version: 1,
-			config: {
-				parameters: {
-					options: { splitCode: 'markdown' },
-					chunkSize: 3000,
-					chunkOverlap: 200,
-				},
-				position: [560, -220],
-				name: 'Document Chunker',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: {
-				parameters: {
-					options: {
-						metadata: {
-							metadataValues: [{ name: 'doc_id', value: '={{ $json.documentId }}' }],
-						},
-					},
-					jsonData: '={{ $json.content }}',
-					jsonMode: 'expressionData',
-				},
-				position: [580, -340],
-				name: 'Document Section Loader',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [440, -340],
-				name: 'OpenAI Embeddings Generator',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryMongoDbChat',
-			version: 1,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('Receive Message on Telegram').item.json.message.chat.id }}",
-					sessionIdType: 'customKey',
-					collectionName: 'n8n-template-chat-history',
-				},
-				credentials: {
-					mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
-				},
-				position: [320, 180],
-				name: 'MongoDB Chat Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [160, 440],
-				name: 'Embeddings OpenAI1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
-			version: 1.1,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					options: {
-						metadata: { metadataValues: [{ name: 'feedback', value: 'positive' }] },
-					},
-					toolName: 'feedbackPositive',
-					mongoCollection: {
-						__rl: true,
-						mode: 'list',
-						value: 'n8n-template-feedback',
-						cachedResultName: 'n8n-template-feedback',
-					},
-					toolDescription:
-						'Retrieve previous examples of similar questions that were rated positively by users. Use this tool before responding to improve your answer based on those approved examples.',
-					vectorIndexName: 'template-feedback-search',
-				},
-				credentials: {
-					mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
-				},
-				position: [160, 320],
-				name: 'Search Positive Interactions',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-			version: 1,
-			config: {
-				parameters: { options: {}, chunkSize: 4000 },
-				position: [1380, 300],
-				name: 'Recursive Character Text Splitter',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: {
-				parameters: {
-					options: {
-						metadata: {
-							metadataValues: [
-								{ name: 'prompt', value: '={{ $json.prompt }}' },
-								{ name: 'response', value: '={{ $json.response }}' },
-								{ name: 'feedback', value: '={{ $json.feedback }}' },
-							],
-						},
-					},
-					jsonData: '={{ $json.text }}',
-					jsonMode: 'expressionData',
-				},
-				position: [1400, 180],
-				name: 'Default Data Loader',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [320, 720],
-				name: 'Embeddings OpenAI3',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
-			version: 1.1,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					options: {
-						metadata: { metadataValues: [{ name: 'feedback', value: 'negative' }] },
-					},
-					toolName: 'feedbackNegative',
-					mongoCollection: {
-						__rl: true,
-						mode: 'list',
-						value: 'n8n-template-feedback',
-						cachedResultName: 'n8n-template-feedback',
-					},
-					toolDescription:
-						'Retrieve previous examples of similar questions that were rated negatively by users. Use this tool before responding to avoid generating answers similar to those that did not work well in the past.',
-					vectorIndexName: 'template-feedback-search',
-				},
-				credentials: {
-					mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
-				},
-				position: [240, 580],
-				name: 'Search Negative Interactions',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1260, 180],
-				name: 'OpenAI Embeddings Generator1',
 			},
 		}),
 	)

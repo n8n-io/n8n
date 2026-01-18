@@ -78,7 +78,6 @@ const wf = workflow('', '')
 			config: { parameters: { options: {} }, position: [-580, -40], name: 'Loop Over Items1' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
@@ -88,6 +87,39 @@ const wf = workflow('', '')
 					text: "=You are an expert business analyst. Your task is to research the company: {{ $json.Perusahaan }}.\n\nYour output must be a comprehensive description that identifies the company's name, its core business, and potential opportunities for improving efficiency and effectiveness by implementing AI solutions.\n\nUse the 'Search Internet' tool to gather the latest information.\n\nStrictly base your analysis on the data found through the internet search. Do not hallucinate or invent information.\n\nYour final output must be only the text description. Do not include any introductory sentences or greetings.",
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGroq',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								groqApi: { id: 'credential-id', name: 'groqApi Credential' },
+							},
+							name: 'Groq Chat Model1',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@tavily/n8n-nodes-tavily.tavilyTool',
+							version: 1,
+							config: {
+								parameters: {
+									query:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
+									options: {},
+									descriptionType: 'manual',
+									toolDescription:
+										'Get latest news/description on topic that user want to reseaarch',
+								},
+								credentials: {
+									tavilyApi: { id: 'credential-id', name: 'tavilyApi Credential' },
+								},
+								name: 'Search Internet1',
+							},
+						}),
+					],
 				},
 				position: [-360, -40],
 				name: 'Company Research1',
@@ -547,6 +579,50 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGroq',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								groqApi: { id: 'credential-id', name: 'groqApi Credential' },
+							},
+							name: 'Groq Chat Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@tavily/n8n-nodes-tavily.tavilyTool',
+							version: 1,
+							config: {
+								parameters: {
+									query:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
+									options: {},
+									descriptionType: 'manual',
+									toolDescription:
+										'Get latest news/description on topic that user want to reseaarch',
+								},
+								credentials: {
+									tavilyApi: { id: 'credential-id', name: 'tavilyApi Credential' },
+								},
+								name: 'Search Internet2',
+							},
+						}),
+					],
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n    "emailSubject":"Subject email ",\n    "emailBody": "body email lengkap"\n}',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
+				},
 				position: [-180, 540],
 				name: 'AI Sales Assistant',
 			},
@@ -912,86 +988,6 @@ const wf = workflow('', '')
 				},
 				position: [480, 540],
 				name: 'inputLink',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@tavily/n8n-nodes-tavily.tavilyTool',
-			version: 1,
-			config: {
-				parameters: {
-					query: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
-					options: {},
-					descriptionType: 'manual',
-					toolDescription: 'Get latest news/description on topic that user want to reseaarch',
-				},
-				credentials: {
-					tavilyApi: { id: 'credential-id', name: 'tavilyApi Credential' },
-				},
-				position: [560, 0],
-				name: 'Search Internet1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGroq',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					groqApi: { id: 'credential-id', name: 'groqApi Credential' },
-				},
-				position: [400, 60],
-				name: 'Groq Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n    "emailSubject":"Subject email ",\n    "emailBody": "body email lengkap"\n}',
-				},
-				position: [980, 580],
-				name: 'Structured Output Parser1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@tavily/n8n-nodes-tavily.tavilyTool',
-			version: 1,
-			config: {
-				parameters: {
-					query: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
-					options: {},
-					descriptionType: 'manual',
-					toolDescription: 'Get latest news/description on topic that user want to reseaarch',
-				},
-				credentials: {
-					tavilyApi: { id: 'credential-id', name: 'tavilyApi Credential' },
-				},
-				position: [840, 640],
-				name: 'Search Internet2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGroq',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					groqApi: { id: 'credential-id', name: 'groqApi Credential' },
-				},
-				position: [700, 580],
-				name: 'Groq Chat Model',
 			},
 		}),
 	)

@@ -43,6 +43,75 @@ const wf = workflow('PYTm8uU9m0FN8tG9', '9 Monitor Customer Support Forums', {
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-mcp.mcpClientTool',
+							version: 1,
+							config: {
+								parameters: {
+									toolName: 'scrape_as_markdown',
+									operation: 'executeTool',
+									toolParameters:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}",
+								},
+								credentials: {
+									mcpClientApi: { id: 'credential-id', name: 'mcpClientApi Credential' },
+								},
+								name: '🌐 Web Scraper Tool ',
+							},
+						}),
+					],
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+									version: 1.2,
+									config: {
+										parameters: {
+											model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+											options: {},
+										},
+										credentials: {
+											openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+										},
+										name: 'OpenAI Chat Model',
+									},
+								}),
+								outputParser: outputParser({
+									type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+									version: 1.3,
+									config: {
+										parameters: {
+											jsonSchemaExample:
+												'{\n  "platform": "SuperUser",\n  "questions": [\n    {\n      "author": "Tolure",\n      "question": "How to use Azure OpenAI as a pseudo DB",\n      "answer_snippet": "(Answer is available but not fully provided in the current data; question is marked as answered)",\n      "link": "https://superuser.com/questions/1824019/how-to-use-azure-openai-as-a-pseudo-db",\n      "pain_point": "Difficulty in using Azure OpenAI for database-like functionality"\n    },\n    {\n      "author": "Point Clear Media",\n      "question": "How do I use FFmpeg and OpenAI Whisper to transcribe a RTMP stream?",\n      "answer_snippet": "(Answer is available but not fully provided in the current data)",\n      "link": "https://superuser.com/questions/1778870/how-do-i-use-ffmpeg-and-openai-whisper-to-transcribe-a-rtmp-stream",\n      "pain_point": "Challenges in setting up transcription using FFmpeg and OpenAI Whisper for streaming media"\n    }\n  ]\n}\n',
+										},
+										name: '📦 Format Forum Data as JSON1',
+									},
+								}),
+							},
+							name: 'Auto-fixing Output Parser',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: '🧠 Chat Model Reasoning1',
+						},
+					}),
+				},
 				position: [60, -80],
 				name: '🤖 Agent: Scrape Forum & Extract Insights',
 			},
@@ -67,84 +136,6 @@ const wf = workflow('PYTm8uU9m0FN8tG9', '9 Monitor Customer Support Forums', {
 				},
 				position: [580, -80],
 				name: '✉️ Send Insights to Product Team (Gmail)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [0, 200],
-				name: '🧠 Chat Model Reasoning1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-mcp.mcpClientTool',
-			version: 1,
-			config: {
-				parameters: {
-					toolName: 'scrape_as_markdown',
-					operation: 'executeTool',
-					toolParameters:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}",
-				},
-				credentials: {
-					mcpClientApi: { id: 'credential-id', name: 'mcpClientApi Credential' },
-				},
-				position: [160, 200],
-				name: '🌐 Web Scraper Tool ',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [300, 400],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				position: [300, 200],
-				name: 'Auto-fixing Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "platform": "SuperUser",\n  "questions": [\n    {\n      "author": "Tolure",\n      "question": "How to use Azure OpenAI as a pseudo DB",\n      "answer_snippet": "(Answer is available but not fully provided in the current data; question is marked as answered)",\n      "link": "https://superuser.com/questions/1824019/how-to-use-azure-openai-as-a-pseudo-db",\n      "pain_point": "Difficulty in using Azure OpenAI for database-like functionality"\n    },\n    {\n      "author": "Point Clear Media",\n      "question": "How do I use FFmpeg and OpenAI Whisper to transcribe a RTMP stream?",\n      "answer_snippet": "(Answer is available but not fully provided in the current data)",\n      "link": "https://superuser.com/questions/1778870/how-do-i-use-ffmpeg-and-openai-whisper-to-transcribe-a-rtmp-stream",\n      "pain_point": "Challenges in setting up transcription using FFmpeg and OpenAI Whisper for streaming media"\n    }\n  ]\n}\n',
-				},
-				position: [460, 400],
-				name: '📦 Format Forum Data as JSON1',
 			},
 		}),
 	)

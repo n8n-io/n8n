@@ -25,6 +25,121 @@ const wf = workflow('83Ad0ngUzuJQHqb6', 'AI Voice Assistant | Shareable', { exec
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryRedisChat',
+						version: 1.5,
+						config: {
+							parameters: {
+								sessionKey: '={{ $json.body.sessionId }}',
+								sessionIdType: 'customKey',
+								contextWindowLength: 20,
+							},
+							credentials: { redis: { id: 'credential-id', name: 'redis Credential' } },
+							name: 'Redis Chat Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-3-5-sonnet-20241022',
+									cachedResultName: 'Claude Sonnet 3.5 (New)',
+								},
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Anthropic Chat Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1.1,
+							config: { name: 'Reasoning Tool (LangChain)' },
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									options: {},
+									timeMax:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+									timeMin:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+									calendar: { __rl: true, mode: 'id', value: '=REPLACE ME' },
+									operation: 'getAll',
+									returnAll:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+								},
+								credentials: {
+									googleCalendarOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleCalendarOAuth2Api Credential',
+									},
+								},
+								name: 'Calendar: Check Availability',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+									start:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+									calendar: { __rl: true, mode: 'id', value: '=REPLACE ME' },
+									additionalFields: {
+										summary:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
+										attendees: [
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('attendees0_Attendees', ``, 'string') }}",
+										],
+										description:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+										sendUpdates: 'all',
+									},
+								},
+								credentials: {
+									googleCalendarOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleCalendarOAuth2Api Credential',
+									},
+								},
+								name: 'Calendar: Create Appointment',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									eventId:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+									calendar: { __rl: true, mode: 'id', value: '=REPLACE ME' },
+									operation: 'update',
+									updateFields: {},
+									useDefaultReminders: '=',
+								},
+								credentials: {
+									googleCalendarOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleCalendarOAuth2Api Credential',
+									},
+								},
+								name: 'Update an event in Google Calendar',
+							},
+						}),
+					],
+				},
 				position: [1232, 400],
 				name: 'Voice AI Agent',
 			},
@@ -49,131 +164,6 @@ const wf = workflow('83Ad0ngUzuJQHqb6', 'AI Voice Assistant | Shareable', { exec
 				parameters: { options: {} },
 				position: [1552, 400],
 				name: 'Webhook: Return AI Response (ElevenLabs)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					options: {},
-					timeMax: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
-					timeMin: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
-					calendar: { __rl: true, mode: 'id', value: '=REPLACE ME' },
-					operation: 'getAll',
-					returnAll:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
-				},
-				credentials: {
-					googleCalendarOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleCalendarOAuth2Api Credential',
-					},
-				},
-				position: [1456, 624],
-				name: 'Calendar: Check Availability',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
-					start: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
-					calendar: { __rl: true, mode: 'id', value: '=REPLACE ME' },
-					additionalFields: {
-						summary:
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
-						attendees: [
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('attendees0_Attendees', ``, 'string') }}",
-						],
-						description:
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
-						sendUpdates: 'all',
-					},
-				},
-				credentials: {
-					googleCalendarOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleCalendarOAuth2Api Credential',
-					},
-				},
-				position: [1616, 624],
-				name: 'Calendar: Create Appointment',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1.1,
-			config: { position: [1264, 624], name: 'Reasoning Tool (LangChain)' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-3-5-sonnet-20241022',
-						cachedResultName: 'Claude Sonnet 3.5 (New)',
-					},
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [976, 624],
-				name: 'Anthropic Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					eventId:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
-					calendar: { __rl: true, mode: 'id', value: '=REPLACE ME' },
-					operation: 'update',
-					updateFields: {},
-					useDefaultReminders: '=',
-				},
-				credentials: {
-					googleCalendarOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleCalendarOAuth2Api Credential',
-					},
-				},
-				position: [1776, 624],
-				name: 'Update an event in Google Calendar',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryRedisChat',
-			version: 1.5,
-			config: {
-				parameters: {
-					sessionKey: '={{ $json.body.sessionId }}',
-					sessionIdType: 'customKey',
-					contextWindowLength: 20,
-				},
-				credentials: { redis: { id: 'credential-id', name: 'redis Credential' } },
-				position: [1120, 624],
-				name: 'Redis Chat Memory',
 			},
 		}),
 	)

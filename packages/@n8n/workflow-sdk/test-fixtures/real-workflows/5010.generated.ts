@@ -37,6 +37,27 @@ const wf = workflow('', '')
 						cachedResultName: 'vector_store_key',
 					},
 				},
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Embeddings OpenAI',
+						},
+					}),
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1.1,
+						config: {
+							parameters: { options: {}, dataType: 'binary' },
+							name: 'Default Data Loader',
+						},
+					}),
+				},
 				position: [400, -120],
 				name: 'Insert Data to Store',
 			},
@@ -57,62 +78,51 @@ const wf = workflow('', '')
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2,
-			config: { parameters: { options: {} }, position: [1280, -140], name: 'AI Agent' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
 			config: {
 				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+							version: 1.2,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									toolName: 'knowledge_base',
+									memoryKey: { __rl: true, mode: 'list', value: 'vector_store_key' },
+									toolDescription: 'Use this knowledge base to answer questions from the user',
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI',
+										},
+									}),
+								},
+								name: 'Query Data Tool',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
 				},
-				position: [860, 360],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
-			version: 1.2,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					toolName: 'knowledge_base',
-					memoryKey: { __rl: true, mode: 'list', value: 'vector_store_key' },
-					toolDescription: 'Use this knowledge base to answer questions from the user',
-				},
-				position: [1280, 80],
-				name: 'Query Data Tool',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1.1,
-			config: {
-				parameters: { options: {}, dataType: 'binary' },
-				position: [660, 40],
-				name: 'Default Data Loader',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				position: [1060, 80],
-				name: 'OpenAI Chat Model',
+				position: [1280, -140],
+				name: 'AI Agent',
 			},
 		}),
 	)

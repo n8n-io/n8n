@@ -122,6 +122,16 @@ const wf = workflow('', '')
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-1.5-flash-latest' },
+							name: 'Gemini Model for Article',
+						},
+					}),
+				},
 				position: [-600, 800],
 				name: 'Generate Article AI',
 			},
@@ -136,6 +146,16 @@ const wf = workflow('', '')
 					text: '=Choose an expression based on which you will find a matching graphic in Pexels API.\nTopic: {{ $(\'Fetch Unprocessed Ideas\').item.json.Prompt }} \nInstructions:\n- Choose one expression that will best match to find a graphic.\n- Use a general category to always match a graphic.\n- Do not use any HTML characters.\n- Return only a string containing the expression.\n- Do not use quotation marks. The only allowed special characters are ":" and ",".\n- Make each one unique so there are no 2 identical graphics.',
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-1.5-flash-latest' },
+							name: 'Gemini Model for Image Keyword',
+						},
+					}),
 				},
 				position: [-280, 800],
 				name: 'Generate Image Keyword AI',
@@ -391,6 +411,27 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'[\n  {\n    "Topic": "Example topic 1"\n  },\n  {\n    "Topic": "Example topic 2"\n  },\n  {\n    "Topic": "Example topic 3"\n  },\n    {\n    "Topic": "Example topic 4"\n  },\n  {\n    "Topic": "Example topic 5"\n  }\n]',
+							},
+							name: 'Parse AI Topic Output',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-1.5-flash-latest' },
+							name: 'Gemini Model for Topics',
+						},
+					}),
+				},
 				position: [-700, 400],
 				name: 'Generate Blog Topics AI',
 			},
@@ -561,53 +602,6 @@ const wf = workflow('', '')
 				},
 				position: [680, 420],
 				name: 'Form: End Idea Generation',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-1.5-flash-latest' },
-				position: [-620, 940],
-				name: 'Gemini Model for Article',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-1.5-flash-latest' },
-				position: [-300, 940],
-				name: 'Gemini Model for Image Keyword',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-1.5-flash-latest' },
-				position: [-740, 560],
-				name: 'Gemini Model for Topics',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'[\n  {\n    "Topic": "Example topic 1"\n  },\n  {\n    "Topic": "Example topic 2"\n  },\n  {\n    "Topic": "Example topic 3"\n  },\n    {\n    "Topic": "Example topic 4"\n  },\n  {\n    "Topic": "Example topic 5"\n  }\n]',
-				},
-				position: [-500, 560],
-				name: 'Parse AI Topic Output',
 			},
 		}),
 	)

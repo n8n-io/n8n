@@ -34,6 +34,19 @@ const wf = workflow(
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-1.5-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Gemini - Location AI Model',
+						},
+					}),
+				},
 				position: [-340, -3460],
 				name: 'AI Location Analyzer',
 			},
@@ -149,7 +162,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -458,6 +470,27 @@ const wf = workflow(
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-sonnet-4-20250514',
+									cachedResultName: 'Claude 4 Sonnet',
+								},
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Claude - Email AI Model',
+						},
+					}),
+				},
 				position: [2080, -2840],
 				name: 'AI Generate Email Content',
 			},
@@ -637,7 +670,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -771,42 +803,6 @@ const wf = workflow(
 				},
 				position: [1820, -3260],
 				name: 'Save Yelp Data to Sheet',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-1.5-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-360, -3260],
-				name: 'Gemini - Location AI Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-sonnet-4-20250514',
-						cachedResultName: 'Claude 4 Sonnet',
-					},
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [2020, -2680],
-				name: 'Claude - Email AI Model',
 			},
 		}),
 	)

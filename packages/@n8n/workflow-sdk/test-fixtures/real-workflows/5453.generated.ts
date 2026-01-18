@@ -129,6 +129,34 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: {},
+								modelName: 'models/gemini-2.5-flash-preview-05-20',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n	"type": "object",\n	"properties": {\n		"vote": {\n			"type": "string"\n		},\n		"consideration": {\n			"type": "string"\n		}\n	}\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [2120, 460],
 				name: 'HR Expert',
 			},
@@ -386,6 +414,22 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 						],
 					},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: {},
+								modelName: 'models/gemini-2.5-flash-preview-05-20',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [720, 580],
 				name: 'Qualifications',
 			},
@@ -419,6 +463,22 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 						},
 					},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: {},
+								modelName: 'models/gemini-2.5-flash-preview-05-20',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [1460, 460],
 				name: 'Summarization Chain',
 			},
@@ -440,40 +500,24 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 					inputSchema:
 						'{\n	"type": "object",\n	"properties": {\n		"telephone": {\n			"type": "string"\n		},\n      "city": {\n			"type": "string"\n		},\n      "birthdate": {\n			"type": "string"\n		}\n	}\n}',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: {},
+								modelName: 'models/gemini-2.5-flash-preview-05-20',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [720, 400],
 				name: 'Personal Data',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n	"type": "object",\n	"properties": {\n		"vote": {\n			"type": "string"\n		},\n		"consideration": {\n			"type": "string"\n		}\n	}\n}',
-				},
-				position: [2280, 660],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: {},
-					modelName: 'models/gemini-2.5-flash-preview-05-20',
-				},
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [1460, 880],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

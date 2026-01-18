@@ -214,6 +214,31 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+								responsesApiEnabled: false,
+							},
+							credentials: {
+								openAiApi: { id: 'HUbsD20wv3CFr7gN', name: 'OpenAi account' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: { jsonSchemaExample: '{\n	"image_prompt": "string"\n}' },
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [976, -336],
 				name: 'Generate Image Prompt',
 			},
@@ -633,35 +658,6 @@ const wf = workflow(
 				},
 				position: [-144, -64],
 				name: 'Error Response - Missing Files',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-					responsesApiEnabled: false,
-				},
-				credentials: {
-					openAiApi: { id: 'HUbsD20wv3CFr7gN', name: 'OpenAi account' },
-				},
-				position: [912, -64],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: { jsonSchemaExample: '{\n	"image_prompt": "string"\n}' },
-				position: [1168, -64],
-				name: 'Structured Output Parser',
 			},
 		}),
 	)

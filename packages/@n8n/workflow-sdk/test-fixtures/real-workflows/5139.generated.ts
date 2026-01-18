@@ -88,6 +88,19 @@ const wf = workflow('REDACTED_WORKFLOW_ID', 'insta Reel publish', {
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [-144, -688],
 				name: 'AI Agent',
 			},
@@ -397,20 +410,6 @@ const wf = workflow('REDACTED_WORKFLOW_ID', 'insta Reel publish', {
 				parameters: { options: {}, fileSelector: '/tmp/video.mp4' },
 				position: [800, -32],
 				name: 'Read/Write Files from Disk1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-272, 128],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

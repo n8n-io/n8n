@@ -24,6 +24,77 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: {
+								parameters: {
+									name: 'web_search',
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'eALld0YaOZuUCU5q',
+										cachedResultName: 'Perplexity Research',
+									},
+									description:
+										'Call this tool to make a web search query using Perplexity AI. It will automatically look at multiple relevant websites and combine all the valuable information in one clean response.',
+									workflowInputs: {
+										value: {},
+										schema: [
+											{
+												id: 'query',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'query',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['query'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Perplexity Research',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-3-7-sonnet-20250219',
+									cachedResultName: 'Claude 3.7 Sonnet',
+								},
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Anthropic Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "about": "One-sentence summary of what the post is about",\n  "copy": "Full LinkedIn post in story format. Strong hook, clear pacing, valuable insight. Use spacing for readability.",\n  "image": "Renaissance-style visual metaphor of the idea. Simple, clear, symbolic."\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [1420, 180],
 				name: 'LinkedIn Creator Agent',
 			},
@@ -421,82 +492,6 @@ const wf = workflow('', '')
 				},
 				position: [1840, 680],
 				name: 'Update Status',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "about": "One-sentence summary of what the post is about",\n  "copy": "Full LinkedIn post in story format. Strong hook, clear pacing, valuable insight. Use spacing for readability.",\n  "image": "Renaissance-style visual metaphor of the idea. Simple, clear, symbolic."\n}',
-				},
-				position: [1620, 380],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-3-7-sonnet-20250219',
-						cachedResultName: 'Claude 3.7 Sonnet',
-					},
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [1280, 380],
-				name: 'Anthropic Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: {
-				parameters: {
-					name: 'web_search',
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'eALld0YaOZuUCU5q',
-						cachedResultName: 'Perplexity Research',
-					},
-					description:
-						'Call this tool to make a web search query using Perplexity AI. It will automatically look at multiple relevant websites and combine all the valuable information in one clean response.',
-					workflowInputs: {
-						value: {},
-						schema: [
-							{
-								id: 'query',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'query',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['query'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [1440, 400],
-				name: 'Perplexity Research',
 			},
 		}),
 	)

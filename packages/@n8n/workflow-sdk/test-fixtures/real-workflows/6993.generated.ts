@@ -340,7 +340,6 @@ const wf = workflow('', '')
 			config: { parameters: { options: {} }, position: [-240, 384], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.if',
@@ -384,6 +383,42 @@ const wf = workflow('', '')
 							"=You are a web-scraping AI agent equipped with the tool 'scrape_as_markdown'.\n\n# TASK\nScrape the homepage of the provided website and generate a structured summary of the company based on the main content.\n\n## OBJECTIVES\n1. Scrape.\n2. Extract only the core content of the page.\n3. Identify key information:\n   - Company mission or vision\n   - Products or services offered\n   - Target audience or market\n   - Key messaging, branding, or positioning\n   - Any highlighted achievements, updates, or announcements\n\n## CONSTRAINTS\n- Prioritize meaningful textual content over visuals or layout elements.\n- Ensure clarity and neutrality in the summary.\n\n# OUTPUT REQUIREMENTS\nReturn a summary of 300-500 words in the following format:\n[Company Name]:\n\n[Summary of company in 300-500 words, clearly structured and written in neutral, informative language.]",
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-5-mini',
+									cachedResultName: 'gpt-5-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'gpt-5-mini',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+							version: 1.1,
+							config: {
+								parameters: {
+									include: 'selected',
+									endpointUrl: '=https://mcp.brightdata.com/mcp?token=YOUR_BRIGHT_DATA_TOKEN',
+									includeTools: ['scrape_as_markdown'],
+									serverTransport: 'httpStreamable',
+								},
+								name: 'scrape_as_markdown',
+							},
+						}),
+					],
 				},
 				position: [272, 0],
 				name: 'Scrape & Summarize',
@@ -449,6 +484,19 @@ const wf = workflow('', '')
 						],
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
 				},
 				position: [1088, 384],
 				name: 'Message Generator',
@@ -669,7 +717,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.wait',
@@ -723,58 +770,6 @@ const wf = workflow('', '')
 				},
 				position: [-2448, -96],
 				name: 'Create Table',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-			version: 1.1,
-			config: {
-				parameters: {
-					include: 'selected',
-					endpointUrl: '=https://mcp.brightdata.com/mcp?token=YOUR_BRIGHT_DATA_TOKEN',
-					includeTools: ['scrape_as_markdown'],
-					serverTransport: 'httpStreamable',
-				},
-				position: [496, 208],
-				name: 'scrape_as_markdown',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [1088, 592],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-5-mini',
-						cachedResultName: 'gpt-5-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [272, 208],
-				name: 'gpt-5-mini',
 			},
 		}),
 	)

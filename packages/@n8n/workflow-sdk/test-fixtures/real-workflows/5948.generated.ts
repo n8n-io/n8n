@@ -81,6 +81,78 @@ const wf = workflow('mV1Dg3cHIDTFuUAG', '4 Track Competitor Website Updates', {
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: '🧠 OpenAI: LLM Brain',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+									version: 1.2,
+									config: {
+										parameters: {
+											model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+											options: {},
+										},
+										credentials: {
+											openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+										},
+										name: 'OpenAI Chat Model',
+									},
+								}),
+								outputParser: outputParser({
+									type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+									version: 1.2,
+									config: {
+										parameters: {
+											jsonSchemaExample:
+												'{\n  "plans": [\n    {\n      "plan_name": "Free Forever",\n      "price": "Free",\n      "key_features": [\n        "60MB Storage",\n        "Unlimited Tasks",\n        "Unlimited Free Plan Members",\n        "Two-Factor Authentication",\n        "Collaborative Docs",\n        "Kanban Boards",\n        "Sprint Management",\n        "Calendar View",\n        "Custom Field Manager Basic",\n        "In-App Video Recording",\n        "24/7 Support",\n        "1 Form"\n      ]\n    },\n    {\n      "plan_name": "Unlimited",\n      "price": "$7 per user per month",\n      "key_features": [\n        "Everything in Free Forever plus",\n        "2GB Storage per user",\n        "Unlimited Folders and Spaces",\n        "Unlimited Integrations",\n        "Unlimited Gantt Charts",\n        "Unlimited Custom Fields",\n        "Unlimited Chat Messages",\n        "Unlimited Forms",\n        "Guests with Permissions",\n        "Email in ClickUp",\n        "3 Teams (User Group)",\n        "Native Time Tracking",\n        "Goals & Portfolios",\n        "Resource Management",\n        "AI Compatible"\n      ]\n    },\n    {\n      "plan_name": "Business",\n      "price": "$12 per user per month",\n      "key_features": [\n        "Everything in Unlimited, plus",\n        "Google SSO",\n        "Unlimited Storage",\n        "Unlimited Teams",\n        "Unlimited Message History",\n        "Unlimited Mind Maps",\n        "Unlimited Activity views",\n        "Unlimited Timeline views",\n        "Unlimited Dashboards",\n        "Unlimited Whiteboards",\n        "Sprint Points & Reporting",\n        "Automation Integrations",\n        "Custom Exporting",\n        "Private Whiteboards",\n        "Workload Management",\n        "SMS 2-Factor Authentication",\n        "More Automations"\n      ]\n    },\n    {\n      "plan_name": "Enterprise",\n      "price": "Custom pricing",\n      "key_features": [\n        "Everything in Business, plus",\n        "White Labeling",\n        "Conditional Logic in Forms",\n        "Team Sharing for Spaces",\n        "Custom Roles",\n        "Custom Capacity in Workload",\n        "Enterprise API",\n        "Unlimited Posts",\n        "Default Personal Views",\n        "Advanced Permissions",\n        "Advanced Public Sharing",\n        "MSA & HIPPA Available",\n        "Single Sign-On (SSO)",\n        "SCIM Provisioning",\n        "US, EU, & APAC Data Residency",\n        "Live Onboarding Training",\n        "Customer Success Manager",\n        "Access to Managed Services"\n      ]\n    }\n  ]\n}\n',
+										},
+										name: 'Structured Output Parser',
+									},
+								}),
+							},
+							name: 'Auto-fixing Output Parser',
+						},
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-mcp.mcpClientTool',
+							version: 1,
+							config: {
+								parameters: {
+									toolName: 'scrape_as_markdown',
+									operation: 'executeTool',
+									toolParameters:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}",
+									descriptionType: 'manual',
+									toolDescription:
+										'Scrape a single webpage URL with advanced options for content extraction and get back the results in markdown.',
+								},
+								credentials: {
+									mcpClientApi: { id: 'credential-id', name: 'mcpClientApi Credential' },
+								},
+								name: 'MCP Client to Scrape as markdown',
+							},
+						}),
+					],
+				},
 				position: [780, 0],
 				name: 'AI agent',
 			},
@@ -318,87 +390,6 @@ const wf = workflow('mV1Dg3cHIDTFuUAG', '4 Track Competitor Website Updates', {
 				},
 				position: [1520, 120],
 				name: 'Update google sheet',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [700, 300],
-				name: '🧠 OpenAI: LLM Brain',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-mcp.mcpClientTool',
-			version: 1,
-			config: {
-				parameters: {
-					toolName: 'scrape_as_markdown',
-					operation: 'executeTool',
-					toolParameters:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}",
-					descriptionType: 'manual',
-					toolDescription:
-						'Scrape a single webpage URL with advanced options for content extraction and get back the results in markdown.',
-				},
-				credentials: {
-					mcpClientApi: { id: 'credential-id', name: 'mcpClientApi Credential' },
-				},
-				position: [900, 300],
-				name: 'MCP Client to Scrape as markdown',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1000, 560],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				position: [1060, 300],
-				name: 'Auto-fixing Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "plans": [\n    {\n      "plan_name": "Free Forever",\n      "price": "Free",\n      "key_features": [\n        "60MB Storage",\n        "Unlimited Tasks",\n        "Unlimited Free Plan Members",\n        "Two-Factor Authentication",\n        "Collaborative Docs",\n        "Kanban Boards",\n        "Sprint Management",\n        "Calendar View",\n        "Custom Field Manager Basic",\n        "In-App Video Recording",\n        "24/7 Support",\n        "1 Form"\n      ]\n    },\n    {\n      "plan_name": "Unlimited",\n      "price": "$7 per user per month",\n      "key_features": [\n        "Everything in Free Forever plus",\n        "2GB Storage per user",\n        "Unlimited Folders and Spaces",\n        "Unlimited Integrations",\n        "Unlimited Gantt Charts",\n        "Unlimited Custom Fields",\n        "Unlimited Chat Messages",\n        "Unlimited Forms",\n        "Guests with Permissions",\n        "Email in ClickUp",\n        "3 Teams (User Group)",\n        "Native Time Tracking",\n        "Goals & Portfolios",\n        "Resource Management",\n        "AI Compatible"\n      ]\n    },\n    {\n      "plan_name": "Business",\n      "price": "$12 per user per month",\n      "key_features": [\n        "Everything in Unlimited, plus",\n        "Google SSO",\n        "Unlimited Storage",\n        "Unlimited Teams",\n        "Unlimited Message History",\n        "Unlimited Mind Maps",\n        "Unlimited Activity views",\n        "Unlimited Timeline views",\n        "Unlimited Dashboards",\n        "Unlimited Whiteboards",\n        "Sprint Points & Reporting",\n        "Automation Integrations",\n        "Custom Exporting",\n        "Private Whiteboards",\n        "Workload Management",\n        "SMS 2-Factor Authentication",\n        "More Automations"\n      ]\n    },\n    {\n      "plan_name": "Enterprise",\n      "price": "Custom pricing",\n      "key_features": [\n        "Everything in Business, plus",\n        "White Labeling",\n        "Conditional Logic in Forms",\n        "Team Sharing for Spaces",\n        "Custom Roles",\n        "Custom Capacity in Workload",\n        "Enterprise API",\n        "Unlimited Posts",\n        "Default Personal Views",\n        "Advanced Permissions",\n        "Advanced Public Sharing",\n        "MSA & HIPPA Available",\n        "Single Sign-On (SSO)",\n        "SCIM Provisioning",\n        "US, EU, & APAC Data Residency",\n        "Live Onboarding Training",\n        "Customer Success Manager",\n        "Access to Managed Services"\n      ]\n    }\n  ]\n}\n',
-				},
-				position: [1180, 560],
-				name: 'Structured Output Parser',
 			},
 		}),
 	)

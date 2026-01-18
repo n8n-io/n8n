@@ -3,6 +3,19 @@
  */
 import type { WorkflowJSON, NodeJSON, IConnection } from './types/base';
 
+// AI connection types and their corresponding subnode factory functions
+const AI_CONNECTION_TYPES = new Map<string, { factory: string; configKey: string }>([
+	['ai_languageModel', { factory: 'languageModel', configKey: 'model' }],
+	['ai_memory', { factory: 'memory', configKey: 'memory' }],
+	['ai_tool', { factory: 'tool', configKey: 'tools' }],
+	['ai_outputParser', { factory: 'outputParser', configKey: 'outputParser' }],
+	['ai_embedding', { factory: 'embedding', configKey: 'embedding' }],
+	['ai_vectorStore', { factory: 'vectorStore', configKey: 'vectorStore' }],
+	['ai_retriever', { factory: 'retriever', configKey: 'retriever' }],
+	['ai_document', { factory: 'documentLoader', configKey: 'documentLoader' }],
+	['ai_textSplitter', { factory: 'textSplitter', configKey: 'textSplitter' }],
+]);
+
 /**
  * Escapes a string for use in a single-quoted TypeScript string literal.
  * Returns empty string if input is null/undefined.
@@ -75,11 +88,24 @@ function isStickyNote(node: NodeJSON): boolean {
 	return node.type === 'n8n-nodes-base.stickyNote';
 }
 
+interface SubnodeConnection {
+	/** The subnode (source of AI connection) */
+	subnodeName: string;
+	/** The AI connection type (e.g., 'ai_languageModel') */
+	connectionType: string;
+}
+
 interface NodeInfo {
 	node: NodeJSON;
 	varName: string;
 	incomingConnections: { from: string; outputIndex: number; inputIndex: number }[];
 	outgoingConnections: Map<number, { to: string; inputIndex: number }[]>;
+	/** Subnodes connected to this node via AI connections */
+	subnodes: SubnodeConnection[];
+	/** If this node is a subnode, the parent node name */
+	isSubnodeOf?: string;
+	/** If this node is a subnode, the AI connection type */
+	subnodeConnectionType?: string;
 }
 
 /**
@@ -102,26 +128,44 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 			varName: generateVarName(nodeName),
 			incomingConnections: [],
 			outgoingConnections: new Map(),
+			subnodes: [],
 		});
 	}
 
-	// Parse connections
+	// Parse connections (both main and AI connections)
 	for (const [sourceName, connectionTypes] of Object.entries(json.connections)) {
 		const sourceInfo = nodeInfoMap.get(sourceName);
 		if (!sourceInfo) continue;
 
-		for (const [_connType, outputs] of Object.entries(connectionTypes)) {
+		for (const [connType, outputs] of Object.entries(connectionTypes)) {
 			if (!Array.isArray(outputs)) continue;
+
+			// Check if this is an AI connection type
+			const isAiConnection = AI_CONNECTION_TYPES.has(connType);
 
 			outputs.forEach((targets: IConnection[] | null, outputIndex: number) => {
 				if (!Array.isArray(targets)) return;
 
-				const targetList: { to: string; inputIndex: number }[] = [];
 				for (const target of targets) {
-					targetList.push({ to: target.node, inputIndex: target.index ?? 0 });
-
 					const targetInfo = nodeInfoMap.get(target.node);
-					if (targetInfo) {
+					if (!targetInfo) continue;
+
+					if (isAiConnection) {
+						// This is an AI connection - mark source as subnode of target
+						sourceInfo.isSubnodeOf = target.node;
+						sourceInfo.subnodeConnectionType = connType;
+
+						// Add to target's subnodes list
+						targetInfo.subnodes.push({
+							subnodeName: sourceName,
+							connectionType: connType,
+						});
+					} else {
+						// Regular 'main' connection
+						const targetList = sourceInfo.outgoingConnections.get(outputIndex) ?? [];
+						targetList.push({ to: target.node, inputIndex: target.index ?? 0 });
+						sourceInfo.outgoingConnections.set(outputIndex, targetList);
+
 						targetInfo.incomingConnections.push({
 							from: sourceName,
 							outputIndex,
@@ -129,12 +173,12 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 						});
 					}
 				}
-				sourceInfo.outgoingConnections.set(outputIndex, targetList);
 			});
 		}
 	}
 
 	// Find root nodes (triggers or nodes with no incoming connections)
+	// Subnodes are NOT considered orphans - they're connected via AI connections
 	const triggers: NodeInfo[] = [];
 	const stickyNotes: NodeInfo[] = [];
 	const orphanNodes: NodeInfo[] = [];
@@ -142,6 +186,9 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 	for (const info of nodeInfoMap.values()) {
 		if (isStickyNote(info.node)) {
 			stickyNotes.push(info);
+		} else if (info.isSubnodeOf) {
+			// Skip subnodes - they will be included in their parent's config
+			continue;
 		} else if (isTriggerNode(info.node)) {
 			triggers.push(info);
 		} else if (info.incomingConnections.length === 0) {
@@ -165,7 +212,7 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 
 	// Generate node chains starting from each trigger
 	for (const triggerInfo of triggers) {
-		lines.push(`  .add(${generateNodeCall(triggerInfo.node)})`);
+		lines.push(`  .add(${generateNodeCall(triggerInfo.node, nodeInfoMap)})`);
 		addedNodes.add(triggerInfo.node.name);
 		generateChain(triggerInfo, nodeInfoMap, addedNodes, lines, 1);
 	}
@@ -173,16 +220,17 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 	// Add orphan nodes (nodes not connected to any trigger)
 	for (const orphanInfo of orphanNodes) {
 		if (addedNodes.has(orphanInfo.node.name)) continue;
-		lines.push(`  .add(${generateNodeCall(orphanInfo.node)})`);
+		lines.push(`  .add(${generateNodeCall(orphanInfo.node, nodeInfoMap)})`);
 		addedNodes.add(orphanInfo.node.name);
 		generateChain(orphanInfo, nodeInfoMap, addedNodes, lines, 1);
 	}
 
 	// Add any remaining nodes that weren't reached
+	// Skip subnodes - they're emitted as part of their parent's config
 	for (const info of nodeInfoMap.values()) {
-		if (addedNodes.has(info.node.name) || isStickyNote(info.node)) continue;
+		if (addedNodes.has(info.node.name) || isStickyNote(info.node) || info.isSubnodeOf) continue;
 		lines.push(`  // Disconnected: ${info.node.name}`);
-		lines.push(`  .add(${generateNodeCall(info.node)})`);
+		lines.push(`  .add(${generateNodeCall(info.node, nodeInfoMap)})`);
 		addedNodes.add(info.node.name);
 	}
 
@@ -230,8 +278,9 @@ function generateChain(
 		const target = targets[0];
 		const targetInfo = nodeInfoMap.get(target.to);
 
-		if (targetInfo && !addedNodes.has(target.to)) {
-			lines.push(`  .then(${generateNodeCall(targetInfo.node)})`);
+		// Skip subnodes - they're included in parent config
+		if (targetInfo && !addedNodes.has(target.to) && !targetInfo.isSubnodeOf) {
+			lines.push(`  .then(${generateNodeCall(targetInfo.node, nodeInfoMap)})`);
 			addedNodes.add(target.to);
 			generateChain(targetInfo, nodeInfoMap, addedNodes, lines, depth);
 		}
@@ -244,9 +293,12 @@ function generateChain(
 
 		for (const target of targets) {
 			const targetInfo = nodeInfoMap.get(target.to);
-			if (!targetInfo || addedNodes.has(target.to)) continue;
+			// Skip subnodes - they're included in parent config
+			if (!targetInfo || addedNodes.has(target.to) || targetInfo.isSubnodeOf) continue;
 
-			lines.push(`  .output(${outputIndex}).then(${generateNodeCall(targetInfo.node)})`);
+			lines.push(
+				`  .output(${outputIndex}).then(${generateNodeCall(targetInfo.node, nodeInfoMap)})`,
+			);
 			addedNodes.add(target.to);
 			generateChain(targetInfo, nodeInfoMap, addedNodes, lines, depth + 1);
 		}
@@ -254,9 +306,97 @@ function generateChain(
 }
 
 /**
+ * Generates a subnode factory call (e.g., languageModel({...}), tool({...}))
+ * Recursively handles nested subnodes (subnodes that have their own subnodes)
+ */
+function generateSubnodeCall(
+	nodeJson: NodeJSON,
+	factoryName: string,
+	nodeInfoMap: Map<string, NodeInfo>,
+): string {
+	const configParts: string[] = [];
+
+	// Parameters
+	if (nodeJson.parameters && Object.keys(nodeJson.parameters).length > 0) {
+		configParts.push(`parameters: ${formatValue(nodeJson.parameters, 4)}`);
+	}
+
+	// Credentials
+	if (nodeJson.credentials && Object.keys(nodeJson.credentials).length > 0) {
+		configParts.push(`credentials: ${formatValue(nodeJson.credentials, 4)}`);
+	}
+
+	// Check if this subnode has its own subnodes (nested hierarchy)
+	const nodeInfo = nodeInfoMap.get(nodeJson.name);
+	if (nodeInfo && nodeInfo.subnodes.length > 0) {
+		const subnodesConfig = generateSubnodesConfig(nodeInfo.subnodes, nodeInfoMap);
+		if (subnodesConfig) {
+			configParts.push(subnodesConfig);
+		}
+	}
+
+	// Name (if different from type)
+	const defaultName = nodeJson.type.split('.').pop() ?? nodeJson.type;
+	if (nodeJson.name !== defaultName) {
+		configParts.push(`name: '${escapeString(nodeJson.name)}'`);
+	}
+
+	const configStr = configParts.length > 0 ? `{ ${configParts.join(', ')} }` : '{}';
+
+	return `${factoryName}({ type: '${escapeString(nodeJson.type)}', version: ${nodeJson.typeVersion}, config: ${configStr} })`;
+}
+
+/**
+ * Generates the subnodes config object for a node that has AI subnodes attached
+ */
+function generateSubnodesConfig(
+	subnodes: SubnodeConnection[],
+	nodeInfoMap: Map<string, NodeInfo>,
+): string {
+	if (subnodes.length === 0) return '';
+
+	const parts: string[] = [];
+
+	// Group subnodes by config key
+	const byConfigKey = new Map<string, { factory: string; nodes: NodeJSON[] }>();
+
+	for (const sub of subnodes) {
+		const subInfo = nodeInfoMap.get(sub.subnodeName);
+		if (!subInfo) continue;
+
+		const aiConfig = AI_CONNECTION_TYPES.get(sub.connectionType);
+		if (!aiConfig) continue;
+
+		const existing = byConfigKey.get(aiConfig.configKey);
+		if (existing) {
+			existing.nodes.push(subInfo.node);
+		} else {
+			byConfigKey.set(aiConfig.configKey, {
+				factory: aiConfig.factory,
+				nodes: [subInfo.node],
+			});
+		}
+	}
+
+	// Generate each subnode config entry
+	for (const [configKey, { factory, nodes }] of byConfigKey) {
+		if (configKey === 'tools') {
+			// Tools is always an array
+			const toolCalls = nodes.map((n) => generateSubnodeCall(n, factory, nodeInfoMap));
+			parts.push(`${configKey}: [${toolCalls.join(', ')}]`);
+		} else {
+			// Single subnode
+			parts.push(`${configKey}: ${generateSubnodeCall(nodes[0], factory, nodeInfoMap)}`);
+		}
+	}
+
+	return parts.length > 0 ? `subnodes: { ${parts.join(', ')} }` : '';
+}
+
+/**
  * Generates a node() or trigger() call for a node.
  */
-function generateNodeCall(nodeJson: NodeJSON): string {
+function generateNodeCall(nodeJson: NodeJSON, nodeInfoMap?: Map<string, NodeInfo>): string {
 	const configParts: string[] = [];
 
 	// Parameters
@@ -267,6 +407,17 @@ function generateNodeCall(nodeJson: NodeJSON): string {
 	// Credentials
 	if (nodeJson.credentials && Object.keys(nodeJson.credentials).length > 0) {
 		configParts.push(`credentials: ${formatValue(nodeJson.credentials, 2)}`);
+	}
+
+	// Subnodes (if any)
+	if (nodeInfoMap) {
+		const nodeInfo = nodeInfoMap.get(nodeJson.name);
+		if (nodeInfo && nodeInfo.subnodes.length > 0) {
+			const subnodesConfig = generateSubnodesConfig(nodeInfo.subnodes, nodeInfoMap);
+			if (subnodesConfig) {
+				configParts.push(subnodesConfig);
+			}
+		}
 	}
 
 	// Position (only if non-zero)

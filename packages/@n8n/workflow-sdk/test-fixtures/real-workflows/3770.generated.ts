@@ -764,6 +764,42 @@ const wf = workflow('', '')
 							'=You are a helpful assistant who only uses workflows to answer questions and perform tasks.\n* When asked to complete a task, you will assume there is a workflow which you can use. Do not generate custom scripts or raw commands - use a workflow isntead.\n* Only use the available active workflows as listed using the "listWorkflows" tool.\n* Workflows returned by "listWorkflows" tool are active in the pool and do not need to be added again.\n* Always ask the user before adding workflows to the availble pool.\n* You do not need to confirm each step with the user when executing workflows.\n* When executing the workflow, the required parameters schema for it is listed in the workflow\'s profile. To get this profile, use the listWokflows tool.\n* If no available workflows are suitable and you are not able to complete the task, simply let the user know.\n* Do not search for workflows in the directory unless the user requests.',
 					},
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+							version: 1,
+							config: {
+								parameters: { sseEndpoint: '=<Production URL of MCP Server>' },
+								name: 'MCP Client',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { parameters: { contextWindowLength: 30 }, name: 'Simple Memory' },
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1-mini',
+									cachedResultName: 'gpt-4.1-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [-3600, 1040],
 				name: 'AI Agent',
 			},
@@ -775,335 +811,280 @@ const wf = workflow('', '')
 			version: 1,
 			config: {
 				parameters: { path: '4625bcf4-0dd9-4562-a70f-6fee41f6f12d' },
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: {
+								parameters: {
+									name: 'addWorkflow',
+									workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
+									description:
+										'Adds one or more workflows by ID to the available pool of workflows for the agent. You can get a list of workflows by calling the listTool tool.',
+									workflowInputs: {
+										value: {
+											operation: 'addWorkflow',
+											parameters: 'null',
+											workflowIds:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('workflowIds', ``, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'operation',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'operation',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'workflowIds',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'workflowIds',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'parameters',
+												type: 'object',
+												display: true,
+												required: false,
+												displayName: 'parameters',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Add Workflow',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: {
+								parameters: {
+									name: 'listTool',
+									workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
+									description: 'Lists the available pool of workflows for the agent.',
+									workflowInputs: {
+										value: {
+											operation: 'listWorkflows',
+											parameters: 'null',
+											workflowIds: 'null',
+										},
+										schema: [
+											{
+												id: 'operation',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'operation',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'workflowIds',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'workflowIds',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'parameters',
+												type: 'object',
+												display: true,
+												required: false,
+												displayName: 'parameters',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'List Workflows',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: {
+								parameters: {
+									name: 'removeWorkflow',
+									workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
+									description:
+										'Removes one or more workflows by ID from the available pool of workflows for the agent.',
+									workflowInputs: {
+										value: {
+											operation: 'removeWorkflow',
+											parameters: 'null',
+											workflowIds:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('workflowIds', ``, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'operation',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'operation',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'workflowIds',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'workflowIds',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'parameters',
+												type: 'object',
+												display: true,
+												required: false,
+												displayName: 'parameters',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'RemoveWorkflow',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: {
+								parameters: {
+									name: 'executeTool',
+									workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
+									description:
+										'Executes a workflow which has been added to the pool of available workflows for the agent.',
+									workflowInputs: {
+										value: {
+											operation: 'executeWorkflow',
+											parameters:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters', ``, 'string') }}",
+											workflowIds:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('workflowIds', ``, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'operation',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'operation',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'workflowIds',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'workflowIds',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'parameters',
+												type: 'object',
+												display: true,
+												required: false,
+												displayName: 'parameters',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'ExecuteWorkflow',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: {
+								parameters: {
+									name: 'searchTool',
+									workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
+									description:
+										'Returns all workflows which can be added to the pool of available workflows for the agent.',
+									workflowInputs: {
+										value: {
+											operation: 'searchWorkflows',
+											parameters: 'null',
+											workflowIds: 'null',
+										},
+										schema: [
+											{
+												id: 'operation',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'operation',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'workflowIds',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'workflowIds',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'parameters',
+												type: 'object',
+												display: true,
+												required: false,
+												displayName: 'parameters',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'SearchWorkflows',
+							},
+						}),
+					],
+				},
 				position: [-3720, 240],
 				name: 'N8N Workflows MCP Server',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-			version: 1,
-			config: {
-				parameters: { sseEndpoint: '=<Production URL of MCP Server>' },
-				position: [-3360, 1240],
-				name: 'MCP Client',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: { contextWindowLength: 30 },
-				position: [-3500, 1240],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: {
-				parameters: {
-					name: 'addWorkflow',
-					workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
-					description:
-						'Adds one or more workflows by ID to the available pool of workflows for the agent. You can get a list of workflows by calling the listTool tool.',
-					workflowInputs: {
-						value: {
-							operation: 'addWorkflow',
-							parameters: 'null',
-							workflowIds:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('workflowIds', ``, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'operation',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'operation',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'workflowIds',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'workflowIds',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'parameters',
-								type: 'object',
-								display: true,
-								required: false,
-								displayName: 'parameters',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [-3800, 460],
-				name: 'Add Workflow',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: {
-				parameters: {
-					name: 'removeWorkflow',
-					workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
-					description:
-						'Removes one or more workflows by ID from the available pool of workflows for the agent.',
-					workflowInputs: {
-						value: {
-							operation: 'removeWorkflow',
-							parameters: 'null',
-							workflowIds:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('workflowIds', ``, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'operation',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'operation',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'workflowIds',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'workflowIds',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'parameters',
-								type: 'object',
-								display: true,
-								required: false,
-								displayName: 'parameters',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [-3700, 560],
-				name: 'RemoveWorkflow',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: {
-				parameters: {
-					name: 'listTool',
-					workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
-					description: 'Lists the available pool of workflows for the agent.',
-					workflowInputs: {
-						value: {
-							operation: 'listWorkflows',
-							parameters: 'null',
-							workflowIds: 'null',
-						},
-						schema: [
-							{
-								id: 'operation',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'operation',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'workflowIds',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'workflowIds',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'parameters',
-								type: 'object',
-								display: true,
-								required: false,
-								displayName: 'parameters',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [-3580, 660],
-				name: 'List Workflows',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: {
-				parameters: {
-					name: 'searchTool',
-					workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
-					description:
-						'Returns all workflows which can be added to the pool of available workflows for the agent.',
-					workflowInputs: {
-						value: {
-							operation: 'searchWorkflows',
-							parameters: 'null',
-							workflowIds: 'null',
-						},
-						schema: [
-							{
-								id: 'operation',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'operation',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'workflowIds',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'workflowIds',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'parameters',
-								type: 'object',
-								display: true,
-								required: false,
-								displayName: 'parameters',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [-3460, 560],
-				name: 'SearchWorkflows',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: {
-				parameters: {
-					name: 'executeTool',
-					workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
-					description:
-						'Executes a workflow which has been added to the pool of available workflows for the agent.',
-					workflowInputs: {
-						value: {
-							operation: 'executeWorkflow',
-							parameters:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters', ``, 'string') }}",
-							workflowIds:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('workflowIds', ``, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'operation',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'operation',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'workflowIds',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'workflowIds',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'parameters',
-								type: 'object',
-								display: true,
-								required: false,
-								displayName: 'parameters',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [-3340, 460],
-				name: 'ExecuteWorkflow',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-mini',
-						cachedResultName: 'gpt-4.1-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-3660, 1240],
-				name: 'OpenAI Chat Model',
 			},
 		}),
 	)

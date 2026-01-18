@@ -299,6 +299,39 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-5',
+									cachedResultName: 'gpt-5',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Refiner Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "$schema": "http://json-schema.org/draft-07/schema#",\n  "title": "Sora2VideoGenerationRequest",\n  "description": "Simplified schema for Sora 2 video generation with enhanced prompts",\n  "type": "object",\n  "required": ["prompt", "aspect_ratio", "duration"],\n  "properties": {\n    "prompt": {\n      "type": "string",\n      "description": "The fully enhanced, professionally structured prompt optimized for Sora 2 video generation with cinematography details, specific actions, lighting, and visual specifics",\n      "minLength": 50,\n      "maxLength": 4000\n    },\n    "aspect_ratio": {\n      "type": "string",\n      "enum": ["16:9", "9:16"],\n      "description": "Video aspect ratio. 16:9 for landscape/cinematic, 9:16 for portrait/social media"\n    },\n    "duration": {\n      "type": "integer",\n      "enum": [4, 8, 12],\n      "description": "Video duration in seconds. 4s is most reliable, 8s and 12s may have reduced instruction-following accuracy"\n    }\n  }\n}',
+							},
+							name: 'JSON Output Parser',
+						},
+					}),
+				},
 				position: [5840, 2592],
 				name: 'Prompt Refiner',
 			},
@@ -325,43 +358,6 @@ const wf = workflow('', '')
 				},
 				position: [6144, 2592],
 				name: 'Text-to-Video Call',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "$schema": "http://json-schema.org/draft-07/schema#",\n  "title": "Sora2VideoGenerationRequest",\n  "description": "Simplified schema for Sora 2 video generation with enhanced prompts",\n  "type": "object",\n  "required": ["prompt", "aspect_ratio", "duration"],\n  "properties": {\n    "prompt": {\n      "type": "string",\n      "description": "The fully enhanced, professionally structured prompt optimized for Sora 2 video generation with cinematography details, specific actions, lighting, and visual specifics",\n      "minLength": 50,\n      "maxLength": 4000\n    },\n    "aspect_ratio": {\n      "type": "string",\n      "enum": ["16:9", "9:16"],\n      "description": "Video aspect ratio. 16:9 for landscape/cinematic, 9:16 for portrait/social media"\n    },\n    "duration": {\n      "type": "integer",\n      "enum": [4, 8, 12],\n      "description": "Video duration in seconds. 4s is most reliable, 8s and 12s may have reduced instruction-following accuracy"\n    }\n  }\n}',
-				},
-				position: [5984, 2768],
-				name: 'JSON Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-5',
-						cachedResultName: 'gpt-5',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [5840, 2768],
-				name: 'Refiner Model',
 			},
 		}),
 	)

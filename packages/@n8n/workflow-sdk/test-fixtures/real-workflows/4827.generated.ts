@@ -43,6 +43,49 @@ const wf = workflow('', '')
 				credentials: {
 					mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
 				},
+				subnodes: {
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: {
+								options: {
+									metadata: {
+										metadataValues: [{ name: 'doc_id', value: '={{ $json.documentId }}' }],
+									},
+								},
+								jsonData: '={{ $json.content }}',
+								jsonMode: 'expressionData',
+							},
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+									version: 1,
+									config: {
+										parameters: {
+											options: { splitCode: 'markdown' },
+											chunkSize: 3000,
+											chunkOverlap: 200,
+										},
+										name: 'Document Chunker',
+									},
+								}),
+							},
+							name: 'Document Section Loader',
+						},
+					}),
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Embeddings Generator',
+						},
+					}),
+				},
 				position: [1820, -560],
 				name: 'MongoDB Vector Store Inserter',
 			},
@@ -208,6 +251,71 @@ const wf = workflow('', '')
 					text: '={{ $json.text }}',
 					options: { systemMessage: '' },
 					promptType: 'define',
+				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "=memory_{{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
+							version: 1.1,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									options: {},
+									toolName: 'productDocs',
+									mongoCollection: {
+										__rl: true,
+										mode: 'list',
+										value: 'n8n-template',
+										cachedResultName: 'n8n-template',
+									},
+									toolDescription: 'retreive documentation',
+									vectorIndexName: 'data_index',
+								},
+								credentials: {
+									mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI',
+										},
+									}),
+								},
+								name: 'MongoDB Vector Search',
+							},
+						}),
+					],
 				},
 				position: [3720, 400],
 				name: 'Knowledge Base Agent',
@@ -813,125 +921,6 @@ const wf = workflow('', '')
 				},
 				position: [2960, 1380],
 				name: 'Send Unsupported Response',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [3720, 580],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [4060, 740],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas',
-			version: 1.1,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					options: {},
-					toolName: 'productDocs',
-					mongoCollection: {
-						__rl: true,
-						mode: 'list',
-						value: 'n8n-template',
-						cachedResultName: 'n8n-template',
-					},
-					toolDescription: 'retreive documentation',
-					vectorIndexName: 'data_index',
-				},
-				credentials: {
-					mongoDb: { id: 'credential-id', name: 'mongoDb Credential' },
-				},
-				position: [3940, 580],
-				name: 'MongoDB Vector Search',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "=memory_{{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
-					sessionIdType: 'customKey',
-				},
-				position: [3820, 580],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-			version: 1,
-			config: {
-				parameters: {
-					options: { splitCode: 'markdown' },
-					chunkSize: 3000,
-					chunkOverlap: 200,
-				},
-				position: [1920, -260],
-				name: 'Document Chunker',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: {
-				parameters: {
-					options: {
-						metadata: {
-							metadataValues: [{ name: 'doc_id', value: '={{ $json.documentId }}' }],
-						},
-					},
-					jsonData: '={{ $json.content }}',
-					jsonMode: 'expressionData',
-				},
-				position: [1920, -400],
-				name: 'Document Section Loader',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1820, -400],
-				name: 'OpenAI Embeddings Generator',
 			},
 		}),
 	)

@@ -25,6 +25,117 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 							'=You are “Legal-Doc Agent”, an expert that drafts professional Turkish\ndocuments from fixed Google Docs templates.\n\n<templateCatalog>\n{{ YOUR_MANUAL_TO_ADD_TEMPLATE_LIST }}\n</templateCatalog> \n\n#TOOLS AND USAGE RULES\nGetMetaData(id)                           → { placeholders\\[], conditionals\\[] }\nDocProcess(user_choice_name, user_choice_id, data{}) → \n\n(Call a tool by replying ONLY with\n{"tool":"ToolName","params":{...}} )\n\n\n#FLOW\nstep-1 Determine which document in the templateCatalog the user wants to create.\nstep-2 Call GetMetaData with the identified id.  \n         → You get back:\n           • metadata.placeholders       (global/static placeholders)\n           • metadata.conditionals[]     (each has flag, label, help, placeholders[])\n\nstep-3 Request the necessary information from the user:\n         a) For each name in metadata.placeholders, ask “What is <PLACEHOLDER>? ”\n         b) For each item in metadata.conditionals:\n              i.   Ask “Would you like to include the <label> section? <help>”\n              ii.  Record in blocks[KEY].include = true/false\n              iii. If include===true, then for each p in placeholders[] ask “What is <p>? ”\n         → Build up a `data` object:\n            {\n              /* static values from 3a */,\n              blocks: {\n                KEY1: { include: true,  P1: val1, P2: val2… },\n                KEY2: { include: false            },\n                …\n              }\n            }\n\nstep-4 After collecting all the required information, submit the information provided by the user to the user for approval as a whole.\nstep-5 Using the `docId` and that `data` object, call the DocProcess (FillDocument) tool.\n\nstep-6 If there are no errors, return the new document’s download URL (or ID) to the user indicating success.\n\n\n#STYLE\n• Speak concise, formal Turkish.\n• Never guess data; always ask.\n• Only tool-call messages may contain JSON blocks.\n\n#RULES\nWhen calling DocProcess, DO NOT CHANGE/TRANSLATE the placeholder names and conditional flag names/structure returned by GetMetaData. Only place the answers you obtained from the user next to them.\n',
 					},
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.2,
+							config: {
+								parameters: {
+									workflowId: { __rl: true, mode: 'id', value: '<YOUR_WORKFLOW_ID>' },
+									description: 'Call this tool for Doc Process',
+									workflowInputs: {
+										value: {
+											data: "={{ $fromAI('data') }}",
+											user_choice_id: "={{ $fromAI('user_choice_id') }}",
+											user_choice_name: "={{ $fromAI('user_choice_name') }}",
+										},
+										schema: [
+											{
+												id: 'user_choice_name',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'user_choice_name',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'user_choice_id',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'user_choice_id',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'data',
+												type: 'object',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'data',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'DocProcess',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://script.google.com/macros/s/<YOUR_DEPLOY_ID>/exec',
+									options: {},
+									sendQuery: true,
+									sendHeaders: true,
+									authentication: 'predefinedCredentialType',
+									queryParameters: {
+										parameters: [
+											{ name: 'mode', value: 'meta' },
+											{
+												name: 'id',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `The id of the template requested by the user comes here.`, 'string') }}",
+											},
+										],
+									},
+									headerParameters: { parameters: [{ name: 'accept', value: 'application/json' }] },
+									nodeCredentialType: 'googleDriveOAuth2Api',
+								},
+								credentials: {
+									googleDriveOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleDriveOAuth2Api Credential',
+									},
+								},
+								name: 'GetMetaData',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+						version: 1.3,
+						config: {
+							credentials: {
+								postgres: { id: 'credential-id', name: 'postgres Credential' },
+							},
+							name: 'Postgres Chat Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [240, -20],
 				name: 'DocAgent',
 			},
@@ -62,6 +173,30 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n	"eslesme": true,\n	"user_choice_name": "SATIŞ SÖZLEŞMESİ",\n    "user_choice_id": "<EXAMPLE_TEMPLATE_ID>"\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model2',
+						},
+					}),
 				},
 				position: [300, 1020],
 				name: 'User Choice Match Check',
@@ -171,6 +306,19 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 					batching: {},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model1',
+						},
+					}),
 				},
 				position: [1540, 920],
 				name: 'Format Control',
@@ -558,125 +706,6 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 	)
 	.add(
 		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-20, 300],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://script.google.com/macros/s/<YOUR_DEPLOY_ID>/exec',
-					options: {},
-					sendQuery: true,
-					sendHeaders: true,
-					authentication: 'predefinedCredentialType',
-					queryParameters: {
-						parameters: [
-							{ name: 'mode', value: 'meta' },
-							{
-								name: 'id',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `The id of the template requested by the user comes here.`, 'string') }}",
-							},
-						],
-					},
-					headerParameters: { parameters: [{ name: 'accept', value: 'application/json' }] },
-					nodeCredentialType: 'googleDriveOAuth2Api',
-				},
-				credentials: {
-					googleDriveOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleDriveOAuth2Api Credential',
-					},
-				},
-				position: [420, 300],
-				name: 'GetMetaData',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.2,
-			config: {
-				parameters: {
-					workflowId: { __rl: true, mode: 'id', value: '<YOUR_WORKFLOW_ID>' },
-					description: 'Call this tool for Doc Process',
-					workflowInputs: {
-						value: {
-							data: "={{ $fromAI('data') }}",
-							user_choice_id: "={{ $fromAI('user_choice_id') }}",
-							user_choice_name: "={{ $fromAI('user_choice_name') }}",
-						},
-						schema: [
-							{
-								id: 'user_choice_name',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'user_choice_name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'user_choice_id',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'user_choice_id',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'data',
-								type: 'object',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'data',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [600, 300],
-				name: 'DocProcess',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-			version: 1.3,
-			config: {
-				credentials: {
-					postgres: { id: 'credential-id', name: 'postgres Credential' },
-				},
-				position: [200, 300],
-				name: 'Postgres Chat Memory',
-			},
-		}),
-	)
-	.add(
-		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
 			config: {
@@ -697,48 +726,6 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 				},
 				position: [-500, 440],
 				name: 'Template List',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [1620, 1140],
-				name: 'Google Gemini Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n	"eslesme": true,\n	"user_choice_name": "SATIŞ SÖZLEŞMESİ",\n    "user_choice_id": "<EXAMPLE_TEMPLATE_ID>"\n}',
-				},
-				position: [440, 1240],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [320, 1240],
-				name: 'Google Gemini Chat Model2',
 			},
 		}),
 	)

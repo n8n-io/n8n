@@ -1,4 +1,5 @@
 import { generateWorkflowCode } from '../codegen';
+import { parseWorkflowCode } from '../parse-workflow-code';
 import type { WorkflowJSON } from '../types/base';
 
 describe('generateWorkflowCode', () => {
@@ -183,5 +184,278 @@ describe('generateWorkflowCode', () => {
 		// Should properly escape
 		expect(code).toContain("\\'quotes\\'");
 		expect(code).toContain('\\n');
+	});
+});
+
+// =============================================================================
+// AI Subnode Codegen Tests
+// =============================================================================
+
+describe('generateWorkflowCode with AI subnodes', () => {
+	it('should generate subnode config for AI agent with model', () => {
+		const json: WorkflowJSON = {
+			id: 'ai-agent-test',
+			name: 'AI Agent with Model',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'agent-1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [200, 0],
+					parameters: {
+						promptType: 'define',
+						text: 'Hello, how can I help?',
+					},
+				},
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [200, 200],
+					parameters: {
+						model: 'gpt-4',
+					},
+				},
+			],
+			connections: {
+				'Manual Trigger': {
+					main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+				},
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should NOT have standalone model node as .add() call
+		expect(code).not.toMatch(/\.add\(node\(\{\s*type:\s*'@n8n\/n8n-nodes-langchain\.lmChatOpenAi'/);
+
+		// Should have subnode config with languageModel factory
+		expect(code).toContain('subnodes:');
+		expect(code).toContain('model: languageModel(');
+		expect(code).toContain("type: '@n8n/n8n-nodes-langchain.lmChatOpenAi'");
+	});
+
+	it('should generate subnode config for AI agent with multiple subnodes', () => {
+		const json: WorkflowJSON = {
+			id: 'ai-multi-subnode',
+			name: 'AI Agent with Multiple Subnodes',
+			nodes: [
+				{
+					id: 'agent-1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [0, 200],
+					parameters: { model: 'gpt-4' },
+				},
+				{
+					id: 'tool-1',
+					name: 'Code Tool',
+					type: '@n8n/n8n-nodes-langchain.toolCode',
+					typeVersion: 1.1,
+					position: [0, 300],
+					parameters: { code: 'return "test"' },
+				},
+				{
+					id: 'tool-2',
+					name: 'Calculator Tool',
+					type: '@n8n/n8n-nodes-langchain.toolCalculator',
+					typeVersion: 1,
+					position: [0, 400],
+					parameters: {},
+				},
+				{
+					id: 'memory-1',
+					name: 'Buffer Memory',
+					type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+					typeVersion: 1.2,
+					position: [0, 500],
+					parameters: { contextWindowLength: 5 },
+				},
+			],
+			connections: {
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+				'Code Tool': {
+					ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+				},
+				'Calculator Tool': {
+					ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+				},
+				'Buffer Memory': {
+					ai_memory: [[{ node: 'AI Agent', type: 'ai_memory', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should have all subnodes in config
+		expect(code).toContain('subnodes:');
+		expect(code).toContain('model: languageModel(');
+		expect(code).toContain('memory: memory(');
+		expect(code).toContain('tools: [');
+		expect(code).toContain('tool(');
+
+		// Should NOT have standalone subnode .add() calls
+		expect(code).not.toMatch(/\.add\(node\(\{\s*type:\s*'@n8n\/n8n-nodes-langchain\.lmChatOpenAi'/);
+		expect(code).not.toMatch(/\.add\(node\(\{\s*type:\s*'@n8n\/n8n-nodes-langchain\.toolCode'/);
+		expect(code).not.toMatch(
+			/\.add\(node\(\{\s*type:\s*'@n8n\/n8n-nodes-langchain\.memoryBufferWindow'/,
+		);
+	});
+
+	it('should handle output parser subnode', () => {
+		const json: WorkflowJSON = {
+			id: 'output-parser-test',
+			name: 'Agent with Output Parser',
+			nodes: [
+				{
+					id: 'agent-1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [0, 200],
+					parameters: {},
+				},
+				{
+					id: 'parser-1',
+					name: 'Structured Parser',
+					type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+					typeVersion: 1,
+					position: [0, 300],
+					parameters: { schemaType: 'manual' },
+				},
+			],
+			connections: {
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+				'Structured Parser': {
+					ai_outputParser: [[{ node: 'AI Agent', type: 'ai_outputParser', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toContain('outputParser: outputParser(');
+	});
+
+	it('should roundtrip AI connections correctly', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'ai-roundtrip',
+			name: 'AI Roundtrip Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'agent-1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [200, 0],
+					parameters: { promptType: 'auto' },
+				},
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [200, 200],
+					parameters: { model: 'gpt-4' },
+				},
+			],
+			connections: {
+				'Manual Trigger': {
+					main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+				},
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+		};
+
+		// Generate code and parse back
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify AI connections are preserved
+		expect(parsedJson.connections['OpenAI Model']).toBeDefined();
+		expect(parsedJson.connections['OpenAI Model'].ai_languageModel).toBeDefined();
+		expect(parsedJson.connections['OpenAI Model'].ai_languageModel[0][0].node).toBe('AI Agent');
+		expect(parsedJson.connections['OpenAI Model'].ai_languageModel[0][0].type).toBe(
+			'ai_languageModel',
+		);
+	});
+
+	it('should handle embedding subnode for vector store', () => {
+		const json: WorkflowJSON = {
+			id: 'embedding-test',
+			name: 'Vector Store with Embedding',
+			nodes: [
+				{
+					id: 'vs-1',
+					name: 'Pinecone Store',
+					type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { indexName: 'test' },
+				},
+				{
+					id: 'emb-1',
+					name: 'OpenAI Embeddings',
+					type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+					typeVersion: 1,
+					position: [0, 200],
+					parameters: { model: 'text-embedding-ada-002' },
+				},
+			],
+			connections: {
+				'OpenAI Embeddings': {
+					ai_embedding: [[{ node: 'Pinecone Store', type: 'ai_embedding', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toContain('embedding: embedding(');
 	});
 });

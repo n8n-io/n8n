@@ -63,6 +63,47 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: {
+									topK: 40,
+									topP: 1,
+									temperature: 0.5,
+									safetySettings: {
+										values: [
+											{
+												category: 'HARM_CATEGORY_HARASSMENT',
+												threshold: 'BLOCK_NONE',
+											},
+											{
+												category: 'HARM_CATEGORY_HATE_SPEECH',
+												threshold: 'BLOCK_NONE',
+											},
+											{
+												category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+												threshold: 'BLOCK_NONE',
+											},
+											{
+												category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+												threshold: 'BLOCK_NONE',
+											},
+										],
+									},
+									maxOutputTokens: 65536,
+								},
+								modelName: 'models/gemini-2.0-flash',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [540, 100],
 				name: 'AI Agent - Create Image From Prompt',
 			},
@@ -178,48 +219,6 @@ const wf = workflow(
 				parameters: { updates: ['message'], additionalFields: {} },
 				position: [20, 0],
 				name: 'Telegram Trigger',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: {
-						topK: 40,
-						topP: 1,
-						temperature: 0.5,
-						safetySettings: {
-							values: [
-								{
-									category: 'HARM_CATEGORY_HARASSMENT',
-									threshold: 'BLOCK_NONE',
-								},
-								{
-									category: 'HARM_CATEGORY_HATE_SPEECH',
-									threshold: 'BLOCK_NONE',
-								},
-								{
-									category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-									threshold: 'BLOCK_NONE',
-								},
-								{
-									category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-									threshold: 'BLOCK_NONE',
-								},
-							],
-						},
-						maxOutputTokens: 65536,
-					},
-					modelName: 'models/gemini-2.0-flash',
-				},
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [540, 300],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

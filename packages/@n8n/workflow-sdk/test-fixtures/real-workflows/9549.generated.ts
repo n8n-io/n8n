@@ -87,6 +87,30 @@ const wf = workflow('AJch0Bi1L5u67nRO', 'Fathom Meeting Summary & Actions AI Age
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "Meeting Title": "Test call",\n  "Recording URL": "https://fathom.video/share/745cvtcxSXKb7YyfDMiyzMChZ3AsoGad",\n  "Scheduled Date/Time": "30-01-2025, 12:15 to 12:30",\n  "Recording Date/Time": "30-01-2025, 12:16 to 12:16",\n  "Attendees": "John Doe <user@example.com> (Attendee)",\n  "Executive Summary": "Single-speaker intro explaining that Fathom auto-records meetings, captures key moments and action items, and allows manual highlights. No concrete decisions or actions were stated.",\n  "Key Points": "Fathom auto-records and captures important moments and action items.\\nPost-meeting summaries are delivered quickly.\\nManual highlight button available for special moments.",\n  "Action Items": "Send John 2-3 specific YouTube video links.\\nGet automation engineer to review Sheets integration Mon-Tue.",\n  "Decisions": "Emmily to update feature on the contact page.\\nJohn will speak to Jess about product development roadmap.",\n  "Risks/Concerns": "John mentioned development pace is slow in January meaning a late release date is likely.",\n  "Open Questions": "What\'s the status of the Hubspot implementation?\\nNone identified in the transcript.",\n  "Entities — People": "Emmily Bowman; John Doe",\n  "Entities — Orgs/Places": "Fathom",\n  "Entities — Numbers/Dates": "30 seconds"\n}\n',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [96, -144],
 				name: 'AI Meeting Analysis',
 			},
@@ -328,34 +352,6 @@ const wf = workflow('AJch0Bi1L5u67nRO', 'Fathom Meeting Summary & Actions AI Age
 				},
 				position: [1344, -160],
 				name: 'Improve Page Layout',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [96, 16],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "Meeting Title": "Test call",\n  "Recording URL": "https://fathom.video/share/745cvtcxSXKb7YyfDMiyzMChZ3AsoGad",\n  "Scheduled Date/Time": "30-01-2025, 12:15 to 12:30",\n  "Recording Date/Time": "30-01-2025, 12:16 to 12:16",\n  "Attendees": "John Doe <user@example.com> (Attendee)",\n  "Executive Summary": "Single-speaker intro explaining that Fathom auto-records meetings, captures key moments and action items, and allows manual highlights. No concrete decisions or actions were stated.",\n  "Key Points": "Fathom auto-records and captures important moments and action items.\\nPost-meeting summaries are delivered quickly.\\nManual highlight button available for special moments.",\n  "Action Items": "Send John 2-3 specific YouTube video links.\\nGet automation engineer to review Sheets integration Mon-Tue.",\n  "Decisions": "Emmily to update feature on the contact page.\\nJohn will speak to Jess about product development roadmap.",\n  "Risks/Concerns": "John mentioned development pace is slow in January meaning a late release date is likely.",\n  "Open Questions": "What\'s the status of the Hubspot implementation?\\nNone identified in the transcript.",\n  "Entities — People": "Emmily Bowman; John Doe",\n  "Entities — Orgs/Places": "Fathom",\n  "Entities — Numbers/Dates": "30 seconds"\n}\n',
-				},
-				position: [272, 16],
-				name: 'Structured Output Parser',
 			},
 		}),
 	)

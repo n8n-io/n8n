@@ -169,6 +169,31 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: { model: 'openai/gpt-5.1-codex-mini', options: {} },
+							credentials: {
+								openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+							},
+							name: 'OpenRouter Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "array",\n  "items": {\n    "type": "object",\n    "properties": {\n      "old_name": {\n        "type": "string",\n        "description": "The exact match original node name"\n      },\n      "new_name": {\n        "type": "string",\n        "description": "The new node name"\n      }\n    },\n    "required": [\n      "old_name",\n      "new_name"\n    ]\n  }\n}',
+							},
+							name: 'Parse LLM Mapping ToJson',
+						},
+					}),
+				},
 				position: [2160, -1216],
 				name: 'Generate Node Rename Mapping',
 			},
@@ -467,35 +492,6 @@ const wf = workflow('', '')
 				credentials: { n8nApi: { id: 'credential-id', name: 'n8nApi Credential' } },
 				position: [3040, -1888],
 				name: 'Select a Workflow',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "array",\n  "items": {\n    "type": "object",\n    "properties": {\n      "old_name": {\n        "type": "string",\n        "description": "The exact match original node name"\n      },\n      "new_name": {\n        "type": "string",\n        "description": "The new node name"\n      }\n    },\n    "required": [\n      "old_name",\n      "new_name"\n    ]\n  }\n}',
-				},
-				position: [2320, -1040],
-				name: 'Parse LLM Mapping ToJson',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { model: 'openai/gpt-5.1-codex-mini', options: {} },
-				credentials: {
-					openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
-				},
-				position: [2144, -1040],
-				name: 'OpenRouter Chat Model',
 			},
 		}),
 	)

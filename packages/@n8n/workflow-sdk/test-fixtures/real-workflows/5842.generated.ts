@@ -111,7 +111,6 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 			config: { parameters: { options: {} }, position: [880, 0], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
@@ -121,6 +120,33 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 					text: '=Here is a question:  {{ $json.Title }}\n\nRephrase it without changing the meaning. Keep it as a question.\n\nI just need the question as the output nothing else',
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: '={{ $json.Title }}',
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
 				},
 				position: [1140, 20],
 				name: 'AI Agent',
@@ -252,6 +278,33 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 					text: '=Write a short intro for a blog post titled:  {{ $json.name }}\n\nMake it easy to read, with easy vocabulary\n\nJust give me the intro as the output',
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('Google Sheets1').item.json.name }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory2',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model2',
+						},
+					}),
 				},
 				position: [2200, -80],
 				name: 'Intro',
@@ -388,6 +441,33 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('Google Sheets1').item.json.name }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory3',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model3',
+						},
+					}),
+				},
 				position: [2200, 220],
 				name: 'Steps',
 			},
@@ -426,6 +506,33 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 					text: '=Write a short conclusion for a blog post titled:  {{ $json.name }}\n\nMake it easy to read, with easy vocabulary\n\nJust give me the conclusion as the output',
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('Google Sheets1').item.json.name }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory4',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model4',
+						},
+					}),
 				},
 				position: [2200, 520],
 				name: 'Conclusion',
@@ -466,6 +573,30 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: { sessionKey: '={{ $json.name }}', sessionIdType: 'customKey' },
+							name: 'Simple Memory1',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+				},
 				position: [2200, -320],
 				name: 'slug',
 			},
@@ -491,158 +622,6 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 				},
 				position: [2560, -320],
 				name: 'Edit Fields',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1160, 160],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: '={{ $json.Title }}',
-					sessionIdType: 'customKey',
-				},
-				position: [1300, 160],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2200, -200],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: { sessionKey: '={{ $json.name }}', sessionIdType: 'customKey' },
-				position: [2340, -200],
-				name: 'Simple Memory1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2200, 60],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('Google Sheets1').item.json.name }}",
-					sessionIdType: 'customKey',
-				},
-				position: [2360, 60],
-				name: 'Simple Memory2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2200, 360],
-				name: 'OpenAI Chat Model3',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('Google Sheets1').item.json.name }}",
-					sessionIdType: 'customKey',
-				},
-				position: [2360, 360],
-				name: 'Simple Memory3',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2200, 660],
-				name: 'OpenAI Chat Model4',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('Google Sheets1').item.json.name }}",
-					sessionIdType: 'customKey',
-				},
-				position: [2360, 660],
-				name: 'Simple Memory4',
 			},
 		}),
 	)

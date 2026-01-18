@@ -1,4 +1,5 @@
 import { node, trigger, sticky, placeholder } from '../node-builder';
+import { languageModel, memory, tool, outputParser } from '../subnode-builders';
 import type { LcAgentV31Node } from '../types/generated';
 
 describe('Node Builder', () => {
@@ -219,17 +220,17 @@ describe('Node Builder', () => {
 
 	describe('AI nodes with subnodes', () => {
 		it('should create an AI node with subnodes', () => {
-			const modelNode = node({
+			const modelNode = languageModel({
 				type: 'n8n-nodes-langchain.lmChatOpenAi',
 				version: 1,
 				config: { parameters: { model: 'gpt-4' } },
 			});
-			const memoryNode = node({
+			const memoryNode = memory({
 				type: 'n8n-nodes-langchain.memoryBufferWindow',
 				version: 1,
 				config: { parameters: { windowSize: 5 } },
 			});
-			const toolNode = node({
+			const toolNode = tool({
 				type: 'n8n-nodes-langchain.toolCalculator',
 				version: 1,
 				config: {},
@@ -257,7 +258,7 @@ describe('Node Builder', () => {
 		});
 
 		it('should create an AI node with output parser', () => {
-			const parserNode = node({
+			const parserNode = outputParser({
 				type: 'n8n-nodes-langchain.outputParserStructured',
 				version: 1.3,
 				config: { parameters: { schemaType: 'manual', inputSchema: '{}' } },

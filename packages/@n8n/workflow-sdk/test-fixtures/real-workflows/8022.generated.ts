@@ -53,7 +53,6 @@ const wf = workflow('HQcHQhEaig6JXOH4', 'AI Virtual TryOn for WooCommerce Nano B
 			config: { parameters: { options: {} }, position: [-48, 1600], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',

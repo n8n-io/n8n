@@ -132,6 +132,19 @@ const wf = workflow('[WORKFLOW_ID_REMOVED]', 'HR CVs Filter', { executionOrder: 
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [192, 256],
 				name: 'Qualify CV Agent',
 			},
@@ -312,20 +325,6 @@ const wf = workflow('[WORKFLOW_ID_REMOVED]', 'HR CVs Filter', { executionOrder: 
 				},
 				position: [-928, 688],
 				name: 'PDF Request',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [192, 496],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

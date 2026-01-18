@@ -23,6 +23,22 @@ const wf = workflow('kPBvBnjidCFr5v69', 'Youtube to Instagram_Facebook', { execu
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [-740, -80],
 				name: 'AI Agent',
 			},
@@ -130,23 +146,6 @@ const wf = workflow('kPBvBnjidCFr5v69', 'Youtube to Instagram_Facebook', { execu
 				},
 				position: [-340, -240],
 				name: 'Post on Facebook',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-740, 160],
-				name: 'OpenAI Chat Model',
 			},
 		}),
 	)

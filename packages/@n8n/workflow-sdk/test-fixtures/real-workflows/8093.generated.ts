@@ -55,6 +55,38 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-5',
+									cachedResultName: 'gpt-5',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "StudentID": "S001",\n  "Program": "Example Program",\n  "Missing": [\n    "CS-201 | Computer Systems | 3",\n    "CS-220 | Databases | 3",\n    "GEN-107 | Introduction to Sociology | 3"\n  ],\n  "Summary": "Student still needs two core Computer Science courses and one general education requirement. Should prioritize 200-level major courses next term."\n}\n',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
+				},
 				position: [-1120, 7552],
 				name: 'Degree Audit Agent',
 			},
@@ -174,42 +206,6 @@ const wf = workflow('', '')
 				},
 				position: [-720, 7568],
 				name: 'Add Student Degree Summary',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-5',
-						cachedResultName: 'gpt-5',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-1344, 8048],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "StudentID": "S001",\n  "Program": "Example Program",\n  "Missing": [\n    "CS-201 | Computer Systems | 3",\n    "CS-220 | Databases | 3",\n    "GEN-107 | Introduction to Sociology | 3"\n  ],\n  "Summary": "Student still needs two core Computer Science courses and one general education requirement. Should prioritize 200-level major courses next term."\n}\n',
-				},
-				position: [-1120, 8032],
-				name: 'Structured Output Parser1',
 			},
 		}),
 	)

@@ -45,6 +45,19 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: { model: 'deepseek/deepseek-chat-v3-0324', options: {} },
+							credentials: {
+								openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+							},
+							name: 'OpenRouter Chat Model',
+						},
+					}),
+				},
 				position: [460, 420],
 				name: 'Text Extractor',
 			},
@@ -732,20 +745,6 @@ const wf = workflow('', '')
 				},
 				position: [2460, 280],
 				name: 'Update Results',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { model: 'deepseek/deepseek-chat-v3-0324', options: {} },
-				credentials: {
-					openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
-				},
-				position: [548, 625],
-				name: 'OpenRouter Chat Model',
 			},
 		}),
 	)

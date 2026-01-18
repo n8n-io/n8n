@@ -69,6 +69,236 @@ const wf = workflow('kZ3wJtLi5OI0WzFF', 'HTX AI Agent v1.02', { executionOrder: 
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1.1,
+							config: {
+								parameters: {
+									description:
+										'### 🏷 Tool: **Think**\n\n**Purpose:**\n\n* Lightweight **reasoning helper**.\n* Lets the AI Agent process intermediate logic, format outputs, or decide how to combine multiple API results before sending the final report.\n* Does not fetch data itself.\n\n**Use cases:**\n\n* Clean/reshape JSON from Binance endpoints\n* Extract only the needed fields (e.g., `lastPrice`, `volume`)\n* Help prepare data for Telegram message formatting\n\n**n8n setup notes:**\n\n* No API call, just an **AI Tool** node.\n* Connect upstream API results → Think → Report Agent.',
+								},
+								name: 'Think',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.huobi.pro/market/detail',
+									options: {},
+									sendQuery: true,
+									queryParameters: {
+										parameters: [
+											{
+												name: 'symbol',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
+											},
+										],
+									},
+									toolDescription:
+										"### 🏷 Tool: **24h Stats (Ticker Detail)**\n\n**Endpoint:** `GET /market/detail`\n**What it does:** Returns the **24h rolling summary** for a single HTX spot symbol: **open/high/low/close**, **amount (base volume)**, **vol (quote turnover)**, and **trade count**.\n\n**Params:**\n- `symbol` (STRING, required) → e.g., `btcusdt` (lowercase, no dash)\n\n**Returns (core fields):** `ts`, `tick.open`, `tick.close`, `tick.high`, `tick.low`, `tick.amount`, `tick.vol`, `tick.count`.\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\n```\n\n**Notes:** For all symbols at once, use `GET /market/tickers`.\n",
+								},
+								name: '24h Stats',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							version: 1,
+							config: { name: 'Calculator' },
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.huobi.pro/market/detail/merged',
+									options: {},
+									sendQuery: true,
+									queryParameters: {
+										parameters: [
+											{
+												name: 'symbol',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
+											},
+										],
+									},
+									toolDescription:
+										"### 🏷 Tool: **Best Bid/Ask (Order Book Ticker)**\n\n**Endpoint:** `GET /market/detail/merged`\n\n**What it does:** Returns the best **bid/ask** snapshot along with the latest trade price for a symbol.\n\n**Params:**\n- `symbol` (STRING, required) → e.g., `btcusdt` (lowercase, no dash)\n\n**Returns:** `tick.bid` = `[price, qty]`, `tick.ask` = `[price, qty]`\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\n```\n\n**Notes:** Use lowercase symbols without `-` or `/` (e.g., `btcusdt`).",
+								},
+								name: 'Best Bid/Ask',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.huobi.pro/market/detail/merged',
+									options: {},
+									sendQuery: true,
+									queryParameters: {
+										parameters: [
+											{
+												name: 'symbol',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
+											},
+										],
+									},
+									toolDescription:
+										"### 🏷 Tool: **Merged Ticker (Bid/Ask/Last)**\n\n**Endpoint:** `GET /market/detail/merged`\n**What it does:** Returns best bid/ask and last price for a symbol. Use Calculator to derive a midpoint `(bid+ask)/2` if you need an average.\n\n**Params:** `symbol` (STRING, required) → lowercase, no dash (e.g., `btcusdt`)\n\n**Returns (key fields):** `tick.bid`, `tick.ask`, `tick.close`, `tick.high`, `tick.low`, `tick.amount`, `tick.vol`, `ts`\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\n```\n\n**Notes:** HTX has no direct avg-price endpoint; this is the canonical ticker to pair with Calculator for midpoint.",
+								},
+								name: 'Average Price',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.huobi.pro/market/history/trade',
+									options: {},
+									sendQuery: true,
+									queryParameters: {
+										parameters: [
+											{
+												name: 'symbol',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
+											},
+											{
+												name: 'size',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `100`, 'number') }}",
+											},
+										],
+									},
+									toolDescription:
+										"### 🏷 Tool: **Recent Trades**\n\n**Endpoint:** `GET /market/history/trade`\n**What it does:** Returns the most recent trades for a given symbol.\n\n**Params:**\n* `symbol` (STRING, required) → lowercase, no dash (e.g., `btcusdt`)\n* `size` (INT, default 100, max 2000 — we set default 100)\n\n**Returns:** array of trade batches → each batch has `data: [{id, price, amount, direction, ts}]`\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\nsize   = $fromAI('parameters1_Value', 100, 'number')\n```\n\n**Notes:** Unlike Binance, HTX nests trades inside `data` arrays per batch.",
+								},
+								name: 'Recent Trades',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.huobi.pro/market/detail/merged',
+									options: {},
+									sendQuery: true,
+									queryParameters: {
+										parameters: [
+											{
+												name: 'symbol',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
+											},
+										],
+									},
+									toolDescription:
+										"### 🏷 Tool: **Price (Latest)**\n\n**Endpoint:** `GET /market/detail/merged`\n\n**What it does:** Returns the **latest trade price**, best bid/ask, and other snapshot details for a symbol.\n\n**Params:**\n- `symbol` (STRING, required) → e.g., `btcusdt` (lowercase, no dash)\n\n**Returns:** `tick.close` = last trade price, plus bid/ask/volumes.\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\n```\n\n**Notes:** Use lowercase symbols without `-` or `/` (e.g., `btcusdt`).",
+								},
+								name: 'Price (Latest)',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.huobi.pro/market/history/kline',
+									options: {},
+									sendQuery: true,
+									queryParameters: {
+										parameters: [
+											{
+												name: 'symbol',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
+											},
+											{
+												name: 'period',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `15min`, 'string') }}",
+											},
+											{
+												name: 'size',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `20`, 'number') }}",
+											},
+										],
+									},
+									toolDescription:
+										"### 🏷 Tool: **Klines (Candles)**\n\n**Endpoint:** `GET /market/history/kline`\n\n**What it does:** Returns candlestick data for a symbol/interval.\n\n**Params:**\n- `symbol` (STRING, required) → lowercase (e.g., `btcusdt`)\n- `period` (ENUM, required — e.g., `1min,5min,15min,30min,60min,4hour,1day,1mon,1week,1year`)\n- `size` (INT, optional, default 20, max 2000)\n\n**Returns (array per candle):** `[id, open, close, low, high, amount, vol, count]`\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\nperiod = $fromAI('parameters1_Value', '15min', 'string')\nsize   = $fromAI('parameters2_Value', 20, 'number')\n```\n\n**Notes:**\n- Use lowercase symbols without `-` (e.g., `btcusdt`).\n- If no `size` provided, defaults to 20 latest candles.",
+								},
+								name: 'Klines (Candles)',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.huobi.pro/market/depth',
+									options: {},
+									sendQuery: true,
+									queryParameters: {
+										parameters: [
+											{
+												name: 'symbol',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
+											},
+											{
+												name: 'type',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `step0`, 'string') }}",
+											},
+											{
+												name: 'depth',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `20`, 'number') }}",
+											},
+										],
+									},
+									toolDescription:
+										"### 🏷 Tool: **Order Book Depth**\n\n**Endpoint:** `GET /market/depth`\n\n**What it does:** Returns the **order book snapshot** (bids/asks) for a trading pair up to the requested depth level.\n\n**Params:**\n- `symbol` (STRING, required) → e.g., `btcusdt` (lowercase, no dash)\n- `type` (STRING, required) → depth aggregation level (`step0`–`step5`)\n  - `step0` = no aggregation (full precision)\n  - `step1` = aggregated to 1 decimal place\n  - … up to `step5`\n- `depth` (INT, optional) → max entries per side (default 20, max 150)\n\n**Returns:** `ts`, `tick.bids: [[price, qty], ...]`, `tick.asks: [[price, qty], ...]`\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\ntype   = $fromAI('parameters1_Value', 'step0', 'string')\ndepth  = $fromAI('parameters2_Value', 20, 'number')\n```\n\n**Notes:** For lightweight quick book snapshot, use `step0` with smaller depth (20/50).",
+								},
+								name: 'Order Book Depth',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { name: 'Simple Memory' },
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1-mini',
+									cachedResultName: 'gpt-4.1-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [-96, 240],
 				name: 'HTX AI Agent',
 			},
@@ -103,263 +333,6 @@ const wf = workflow('kZ3wJtLi5OI0WzFF', 'HTX AI Agent v1.02', { executionOrder: 
 				},
 				position: [896, 240],
 				name: 'Telegram',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-mini',
-						cachedResultName: 'gpt-4.1-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-1264, 736],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: { position: [-992, 736], name: 'Simple Memory' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolCalculator',
-			version: 1,
-			config: { position: [1520, 592], name: 'Calculator' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1.1,
-			config: {
-				parameters: {
-					description:
-						'### 🏷 Tool: **Think**\n\n**Purpose:**\n\n* Lightweight **reasoning helper**.\n* Lets the AI Agent process intermediate logic, format outputs, or decide how to combine multiple API results before sending the final report.\n* Does not fetch data itself.\n\n**Use cases:**\n\n* Clean/reshape JSON from Binance endpoints\n* Extract only the needed fields (e.g., `lastPrice`, `volume`)\n* Help prepare data for Telegram message formatting\n\n**n8n setup notes:**\n\n* No API call, just an **AI Tool** node.\n* Connect upstream API results → Think → Report Agent.',
-				},
-				position: [1808, 592],
-				name: 'Think',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.huobi.pro/market/detail',
-					options: {},
-					sendQuery: true,
-					queryParameters: {
-						parameters: [
-							{
-								name: 'symbol',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
-							},
-						],
-					},
-					toolDescription:
-						"### 🏷 Tool: **24h Stats (Ticker Detail)**\n\n**Endpoint:** `GET /market/detail`\n**What it does:** Returns the **24h rolling summary** for a single HTX spot symbol: **open/high/low/close**, **amount (base volume)**, **vol (quote turnover)**, and **trade count**.\n\n**Params:**\n- `symbol` (STRING, required) → e.g., `btcusdt` (lowercase, no dash)\n\n**Returns (core fields):** `ts`, `tick.open`, `tick.close`, `tick.high`, `tick.low`, `tick.amount`, `tick.vol`, `tick.count`.\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\n```\n\n**Notes:** For all symbols at once, use `GET /market/tickers`.\n",
-				},
-				position: [-704, 608],
-				name: '24h Stats',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.huobi.pro/market/depth',
-					options: {},
-					sendQuery: true,
-					queryParameters: {
-						parameters: [
-							{
-								name: 'symbol',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
-							},
-							{
-								name: 'type',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `step0`, 'string') }}",
-							},
-							{
-								name: 'depth',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `20`, 'number') }}",
-							},
-						],
-					},
-					toolDescription:
-						"### 🏷 Tool: **Order Book Depth**\n\n**Endpoint:** `GET /market/depth`\n\n**What it does:** Returns the **order book snapshot** (bids/asks) for a trading pair up to the requested depth level.\n\n**Params:**\n- `symbol` (STRING, required) → e.g., `btcusdt` (lowercase, no dash)\n- `type` (STRING, required) → depth aggregation level (`step0`–`step5`)\n  - `step0` = no aggregation (full precision)\n  - `step1` = aggregated to 1 decimal place\n  - … up to `step5`\n- `depth` (INT, optional) → max entries per side (default 20, max 150)\n\n**Returns:** `ts`, `tick.bids: [[price, qty], ...]`, `tick.asks: [[price, qty], ...]`\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\ntype   = $fromAI('parameters1_Value', 'step0', 'string')\ndepth  = $fromAI('parameters2_Value', 20, 'number')\n```\n\n**Notes:** For lightweight quick book snapshot, use `step0` with smaller depth (20/50).",
-				},
-				position: [-400, 608],
-				name: 'Order Book Depth',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.huobi.pro/market/detail/merged',
-					options: {},
-					sendQuery: true,
-					queryParameters: {
-						parameters: [
-							{
-								name: 'symbol',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
-							},
-						],
-					},
-					toolDescription:
-						"### 🏷 Tool: **Price (Latest)**\n\n**Endpoint:** `GET /market/detail/merged`\n\n**What it does:** Returns the **latest trade price**, best bid/ask, and other snapshot details for a symbol.\n\n**Params:**\n- `symbol` (STRING, required) → e.g., `btcusdt` (lowercase, no dash)\n\n**Returns:** `tick.close` = last trade price, plus bid/ask/volumes.\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\n```\n\n**Notes:** Use lowercase symbols without `-` or `/` (e.g., `btcusdt`).",
-				},
-				position: [-112, 608],
-				name: 'Price (Latest)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.huobi.pro/market/detail/merged',
-					options: {},
-					sendQuery: true,
-					queryParameters: {
-						parameters: [
-							{
-								name: 'symbol',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
-							},
-						],
-					},
-					toolDescription:
-						"### 🏷 Tool: **Best Bid/Ask (Order Book Ticker)**\n\n**Endpoint:** `GET /market/detail/merged`\n\n**What it does:** Returns the best **bid/ask** snapshot along with the latest trade price for a symbol.\n\n**Params:**\n- `symbol` (STRING, required) → e.g., `btcusdt` (lowercase, no dash)\n\n**Returns:** `tick.bid` = `[price, qty]`, `tick.ask` = `[price, qty]`\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\n```\n\n**Notes:** Use lowercase symbols without `-` or `/` (e.g., `btcusdt`).",
-				},
-				position: [208, 608],
-				name: 'Best Bid/Ask',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.huobi.pro/market/history/kline',
-					options: {},
-					sendQuery: true,
-					queryParameters: {
-						parameters: [
-							{
-								name: 'symbol',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
-							},
-							{
-								name: 'period',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `15min`, 'string') }}",
-							},
-							{
-								name: 'size',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', `20`, 'number') }}",
-							},
-						],
-					},
-					toolDescription:
-						"### 🏷 Tool: **Klines (Candles)**\n\n**Endpoint:** `GET /market/history/kline`\n\n**What it does:** Returns candlestick data for a symbol/interval.\n\n**Params:**\n- `symbol` (STRING, required) → lowercase (e.g., `btcusdt`)\n- `period` (ENUM, required — e.g., `1min,5min,15min,30min,60min,4hour,1day,1mon,1week,1year`)\n- `size` (INT, optional, default 20, max 2000)\n\n**Returns (array per candle):** `[id, open, close, low, high, amount, vol, count]`\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\nperiod = $fromAI('parameters1_Value', '15min', 'string')\nsize   = $fromAI('parameters2_Value', 20, 'number')\n```\n\n**Notes:**\n- Use lowercase symbols without `-` (e.g., `btcusdt`).\n- If no `size` provided, defaults to 20 latest candles.",
-				},
-				position: [544, 592],
-				name: 'Klines (Candles)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.huobi.pro/market/detail/merged',
-					options: {},
-					sendQuery: true,
-					queryParameters: {
-						parameters: [
-							{
-								name: 'symbol',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
-							},
-						],
-					},
-					toolDescription:
-						"### 🏷 Tool: **Merged Ticker (Bid/Ask/Last)**\n\n**Endpoint:** `GET /market/detail/merged`\n**What it does:** Returns best bid/ask and last price for a symbol. Use Calculator to derive a midpoint `(bid+ask)/2` if you need an average.\n\n**Params:** `symbol` (STRING, required) → lowercase, no dash (e.g., `btcusdt`)\n\n**Returns (key fields):** `tick.bid`, `tick.ask`, `tick.close`, `tick.high`, `tick.low`, `tick.amount`, `tick.vol`, `ts`\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\n```\n\n**Notes:** HTX has no direct avg-price endpoint; this is the canonical ticker to pair with Calculator for midpoint.",
-				},
-				position: [880, 592],
-				name: 'Average Price',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.huobi.pro/market/history/trade',
-					options: {},
-					sendQuery: true,
-					queryParameters: {
-						parameters: [
-							{
-								name: 'symbol',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `btcusdt`, 'string') }}",
-							},
-							{
-								name: 'size',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `100`, 'number') }}",
-							},
-						],
-					},
-					toolDescription:
-						"### 🏷 Tool: **Recent Trades**\n\n**Endpoint:** `GET /market/history/trade`\n**What it does:** Returns the most recent trades for a given symbol.\n\n**Params:**\n* `symbol` (STRING, required) → lowercase, no dash (e.g., `btcusdt`)\n* `size` (INT, default 100, max 2000 — we set default 100)\n\n**Returns:** array of trade batches → each batch has `data: [{id, price, amount, direction, ts}]`\n\n**n8n query mapping:**\n```txt\nsymbol = $fromAI('parameters0_Value', 'btcusdt', 'string')\nsize   = $fromAI('parameters1_Value', 100, 'number')\n```\n\n**Notes:** Unlike Binance, HTX nests trades inside `data` arrays per batch.",
-				},
-				position: [1216, 592],
-				name: 'Recent Trades',
 			},
 		}),
 	)

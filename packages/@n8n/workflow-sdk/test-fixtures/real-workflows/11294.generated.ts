@@ -89,6 +89,19 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+						version: 1,
+						config: {
+							parameters: { model: 'gpt-4o', options: {} },
+							credentials: {
+								azureOpenAiApi: { id: 'C3WzT18XqF8OdVM6', name: 'Azure Open AI account' },
+							},
+							name: 'Configure GPT-4o — Inventory Optimization Model',
+						},
+					}),
+				},
 				position: [-1184, 672],
 				name: 'Generate Inventory Optimization Output (AI)',
 			},
@@ -121,6 +134,19 @@ const wf = workflow(
 							'=You are an expert Operations Assistant responsible for generating clear, concise, and actionable email summaries based on inventory optimization data. \n\nYour job:\n- Read the inventory items and their updated stock calculations.\n- Identify any SKUs that need attention.\n- Highlight items that are nearing reorder point, below safety stock, or have critical status.\n- Summarize important updates for the operations team in a professional business email format.\n- Keep tone: concise, objective, and action-oriented.\n- DO NOT rewrite or change inventory numbers; use exactly what is provided.\n- DO NOT add fictional items or assumptions.\n- If all items are healthy, still provide an email confirming "No issues detected".\n\nFormat the email as:\n1. Subject line\n2. Greeting\n3. Summary paragraph\n4. Bullet list of key items with issues\n5. Recommended next steps\n6. Closing\n',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+						version: 1,
+						config: {
+							parameters: { model: 'gpt-4o', options: {} },
+							credentials: {
+								azureOpenAiApi: { id: 'C3WzT18XqF8OdVM6', name: 'Azure Open AI account' },
+							},
+							name: 'Configure GPT-4o Model',
+						},
+					}),
 				},
 				position: [64, 1408],
 				name: 'Generate Inventory Email Summary ',
@@ -159,6 +185,19 @@ const wf = workflow(
 							'=Generate a Slack-friendly inventory summary using the following data:\n\n{{ JSON.stringify($json, null, 2) }}\n\nInclude:\n- One-line overall inventory health message\n- A compact bullet list of items (name, SKU, stock, reorder level, suggestions, status)\n- Highlight items that are:\n   - Below reorder level\n   - Below safety stock\n   - Low or critical stock\n- Use emojis for quick visibility (⚠️ 🔴 🟢)\n- End with a single recommended Ops action line\n\nKeep it short and actionable.\n',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+						version: 1,
+						config: {
+							parameters: { model: 'gpt-4o', options: {} },
+							credentials: {
+								azureOpenAiApi: { id: 'C3WzT18XqF8OdVM6', name: 'Azure Open AI account' },
+							},
+							name: 'Configure GPT-4o Model1',
+						},
+					}),
 				},
 				position: [0, 608],
 				name: 'Generate Inventory Slack Summary',
@@ -321,48 +360,6 @@ const wf = workflow(
 				},
 				position: [-1536, 1552],
 				name: 'Send a message1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
-			version: 1,
-			config: {
-				parameters: { model: 'gpt-4o', options: {} },
-				credentials: {
-					azureOpenAiApi: { id: 'C3WzT18XqF8OdVM6', name: 'Azure Open AI account' },
-				},
-				position: [64, 1712],
-				name: 'Configure GPT-4o Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
-			version: 1,
-			config: {
-				parameters: { model: 'gpt-4o', options: {} },
-				credentials: {
-					azureOpenAiApi: { id: 'C3WzT18XqF8OdVM6', name: 'Azure Open AI account' },
-				},
-				position: [0, 944],
-				name: 'Configure GPT-4o Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
-			version: 1,
-			config: {
-				parameters: { model: 'gpt-4o', options: {} },
-				credentials: {
-					azureOpenAiApi: { id: 'C3WzT18XqF8OdVM6', name: 'Azure Open AI account' },
-				},
-				position: [-1184, 1040],
-				name: 'Configure GPT-4o — Inventory Optimization Model',
 			},
 		}),
 	)

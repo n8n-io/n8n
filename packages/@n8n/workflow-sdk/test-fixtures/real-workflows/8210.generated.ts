@@ -202,6 +202,22 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI GPT-4.1 (Unified)',
+						},
+					}),
+				},
 				position: [672, 1040],
 				name: 'Generate AI Summary (Unified)',
 			},
@@ -458,6 +474,22 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI GPT-4.1 (URL)',
+						},
+					}),
+				},
 				position: [-432, 1664],
 				name: 'Summarize URL Content',
 			},
@@ -608,6 +640,22 @@ const wf = workflow(
 							"=Current date and time {{ $now }}\n\nYou are an expert content summarizer. \nCreate a {{ $('Extract Text Parameters').item.json.summary_length === 'brief' ? '**brief** (2-3 sentences)' : $('Extract Text Parameters').item.json.summary_length === 'detailed' ? '**detailed** (2-3 paragraphs)' : '**standard** (1 paragraph)' }} summary in markdown format.\n\n**Focus**: \n{{ $('Extract Text Parameters').item.json.focus === 'numbers_data' \n    ? 'Extract key **numbers**, **percentages**, and quantitative data' \n    : $('Extract Text Parameters').item.json.focus === 'conclusions' \n    ? 'Highlight main **conclusions** and findings' \n    : $('Extract Text Parameters').item.json.focus === 'action_items' \n    ? 'List concrete **action items** and recommendations' \n    : 'Capture essential **key points** and main themes' }}\n\n**Formatting Guidelines:**\n- Use **bold** for key terms and important information\n- Use *italics* for emphasis\n- Use bullet points (- ) for lists\n- Use ## for section headers when appropriate\n- Lead with the most important information\n- Include specific details that support main points\n- Ensure the summary is complete and stands alone\n\n**Language**: \n{{ $('Extract Text Parameters').item.json.language === 'spanish' \n    ? 'Spanish' \n    : $('Extract Text Parameters').item.json.language === 'french' \n    ? 'French' \n    : $('Extract Text Parameters').item.json.language === 'german' \n    ? 'German' \n    : 'English' }}\n\nContent: {{ $json.raw_content }}\n",
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI GPT-4.1 (Text)',
+						},
+					}),
 				},
 				position: [-640, 2192],
 				name: 'Summarize Text Input',
@@ -853,6 +901,22 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI GPT-4.1 (PDF)',
+						},
+					}),
+				},
 				position: [480, 2800],
 				name: 'Summarize PDF Content',
 			},
@@ -952,74 +1016,6 @@ const wf = workflow(
 				},
 				position: [1056, 2800],
 				name: 'Return PDF Summary',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [752, 1264],
-				name: 'OpenAI GPT-4.1 (Unified)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-368, 1888],
-				name: 'OpenAI GPT-4.1 (URL)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-640, 2400],
-				name: 'OpenAI GPT-4.1 (Text)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [560, 3024],
-				name: 'OpenAI GPT-4.1 (PDF)',
 			},
 		}),
 	)

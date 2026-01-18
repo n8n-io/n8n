@@ -57,6 +57,46 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+									options: {},
+								},
+								name: 'HTTP Request1',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: {},
+								modelName: 'models/gemini-2.5-pro-preview-06-05',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'[\n{"platform": "linkedin", "content": "generated_content_in_spanish", "userId": "user_id", "imageUrl": "optional_image_url"},\n{"platform": "twitter", "content": "generated_content_in_english", "userId": "user_id", "imageUrl": "optional_image_url"},\n{"platform": "threads", "content": "generated_content_in_spanish", "userId": "user_id", "imageUrl": "optional_image_url"},\n{"platform": "reddit", "title": "generated_title_in_english", "content": "generated_content_in_english", "userId": "user_id", "imageUrl": "optional_image_url"}\n]',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [260, 20],
 				name: 'Social Media Agent',
 			},
@@ -203,51 +243,6 @@ const wf = workflow(
 				},
 				position: [1060, 400],
 				name: 'Upload Post Reddit',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: {},
-					modelName: 'models/gemini-2.5-pro-preview-06-05',
-				},
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [260, 240],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
-					options: {},
-				},
-				position: [400, 340],
-				name: 'HTTP Request1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'[\n{"platform": "linkedin", "content": "generated_content_in_spanish", "userId": "user_id", "imageUrl": "optional_image_url"},\n{"platform": "twitter", "content": "generated_content_in_english", "userId": "user_id", "imageUrl": "optional_image_url"},\n{"platform": "threads", "content": "generated_content_in_spanish", "userId": "user_id", "imageUrl": "optional_image_url"},\n{"platform": "reddit", "title": "generated_title_in_english", "content": "generated_content_in_english", "userId": "user_id", "imageUrl": "optional_image_url"}\n]',
-				},
-				position: [500, 240],
-				name: 'Structured Output Parser',
 			},
 		}),
 	);

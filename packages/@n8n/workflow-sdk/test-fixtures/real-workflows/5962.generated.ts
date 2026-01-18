@@ -43,6 +43,75 @@ const wf = workflow('FJU3f2ANp6c9kw2k', '19 Monitor Keyword Rankings', { executi
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-mcp.mcpClientTool',
+							version: 1,
+							config: {
+								parameters: {
+									toolName: 'search_engine',
+									operation: 'executeTool',
+									toolParameters:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}",
+								},
+								credentials: {
+									mcpClientApi: { id: 'credential-id', name: 'mcpClientApi Credential' },
+								},
+								name: 'MCP Client',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+									version: 1.2,
+									config: {
+										parameters: {
+											model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+											options: {},
+										},
+										credentials: {
+											openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+										},
+										name: 'OpenAI Chat Model1',
+									},
+								}),
+								outputParser: outputParser({
+									type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+									version: 1.2,
+									config: {
+										parameters: {
+											jsonSchemaExample:
+												'[\n  {\n    "rank": 1,\n    "title": "Runner\'s World",\n    "url": "https://www.runnersworld.com/gear/a19663621/best-running-shoes/",\n    "description": "A comprehensive guide on the best running shoes, recommending models like Brooks Ghost and Nike Pegasus for new runners."\n  },\n  {\n    "rank": 2,\n    "title": "RunRepeat",\n    "url": "https://runrepeat.com/catalog/running-shoes",\n    "description": "Offers running shoe reviews with ratings for various models such as Nike Pegasus 41 and Hoka Mach 6."\n  },\n  {\n    "rank": 3,\n    "title": "Believe in the Run",\n    "url": "https://believeintherun.com/shoe-reviews/best-running-shoes-2025/",\n    "description": "Features an in-depth guide to the best running shoes of 2025 across different categories."\n  },\n  {\n    "rank": 4,\n    "title": "The Run Testers",\n    "url": "https://theruntesters.com/running-shoes/the-best-running-shoes-to-buy/",\n    "description": "Reviews the best running shoes available, highlighting their performance and value."\n  },\n  {\n    "rank": 5,\n    "title": "Men\'s Health",\n    "url": "https://www.menshealth.com/fitness/a64476227/running-shoes-editors-picks/",\n    "description": "Provides a selection of top running shoes recommended by Men\'s Health editors."\n  }\n]\n',
+										},
+										name: 'Structured Output Parser1',
+									},
+								}),
+							},
+							name: 'Auto-fixing Output Parser',
+						},
+					}),
+				},
 				position: [480, 0],
 				name: '🤖 SERP Scraper Agent (MCP)',
 			},
@@ -145,84 +214,6 @@ const wf = workflow('FJU3f2ANp6c9kw2k', '19 Monitor Keyword Rankings', { executi
 				},
 				position: [1180, 0],
 				name: '📊 Log to Google Sheets',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [460, 260],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-mcp.mcpClientTool',
-			version: 1,
-			config: {
-				parameters: {
-					toolName: 'search_engine',
-					operation: 'executeTool',
-					toolParameters:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}",
-				},
-				credentials: {
-					mcpClientApi: { id: 'credential-id', name: 'mcpClientApi Credential' },
-				},
-				position: [640, 260],
-				name: 'MCP Client',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [740, 480],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				position: [760, 260],
-				name: 'Auto-fixing Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'[\n  {\n    "rank": 1,\n    "title": "Runner\'s World",\n    "url": "https://www.runnersworld.com/gear/a19663621/best-running-shoes/",\n    "description": "A comprehensive guide on the best running shoes, recommending models like Brooks Ghost and Nike Pegasus for new runners."\n  },\n  {\n    "rank": 2,\n    "title": "RunRepeat",\n    "url": "https://runrepeat.com/catalog/running-shoes",\n    "description": "Offers running shoe reviews with ratings for various models such as Nike Pegasus 41 and Hoka Mach 6."\n  },\n  {\n    "rank": 3,\n    "title": "Believe in the Run",\n    "url": "https://believeintherun.com/shoe-reviews/best-running-shoes-2025/",\n    "description": "Features an in-depth guide to the best running shoes of 2025 across different categories."\n  },\n  {\n    "rank": 4,\n    "title": "The Run Testers",\n    "url": "https://theruntesters.com/running-shoes/the-best-running-shoes-to-buy/",\n    "description": "Reviews the best running shoes available, highlighting their performance and value."\n  },\n  {\n    "rank": 5,\n    "title": "Men\'s Health",\n    "url": "https://www.menshealth.com/fitness/a64476227/running-shoes-editors-picks/",\n    "description": "Provides a selection of top running shoes recommended by Men\'s Health editors."\n  }\n]\n',
-				},
-				position: [900, 480],
-				name: 'Structured Output Parser1',
 			},
 		}),
 	)

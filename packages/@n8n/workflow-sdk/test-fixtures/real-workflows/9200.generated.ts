@@ -85,6 +85,42 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1.1,
+							config: { name: 'Think' },
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'o4-mini',
+									cachedResultName: 'o4-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: { jsonSchemaExample: '{\n	"image_prompt": "string"\n}' },
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [2064, 272],
 				name: 'Generate Image Prompt',
 			},
@@ -367,6 +403,40 @@ const wf = workflow(
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Think1' },
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "title": "string",\n  "final_prompt": "string",\n  "final_prompt_2": "string",\n  "final_prompt_3": "string"\n}\n',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
 				},
 				position: [880, 736],
 				name: 'AI Agent: Generate Video Script',
@@ -1673,84 +1743,6 @@ const wf = workflow(
 				},
 				position: [3440, 448],
 				name: 'ChatGPT Image – fetch generated image',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: { jsonSchemaExample: '{\n	"image_prompt": "string"\n}' },
-				position: [2320, 496],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1.1,
-			config: { position: [2160, 496], name: 'Think' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'o4-mini',
-						cachedResultName: 'o4-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1984, 496],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [816, 960],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [976, 960], name: 'Think1' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "title": "string",\n  "final_prompt": "string",\n  "final_prompt_2": "string",\n  "final_prompt_3": "string"\n}\n',
-				},
-				position: [1120, 960],
-				name: 'Structured Output Parser1',
 			},
 		}),
 	)

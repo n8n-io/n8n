@@ -199,6 +199,19 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [784, 144],
 				name: 'AI Agent - Select Viral Clips',
 			},
@@ -371,20 +384,6 @@ const wf = workflow('', '')
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
 			config: { position: [208, 288], name: 'Wait 5s & Retry (Audio)' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [784, 352],
-				name: 'Google Gemini Chat Model',
-			},
 		}),
 	)
 	.add(

@@ -98,6 +98,55 @@ const wf = workflow('Tq4g5UK8c3GZ8tm7', 'Ade_Technical_Analyst', { executionOrde
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2,
+							config: {
+								parameters: {
+									name: 'getChart',
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'gKbTaYYXbDqlQySQ',
+										cachedResultName: 'hgray_analyst_helper',
+									},
+									description:
+										'Call this tool to get an analysis of a requested stock. The URL that is output from this tool must be returned in markdown format. For example, ![](url)',
+									workflowInputs: {
+										value: {},
+										schema: [],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Get Chart',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: '={{ $json?.message?.text || "" }}',
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: { model: 'anthropic/claude-3.5-sonnet', options: {} },
+							name: 'OpenRouter Chat Model',
+						},
+					}),
+				},
 				position: [180, 120],
 				name: 'AI Agent',
 			},
@@ -249,60 +298,6 @@ const wf = workflow('Tq4g5UK8c3GZ8tm7', 'Ade_Technical_Analyst', { executionOrde
 				},
 				position: [640, 900],
 				name: 'response',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2,
-			config: {
-				parameters: {
-					name: 'getChart',
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'gKbTaYYXbDqlQySQ',
-						cachedResultName: 'hgray_analyst_helper',
-					},
-					description:
-						'Call this tool to get an analysis of a requested stock. The URL that is output from this tool must be returned in markdown format. For example, ![](url)',
-					workflowInputs: {
-						value: {},
-						schema: [],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [280, 400],
-				name: 'Get Chart',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { model: 'anthropic/claude-3.5-sonnet', options: {} },
-				position: [20, 380],
-				name: 'OpenRouter Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: '={{ $json?.message?.text || "" }}',
-					sessionIdType: 'customKey',
-				},
-				position: [140, 340],
-				name: 'Simple Memory',
 			},
 		}),
 	)

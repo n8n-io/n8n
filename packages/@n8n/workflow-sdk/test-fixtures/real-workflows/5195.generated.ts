@@ -101,6 +101,19 @@ const wf = workflow('icW2uoM7g7pFZhsR', 'AI-Powered Product Research & SEO Conte
 						],
 					},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [920, -100],
 				name: 'Basic LLM Chain',
 			},
@@ -206,20 +219,6 @@ const wf = workflow('icW2uoM7g7pFZhsR', 'AI-Powered Product Research & SEO Conte
 				},
 				position: [1660, -140],
 				name: 'Google Sheets',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [940, 360],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

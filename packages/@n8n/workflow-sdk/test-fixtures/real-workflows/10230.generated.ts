@@ -22,6 +22,55 @@ const wf = workflow('', '')
 					},
 					hasOutputParser: true,
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { name: 'Chat Memory' },
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								autoFix: true,
+								jsonSchemaExample:
+									'{\n	"response": "what you want to say back to the user", \n  "info gathered": "all of the info you have gathered so far", \n  "all Info": "Yes or no if you have all of the fields"\n}',
+							},
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+									version: 1.2,
+									config: {
+										parameters: {
+											model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+											options: {},
+										},
+										credentials: {
+											openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+										},
+										name: 'OpenAI Chat Model1',
+									},
+								}),
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [288, 0],
 				name: 'Project Manager Agent',
 			},
@@ -70,6 +119,33 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model2',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n	"task": "task",\n	"description": "description",\n  "status": "status"\n}',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
 				},
 				position: [1264, -288],
 				name: 'Write Json',
@@ -177,93 +253,6 @@ const wf = workflow('', '')
 				},
 				position: [992, 128],
 				name: 'Get More Info',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [64, 432],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: { position: [320, 256], name: 'Chat Memory' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [512, 432],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					autoFix: true,
-					jsonSchemaExample:
-						'{\n	"response": "what you want to say back to the user", \n  "info gathered": "all of the info you have gathered so far", \n  "all Info": "Yes or no if you have all of the fields"\n}',
-				},
-				position: [496, 256],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1216, -64],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n	"task": "task",\n	"description": "description",\n  "status": "status"\n}',
-				},
-				position: [1440, -80],
-				name: 'Structured Output Parser1',
 			},
 		}),
 	)

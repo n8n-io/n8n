@@ -33,6 +33,91 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+							version: 1.1,
+							config: {
+								parameters: {
+									url: 'https://lemolex.app.n8n.cloud/webhook/get_text',
+									method: 'POST',
+									sendBody: true,
+									parametersBody: {
+										values: [
+											{ name: 'url' },
+											{
+												name: 'auth-token',
+												value: 'your-auth-token (read setup guide)',
+												valueProvider: 'fieldValue',
+											},
+										],
+									},
+									toolDescription:
+										'Fetches the fully-rendered **plain text** of a single web.  \n• Input  : { "url": "<absolute https://…>" }  \n• Auth   : token is sent as HTTP basic-auth.  \n• Query  : url=<encoded url>  \n• Output : { "text": "<visible text of the body>", "url": "<same url>" }  \n• The "text" field already has **all HTML tags removed** .  \n• Use this tool whenever you need the actual words that appear on the page—product details, prices, stock lines, shipping terms, payment options, company policies, etc.  \n• Do **not** call it on off-site links or mailto:/tel:/javascript: pseudo-links.  \n',
+								},
+								name: 'get_page',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+							version: 1.1,
+							config: {
+								parameters: {
+									url: 'https://lemolex.app.n8n.cloud/webhook/list-links',
+									method: 'POST',
+									sendBody: true,
+									parametersBody: {
+										values: [
+											{
+												name: 'url',
+												value: 'https://www.your-company-url.com',
+												valueProvider: 'fieldValue',
+											},
+											{
+												name: 'auth-token',
+												value: 'your-auth-token (read setup guide)',
+												valueProvider: 'fieldValue',
+											},
+										],
+									},
+									toolDescription:
+										'Returns up to 100 unique, fully-qualified INTERNAL links for a given page.\n\nInput  (JSON body the model must supply)\n  {\n    "url": "<absolute https://…>"\n  }\n\nBehaviour\n  • Crawls only the domain of the input URL.\n  • Converts relative <a href> values to absolute URLs.\n  • Drops empty roots ("/"), mailto:, tel:, javascript:, and off-site links.\n  • De-duplicates the list.\n  • Responds with a JSON object:\n\n      {\n        "urls": [ "<link-1>", "<link-2>", … ]\n      }\n\nUse this tool when you need a navigation map of the current page.\nPass one of the returned URLs back into other tools (e.g. get_text) to read its content.\n',
+								},
+								name: 'list_links',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+						version: 1.3,
+						config: {
+							parameters: {
+								tableName: 'message_history',
+								sessionKey: '={{ $json.contacts[0].wa_id }}',
+								sessionIdType: 'customKey',
+							},
+							credentials: {
+								postgres: { id: 'credential-id', name: 'postgres Credential' },
+							},
+							name: 'Postgres Users Memory',
+						},
+					}),
+				},
 				position: [120, 140],
 				name: 'AI Agent',
 			},
@@ -135,99 +220,6 @@ const wf = workflow(
 				},
 				position: [1060, 360],
 				name: 'Send Pre-approved Template Message to Reopen the Conversation',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
-			version: 1.1,
-			config: {
-				parameters: {
-					url: 'https://lemolex.app.n8n.cloud/webhook/list-links',
-					method: 'POST',
-					sendBody: true,
-					parametersBody: {
-						values: [
-							{
-								name: 'url',
-								value: 'https://www.your-company-url.com',
-								valueProvider: 'fieldValue',
-							},
-							{
-								name: 'auth-token',
-								value: 'your-auth-token (read setup guide)',
-								valueProvider: 'fieldValue',
-							},
-						],
-					},
-					toolDescription:
-						'Returns up to 100 unique, fully-qualified INTERNAL links for a given page.\n\nInput  (JSON body the model must supply)\n  {\n    "url": "<absolute https://…>"\n  }\n\nBehaviour\n  • Crawls only the domain of the input URL.\n  • Converts relative <a href> values to absolute URLs.\n  • Drops empty roots ("/"), mailto:, tel:, javascript:, and off-site links.\n  • De-duplicates the list.\n  • Responds with a JSON object:\n\n      {\n        "urls": [ "<link-1>", "<link-2>", … ]\n      }\n\nUse this tool when you need a navigation map of the current page.\nPass one of the returned URLs back into other tools (e.g. get_text) to read its content.\n',
-				},
-				position: [260, 420],
-				name: 'list_links',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [40, 340],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
-			version: 1.1,
-			config: {
-				parameters: {
-					url: 'https://lemolex.app.n8n.cloud/webhook/get_text',
-					method: 'POST',
-					sendBody: true,
-					parametersBody: {
-						values: [
-							{ name: 'url' },
-							{
-								name: 'auth-token',
-								value: 'your-auth-token (read setup guide)',
-								valueProvider: 'fieldValue',
-							},
-						],
-					},
-					toolDescription:
-						'Fetches the fully-rendered **plain text** of a single web.  \n• Input  : { "url": "<absolute https://…>" }  \n• Auth   : token is sent as HTTP basic-auth.  \n• Query  : url=<encoded url>  \n• Output : { "text": "<visible text of the body>", "url": "<same url>" }  \n• The "text" field already has **all HTML tags removed** .  \n• Use this tool whenever you need the actual words that appear on the page—product details, prices, stock lines, shipping terms, payment options, company policies, etc.  \n• Do **not** call it on off-site links or mailto:/tel:/javascript: pseudo-links.  \n',
-				},
-				position: [420, 420],
-				name: 'get_page',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-			version: 1.3,
-			config: {
-				parameters: {
-					tableName: 'message_history',
-					sessionKey: '={{ $json.contacts[0].wa_id }}',
-					sessionIdType: 'customKey',
-				},
-				credentials: {
-					postgres: { id: 'credential-id', name: 'postgres Credential' },
-				},
-				position: [120, 500],
-				name: 'Postgres Users Memory',
 			},
 		}),
 	)

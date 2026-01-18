@@ -27,6 +27,46 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1',
+									cachedResultName: 'gpt-4.1',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OPENAI WRITES POSTS',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@tavily/n8n-nodes-tavily.tavilyTool',
+							version: 1,
+							config: {
+								parameters: {
+									query:
+										'={\n  "query": "{searchTerm}",\n  "topic": "general",\n  "search_depth": "advanced",\n  "chunks_per_source": 3,\n  "max_results": 1,\n  "time_range": null,\n  "days": 7,\n  "include_answer": true,\n  "include_raw_content": false,\n  "include_images": false,\n  "include_image_descriptions": false,\n  "include_domains": [],\n  "exclude_domains": []\n}',
+									options: {},
+									descriptionType: 'manual',
+									toolDescription: 'Search in Tavily',
+								},
+								credentials: {
+									tavilyApi: { id: 'credential-id', name: 'tavilyApi Credential' },
+								},
+								name: 'Tavily Internet Search',
+							},
+						}),
+					],
+				},
 				position: [2340, -180],
 				name: 'GENERATE TEXT',
 			},
@@ -44,6 +84,27 @@ const wf = workflow(
 							'=Overview\nYou are an AI agent that converts Telegram posts into visual prompt descriptions for generating graphic marketing materials. These visuals are meant to accompany the Telegram post, effectively conveying the message in a visually appealing, brand-consistent style.\n\nObjective:\nAnalyze the provided Telegram post.\n\nExtract the core message, insight, or key takeaway.\n\nCraft a clear, compelling graphic prompt suitable for a text-to-image generator.\n\nThe final graphic should:\n\nVisually represent or enhance the main idea of the post\n\nBe appropriate for a professional Telegram feed\n\nAppear polished, modern, and engaging\n\nOutput Instructions:\nProvide only the final image prompt without quotation marks.\n\nDo not repeat or paraphrase the Telegram post.\n\nAvoid adding explanations or any additional textвЂ”output only the image prompt.\n\nDo not leave placeholders like вЂњHeader area reserved for customizable callout text.вЂќ\n\nInclude numeric data from the original post when relevant.\n\nStyle Guidelines:\nApproach this like a brand designer or marketing creative.\n\nVisual elements may include text, charts, icons, abstract shapes, overlays, modern illustrations, motion-inspired effects, bold typographic elements (described but not rendered), or metaphorical concepts.\n\nYou may suggest layout styles (e.g., вЂњsplit screen layout,вЂќ вЂњheader with bold title and subtle background illustrationвЂќ).\n\nKeep in mind the prompt will be used by AI image generation toolsвЂ”make it clear and effective.\n\nExample Prompt Format:\nA sleek flat-design graphic featuring a human brain intertwined with mechanical gears, symbolizing the integration of AI and automation.\nMinimalist background with soft gradients, clean sans-serif text areas.\n- - - Important! dont put text on image! - - -',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1',
+									cachedResultName: 'gpt-4.1',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OPENAI WRITES PROMPTS',
+						},
+					}),
 				},
 				position: [2680, 460],
 				name: 'GENERATE PROMPT',
@@ -582,70 +643,6 @@ const wf = workflow(
 				},
 				position: [5200, 220],
 				name: 'Leonardo Images',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@tavily/n8n-nodes-tavily.tavilyTool',
-			version: 1,
-			config: {
-				parameters: {
-					query:
-						'={\n  "query": "{searchTerm}",\n  "topic": "general",\n  "search_depth": "advanced",\n  "chunks_per_source": 3,\n  "max_results": 1,\n  "time_range": null,\n  "days": 7,\n  "include_answer": true,\n  "include_raw_content": false,\n  "include_images": false,\n  "include_image_descriptions": false,\n  "include_domains": [],\n  "exclude_domains": []\n}',
-					options: {},
-					descriptionType: 'manual',
-					toolDescription: 'Search in Tavily',
-				},
-				credentials: {
-					tavilyApi: { id: 'credential-id', name: 'tavilyApi Credential' },
-				},
-				position: [2260, -280],
-				name: 'Tavily Internet Search',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1',
-						cachedResultName: 'gpt-4.1',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2620, 600],
-				name: 'OPENAI WRITES PROMPTS',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1',
-						cachedResultName: 'gpt-4.1',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2260, -40],
-				name: 'OPENAI WRITES POSTS',
 			},
 		}),
 	)

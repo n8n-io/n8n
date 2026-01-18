@@ -190,6 +190,36 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-5.1',
+									cachedResultName: 'gpt-5.1',
+								},
+								options: {},
+							},
+							credentials: { openAiApi: { id: 'rxfg6jEjEjPWmANV', name: 'Dummy' } },
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "post_content": "The main LinkedIn post text goes here with emojis naturally integrated...",\n  "hashtags": ["#Marketing", "#Leadership", "#AI"],\n  "character_count": 285,\n  "engagement_tip": "Best time to post: Tuesday-Thursday, 8-10 AM",\n  "call_to_action": "What\'s your experience with this? Share in the comments!",\n  "image_prompt": "A detailed DALL-E prompt for generating a professional LinkedIn post image"\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [560, 176],
 				name: 'AI Content Generation',
 			},
@@ -249,6 +279,25 @@ const wf = workflow(
 					text: "=You are an email formatting expert. Convert the following LinkedIn post into a clean, professional HTML email that works perfectly in Gmail.\n\nLinkedIn Post Content:\n{{ $json.final_post }}\n\nRequirements:\n- Create Gmail-compatible HTML (inline CSS only, no external stylesheets)\n- Use a clean, professional email layout\n- Make it mobile-responsive\n- Include the post content with proper formatting and line breaks\n- Add the hashtags at the bottom in a subtle, styled way\n- Use web-safe fonts (Arial, Helvetica, Georgia, Times New Roman)\n- Keep it simple - Gmail strips many CSS properties\n- Ensure good readability with proper spacing and typography\n- Use a maximum width of 600px for email clients\n- If the post contains a call-to-action, format it as regular text (not a button)\n- NEVER create button elements (<button>, <a>) or styled link buttons\n- Do not add any interactive elements that weren't in the original post content\n- Simply present the post content as formatted text with proper styling\n\nReturn ONLY the complete HTML code, nothing else. No explanations, no markdown code blocks, just pure HTML.",
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1-mini',
+									cachedResultName: 'gpt-4.1-mini',
+								},
+								options: {},
+							},
+							credentials: { openAiApi: { id: 'rxfg6jEjEjPWmANV', name: 'Dummy' } },
+							name: 'OpenAI Chat Model1',
+						},
+					}),
 				},
 				position: [-224, 768],
 				name: 'Format Content to HTML',
@@ -609,6 +658,30 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: { openAiApi: { id: 'rxfg6jEjEjPWmANV', name: 'Dummy' } },
+							name: 'GPT-4.1-mini',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample: '{\n  "download_url": "the download URL"\n}',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
+				},
 				position: [1536, 816],
 				name: 'Choose Image',
 			},
@@ -756,88 +829,6 @@ const wf = workflow(
 				},
 				position: [320, 1120],
 				name: 'Update Post Status to Rejected',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-5.1',
-						cachedResultName: 'gpt-5.1',
-					},
-					options: {},
-				},
-				credentials: { openAiApi: { id: 'rxfg6jEjEjPWmANV', name: 'Dummy' } },
-				position: [560, 336],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "post_content": "The main LinkedIn post text goes here with emojis naturally integrated...",\n  "hashtags": ["#Marketing", "#Leadership", "#AI"],\n  "character_count": 285,\n  "engagement_tip": "Best time to post: Tuesday-Thursday, 8-10 AM",\n  "call_to_action": "What\'s your experience with this? Share in the comments!",\n  "image_prompt": "A detailed DALL-E prompt for generating a professional LinkedIn post image"\n}',
-				},
-				position: [752, 336],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-mini',
-						cachedResultName: 'gpt-4.1-mini',
-					},
-					options: {},
-				},
-				credentials: { openAiApi: { id: 'rxfg6jEjEjPWmANV', name: 'Dummy' } },
-				position: [-224, 944],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample: '{\n  "download_url": "the download URL"\n}',
-				},
-				position: [1728, 960],
-				name: 'Structured Output Parser1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: { openAiApi: { id: 'rxfg6jEjEjPWmANV', name: 'Dummy' } },
-				position: [1536, 960],
-				name: 'GPT-4.1-mini',
 			},
 		}),
 	)

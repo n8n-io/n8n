@@ -71,6 +71,30 @@ const wf = workflow('', 'UGC Nano Banana', { executionOrder: 'v1' })
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						version: 1,
+						config: {
+							parameters: { model: 'mistral-large-latest', options: {} },
+							credentials: {
+								mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
+							},
+							name: 'Mistral Cloud Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n      "ugc_prompts": [\n        {\n          "prompt_number": "integer",\n          "prompt": "string"\n        }\n      ]\n}\n',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [-176, -16],
 				name: 'Generate Prompts',
 			},
@@ -168,34 +192,6 @@ const wf = workflow('', 'UGC Nano Banana', { executionOrder: 'v1' })
 				},
 				position: [864, 128],
 				name: 'Upload file',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
-			version: 1,
-			config: {
-				parameters: { model: 'mistral-large-latest', options: {} },
-				credentials: {
-					mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
-				},
-				position: [-192, 192],
-				name: 'Mistral Cloud Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n      "ugc_prompts": [\n        {\n          "prompt_number": "integer",\n          "prompt": "string"\n        }\n      ]\n}\n',
-				},
-				position: [-16, 192],
-				name: 'Structured Output Parser',
 			},
 		}),
 	)

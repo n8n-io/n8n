@@ -67,6 +67,22 @@ const wf = workflow('w9YVsuUtlNgXOEAQ', 'LinkedIn Post Generation & Approval Aut
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [180, 2595],
 				name: 'Generate Post Content',
 			},
@@ -443,25 +459,24 @@ const wf = workflow('w9YVsuUtlNgXOEAQ', 'LinkedIn Post Generation & Approval Aut
 					text: "=Apply the modification requests on the following LinkedIn post. Besides applying the reqested modifications, return the same linkedin post.\n\nLinkedIn post:\n```\n{{ $('Data Formatting 1').item.json['Post Content'] }}\n```\n\nChange requests:\n{{ $('Send Content Confirmation').item.json.data['Any Changes?'] }}\n\n**Task:**\nUsing the information above, update the LinkedIn post content:\n- Do not include any explanations, just the final post content only (with all the change requests included in the post), ready to publish on LinkedIn.\n- Limit to 1300 characters.\n- If the user demands to keep the same post as the Post Description (in the instructions), then keep the same post content as provided in the Post Description, and output it.",
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [1216, 2670],
 				name: 'Regenerate Post Content',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [268, 2815],
-				name: 'OpenAI Chat Model',
 			},
 		}),
 	)

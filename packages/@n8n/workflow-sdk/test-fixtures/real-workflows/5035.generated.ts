@@ -28,6 +28,45 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Tool: Inject Creativity' },
+						}),
+					],
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'[\n  {\n    "Caption": "Diver Removes Nets Off Whale 🐋 #whalerescue #marinelife #oceanrescue #seahelpers #love #nature #instagood #explore #viral #savenature #oceanguardians #cleanoceans",\n    "Idea": "Diver carefully cuts tangled net from distressed whale in open sea",\n    "Environment": "Open ocean, sunlight beams through water, diver and whale, cinematic realism",\n    "Status": "for production"\n  }\n]\n',
+							},
+							name: 'Parser: Extract JSON from Idea',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1',
+									cachedResultName: 'gpt-4.1',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'LLM: Generate Idea & Caption (GPT-4.1)',
+						},
+					}),
+				},
 				position: [660, 560],
 				name: 'AI Agent: Generate Video Concept',
 			},
@@ -138,6 +177,34 @@ const wf = workflow(
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Tool: Build Prompt Structure' },
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1',
+									cachedResultName: 'gpt-4.1',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'LLM: Format Prompt for Veo3 (GPT-4.1)',
+						},
+					}),
 				},
 				position: [1180, 560],
 				name: 'AI Agent: Create Veo3-Compatible Prompt',
@@ -665,78 +732,6 @@ const wf = workflow(
 				},
 				position: [640, 1920],
 				name: 'Google Sheets',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [740, 820], name: 'Tool: Inject Creativity' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1',
-						cachedResultName: 'gpt-4.1',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [580, 820],
-				name: 'LLM: Generate Idea & Caption (GPT-4.1)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'[\n  {\n    "Caption": "Diver Removes Nets Off Whale 🐋 #whalerescue #marinelife #oceanrescue #seahelpers #love #nature #instagood #explore #viral #savenature #oceanguardians #cleanoceans",\n    "Idea": "Diver carefully cuts tangled net from distressed whale in open sea",\n    "Environment": "Open ocean, sunlight beams through water, diver and whale, cinematic realism",\n    "Status": "for production"\n  }\n]\n',
-				},
-				position: [900, 820],
-				name: 'Parser: Extract JSON from Idea',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [1380, 820], name: 'Tool: Build Prompt Structure' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1',
-						cachedResultName: 'gpt-4.1',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1200, 820],
-				name: 'LLM: Format Prompt for Veo3 (GPT-4.1)',
 			},
 		}),
 	)

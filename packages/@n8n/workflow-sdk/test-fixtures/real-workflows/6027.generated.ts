@@ -186,7 +186,6 @@ const wf = workflow('', '')
 			config: { parameters: { options: {} }, position: [-640, 2160], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -1099,7 +1098,6 @@ const wf = workflow('', '')
 			config: { parameters: { options: {} }, position: [20, 1100], name: 'Process Each Company' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',

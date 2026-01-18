@@ -19,6 +19,108 @@ const wf = workflow('F0DFXdSTdGjIk0V5', 'Email - PA', { executionOrder: 'v1' })
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									messageId:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}",
+									operation: 'get',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Get Email',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									filters: { q: "=to:{{ $fromAI('email') }}", labelIds: ['SENT'] },
+									operation: 'getAll',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Check Sent',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									filters: {
+										labelIds: ['Label_5151750749488724401', 'Label_7518716752151077752'],
+										readStatus: 'unread',
+									},
+									operation: 'getAll',
+									returnAll:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Unread Emails - FYI',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									filters: {
+										labelIds: ['Label_5151750749488724401', 'UNREAD'],
+										readStatus: 'unread',
+									},
+									operation: 'getAll',
+									returnAll:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Unread Emails - To Respond',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: '1',
+								sessionIdType: 'customKey',
+								contextWindowLength: 50,
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-sonnet-4-20250514',
+									cachedResultName: 'Claude Sonnet 4',
+								},
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Anthropic Chat Model',
+						},
+					}),
+				},
 				position: [700, -120],
 				name: 'Email Assistant',
 			},
@@ -37,6 +139,99 @@ const wf = workflow('F0DFXdSTdGjIk0V5', 'Email - PA', { executionOrder: 'v1' })
 							'=**Objective:** Proactively manage meeting follow-ups for `[Max Mitcham/max@trigify.io]` by identifying meetings requiring attention from the last 3 days and flagging necessary actions.\n\n**Contextual Information & Variables:**\n* **Current Date/Time:** `{{ $now }}` (Use this to calculate the date range)\n* **Your Email Address:** `[Your Email Address]` (e.g., max@trigify.io)\n* **Date Format for Google Calendar:** `YYYY-MM-DD HH:MM:SS` (e.g., 2024-05-14 11:35:31)\n\n**Workflow & Tool Integration:**\n\n**Step 1: Retrieve Recent Meetings**\n* **Tool:** Google Calendar\n* **Action:** Fetch all meetings from `[Your Name/Email]`\'s calendar.\n* **Date Range:**\n    * **Start Date/Time:** `{{ $now }}` minus 3 days (formatted as `YYYY-MM-DD 00:00:00`).\n    * **End Date/Time:** `{{ $now }}` (formatted as `YYYY-MM-DD 23:59:59`).\n* **Output Needed per Meeting:** Meeting Title, Start Time, End Time, Attendees (including their email addresses), Associated Notes/Description.\n\n**Step 2: Process Each Retrieved Meeting**\n\nFor each meeting:\n\n    **A. Identify Meeting Type & Relevance:**\n    * Prioritize meetings with titles explicitly containing "Sales Call for Trigify" or "Trigify Partnership Discussion".\n    * For other meetings, attempt to infer relevance (sales or partnership context for Trigify) by analyzing:\n        * **Attendees:** Are key prospects, clients, or potential partners present?\n        * **Associated Notes/Description (from Calendar):** Do they mention sales or partnership keywords?\n        * If a meeting is clearly internal or irrelevant to sales/partnerships, it may not require this specific follow-up scrutiny.\n\n    **B. Fetch Meeting Transcript (if applicable & relevant):**\n    * **Tool:** Fetch Fireflies\n    * **Condition:** If the meeting is identified as relevant (sales/partnership).\n    * **Input Parameters:**\n        * Meeting identifier (e.g., title and start time from Google Calendar).\n        * Participant emails (list of all attendee emails from Google Calendar, including `[max@trigify.io]`).\n    * **Output:** Transcript content or an indicator if no transcript is found.\n\n    **C. Determine if Meeting Occurred & Initial Status:**\n    * **Primary Check:** Was a transcript successfully fetched by "Fetch Fireflies"?\n    * **Scenario 1: No Transcript Found.**\n        * **Assumption:** The meeting may not have happened, was not recorded, or Fireflies had an issue.\n        * **Action:** Flag this meeting for manual review.\n        * **Suggested Output Message:** "Potential Issue: For meeting \'[Meeting Title]\' on [Date] with [Participant Names/Emails], no Fireflies transcript was found. Please verify if the meeting occurred and if any action is needed. Priority: Low."\n\n    * **Scenario 2: Transcript Found (Meeting likely occurred).**\n        * Proceed to check for follow-ups (Step D).\n\n    **D. Check for Your Sent Follow-up Communication:**\n    * **Tool 1: Check Sent Emails** (e.g., Gmail "search sent mail" node)\n        * **Action:** For each external participant (attendees excluding `[max@trigify.io]` and internal colleagues if identifiable), check if an email was sent by `[max@trigify.io]` to that participant.\n        * **Time Window for Sent Email:** From the meeting\'s end time until `{{ $now }}`.\n        * **Search Criteria:** `to:[participant_email@example.com] from:[max@trigify.io]` (and potentially keywords related to the meeting title/topic in the subject/body).\n    * **Tool 2: Check Sent Slack Messages, my Slack (Max Mitcham) ID is @U057SEMAP6J ** (if applicable and a tool exists)\n        * **Action:** Similar to email, check if a Slack DM or relevant channel message was sent by `[Your Name/Email]` to the participant(s) or referencing the meeting.\n        * **Time Window:** Same as email.\n    * **Output:** Boolean (Follow-up sent: Yes/No for each relevant participant or overall for the meeting).\n\n    **E. Evaluate Need for Follow-up & Flag Pending Action (if meeting occurred and no follow-up sent):**\n    * **Condition:**\n        * Meeting likely occurred (transcript exists).\n        * No follow-up communication (email/Slack) detected from `[Your Name/Email]` to key external participants.\n    * **Evaluation Criteria (Is a follow-up beneficial?):**\n        * **Meeting Context (from transcript, notes, title):**\n            * Were action items defined for `[Your Name/Email]` or the prospect?\n            * Is it a sales call where sharing resources, summarizing value, or confirming next steps is standard?\n            * Is it a partnership discussion with clear deliverables or next steps?\n        * **Participants:** Who attended? (e.g., high-value prospect, new contact).\n        * **Objective:** What was the goal of the meeting?\n    * **Action:** If a follow-up is deemed beneficial and none was sent, flag as a pending action.\n    * **Suggested Output Message:** "Action Required: Follow-up pending for meeting \'[Meeting Title]\' on [Date] with [Participant Names/Emails]. Objective: [Inferred Objective]. Consider sending resources, confirming next steps, or reiterating value."\n\n**Summary of Outputs:**\n1.  A list of meetings flagged for "Potential Issue" (no transcript).\n2.  A list of meetings flagged for "Action Required" (follow-up pending).\n\nDon\'t give me any recoemdnations other than the above outputs.',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									filters: { q: "=to:{{ $fromAI('email') }}", labelIds: ['SENT'] },
+									operation: 'getAll',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Check Sent1',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.fireflies.ai/graphql',
+									method: 'POST',
+									options: {},
+									jsonBody:
+										'={\n  "query": "query Transcripts($participantEmail: String) { transcripts(participant_email: $participantEmail) { id title date duration participants host_email organizer_email transcript_url summary { action_items keywords overview short_summary } } }",\n  "variables": {\n    "participantEmail": "{{ $fromAI(\'email\') }}"\n  }\n}',
+									sendBody: true,
+									sendHeaders: true,
+									specifyBody: 'json',
+									toolDescription:
+										'Use this to fetch my call recordings and transcripts from my FireFlies account. Add the participant email to fetch the transcript.\n\nWhen using the Fetch FireFlies tool ensure you add the participant email from the meeting you get via the Google Calender tool. ',
+									headerParameters: {
+										parameters: [
+											{
+												name: 'Authorization',
+												value: 'Bearer [REDACTED_FIREFLIES_API_TOKEN]',
+											},
+										],
+									},
+								},
+								name: 'Fetch FireFlies',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									options: {},
+									timeMax:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+									timeMin:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+									calendar: {
+										__rl: true,
+										mode: 'list',
+										value: '[REDACTED_EMAIL]',
+										cachedResultName: '[REDACTED_EMAIL]',
+									},
+									operation: 'getAll',
+									returnAll:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+								},
+								credentials: {
+									googleCalendarOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleCalendarOAuth2Api Credential',
+									},
+								},
+								name: 'Google Calendar',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-opus-4-20250514',
+									cachedResultName: 'Claude Opus 4',
+								},
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Anthropic Chat Model1',
+						},
+					}),
 				},
 				position: [1300, -160],
 				name: 'Follow Up Assistant',
@@ -57,6 +252,78 @@ const wf = workflow('F0DFXdSTdGjIk0V5', 'Email - PA', { executionOrder: 'v1' })
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.slackTool',
+							version: 2.3,
+							config: {
+								parameters: {
+									user: {
+										__rl: true,
+										mode: 'id',
+										value:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('User', ``, 'string') }}",
+									},
+									resource: 'user',
+								},
+								credentials: {
+									slackApi: { id: 'credential-id', name: 'slackApi Credential' },
+								},
+								name: 'Get User',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.slackTool',
+							version: 2.3,
+							config: {
+								parameters: {
+									query: '@[REDACTED_SLACK_USER_ID]',
+									options: {},
+									operation: 'search',
+								},
+								credentials: {
+									slackApi: { id: 'credential-id', name: 'slackApi Credential' },
+								},
+								name: 'Check Slack Mentions',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.slackTool',
+							version: 2.3,
+							config: {
+								parameters: {
+									query: "=in:<#{{ $fromAI('channel_id') }}> from:me",
+									options: {},
+									operation: 'search',
+								},
+								credentials: {
+									slackApi: { id: 'credential-id', name: 'slackApi Credential' },
+								},
+								name: 'Check Thread Mentions',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-sonnet-4-20250514',
+									cachedResultName: 'Claude Sonnet 4',
+								},
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Anthropic Chat Model3',
+						},
+					}),
+				},
 				position: [1820, -220],
 				name: 'Slack Assistant',
 			},
@@ -74,6 +341,61 @@ const wf = workflow('F0DFXdSTdGjIk0V5', 'Email - PA', { executionOrder: 'v1' })
 							'=**Objective:** You are the Master Orchestrator Personal Assistant for Max Mitcham. Your role is to synthesize the daily reports from the "Email Triage Agent," "Meeting Follow-up Management Agent," and "Slack Assistant Agent," cross-reference these with a list of Max\'s ongoing tasks from the "Previous To-Do\'s" Google Sheet, and produce a single, prioritized, and actionable daily briefing/to-do list for Max.\n\n**Contextual Information:**\n* **Recipient:** Max Mitcham (max@trigify.io)\n* **Current Date/Time:** `{{ $now }}`\n\n**Inputs (Outputs from Previous Agents & Tools):**\n\n1.  **Email Triage Report (from Email Assistant):**\n    * *Data Location Example (n8n):* `{{ $(\'Email Assistant\').item.json.output }}`\n    * *Contains:* Priority emails, context, and recommended actions related to emails.\n\n2.  **Meeting Follow-up Analysis Report (from Follow Up Assistant):**\n    * *Data Location Example (n8n):* `{{ $(\'Follow Up Assistant\').item.json.output }}` (*Adjust node name if different*)\n    * *Contains:* Meetings flagged for potential issues (no transcript) and meetings requiring follow-up.\n\n3.  **Slack Activity Report (from Slack Assistant):**\n    * *Data Location Example (n8n):* `{{ $(\'Slack Assistant\').item.json.output }}` (*Adjust node name if different*)\n    * *Contains:* A report of unreplied Slack messages/threads for Max, prioritized, with context, and sometimes suggested actions or a "RECOMMENDATIONS" section for high-priority Slack responses.\n\n4.  **Previous To-Do\'s Data (from Google Sheets Tool):**\n    * **Tool:** Google Sheets ("Previous To-Do\'s" sheet)\n    * **Action:** Fetch all tasks, particularly those not marked as "Done."\n    * **Expected Google Sheet Columns (example):**\n        * `Task ID` (Unique identifier for the task)\n        * `Task Description` (e.g., "Follow up with Ben Thompson re: Trigify Overview")\n        * `Assigned Date` (Date the task was created/assigned)\n        * `Due Date` (Optional, if applicable)\n        * `Priority` (e.g., High, Medium, Low)\n        * `Source` (e.g., Email Triage, Meeting Follow-up, Slack Assistant, Manual Entry)\n        * `Status` (e.g., "Pending," "Overdue," "In Progress," "Done," "Blocked")\n        * `Relevant Link/Reference` (e.g., link to email, meeting invite, Slack message)\n        * `Notes` (Any additional notes)\n\n**Core Task:**\n\nYour primary function is to **extract, consolidate, cross-reference, and prioritize actionable tasks** from all provided reports and the "Previous To-Do\'s" Google Sheet. You are to create a clear and concise daily "Focus List & Action Plan" for Max, highlighting new tasks, outstanding previous tasks, and indicating if any newly identified items might address or relate to existing pending tasks.\n\n**Instructions:**\n\n1.  **Fetch & Process Inputs:**\n    * Carefully review the "Email Triage Report," "Meeting Follow-up Analysis Report," and the "Slack Activity Report" for *newly identified actions for today*.\n    * Retrieve data from the "Previous To-Do\'s" Google Sheet.\n\n2.  **Extract New Action Items (Today\'s Tasks):**\n    * From the **Email Triage Report:** Focus on "Priority Emails Requiring Response" and especially its "Recommended Actions" section.\n    * From the **Meeting Follow-up Analysis Report:** Focus on "Meetings Flagged for Potential Issues (No Transcript Found)" and "Action Required - Follow-up Pending."\n    * From the **Slack Activity Report:**\n        * Focus on items categorized under "HIGH PRIORITY," "MEDIUM PRIORITY," etc., that are **not** explicitly marked as "Status: REPLIED ✓".\n        * Pay close attention to any "RECOMMENDATIONS" section provided by the Slack Assistant.\n\n3.  **Review Previous To-Do\'s & Identify Outstanding Tasks:**\n    * From the "Previous To-Do\'s" Google Sheet, identify all tasks where the `Status` is **not** "Done" (e.g., "Pending," "Overdue," "In Progress").\n    * Note their `Task Description`, `Assigned Date`, `Priority`, and `Source`.\n\n4.  **Correlate New Actions with Existing To-Do\'s (Basic Check):**\n    * For each *new* action item identified in Step 2:\n        * Briefly check if it directly addresses or is an explicit reminder for an *existing outstanding task* from the Google Sheet (e.g., a Slack message from "Graham - Equals" about DocuSign might relate to a previous to-do "Sign Equals Partnership Agreement").\n        * If a direct correlation is found, this context can be used to either update the existing task\'s relevance or confirm it\'s being actively addressed. *Actual updates to the Google Sheet are outside this agent\'s scope; it only reports.*\n\n5.  **Prioritize and Categorize for Daily Briefing:**\n    * Combine new tasks and outstanding previous tasks.\n    * Use the priority levels (High, Medium, Low) and urgency cues (e.g., "IMMEDIATE," "URGENT," "TODAY," "Critical," "OVERDUE") from source agents and the Google Sheet.\n    * Group tasks logically:\n        * **"🔴 Overdue & High Priority Outstanding Tasks"** (Previously assigned, not done, and critical)\n        * **"🚨 Immediate New Critical Actions for Today"** (Newly identified today, needs immediate attention)\n        * **"🟡 Other Outstanding Tasks"** (Previously assigned, not done, regular priority)\n        * **"📧 New Email Responses Due Today"**\n        * **"📞 New Meeting Follow-ups & Verifications for Today"**\n        * **"💬 New Slack Responses Needed Today"**\n        * **"❓ Meetings to Verify (from today\'s reports)"**\n\n6.  **Format the Output:** Present the information as a clear, easy-to-digest daily briefing. For each item, include:\n    * A clear description of the task.\n    * Relevant context (e.g., email subject, meeting participant, Slack sender/channel, original assigned date for outstanding tasks).\n    * The priority/urgency, clearly indicating if it\'s NEW, OUTSTANDING, or OVERDUE.\n    * The specific action Max needs to take.\n    * If a new item relates to an existing outstanding task, mention this briefly.\n\n7.  **Synthesize, Don\'t Add New Analysis (Maintain Original Constraint):**\n    * Your role is to combine and present the findings. **Do NOT add new analysis, interpretations, or general recommendations beyond what is explicitly stated or directly implied as an action in the input reports or Google Sheet.**\n    * Task-YOUR_OPENAI_KEY_HERE recommendations from any agent or implied by an outstanding to-do item *should* be included.\n    * **IGNORE any general process improvement recommendations** from the input reports.\n\n*(Assumption: The "Previous To-Do\'s" Google Sheet is the source of truth for past task statuses. This agent reads it but does not directly update it. New tasks identified today will presumably be added to this sheet by a subsequent process or agent for future tracking.)*\n\n**Desired Output Format (Example - Enhanced):**',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.5,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/[REDACTED_GOOGLE_SHEETS_DOC_ID]/edit#gid=0',
+										cachedResultName: 'Sheet1',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '[REDACTED_GOOGLE_SHEETS_DOC_ID]',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/[REDACTED_GOOGLE_SHEETS_DOC_ID]/edit?usp=drivesdk',
+										cachedResultName: "To-Do's",
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Previous To Do',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-sonnet-4-20250514',
+									cachedResultName: 'Claude Sonnet 4',
+								},
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Anthropic Chat Model2',
+						},
+					}),
 				},
 				position: [2360, -240],
 				name: 'Master Orchestrator Agent',
@@ -190,243 +512,6 @@ const wf = workflow('F0DFXdSTdGjIk0V5', 'Email - PA', { executionOrder: 'v1' })
 	)
 	.add(
 		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					messageId:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}",
-					operation: 'get',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [840, 380],
-				name: 'Get Email',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-sonnet-4-20250514',
-						cachedResultName: 'Claude Sonnet 4',
-					},
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [560, 180],
-				name: 'Anthropic Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: '1',
-					sessionIdType: 'customKey',
-					contextWindowLength: 50,
-				},
-				position: [740, 120],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					options: {},
-					timeMax: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
-					timeMin: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
-					calendar: {
-						__rl: true,
-						mode: 'list',
-						value: '[REDACTED_EMAIL]',
-						cachedResultName: '[REDACTED_EMAIL]',
-					},
-					operation: 'getAll',
-					returnAll:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
-				},
-				credentials: {
-					googleCalendarOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleCalendarOAuth2Api Credential',
-					},
-				},
-				position: [1360, 80],
-				name: 'Google Calendar',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					filters: { q: "=to:{{ $fromAI('email') }}", labelIds: ['SENT'] },
-					operation: 'getAll',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [1160, 80],
-				name: 'Check Sent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-opus-4-20250514',
-						cachedResultName: 'Claude Opus 4',
-					},
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [1260, 200],
-				name: 'Anthropic Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					filters: {
-						labelIds: ['Label_5151750749488724401', 'Label_7518716752151077752'],
-						readStatus: 'unread',
-					},
-					operation: 'getAll',
-					returnAll:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [960, 260],
-				name: 'Unread Emails - FYI',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					filters: {
-						labelIds: ['Label_5151750749488724401', 'UNREAD'],
-						readStatus: 'unread',
-					},
-					operation: 'getAll',
-					returnAll:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [1140, 360],
-				name: 'Unread Emails - To Respond',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.fireflies.ai/graphql',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "query": "query Transcripts($participantEmail: String) { transcripts(participant_email: $participantEmail) { id title date duration participants host_email organizer_email transcript_url summary { action_items keywords overview short_summary } } }",\n  "variables": {\n    "participantEmail": "{{ $fromAI(\'email\') }}"\n  }\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					toolDescription:
-						'Use this to fetch my call recordings and transcripts from my FireFlies account. Add the participant email to fetch the transcript.\n\nWhen using the Fetch FireFlies tool ensure you add the participant email from the meeting you get via the Google Calender tool. ',
-					headerParameters: {
-						parameters: [
-							{
-								name: 'Authorization',
-								value: 'Bearer [REDACTED_FIREFLIES_API_TOKEN]',
-							},
-						],
-					},
-				},
-				position: [1580, 100],
-				name: 'Fetch FireFlies',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					filters: { q: "=to:{{ $fromAI('email') }}", labelIds: ['SENT'] },
-					operation: 'getAll',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [1480, 320],
-				name: 'Check Sent1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-sonnet-4-20250514',
-						cachedResultName: 'Claude Sonnet 4',
-					},
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [2340, 100],
-				name: 'Anthropic Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
 			type: 'n8n-nodes-base.slackTool',
 			version: 2.3,
 			config: {
@@ -458,120 +543,6 @@ const wf = workflow('F0DFXdSTdGjIk0V5', 'Email - PA', { executionOrder: 'v1' })
 				},
 				position: [1980, 680],
 				name: 'Slack1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.slackTool',
-			version: 2.3,
-			config: {
-				parameters: {
-					query: '@[REDACTED_SLACK_USER_ID]',
-					options: {},
-					operation: 'search',
-				},
-				credentials: {
-					slackApi: { id: 'credential-id', name: 'slackApi Credential' },
-				},
-				position: [2080, 200],
-				name: 'Check Slack Mentions',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.slackTool',
-			version: 2.3,
-			config: {
-				parameters: {
-					query: "=in:<#{{ $fromAI('channel_id') }}> from:me",
-					options: {},
-					operation: 'search',
-				},
-				credentials: {
-					slackApi: { id: 'credential-id', name: 'slackApi Credential' },
-				},
-				position: [1900, 280],
-				name: 'Check Thread Mentions',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.slackTool',
-			version: 2.3,
-			config: {
-				parameters: {
-					user: {
-						__rl: true,
-						mode: 'id',
-						value: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('User', ``, 'string') }}",
-					},
-					resource: 'user',
-				},
-				credentials: {
-					slackApi: { id: 'credential-id', name: 'slackApi Credential' },
-				},
-				position: [2220, 220],
-				name: 'Get User',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-sonnet-4-20250514',
-						cachedResultName: 'Claude Sonnet 4',
-					},
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [1780, 40],
-				name: 'Anthropic Chat Model3',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/[REDACTED_GOOGLE_SHEETS_DOC_ID]/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '[REDACTED_GOOGLE_SHEETS_DOC_ID]',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/[REDACTED_GOOGLE_SHEETS_DOC_ID]/edit?usp=drivesdk',
-						cachedResultName: "To-Do's",
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [2620, -20],
-				name: 'Previous To Do',
 			},
 		}),
 	);

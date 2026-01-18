@@ -54,7 +54,6 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 			config: { parameters: { options: {} }, position: [-680, 2425], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',

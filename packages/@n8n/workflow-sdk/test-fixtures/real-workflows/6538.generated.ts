@@ -104,6 +104,48 @@ const wf = workflow('', '')
 				credentials: {
 					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
 				},
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Embeddings OpenAI',
+						},
+					}),
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: {
+								options: {
+									metadata: {
+										metadataValues: [
+											{
+												name: '=file_id',
+												value: "={{ $('Set ID').item.json.id }}",
+											},
+										],
+									},
+								},
+							},
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+									version: 1,
+									config: {
+										parameters: { options: {}, chunkSize: 500, chunkOverlap: 100 },
+										name: 'Recursive Character Text Splitter',
+									},
+								}),
+							},
+							name: 'Default Data Loader',
+						},
+					}),
+				},
 				position: [1600, 760],
 				name: 'Supabase Vector Store',
 			},
@@ -244,6 +286,48 @@ const wf = workflow('', '')
 				credentials: {
 					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
 				},
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Embeddings OpenAI1',
+						},
+					}),
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: {
+								options: {
+									metadata: {
+										metadataValues: [
+											{
+												name: 'file_id',
+												value: "={{ $('Reformat').item.json.file_id }}",
+											},
+										],
+									},
+								},
+							},
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+									version: 1,
+									config: {
+										parameters: { options: {}, chunkSize: 300, chunkOverlap: 50 },
+										name: 'Recursive Character Text Splitter1',
+									},
+								}),
+							},
+							name: 'Default Data Loader1',
+						},
+					}),
+				},
 				position: [2060, 1500],
 				name: 'Supabase Vector Store1',
 			},
@@ -367,6 +451,88 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolVectorStore',
+							version: 1,
+							config: {
+								parameters: {
+									name: 'MarketingLadder',
+									description: 'This vector store holds information about Marketing Ladder agency',
+								},
+								subnodes: {
+									model: languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.1,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'OpenAI Chat Model2',
+										},
+									}),
+									vectorStore: vectorStore({
+										type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+										version: 1,
+										config: {
+											parameters: {
+												options: { queryName: 'match_documents' },
+												tableName: {
+													__rl: true,
+													mode: 'list',
+													value: 'documents',
+													cachedResultName: 'documents',
+												},
+											},
+											credentials: {
+												supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
+											},
+											subnodes: {
+												embedding: embedding({
+													type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+													version: 1.2,
+													config: {
+														parameters: { options: {} },
+														credentials: {
+															openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+														},
+														name: 'Embeddings OpenAI3',
+													},
+												}),
+											},
+											name: 'Supabase Vector Store3',
+										},
+									}),
+								},
+								name: 'MarketingLadder',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { model: 'gpt-4o', options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model3',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Window Buffer Memory1',
+						},
+					}),
+				},
 				position: [-640, 960],
 				name: 'RAG Agent',
 			},
@@ -411,192 +577,6 @@ const wf = workflow('', '')
 				},
 				position: [-1160, 1040],
 				name: 'Text',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-			version: 1,
-			config: {
-				parameters: { options: {}, chunkSize: 500, chunkOverlap: 100 },
-				position: [1840, 1140],
-				name: 'Recursive Character Text Splitter',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: {
-				parameters: {
-					options: {
-						metadata: {
-							metadataValues: [
-								{
-									name: '=file_id',
-									value: "={{ $('Set ID').item.json.id }}",
-								},
-							],
-						},
-					},
-				},
-				position: [1740, 980],
-				name: 'Default Data Loader',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1560, 980],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-			version: 1,
-			config: {
-				parameters: { options: {}, chunkSize: 300, chunkOverlap: 50 },
-				position: [2320, 1840],
-				name: 'Recursive Character Text Splitter1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: {
-				parameters: {
-					options: {
-						metadata: {
-							metadataValues: [
-								{
-									name: 'file_id',
-									value: "={{ $('Reformat').item.json.file_id }}",
-								},
-							],
-						},
-					},
-				},
-				position: [2220, 1700],
-				name: 'Default Data Loader1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2040, 1700],
-				name: 'Embeddings OpenAI1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
-					sessionIdType: 'customKey',
-				},
-				position: [-580, 1160],
-				name: 'Window Buffer Memory1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-240, 1340],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolVectorStore',
-			version: 1,
-			config: {
-				parameters: {
-					name: 'MarketingLadder',
-					description: 'This vector store holds information about Marketing Ladder agency',
-				},
-				position: [-440, 1160],
-				name: 'MarketingLadder',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-660, 1520],
-				name: 'Embeddings OpenAI3',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
-			version: 1,
-			config: {
-				parameters: {
-					options: { queryName: 'match_documents' },
-					tableName: {
-						__rl: true,
-						mode: 'list',
-						value: 'documents',
-						cachedResultName: 'documents',
-					},
-				},
-				credentials: {
-					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
-				},
-				position: [-620, 1340],
-				name: 'Supabase Vector Store3',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { model: 'gpt-4o', options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-760, 1160],
-				name: 'OpenAI Chat Model3',
 			},
 		}),
 	)

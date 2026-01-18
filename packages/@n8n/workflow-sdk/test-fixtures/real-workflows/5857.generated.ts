@@ -83,6 +83,27 @@ const wf = workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
 					batching: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [-584, -520],
 				name: 'Basic LLM Chain',
 			},
@@ -100,6 +121,19 @@ const wf = workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
 						messageValues: [{ type: 'ai', message: '={{ $json.content }}' }],
 					},
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: '={{ $("chat").item.json.sessionId }}',
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory1',
+						},
+					}),
+				},
 				position: [-584, -920],
 				name: 'chatmem',
 			},
@@ -112,6 +146,19 @@ const wf = workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
 			version: 1.1,
 			config: {
 				parameters: { options: {}, simplifyOutput: false },
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: '={{ $("chat").item.json.sessionId }}',
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory2',
+						},
+					}),
+				},
 				position: [-960, -20],
 				name: 'chatmem1',
 			},
@@ -127,94 +174,40 @@ const wf = workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('chat').item.json.sessionId }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+				},
 				position: [-584, -20],
 				name: 'AI Agent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-496, -300],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('chat').item.json.sessionId }}",
-					sessionIdType: 'customKey',
-				},
-				position: [-436, 200],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-556, 200],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: '={{ $("chat").item.json.sessionId }}',
-					sessionIdType: 'customKey',
-				},
-				position: [-496, -700],
-				name: 'Simple Memory1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: '={{ $("chat").item.json.sessionId }}',
-					sessionIdType: 'customKey',
-				},
-				position: [-872, 200],
-				name: 'Simple Memory2',
 			},
 		}),
 	)

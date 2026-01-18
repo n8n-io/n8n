@@ -26,7 +26,22 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 3,
-			config: { position: [720, 2048], name: 'AI Agent' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.3,
+						config: { name: 'OpenAI Chat Model' },
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: { name: 'Structured Output Parser' },
+					}),
+				},
+				position: [720, 2048],
+				name: 'AI Agent',
+			},
 		}),
 	)
 	.then(
@@ -272,20 +287,6 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
 			config: { position: [1968, 2528], name: 'Send a text message4' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: { position: [864, 2272], name: 'Structured Output Parser' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.3,
-			config: { position: [736, 2272], name: 'OpenAI Chat Model' },
 		}),
 	)
 	.add(sticky('', { name: 'Sticky Note5', position: [2192, 1344] }))

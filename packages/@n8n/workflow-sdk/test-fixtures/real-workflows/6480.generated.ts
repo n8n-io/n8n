@@ -92,6 +92,13 @@ const wf = workflow('0eQvHzKKVrYZMyyZ', 'Invoice Workflow', { executionOrder: 'v
 						],
 					},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: { parameters: { options: {} }, name: 'OpenAI Chat Model' },
+					}),
+				},
 				position: [740, 0],
 				name: 'Information Extractor',
 			},
@@ -231,6 +238,24 @@ const wf = workflow('0eQvHzKKVrYZMyyZ', 'Invoice Workflow', { executionOrder: 'v
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-sonnet-4-20250514',
+									cachedResultName: 'Claude 4 Sonnet',
+								},
+								options: {},
+							},
+							name: 'Anthropic Chat Model',
+						},
+					}),
+				},
 				position: [1300, 0],
 				name: 'Anthropic Agent',
 			},
@@ -256,32 +281,6 @@ const wf = workflow('0eQvHzKKVrYZMyyZ', 'Invoice Workflow', { executionOrder: 'v
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
 			config: { position: [1880, 0], name: 'No Operation, do nothing' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: { parameters: { options: {} }, position: [840, 220], name: 'OpenAI Chat Model' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-sonnet-4-20250514',
-						cachedResultName: 'Claude 4 Sonnet',
-					},
-					options: {},
-				},
-				position: [1380, 200],
-				name: 'Anthropic Chat Model',
-			},
 		}),
 	)
 	.add(sticky('Upload Invoice Doc Trigger', { position: [-140, -200], width: 320, height: 680 }))

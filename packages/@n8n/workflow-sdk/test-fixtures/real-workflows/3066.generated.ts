@@ -55,6 +55,52 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolSerpApi',
+							version: 1,
+							config: {
+								parameters: { options: {} },
+								credentials: {
+									serpApi: { id: 'credential-id', name: 'serpApi Credential' },
+								},
+								name: 'SerpAPI',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: { responseFormat: 'text' },
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'gpt-4o LLM',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n	"type": "object",\n	"properties": {\n		"name": {\n			"type": "string"\n		},\n		"description": {\n			"type": "string"\n		},\n		"platform_posts": {\n			"type": "object",\n			"properties": {\n				"LinkedIn": {\n					"type": "object",\n					"properties": {\n                        "image_suggestion": {\n                  			"type": "string"\n                  		},\n						"post": {\n							"type": "string"\n						},\n						"hashtags": {\n							"type": "array",\n							"items": {\n								"type": "string"\n							}\n						},\n						"call_to_action": {\n							"type": "string"\n						}\n					}\n				},\n				"Instagram": {\n					"type": "object",\n					"properties": {\n						"image_suggestion": {\n							"type": "string"\n						},\n						"caption": {\n							"type": "string"\n						},\n						"hashtags": {\n							"type": "array",\n							"items": {\n								"type": "string"\n							}\n						},\n						"emojis": {\n							"type": "array",\n							"items": {\n								"type": "string"\n							}\n						},\n						"call_to_action": {\n							"type": "string"\n						}\n					}\n				},\n				"Facebook": {\n					"type": "object",\n					"properties": {\n						"post": {\n							"type": "string"\n						},\n						"hashtags": {\n							"type": "array",\n							"items": {\n								"type": "string"\n							}\n						},\n						"call_to_action": {\n							"type": "string"\n						},\n						"image_suggestion": {\n							"type": "string"\n						}\n					}\n				},\n				"X-Twitter": {\n					"type": "object",\n					"properties": {\n                        "video_suggestion": {\n                			"type": "string"\n                		},\n                        "image_suggestion": {\n							"type": "string"\n						},\n						"post": {\n							"type": "string"\n						},\n						"hashtags": {\n							"type": "array",\n							"items": {\n								"type": "string"\n							}\n						},\n						"character_limit": {\n							"type": "integer"\n						}\n					}\n				},\n                "TikTok": {\n                	"type": "object",\n                	"properties": {\n                		"video_suggestion": {\n                			"type": "string"\n                		},\n                		"caption": {\n                			"type": "string"\n                		},\n                		"hashtags": {\n                			"type": "array",\n                			"items": {\n                				"type": "string"\n                			}\n                		},\n                		"call_to_action": {\n                			"type": "string"\n                		}\n                	}\n                },\n                "Threads": {\n                	"type": "object",\n                	"properties": {\n                       "image_suggestion": {\n							"type": "string"\n						},\n                		"text_post": {\n                			"type": "string"\n                		},\n                		"hashtags": {\n                			"type": "array",\n                			"items": {\n                				"type": "string"\n                			}\n                		},\n                		"call_to_action": {\n                			"type": "string"\n                		}\n                	}\n                },\n                "YouTube_Shorts": {\n                  	"type": "object",\n                  	"properties": {\n                  		"video_suggestion": {\n                  			"type": "string"\n                  		},\n                  		"title": {\n                  			"type": "string"\n                  		},\n                          "description": {\n                              "type": "string"\n                          },\n                          "hashtags": {\n                              "type": "array",\n                              "items": {\n                                  "type": "string"\n                              }\n                          },\n                          "call_to_action": {\n                              "type": "string"\n                          }\n                      }\n                  }\n			}\n		},\n		"additional_notes": {\n			"type": "string"\n		}\n	}\n}\n',
+							},
+							name: 'Social Media Content',
+						},
+					}),
+				},
 				position: [300, -740],
 				name: 'Social Media Content Factory',
 			},
@@ -70,6 +116,27 @@ const wf = workflow(
 					agent: 'conversationalAgent',
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-mini',
+									cachedResultName: 'gpt-4o-mini',
+								},
+								options: { responseFormat: 'text' },
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'gpt-4o-mini',
+						},
+					}),
 				},
 				position: [1440, -740],
 				name: 'Prepare Content Review Email',
@@ -270,7 +337,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -324,6 +390,27 @@ const wf = workflow(
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-mini',
+									cachedResultName: 'gpt-4o-mini',
+								},
+								options: { responseFormat: 'text' },
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'gpt-4o-mini1',
+						},
+					}),
+				},
 				position: [0, 380],
 				name: 'Prepare Results Email',
 			},
@@ -359,6 +446,27 @@ const wf = workflow(
 					agent: 'conversationalAgent',
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-mini',
+									cachedResultName: 'gpt-4o-mini',
+								},
+								options: { responseFormat: 'text' },
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'gpt-4o-mini2',
+						},
+					}),
 				},
 				position: [0, 660],
 				name: 'Prepare Results Message',
@@ -461,7 +569,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -539,7 +646,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -585,7 +691,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -606,21 +711,6 @@ const wf = workflow(
 				},
 				position: [2040, 780],
 				name: 'LinkedIn Result',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n	"type": "object",\n	"properties": {\n		"name": {\n			"type": "string"\n		},\n		"description": {\n			"type": "string"\n		},\n		"platform_posts": {\n			"type": "object",\n			"properties": {\n				"LinkedIn": {\n					"type": "object",\n					"properties": {\n                        "image_suggestion": {\n                  			"type": "string"\n                  		},\n						"post": {\n							"type": "string"\n						},\n						"hashtags": {\n							"type": "array",\n							"items": {\n								"type": "string"\n							}\n						},\n						"call_to_action": {\n							"type": "string"\n						}\n					}\n				},\n				"Instagram": {\n					"type": "object",\n					"properties": {\n						"image_suggestion": {\n							"type": "string"\n						},\n						"caption": {\n							"type": "string"\n						},\n						"hashtags": {\n							"type": "array",\n							"items": {\n								"type": "string"\n							}\n						},\n						"emojis": {\n							"type": "array",\n							"items": {\n								"type": "string"\n							}\n						},\n						"call_to_action": {\n							"type": "string"\n						}\n					}\n				},\n				"Facebook": {\n					"type": "object",\n					"properties": {\n						"post": {\n							"type": "string"\n						},\n						"hashtags": {\n							"type": "array",\n							"items": {\n								"type": "string"\n							}\n						},\n						"call_to_action": {\n							"type": "string"\n						},\n						"image_suggestion": {\n							"type": "string"\n						}\n					}\n				},\n				"X-Twitter": {\n					"type": "object",\n					"properties": {\n                        "video_suggestion": {\n                			"type": "string"\n                		},\n                        "image_suggestion": {\n							"type": "string"\n						},\n						"post": {\n							"type": "string"\n						},\n						"hashtags": {\n							"type": "array",\n							"items": {\n								"type": "string"\n							}\n						},\n						"character_limit": {\n							"type": "integer"\n						}\n					}\n				},\n                "TikTok": {\n                	"type": "object",\n                	"properties": {\n                		"video_suggestion": {\n                			"type": "string"\n                		},\n                		"caption": {\n                			"type": "string"\n                		},\n                		"hashtags": {\n                			"type": "array",\n                			"items": {\n                				"type": "string"\n                			}\n                		},\n                		"call_to_action": {\n                			"type": "string"\n                		}\n                	}\n                },\n                "Threads": {\n                	"type": "object",\n                	"properties": {\n                       "image_suggestion": {\n							"type": "string"\n						},\n                		"text_post": {\n                			"type": "string"\n                		},\n                		"hashtags": {\n                			"type": "array",\n                			"items": {\n                				"type": "string"\n                			}\n                		},\n                		"call_to_action": {\n                			"type": "string"\n                		}\n                	}\n                },\n                "YouTube_Shorts": {\n                  	"type": "object",\n                  	"properties": {\n                  		"video_suggestion": {\n                  			"type": "string"\n                  		},\n                  		"title": {\n                  			"type": "string"\n                  		},\n                          "description": {\n                              "type": "string"\n                          },\n                          "hashtags": {\n                              "type": "array",\n                              "items": {\n                                  "type": "string"\n                              }\n                          },\n                          "call_to_action": {\n                              "type": "string"\n                          }\n                      }\n                  }\n			}\n		},\n		"additional_notes": {\n			"type": "string"\n		}\n	}\n}\n',
-				},
-				position: [560, -540],
-				name: 'Social Media Content',
 			},
 		}),
 	)
@@ -650,28 +740,6 @@ const wf = workflow(
 					model: {
 						__rl: true,
 						mode: 'list',
-						value: 'gpt-4o-mini',
-						cachedResultName: 'gpt-4o-mini',
-					},
-					options: { responseFormat: 'text' },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1360, -540],
-				name: 'gpt-4o-mini',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
 						value: 'gpt-4o',
 						cachedResultName: 'gpt-4o',
 					},
@@ -687,28 +755,6 @@ const wf = workflow(
 	)
 	.add(
 		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: { responseFormat: 'text' },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [180, -540],
-				name: 'gpt-4o LLM',
-			},
-		}),
-	)
-	.add(
-		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
 			config: {
@@ -718,50 +764,6 @@ const wf = workflow(
 				},
 				position: [980, 780],
 				name: 'pollinations.ai',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-mini',
-						cachedResultName: 'gpt-4o-mini',
-					},
-					options: { responseFormat: 'text' },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-20, 540],
-				name: 'gpt-4o-mini1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-mini',
-						cachedResultName: 'gpt-4o-mini',
-					},
-					options: { responseFormat: 'text' },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-20, 820],
-				name: 'gpt-4o-mini2',
 			},
 		}),
 	)
@@ -829,20 +831,6 @@ const wf = workflow(
 				},
 				position: [-620, 120],
 				name: 'Rename Binary File',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolSerpApi',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					serpApi: { id: 'credential-id', name: 'serpApi Credential' },
-				},
-				position: [460, -540],
-				name: 'SerpAPI',
 			},
 		}),
 	)

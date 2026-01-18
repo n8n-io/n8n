@@ -58,7 +58,6 @@ const wf = workflow('', '')
 			config: { position: [768, 848], name: 'Compare Datasets' },
 		}),
 	)
-	.output(3)
 	.then(
 		node({
 			type: 'n8n-nodes-base.splitInBatches',
@@ -74,7 +73,6 @@ const wf = workflow('', '')
 			config: { position: [1264, 912], name: '2nd Loop Over Items1' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.microsoftOneDrive',
@@ -95,18 +93,50 @@ const wf = workflow('', '')
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2,
-			config: { position: [1584, 1392], name: 'Document Information' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						version: 1,
+						config: { name: 'Mistral Cloud Chat Model' },
+					}),
+				},
+				position: [1584, 1392],
+				name: 'Document Information',
+			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.chainLlm',
 			version: 1.7,
-			config: { position: [1904, 1392], name: 'Document LLM Chain' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						version: 1,
+						config: { name: 'Mistral Cloud Chat Model' },
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+									version: 1,
+									config: { name: 'Mistral Cloud Chat Model' },
+								}),
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
+				position: [1904, 1392],
+				name: 'Document LLM Chain',
+			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.merge',
@@ -133,15 +163,48 @@ const wf = workflow('', '')
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2,
-			config: { position: [1584, 1104], name: 'Overview' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						version: 1,
+						config: { name: 'Mistral Cloud Chat Model' },
+					}),
+				},
+				position: [1584, 1104],
+				name: 'Overview',
+			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.chainLlm',
 			version: 1.7,
-			config: { position: [1904, 1104], name: 'Overview LLM Chain' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						version: 1,
+						config: { name: 'Mistral Cloud Chat Model' },
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+									version: 1,
+									config: { name: 'Mistral Cloud Chat Model' },
+								}),
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
+				},
+				position: [1904, 1104],
+				name: 'Overview LLM Chain',
+			},
 		}),
 	)
 	.output(1)
@@ -286,29 +349,6 @@ const wf = workflow('', '')
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
 			config: { position: [496, 752], name: 'Set File ID 1' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
-			version: 1,
-			config: { position: [1584, 1696], name: 'Mistral Cloud Chat Model' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: { position: [1952, 1264], name: 'Structured Output Parser1' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: { position: [1952, 1552], name: 'Structured Output Parser' },
 		}),
 	)
 	.add(sticky('', { position: [-240, 144] }))

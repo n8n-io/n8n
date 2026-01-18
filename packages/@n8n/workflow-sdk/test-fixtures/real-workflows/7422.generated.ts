@@ -42,6 +42,16 @@ const wf = workflow('EPSFcDt1f8LdRzZU', 'Amazon Affiliate Marketing Automation',
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: { model: 'google/gemini-2.0-flash-exp:free', options: {} },
+							name: 'OpenRouter Chat Model2',
+						},
+					}),
+				},
 				position: [-1680, 384],
 				name: 'asin number',
 			},
@@ -81,6 +91,16 @@ const wf = workflow('EPSFcDt1f8LdRzZU', 'Amazon Affiliate Marketing Automation',
 					text: "=You are a copywriter helping an Amazon affiliate marketer write high-converting, scroll-stopping Facebook captions.\n\nFor each product, generate a short and engaging caption (1–3 lines max) that:\n- Grabs attention fast\n- Focuses on the product’s top benefit or unique feature\n- Sounds casual and native to Facebook\n- Includes a CTA to buy\n- Ends with the affiliate link\n\nHere is the product name and features:\n\nProduct: {{ $('Amazon Product Details').item.json.data.product_title }}\n\nAbout Product : {{ $('Amazon Product Details').item.json.data.about_product[3] }}\n\nAffiliate Link: {{ $('Amazon Product Details').item.json.data.product_url }}?tag=rakin114-20\n\n\nGive only 1 caption directly and don't contain any symbol. Add emojis and with the affiliate link add here's the poduct or purchase link any thing that goes well.",
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: { model: 'google/gemini-2.0-flash-exp:free', options: {} },
+							name: 'OpenRouter Chat Model1',
+						},
+					}),
 				},
 				position: [-976, 144],
 				name: 'FB caption',
@@ -143,6 +163,16 @@ const wf = workflow('EPSFcDt1f8LdRzZU', 'Amazon Affiliate Marketing Automation',
 					text: "=Create a very short prompt for an AI image generator that will be fed a photo of a product, to ultimately have professional product photography. \n\n- If the product is wearable you have to include the product worn by a human model, if it's not wearable then include a model holding it or doing something with it. The product should ALWAYS be with a human model, and with the model's face visible.\n\n- Make sure to include instructions to get the best realism, the best lighting, the best angle, the best colors, the best model positioning, etc. according to the type of product.\n\n- Always prompt it as referring to the product, eg. \"this [PRODUCT]\" so that the AI image generator knows that it's gonna be sent an input photo of the product.\n\n- Make sure to always instruct to include subtle grain for a cinematic look.\n\nThe description of the product will be sent to you. Only reply with the final prompt inside double quotes.\n\nThe prompt must be under 100 words and very simple.\n\n\nHere is the Product Description:\nProduct Title: {{ $('Amazon Product Details').item.json.data.product_title }}\n\nAbout Product: {{ $('Amazon Product Details').item.json.data.about_product[0] }}\n\n",
 					options: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: { model: 'google/gemini-2.0-flash-exp:free', options: {} },
+							name: 'OpenRouter Chat Model',
+						},
+					}),
 				},
 				position: [-96, 160],
 				name: 'Image Prompt Generate',
@@ -291,39 +321,6 @@ const wf = workflow('EPSFcDt1f8LdRzZU', 'Amazon Affiliate Marketing Automation',
 				},
 				position: [1168, 464],
 				name: 'Google Sheets',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { model: 'google/gemini-2.0-flash-exp:free', options: {} },
-				position: [-96, 336],
-				name: 'OpenRouter Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { model: 'google/gemini-2.0-flash-exp:free', options: {} },
-				position: [-976, 320],
-				name: 'OpenRouter Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { model: 'google/gemini-2.0-flash-exp:free', options: {} },
-				position: [-1680, 544],
-				name: 'OpenRouter Chat Model2',
 			},
 		}),
 	)

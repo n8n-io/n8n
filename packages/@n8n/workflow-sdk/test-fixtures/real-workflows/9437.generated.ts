@@ -137,6 +137,33 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n	"course": "recommended course excact name",\n	"reasoning": "reasoning",\n    "url": "url"\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [2960, 0],
 				name: 'Choose Best Course',
 			},
@@ -210,37 +237,6 @@ const wf = workflow('', '')
 				},
 				position: [2592, 592],
 				name: 'Convert to Text',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n	"course": "recommended course excact name",\n	"reasoning": "reasoning",\n    "url": "url"\n}',
-				},
-				position: [3456, 416],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [3072, 624],
-				name: 'OpenAI Chat Model',
 			},
 		}),
 	)

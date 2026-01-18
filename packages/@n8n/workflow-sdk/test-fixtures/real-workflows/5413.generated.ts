@@ -80,6 +80,19 @@ const wf = workflow('M4IIL41O16twgImq', 'Image Reader', { executionOrder: 'v1' }
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [480, -220],
 				name: 'AI Agent',
 			},
@@ -114,20 +127,6 @@ const wf = workflow('M4IIL41O16twgImq', 'Image Reader', { executionOrder: 'v1' }
 				},
 				position: [1076, -220],
 				name: 'Telegram',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [568, 0],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	);

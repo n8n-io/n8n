@@ -17,14 +17,51 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 		node({
 			type: '@n8n/n8n-nodes-langchain.chainLlm',
 			version: 1.6,
-			config: { position: [-580, 560], name: 'Idea creator' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: { name: 'OpenAI Chat Model2' },
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: { name: 'Structured Output Parser' },
+					}),
+				},
+				position: [-580, 560],
+				name: 'Idea creator',
+			},
 		}),
 	)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.9,
-			config: { position: [280, 560], name: 'AI Agent' },
+			config: {
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: { name: 'Google Sheets' },
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: { name: 'Get_Brand_Brief1' },
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: { name: 'OpenAI Chat Model3' },
+					}),
+				},
+				position: [280, 560],
+				name: 'AI Agent',
+			},
 		}),
 	)
 	.then(
@@ -45,7 +82,39 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.8,
-			config: { position: [2220, 560], name: 'AI Content creator' },
+			config: {
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { name: 'Simple Memory' },
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.5,
+							config: { name: 'Check Examples1' },
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: { name: 'Get_Brand_Brief' },
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: { name: 'OpenAI Chat Model' },
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: { name: 'Social Media Content1' },
+					}),
+				},
+				position: [2220, 560],
+				name: 'AI Content creator',
+			},
 		}),
 	)
 	.output(0)
@@ -279,76 +348,6 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 			type: 'n8n-nodes-base.scheduleTrigger',
 			version: 1.2,
 			config: { position: [-1320, 440], name: 'Schedule Trigger' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: { position: [2060, 820], name: 'OpenAI Chat Model' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: { position: [2340, 820], name: 'Get_Brand_Brief' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: { position: [-400, 780], name: 'Structured Output Parser' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: { position: [-580, 800], name: 'OpenAI Chat Model2' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: { position: [220, 840], name: 'OpenAI Chat Model3' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: { position: [640, 840], name: 'Google Sheets' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: { position: [440, 840], name: 'Get_Brand_Brief1' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.5,
-			config: { position: [2500, 820], name: 'Check Examples1' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: { position: [2200, 820], name: 'Simple Memory' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: { position: [2660, 820], name: 'Social Media Content1' },
 		}),
 	)
 	.add(

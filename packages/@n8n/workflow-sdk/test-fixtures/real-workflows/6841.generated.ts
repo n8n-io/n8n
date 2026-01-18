@@ -29,6 +29,130 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "subject": "Daily Hollywood Film Industry Briefing – July 25, 2025",\n  "body": "<html> ... formatted content ... </html>"\n}\n',
+							},
+							name: 'Format Output for Email',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: { parameters: { options: {} }, name: 'Google Gemini 2.5 Flash' },
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.tavily.com/search',
+									method: 'POST',
+									options: {},
+									jsonBody:
+										'={\n  "query": "hollywood news latest casting director production",\n  "search_depth": "basic",\n  "time_range": "week",\n  "max_results": 5\n}\n',
+									sendBody: true,
+									sendHeaders: true,
+									specifyBody: 'json',
+									headerParameters: {
+										parameters: [
+											{ name: 'Content-Type', value: 'application/json' },
+											{
+												name: 'Authorization',
+												value: '{{$credentials.TavilyApiKey}}',
+											},
+										],
+									},
+								},
+								name: 'Fetch Hollywood News (Tavily)',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.tavily.com/search',
+									method: 'POST',
+									options: {},
+									jsonBody:
+										'={\n  "query": "hollywood movies releasing this week",\n  "search_depth": "basic",\n  "time_range": "week",\n  "max_results": 5\n}\n',
+									sendBody: true,
+									sendHeaders: true,
+									specifyBody: 'json',
+									headerParameters: {
+										parameters: [
+											{ name: 'Content-Type', value: 'application/json' },
+											{
+												name: 'Authorization',
+												value: '{{$credentials.TavilyApiKey}}',
+											},
+										],
+									},
+								},
+								name: 'Fetch Weekly Releases (Tavily)',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.tavily.com/search',
+									method: 'POST',
+									options: {},
+									jsonBody:
+										'={\n  "query": "best hollywood movies playing in theatres",\n  "search_depth": "basic",\n  "time_range": "week",\n  "max_results": 5\n}\n',
+									sendBody: true,
+									sendHeaders: true,
+									specifyBody: 'json',
+									headerParameters: {
+										parameters: [
+											{ name: 'Content-Type', value: 'application/json' },
+											{
+												name: 'Authorization',
+												value: '{{$credentials.TavilyApiKey}}',
+											},
+										],
+									},
+								},
+								name: 'Fetch Must-Watch Movies (Tavily)',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.tavily.com/search',
+									method: 'POST',
+									options: {},
+									jsonBody:
+										'={\n  "query": "hollywood box office results last week",\n  "search_depth": "basic",\n  "time_range": "week",\n  "max_results": 5\n}\n',
+									sendBody: true,
+									sendHeaders: true,
+									specifyBody: 'json',
+									headerParameters: {
+										parameters: [
+											{ name: 'Content-Type', value: 'application/json' },
+											{
+												name: 'Authorization',
+												value: '{{$credentials.TavilyApiKey}}',
+											},
+										],
+									},
+								},
+								name: 'Fetch Weekly Box Office (Tavily)',
+							},
+						}),
+					],
+				},
 				position: [1248, 400],
 				name: 'Hollywood News Research Agent',
 			},
@@ -75,6 +199,26 @@ const wf = workflow(
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: { parameters: { method: 'POST', options: {} }, name: 'HTTP Request' },
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [1296, 1248],
 				name: 'AI Agent',
 			},
@@ -93,172 +237,6 @@ const wf = workflow(
 				},
 				position: [1856, 1248],
 				name: 'Send a message1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.tavily.com/search',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "query": "hollywood movies releasing this week",\n  "search_depth": "basic",\n  "time_range": "week",\n  "max_results": 5\n}\n',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{ name: 'Content-Type', value: 'application/json' },
-							{
-								name: 'Authorization',
-								value: '{{$credentials.TavilyApiKey}}',
-							},
-						],
-					},
-				},
-				position: [1024, 624],
-				name: 'Fetch Weekly Releases (Tavily)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.tavily.com/search',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "query": "hollywood box office results last week",\n  "search_depth": "basic",\n  "time_range": "week",\n  "max_results": 5\n}\n',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{ name: 'Content-Type', value: 'application/json' },
-							{
-								name: 'Authorization',
-								value: '{{$credentials.TavilyApiKey}}',
-							},
-						],
-					},
-				},
-				position: [1216, 624],
-				name: 'Fetch Weekly Box Office (Tavily)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.tavily.com/search',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "query": "hollywood news latest casting director production",\n  "search_depth": "basic",\n  "time_range": "week",\n  "max_results": 5\n}\n',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{ name: 'Content-Type', value: 'application/json' },
-							{
-								name: 'Authorization',
-								value: '{{$credentials.TavilyApiKey}}',
-							},
-						],
-					},
-				},
-				position: [1408, 624],
-				name: 'Fetch Hollywood News (Tavily)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.tavily.com/search',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "query": "best hollywood movies playing in theatres",\n  "search_depth": "basic",\n  "time_range": "week",\n  "max_results": 5\n}\n',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{ name: 'Content-Type', value: 'application/json' },
-							{
-								name: 'Authorization',
-								value: '{{$credentials.TavilyApiKey}}',
-							},
-						],
-					},
-				},
-				position: [1600, 624],
-				name: 'Fetch Must-Watch Movies (Tavily)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "subject": "Daily Hollywood Film Industry Briefing – July 25, 2025",\n  "body": "<html> ... formatted content ... </html>"\n}\n',
-				},
-				position: [1808, 624],
-				name: 'Format Output for Email',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				position: [816, 624],
-				name: 'Google Gemini 2.5 Flash',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				position: [1248, 1472],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: { method: 'POST', options: {} },
-				position: [1520, 1472],
-				name: 'HTTP Request',
 			},
 		}),
 	)

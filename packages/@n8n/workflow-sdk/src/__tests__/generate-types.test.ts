@@ -924,4 +924,404 @@ describe('generate-types', () => {
 			expect(result).toContain("'default'"); // Should be quoted
 		});
 	});
+
+	// =========================================================================
+	// Subnode Union Type Generation Tests
+	// =========================================================================
+
+	describe('subnode union type generation', () => {
+		// Mock AI subnode definitions
+		const mockLanguageModelNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			displayName: 'OpenAI Chat Model',
+			description: 'Interact with OpenAI chat models',
+			group: ['transform'],
+			version: [1, 1.1, 1.2],
+			inputs: ['main'],
+			outputs: ['ai_languageModel'],
+			properties: [
+				{
+					name: 'model',
+					displayName: 'Model',
+					type: 'options',
+					options: [
+						{ name: 'GPT-4', value: 'gpt-4' },
+						{ name: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' },
+					],
+					default: 'gpt-4',
+				},
+			],
+		};
+
+		const mockAnthropicModelNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+			displayName: 'Anthropic Chat Model',
+			description: 'Interact with Anthropic Claude models',
+			group: ['transform'],
+			version: 1,
+			inputs: ['main'],
+			outputs: ['ai_languageModel'],
+			properties: [],
+		};
+
+		const mockToolCodeNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.toolCode',
+			displayName: 'Code Tool',
+			description: 'Execute code as a tool',
+			group: ['transform'],
+			version: [1, 1.1],
+			inputs: ['main'],
+			outputs: ['ai_tool'],
+			properties: [
+				{
+					name: 'code',
+					displayName: 'Code',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const mockCalculatorToolNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.toolCalculator',
+			displayName: 'Calculator Tool',
+			description: 'Perform calculations',
+			group: ['transform'],
+			version: 1,
+			inputs: ['main'],
+			outputs: ['ai_tool'],
+			properties: [],
+		};
+
+		const mockMemoryNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			displayName: 'Window Buffer Memory',
+			description: 'Store conversation history in a buffer',
+			group: ['transform'],
+			version: [1, 1.1, 1.2],
+			inputs: ['main'],
+			outputs: ['ai_memory'],
+			properties: [
+				{
+					name: 'contextWindowLength',
+					displayName: 'Context Window Length',
+					type: 'number',
+					default: 5,
+				},
+			],
+		};
+
+		const mockEmbeddingNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+			displayName: 'OpenAI Embeddings',
+			description: 'Generate embeddings using OpenAI',
+			group: ['transform'],
+			version: 1,
+			inputs: ['main'],
+			outputs: ['ai_embedding'],
+			properties: [],
+		};
+
+		const mockVectorStoreNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+			displayName: 'Pinecone Vector Store',
+			description: 'Store vectors in Pinecone',
+			group: ['transform'],
+			version: 1,
+			inputs: [{ type: 'main' }, { type: 'ai_embedding', displayName: 'Embedding' }],
+			outputs: ['ai_vectorStore'],
+			properties: [],
+		};
+
+		const mockOutputParserNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.outputParserStructured',
+			displayName: 'Structured Output Parser',
+			description: 'Parse structured output',
+			group: ['transform'],
+			version: 1,
+			inputs: ['main'],
+			outputs: ['ai_outputParser'],
+			properties: [],
+		};
+
+		const mockRetrieverNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.retrieverVectorStore',
+			displayName: 'Vector Store Retriever',
+			description: 'Retrieve from vector store',
+			group: ['transform'],
+			version: 1,
+			inputs: [{ type: 'main' }, { type: 'ai_vectorStore' }],
+			outputs: ['ai_retriever'],
+			properties: [],
+		};
+
+		const mockDocumentLoaderNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+			displayName: 'Default Data Loader',
+			description: 'Load documents',
+			group: ['transform'],
+			version: 1,
+			inputs: ['main'],
+			outputs: ['ai_document'],
+			properties: [],
+		};
+
+		const mockTextSplitterNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+			displayName: 'Recursive Character Text Splitter',
+			description: 'Split text recursively',
+			group: ['transform'],
+			version: 1,
+			inputs: ['main'],
+			outputs: ['ai_textSplitter'],
+			properties: [],
+		};
+
+		// Regular node (not a subnode) for comparison
+		const mockAgentNode: NodeTypeDescription = {
+			name: '@n8n/n8n-nodes-langchain.agent',
+			displayName: 'AI Agent',
+			description: 'AI Agent that uses tools',
+			group: ['transform'],
+			version: [1, 1.5, 1.7],
+			inputs: [
+				{ type: 'main' },
+				{ type: 'ai_languageModel', displayName: 'Model' },
+				{ type: 'ai_memory', displayName: 'Memory' },
+				{ type: 'ai_tool', displayName: 'Tool' },
+			],
+			outputs: ['main'],
+			properties: [],
+		};
+
+		describe('extractOutputTypes', () => {
+			it('should extract ai_languageModel output from OpenAI model node', () => {
+				const outputs = generateTypes.extractOutputTypes(mockLanguageModelNode);
+				expect(outputs).toContain('ai_languageModel');
+			});
+
+			it('should extract ai_tool output from tool node', () => {
+				const outputs = generateTypes.extractOutputTypes(mockToolCodeNode);
+				expect(outputs).toContain('ai_tool');
+			});
+
+			it('should extract ai_memory output from memory node', () => {
+				const outputs = generateTypes.extractOutputTypes(mockMemoryNode);
+				expect(outputs).toContain('ai_memory');
+			});
+
+			it('should extract main output from agent node (not a subnode)', () => {
+				const outputs = generateTypes.extractOutputTypes(mockAgentNode);
+				expect(outputs).toContain('main');
+				expect(outputs).not.toContain('ai_languageModel');
+			});
+
+			it('should handle complex output format with objects', () => {
+				const nodeWithObjectOutputs: NodeTypeDescription = {
+					...mockLanguageModelNode,
+					outputs: [{ type: 'ai_languageModel', displayName: 'Model' }],
+				};
+				const outputs = generateTypes.extractOutputTypes(nodeWithObjectOutputs);
+				expect(outputs).toContain('ai_languageModel');
+			});
+		});
+
+		describe('groupNodesByOutputType', () => {
+			it('should group nodes by their AI output types', () => {
+				const nodes = [
+					mockLanguageModelNode,
+					mockAnthropicModelNode,
+					mockToolCodeNode,
+					mockCalculatorToolNode,
+					mockMemoryNode,
+					mockAgentNode,
+				];
+
+				const grouped = generateTypes.groupNodesByOutputType(nodes);
+
+				// Language model nodes grouped together
+				expect(grouped.ai_languageModel).toContain('@n8n/n8n-nodes-langchain.lmChatOpenAi');
+				expect(grouped.ai_languageModel).toContain('@n8n/n8n-nodes-langchain.lmChatAnthropic');
+				expect(grouped.ai_languageModel?.length).toBe(2);
+
+				// Tool nodes grouped together
+				expect(grouped.ai_tool).toContain('@n8n/n8n-nodes-langchain.toolCode');
+				expect(grouped.ai_tool).toContain('@n8n/n8n-nodes-langchain.toolCalculator');
+				expect(grouped.ai_tool?.length).toBe(2);
+
+				// Memory nodes
+				expect(grouped.ai_memory).toContain('@n8n/n8n-nodes-langchain.memoryBufferWindow');
+				expect(grouped.ai_memory?.length).toBe(1);
+
+				// Main output nodes NOT included in AI subnode groups
+				expect(grouped.main).toContain('@n8n/n8n-nodes-langchain.agent');
+			});
+
+			it('should handle all AI subnode output types', () => {
+				const nodes = [
+					mockLanguageModelNode,
+					mockMemoryNode,
+					mockToolCodeNode,
+					mockOutputParserNode,
+					mockEmbeddingNode,
+					mockVectorStoreNode,
+					mockRetrieverNode,
+					mockDocumentLoaderNode,
+					mockTextSplitterNode,
+				];
+
+				const grouped = generateTypes.groupNodesByOutputType(nodes);
+
+				expect(grouped.ai_languageModel).toBeDefined();
+				expect(grouped.ai_memory).toBeDefined();
+				expect(grouped.ai_tool).toBeDefined();
+				expect(grouped.ai_outputParser).toBeDefined();
+				expect(grouped.ai_embedding).toBeDefined();
+				expect(grouped.ai_vectorStore).toBeDefined();
+				expect(grouped.ai_retriever).toBeDefined();
+				expect(grouped.ai_document).toBeDefined();
+				expect(grouped.ai_textSplitter).toBeDefined();
+			});
+		});
+
+		describe('generateSubnodeUnionTypes', () => {
+			it('should generate ValidLanguageModelType union', () => {
+				const nodes = [mockLanguageModelNode, mockAnthropicModelNode, mockAgentNode];
+				const code = generateTypes.generateSubnodeUnionTypes(nodes);
+
+				expect(code).toContain('export type ValidLanguageModelType =');
+				expect(code).toContain("'@n8n/n8n-nodes-langchain.lmChatOpenAi'");
+				expect(code).toContain("'@n8n/n8n-nodes-langchain.lmChatAnthropic'");
+				// Should NOT include agent (it outputs 'main', not 'ai_languageModel')
+				expect(code).not.toContain("'@n8n/n8n-nodes-langchain.agent'");
+			});
+
+			it('should generate ValidToolType union', () => {
+				const nodes = [mockToolCodeNode, mockCalculatorToolNode, mockAgentNode];
+				const code = generateTypes.generateSubnodeUnionTypes(nodes);
+
+				expect(code).toContain('export type ValidToolType =');
+				expect(code).toContain("'@n8n/n8n-nodes-langchain.toolCode'");
+				expect(code).toContain("'@n8n/n8n-nodes-langchain.toolCalculator'");
+			});
+
+			it('should generate all subnode union types', () => {
+				const nodes = [
+					mockLanguageModelNode,
+					mockAnthropicModelNode,
+					mockMemoryNode,
+					mockToolCodeNode,
+					mockCalculatorToolNode,
+					mockOutputParserNode,
+					mockEmbeddingNode,
+					mockVectorStoreNode,
+					mockRetrieverNode,
+					mockDocumentLoaderNode,
+					mockTextSplitterNode,
+				];
+				const code = generateTypes.generateSubnodeUnionTypes(nodes);
+
+				// All union types should be generated
+				expect(code).toContain('export type ValidLanguageModelType =');
+				expect(code).toContain('export type ValidMemoryType =');
+				expect(code).toContain('export type ValidToolType =');
+				expect(code).toContain('export type ValidOutputParserType =');
+				expect(code).toContain('export type ValidEmbeddingType =');
+				expect(code).toContain('export type ValidVectorStoreType =');
+				expect(code).toContain('export type ValidRetrieverType =');
+				expect(code).toContain('export type ValidDocumentLoaderType =');
+				expect(code).toContain('export type ValidTextSplitterType =');
+			});
+
+			it('should include JSDoc comments for union types', () => {
+				const nodes = [mockLanguageModelNode, mockToolCodeNode];
+				const code = generateTypes.generateSubnodeUnionTypes(nodes);
+
+				// Should have documentation
+				expect(code).toContain('/**');
+				expect(code).toContain('languageModel()');
+				expect(code).toContain('tool()');
+			});
+
+			it('should handle empty categories gracefully', () => {
+				const nodes = [mockLanguageModelNode]; // Only language model
+				const code = generateTypes.generateSubnodeUnionTypes(nodes);
+
+				// Language model should be present
+				expect(code).toContain('export type ValidLanguageModelType =');
+
+				// Empty categories should have 'never' type
+				expect(code).toContain('export type ValidToolType = never');
+				expect(code).toContain('export type ValidMemoryType = never');
+			});
+		});
+
+		describe('generateNodeTypeFile with @subnodeType JSDoc', () => {
+			it('should add @subnodeType JSDoc tag for language model nodes', () => {
+				const result = generateTypes.generateNodeTypeFile(mockLanguageModelNode);
+
+				expect(result).toContain('@subnodeType ai_languageModel');
+			});
+
+			it('should add @subnodeType JSDoc tag for tool nodes', () => {
+				const result = generateTypes.generateNodeTypeFile(mockToolCodeNode);
+
+				expect(result).toContain('@subnodeType ai_tool');
+			});
+
+			it('should add @subnodeType JSDoc tag for memory nodes', () => {
+				const result = generateTypes.generateNodeTypeFile(mockMemoryNode);
+
+				expect(result).toContain('@subnodeType ai_memory');
+			});
+
+			it('should NOT add @subnodeType for nodes with main output', () => {
+				const result = generateTypes.generateNodeTypeFile(mockAgentNode);
+
+				expect(result).not.toContain('@subnodeType');
+			});
+
+			it('should add @subnodeType for all AI subnode categories', () => {
+				const resultEmbedding = generateTypes.generateNodeTypeFile(mockEmbeddingNode);
+				expect(resultEmbedding).toContain('@subnodeType ai_embedding');
+
+				const resultVectorStore = generateTypes.generateNodeTypeFile(mockVectorStoreNode);
+				expect(resultVectorStore).toContain('@subnodeType ai_vectorStore');
+
+				const resultRetriever = generateTypes.generateNodeTypeFile(mockRetrieverNode);
+				expect(resultRetriever).toContain('@subnodeType ai_retriever');
+
+				const resultDocument = generateTypes.generateNodeTypeFile(mockDocumentLoaderNode);
+				expect(resultDocument).toContain('@subnodeType ai_document');
+
+				const resultTextSplitter = generateTypes.generateNodeTypeFile(mockTextSplitterNode);
+				expect(resultTextSplitter).toContain('@subnodeType ai_textSplitter');
+
+				const resultOutputParser = generateTypes.generateNodeTypeFile(mockOutputParserNode);
+				expect(resultOutputParser).toContain('@subnodeType ai_outputParser');
+			});
+		});
+
+		describe('generateSubnodesFile', () => {
+			it('should generate complete subnodes.ts file', () => {
+				const nodes = [
+					mockLanguageModelNode,
+					mockAnthropicModelNode,
+					mockToolCodeNode,
+					mockMemoryNode,
+				];
+
+				const code = generateTypes.generateSubnodesFile(nodes);
+
+				// Should have file header
+				expect(code).toContain('@generated');
+				expect(code).toContain('Do not edit manually');
+
+				// Should have all union types
+				expect(code).toContain('ValidLanguageModelType');
+				expect(code).toContain('ValidToolType');
+				expect(code).toContain('ValidMemoryType');
+			});
+		});
+	});
 });

@@ -105,6 +105,31 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "object",\n  "properties": {\n    "ideas": {\n      "type": "array",\n      "description": "An array containing exactly 1 content concept.",\n      "minItems": 1,\n      "maxItems": 1,\n      "items": {\n        "type": "object",\n        "properties": {\n          "concept": {\n            "type": "string",\n            "description": "The detailed text describing the content concept for a Single Image."\n          },\n          "suggested_format": {\n            "type": "string",\n            "description": "The post format, which MUST be \'Single Image\'.",\n            "const": "Single Image"\n          }\n        },\n        "required": [\n          "concept",\n          "suggested_format"\n        ]\n      }\n    }\n  },\n  "required": [\n    "ideas"\n  ]\n}',
+							},
+							name: '(Parse Concept JSON)',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash-001' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: '(LLM Model for Concept)',
+						},
+					}),
+				},
 				position: [-160, -380],
 				name: '3a. Generate Content Concept (Gemini)',
 			},
@@ -128,6 +153,31 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "object",\n  "properties": {\n    "expanded_post_concept": {\n      "type": "string",\n      "description": "The elaborated visual concept, stating Single Image format and incorporating user input/platform considerations."\n    },\n    "prompt_options": {\n      "type": "array",\n      "description": "An array containing exactly TWO prompt options for the single image concept.",\n      "minItems": 2,\n      "maxItems": 2,\n      "items": {\n        "type": "object",\n        "properties": {\n          "option_description": {\n            "type": "string",\n            "description": "Briefly describes the distinct angle/style of this option (e.g., \'Option 1: Hyperrealistic...\')."\n          },\n          "prompts": {\n            "type": "array",\n            "description": "Contains ONE detailed prompt string for the single image.",\n            "minItems": 1,\n            "maxItems": 1,\n            "items": {\n              "type": "string",\n              "description": "A detailed image generation prompt."\n            }\n          }\n        },\n        "required": [\n          "option_description",\n          "prompts"\n        ]\n      }\n    }\n  },\n  "required": [\n    "expanded_post_concept",\n    "prompt_options"\n  ]\n}',
+							},
+							name: '(Parse Prompts JSON)',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash-001' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: '(LLM Model for Prompts)',
+						},
+					}),
+				},
 				position: [580, -380],
 				name: '3b. Generate Image Prompt Options (Gemini)',
 			},
@@ -150,6 +200,29 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample: '{\n	"Caption": "Thee future of call centers is here!"\n}',
+							},
+							name: '(Parse Caption JSON)',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: '(LLM Model for Caption)',
+						},
+					}),
 				},
 				position: [1540, -380],
 				name: '3c. Generate Post Caption (Gemini)',
@@ -374,91 +447,6 @@ const wf = workflow('', '')
 				},
 				position: [4440, -380],
 				name: '7. Update Post Status in Sheet',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash-001' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-160, -220],
-				name: '(LLM Model for Concept)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "object",\n  "properties": {\n    "ideas": {\n      "type": "array",\n      "description": "An array containing exactly 1 content concept.",\n      "minItems": 1,\n      "maxItems": 1,\n      "items": {\n        "type": "object",\n        "properties": {\n          "concept": {\n            "type": "string",\n            "description": "The detailed text describing the content concept for a Single Image."\n          },\n          "suggested_format": {\n            "type": "string",\n            "description": "The post format, which MUST be \'Single Image\'.",\n            "const": "Single Image"\n          }\n        },\n        "required": [\n          "concept",\n          "suggested_format"\n        ]\n      }\n    }\n  },\n  "required": [\n    "ideas"\n  ]\n}',
-				},
-				position: [0, -220],
-				name: '(Parse Concept JSON)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash-001' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [580, -220],
-				name: '(LLM Model for Prompts)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "object",\n  "properties": {\n    "expanded_post_concept": {\n      "type": "string",\n      "description": "The elaborated visual concept, stating Single Image format and incorporating user input/platform considerations."\n    },\n    "prompt_options": {\n      "type": "array",\n      "description": "An array containing exactly TWO prompt options for the single image concept.",\n      "minItems": 2,\n      "maxItems": 2,\n      "items": {\n        "type": "object",\n        "properties": {\n          "option_description": {\n            "type": "string",\n            "description": "Briefly describes the distinct angle/style of this option (e.g., \'Option 1: Hyperrealistic...\')."\n          },\n          "prompts": {\n            "type": "array",\n            "description": "Contains ONE detailed prompt string for the single image.",\n            "minItems": 1,\n            "maxItems": 1,\n            "items": {\n              "type": "string",\n              "description": "A detailed image generation prompt."\n            }\n          }\n        },\n        "required": [\n          "option_description",\n          "prompts"\n        ]\n      }\n    }\n  },\n  "required": [\n    "expanded_post_concept",\n    "prompt_options"\n  ]\n}',
-				},
-				position: [740, -220],
-				name: '(Parse Prompts JSON)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [1560, -220],
-				name: '(LLM Model for Caption)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample: '{\n	"Caption": "Thee future of call centers is here!"\n}',
-				},
-				position: [1700, -220],
-				name: '(Parse Caption JSON)',
 			},
 		}),
 	)

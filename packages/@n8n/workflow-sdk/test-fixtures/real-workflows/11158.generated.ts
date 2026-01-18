@@ -63,7 +63,6 @@ const wf = workflow('B01FguFGfZeVurIi', 'Olostep Amazon scraper', { executionOrd
 			config: { parameters: { options: {} }, position: [-832, 480], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',

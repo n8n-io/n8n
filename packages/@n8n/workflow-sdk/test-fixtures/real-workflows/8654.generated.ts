@@ -286,6 +286,19 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { model: 'gpt-4.1-mini', options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Open AI1',
+						},
+					}),
+				},
 				position: [-784, 336],
 				name: 'URLs Selection',
 			},
@@ -373,6 +386,54 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 							'You are an advanced AI content strategist trained to analyze search results and generate precise writing guidelines for an SEO-optimized blog post for the website The Bucket Hat. Your goal is to ensure that the article aligns with **search intent**, **semantic relevance**, and **audience expectations** while also uncovering **hidden insights** that may provide a unique angle. Write in Dutch.\n\n### **Your Task:**\nYou will be given:\n- A **working title**\n- An **article description**\n- A **primary keyword**\n- A **set of search results** (retrieved via the Tavily search results tool)\n- All the links of the website The Bucket Hat (products, collections, blog posts etc.)\n\nYour job is to analyze the data and generate **optimized writing guidelines** with the following structured JSON output:\n\n### **1️⃣ Search Intent Detection**  \nDetermine whether the primary intent of the keyword is:  \n- **informational** (learning about a topic)  \n- **transactional** (considering a purchase or service)  \n- **navigational** (finding a specific brand/website)  \n- **commercial** (comparing options before making a decision)  \n\n### **2️⃣ Writing Style & Tone**  \n- Identify the best **writing style** based on search results (e.g., “concise and professional,” “engaging and storytelling,” “data-driven and technical,” etc.).  \n- Identify the **appropriate tone** (e.g., “friendly and conversational,” “formal and authoritative,” “persuasive and compelling,” etc.).  \n\n### **3️⃣ Hidden Insight Extraction**  \n- Analyze **patterns in competitor content** to identify **an insight that is not immediately obvious** but could provide a unique angle.  \n- If no meaningful insight is found, return `"hidden_insight": "No significant insights detected beyond existing content trends."`  \n- If an insight is found, clearly explain it.  \n- **Do NOT modify writing style or tone based on the insight**—insights should be separate observations, not tone/style adjustments.  \n\n### **4️⃣ Semantic Analysis (Content Structuring)**  \n- Extract the **common subtopics** frequently covered in top-ranking pages.  \n- Identify **related questions** users ask.  \n\n### **5️⃣ Keyword Extraction**  \n- Categorize keywords based on **how they should be used** later in the workflow.  \n- Format them as follows:  \n  - **Primary Keyword** → The main topic focus.  \n  - **Secondary Keywords** → Variations of the primary keyword that should be used naturally in the content.  \n  - **Semantic Keywords** → Contextually related terms that improve topic relevance.  \n  - **Long-Tail Keywords** → Natural search queries and phrases that match user questions.  \n\n\n### **Format your response strictly in valid JSON. Divide the sections**\n\n',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.2,
+						config: {
+							parameters: { model: 'claude-3-5-sonnet-20241022', options: {} },
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Anthropic Chat Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+							version: 1.1,
+							config: {
+								parameters: {
+									url: 'https://api.tavily.com/search',
+									method: 'POST',
+									sendBody: true,
+									authentication: 'genericCredentialType',
+									parametersBody: {
+										values: [
+											{
+												name: 'api_key',
+												value: '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',
+												valueProvider: 'fieldValue',
+											},
+											{
+												name: 'query',
+												value: '={{ $json.Keyword }}',
+												valueProvider: 'fieldValue',
+											},
+										],
+									},
+									genericAuthType: 'httpHeaderAuth',
+									toolDescription: 'Tavily SERP Results Tool',
+								},
+								credentials: {
+									httpBasicAuth: { id: 'credential-id', name: 'httpBasicAuth Credential' },
+									httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+								},
+								name: 'Tavily search results',
+							},
+						}),
+					],
 				},
 				position: [-32, 336],
 				name: 'SERPs, Writing, KWs, Insights',
@@ -712,6 +773,19 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { model: 'gpt-4o-2024-11-20', options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Open AI',
+						},
+					}),
+				},
 				position: [848, 336],
 				name: 'Refine the Title',
 			},
@@ -994,6 +1068,19 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { model: 'gpt-4o-2024-11-20', options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Key Takeaways',
+						},
+					}),
+				},
 				position: [1648, 336],
 				name: 'Key Takeaways AI Agent',
 			},
@@ -1034,6 +1121,19 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 							'You are an expert content writer specializing in crafting compelling introductions for articles. Your goal is to **hook the reader, set expectations, and establish relevance** while maintaining clarity and engagement. Write in Dutch.\n\n### **Your Task:**\n1. **Analyze the provided inputs**, including the article title, primary keyword, key takeaways, and target audience.\n2. **Write a compelling introduction** that:\n   - **Opens with a direct, concise statement** that immediately presents the topic.\n   - **Avoids generic phrases** like *"In today’s fast-paced world..."* or *"Businesses are constantly evolving..."*.\n   - **Clearly states the article’s purpose** and what the reader will learn.\n   - **Flows naturally into the main body** without being overly long.\n3. **Match the article’s writing style and tone** to ensure consistency.\n4. **Incorporate the primary keyword naturally** for SEO without forcing it.\n5. **Ensure readability and engagement**:\n   - Keep the introduction concise (2-3 short paragraphs).\n   - Avoid fluff—make every sentence valuable.\n   - **Use streamlined transition sentences** (e.g., *"Let’s explore how..."* instead of *"In this article, we will explore..."*).\n\n### **Formatting & Style Guidelines**\n✅ Write the blog text in clean HTML format, ready to paste into Shopify. \n- Use <h2> for main sections and <h3> for subsections, <p> for paragraphs, <strong> for bold text, <ul><li> for lists. \n- Add <a href="URL">anchor text</a> links naturally inside the text whenever a product or collection is mentioned. \n- Anchor text should match the product or collection name. \n- Use only the URLs provided; do not invent new URLs. \n- Do not use Markdown (##, **, -) or raw line breaks (\\n). \n- Make sure all paragraphs are wrapped in <p> tags, headings in <h2> or <h3>, lists in <ul><li>, and bold text in <strong>. \n- Output clean, valid, minimal HTML, ready to paste into Shopify.\n✅ **Use HTML formatting.**  \n✅ **Start with a direct, engaging opening sentence.**  \n✅ **Avoid generic phrases or overused business clichés.**  \n✅ **Keep it concise yet informative (2-3 paragraphs).**  \n✅ **Ensure a smooth transition into the main body.**  \n✅ **Maintain a natural, compelling flow that matches the writing tone & style.**  \n✅ **Hyperlinks**  \nAdd links related to the topic to promote collections, blog posts and products from The Bucket Hat.\n\n\n### **Example Inputs & Outputs**\n---\n#### **Input Example**\n**Article Title:** `"Hoe draag je een Bucket Hat ? Zó draag je de bucket hat"`  \n**Primary Keyword:** `"Bucket Hat stylen"`  \n**Key Takeaways:** `["De Bucket Hat is een veelzijdig mode-icoon dat terug is van weggeweest.", "Je kunt hem dragen in verschillende stijlen: casual, sportief, bohemian of edgy streetwear.", "Onderhoud en seizoensgebonden keuzes zorgen ervoor dat je hoed langer meegaat en altijd stijlvol blijft."]`  \n**Writing Style:** `"Engaging and storytelling"`  \n**Writing Tone:** `"Friendly and conversational"`  \n\n---\n#### **Output Example** markdown\n<h2>De Bucket Hat: Tijdloos Stijlicoon</h2>\n\n<p>De Bucket Hat is veel meer dan een simpele hoed; het is een stukje modegeschiedenis dat opnieuw zijn plek heeft veroverd in de garderobes van trendsetters wereldwijd. Ooit begonnen als vissershoedje in de jaren ’40, is dit tijdloze accessoire uitgegroeid tot een stijlstatement dat veelzijdigheid en persoonlijkheid uitstraalt.</p>\n\n<h3>Veelzijdigheid en Aanpassingsvermogen</h3>\n<p>Wat de Bucket Hat zo bijzonder maakt, is zijn aanpassingsvermogen. Of je nu kiest voor een casual chic look met mom jeans en sneakers, een sportieve flair met een trainingspak, bohemian vibes met een flowy jurk, of edgy streetwear met leer en distressed denim—deze hoed past zich moeiteloos aan jouw stijl aan.</p>\n\n<h3>Geschikt voor Elk Seizoen</h3>\n<p>Bovendien is hij geschikt voor elk seizoen. In de zomer biedt hij bescherming tegen de zon met lichte stoffen zoals katoen of linnen, terwijl je in herfst en winter kunt kiezen voor waterbestendige of gevoerde varianten. Met de juiste zorg—zoals voorzichtig wassen en correct opbergen—gaat je Bucket Hat jarenlang mee.</p>\n\n<h3>Een Blijvend Stijlicoon</h3>\n<p>Geïnspireerd door beroemdheden en streetstyle, blijft de Bucket Hat een blijvend stijlicoon dat steeds opnieuw wordt heruitgevonden met nieuwe materialen, prints en duurzame ontwerpen. Het is een accessoire dat niet alleen je outfit compleet maakt, maar ook een stukje van je persoonlijkheid laat zien.</p>\n\n',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { model: 'gpt-4o-2024-11-20', options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI',
+						},
+					}),
 				},
 				position: [2272, 336],
 				name: 'Introduction Agent',
@@ -1076,6 +1176,19 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { model: 'gpt-4o-2024-11-20', options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [-1120, 912],
 				name: 'Outline Agent',
 			},
@@ -1117,6 +1230,27 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-2024-11-20',
+									cachedResultName: 'gpt-4o-2024-11-20',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+				},
 				position: [-528, 912],
 				name: 'Main Body Prompt Writer',
 			},
@@ -1134,6 +1268,27 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 							'You are an AI writing agent responsible for generating only the main body of an article based on a structured prompt. Your writing must be well-formatted in HTML, insightful, logically structured, and engaging for the target audience. Write in Dutch.\n\nGuidelines\n✅ Follow the provided prompt exactly. Ensure adherence to the user-provided outline and structure.\n✅ Write the blog text in clean HTML format, ready to paste into Shopify. \n- Use <h2> for main sections and <h3> for subsections, <p> for paragraphs, <strong> for bold text, <ul><li> for lists. \n- Add <a href="URL">anchor text</a> links naturally inside the text whenever a product or collection is mentioned. \n- Anchor text should match the product or collection name. \n- Use only the URLs provided; do not invent new URLs. \n- Do not use Markdown (##, **, -) or raw line breaks (\\n). \n- Make sure all paragraphs are wrapped in <p> tags, headings in <h2> or <h3>, lists in <ul><li>, and bold text in <strong>. \n- Output clean, valid, minimal HTML, ready to paste into Shopify.\n✅ Ensure smooth transitions between sections.\nEnd sections with a transition sentence that leads into the next topic.\nAvoid abrupt shifts—maintain logical flow.\n✅ Enhance depth with real-world case studies.\nProvide real measurable outcomes (e.g., "A 20% efficiency gain led to $5M in annual savings").\nDetail implementation challenges, solutions, and business results.\n✅ Balance readability with a mix of paragraphs & lists.\nUse bullet points sparingly—convert them into mini-paragraphs where needed.\nLists should highlight key takeaways, not dominate sections.\n✅ Ensure keyword optimization.\nNaturally integrate primary and secondary keywords within the article.\nAvoid overuse—prioritize readability over keyword stuffing.\n✅ Fact-driven & logically structured.\nAvoid redundant explanations—each section should introduce new insights.\nEnsure distinctions between related topics (e.g., “Managing Complexity” should not repeat “Adaptive Learning”).\n✅ No introduction or conclusion.\nFocus only on the main body sections based on the structured prompt.\n✅ This part should be at least 1800 words and maximum 2400 words. If you can\'t write this many words in one message, write the first 1000-1200 words in a message followed by a second message with 1000-1400 words.\n✅ Hyperlinks \nAdd links related to the topic to promote collections, blog posts and products from The Bucket Hat.',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-2024-11-20',
+									cachedResultName: 'gpt-4o-2024-11-20',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model5',
+						},
+					}),
 				},
 				position: [-112, 912],
 				name: 'Content Writer Agent',
@@ -1175,6 +1330,19 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 							'You are an expert writing assistant specializing in crafting concise, insightful, and impactful conclusions for articles across various topics. Your goal is to summarize the key takeaways, reinforce the article’s value, and leave the reader with a lasting impression. Write in Dutch. The Conclusion will be at least 450 words.\n\nGuidelines for Generating the Conclusion:\n\n✅ Summarize Key Takeaways Without Repetition\n\nIdentify the most essential points from the article without repeating entire sentences from the main body.\n\nHighlight core insights, trends, or findings in a concise manner.\n\n✅ Reinforce the Article’s Value & Relevance\n\nEmphasize why the information matters in the broader context of the topic.\n\nAlign with the article’s purpose—whether it’s to educate, inform, persuade, or provide solutions.\n\n✅ Deliver a Strong Final Thought\n\nEnd with a compelling, forward-looking, or actionable statement.\n\nConsider:\n\nA thought-provoking question\n\nA call to action (if relevant)\n\nA statement on future implications or ongoing developments\n\nAvoid generic phrases (e.g., “This is just the beginning” or “The future looks bright”).\n\nFormatting & Style:\n\n✅ Write the blog text in clean HTML format, ready to paste into Shopify. \n- Use <h2> for main sections and <h3> for subsections, <p> for paragraphs, <strong> for bold text, <ul><li> for lists. \n- Add <a href="URL">anchor text</a> links naturally inside the text whenever a product or collection is mentioned. \n- Anchor text should match the product or collection name. \n- Use only the URLs provided; do not invent new URLs. \n- Do not use Markdown (##, **, -) or raw line breaks (\\n). \n- Make sure all paragraphs are wrapped in <p> tags, headings in <h2> or <h3>, lists in <ul><li>, and bold text in <strong>. \n- Output clean, valid, minimal HTML, ready to paste into Shopify.\n\nthe conclusion should be around 500-550 words.\n\nUse clear, authoritative, and engaging language.\n\nAdapt tone and style to match the article (technical, Fashion-conscious, aspirational, etc.).\n\nHyperlinks\nAdd links related to the topic to promote collections, blog posts and products from The Bucket Hat.\n\nInput:\n\nThe main body of the article (excluding introduction & key takeaways)\n\nThe article\'s title (for context)\n\nOutput:A well-structured conclusion that effectively summarizes key points, reinforces relevance, and ends with a compelling thought.\n\n\nExample Conclusion for a Style Guide\n\n(Title: "Hoe draag je een Bucket Hat ? Zó draag je de bucket hat")\n<h2>Een Bucket Hat Met Persoonlijkheid</h2>\n\n<p>Nu je bekend bent met alle aspecten van het dragen van een <strong>Bucket Hat</strong>, is het duidelijk dat deze hoed veel meer is dan een modieus accessoire. Het is een uiting van je <strong>persoonlijkheid</strong>, <strong>stijl</strong> en <strong>creativiteit</strong>. In deze conclusie zullen we nogmaals de belangrijkste punten benadrukken en je inspireren om je eigen stijl te omarmen met de Bucket Hat.</p>\n\n<h2>Vertrouwen in je keuze</h2>\n<h3>Het begin van je stijlreis</h3>\n<p>Het kiezen van de perfecte <strong>Bucket Hat</strong> is het begin van je stijlreis. Deze hoed komt in verschillende stijlen, kleuren en materialen, dus neem de tijd om er een te vinden die perfect bij je past. Of je nu een damesmodel zoekt, of een herenmodel wilt, er is een hoed voor iedereen. Laat je persoonlijke smaak en voorkeur de leidraad zijn bij je keuze.</p>\n\n<h2>Creatief zijn met je stijl</h2>\n<p>De <strong>Bucket Hat</strong> biedt eindeloze mogelijkheden voor creatieve styling. Of je nu de voorkeur geeft aan een <strong>casual chic look</strong>, <strong>sportieve flair</strong>, <strong>bohemian vibes</strong> of <strong>edgy streetwear</strong>, deze hoed past zich moeiteloos aan jouw stijl aan. Laat je inspireren door beroemdheden en streetstyle foto\'s om nieuwe ideeën op te doen. Durf te experimenteren en je eigen unieke stijl te creëren.</p>\n\n<h2>Seizoensgebonden veelzijdigheid</h2>\n<p>Een van de opvallende kenmerken van de <strong>Bucket Hat</strong> is zijn seizoensgebonden veelzijdigheid. Of het nu zomer is en je bescherming tegen de zon nodig hebt, of de herfst en winter waarin je warmte en stijl wilt combineren, deze hoed is geschikt voor alle seizoenen. Overweeg de seizoensgebonden overwegingen om ervoor te zorgen dat je de juiste keuze maakt voor het weer.</p>\n\n<h2>Onderhoud en zorg</h2>\n<p>Het onderhouden van je <strong>Bucket Hat</strong> is essentieel om ervoor te zorgen dat deze er altijd fris en stijlvol uitziet. Het wassen en opbergen van je hoed vereist aandacht voor detail. Met zorg en de juiste procedures kun je de levensduur van je hoed aanzienlijk verlengen.</p>\n\n<h2>Iconische voorbeelden en inspiratie</h2>\n<p>Laat je inspireren door beroemdheden, streetstyle foto\'s, en modemagazines. Deze bronnen bieden inzicht in hoe anderen hun <strong>Bucket Hats</strong> dragen en kunnen je helpen nieuwe stijlideeën op te doen. Creativiteit kent geen grenzen, dus wees niet bang om te experimenteren en je eigen stijl te ontwikkelen.</p>\n\n<h2>De Toekomst van de Bucket Hat</h2>\n<p>Met de modewereld die voortdurend evolueert, is de <strong>Bucket Hat</strong> een blijvend stijlicoon geworden. In de toekomst kunnen we spannende ontwikkelingen verwachten, zoals duurzaamheid en nieuwe ontwerpen. Dit vissershoedje blijft relevant en past zich aan de veranderende tijden aan, waardoor je altijd een stijlvolle keuze hebt.</p>\n\n<h2>Conclusie</h2>\n<p>De <strong>Bucket Hat</strong> is meer dan een hoed; het is een statement van je <strong>persoonlijkheid</strong> en <strong>stijl</strong>. Of je nu de voorkeur geeft aan een klassieke uitstraling of graag experimenteert met nieuwe stijltrends, deze vissershoedje is een veelzijdige metgezel. Kies met vertrouwen de perfecte <strong>Bucket Hat</strong> die bij jou past, en laat je creativiteit de vrije loop bij het stylen. Blijf op de hoogte van de laatste ontwikkelingen en ontdek nieuwe ontwerpen op <strong>The Bucket Hat</strong>, waar je een uitgebreide collectie Bucket Hats voor zowel dames als heren vindt. De Bucket Hat is jouw kans\n\n\nOutput Requirements\nWrite the blog text in clean HTML format, ready to paste into Shopify. Use <h2> for main sections and <h3> tags for subsections, <p> for paragraphs, <strong> for bold text, <ul><li> for lists, and <a href="URL"> for links. Do not use Markdown (##, **, -). Make sure the HTML is valid and minimal.\nEnsure clean and structured formatting without unnecessary dividers or extra line breaks.',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { model: 'gpt-4o-2024-11-20', options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model2',
+						},
+					}),
 				},
 				position: [528, 912],
 				name: 'AI Agent Conclusion Writer',
@@ -1596,202 +1764,6 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 	)
 	.add(
 		node({
-			type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
-			version: 1.1,
-			config: {
-				parameters: {
-					url: 'https://api.tavily.com/search',
-					method: 'POST',
-					sendBody: true,
-					authentication: 'genericCredentialType',
-					parametersBody: {
-						values: [
-							{
-								name: 'api_key',
-								value: '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',
-								valueProvider: 'fieldValue',
-							},
-							{
-								name: 'query',
-								value: '={{ $json.Keyword }}',
-								valueProvider: 'fieldValue',
-							},
-						],
-					},
-					genericAuthType: 'httpHeaderAuth',
-					toolDescription: 'Tavily SERP Results Tool',
-				},
-				credentials: {
-					httpBasicAuth: { id: 'credential-id', name: 'httpBasicAuth Credential' },
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [160, 560],
-				name: 'Tavily search results',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.2,
-			config: {
-				parameters: { model: 'claude-3-5-sonnet-20241022', options: {} },
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [-48, 560],
-				name: 'Anthropic Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { model: 'gpt-4o-2024-11-20', options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-1152, 1088],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { model: 'gpt-4o-2024-11-20', options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [480, 1088],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { model: 'gpt-4o-2024-11-20', options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1344, 2000],
-				name: 'OpenAI Chat Model3',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 1.7,
-			config: {
-				parameters: {
-					text: "=Assemble the article from the following components into a single cohesive output formatted in Markdown:\n\n- **Key Takeaways**: {{ $('Set Key Takeaways').item.json.key_takeaways }}\n- **Introduction**: {{ $('Introduction Agent').item.json.output }}\n- **Main Content**: {{ $('Edit Fields1').item.json['main body'] }}\n- **Conclusion**: {{ $json.conclusion }}\n\n### Output Format:\n- Use `##` for main section headings like Key Takeaways, Introduction, and Conclusion.\n- Use `##` for primary headings (H2s) in the main content.\n- Use `###` for subheadings (H3s) under those primary headings.\n- Format lists as bulleted lists using `-`.\n- Write paragraphs in plain text, separated by line breaks.\n\nExample Output:\n\n## Key Takeaways\n- AI automation reduces costs and improves efficiency for SMBs.\n- Examples show how AI streamlines workflows and enhances customer service.\n- Step-by-step advice helps SMBs adopt AI effectively.\n\n## Introduction\nAI automation is a transformative tool for small businesses, offering improved efficiency, cost reduction, and scalability.\n\n## How Intelligent Process Automation Works\nIntelligent process automation (IPA) isn’t just about speed—it’s about working smarter.\n\n### Reducing Manual Work and Process Errors with Automation\nAutomating manual tasks like payroll processing slashes error rates by up to 90%.\n\n### Boosting Process Efficiency Across Business Functions\nFrom HR to sales, IPA ensures consistency and efficiency.\n\n## Conclusion\nAI automation is a pathway to transforming how small businesses operate and grow. By streamlining workflows, enhancing customer experiences, and enabling smarter decision-making, AI empowers businesses to achieve more with less effort.\n\n\n",
-					options: {
-						systemMessage:
-							"You are an expert content assembler. Your task is to take separate elements of an article—key takeaways, introduction, main content (including subheadings), and conclusion—and assemble them into a single cohesive output. The final output should be formatted in Markdown for a CMS blog post field. Write in Dutch. The whole post will be between 2900 and 3500 words. Anything below that size is inrelevant\n\nGuidelines:\n\n1. Use `H2` for section headings (Key Takeaways, Introduction, and Conclusion).\n2. Use `H2` for primary headings (H2s) from the main content.\n3. Use `H3` for subheadings (H3s) under those primary headings.\n4. Write paragraphs as plain text, separated by line breaks.\n5. Ensure the output is clean and properly formatted in Markdown without unnecessary placeholders like \"Main Content.\"\n6. Do not include triple backticks (''') or any additional spaces or text outside of the conclusion itself.\nEnsure clean and structured formatting without unnecessary dividers or extra line breaks.\n\n\n\n",
-					},
-					promptType: 'define',
-				},
-				position: [1344, 1792],
-				name: 'Article Assembly Agent1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { model: 'gpt-4o-2024-11-20', options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [784, 544],
-				name: 'Open AI',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { model: 'gpt-4o-2024-11-20', options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1632, 544],
-				name: 'OpenAI Key Takeaways',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { model: 'gpt-4o-2024-11-20', options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2224, 528],
-				name: 'OpenAI',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-2024-11-20',
-						cachedResultName: 'gpt-4o-2024-11-20',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-576, 1136],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-2024-11-20',
-						cachedResultName: 'gpt-4o-2024-11-20',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-96, 1136],
-				name: 'OpenAI Chat Model5',
-			},
-		}),
-	)
-	.add(
-		node({
 			type: 'n8n-nodes-base.airtable',
 			version: 2.1,
 			config: {
@@ -2158,27 +2130,36 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 	)
 	.add(
 		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 1.7,
 			config: {
 				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-2024-11-20',
-						cachedResultName: 'gpt-4o-2024-11-20',
+					text: "=Assemble the article from the following components into a single cohesive output formatted in Markdown:\n\n- **Key Takeaways**: {{ $('Set Key Takeaways').item.json.key_takeaways }}\n- **Introduction**: {{ $('Introduction Agent').item.json.output }}\n- **Main Content**: {{ $('Edit Fields1').item.json['main body'] }}\n- **Conclusion**: {{ $json.conclusion }}\n\n### Output Format:\n- Use `##` for main section headings like Key Takeaways, Introduction, and Conclusion.\n- Use `##` for primary headings (H2s) in the main content.\n- Use `###` for subheadings (H3s) under those primary headings.\n- Format lists as bulleted lists using `-`.\n- Write paragraphs in plain text, separated by line breaks.\n\nExample Output:\n\n## Key Takeaways\n- AI automation reduces costs and improves efficiency for SMBs.\n- Examples show how AI streamlines workflows and enhances customer service.\n- Step-by-step advice helps SMBs adopt AI effectively.\n\n## Introduction\nAI automation is a transformative tool for small businesses, offering improved efficiency, cost reduction, and scalability.\n\n## How Intelligent Process Automation Works\nIntelligent process automation (IPA) isn’t just about speed—it’s about working smarter.\n\n### Reducing Manual Work and Process Errors with Automation\nAutomating manual tasks like payroll processing slashes error rates by up to 90%.\n\n### Boosting Process Efficiency Across Business Functions\nFrom HR to sales, IPA ensures consistency and efficiency.\n\n## Conclusion\nAI automation is a pathway to transforming how small businesses operate and grow. By streamlining workflows, enhancing customer experiences, and enabling smarter decision-making, AI empowers businesses to achieve more with less effort.\n\n\n",
+					options: {
+						systemMessage:
+							"You are an expert content assembler. Your task is to take separate elements of an article—key takeaways, introduction, main content (including subheadings), and conclusion—and assemble them into a single cohesive output. The final output should be formatted in Markdown for a CMS blog post field. Write in Dutch. The whole post will be between 2900 and 3500 words. Anything below that size is inrelevant\n\nGuidelines:\n\n1. Use `H2` for section headings (Key Takeaways, Introduction, and Conclusion).\n2. Use `H2` for primary headings (H2s) from the main content.\n3. Use `H3` for subheadings (H3s) under those primary headings.\n4. Write paragraphs as plain text, separated by line breaks.\n5. Ensure the output is clean and properly formatted in Markdown without unnecessary placeholders like \"Main Content.\"\n6. Do not include triple backticks (''') or any additional spaces or text outside of the conclusion itself.\nEnsure clean and structured formatting without unnecessary dividers or extra line breaks.\n\n\n\n",
 					},
-					options: {},
+					promptType: 'define',
 				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.1,
+						config: {
+							parameters: { model: 'gpt-4o-2024-11-20', options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model3',
+						},
+					}),
 				},
-				position: [1760, 2032],
-				name: 'OpenAI Chat Model6',
+				position: [1344, 1792],
+				name: 'Article Assembly Agent1',
 			},
 		}),
 	)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.7,
@@ -2190,6 +2171,27 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 							'You are an expert SEO-optimized content final editor.\n\nYour task is to enhance and expand the provided article to near-perfect quality (9.5+/10) while maintaining clarity, logical flow, and readability. The final article should be well-structured, engaging, and adaptable to any topic, including (but not limited to) business, healthcare, technology, education, finance, environmental science, legal, consumer guides, and marketing. Write in Dutch. The whole post will be between 2900 and 3500 words.\n\n\n✅ General Refinement Guidelines\n1️⃣ Expand, Don’t Cut\nPreserve all valuable content while adding depth where necessary.\nDo not shorten or remove sections unless redundant or unclear.\nIf something feels incomplete, expand rather than delete it.\n2️⃣ Strengthen Section Transitions for Seamless Flow\nEnsure smooth transitions between sections by adding brief lead-ins before introducing a new concept.\nEach section should naturally build on the previous one—avoiding abrupt shifts.\nImplementation:\nIf a new section introduces a major topic, insert a transition sentence summarizing why the previous section matters.\nExample:\nBefore (Abrupt Shift):\n"While automation improves efficiency, its true power emerges when integrated with existing systems."\nAfter (Smoother Transition):\n"Efficiency gains are only part of the equation—true business impact comes from seamlessly integrating automation with existing workflows to ensure sustainable improvements."\n✅ Ensures smoother flow between ideas.\n\n3️⃣ Diversify Real-World Applications Across More Industries\nDo NOT over-focus on one industry or domain (e.g., AI, tech, or automation).\nWhere applicable, ensure varied examples in fields like:\nHealthcare (diagnostic automation, patient management)\nFinance (risk assessment, fraud detection, portfolio management)\nEducation (personalized learning, curriculum adaptation)\nLegal (contract automation, compliance monitoring)\nMarketing (data-driven campaigns, customer behavior analysis)\nRetail & E-commerce (inventory optimization, demand forecasting)\nConsumer Behavior (product recommendations, pricing strategies)\nEnvironmental Science (climate impact modeling, resource allocation)\nImplementation:\nIf the article lacks industry diversity, add 1–2 additional sector applications.\nExample:\nBefore (Too Narrow):\n"Predictive analytics is transforming logistics and finance."\nAfter (Expanded with More Fields):\n"Predictive analytics is transforming industries beyond logistics and finance. In healthcare, it enhances diagnostic accuracy; in education, it customizes learning paths; in marketing, it optimizes ad spend by predicting customer behavior."\n✅ Expands article relevance to a broader audience.\n\n4️⃣ Strengthen the Conclusion with a Future-Focused Perspective\nAvoid generic wrap-ups—end with a compelling strategic takeaway or challenge.\nEnsure future trends, competitive implications, and thought-provoking insights are included.\nImplementation:\nInstead of simply summarizing, pose a challenge or future opportunity.\nExample:\nBefore (Weak Ending):\n"The question remains: How will businesses use this technology to redefine operations? The time to act is now."\nAfter (More Forward-Thinking):\n"Looking ahead, businesses that embrace adaptable strategies and data-driven decision-making will lead in an increasingly competitive landscape. Whether through emerging technologies, customer-first innovation, or operational agility, the next era of success will belong to those who can not just adapt—but anticipate change. The real question isn’t if you’ll adopt these advancements—but how effectively you’ll use them to gain a competitive edge."\n✅ Leaves the reader with a clear action step or thought-provoking challenge.\n\n\n5️⃣ Expand Instead of Reduce Content\nDO NOT cut content unless it is redundant or weakens clarity.\nIf a section feels too brief or lacks depth, expand it by:\nProviding real-world examples\nAdding practical applications\nElaborating on key insights\nStrengthening data-backed statements\nExample Fix:\nBefore (Overly brief):\n"Sustainable practices benefit businesses."\nAfter (More informative & engaging):\n"Sustainable practices provide both environmental and financial advantages. Businesses that invest in renewable energy, reduce waste, and optimize resource consumption see long-term cost savings and increased brand loyalty."\n\n6. Do not add any commentary on what improvements you made. Just output the refined article.\n7. Do not add dividing lines between sections ("---") or any extra spacing or line breaks.\n\nMake every article a 9.5+/10 by refining structure, depth, and industry relevance while keeping it universally applicable across topics.',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-2024-11-20',
+									cachedResultName: 'gpt-4o-2024-11-20',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model6',
+						},
+					}),
 				},
 				position: [1728, 1792],
 				name: 'Final Edit Agent1',
@@ -2216,20 +2218,6 @@ const wf = workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' }
 				},
 				position: [2064, 1792],
 				name: 'Final Article1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.1,
-			config: {
-				parameters: { model: 'gpt-4.1-mini', options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-816, 480],
-				name: 'Open AI1',
 			},
 		}),
 	)

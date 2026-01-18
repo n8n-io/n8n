@@ -48,7 +48,6 @@ const wf = workflow('', '')
 			config: { parameters: { options: {} }, position: [180, -100], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -308,6 +307,30 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: { model: 'anthropic/claude-3.7-sonnet', options: {} },
+							credentials: {
+								openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+							},
+							name: 'OpenRouter Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n	"subject": "Bet you\'re tired of toggling between apps while managing MISSION+ tech projects",\n	"body": "Adam,\\n\\nThe irony of being a Fractional CTO is real - you help others automate while probably juggling 17 tabs, 3 project management tools, and enough notifications to make your phone vibrate off the table. Been there!\\n\\nI noticed your work at MISSION+ involves managing remote engineering teams across multiple fintech projects like BCG FinTech Control Tower. I\'m betting there are repetitive tasks eating up your time that could be automated.\\n\\nI\'m Dolly, AAAutomations\'s lifecycle marketing agent. We build custom automations specifically for technical leaders like you who need to streamline operations and reduce human error. \\n\\nOur specialty? Using n8n (open-source automation tool) to connect literally any software you use - perfect for someone managing distributed teams across multiple projects. We can automate everything from document generation to deadline tracking across systems.\\n\\nUnlike rigid no-code platforms, we build deeply customized workflows that evolve with your needs - either fully managed by us or with coaching so you can learn to modify them yourself.\\n\\nCurious what tasks we could automate for you? I\'d love to chat about your specific workflow challenges.\\n\\nCheers,\\nDolly\\n\\nP.S. When you\'re not being a tech wizard, do you find time to practice Tibetan Buddhist meditation between managing those engineering teams? Impressive balance!"\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [560, 900],
 				name: 'Generate Personalized Email',
 			},
@@ -433,34 +456,6 @@ const wf = workflow('', '')
 				},
 				position: [1200, 500],
 				name: 'Set Company URL1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { model: 'anthropic/claude-3.7-sonnet', options: {} },
-				credentials: {
-					openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
-				},
-				position: [560, 1060],
-				name: 'OpenRouter Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n	"subject": "Bet you\'re tired of toggling between apps while managing MISSION+ tech projects",\n	"body": "Adam,\\n\\nThe irony of being a Fractional CTO is real - you help others automate while probably juggling 17 tabs, 3 project management tools, and enough notifications to make your phone vibrate off the table. Been there!\\n\\nI noticed your work at MISSION+ involves managing remote engineering teams across multiple fintech projects like BCG FinTech Control Tower. I\'m betting there are repetitive tasks eating up your time that could be automated.\\n\\nI\'m Dolly, AAAutomations\'s lifecycle marketing agent. We build custom automations specifically for technical leaders like you who need to streamline operations and reduce human error. \\n\\nOur specialty? Using n8n (open-source automation tool) to connect literally any software you use - perfect for someone managing distributed teams across multiple projects. We can automate everything from document generation to deadline tracking across systems.\\n\\nUnlike rigid no-code platforms, we build deeply customized workflows that evolve with your needs - either fully managed by us or with coaching so you can learn to modify them yourself.\\n\\nCurious what tasks we could automate for you? I\'d love to chat about your specific workflow challenges.\\n\\nCheers,\\nDolly\\n\\nP.S. When you\'re not being a tech wizard, do you find time to practice Tibetan Buddhist meditation between managing those engineering teams? Impressive balance!"\n}',
-				},
-				position: [720, 1060],
-				name: 'Structured Output Parser',
 			},
 		}),
 	)

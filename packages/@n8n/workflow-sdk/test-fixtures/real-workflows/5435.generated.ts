@@ -22,6 +22,105 @@ const wf = workflow('', '')
 					},
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.snowflakeTool',
+							version: 1,
+							config: {
+								parameters: {
+									query:
+										"SELECT table_schema, table_name\nFROM information_schema.tables\nWHERE table_schema = 'TPCH_SF1';",
+									operation: 'executeQuery',
+									descriptionType: 'manual',
+									toolDescription: 'Get list of all tables in database',
+								},
+								credentials: {
+									snowflake: { id: 'credential-id', name: 'snowflake Credential' },
+								},
+								name: 'DB Schema1',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.2,
+							config: {
+								parameters: {
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'kqpZSjy0tzRRY4hH',
+										cachedResultName: 'My workflow 41',
+									},
+									description:
+										'Generate custom SQL queries using knowledge about DB schema and table definitions to provide needed response for user request.\nUse ->> operator to extract JSON data.\n\nSupported functions for big data analysis:\n• GROUP BY – for grouping data\n• SUM() – for summing values\n• AVG() – for calculating averages\n• COUNT() – for counting records\n• MIN() – for finding the minimum value\n• MAX() – for finding the maximum value\n• MEDIAN() – for median calculation\n• STDDEV() – for standard deviation\n• VARIANCE() – for variance calculation\n• PERCENTILE_CONT() – for percentile calculations\n• MODE() – for most frequent value\n• TREND() – for trend analysis over time\n• WINDOW FUNCTIONS – for advanced analytics (e.g., ROW_NUMBER(), RANK(), PARTITION BY)\n\nQuery example:\nSELECT * FROM FILES',
+									workflowInputs: {
+										value: { query: '={{ $fromAI("sql_query","SQL query") }}' },
+										schema: [
+											{
+												id: 'query',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'query',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['query'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Retrieve Data',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.snowflakeTool',
+							version: 1,
+							config: {
+								parameters: {
+									query:
+										"SELECT \n    column_name,\n    data_type\n\nFROM \n    SNOWFLAKE_SAMPLE_DATA.information_schema.columns\nWHERE \n    table_name = '{{ $fromAI(\"table_name\") }}'\n    AND table_schema = 'TPCH_SF1'\nORDER BY \n    ordinal_position;\n",
+									operation: 'executeQuery',
+									descriptionType: 'manual',
+									toolDescription: 'Get table definition to find all columns and types.',
+								},
+								credentials: {
+									snowflake: { id: 'credential-id', name: 'snowflake Credential' },
+								},
+								name: 'Get table definition',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('When chat message received').item.json.sessionId }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+				},
 				position: [1340, -280],
 				name: 'AI Agent1',
 			},
@@ -253,116 +352,6 @@ const wf = workflow('', '')
 				parameters: { mode: 'raw', options: {}, jsonOutput: '={{ $json }}' },
 				position: [1600, 460],
 				name: 'Return Error',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1140, -80],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('When chat message received').item.json.sessionId }}",
-					sessionIdType: 'customKey',
-				},
-				position: [1260, -80],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.snowflakeTool',
-			version: 1,
-			config: {
-				parameters: {
-					query:
-						"SELECT table_schema, table_name\nFROM information_schema.tables\nWHERE table_schema = 'TPCH_SF1';",
-					operation: 'executeQuery',
-					descriptionType: 'manual',
-					toolDescription: 'Get list of all tables in database',
-				},
-				credentials: {
-					snowflake: { id: 'credential-id', name: 'snowflake Credential' },
-				},
-				position: [1540, -80],
-				name: 'DB Schema1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.snowflakeTool',
-			version: 1,
-			config: {
-				parameters: {
-					query:
-						"SELECT \n    column_name,\n    data_type\n\nFROM \n    SNOWFLAKE_SAMPLE_DATA.information_schema.columns\nWHERE \n    table_name = '{{ $fromAI(\"table_name\") }}'\n    AND table_schema = 'TPCH_SF1'\nORDER BY \n    ordinal_position;\n",
-					operation: 'executeQuery',
-					descriptionType: 'manual',
-					toolDescription: 'Get table definition to find all columns and types.',
-				},
-				credentials: {
-					snowflake: { id: 'credential-id', name: 'snowflake Credential' },
-				},
-				position: [1660, -80],
-				name: 'Get table definition',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.2,
-			config: {
-				parameters: {
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'kqpZSjy0tzRRY4hH',
-						cachedResultName: 'My workflow 41',
-					},
-					description:
-						'Generate custom SQL queries using knowledge about DB schema and table definitions to provide needed response for user request.\nUse ->> operator to extract JSON data.\n\nSupported functions for big data analysis:\n• GROUP BY – for grouping data\n• SUM() – for summing values\n• AVG() – for calculating averages\n• COUNT() – for counting records\n• MIN() – for finding the minimum value\n• MAX() – for finding the maximum value\n• MEDIAN() – for median calculation\n• STDDEV() – for standard deviation\n• VARIANCE() – for variance calculation\n• PERCENTILE_CONT() – for percentile calculations\n• MODE() – for most frequent value\n• TREND() – for trend analysis over time\n• WINDOW FUNCTIONS – for advanced analytics (e.g., ROW_NUMBER(), RANK(), PARTITION BY)\n\nQuery example:\nSELECT * FROM FILES',
-					workflowInputs: {
-						value: { query: '={{ $fromAI("sql_query","SQL query") }}' },
-						schema: [
-							{
-								id: 'query',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'query',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['query'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [1400, -80],
-				name: 'Retrieve Data',
 			},
 		}),
 	)

@@ -162,6 +162,33 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'[\n  {\n    "prompt": "Sun-drenched poolside shot of the product on a marble ledge at golden hour, with soft shadows and warm tones. Aspect ratio 1:1."\n  },\n  {\n    "prompt": "Cool lavender-tinted sunset beach backdrop behind the product, highlighting reflective metallic accents. Aspect ratio 4:5."\n  },\n  {\n    "prompt": "..."\n  }\n]',
+							},
+							name: 'Parse Prompts into JSON Array',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'GPT-4o (Connected to LangChain Agent)',
+						},
+					}),
+				},
 				position: [1496, 55],
 				name: 'LangChain Agent: Generate Variation Prompts',
 			},
@@ -214,7 +241,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -291,37 +317,6 @@ const wf = workflow(
 				},
 				position: [2752, 55],
 				name: ' Log Image Variation URLs to Google Sheets',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'[\n  {\n    "prompt": "Sun-drenched poolside shot of the product on a marble ledge at golden hour, with soft shadows and warm tones. Aspect ratio 1:1."\n  },\n  {\n    "prompt": "Cool lavender-tinted sunset beach backdrop behind the product, highlighting reflective metallic accents. Aspect ratio 4:5."\n  },\n  {\n    "prompt": "..."\n  }\n]',
-				},
-				position: [1720, 260],
-				name: 'Parse Prompts into JSON Array',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1524, 275],
-				name: 'GPT-4o (Connected to LangChain Agent)',
 			},
 		}),
 	)

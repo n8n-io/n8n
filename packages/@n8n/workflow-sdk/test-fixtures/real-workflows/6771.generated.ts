@@ -87,6 +87,58 @@ const wf = workflow(
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: {
+									id: 'SuWwLWBsAfrDFgCm',
+									name: 'Google Gemini(PaLM) Api account',
+								},
+							},
+							name: 'Google Gemini LLM',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+							version: 1.3,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									options: {},
+									tableName: {
+										__rl: true,
+										mode: 'list',
+										value: 'documents',
+										cachedResultName: 'documents',
+									},
+									toolDescription: 'call this tool to reach the goal',
+								},
+								credentials: {
+									supabaseApi: { id: 'QkeJlJh5cCiuLpvg', name: 'Supabase account' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'GVGOwCYLGI5SaqsK', name: 'OpenAi account' },
+											},
+											name: 'Generate OpenAI Embeddings',
+										},
+									}),
+								},
+								name: 'Retrieve Context from Supabase',
+							},
+						}),
+					],
+				},
 				position: [368, 272],
 				name: 'RAG Query Agent',
 			},
@@ -168,75 +220,29 @@ const wf = workflow(
 				credentials: {
 					supabaseApi: { id: 'QkeJlJh5cCiuLpvg', name: 'Supabase account' },
 				},
+				subnodes: {
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1.1,
+						config: {
+							parameters: { options: {}, dataType: 'binary' },
+							name: 'Convert File to Text',
+						},
+					}),
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'GVGOwCYLGI5SaqsK', name: 'OpenAi account' },
+							},
+							name: 'Generate OpenAI Embeddings',
+						},
+					}),
+				},
 				position: [896, 928],
 				name: 'Store Embeddings in Supabase',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1.1,
-			config: {
-				parameters: { options: {}, dataType: 'binary' },
-				position: [1008, 1216],
-				name: 'Convert File to Text',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'GVGOwCYLGI5SaqsK', name: 'OpenAi account' },
-				},
-				position: [816, 1216],
-				name: 'Generate OpenAI Embeddings',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
-			version: 1.3,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					options: {},
-					tableName: {
-						__rl: true,
-						mode: 'list',
-						value: 'documents',
-						cachedResultName: 'documents',
-					},
-					toolDescription: 'call this tool to reach the goal',
-				},
-				credentials: {
-					supabaseApi: { id: 'QkeJlJh5cCiuLpvg', name: 'Supabase account' },
-				},
-				position: [480, 496],
-				name: 'Retrieve Context from Supabase',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: {
-						id: 'SuWwLWBsAfrDFgCm',
-						name: 'Google Gemini(PaLM) Api account',
-					},
-				},
-				position: [352, 496],
-				name: 'Google Gemini LLM',
 			},
 		}),
 	)

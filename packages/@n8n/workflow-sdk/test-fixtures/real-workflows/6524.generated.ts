@@ -68,6 +68,13 @@ const wf = workflow(
 					text: '=Generate a short, engaging caption (30–60 words) based on this news:\nTitle: {{ $json.Title }}\nContent: {{ $json.Content }}\n\nPlease provide just one caption that is concise and suitable for social media.',
 					options: {},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1,
+						config: { parameters: { options: {} }, name: 'write script' },
+					}),
+				},
 				position: [-608, 1040],
 				name: 'AI Agent',
 			},
@@ -426,13 +433,6 @@ const wf = workflow(
 				position: [-16, 2192],
 				name: 'YouTube Video Publisher',
 			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1,
-			config: { parameters: { options: {} }, position: [-576, 1344], name: 'write script' },
 		}),
 	)
 	.add(

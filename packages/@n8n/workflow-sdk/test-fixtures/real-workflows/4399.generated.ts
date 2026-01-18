@@ -24,6 +24,39 @@ const wf = workflow('qjLD1os0l5ISHRFO', 'Agent AI Anthropic Opus 4 and Sonnet 4'
 					},
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-3-7-sonnet-20250219',
+									cachedResultName: 'Claude Sonnet 3.7',
+								},
+								options: { maxTokensToSample: 1024 },
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Sonnet 3.7',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n	"type": "object",\n	"properties": {\n		"prompt": {\n			"type": "string"\n		},\n		"model": {\n			"type": "string"\n		}\n	}\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [240, 60],
 				name: 'Anthropic Routing Agent',
 			},
@@ -42,122 +75,76 @@ const wf = workflow('qjLD1os0l5ISHRFO', 'Agent AI Anthropic Opus 4 and Sonnet 4'
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Think' },
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							version: 1,
+							config: { name: 'Calculator' },
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.anthropic.com/v1/messages',
+									method: 'POST',
+									options: {},
+									jsonBody:
+										'={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\'JSON\', `{\n  "model": "{model}",\n  "max_tokens": 1024,\n  "messages": [\n    {\n      "role": "user",\n      "content": "{web_search_question}"\n    }\n  ],\n  "tools": [\n    {\n      "type": "web_search_20250305",\n      "name": "web_search",\n      "max_uses": 5\n    }\n  ]\n}\n`, \'json\') }}',
+									sendBody: true,
+									sendHeaders: true,
+									specifyBody: 'json',
+									authentication: 'predefinedCredentialType',
+									toolDescription: 'Use this tool to search on the web',
+									headerParameters: {
+										parameters: [
+											{ name: 'anthropic-version', value: '=2023-06-01' },
+											{ name: 'content-type', value: 'application/json' },
+										],
+									},
+									nodeCredentialType: 'anthropicApi',
+								},
+								credentials: {
+									anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+								},
+								name: 'web_search',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('When chat message received').item.json.sessionId }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory1',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'id', value: '={{ $json.output.model }}' },
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Sonnet 4 or Opus 4',
+						},
+					}),
+				},
 				position: [600, 60],
 				name: 'AI Agent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n	"type": "object",\n	"properties": {\n		"prompt": {\n			"type": "string"\n		},\n		"model": {\n			"type": "string"\n		}\n	}\n}',
-				},
-				position: [420, 280],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [800, 280], name: 'Think' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolCalculator',
-			version: 1,
-			config: { position: [900, 280], name: 'Calculator' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'id', value: '={{ $json.output.model }}' },
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [600, 280],
-				name: 'Sonnet 4 or Opus 4',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-3-7-sonnet-20250219',
-						cachedResultName: 'Claude Sonnet 3.7',
-					},
-					options: { maxTokensToSample: 1024 },
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [220, 280],
-				name: 'Sonnet 3.7',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('When chat message received').item.json.sessionId }}",
-					sessionIdType: 'customKey',
-				},
-				position: [720, 280],
-				name: 'Simple Memory1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.anthropic.com/v1/messages',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\'JSON\', `{\n  "model": "{model}",\n  "max_tokens": 1024,\n  "messages": [\n    {\n      "role": "user",\n      "content": "{web_search_question}"\n    }\n  ],\n  "tools": [\n    {\n      "type": "web_search_20250305",\n      "name": "web_search",\n      "max_uses": 5\n    }\n  ]\n}\n`, \'json\') }}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					authentication: 'predefinedCredentialType',
-					toolDescription: 'Use this tool to search on the web',
-					headerParameters: {
-						parameters: [
-							{ name: 'anthropic-version', value: '=2023-06-01' },
-							{ name: 'content-type', value: 'application/json' },
-						],
-					},
-					nodeCredentialType: 'anthropicApi',
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [1020, 280],
-				name: 'web_search',
 			},
 		}),
 	)

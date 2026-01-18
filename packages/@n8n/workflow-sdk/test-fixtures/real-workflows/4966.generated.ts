@@ -59,6 +59,30 @@ const wf = workflow('e0BX3fhHvcBuQTBU', 'whats app agent community', { execution
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('when message received').item.json.contacts[0].wa_id }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: {},
+								modelName: 'models/gemini-2.5-flash-preview-04-17-thinking',
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [1040, 440],
 				name: 'AI Agent',
 			},
@@ -461,34 +485,6 @@ const wf = workflow('e0BX3fhHvcBuQTBU', 'whats app agent community', { execution
 				},
 				position: [2300, 540],
 				name: 'Send Pre-approved Template Message to Reopen the Conversation',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: {},
-					modelName: 'models/gemini-2.5-flash-preview-04-17-thinking',
-				},
-				position: [1000, 660],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('when message received').item.json.contacts[0].wa_id }}",
-					sessionIdType: 'customKey',
-				},
-				position: [1120, 660],
-				name: 'Simple Memory',
 			},
 		}),
 	)

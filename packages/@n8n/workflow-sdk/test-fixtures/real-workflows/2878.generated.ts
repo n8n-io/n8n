@@ -132,6 +132,34 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'id', value: 'o3-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model2',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "object",\n  "properties": {\n    "questions": {\n      "type": "array",\n      "description": "Follow up questions to clarify the research direction, max of 3.",\n      "items": {\n          "type": "string"\n      }\n    }\n  }\n}',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
+				},
 				position: [-1040, -460],
 				name: 'Clarifying Questions',
 			},
@@ -189,6 +217,34 @@ const wf = workflow('', '')
 					text: "=Create a suitable title for the research report which will be created from the user's query.\n<query>{{ $json.query }}</query>",
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'id', value: 'o3-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model4',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "object",\n  "properties": {\n    "title": {\n      "type": "string",\n      "description":" A short title summarising the research topic"\n    },\n    "description": {\n      "type": "string",\n      "description": "A short description to summarise the research topic"\n    }\n  }\n}',
+							},
+							name: 'Structured Output Parser4',
+						},
+					}),
 				},
 				position: [-20, -420],
 				name: 'Report Page Generator',
@@ -871,6 +927,34 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'id', value: 'o3-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model3',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "object",\n  "properties": {\n    "queries": {\n      "type": "array",\n      "items": {\n        "type": "object",\n        "properties": {\n          "query": {\n            "type": "string",\n            "description": "The SERP query"\n          },\n          "researchGoal": {\n            "type": "string",\n            "description": "First talk about the goal of the research that this query is meant to accomplish, then go deeper into how to advance the research once the results are found, mention additional research directions. Be as specific as possible, especially for additional research directions."\n          }\n        }\n      }\n    }\n  }\n}',
+							},
+							name: 'Structured Output Parser2',
+						},
+					}),
+				},
 				position: [-1040, 820],
 				name: 'Generate SERP Queries',
 			},
@@ -1113,6 +1197,34 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'id', value: 'o3-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "object",\n  "properties": {\n    "learnings": {\n      "type": "array",\n      "description": "List of learnings, max of 3.",\n      "items": { "type": "string" }\n    },\n    "followUpQuestions": {\n      "type": "array",\n      "items": {\n        "type": "string",\n        "description": "List of follow-up questions to research the topic further, max of 3."\n      }\n    }\n  }\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [1120, 1020],
 				name: 'DeepResearch Learnings',
 			},
@@ -1248,6 +1360,22 @@ const wf = workflow('', '')
 					text: "=You are are an expert and insightful researcher.\n* Given the following prompt from the user, write a final report on the topic using the learnings from research.\n* Make it as as detailed as possible, aim for 3 or more pages, include ALL the learnings from research.\n* Format the report in markdown. Use headings, lists and tables only and where appropriate.\n\n<prompt>{{ $('JobType Router').first().json.data.query }}</prompt>\n\nHere are all the learnings from previous research:\n\n<learnings>\n{{\n$('JobType Router').first().json.data\n  .all_learnings\n  .map(item => `<learning>${item}</learning>`)  \n  .join('\\n')\n}}\n</learnings>",
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'id', value: 'o3-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+				},
 				position: [-860, 1600],
 				name: 'DeepResearch Report',
 			},
@@ -1319,6 +1447,19 @@ const wf = workflow('', '')
 						],
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
 				},
 				position: [100, 1600],
 				name: 'Notion Block Generator',
@@ -1464,165 +1605,6 @@ const wf = workflow('', '')
 				},
 				position: [740, 1760],
 				name: 'URL Sources to Lists',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "object",\n  "properties": {\n    "learnings": {\n      "type": "array",\n      "description": "List of learnings, max of 3.",\n      "items": { "type": "string" }\n    },\n    "followUpQuestions": {\n      "type": "array",\n      "items": {\n        "type": "string",\n        "description": "List of follow-up questions to research the topic further, max of 3."\n      }\n    }\n  }\n}',
-				},
-				position: [1300, 1180],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'id', value: 'o3-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1120, 1180],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'id', value: 'o3-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-860, 1760],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'id', value: 'o3-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-1060, -300],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "object",\n  "properties": {\n    "questions": {\n      "type": "array",\n      "description": "Follow up questions to clarify the research direction, max of 3.",\n      "items": {\n          "type": "string"\n      }\n    }\n  }\n}',
-				},
-				position: [-840, -300],
-				name: 'Structured Output Parser1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "object",\n  "properties": {\n    "queries": {\n      "type": "array",\n      "items": {\n        "type": "object",\n        "properties": {\n          "query": {\n            "type": "string",\n            "description": "The SERP query"\n          },\n          "researchGoal": {\n            "type": "string",\n            "description": "First talk about the goal of the research that this query is meant to accomplish, then go deeper into how to advance the research once the results are found, mention additional research directions. Be as specific as possible, especially for additional research directions."\n          }\n        }\n      }\n    }\n  }\n}',
-				},
-				position: [-860, 980],
-				name: 'Structured Output Parser2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'id', value: 'o3-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-1040, 980],
-				name: 'OpenAI Chat Model3',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'id', value: 'o3-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-20, -280],
-				name: 'OpenAI Chat Model4',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "object",\n  "properties": {\n    "title": {\n      "type": "string",\n      "description":" A short title summarising the research topic"\n    },\n    "description": {\n      "type": "string",\n      "description": "A short description to summarise the research topic"\n    }\n  }\n}',
-				},
-				position: [160, -280],
-				name: 'Structured Output Parser4',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [80, 1760],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

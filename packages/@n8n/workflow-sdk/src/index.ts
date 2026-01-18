@@ -14,6 +14,17 @@ export type {
 	SubnodeConfig,
 	CredentialReference,
 	OnError,
+	// Subnode instance types
+	SubnodeInstance,
+	LanguageModelInstance,
+	MemoryInstance,
+	ToolInstance,
+	OutputParserInstance,
+	EmbeddingInstance,
+	VectorStoreInstance,
+	RetrieverInstance,
+	DocumentLoaderInstance,
+	TextSplitterInstance,
 	// Expression types
 	Expression,
 	ExpressionContext,
@@ -71,6 +82,19 @@ export { workflow } from './workflow-builder';
 
 // Node builders
 export { node, trigger, sticky, placeholder } from './node-builder';
+
+// Subnode builders (for AI/LangChain nodes)
+export {
+	languageModel,
+	memory,
+	tool,
+	outputParser,
+	embedding,
+	vectorStore,
+	retriever,
+	documentLoader,
+	textSplitter,
+} from './subnode-builders';
 
 // Merge composite
 export { merge } from './merge';

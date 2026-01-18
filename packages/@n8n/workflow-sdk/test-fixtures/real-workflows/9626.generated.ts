@@ -91,6 +91,19 @@ const wf = workflow('', '')
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [2272, 64],
 				name: 'AI Agent',
 			},
@@ -223,20 +236,6 @@ const wf = workflow('', '')
 				},
 				position: [2624, -496],
 				name: 'Save the embedding in DB',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [2272, 288],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

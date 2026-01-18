@@ -110,6 +110,134 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									limit: 20,
+									filters: {
+										labelIds: ['INBOX'],
+										readStatus: 'unread',
+										receivedAfter:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_After', ``, 'string') }}",
+										receivedBefore:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_Before', ``, 'string') }}",
+									},
+									operation: 'getAll',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Get Email',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									sendTo:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+									message:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `Please format this nicely in html`, 'string') }}",
+									options: { appendAttribution: false },
+									subject:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Send Email',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.1,
+							config: {
+								parameters: {
+									options: {
+										fields: '=items(summary, start(dateTime))',
+										timeMax:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+										timeMin:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+									},
+									calendar: { __rl: true, mode: 'id', value: '=<insert email here>' },
+									operation: 'getAll',
+								},
+								credentials: {
+									googleCalendarOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleCalendarOAuth2Api Credential',
+									},
+								},
+								name: 'Google Calendar',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleTasksTool',
+							version: 1,
+							config: {
+								parameters: {
+									task: 'MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow',
+									title:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', ``, 'string') }}",
+									additionalFields: {},
+								},
+								credentials: {
+									googleTasksOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleTasksOAuth2Api Credential',
+									},
+								},
+								name: 'Create a task in Google Tasks',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleTasksTool',
+							version: 1,
+							config: {
+								parameters: {
+									task: 'MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow',
+									operation: 'getAll',
+									additionalFields: {},
+								},
+								credentials: {
+									googleTasksOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleTasksOAuth2Api Credential',
+									},
+								},
+								name: 'Get many tasks in Google Tasks',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+							},
+							name: 'OpenRouter',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.2,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('Listen for incoming events').first().json.message.from.id }}",
+								sessionIdType: 'customKey',
+							},
+							name: 'Window Buffer Memory',
+						},
+					}),
+				},
 				position: [2224, 192],
 				name: 'Jackie, AI Assistant 👩🏻‍🏫',
 			},
@@ -130,147 +258,6 @@ const wf = workflow('', '')
 				},
 				position: [2688, 192],
 				name: 'Telegram',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {
-						fields: '=items(summary, start(dateTime))',
-						timeMax:
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
-						timeMin: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
-					},
-					calendar: { __rl: true, mode: 'id', value: '=<insert email here>' },
-					operation: 'getAll',
-				},
-				credentials: {
-					googleCalendarOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleCalendarOAuth2Api Credential',
-					},
-				},
-				position: [3232, 560],
-				name: 'Google Calendar',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.2,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('Listen for incoming events').first().json.message.from.id }}",
-					sessionIdType: 'customKey',
-				},
-				position: [2016, 560],
-				name: 'Window Buffer Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					limit: 20,
-					filters: {
-						labelIds: ['INBOX'],
-						readStatus: 'unread',
-						receivedAfter:
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_After', ``, 'string') }}",
-						receivedBefore:
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_Before', ``, 'string') }}",
-					},
-					operation: 'getAll',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [2800, 560],
-				name: 'Get Email',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
-				},
-				position: [1680, 544],
-				name: 'OpenRouter',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleTasksTool',
-			version: 1,
-			config: {
-				parameters: {
-					task: 'MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow',
-					title: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', ``, 'string') }}",
-					additionalFields: {},
-				},
-				credentials: {
-					googleTasksOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleTasksOAuth2Api Credential',
-					},
-				},
-				position: [2336, 576],
-				name: 'Create a task in Google Tasks',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleTasksTool',
-			version: 1,
-			config: {
-				parameters: {
-					task: 'MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow',
-					operation: 'getAll',
-					additionalFields: {},
-				},
-				credentials: {
-					googleTasksOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleTasksOAuth2Api Credential',
-					},
-				},
-				position: [2528, 576],
-				name: 'Get many tasks in Google Tasks',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
-					message:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `Please format this nicely in html`, 'string') }}",
-					options: { appendAttribution: false },
-					subject: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [2944, 560],
-				name: 'Send Email',
 			},
 		}),
 	)

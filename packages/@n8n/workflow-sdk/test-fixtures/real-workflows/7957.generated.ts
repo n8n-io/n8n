@@ -21,6 +21,249 @@ const wf = workflow('', '')
 							"=You are a helpful Meta ads assistant.\n\nCurrent date is: {{ $today.format('yyyy-MM-dd') }}",
 					},
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							version: 1,
+							config: { name: 'Calculator' },
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.2,
+							config: {
+								parameters: {
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'UXdblREvbkvy3WSs',
+										cachedResultName: 'Meta Ads Agent',
+									},
+									description:
+										'List ad details for a given ad account. Use account id (regexp act_\\d+) instead of account name.',
+									workflowInputs: {
+										value: {
+											id: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id', `Account id (regexp act_\\\\d+)`, 'string') }}",
+											since:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('since', ``, 'string') }}",
+											until:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('until', ``, 'string') }}",
+											command: 'list_ads',
+										},
+										schema: [
+											{
+												id: 'command',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'command',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'id',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'id',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'since',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'since',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'until',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'until',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['command'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'ad details',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.2,
+							config: {
+								parameters: {
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'UXdblREvbkvy3WSs',
+										cachedResultName: 'Meta Ads Agent',
+									},
+									description: 'List ad accounts',
+									workflowInputs: {
+										value: { command: 'list_accounts' },
+										schema: [
+											{
+												id: 'command',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'command',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'id',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'id',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'since',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'since',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'until',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'until',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['command'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'list accounts',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.2,
+							config: {
+								parameters: {
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'UXdblREvbkvy3WSs',
+										cachedResultName: 'Meta Ads Agent',
+									},
+									description: 'List ad accounts',
+									workflowInputs: {
+										value: {
+											id: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id', `Account id (regexp act_\\\\d+)`, 'string') }}",
+											since:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('since', `Starting date (YYYY-MM-DD)`, 'string') }}",
+											until:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('until', `End date (YYYY-MM-DD)`, 'string') }}",
+											command: 'account',
+										},
+										schema: [
+											{
+												id: 'command',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'command',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'id',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'id',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'since',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'since',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'until',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'until',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['command'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'account details',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { name: 'Simple Memory' },
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-5-mini',
+									cachedResultName: 'gpt-5-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [88, -96],
 				name: 'AI Agent',
 			},
@@ -433,258 +676,5 @@ const wf = workflow('', '')
 				position: [960, 1000],
 				name: 'Code1',
 			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-5-mini',
-						cachedResultName: 'gpt-5-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-160, 128],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: { position: [-32, 128], name: 'Simple Memory' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.2,
-			config: {
-				parameters: {
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'UXdblREvbkvy3WSs',
-						cachedResultName: 'Meta Ads Agent',
-					},
-					description: 'List ad accounts',
-					workflowInputs: {
-						value: { command: 'list_accounts' },
-						schema: [
-							{
-								id: 'command',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'command',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'id',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'id',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'since',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'since',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'until',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'until',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['command'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [96, 128],
-				name: 'list accounts',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.2,
-			config: {
-				parameters: {
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'UXdblREvbkvy3WSs',
-						cachedResultName: 'Meta Ads Agent',
-					},
-					description: 'List ad accounts',
-					workflowInputs: {
-						value: {
-							id: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id', `Account id (regexp act_\\\\d+)`, 'string') }}",
-							since:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('since', `Starting date (YYYY-MM-DD)`, 'string') }}",
-							until:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('until', `End date (YYYY-MM-DD)`, 'string') }}",
-							command: 'account',
-						},
-						schema: [
-							{
-								id: 'command',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'command',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'id',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'id',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'since',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'since',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'until',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'until',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['command'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [224, 128],
-				name: 'account details',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.2,
-			config: {
-				parameters: {
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'UXdblREvbkvy3WSs',
-						cachedResultName: 'Meta Ads Agent',
-					},
-					description:
-						'List ad details for a given ad account. Use account id (regexp act_\\d+) instead of account name.',
-					workflowInputs: {
-						value: {
-							id: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id', `Account id (regexp act_\\\\d+)`, 'string') }}",
-							since: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('since', ``, 'string') }}",
-							until: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('until', ``, 'string') }}",
-							command: 'list_ads',
-						},
-						schema: [
-							{
-								id: 'command',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'command',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'id',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'id',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'since',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'since',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'until',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'until',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['command'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [352, 128],
-				name: 'ad details',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolCalculator',
-			version: 1,
-			config: { position: [480, 128], name: 'Calculator' },
 		}),
 	);

@@ -26,6 +26,53 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.6,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1GR4d8QZzg0DBewuo_jHHU9WaD_cxscxhebdb6mEAsoA/edit#gid=0',
+										cachedResultName: 'Sheet1',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1GR4d8QZzg0DBewuo_jHHU9WaD_cxscxhebdb6mEAsoA',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1GR4d8QZzg0DBewuo_jHHU9WaD_cxscxhebdb6mEAsoA/edit?usp=drivesdk',
+										cachedResultName: 'YouTube Video and Article Data',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Get row(s) in sheet in Google Sheets',
+							},
+						}),
+					],
+				},
 				position: [-368, -480],
 				name: 'AI Agent',
 			},
@@ -201,6 +248,19 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 							},
 						],
 					},
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model2',
+						},
+					}),
 				},
 				position: [352, 48],
 				name: 'Information Extractor1',
@@ -387,6 +447,19 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 						],
 					},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model1',
+						},
+					}),
+				},
 				position: [560, 288],
 				name: 'Information Extractor',
 			},
@@ -522,83 +595,6 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 				},
 				position: [1136, 288],
 				name: 'Append or update row in sheet',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [672, 400],
-				name: 'Google Gemini Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [464, 160],
-				name: 'Google Gemini Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-368, -320],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1GR4d8QZzg0DBewuo_jHHU9WaD_cxscxhebdb6mEAsoA/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1GR4d8QZzg0DBewuo_jHHU9WaD_cxscxhebdb6mEAsoA',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1GR4d8QZzg0DBewuo_jHHU9WaD_cxscxhebdb6mEAsoA/edit?usp=drivesdk',
-						cachedResultName: 'YouTube Video and Article Data',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [-176, -320],
-				name: 'Get row(s) in sheet in Google Sheets',
 			},
 		}),
 	)

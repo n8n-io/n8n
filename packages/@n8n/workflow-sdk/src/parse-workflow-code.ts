@@ -4,6 +4,17 @@
  */
 import { workflow as workflowFn } from './workflow-builder';
 import { node as nodeFn, trigger as triggerFn, sticky as stickyFn } from './node-builder';
+import {
+	languageModel as languageModelFn,
+	memory as memoryFn,
+	tool as toolFn,
+	outputParser as outputParserFn,
+	embedding as embeddingFn,
+	vectorStore as vectorStoreFn,
+	retriever as retrieverFn,
+	documentLoader as documentLoaderFn,
+	textSplitter as textSplitterFn,
+} from './subnode-builders';
 import type { WorkflowJSON } from './types/base';
 
 /**
@@ -24,10 +35,39 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 
 	// Create a function that takes our SDK functions and returns the workflow
 	// eslint-disable-next-line @typescript-eslint/no-implied-eval
-	const factory = new Function('workflow', 'node', 'trigger', 'sticky', executableCode);
+	const factory = new Function(
+		'workflow',
+		'node',
+		'trigger',
+		'sticky',
+		'languageModel',
+		'memory',
+		'tool',
+		'outputParser',
+		'embedding',
+		'vectorStore',
+		'retriever',
+		'documentLoader',
+		'textSplitter',
+		executableCode,
+	);
 
-	// Execute with our SDK functions
-	const wf = factory(workflowFn, nodeFn, triggerFn, stickyFn);
+	// Execute with our SDK functions (including subnode factories)
+	const wf = factory(
+		workflowFn,
+		nodeFn,
+		triggerFn,
+		stickyFn,
+		languageModelFn,
+		memoryFn,
+		toolFn,
+		outputParserFn,
+		embeddingFn,
+		vectorStoreFn,
+		retrieverFn,
+		documentLoaderFn,
+		textSplitterFn,
+	);
 
 	// Return the JSON representation
 	return wf.toJSON();

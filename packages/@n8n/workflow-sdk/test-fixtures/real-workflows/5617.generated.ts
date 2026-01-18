@@ -73,7 +73,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.splitInBatches',
@@ -81,7 +80,6 @@ const wf = workflow(
 			config: { parameters: { options: {} }, position: [1600, 480], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -150,6 +148,35 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1-mini',
+									cachedResultName: 'gpt-4.1-mini',
+								},
+								options: {},
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "shopify_description": "FULL PARAGRAPH CONSUMER COPY",\n  "shopify_product_name": "Name"\n}',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
+				},
 				position: [2420, 520],
 				name: 'shopify',
 			},
@@ -168,6 +195,35 @@ const wf = workflow(
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1-mini',
+									cachedResultName: 'gpt-4.1-mini',
+								},
+								options: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "shopify_description": "FULL PARAGRAPH CONSUMER COPY",\n  "seo_description": "SEO-OPTIMIZED DESCRIPTION, ≤700 CHARACTERS",\n  "seo_name": "SEARCHABLE, DESCRIPTIVE TITLE WITH KEYWORDS",\n  "shopify_product_name": "Name"\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
 				},
 				position: [2760, 520],
 				name: 'GMC',
@@ -339,72 +395,6 @@ const wf = workflow(
 				},
 				position: [1040, 600],
 				name: 'Google Sheets Trigger',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-mini',
-						cachedResultName: 'gpt-4.1-mini',
-					},
-					options: {},
-				},
-				position: [2440, 720],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "shopify_description": "FULL PARAGRAPH CONSUMER COPY",\n  "shopify_product_name": "Name"\n}',
-				},
-				position: [2620, 720],
-				name: 'Structured Output Parser1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-mini',
-						cachedResultName: 'gpt-4.1-mini',
-					},
-					options: {},
-				},
-				position: [2780, 720],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "shopify_description": "FULL PARAGRAPH CONSUMER COPY",\n  "seo_description": "SEO-OPTIMIZED DESCRIPTION, ≤700 CHARACTERS",\n  "seo_name": "SEARCHABLE, DESCRIPTIVE TITLE WITH KEYWORDS",\n  "shopify_product_name": "Name"\n}',
-				},
-				position: [2960, 720],
-				name: 'Structured Output Parser',
 			},
 		}),
 	)

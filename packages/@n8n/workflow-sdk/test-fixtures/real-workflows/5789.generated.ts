@@ -77,6 +77,73 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.5,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl: '',
+										cachedResultName: 'list',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1iOYH829GJ-ytTlmz0Zsl875Efn1qyrwuv6Rx83N1QJU',
+										cachedResultUrl: '',
+										cachedResultName: 'Email spam list',
+									},
+									descriptionType: 'manual',
+									toolDescription:
+										'Get row(s) in sheet in email spam list Google Sheets. It contains a list of emails that are considered spam and legit.',
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Get spam list1',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-mini',
+									cachedResultName: 'gpt-4o-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model3',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "from": "user@example.com",\n  "to": "user@example.com",\n  "subject": "Urgent: Contract Finalization by Tomorrow",\n  "summary": "The CEO is requesting immediate action to finalize and sign the strategic partnership contract before tomorrow\'s deadline.",\n  "priority": "High",\n  "priority_color": 16711680,\n  "image_url" : "",\n  "action_url" : ""\n}\n',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
+				},
 				position: [600, 1600],
 				name: 'AI Agent2',
 			},
@@ -325,6 +392,189 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.5,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl: '',
+										cachedResultName: 'list',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1iOYH829GJ-ytTlmz0Zsl875Efn1qyrwuv6Rx83N1QJU',
+										cachedResultUrl: '',
+										cachedResultName: 'Email spam list',
+									},
+									descriptionType: 'manual',
+									toolDescription:
+										'Get row(s) in sheet in email spam list Google Sheets. It contains a list of emails that are considered spam and legit.',
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Get spam list',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.5,
+							config: {
+								parameters: {
+									columns: {
+										value: {
+											email:
+												"={{ $fromAI('sender_email', 'email of the sender that wants to be labelled') }}",
+											domain:
+												"={{ $fromAI('domain', 'domain name of the sender that wants to be labelled') }}",
+											labelled_by: 'n8n',
+											labelled_date: "={{ $now.format('dd/MM/yyyy') }}",
+											Classification:
+												"={{ $fromAI('classification', 'classigfication of the email whether spam or legit') }}",
+										},
+										schema: [
+											{
+												id: 'domain',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'domain',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'email',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'email',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Classification',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Classification',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'labelled_by',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'labelled_by',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'labelled_date',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'labelled_date',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['email'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+									options: {},
+									operation: 'appendOrUpdate',
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl: '',
+										cachedResultName: 'list',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1iOYH829GJ-ytTlmz0Zsl875Efn1qyrwuv6Rx83N1QJU',
+										cachedResultUrl: '',
+										cachedResultName: 'Email spam list',
+									},
+									descriptionType: 'manual',
+									toolDescription:
+										'Update row(s) in sheet in email spam list Google Sheets. It can update or add a row of email, domain of the sender that is considered spam and legit.',
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'update spam list',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.discordTool',
+							version: 2,
+							config: {
+								parameters: {
+									guildId: {
+										__rl: true,
+										mode: 'id',
+										value: "={{ $fromAI('guildId', 'guildId of the discord reference message') }}",
+									},
+									options: {},
+									resource: 'message',
+									channelId: {
+										__rl: true,
+										mode: 'id',
+										value:
+											"={{ $fromAI('channelId', 'channelId of the discord reference message') }}",
+									},
+									messageId:
+										"={{ $fromAI('messageId', 'messageId of the discord reference message') }}",
+									operation: 'get',
+									authentication: 'oAuth2',
+								},
+								credentials: {
+									discordOAuth2Api: { id: 'credential-id', name: 'discordOAuth2Api Credential' },
+								},
+								name: 'Get a message in Discord',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-mini',
+									cachedResultName: 'gpt-4o-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+				},
 				position: [580, 2160],
 				name: 'AI Agent1',
 			},
@@ -365,267 +615,6 @@ const wf = workflow('', '')
 				},
 				position: [900, 2160],
 				name: 'Discord - reply1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-mini',
-						cachedResultName: 'gpt-4o-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [540, 2400],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl: '',
-						cachedResultName: 'list',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1iOYH829GJ-ytTlmz0Zsl875Efn1qyrwuv6Rx83N1QJU',
-						cachedResultUrl: '',
-						cachedResultName: 'Email spam list',
-					},
-					descriptionType: 'manual',
-					toolDescription:
-						'Get row(s) in sheet in email spam list Google Sheets. It contains a list of emails that are considered spam and legit.',
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [820, 2400],
-				name: 'Get spam list',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.discordTool',
-			version: 2,
-			config: {
-				parameters: {
-					guildId: {
-						__rl: true,
-						mode: 'id',
-						value: "={{ $fromAI('guildId', 'guildId of the discord reference message') }}",
-					},
-					options: {},
-					resource: 'message',
-					channelId: {
-						__rl: true,
-						mode: 'id',
-						value: "={{ $fromAI('channelId', 'channelId of the discord reference message') }}",
-					},
-					messageId: "={{ $fromAI('messageId', 'messageId of the discord reference message') }}",
-					operation: 'get',
-					authentication: 'oAuth2',
-				},
-				credentials: {
-					discordOAuth2Api: { id: 'credential-id', name: 'discordOAuth2Api Credential' },
-				},
-				position: [700, 2400],
-				name: 'Get a message in Discord',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.5,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							email:
-								"={{ $fromAI('sender_email', 'email of the sender that wants to be labelled') }}",
-							domain:
-								"={{ $fromAI('domain', 'domain name of the sender that wants to be labelled') }}",
-							labelled_by: 'n8n',
-							labelled_date: "={{ $now.format('dd/MM/yyyy') }}",
-							Classification:
-								"={{ $fromAI('classification', 'classigfication of the email whether spam or legit') }}",
-						},
-						schema: [
-							{
-								id: 'domain',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'domain',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'email',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'email',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Classification',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Classification',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'labelled_by',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'labelled_by',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'labelled_date',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'labelled_date',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['email'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl: '',
-						cachedResultName: 'list',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1iOYH829GJ-ytTlmz0Zsl875Efn1qyrwuv6Rx83N1QJU',
-						cachedResultUrl: '',
-						cachedResultName: 'Email spam list',
-					},
-					descriptionType: 'manual',
-					toolDescription:
-						'Update row(s) in sheet in email spam list Google Sheets. It can update or add a row of email, domain of the sender that is considered spam and legit.',
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [960, 2400],
-				name: 'update spam list',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-mini',
-						cachedResultName: 'gpt-4o-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [580, 1800],
-				name: 'OpenAI Chat Model3',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl: '',
-						cachedResultName: 'list',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1iOYH829GJ-ytTlmz0Zsl875Efn1qyrwuv6Rx83N1QJU',
-						cachedResultUrl: '',
-						cachedResultName: 'Email spam list',
-					},
-					descriptionType: 'manual',
-					toolDescription:
-						'Get row(s) in sheet in email spam list Google Sheets. It contains a list of emails that are considered spam and legit.',
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [700, 1820],
-				name: 'Get spam list1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "from": "user@example.com",\n  "to": "user@example.com",\n  "subject": "Urgent: Contract Finalization by Tomorrow",\n  "summary": "The CEO is requesting immediate action to finalize and sign the strategic partnership contract before tomorrow\'s deadline.",\n  "priority": "High",\n  "priority_color": 16711680,\n  "image_url" : "",\n  "action_url" : ""\n}\n',
-				},
-				position: [820, 1820],
-				name: 'Structured Output Parser1',
 			},
 		}),
 	)

@@ -21,6 +21,283 @@ const wf = workflow('', '')
 							'=You are **AI Assistant** for **[your company]**, orchestrated by the `Knowledge Agent` node inside an n8n workflow.  \nYour mission:\n\n1. **Respond clearly and helpfully** to every user request, matching their tone and preferred language.  \n2. **Persist context**: every turn is automatically stored in `Postgres Chat Memory`; use it to maintain continuity, avoid repetition, and recall prior details when relevant.  \n3. **Reason before you act**:  \n   - Call the `Think` tool to outline your plan or ask clarifying questions.  \n   - Invoke the appropriate tools when needed:  \n     • `General knowledge` (Supabase vector store) for internal content from [your company]  \n     • `structured data` (Postgres) for tabular queries  \n     • `search about any doc in google drive` to locate Drive files  \n     • `Read File From GDrive` to download and process PDFs, CSVs, images, audio, or video  \n     • `Message a model in Perplexity` only when you need very recent external web information \n4. **Output format**: reply in well‑structured Markdown—headings, lists, and code when useful. Keep it concise; avoid unnecessary tables.\n\nAdditional notes:  \n- Always cite the data source in your answer (“*from the vector store*,” “*from the analysed CSV*,” etc.).  \n- If anything is ambiguous (e.g., which file to open), ask a precise follow‑up question first.  \n',
 					},
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: {
+								parameters: {
+									description:
+										'Use the tool to think about the user query and the actual data extracted.',
+								},
+								name: 'Think',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.postgresTool',
+							version: 2.6,
+							config: {
+								parameters: {
+									table: {
+										__rl: true,
+										mode: 'name',
+										value:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Table', ``, 'string') }}",
+									},
+									schema: { __rl: true, mode: 'list', value: 'public' },
+									columns: {
+										value: {},
+										schema: [
+											{
+												id: 'Keyword',
+												type: 'string',
+												display: true,
+												required: true,
+												displayName: 'Keyword',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Avg monthly searches',
+												type: 'number',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'Avg monthly searches',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Competition',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'Competition',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Competition indexed value',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'Competition indexed value',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Low range bid',
+												type: 'number',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'Low range bid',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'High range bid',
+												type: 'number',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'High range bid',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Score',
+												type: 'number',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'Score',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Base score',
+												type: 'number',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'Base score',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'cpc median',
+												type: 'number',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'cpc median',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'n chars',
+												type: 'number',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'n chars',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'relevance bonus',
+												type: 'number',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'relevance bonus',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Scored?',
+												type: 'boolean',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'Scored?',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Primary used',
+												type: 'number',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'Primary used',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Secondary used?',
+												type: 'number',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'Secondary used?',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'autoMapInputData',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+									options: {},
+								},
+								credentials: {
+									postgres: { id: 'credential-id', name: 'postgres Credential' },
+								},
+								name: 'structured data',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+							version: 1.3,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									options: {},
+									tableName: {
+										__rl: true,
+										mode: 'list',
+										value: 'danelfin',
+										cachedResultName: 'danelfin',
+									},
+									useReranker: true,
+									toolDescription: 'Acces information About (YOUR COMPANY)',
+								},
+								credentials: {
+									supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: { dimensions: 1536 } },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI',
+										},
+									}),
+								},
+								name: 'General knowledge',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.perplexityTool',
+							version: 1,
+							config: {
+								parameters: {
+									options: {},
+									messages: {
+										message: [
+											{
+												content:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message0_Text', ``, 'string') }}",
+											},
+										],
+									},
+									requestOptions: {},
+								},
+								credentials: {
+									perplexityApi: { id: 'credential-id', name: 'perplexityApi Credential' },
+								},
+								name: 'Message a model in Perplexity',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+							version: 1,
+							config: {
+								parameters: { sseEndpoint: 'https://your instancesse' },
+								name: 'search  about any doc in google drive',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'claude-sonnet-4-20250514',
+									cachedResultName: 'Claude 4 Sonnet',
+								},
+								options: {},
+							},
+							credentials: {
+								anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
+							},
+							name: 'Anthropic Chat Model',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+						version: 1.3,
+						config: {
+							credentials: {
+								postgres: { id: 'credential-id', name: 'postgres Credential' },
+							},
+							name: 'Postgres Chat Memory',
+						},
+					}),
+				},
 				position: [464, 0],
 				name: 'Knowledge Agent',
 			},
@@ -77,6 +354,41 @@ const wf = workflow('', '')
 				},
 				credentials: {
 					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
+				},
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Embeddings OpenAI1',
+						},
+					}),
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1.1,
+						config: {
+							parameters: {
+								options: {},
+								dataType: 'binary',
+								textSplittingMode: 'custom',
+							},
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+									version: 1,
+									config: {
+										parameters: { options: {} },
+										name: 'Recursive Character Text Splitter1',
+									},
+								}),
+							},
+							name: 'Default Data Loader1',
+						},
+					}),
 				},
 				position: [592, -688],
 				name: 'Add to Supabase Vector DB',
@@ -404,60 +716,94 @@ const wf = workflow('', '')
 			version: 1,
 			config: {
 				parameters: { path: 'a289c719-fb71-4b08-97c6-79d12645dc7e' },
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.1,
+							config: {
+								parameters: {
+									name: 'ReadFile',
+									workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
+									description:
+										'Call this tool to download and read the contents of a file within google drive.',
+									workflowInputs: {
+										value: {
+											fileId:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fileId', ``, 'string') }}",
+											folderId:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('folderId', ``, 'string') }}",
+											operation: 'readFile',
+										},
+										schema: [
+											{
+												id: 'operation',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'operation',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'folderId',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'folderId',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'fileId',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'fileId',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Read File From GDrive',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleDriveTool',
+							version: 3,
+							config: {
+								parameters: {
+									limit: 10,
+									filter: {
+										driveId: { mode: 'list', value: 'My Drive' },
+										whatToSearch: 'files',
+									},
+									options: {},
+									resource: 'fileFolder',
+									queryString:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search_Query', ``, 'string') }}",
+								},
+								credentials: {
+									googleDriveOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleDriveOAuth2Api Credential',
+									},
+								},
+								name: 'Search Files from Gdrive',
+							},
+						}),
+					],
+				},
 				position: [1712, 64],
 				name: 'Google Drive MCP Server',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-			version: 1.3,
-			config: {
-				credentials: {
-					postgres: { id: 'credential-id', name: 'postgres Credential' },
-				},
-				position: [416, 352],
-				name: 'Postgres Chat Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: { dimensions: 1536 } },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1136, 560],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
-			version: 1.3,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					options: {},
-					tableName: {
-						__rl: true,
-						mode: 'list',
-						value: 'danelfin',
-						cachedResultName: 'danelfin',
-					},
-					useReranker: true,
-					toolDescription: 'Acces information About (YOUR COMPANY)',
-				},
-				credentials: {
-					supabaseApi: { id: 'credential-id', name: 'supabaseApi Credential' },
-				},
-				position: [1168, 400],
-				name: 'General knowledge',
 			},
 		}),
 	)
@@ -471,375 +817,6 @@ const wf = workflow('', '')
 				},
 				position: [1296, 560],
 				name: 'Reranker Cohere',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'claude-sonnet-4-20250514',
-						cachedResultName: 'Claude 4 Sonnet',
-					},
-					options: {},
-				},
-				credentials: {
-					anthropicApi: { id: 'credential-id', name: 'anthropicApi Credential' },
-				},
-				position: [240, 352],
-				name: 'Anthropic Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.postgresTool',
-			version: 2.6,
-			config: {
-				parameters: {
-					table: {
-						__rl: true,
-						mode: 'name',
-						value: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Table', ``, 'string') }}",
-					},
-					schema: { __rl: true, mode: 'list', value: 'public' },
-					columns: {
-						value: {},
-						schema: [
-							{
-								id: 'Keyword',
-								type: 'string',
-								display: true,
-								required: true,
-								displayName: 'Keyword',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Avg monthly searches',
-								type: 'number',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Avg monthly searches',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Competition',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Competition',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Competition indexed value',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Competition indexed value',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Low range bid',
-								type: 'number',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Low range bid',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'High range bid',
-								type: 'number',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'High range bid',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Score',
-								type: 'number',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Score',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Base score',
-								type: 'number',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Base score',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'cpc median',
-								type: 'number',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'cpc median',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'n chars',
-								type: 'number',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'n chars',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'relevance bonus',
-								type: 'number',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'relevance bonus',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Scored?',
-								type: 'boolean',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Scored?',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Primary used',
-								type: 'number',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Primary used',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Secondary used?',
-								type: 'number',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Secondary used?',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'autoMapInputData',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-				},
-				credentials: {
-					postgres: { id: 'credential-id', name: 'postgres Credential' },
-				},
-				position: [848, 416],
-				name: 'structured data',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				position: [784, -256],
-				name: 'Recursive Character Text Splitter1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {},
-					dataType: 'binary',
-					textSplittingMode: 'custom',
-				},
-				position: [704, -464],
-				name: 'Default Data Loader1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [576, -464],
-				name: 'Embeddings OpenAI1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: {
-				parameters: {
-					description: 'Use the tool to think about the user query and the actual data extracted.',
-				},
-				position: [576, 352],
-				name: 'Think',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.1,
-			config: {
-				parameters: {
-					name: 'ReadFile',
-					workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
-					description:
-						'Call this tool to download and read the contents of a file within google drive.',
-					workflowInputs: {
-						value: {
-							fileId:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fileId', ``, 'string') }}",
-							folderId:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('folderId', ``, 'string') }}",
-							operation: 'readFile',
-						},
-						schema: [
-							{
-								id: 'operation',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'operation',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'folderId',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'folderId',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'fileId',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'fileId',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [1968, 256],
-				name: 'Read File From GDrive',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleDriveTool',
-			version: 3,
-			config: {
-				parameters: {
-					limit: 10,
-					filter: {
-						driveId: { mode: 'list', value: 'My Drive' },
-						whatToSearch: 'files',
-					},
-					options: {},
-					resource: 'fileFolder',
-					queryString:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search_Query', ``, 'string') }}",
-				},
-				credentials: {
-					googleDriveOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleDriveOAuth2Api Credential',
-					},
-				},
-				position: [1776, 288],
-				name: 'Search Files from Gdrive',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-			version: 1,
-			config: {
-				parameters: { sseEndpoint: 'https://your instancesse' },
-				position: [1600, 176],
-				name: 'search  about any doc in google drive',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.perplexityTool',
-			version: 1,
-			config: {
-				parameters: {
-					options: {},
-					messages: {
-						message: [
-							{
-								content:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message0_Text', ``, 'string') }}",
-							},
-						],
-					},
-					requestOptions: {},
-				},
-				credentials: {
-					perplexityApi: { id: 'credential-id', name: 'perplexityApi Credential' },
-				},
-				position: [656, 752],
-				name: 'Message a model in Perplexity',
 			},
 		}),
 	)

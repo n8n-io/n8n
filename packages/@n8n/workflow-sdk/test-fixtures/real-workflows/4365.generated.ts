@@ -53,6 +53,20 @@ const wf = workflow('', '')
 			version: 1.1,
 			config: {
 				parameters: { options: { groupMessages: true } },
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('sessionData').item.json.sessionId }}",
+								sessionIdType: 'customKey',
+								contextWindowLength: 2,
+							},
+							name: 'memoryRetriever',
+						},
+					}),
+				},
 				position: [-860, -880],
 				name: 'conversationStore',
 			},
@@ -81,6 +95,29 @@ const wf = workflow('', '')
 					text: '=1. Context\nYou are an intelligent assistant designed to analyze user requests accurately by considering both the current user input and prior conversation history (if available). Use this context to improve classification and response relevance. Only classify as "generate" if the request clearly meets all criteria. Never assume without certainty.\n\n2. General instructions\n- Use prior conversation history, if available, to interpret references, refinements, or corrections in the user’s message. \n- Apply updates directly when a previous request is being modified (e.g., changing part of a generated image).\n- Maintain context continuity unless the user explicitly shifts the topic.\n- When evaluating intention, prioritize the most recent relevant message to avoid using outdated context.\n- If the message is vague, nonsensical, or overly brief (e.g., a single word), do not classify it as "generate". Even if image requests occurred earlier. Only proceed if the current input clearly meets all criteria. Default to "other" unless the message includes clear direction.\n\n3. User Request: "{{ $(\'sessionData\').item.json.Mensaje }}"\n\n4. Conversation history:\n{{ $json.messages}}\n\n5. Intentions\nClassify the user\'s intention as exactly one of the following:\n- "generate": user requests the direct creation of new visual content (e.g., images or art) to be delivered. This includes implicit requests for physical or tangible objects (e.g., "give me a pet"), but only if the message contains clear intent or is supported by prior context. Single-word or vague inputs without clear directive or context should not be treated as generate.\n- "chat": user engages in meaningful conversational interaction, including requests to generate textual prompts, explanations, or dialogue that have clear context and intent.\n- "other": request does not fit into the above categories, or involves content that is restricted, inappropriate, irrelevant, nonsensical, or lacks clear context or intent distinct from conversational engagement.\n\n6. Data types\nWhen analyzing the user’s message, determine whether a request for a physical or tangible object should be interpreted as a visual content request. In general, treat requests for tangible items as image generation unless the context explicitly suggests otherwise. For intangible content, respond with text unless the user clearly asks for an image.\n\nBased on the intention and content of the request, select exactly one data type to return:\n\n- "text": a textual response such as an answer, explanation, dialogue, or prompt text.\n- "image": a visual response explicitly or implicitly requested as image generation.\n\nAssign "image" as typeData only if the intention is "generate". In all other cases, including when the intention is "other", assign "text".\n\n7. Output format\nRespond only with a JSON object in this exact format, with no additional text or explanation: {"intention": "value", "typeData": "value"}',
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'GeminiModel1',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample: '{\n	"typeData": "text",\n	"intention": "generate"\n}',
+							},
+							name: 'structuredOutput',
+						},
+					}),
 				},
 				position: [-460, -880],
 				name: 'inputProcessor',
@@ -228,6 +265,31 @@ const wf = workflow('', '')
 							'=You are a professional enterprise chatbot designed to assist users with clear, respectful, and accurate communication. You provide informative text responses and generate images only upon explicit user requests. Utilize available conversation history to maintain context and coherence. Adhere strictly to company rules to ensure appropriate and secure interactions.\n\nYou can chat with me to get answers and create custom images based on your instructions.\n\nPrioritize the most recent relevant message if multiple prior references exist. Always respond in Spanish when providing text-based chat replies. For image generation requests, respond in English. Keep responses as short as possible without compromising clarity or natural interaction. Do not force interaction with the user beyond what is necessary to respond clearly.',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash-001' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'GeminiModel',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('sessionData').item.json.sessionId }}",
+								sessionIdType: 'customKey',
+								contextWindowLength: 10,
+							},
+							name: 'conversationMemory',
+						},
+					}),
 				},
 				position: [280, -880],
 				name: 'ChatCore',
@@ -456,77 +518,6 @@ const wf = workflow('', '')
 				},
 				position: [0, -720],
 				name: 'otherPrompt',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash-001' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [300, -720],
-				name: 'GeminiModel',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-440, -740],
-				name: 'GeminiModel1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample: '{\n	"typeData": "text",\n	"intention": "generate"\n}',
-				},
-				position: [-300, -740],
-				name: 'structuredOutput',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('sessionData').item.json.sessionId }}",
-					sessionIdType: 'customKey',
-					contextWindowLength: 2,
-				},
-				position: [-820, -740],
-				name: 'memoryRetriever',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('sessionData').item.json.sessionId }}",
-					sessionIdType: 'customKey',
-					contextWindowLength: 10,
-				},
-				position: [420, -700],
-				name: 'conversationMemory',
 			},
 		}),
 	)

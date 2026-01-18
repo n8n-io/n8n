@@ -341,7 +341,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const subnodes = nodeInstance.config.subnodes as SubnodeConfig | undefined;
 		if (!subnodes) return;
 
-		// Helper to add a subnode with its AI connection
+		// Helper to add a subnode with its AI connection (recursively handles nested subnodes)
 		const addSubnode = (subnode: NodeInstance<string, string, unknown>, connectionType: string) => {
 			const subnodeConns = new Map<string, Map<number, ConnectionTarget[]>>();
 			subnodeConns.set('main', new Map());
@@ -353,6 +353,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				instance: subnode,
 				connections: subnodeConns,
 			});
+
+			// Recursively process any nested subnodes this subnode might have
+			const nestedSubnodes = subnode.config.subnodes as SubnodeConfig | undefined;
+			if (nestedSubnodes) {
+				this.processSubnodesRecursively(nodes, subnode, nestedSubnodes);
+			}
 		};
 
 		// Add model subnode
@@ -376,6 +382,78 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (subnodes.outputParser) {
 			addSubnode(subnodes.outputParser, 'ai_outputParser');
 		}
+
+		// Add embedding subnode
+		if (subnodes.embedding) {
+			addSubnode(subnodes.embedding, 'ai_embedding');
+		}
+
+		// Add vector store subnode
+		if (subnodes.vectorStore) {
+			addSubnode(subnodes.vectorStore, 'ai_vectorStore');
+		}
+
+		// Add retriever subnode
+		if (subnodes.retriever) {
+			addSubnode(subnodes.retriever, 'ai_retriever');
+		}
+
+		// Add document loader subnode
+		if (subnodes.documentLoader) {
+			addSubnode(subnodes.documentLoader, 'ai_document');
+		}
+
+		// Add text splitter subnode
+		if (subnodes.textSplitter) {
+			addSubnode(subnodes.textSplitter, 'ai_textSplitter');
+		}
+	}
+
+	/**
+	 * Recursively process nested subnodes for a parent node
+	 */
+	private processSubnodesRecursively(
+		nodes: Map<string, GraphNode>,
+		parentNode: NodeInstance<string, string, unknown>,
+		subnodes: SubnodeConfig,
+	): void {
+		// Helper to add a nested subnode with its AI connection
+		const addNestedSubnode = (
+			subnode: NodeInstance<string, string, unknown>,
+			connectionType: string,
+		) => {
+			const subnodeConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			subnodeConns.set('main', new Map());
+			// Create AI connection from subnode to parent
+			const aiConnMap = new Map<number, ConnectionTarget[]>();
+			aiConnMap.set(0, [{ node: parentNode.name, type: connectionType, index: 0 }]);
+			subnodeConns.set(connectionType, aiConnMap);
+			nodes.set(subnode.name, {
+				instance: subnode,
+				connections: subnodeConns,
+			});
+
+			// Recursively process any nested subnodes
+			const nestedSubnodes = subnode.config.subnodes as SubnodeConfig | undefined;
+			if (nestedSubnodes) {
+				this.processSubnodesRecursively(nodes, subnode, nestedSubnodes);
+			}
+		};
+
+		// Process all subnode types
+		if (subnodes.model) addNestedSubnode(subnodes.model, 'ai_languageModel');
+		if (subnodes.memory) addNestedSubnode(subnodes.memory, 'ai_memory');
+		if (subnodes.tools) {
+			for (const tool of subnodes.tools) {
+				addNestedSubnode(tool, 'ai_tool');
+			}
+		}
+		if (subnodes.outputParser) addNestedSubnode(subnodes.outputParser, 'ai_outputParser');
+		if (subnodes.embedding) addNestedSubnode(subnodes.embedding, 'ai_embedding');
+		if (subnodes.vectorStore) addNestedSubnode(subnodes.vectorStore, 'ai_vectorStore');
+		if (subnodes.retriever) addNestedSubnode(subnodes.retriever, 'ai_retriever');
+		if (subnodes.documentLoader) addNestedSubnode(subnodes.documentLoader, 'ai_document');
+		if (subnodes.textSplitter) addNestedSubnode(subnodes.textSplitter, 'ai_textSplitter');
 	}
 
 	/**

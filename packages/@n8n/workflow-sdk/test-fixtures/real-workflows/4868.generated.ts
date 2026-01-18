@@ -213,6 +213,22 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: {},
+								modelName: 'models/gemini-2.5-flash-preview-05-20',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [3020, 60],
 				name: 'Field Extractor',
 			},
@@ -528,23 +544,6 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 				},
 				position: [320, 260],
 				name: 'On new file in Google Drive',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: {},
-					modelName: 'models/gemini-2.5-flash-preview-05-20',
-				},
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [3060, 280],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

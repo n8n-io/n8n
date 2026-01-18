@@ -111,6 +111,13 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 						],
 					},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: { parameters: { options: {} }, name: 'Google Gemini Chat Model' },
+					}),
+				},
 				position: [-64, 448],
 				name: 'Information Extractor',
 			},
@@ -273,7 +280,6 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 			config: { parameters: { options: {} }, position: [-400, 848], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.wait',
@@ -303,6 +309,19 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 							},
 						],
 					},
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
 				},
 				position: [352, 864],
 				name: 'Information Extractor1',
@@ -477,31 +496,6 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
 			config: { position: [640, 608], name: 'No Operation, do nothing' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				position: [32, 592],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				position: [448, 992],
-				name: 'OpenAI Chat Model',
-			},
 		}),
 	)
 	.add(sticky('# Business Data', { color: 3, width: 752, height: 336 }))

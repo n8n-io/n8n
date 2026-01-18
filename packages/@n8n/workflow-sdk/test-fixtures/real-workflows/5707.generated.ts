@@ -44,6 +44,31 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "$schema": "http://json-schema.org/schema#",\n  "title": "Guide Schema",\n  "type": "object",\n  "properties": {\n    "type": {\n      "type": "string"\n    },\n    "version": {\n      "type": "string"\n    },\n    "metadata": {\n      "type": "object",\n      "properties": {\n        "title": { "type": "string" },\n        "description": { "type": "string" },\n        "audience": { "type": "string" },\n        "author": { "type": "string" },\n        "category": { "type": "string" }\n      },\n      "required": ["title", "description", "audience", "author", "category"]\n    },\n    "structure": {\n      "type": "object",\n      "properties": {\n        "chapters": {\n          "type": "array",\n          "items": {\n            "type": "object",\n            "properties": {\n              "chapterNumber": { "type": "integer" },\n              "title": { "type": "string" },\n              "objectives": {\n                "type": "array",\n                "items": { "type": "string" }\n              }\n            },\n            "required": ["chapterNumber", "title", "objectives"]\n          }\n        }\n      },\n      "required": ["chapters"]\n    }\n  },\n  "required": ["type", "version", "metadata", "structure"]\n}\n',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash-exp' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model for Ebook thought creation',
+						},
+					}),
+				},
 				position: [-320, 0],
 				name: 'Ebook Thought Creation',
 			},
@@ -69,7 +94,6 @@ const wf = workflow(
 			config: { parameters: { options: {} }, position: [360, 0], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -108,6 +132,19 @@ const wf = workflow(
 					text: '=Provide a detailed chapter explanation for the following\n\nTitle : {{ $json.title }}\nObjective : \n{{ $json.objectives }}\n',
 					batching: {},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash-exp' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
 				},
 				position: [920, 20],
 				name: 'Generate Detailed Chapter Content',
@@ -153,49 +190,6 @@ const wf = workflow(
 				},
 				position: [1540, 20],
 				name: 'Update Google Docs',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash-exp' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [940, 240],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash-exp' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-320, 220],
-				name: 'Google Gemini Chat Model for Ebook thought creation',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "$schema": "http://json-schema.org/schema#",\n  "title": "Guide Schema",\n  "type": "object",\n  "properties": {\n    "type": {\n      "type": "string"\n    },\n    "version": {\n      "type": "string"\n    },\n    "metadata": {\n      "type": "object",\n      "properties": {\n        "title": { "type": "string" },\n        "description": { "type": "string" },\n        "audience": { "type": "string" },\n        "author": { "type": "string" },\n        "category": { "type": "string" }\n      },\n      "required": ["title", "description", "audience", "author", "category"]\n    },\n    "structure": {\n      "type": "object",\n      "properties": {\n        "chapters": {\n          "type": "array",\n          "items": {\n            "type": "object",\n            "properties": {\n              "chapterNumber": { "type": "integer" },\n              "title": { "type": "string" },\n              "objectives": {\n                "type": "array",\n                "items": { "type": "string" }\n              }\n            },\n            "required": ["chapterNumber", "title", "objectives"]\n          }\n        }\n      },\n      "required": ["chapters"]\n    }\n  },\n  "required": ["type", "version", "metadata", "structure"]\n}\n',
-				},
-				position: [-140, 220],
-				name: 'Structured Output Parser',
 			},
 		}),
 	)

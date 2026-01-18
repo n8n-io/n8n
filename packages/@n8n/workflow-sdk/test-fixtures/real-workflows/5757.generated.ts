@@ -35,6 +35,31 @@ const wf = workflow('1AeBTEXwiwxSvJ37', 'AI-Powered Email Automation', { executi
 						cachedResultName: 'n8ndocs',
 					},
 				},
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: { parameters: { options: {} }, name: 'Embeddings OpenAI' },
+					}),
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+									version: 1,
+									config: {
+										parameters: { options: {}, chunkSize: 200, chunkOverlap: 50 },
+										name: 'Recursive Character Text Splitter',
+									},
+								}),
+							},
+							name: 'Default Data Loader',
+						},
+					}),
+				},
 				position: [340, -860],
 				name: 'Pinecone Vector Store',
 			},
@@ -60,6 +85,37 @@ const wf = workflow('1AeBTEXwiwxSvJ37', 'AI-Powered Email Automation', { executi
 					text: '={{ $json.query }}',
 					options: { systemMessage: 'You are a helpful assistant to send mails.' },
 					promptType: 'define',
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									sendTo:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+									message:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+									options: {},
+									subject:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+								},
+								name: 'Gmail',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
 				},
 				position: [240, 600],
 				name: 'AI Agent',
@@ -88,170 +144,106 @@ const wf = workflow('1AeBTEXwiwxSvJ37', 'AI-Powered Email Automation', { executi
 							'=# Role:  \nYou are an intelligent email agent that automatically sends personalized emails to recipients. Your task is to generate and send a clear, professional, and accurate email based on the provided names, email addresses, and desired content.  \n\n## Rules & Behavior:  \n\n# You have 2 Tools and need to use them correctly, you always use both tools, first the Vectorstore_mails after that the send_mail\n\n## Vectorstore_mails \nUse this tool to get Email adresses, you can get all mail adresses from pinecone.\nwinter test = winterIsComming@gmail.com\n\n## send_mail\nUse this tool to send mails.\n\n### Email Format:  \n- The email must include a **subject line**.  \n- It should begin with an appropriate **salutation** (e.g., "Hello [Name]" or "Dear [Name]").  \n- The **main content** should be clear, concise, and friendly.  \n- The email should end with a **suitable closing phrase** (e.g., "Best regards, Arnie").  \n\n### Dynamic Personalization:  \n- Automatically replace the placeholder **[Name]** with the recipient’s actual name.  \n- If the name is missing, use a general salutation such as **"Hello, dear team"**.  \n\n### Review & Optimization:   \n- Avoid unnecessary **repetitions or vague wording**.  \n- If the message is **too long or unstructured, summarize it clearly**.  \n\n## Email Types (Adaptable Based on Context):  \n- Standard information email  \n- Reminder or follow-up  \n- Offer or marketing email  \n- Support or customer service request  \n\n---\n\n### Example of a Generated Email:  \n\n**Subject:** Important Information for You, [Name]  \n\n**Text:**  \nHello [Name],  \n\nI hope you are doing well. I wanted to quickly inform you about [Topic]. If you have any questions or need further information, feel free to reach out.  \n\nBest regards,  \nSender Name  \n',
 					},
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2,
+							config: {
+								parameters: {
+									name: 'send_mail',
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'GLkrSkyYtlep3P6e',
+										cachedResultName: 'Send Mails Pinecone',
+									},
+									description: 'Use this tool to send mails.',
+									workflowInputs: {
+										value: {},
+										schema: [],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'send_mail',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolVectorStore',
+							version: 1,
+							config: {
+								parameters: {
+									name: 'Vectorstore_mails',
+									description:
+										'Use this Tool to get Email Information, you find all relevant mail adresses, you also give mail adresses.',
+								},
+								subnodes: {
+									model: languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.2,
+										config: {
+											parameters: {
+												model: {
+													__rl: true,
+													mode: 'list',
+													value: 'gpt-4o',
+													cachedResultName: 'gpt-4o',
+												},
+												options: {},
+											},
+											name: 'OpenAI Chat Model1',
+										},
+									}),
+									vectorStore: vectorStore({
+										type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+										version: 1,
+										config: {
+											parameters: {
+												options: { pineconeNamespace: 'docsmail' },
+												pineconeIndex: {
+													__rl: true,
+													mode: 'list',
+													value: 'n8ndocs',
+													cachedResultName: 'n8ndocs',
+												},
+											},
+											subnodes: {
+												embedding: embedding({
+													type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+													version: 1.2,
+													config: { parameters: { options: {} }, name: 'Embeddings OpenAI1' },
+												}),
+											},
+											name: 'Pinecone Vector Store1',
+										},
+									}),
+								},
+								name: 'Vectorstore Mails',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							name: 'OpenAI Chat Model2',
+						},
+					}),
+				},
 				position: [220, -200],
 				name: 'AI Agent1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: { parameters: { options: {} }, position: [200, -660], name: 'Embeddings OpenAI' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-			version: 1,
-			config: {
-				parameters: { options: {}, chunkSize: 200, chunkOverlap: 50 },
-				position: [400, -480],
-				name: 'Recursive Character Text Splitter',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: { parameters: { options: {} }, position: [360, -640], name: 'Default Data Loader' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				position: [200, 860],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
-					message: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
-					options: {},
-					subject: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-				},
-				position: [500, 860],
-				name: 'Gmail',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				position: [420, 220],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolVectorStore',
-			version: 1,
-			config: {
-				parameters: {
-					name: 'Vectorstore_mails',
-					description:
-						'Use this Tool to get Email Information, you find all relevant mail adresses, you also give mail adresses.',
-				},
-				position: [180, 40],
-				name: 'Vectorstore Mails',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2,
-			config: {
-				parameters: {
-					name: 'send_mail',
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'GLkrSkyYtlep3P6e',
-						cachedResultName: 'Send Mails Pinecone',
-					},
-					description: 'Use this tool to send mails.',
-					workflowInputs: {
-						value: {},
-						schema: [],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [540, 60],
-				name: 'send_mail',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				position: [20, 60],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: { parameters: { options: {} }, position: [120, 360], name: 'Embeddings OpenAI1' },
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
-			version: 1,
-			config: {
-				parameters: {
-					options: { pineconeNamespace: 'docsmail' },
-					pineconeIndex: {
-						__rl: true,
-						mode: 'list',
-						value: 'n8ndocs',
-						cachedResultName: 'n8ndocs',
-					},
-				},
-				position: [60, 220],
-				name: 'Pinecone Vector Store1',
 			},
 		}),
 	)

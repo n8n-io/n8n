@@ -52,7 +52,6 @@ const wf = workflow('mP0xzDliHhlMDrkO', 'ElevenLabs AI Voice Cloning from YouTub
 			config: { parameters: { options: {} }, position: [416, 224], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.code',

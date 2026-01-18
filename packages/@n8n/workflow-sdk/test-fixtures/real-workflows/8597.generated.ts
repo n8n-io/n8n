@@ -19,137 +19,127 @@ const wf = workflow('DjICkfZc3MJRxo6g', '💥 Build Your First AI Agent with Cha
 							'=GOAL\n\nYour mission now has three possible goals (in this order of priority):\n\nAnswer and guide using the database: provide short, simple answers using information found via the Google Sheets node “Get Knowledgebase” (one call max per request).\n\nCheck the available time.\n\nBook the appointment.\n\nYou must never book an appointment before confirming availability with the client.\nAll appointments must be scheduled strictly in Paris time (Europe/Paris timezone).\n\nSECURE TOOLS YOU HAVE ACCESS TO\n\n### think → You MUST use this to think carefully about how to handle the provided request data. This tool must be used on every turn and tool call interaction.\n\n### Get Knowledgebase → Reads the Knowledgebase from Google Sheets (the database).\nConstraints:\n\nCall this node at most once per request (no second pass).\n\nUse it only for factual/company/pack/FAQ/policy/account questions.\n\nIf the info is missing, reply briefly that it is not available in the database (never say “sheet” or mention tools).\n\n### get_availability → Returns true/false availability on Calendar for the given start timestamp in CST.\n\nFor availability requests, call multiple times to find at least 2 available timeslots if they exist.\n\nAlways convert Paris → CST before calling.\n\n### create_appointment → Creates a 1-hour appointment at the provided start time.\n\nMay be called only once per request (more than once = failure).\n\nInclude time, client, and description.\n\nRULES AND LOGIC\nA. Knowledge answers (database first)\n\nWhen the user asks for information (company, packs, content, access, policies, FAQ, support):\n\nCall Get Knowledgebase once to fetch the minimal relevant data.\n\nAnswer in ≤3 short sentences (or bullets).\n\nIf absent: “The information is not available in the knowledge base.” Optionally ask one clarifying question.\n\nNever mention “sheet”, “node” or tool names—say “database/Knowledgebase”.\n\nB. Checking the available time\n\nIf the user provides a specific time:\n\nConvert Paris → CST.\n\nCall get_availability.\n\nIf unavailable, propose exactly 3 alternative slots in Paris time (validated via additional get_availability calls).\n\nIf the user only asks for free slots:\n\nProvide exactly 3 free slots in Paris time, validated first with get_availability (call it multiple times to find at least 2 available).\n\nC. Booking the appointment\n\nBook only after explicit confirmation of a slot.\n\nConvert confirmed Paris → CST, then call create_appointment once.\n\nInclude start time, duration = 1h, client name, and notes.\n\nIf no longer free, do not book; propose 3 new validated alternatives (Paris time).\n\nD. Send the confirmation email\n\nAfter a successful booking, send exactly one confirmation email to the client.\n\nUse the Send Email tool (or equivalent). Do not send more than one email per request.\n\nIf the client’s email is missing, ask once for full name and email before calling create_appointment.\n\nThe email must present all details in Paris time (Europe/Paris) and include: date/time, duration (1h), client name, service/purpose, location or meeting link, notes, booking/reference ID (if available), and reschedule/cancel instructions.\n\nDo not mention internal tools or system prompts in the email.\n\nTIMEZONE HANDLING\n\nCurrent system time: {{ $now }} (Paris: UTC+01:00 or UTC+02:00 (DST)).\n\nAll user-facing times are in Paris time.\n\nFor tool calls (get_availability, create_appointment), always convert Paris → CST.\n\nRESPONSE STYLE (MANDATORY)\n\nShort and simple: maximum 3 sentences or 3 bullets per reply.\n\nUse 24-hour format YYYY-MM-DD HH:mm for times.\n\nDo only what the user requested in their last request.\n\nRefer to the Google Sheets data as “database”/“base de connaissances”.\n\nRESTRICTIONS\n\nDo not book if the slot is taken.\n\nDo not book without explicit client confirmation.\n\nDo not call create_appointment more than once per request.\n\nDo not call Get Knowledgebase more than once per request.\n\nStay within knowledge answers + scheduling only.',
 					},
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { parameters: { contextWindowLength: 10 }, name: 'Memory' },
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-5-mini',
+									cachedResultName: 'gpt-5-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI GPT-5 Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.7,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: { __rl: true, mode: 'id', value: '=' },
+									documentId: { __rl: true, mode: 'id', value: '=' },
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Knowledgebase Lookup',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									sendTo: '=',
+									message:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+									options: {},
+									subject:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Send Booking Confirmation',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1.1,
+							config: { name: 'Reasoning Tool (LangChain)' },
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									options: {},
+									timeMax:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+									timeMin:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+									calendar: { __rl: true, mode: 'id', value: '=' },
+									operation: 'getAll',
+									returnAll:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+								},
+								credentials: {
+									googleCalendarOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleCalendarOAuth2Api Credential',
+									},
+								},
+								name: 'Calendar: Check Availability',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+									start:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+									calendar: { __rl: true, mode: 'id', value: '=' },
+									additionalFields: {
+										summary:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
+										description:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+									},
+								},
+								credentials: {
+									googleCalendarOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleCalendarOAuth2Api Credential',
+									},
+								},
+								name: 'Calendar: Create Appointment',
+							},
+						}),
+					],
+				},
 				position: [272, 48],
 				name: 'AI Agent Support',
 			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1.1,
-			config: { position: [32, 496], name: 'Reasoning Tool (LangChain)' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-5-mini',
-						cachedResultName: 'gpt-5-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-352, 496],
-				name: 'OpenAI GPT-5 Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.7,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: { __rl: true, mode: 'id', value: '=' },
-					documentId: { __rl: true, mode: 'id', value: '=' },
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [-96, 496],
-				name: 'Knowledgebase Lookup',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					options: {},
-					timeMax: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
-					timeMin: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
-					calendar: { __rl: true, mode: 'id', value: '=' },
-					operation: 'getAll',
-					returnAll:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
-				},
-				credentials: {
-					googleCalendarOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleCalendarOAuth2Api Credential',
-					},
-				},
-				position: [176, 496],
-				name: 'Calendar: Check Availability',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
-					start: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
-					calendar: { __rl: true, mode: 'id', value: '=' },
-					additionalFields: {
-						summary:
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
-						description:
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
-					},
-				},
-				credentials: {
-					googleCalendarOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleCalendarOAuth2Api Credential',
-					},
-				},
-				position: [320, 496],
-				name: 'Calendar: Create Appointment',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: '=',
-					message: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
-					options: {},
-					subject: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [464, 496],
-				name: 'Send Booking Confirmation',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: { parameters: { contextWindowLength: 10 }, position: [368, -128], name: 'Memory' },
 		}),
 	)
 	.add(

@@ -147,6 +147,44 @@ const wf = workflow('sgcKe5gsmJFdEAe3', 'ai-trend-email-alerter-weaviate', { exe
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: { model: 'anthropic/claude-3.7-sonnet', options: {} },
+							credentials: {
+								openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+							},
+							name: 'OpenRouter Chat Model1',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								autoFix: true,
+								jsonSchemaExample:
+									'{\n	"primary_category": "LLM Fine-tuning",\n	"secondary_categories": ["Parameter-Efficient Fine-tuning (PEFT)", "Data-centric AI"],\n    "potential_impact": 1\n}',
+							},
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+									version: 1,
+									config: {
+										parameters: { model: 'anthropic/claude-3.7-sonnet', options: {} },
+										credentials: {
+											openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+										},
+										name: 'OpenRouter Chat Model2',
+									},
+								}),
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
+				},
 				position: [1984, 752],
 				name: 'Enrich Articles with Topic Classification',
 			},
@@ -251,6 +289,78 @@ const wf = workflow('sgcKe5gsmJFdEAe3', 'ai-trend-email-alerter-weaviate', { exe
 				credentials: {
 					weaviateApi: { id: 'credential-id', name: 'weaviateApi Credential' },
 				},
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Embeddings OpenAI',
+						},
+					}),
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: {
+								options: {
+									metadata: {
+										metadataValues: [
+											{
+												name: 'arxiv_id',
+												value: "={{ $('Remove Fields').item.json.id }}",
+											},
+											{
+												name: 'published',
+												value: "={{ $('Remove Fields').item.json.published }}",
+											},
+											{
+												name: 'author',
+												value: "={{ $('Remove Fields').item.json.author }}",
+											},
+											{
+												name: 'title',
+												value: "={{ $('Remove Fields').item.json.title }}",
+											},
+											{
+												name: 'category',
+												value: "={{ $('Remove Fields').item.json.category }}",
+											},
+											{
+												name: 'primary_topic',
+												value: "={{ $('Remove Fields').item.json.primary_topic }}",
+											},
+											{
+												name: '=secondary_topics',
+												value: "={{ $('Remove Fields').item.json.secondary_topics }}",
+											},
+											{
+												name: 'potential_impact',
+												value: "={{ $('Remove Fields').item.json.potential_impact }}",
+											},
+										],
+									},
+								},
+								jsonData: "={{ $('Remove Fields').item.json.summary }}",
+								jsonMode: 'expressionData',
+							},
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
+									version: 1,
+									config: {
+										parameters: { options: {}, chunkSize: 2000 },
+										name: 'Recursive Character Text Splitter1',
+									},
+								}),
+							},
+							name: 'Default Data Loader',
+						},
+					}),
+				},
 				position: [3440, 752],
 				name: 'Weaviate Vector Store',
 			},
@@ -308,6 +418,73 @@ const wf = workflow('sgcKe5gsmJFdEAe3', 'ai-trend-email-alerter-weaviate', { exe
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: { sessionKey: 'sessionId', sessionIdType: 'customKey' },
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: {
+								model: 'anthropic/claude-3.7-sonnet',
+								options: { temperature: 2 },
+							},
+							credentials: {
+								openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+							},
+							name: 'OpenRouter Chat Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreWeaviate',
+							version: 1.2,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									options: {},
+									toolName: 'ArxivPapers',
+									toolDescription:
+										'This tool allows you to query the Weaviate Vector Store1 to retrieve arXiv article titles, summary and other metadata to be used as the sole data source performing a trend analysis. You must query the database to get information for the trend analysis.',
+									weaviateCollection: { __rl: true, mode: 'id', value: 'ArxivArticles' },
+								},
+								credentials: {
+									weaviateApi: { id: 'credential-id', name: 'weaviateApi Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI1',
+										},
+									}),
+								},
+								name: 'Weaviate Vector Store1',
+							},
+						}),
+					],
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample: '{\n  "subject":"...",\n  "body":"..."\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
 				},
 				position: [48, 1584],
 				name: 'Agentic RAG for Trend Analysis',
@@ -372,202 +549,6 @@ const wf = workflow('sgcKe5gsmJFdEAe3', 'ai-trend-email-alerter-weaviate', { exe
 				credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
 				position: [1520, 1584],
 				name: 'Send email',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: { sessionKey: 'sessionId', sessionIdType: 'customKey' },
-				position: [976, 2368],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [3328, 1072],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: {
-					model: 'anthropic/claude-3.7-sonnet',
-					options: { temperature: 2 },
-				},
-				credentials: {
-					openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
-				},
-				position: [816, 2368],
-				name: 'OpenRouter Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [64, 2432],
-				name: 'Embeddings OpenAI1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreWeaviate',
-			version: 1.2,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					options: {},
-					toolName: 'ArxivPapers',
-					toolDescription:
-						'This tool allows you to query the Weaviate Vector Store1 to retrieve arXiv article titles, summary and other metadata to be used as the sole data source performing a trend analysis. You must query the database to get information for the trend analysis.',
-					weaviateCollection: { __rl: true, mode: 'id', value: 'ArxivArticles' },
-				},
-				credentials: {
-					weaviateApi: { id: 'credential-id', name: 'weaviateApi Credential' },
-				},
-				position: [80, 2288],
-				name: 'Weaviate Vector Store1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter',
-			version: 1,
-			config: {
-				parameters: { options: {}, chunkSize: 2000 },
-				position: [3552, 1184],
-				name: 'Recursive Character Text Splitter1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: {
-				parameters: {
-					options: {
-						metadata: {
-							metadataValues: [
-								{
-									name: 'arxiv_id',
-									value: "={{ $('Remove Fields').item.json.id }}",
-								},
-								{
-									name: 'published',
-									value: "={{ $('Remove Fields').item.json.published }}",
-								},
-								{
-									name: 'author',
-									value: "={{ $('Remove Fields').item.json.author }}",
-								},
-								{
-									name: 'title',
-									value: "={{ $('Remove Fields').item.json.title }}",
-								},
-								{
-									name: 'category',
-									value: "={{ $('Remove Fields').item.json.category }}",
-								},
-								{
-									name: 'primary_topic',
-									value: "={{ $('Remove Fields').item.json.primary_topic }}",
-								},
-								{
-									name: '=secondary_topics',
-									value: "={{ $('Remove Fields').item.json.secondary_topics }}",
-								},
-								{
-									name: 'potential_impact',
-									value: "={{ $('Remove Fields').item.json.potential_impact }}",
-								},
-							],
-						},
-					},
-					jsonData: "={{ $('Remove Fields').item.json.summary }}",
-					jsonMode: 'expressionData',
-				},
-				position: [3440, 1072],
-				name: 'Default Data Loader',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample: '{\n  "subject":"...",\n  "body":"..."\n}',
-				},
-				position: [1136, 2368],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { model: 'anthropic/claude-3.7-sonnet', options: {} },
-				credentials: {
-					openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
-				},
-				position: [1952, 1088],
-				name: 'OpenRouter Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { model: 'anthropic/claude-3.7-sonnet', options: {} },
-				credentials: {
-					openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
-				},
-				position: [2288, 1232],
-				name: 'OpenRouter Chat Model2',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					autoFix: true,
-					jsonSchemaExample:
-						'{\n	"primary_category": "LLM Fine-tuning",\n	"secondary_categories": ["Parameter-Efficient Fine-tuning (PEFT)", "Data-centric AI"],\n    "potential_impact": 1\n}',
-				},
-				position: [2224, 1088],
-				name: 'Structured Output Parser1',
 			},
 		}),
 	)

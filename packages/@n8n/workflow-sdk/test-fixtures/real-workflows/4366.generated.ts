@@ -32,6 +32,270 @@ const wf = workflow('leftLsw8mj6dIDBp', '[AOE]  Inbox & Calendar Management Agen
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									messageId: "={{ $fromAI('Message_ID', ``, 'string') }}",
+									operation: 'delete',
+									descriptionType: 'manual',
+									toolDescription:
+										'Call the Gmail API to delete an email. Always request the email message id before calling this tool.',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Delete an email',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									limit:
+										'={{ $fromAI("limit", "The maximal number of mails to receive.", "number") }}',
+									filters: { q: 'in:inbox' },
+									operation: 'getAll',
+									descriptionType: 'manual',
+									toolDescription: 'Consume the Gmail API to get the last emails',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Get last emails',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									limit: "={{ $fromAI('limit','the amount of event',\"number\") }}",
+									options: {},
+									timeMax:
+										"={{ $fromAI('end','end date in format \"2017-07-01T13:00:00+02:00\"') }}",
+									timeMin:
+										"={{ $fromAI('start','start date in format \"2017-07-01T13:00:00+02:00\"') }}",
+									calendar: {
+										__rl: true,
+										mode: 'list',
+										value: 'user@example.com',
+										cachedResultName: 'user@example.com',
+									},
+									operation: 'getAll',
+									descriptionType: 'manual',
+									toolDescription:
+										'Consume Google Calendar API to receive a list of calendar events between "start" and "end". Make sure to pass datetime.',
+								},
+								credentials: {
+									googleCalendarOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleCalendarOAuth2Api Credential',
+									},
+								},
+								name: 'Get calendar events',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleCalendarTool',
+							version: 1.3,
+							config: {
+								parameters: {
+									end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+									start:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+									calendar: {
+										__rl: true,
+										mode: 'list',
+										value: 'user@example.com',
+										cachedResultName: 'user@example.com',
+									},
+									descriptionType: 'manual',
+									toolDescription:
+										'Consume Google Calendar API to add a new event or meeting to the calender',
+									additionalFields: {
+										summary:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
+										description:
+											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+									},
+								},
+								credentials: {
+									googleCalendarOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleCalendarOAuth2Api Credential',
+									},
+								},
+								name: 'Add an calender entry',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									message:
+										"={{ $fromAI('Message', `The Text that should be send in reply`, 'string') }}",
+									options: {
+										sendTo:
+											"={{ $fromAI('To_Email', `The email adress of the sender`, 'string') }}",
+									},
+									subject: "={{ $fromAI('Subject', ``, 'string') }}",
+									resource: 'draft',
+									descriptionType: 'manual',
+									toolDescription: 'Call Gmail API to create a New outgoing Draft message.',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Create an New Email Draft',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									messageId:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}",
+									operation: 'get',
+									descriptionType: 'manual',
+									toolDescription: 'Consume the Gmail API to receive an email by message-id',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Get an email by MessageID',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.dateTimeTool',
+							version: 2,
+							config: {
+								parameters: {
+									date: "={{ $fromAI('Date', ``, 'string') }}",
+									format: 'custom',
+									options: {},
+									operation: 'formatDate',
+									customFormat: 'EEEE dd MM ',
+									descriptionType: 'manual',
+									outputFieldName: '=formattedDate',
+									toolDescription:
+										'Formats the date in the name of the day of the week. Always use this before you output weekdays.',
+								},
+								name: 'Determine the name of the day of the week',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									message:
+										"={{ $fromAI('Message', `The Text that should be send in reply`, 'string') }}",
+									options: {
+										sendTo:
+											"={{ $fromAI('To_Email', `The email adress of the sender`, 'string') }}",
+										threadId:
+											"={{ $fromAI('thread-ID', `The ID of the thread. Need to be received from the Email Tool Response. Use the exact ID and better call the Get Email Tool again`, 'string') }}",
+									},
+									subject:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+									resource: 'draft',
+									descriptionType: 'manual',
+									toolDescription:
+										'Call Gmail API to create a Draft message as Reply To an existing email or email thread. Pass the correct Thread-Id of the message. To get the Thread ID call the Get Email Tool before.',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Create an Email Draft as response to a thread',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolVectorStore',
+							version: 1.1,
+							config: {
+								parameters: {
+									description:
+										'Can answer questions and do research in previous email conversations. Use this tool whenever you need more context about past conversations to an email. \nFor better retrieval and more context always pass the email-adresses to the query!\n',
+								},
+								subnodes: {
+									model: languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.2,
+										config: {
+											parameters: {
+												model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+												options: {},
+											},
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'OpenAI Chat Model1',
+										},
+									}),
+									vectorStore: vectorStore({
+										type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+										version: 1.1,
+										config: {
+											subnodes: {
+												embedding: embedding({
+													type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+													version: 1.2,
+													config: {
+														parameters: { options: {} },
+														credentials: {
+															openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+														},
+														name: 'Embeddings OpenAI1',
+													},
+												}),
+											},
+											name: 'Threads History Vector Store',
+										},
+									}),
+								},
+								name: 'Research context and infos in previous conversations',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('sessionId-master').item.json.sessionId }}",
+								sessionIdType: 'customKey',
+								contextWindowLength: 10,
+							},
+							name: 'Window Buffer Memory',
+						},
+					}),
+				},
 				position: [1060, 240],
 				name: 'EMail Agent',
 			},
@@ -111,6 +375,42 @@ const wf = workflow('leftLsw8mj6dIDBp', '[AOE]  Inbox & Calendar Management Agen
 			version: 1.1,
 			config: {
 				parameters: { mode: 'insert', clearStore: true },
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Embeddings OpenAI',
+						},
+					}),
+					documentLoader: documentLoader({
+						type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+						version: 1,
+						config: {
+							parameters: {
+								options: {
+									metadata: {
+										metadataValues: [{ name: 'threadId', value: '={{ $json.id }}' }],
+									},
+								},
+								jsonData: '={{ $json.emailSummary }}',
+								jsonMode: 'expressionData',
+							},
+							subnodes: {
+								textSplitter: textSplitter({
+									type: '@n8n/n8n-nodes-langchain.textSplitterTokenSplitter',
+									version: 1,
+									config: { parameters: { chunkSize: 2000 }, name: 'Token Splitter' },
+								}),
+							},
+							name: 'Default Data Loader',
+						},
+					}),
+				},
 				position: [2900, -560],
 				name: 'Write - Threads History Vector Store',
 			},
@@ -153,6 +453,27 @@ const wf = workflow('leftLsw8mj6dIDBp', '[AOE]  Inbox & Calendar Management Agen
 							},
 						],
 					},
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1-mini',
+									cachedResultName: 'gpt-4.1-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model2',
+						},
+					}),
 				},
 				position: [560, -680],
 				name: 'Classify Emails',
@@ -199,361 +520,25 @@ const wf = workflow('leftLsw8mj6dIDBp', '[AOE]  Inbox & Calendar Management Agen
 	)
 	.add(
 		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [720, 420],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('sessionId-master').item.json.sessionId }}",
-					sessionIdType: 'customKey',
-					contextWindowLength: 10,
-				},
-				position: [880, 420],
-				name: 'Window Buffer Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					limit: '={{ $fromAI("limit", "The maximal number of mails to receive.", "number") }}',
-					filters: { q: 'in:inbox' },
-					operation: 'getAll',
-					descriptionType: 'manual',
-					toolDescription: 'Consume the Gmail API to get the last emails',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [540, 760],
-				name: 'Get last emails',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					limit: "={{ $fromAI('limit','the amount of event',\"number\") }}",
-					options: {},
-					timeMax: "={{ $fromAI('end','end date in format \"2017-07-01T13:00:00+02:00\"') }}",
-					timeMin: "={{ $fromAI('start','start date in format \"2017-07-01T13:00:00+02:00\"') }}",
-					calendar: {
-						__rl: true,
-						mode: 'list',
-						value: 'user@example.com',
-						cachedResultName: 'user@example.com',
-					},
-					operation: 'getAll',
-					descriptionType: 'manual',
-					toolDescription:
-						'Consume Google Calendar API to receive a list of calendar events between "start" and "end". Make sure to pass datetime.',
-				},
-				credentials: {
-					googleCalendarOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleCalendarOAuth2Api Credential',
-					},
-				},
-				position: [1160, 800],
-				name: 'Get calendar events',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2780, -240],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
 			type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
 			version: 1.1,
 			config: {
 				parameters: { mode: 'load', topK: 100, prompt: 'workshop' },
+				subnodes: {
+					embedding: embedding({
+						type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Embeddings OpenAI',
+						},
+					}),
+				},
 				position: [2820, -760],
 				name: 'Read- Threads History Vector Store',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.textSplitterTokenSplitter',
-			version: 1,
-			config: { parameters: { chunkSize: 2000 }, position: [3040, -240], name: 'Token Splitter' },
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
-			version: 1,
-			config: {
-				parameters: {
-					options: {
-						metadata: {
-							metadataValues: [{ name: 'threadId', value: '={{ $json.id }}' }],
-						},
-					},
-					jsonData: '={{ $json.emailSummary }}',
-					jsonMode: 'expressionData',
-				},
-				position: [3020, -380],
-				name: 'Default Data Loader',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1800, 960],
-				name: 'Embeddings OpenAI1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
-			version: 1.1,
-			config: { position: [1780, 780], name: 'Threads History Vector Store' },
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolVectorStore',
-			version: 1.1,
-			config: {
-				parameters: {
-					description:
-						'Can answer questions and do research in previous email conversations. Use this tool whenever you need more context about past conversations to an email. \nFor better retrieval and more context always pass the email-adresses to the query!\n',
-				},
-				position: [1840, 560],
-				name: 'Research context and infos in previous conversations',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2080, 760],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					messageId: "={{ $fromAI('Message_ID', ``, 'string') }}",
-					operation: 'delete',
-					descriptionType: 'manual',
-					toolDescription:
-						'Call the Gmail API to delete an email. Always request the email message id before calling this tool.',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [900, 780],
-				name: 'Delete an email',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					message: "={{ $fromAI('Message', `The Text that should be send in reply`, 'string') }}",
-					options: {
-						sendTo: "={{ $fromAI('To_Email', `The email adress of the sender`, 'string') }}",
-						threadId:
-							"={{ $fromAI('thread-ID', `The ID of the thread. Need to be received from the Email Tool Response. Use the exact ID and better call the Get Email Tool again`, 'string') }}",
-					},
-					subject: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-					resource: 'draft',
-					descriptionType: 'manual',
-					toolDescription:
-						'Call Gmail API to create a Draft message as Reply To an existing email or email thread. Pass the correct Thread-Id of the message. To get the Thread ID call the Get Email Tool before.',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [580, 920],
-				name: 'Create an Email Draft as response to a thread',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					message: "={{ $fromAI('Message', `The Text that should be send in reply`, 'string') }}",
-					options: {
-						sendTo: "={{ $fromAI('To_Email', `The email adress of the sender`, 'string') }}",
-					},
-					subject: "={{ $fromAI('Subject', ``, 'string') }}",
-					resource: 'draft',
-					descriptionType: 'manual',
-					toolDescription: 'Call Gmail API to create a New outgoing Draft message.',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [740, 760],
-				name: 'Create an New Email Draft',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleCalendarTool',
-			version: 1.3,
-			config: {
-				parameters: {
-					end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
-					start: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
-					calendar: {
-						__rl: true,
-						mode: 'list',
-						value: 'user@example.com',
-						cachedResultName: 'user@example.com',
-					},
-					descriptionType: 'manual',
-					toolDescription:
-						'Consume Google Calendar API to add a new event or meeting to the calender',
-					additionalFields: {
-						summary:
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
-						description:
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
-					},
-				},
-				credentials: {
-					googleCalendarOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleCalendarOAuth2Api Credential',
-					},
-				},
-				position: [1360, 800],
-				name: 'Add an calender entry',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-mini',
-						cachedResultName: 'gpt-4.1-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [560, -300],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					messageId:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}",
-					operation: 'get',
-					descriptionType: 'manual',
-					toolDescription: 'Consume the Gmail API to receive an email by message-id',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [800, 940],
-				name: 'Get an email by MessageID',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.dateTimeTool',
-			version: 2,
-			config: {
-				parameters: {
-					date: "={{ $fromAI('Date', ``, 'string') }}",
-					format: 'custom',
-					options: {},
-					operation: 'formatDate',
-					customFormat: 'EEEE dd MM ',
-					descriptionType: 'manual',
-					outputFieldName: '=formattedDate',
-					toolDescription:
-						'Formats the date in the name of the day of the week. Always use this before you output weekdays.',
-				},
-				position: [1240, 960],
-				name: 'Determine the name of the day of the week',
 			},
 		}),
 	)

@@ -171,6 +171,22 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: { temperature: 0.5 },
+								modelName: 'models/gemini-2.0-flash',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'LLM - Gemini Security Summarizer',
+						},
+					}),
+				},
 				position: [-720, 3520],
 				name: 'AI Agent - Security Intelligence',
 			},
@@ -363,6 +379,22 @@ const wf = workflow(
 							'=### ✅ Prompt 3: Compliance Intelligence Digest Generator\n\nYou are a senior compliance and risk intelligence professional with over 20 years of experience. Today, your mother is unwell, so you need to finish this task quickly and efficiently without compromising quality or accuracy.\n\n#### **Inputs:**\n\n* Raw newsletter subject: `{{ $json.subject }}`\n* Raw newsletter HTML body: `{{ $json.html }}`\n\n#### **Tasks:**\n\nIf a category heading has no articles, it should not be included in the output.\n\n1. Parse the HTML and extract article data.\n2. De-duplicate articles.\n3. Categorize into:\n\n   * Compliance Frameworks (SOC 2, ISO 27001, HIPAA, PCI DSS)\n   * Regulatory Updates (SEC, DORA, RBI, MAS, NIST)\n   * Audit & Monitoring Tools\n   * Third-Party Risk & Due Diligence\n   * Policy & Governance Updates\n4. Summarize each item concisely.\n5. Dynamically identify and list critical compliance alerts. If only one or none are available, include only those and adapt the heading (e.g., \'Critical Compliance Alert\').\n6. Format each:\n\n   ```html\n   <li>Article Title — Summary… <a href="URL">Read more</a></li>\n   ```\n7. Output HTML with top 5 and categorized sections.\n8. Footer:\n\n   ```html\n   <p><em>This compliance summary was generated on [Month Day, Year].</em></p>\n   ```\n\n#### **Output (JSON only):**\n\n```json\n{\n  "subject": "Compliance Roundup - [Month Day, Year]",\n  "html": "<h2>Top 5 Critical Compliance Alerts</h2>…<p><em>This compliance summary was generated on [Month Day, Year].</em></p>"\n}\n```',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: { temperature: 0.5 },
+								modelName: 'models/gemini-2.0-flash',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'LLM - Gemini Compliance Summarizer',
+						},
+					}),
 				},
 				position: [-740, 4840],
 				name: 'AI Agent - Compliance Intelligence',
@@ -557,6 +589,22 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: { temperature: 0.5 },
+								modelName: 'models/gemini-2.0-flash',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'LLM - Gemini Privacy Summarizer',
+						},
+					}),
+				},
 				position: [-740, 4180],
 				name: 'AI Agent - Privacy Intelligence',
 			},
@@ -592,57 +640,6 @@ const wf = workflow(
 				},
 				position: [-140, 4280],
 				name: 'Privacy Send Final Digest Email',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: { temperature: 0.5 },
-					modelName: 'models/gemini-2.0-flash',
-				},
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-640, 3740],
-				name: 'LLM - Gemini Security Summarizer',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: { temperature: 0.5 },
-					modelName: 'models/gemini-2.0-flash',
-				},
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-660, 4400],
-				name: 'LLM - Gemini Privacy Summarizer',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: { temperature: 0.5 },
-					modelName: 'models/gemini-2.0-flash',
-				},
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-640, 5060],
-				name: 'LLM - Gemini Compliance Summarizer',
 			},
 		}),
 	)

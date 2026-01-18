@@ -178,6 +178,34 @@ const wf = workflow('', '')
 					options: { systemMessage: '', returnIntermediateSteps: true },
 					promptType: 'define',
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+						version: 1.3,
+						config: {
+							parameters: {
+								tableName: 'chat_histories',
+								sessionKey: '={{ $json.chat_id }}',
+								sessionIdType: 'customKey',
+							},
+							credentials: {
+								postgres: { id: 'credential-id', name: 'postgres Credential' },
+							},
+							name: 'Postgres Chat Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [3776, 688],
 				name: 'AI Agent1',
 			},
@@ -2300,20 +2328,6 @@ const wf = workflow('', '')
 	)
 	.add(
 		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [3728, 896],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
 			config: {
@@ -2326,24 +2340,6 @@ const wf = workflow('', '')
 				},
 				position: [784, 1152],
 				name: 'Typing…',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-			version: 1.3,
-			config: {
-				parameters: {
-					tableName: 'chat_histories',
-					sessionKey: '={{ $json.chat_id }}',
-					sessionIdType: 'customKey',
-				},
-				credentials: {
-					postgres: { id: 'credential-id', name: 'postgres Credential' },
-				},
-				position: [3872, 896],
-				name: 'Postgres Chat Memory',
 			},
 		}),
 	)

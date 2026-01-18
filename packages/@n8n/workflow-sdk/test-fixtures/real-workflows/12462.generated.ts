@@ -3446,6 +3446,30 @@ const wf = workflow(
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'HUbsD20wv3CFr7gN', name: 'OpenAi account' },
+							},
+							name: 'LLM: OpenAI Chat',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: { jsonSchemaExample: '{\n	"image_prompt": "string"\n}' },
+							name: 'LLM: Structured Output Parser',
+						},
+					}),
+				},
 				position: [2704, 288],
 				name: 'Generate Image Prompt',
 			},
@@ -3879,34 +3903,6 @@ const wf = workflow(
 				},
 				position: [3056, 896],
 				name: 'Update database',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: { jsonSchemaExample: '{\n	"image_prompt": "string"\n}' },
-				position: [2880, 480],
-				name: 'LLM: Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'HUbsD20wv3CFr7gN', name: 'OpenAi account' },
-				},
-				position: [2656, 480],
-				name: 'LLM: OpenAI Chat',
 			},
 		}),
 	)

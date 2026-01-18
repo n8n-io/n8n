@@ -24,6 +24,129 @@ const wf = workflow('OvYZQiWH2KlJsFbK', 'Multi-Agent Evaluation (eval nodes)', {
 						returnIntermediateSteps: true,
 					},
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.vectorStoreQdrant',
+							version: 1.3,
+							config: {
+								parameters: {
+									mode: 'retrieve-as-tool',
+									options: {},
+									toolDescription: 'Retrievel relevant results',
+									qdrantCollection: {
+										__rl: true,
+										mode: 'list',
+										value: 'search_queries',
+										cachedResultName: 'search_queries',
+									},
+								},
+								credentials: {
+									qdrantApi: { id: 'credential-id', name: 'qdrantApi Credential' },
+								},
+								subnodes: {
+									embedding: embedding({
+										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+										version: 1.2,
+										config: {
+											parameters: { options: {} },
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'Embeddings OpenAI',
+										},
+									}),
+								},
+								name: 'Search_db',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							version: 1,
+							config: { name: 'Calculator' },
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.2,
+							config: {
+								parameters: {
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'fehTbkLtPtlVwDYq',
+										cachedResultName: 'Summarizer Agent',
+									},
+									description: 'Call this tool to summarize the outputs. ',
+									workflowInputs: {
+										value: {
+											query:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('query', ``, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'query',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'query',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['query'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Summarizer',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://api.firecrawl.dev/v1/search',
+									method: 'POST',
+									options: {},
+									sendBody: true,
+									sendHeaders: true,
+									authentication: 'genericCredentialType',
+									bodyParameters: {
+										parameters: [
+											{
+												name: 'query',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}",
+											},
+											{ name: 'limit', value: '={{ "3".toNumber() }}' },
+										],
+									},
+									genericAuthType: 'httpBearerAuth',
+									headerParameters: {
+										parameters: [{ name: 'content-type', value: 'application/json' }],
+									},
+								},
+								credentials: {
+									httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
+								},
+								name: 'Web search',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						version: 1,
+						config: {
+							parameters: { model: 'openai/o3', options: {} },
+							credentials: {
+								openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+							},
+							name: 'OpenRouter Chat Model',
+						},
+					}),
+				},
 				position: [-380, -60],
 				name: 'Search Agent',
 			},
@@ -193,139 +316,6 @@ const wf = workflow('OvYZQiWH2KlJsFbK', 'Multi-Agent Evaluation (eval nodes)', {
 				},
 				position: [-760, -160],
 				name: 'Match chat format',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolCalculator',
-			version: 1,
-			config: { position: [-420, 160], name: 'Calculator' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.2,
-			config: {
-				parameters: {
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'fehTbkLtPtlVwDYq',
-						cachedResultName: 'Summarizer Agent',
-					},
-					description: 'Call this tool to summarize the outputs. ',
-					workflowInputs: {
-						value: {
-							query: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('query', ``, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'query',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'query',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['query'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [-300, 160],
-				name: 'Summarizer',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.firecrawl.dev/v1/search',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendHeaders: true,
-					authentication: 'genericCredentialType',
-					bodyParameters: {
-						parameters: [
-							{
-								name: 'query',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}",
-							},
-							{ name: 'limit', value: '={{ "3".toNumber() }}' },
-						],
-					},
-					genericAuthType: 'httpBearerAuth',
-					headerParameters: {
-						parameters: [{ name: 'content-type', value: 'application/json' }],
-					},
-				},
-				credentials: {
-					httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
-				},
-				position: [-180, 160],
-				name: 'Web search',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-			version: 1,
-			config: {
-				parameters: { model: 'openai/o3', options: {} },
-				credentials: {
-					openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
-				},
-				position: [-540, 160],
-				name: 'OpenRouter Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [28, 360],
-				name: 'Embeddings OpenAI',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.vectorStoreQdrant',
-			version: 1.3,
-			config: {
-				parameters: {
-					mode: 'retrieve-as-tool',
-					options: {},
-					toolDescription: 'Retrievel relevant results',
-					qdrantCollection: {
-						__rl: true,
-						mode: 'list',
-						value: 'search_queries',
-						cachedResultName: 'search_queries',
-					},
-				},
-				credentials: {
-					qdrantApi: { id: 'credential-id', name: 'qdrantApi Credential' },
-				},
-				position: [-60, 160],
-				name: 'Search_db',
 			},
 		}),
 	);

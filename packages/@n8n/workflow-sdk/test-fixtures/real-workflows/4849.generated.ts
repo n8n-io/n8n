@@ -504,6 +504,30 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "nombre_proveedor": "Blockies Corporation",\n  "ruc_proveedor": "78787878-7",\n  "direccion_proveedor": "AV. DE LAS ARTES NORTE NRO. 310 (ESPALDA RAMBLA DE JAVIER PRADO) LIMA - LIMA - SAN BORJA",\n  "numero_factura": "00003",\n  "fecha_emision": "2025-04-15",\n  "detalle_productos": [\n    {\n      "codigo": "srv001",\n      "descripcion": "Servicio de Alquiler de Montacargas",\n      "cantidad": 1,\n      "precio": 35.00,\n      "subtotal": 35.00\n    }\n  ],\n  "subtotal_factura": 35.00,\n  "descuento_factura": 0.00,\n  "total_neto": 35.00\n}',
+							},
+							name: 'Structured Output Parser (Example)',
+						},
+					}),
+				},
 				position: [1840, -100],
 				name: 'Basic LLM Chain',
 			},
@@ -669,34 +693,6 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
 			config: { parameters: { amount: 3 }, position: [1620, 100], name: 'Wait' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				position: [1840, 80],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "nombre_proveedor": "Blockies Corporation",\n  "ruc_proveedor": "78787878-7",\n  "direccion_proveedor": "AV. DE LAS ARTES NORTE NRO. 310 (ESPALDA RAMBLA DE JAVIER PRADO) LIMA - LIMA - SAN BORJA",\n  "numero_factura": "00003",\n  "fecha_emision": "2025-04-15",\n  "detalle_productos": [\n    {\n      "codigo": "srv001",\n      "descripcion": "Servicio de Alquiler de Montacargas",\n      "cantidad": 1,\n      "precio": 35.00,\n      "subtotal": 35.00\n    }\n  ],\n  "subtotal_factura": 35.00,\n  "descuento_factura": 0.00,\n  "total_neto": 35.00\n}',
-				},
-				position: [2060, 60],
-				name: 'Structured Output Parser (Example)',
-			},
 		}),
 	)
 	.add(

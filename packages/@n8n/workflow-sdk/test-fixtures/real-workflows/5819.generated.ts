@@ -33,36 +33,111 @@ const wf = workflow('', '')
 							"<role>\nYou are the n8n Demo AI Agent, a friendly and helpful assistant designed to showcase the power of AI agents within the n8n automation platform. You were created by Lucas Peyrin as part of the \"Your First AI Agent\" template. Your personality is encouraging, slightly educational, and enthusiastic about automation. Your primary function is to demonstrate your capabilities by using your available tools to answer user questions and fulfill their requests. You also frequently mention the other templates from https://n8n.io/creators/lucaspeyrin and push forward forms to give feedback, asking if they would like coaching or consulting.\n</role>\n\n<instructions>\n<goal>\nYour primary goal is to act as a live demonstration of an AI Agent built with n8n. You will interact with users, answer their questions by intelligently using your available tools, and explain the concepts behind AI agents to help them understand their potential. You should also guide them towards further learning and feedback opportunities provided by the template's creator, Lucas Peyrin.\n</goal>\n\n<context>\n### How I Work\nI am an AI model operating within a simple n8n workflow. This workflow gives me two key things:\n1.  **A set of tools:** These are functions I can call to get information or perform actions.\n2.  **Simple Memory:** I can remember the immediate past of our current conversation to understand context.\n\n### My Purpose\nMy main purpose is to be a showcase. I demonstrate how you can give a chat interface to various functions (my tools) without needing complex UIs. This is a great way to make powerful automations accessible to anyone through simple conversation.\n\n### My Available Tools\nYou must choose one of these tools if the user's request matches its capability. You cannot perform these actions yourself; you must call the tool.\n- **get_a_joke**: Use this when the user asks for a joke.\n- **days_from_now**: Use this to calculate a future date. It requires a number of days as input.\n- **wikipedia**: Use this to search for a summary of a topic on Wikipedia.\n- **create_password**: Use this to generate a strong, random password.\n- **calculate_loan_payment**: Use this to calculate a monthly loan payment. It requires the principal amount, the annual interest rate (e.g., 5 for 5%), and the loan term in years.\n- **n8n_blog_rss_feed**: Use this to fetch the latest articles from the official n8n blog.\n\n### About AI Agents in n8n\n- **Reliability:** While I can use one tool at a time effectively, more advanced agents can perform multi-step tasks. However, for complex, mission-critical processes, it's often more reliable to build structured, step-by-step workflows in n8n rather than relying solely on an agent's reasoning. Agents are fantastic for user-facing interactions, but structured workflows are king for backend reliability.\n- **Best Practices:** A good practice is to keep an agent's toolset focused, typically around 10-15 tools, to ensure reliability and prevent confusion.\n\n### Important Information & Next Steps\nIf the user expresses thanks, asks how they can learn more, or asks for help, you should present the following information from the template's creator, Lucas Peyrin. Here is Lucas' creator link that contains all of his templates that are focused on core n8n skills : [More n8n Templates](https://n8n.io/creators/lucaspeyrin)\n\n**Was this helpful? Let me know!**\nYour feedback is incredibly valuable. You can share your thoughts using this form:\n[Give Feedback about this Template](https://api.ia2s.app/form/templates/feedback?template=First%20AI%20Agent)\n\n**Ready to Build Something Great?**\n- **n8n Coaching:** To master n8n with one-on-one sessions, book a session here: [Get Personalized n8n Coaching](https://api.ia2s.app/form/templates/coaching?template=First%20AI%20Agent)\n- **n8n Consulting:** For complex projects and custom workflows, inquire about consulting services here: [Get an Expert to do my n8n Project](https://api.ia2s.app/form/templates/consulting?template=First%20AI%20Agent)\n</context>\n\n<output_format>\n- Respond in a friendly, conversational, and helpful tone.\n- When a user's request requires a tool, first select the appropriate tool. Then, present the result of the tool's execution to the user in a clear and understandable way.\n- Be proactive. If the user is unsure what to do, suggest some examples of what they can ask you based on your available tools (e.g., Talk about your tools and what you know about yourself).\n- When appropriate, seamlessly integrate the \"Important Information & Next Steps\" into your response.\n</output_format>\n</instructions>",
 					},
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: { temperature: 0 },
+								modelName: 'models/gemini-2.5-flash',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Gemini',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWikipedia',
+							version: 1,
+							config: { name: 'wikipedia' },
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw,religious,political,racist,sexist,explicit&type=single',
+									fields: 'joke',
+									options: {},
+									fieldsToInclude: 'selected',
+									toolDescription: 'Gets a joke from the jokeapi.',
+									optimizeResponse: true,
+								},
+								name: 'get_a_joke',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.dateTimeTool',
+							version: 2,
+							config: {
+								parameters: {
+									endDate:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End_Date', `Put the date to compare with now here.`, 'string') }}",
+									options: {},
+									operation: 'getTimeBetweenDates',
+									startDate: '={{ $now }}',
+									descriptionType: 'manual',
+									outputFieldName: 'now_day_difference',
+									toolDescription: 'Gets the difference (in days) between now and a set date.',
+								},
+								name: 'days_from_now',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.cryptoTool',
+							version: 1,
+							config: {
+								parameters: {
+									action: 'generate',
+									encodingType: 'base64',
+									stringLength:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Length', `Usually 8 to 16 works well.`, 'number') }}",
+									toolDescription: 'Generate a secure Password.',
+									dataPropertyName: 'password',
+								},
+								name: 'create_password',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.rssFeedReadTool',
+							version: 1.2,
+							config: {
+								parameters: {
+									url: 'https://n8n.io/blog/rss',
+									options: {},
+									toolDescription: 'Gets the latest n8n blog posts.',
+								},
+								name: 'n8n_blog_rss_feed',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolCode',
+							version: 1.3,
+							config: {
+								parameters: {
+									jsCode:
+										'const principal = query.loan_amount;\nconst annualRate = query.annual_rate;\nconst years = query.term_years;\n\n// Convert annual rate percentage to a monthly decimal rate\nconst monthlyRate = (annualRate / 100) / 12;\n// Convert years to total number of payments\nconst numberOfPayments = years * 12;\n\nif (principal <= 0 || annualRate <= 0 || years <= 0) {\n  return { error: "Loan amount, interest rate, and term must be positive numbers." };\n}\n\n// Amortization formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]\nconst monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);\n\nconst result = {\n  monthly_payment: monthlyPayment.toFixed(2), // Format to 2 decimal places for currency\n  total_paid: (monthlyPayment * numberOfPayments).toFixed(2),\n  total_interest: ((monthlyPayment * numberOfPayments) - principal).toFixed(2)\n};\n\nreturn JSON.stringify(result);',
+									description:
+										'Calculates the fixed monthly payment for a loan using the standard amortization formula. Requires the total loan amount, the annual interest rate as a percentage (e.g., 5 for 5%), and the loan term in years.',
+									jsonSchemaExample:
+										'{\n	"loan_amount": 250000,\n    "annual_rate": 6.5,\n    "term_years": 30\n}',
+									specifyInputSchema: true,
+								},
+								name: 'calculate_loan_payment',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { parameters: { contextWindowLength: 30 }, name: 'Simple Memory' },
+					}),
+				},
 				position: [560, -40],
 				name: 'Your First AI Agent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: { contextWindowLength: 30 },
-				position: [380, 480],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: { temperature: 0 },
-					modelName: 'models/gemini-2.5-flash',
-				},
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [20, 480],
-				name: 'Gemini',
 			},
 		}),
 	)
@@ -77,103 +152,6 @@ const wf = workflow('', '')
 				},
 				position: [-120, 480],
 				name: 'OpenAI',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw,religious,political,racist,sexist,explicit&type=single',
-					fields: 'joke',
-					options: {},
-					fieldsToInclude: 'selected',
-					toolDescription: 'Gets a joke from the jokeapi.',
-					optimizeResponse: true,
-				},
-				position: [740, 480],
-				name: 'get_a_joke',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.dateTimeTool',
-			version: 2,
-			config: {
-				parameters: {
-					endDate:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End_Date', `Put the date to compare with now here.`, 'string') }}",
-					options: {},
-					operation: 'getTimeBetweenDates',
-					startDate: '={{ $now }}',
-					descriptionType: 'manual',
-					outputFieldName: 'now_day_difference',
-					toolDescription: 'Gets the difference (in days) between now and a set date.',
-				},
-				position: [880, 480],
-				name: 'days_from_now',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWikipedia',
-			version: 1,
-			config: { position: [1020, 480], name: 'wikipedia' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.cryptoTool',
-			version: 1,
-			config: {
-				parameters: {
-					action: 'generate',
-					encodingType: 'base64',
-					stringLength:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Length', `Usually 8 to 16 works well.`, 'number') }}",
-					toolDescription: 'Generate a secure Password.',
-					dataPropertyName: 'password',
-				},
-				position: [1160, 480],
-				name: 'create_password',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolCode',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsCode:
-						'const principal = query.loan_amount;\nconst annualRate = query.annual_rate;\nconst years = query.term_years;\n\n// Convert annual rate percentage to a monthly decimal rate\nconst monthlyRate = (annualRate / 100) / 12;\n// Convert years to total number of payments\nconst numberOfPayments = years * 12;\n\nif (principal <= 0 || annualRate <= 0 || years <= 0) {\n  return { error: "Loan amount, interest rate, and term must be positive numbers." };\n}\n\n// Amortization formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]\nconst monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);\n\nconst result = {\n  monthly_payment: monthlyPayment.toFixed(2), // Format to 2 decimal places for currency\n  total_paid: (monthlyPayment * numberOfPayments).toFixed(2),\n  total_interest: ((monthlyPayment * numberOfPayments) - principal).toFixed(2)\n};\n\nreturn JSON.stringify(result);',
-					description:
-						'Calculates the fixed monthly payment for a loan using the standard amortization formula. Requires the total loan amount, the annual interest rate as a percentage (e.g., 5 for 5%), and the loan term in years.',
-					jsonSchemaExample:
-						'{\n	"loan_amount": 250000,\n    "annual_rate": 6.5,\n    "term_years": 30\n}',
-					specifyInputSchema: true,
-				},
-				position: [1340, 480],
-				name: 'calculate_loan_payment',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.rssFeedReadTool',
-			version: 1.2,
-			config: {
-				parameters: {
-					url: 'https://n8n.io/blog/rss',
-					options: {},
-					toolDescription: 'Gets the latest n8n blog posts.',
-				},
-				position: [1520, 480],
-				name: 'n8n_blog_rss_feed',
 			},
 		}),
 	)

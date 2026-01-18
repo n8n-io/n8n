@@ -180,6 +180,30 @@ const wf = workflow('', 'YTB Metadata Generator', { executionOrder: 'v1' })
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						version: 1,
+						config: {
+							parameters: { model: 'mistral-large-latest', options: {} },
+							credentials: {
+								mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
+							},
+							name: 'Mistral Cloud Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'[\n  {\n    "name": "preview",\n    "type": "string",\n    "description": "Short preview (100–200 characters, no hashtags)"\n  },\n  {\n    "name": "timestamps",\n    "type": "string",\n    "description": "YouTube-style timestamps, each on a new line, starts with 00:00"\n  },\n  {\n    "name": "tags",\n    "type": "string",\n    "description": "Comma-separated keywords (no hashtags)"\n  }\n]\n',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [700, -200],
 				name: 'Generate Description',
 			},
@@ -245,34 +269,6 @@ const wf = workflow('', 'YTB Metadata Generator', { executionOrder: 'v1' })
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
 			config: { position: [-440, 120], name: 'No Operation, do nothing' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
-			version: 1,
-			config: {
-				parameters: { model: 'mistral-large-latest', options: {} },
-				credentials: {
-					mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
-				},
-				position: [700, -40],
-				name: 'Mistral Cloud Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'[\n  {\n    "name": "preview",\n    "type": "string",\n    "description": "Short preview (100–200 characters, no hashtags)"\n  },\n  {\n    "name": "timestamps",\n    "type": "string",\n    "description": "YouTube-style timestamps, each on a new line, starts with 00:00"\n  },\n  {\n    "name": "tags",\n    "type": "string",\n    "description": "Comma-separated keywords (no hashtags)"\n  }\n]\n',
-				},
-				position: [860, -40],
-				name: 'Structured Output Parser',
-			},
 		}),
 	)
 	.add(

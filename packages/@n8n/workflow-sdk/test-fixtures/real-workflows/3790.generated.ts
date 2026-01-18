@@ -458,6 +458,152 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Think' },
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2,
+							config: {
+								parameters: {
+									name: 'trends_analysis',
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'jnlklBcNkky9yFoc',
+										cachedResultName: 'trends_analysis',
+									},
+									description:
+										"Call this tool to get an analysis of a requested stock. It'll be obligatory to pass ticker.",
+									workflowInputs: {
+										value: {
+											ticker:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('ticker', ``, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'ticker',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'ticker',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'chart_style',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'chart_style',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Trends Analysis Tool',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2,
+							config: {
+								parameters: {
+									name: 'technical_analysis',
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'GDXsoM9kWq3cz53Y',
+										cachedResultName: 'technical_analysis',
+									},
+									description:
+										"Call this tool to get an analysis of a requested stock. It'll be obligatory to pass ticker.",
+									workflowInputs: {
+										value: {
+											ticker:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('ticker', ``, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'ticker',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'ticker',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'chart_style',
+												type: 'string',
+												display: true,
+												removed: true,
+												required: false,
+												displayName: 'chart_style',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Technical Analysis Tool',
+							},
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'GPT 4o',
+						},
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: { sessionKey: '=335458847', sessionIdType: 'customKey' },
+							name: 'Window Buffer Memory',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "stockSymbol": "סימול",\n  "analysisDate": "DD/MM/YYYY",\n  "recommendationClass": "positive/neutral/negative",\n  "recommendationTitle": "כותרת המלצה בעברית",\n  "recommendationText": "הסבר מפורט של ההמלצה בעברית",\n  "bullishCount": 0,\n  "neutralCount": 0, \n  "bearishCount": 0,\n  "bullishHeight": 0,\n  "neutralHeight": 0,\n  "bearishHeight": 0,\n  "overallSentiment": "חיובי/נייטרלי/שלילי",\n  "Recommendation": "ממליץ לקנות/ ממליץ לחכות/ ממליץ למכור",\n  "sentimentScore": 0.00,\n  "chartImageUrl": "URL_PLACEHOLDER",\n  "technicalAnalysis": "ניתוח טכני מפורט בעברית עם תגי <p>",\n  "topArticles": [\n    {\n      "title": "כותרת המאמר",\n      "url": "כתובת URL של המאמר",\n      "source": "שם המקור",\n      "date": "DD/MM/YYYY",\n      "sentimentClass": "bullish/neutral/bearish",\n      "sentimentHebrew": "חיובי-חזק/חיובי-חלש/נייטרלי/שלילי-חלש/שלילי-חזק"\n    }\n  ],\n  "hotTopics": [\n    {\n      "topic": "שם הנושא בעברית",\n      "article_count": 0,\n      "average_relevance": "0.00"\n    }\n  ]\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [1080, -100],
 				name: 'AI Agent',
 			},
@@ -544,165 +690,6 @@ const wf = workflow('', '')
 				credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
 				position: [2280, -100],
 				name: 'Send Stock Analysis',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: { sessionKey: '=335458847', sessionIdType: 'customKey' },
-				position: [1140, 140],
-				name: 'Window Buffer Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "stockSymbol": "סימול",\n  "analysisDate": "DD/MM/YYYY",\n  "recommendationClass": "positive/neutral/negative",\n  "recommendationTitle": "כותרת המלצה בעברית",\n  "recommendationText": "הסבר מפורט של ההמלצה בעברית",\n  "bullishCount": 0,\n  "neutralCount": 0, \n  "bearishCount": 0,\n  "bullishHeight": 0,\n  "neutralHeight": 0,\n  "bearishHeight": 0,\n  "overallSentiment": "חיובי/נייטרלי/שלילי",\n  "Recommendation": "ממליץ לקנות/ ממליץ לחכות/ ממליץ למכור",\n  "sentimentScore": 0.00,\n  "chartImageUrl": "URL_PLACEHOLDER",\n  "technicalAnalysis": "ניתוח טכני מפורט בעברית עם תגי <p>",\n  "topArticles": [\n    {\n      "title": "כותרת המאמר",\n      "url": "כתובת URL של המאמר",\n      "source": "שם המקור",\n      "date": "DD/MM/YYYY",\n      "sentimentClass": "bullish/neutral/bearish",\n      "sentimentHebrew": "חיובי-חזק/חיובי-חלש/נייטרלי/שלילי-חלש/שלילי-חזק"\n    }\n  ],\n  "hotTopics": [\n    {\n      "topic": "שם הנושא בעברית",\n      "article_count": 0,\n      "average_relevance": "0.00"\n    }\n  ]\n}',
-				},
-				position: [1900, 140],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [960, 140],
-				name: 'GPT 4o',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [1680, 140], name: 'Think' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2,
-			config: {
-				parameters: {
-					name: 'technical_analysis',
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'GDXsoM9kWq3cz53Y',
-						cachedResultName: 'technical_analysis',
-					},
-					description:
-						"Call this tool to get an analysis of a requested stock. It'll be obligatory to pass ticker.",
-					workflowInputs: {
-						value: {
-							ticker:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('ticker', ``, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'ticker',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'ticker',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'chart_style',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'chart_style',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [1360, 140],
-				name: 'Technical Analysis Tool',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2,
-			config: {
-				parameters: {
-					name: 'trends_analysis',
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'jnlklBcNkky9yFoc',
-						cachedResultName: 'trends_analysis',
-					},
-					description:
-						"Call this tool to get an analysis of a requested stock. It'll be obligatory to pass ticker.",
-					workflowInputs: {
-						value: {
-							ticker:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('ticker', ``, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'ticker',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'ticker',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'chart_style',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'chart_style',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [1520, 140],
-				name: 'Trends Analysis Tool',
 			},
 		}),
 	)

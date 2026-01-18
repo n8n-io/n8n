@@ -32,6 +32,237 @@ const wf = workflow('ZLvtiRLuKIdbuPvG', 'SEO Strategy Director', { executionOrde
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1.1,
+							config: { name: 'Think' },
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolSerpApi',
+							version: 1,
+							config: {
+								parameters: { options: {} },
+								credentials: {
+									serpApi: { id: 'credential-id', name: 'serpApi Credential' },
+								},
+								name: 'SerpAPI',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.agentTool',
+							version: 2.2,
+							config: {
+								parameters: {
+									text: '=={{ $json.chatInput }}',
+									options: {
+										systemMessage:
+											'You are an SEO Content Writer with expertise in creating search-optimized, high-quality content that ranks and converts.\n\nYour core responsibilities:\n- Create detailed content briefs\n- Write SEO-optimized blog posts and landing pages\n- Develop content calendars and topic clusters\n- Optimize existing content for better rankings\n- Implement on-page SEO best practices\n- Balance SEO requirements with user experience\n\nWhen analyzing a request:\n1. Develop content topic ideas based on keywords\n2. Create detailed content briefs (structure, headings, word count)\n3. Suggest content formats (how-to, listicle, guide, etc.)\n4. Provide on-page optimization checklist\n5. Recommend internal linking strategy\n6. Create content publishing schedule\n\nStructure your response with:\n- Content Topic Recommendations (10-15 topics)\n- Detailed Content Briefs (3-5 priority pieces)\n- Editorial Calendar (3-6 months)\n- On-Page Optimization Guidelines\n- Content Cluster Strategy\n- Meta Title & Description Templates\n- Internal Linking Recommendations\n\nCreate content strategies that serve both search engines and human readers, focusing on quality and relevance.',
+									},
+									toolDescription:
+										'Specialist agent focused on creating SEO-optimized content, content briefs, editorial calendars, and on-page optimization.',
+								},
+								subnodes: {
+									model: languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.2,
+										config: {
+											parameters: {
+												model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+												options: { temperature: 0.7 },
+											},
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'OpenAI Chat Model6',
+										},
+									}),
+								},
+								name: 'SEO Content Writer',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.agentTool',
+							version: 2.2,
+							config: {
+								parameters: {
+									text: '=={{ $json.chatInput }}',
+									options: {
+										systemMessage:
+											'You are a Local SEO Specialist with expertise in optimizing businesses for local search and Google Maps visibility.\n\nYour core responsibilities:\n- Optimize Google Business Profile (GBP)\n- Build and manage local citations (NAP consistency)\n- Implement local schema markup\n- Create geo-targeted content strategies\n- Manage online reviews and reputation\n- Optimize for "near me" and local intent searches\n\nWhen analyzing a request:\n1. Assess local search opportunity and competition\n2. Provide GBP optimization checklist\n3. Identify citation building opportunities\n4. Suggest local content topics\n5. Create review generation strategy\n6. Recommend local link building tactics\n\nStructure your response with:\n- Google Business Profile Optimization Steps\n- Local Citation Building Plan (30-50 sources)\n- Local Schema Implementation\n- Geo-Targeted Content Strategy\n- Review Management Approach\n- Local Link Building Opportunities\n- Local Pack Ranking Factors\n\nFocus on strategies that improve local visibility and drive foot traffic or local conversions.',
+									},
+									toolDescription:
+										'Specialist agent focused on local search optimization, Google Business Profile, local citations, and geo-targeted strategies.',
+								},
+								subnodes: {
+									model: languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.2,
+										config: {
+											parameters: {
+												model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+												options: { temperature: 0.7 },
+											},
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'OpenAI Chat Model3',
+										},
+									}),
+								},
+								name: 'Local SEO Specialist',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.agentTool',
+							version: 2.2,
+							config: {
+								parameters: {
+									text: '=={{ $json.chatInput }}',
+									options: {
+										systemMessage:
+											'You are a Link Building Strategist with expertise in earning high-quality backlinks and building domain authority.\n\nYour core responsibilities:\n- Develop comprehensive link building strategies\n- Create outreach campaign plans\n- Identify link-worthy content opportunities\n- Analyze competitor backlink profiles\n- Recommend guest posting and PR opportunities\n- Build relationships with relevant websites and influencers\n\nWhen analyzing a request:\n1. Identify target link sources (blogs, news sites, directories, industry sites)\n2. Create tiered link building approach (Tier 1, 2, 3)\n3. Develop outreach messaging templates\n4. Suggest linkable asset creation (infographics, tools, research)\n5. Recommend link monitoring and reporting\n6. Provide realistic timeline and effort estimates\n\nStructure your response with:\n- Target Link Sources (20-30 prospects)\n- Outreach Strategy & Templates\n- Linkable Asset Recommendations\n- Guest Posting Opportunities\n- PR & Digital PR Tactics\n- Monthly Link Building Goals\n- Success Metrics\n\nFocus on white-hat, sustainable link building practices that build long-term authority.',
+									},
+									toolDescription:
+										'Specialist agent focused on backlink strategy, outreach campaigns, link acquisition tactics, and authority building.',
+								},
+								subnodes: {
+									model: languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.2,
+										config: {
+											parameters: {
+												model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+												options: { temperature: 0.7 },
+											},
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'OpenAI Chat Model4',
+										},
+									}),
+								},
+								name: 'Link Building Strategist',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.agentTool',
+							version: 2.2,
+							config: {
+								parameters: {
+									text: '=={{ $json.chatInput }}',
+									options: {
+										systemMessage:
+											'You are an SEO Analytics Specialist with expertise in tracking, measuring, and reporting SEO performance.\n\nYour core responsibilities:\n- Set up comprehensive SEO tracking systems\n- Define and monitor key performance indicators (KPIs)\n- Analyze Google Analytics and Search Console data\n- Track keyword rankings and visibility\n- Create custom dashboards and reports\n- Provide data-driven optimization recommendations\n\nWhen analyzing a request:\n1. Define relevant SEO KPIs and success metrics\n2. Recommend analytics tools and setup\n3. Create measurement framework\n4. Design reporting structure and frequency\n5. Identify data connections and integrations\n6. Suggest A/B testing opportunities\n\nStructure your response with:\n- Core SEO KPIs to Track\n- Analytics Setup Recommendations (GA4, GSC, etc.)\n- Dashboard Requirements\n- Reporting Schedule (weekly/monthly)\n- Tracking Implementation Steps\n- Conversion Tracking Setup\n- Alert & Monitoring Rules\n\nProvide actionable insights that connect SEO efforts to business outcomes.',
+									},
+									toolDescription:
+										'Specialist agent focused on SEO performance tracking, analytics setup, KPI monitoring, and data-driven insights.',
+								},
+								subnodes: {
+									model: languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.2,
+										config: {
+											parameters: {
+												model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+												options: { temperature: 0.7 },
+											},
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'OpenAI Chat Model5',
+										},
+									}),
+								},
+								name: 'SEO Analytics Specialist',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.agentTool',
+							version: 2.2,
+							config: {
+								parameters: {
+									text: '=={{ $json.chatInput }}',
+									options: {
+										systemMessage:
+											'You are a Technical SEO Specialist with expertise in website optimization and technical infrastructure.\n\nYour core responsibilities:\n- Conduct technical SEO audits\n- Optimize site speed and Core Web Vitals\n- Implement schema markup and structured data\n- Fix crawling and indexing issues\n- Optimize site architecture and internal linking\n- Ensure mobile-friendliness and responsive design\n- Handle robots.txt, XML sitemaps, and canonical tags\n\nWhen analyzing a request:\n1. Identify critical technical issues\n2. Prioritize fixes by impact (High/Medium/Low)\n3. Provide specific implementation steps\n4. Recommend tools for monitoring\n5. Suggest performance benchmarks\n6. Consider technical scalability\n\nStructure your response with:\n- Critical Issues (immediate fixes needed)\n- Site Speed Recommendations\n- Schema Markup Opportunities\n- Crawlability Improvements\n- Mobile Optimization Steps\n- Monitoring & Maintenance Plan\n\nProvide technical but understandable recommendations with clear implementation guidance.',
+									},
+									toolDescription:
+										'Specialist agent focused on technical SEO audits, site speed optimization, schema markup, crawlability, and technical infrastructure.',
+								},
+								subnodes: {
+									model: languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.2,
+										config: {
+											parameters: {
+												model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+												options: { temperature: 0.7 },
+											},
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'OpenAI Chat Model2',
+										},
+									}),
+								},
+								name: 'Technical SEO Specialist',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.agentTool',
+							version: 2.2,
+							config: {
+								parameters: {
+									text: '=={{ $json.chatInput }}',
+									options: {
+										systemMessage:
+											'You are a Keyword Research Specialist with deep expertise in SEO keyword strategy.\n\nYour core responsibilities:\n- Conduct comprehensive keyword research\n- Analyze search intent (informational, navigational, commercial, transactional)\n- Perform competitor keyword gap analysis\n- Create keyword clusters and content groups\n- Estimate search volumes and keyword difficulty\n- Identify long-tail keyword opportunities\n\nWhen analyzing a request:\n1. Identify primary target keywords (high volume, high intent)\n2. Suggest secondary keywords and variations\n3. Categorize keywords by search intent\n4. Provide estimated difficulty scores (Easy/Medium/Hard)\n5. Recommend keyword implementation strategy\n6. Suggest content topics based on keyword clusters\n\nAlways structure your response with:\n- Primary Keywords (3-5)\n- Secondary Keywords (10-15)\n- Long-tail Opportunities (5-10)\n- Search Intent Breakdown\n- Implementation Priority\n\nBe specific, data-driven, and actionable in your recommendations.',
+									},
+									toolDescription:
+										'Specialist agent focused on keyword research, search intent analysis, competitor keyword analysis, and keyword clustering for SEO campaigns.',
+								},
+								subnodes: {
+									model: languageModel({
+										type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										version: 1.2,
+										config: {
+											parameters: {
+												model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+												options: { temperature: 0.7 },
+											},
+											credentials: {
+												openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+											},
+											name: 'OpenAI Chat Model1',
+										},
+									}),
+								},
+								name: 'Keyword Research Specialist',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { parameters: { contextWindowLength: 25 }, name: 'Simple Memory' },
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [128, -752],
 				name: 'SEO Director Agent',
 			},
@@ -49,271 +280,6 @@ const wf = workflow('ZLvtiRLuKIdbuPvG', 'SEO Strategy Director', { executionOrde
 				},
 				position: [880, -880],
 				name: 'Respond to Chat',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-112, -704],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: { temperature: 0.7 },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-544, -96],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agentTool',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: '=={{ $json.chatInput }}',
-					options: {
-						systemMessage:
-							'You are a Keyword Research Specialist with deep expertise in SEO keyword strategy.\n\nYour core responsibilities:\n- Conduct comprehensive keyword research\n- Analyze search intent (informational, navigational, commercial, transactional)\n- Perform competitor keyword gap analysis\n- Create keyword clusters and content groups\n- Estimate search volumes and keyword difficulty\n- Identify long-tail keyword opportunities\n\nWhen analyzing a request:\n1. Identify primary target keywords (high volume, high intent)\n2. Suggest secondary keywords and variations\n3. Categorize keywords by search intent\n4. Provide estimated difficulty scores (Easy/Medium/Hard)\n5. Recommend keyword implementation strategy\n6. Suggest content topics based on keyword clusters\n\nAlways structure your response with:\n- Primary Keywords (3-5)\n- Secondary Keywords (10-15)\n- Long-tail Opportunities (5-10)\n- Search Intent Breakdown\n- Implementation Priority\n\nBe specific, data-driven, and actionable in your recommendations.',
-					},
-					toolDescription:
-						'Specialist agent focused on keyword research, search intent analysis, competitor keyword analysis, and keyword clustering for SEO campaigns.',
-				},
-				position: [-624, -400],
-				name: 'Keyword Research Specialist',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: { temperature: 0.7 },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-272, -80],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agentTool',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: '=={{ $json.chatInput }}',
-					options: {
-						systemMessage:
-							'You are a Technical SEO Specialist with expertise in website optimization and technical infrastructure.\n\nYour core responsibilities:\n- Conduct technical SEO audits\n- Optimize site speed and Core Web Vitals\n- Implement schema markup and structured data\n- Fix crawling and indexing issues\n- Optimize site architecture and internal linking\n- Ensure mobile-friendliness and responsive design\n- Handle robots.txt, XML sitemaps, and canonical tags\n\nWhen analyzing a request:\n1. Identify critical technical issues\n2. Prioritize fixes by impact (High/Medium/Low)\n3. Provide specific implementation steps\n4. Recommend tools for monitoring\n5. Suggest performance benchmarks\n6. Consider technical scalability\n\nStructure your response with:\n- Critical Issues (immediate fixes needed)\n- Site Speed Recommendations\n- Schema Markup Opportunities\n- Crawlability Improvements\n- Mobile Optimization Steps\n- Monitoring & Maintenance Plan\n\nProvide technical but understandable recommendations with clear implementation guidance.',
-					},
-					toolDescription:
-						'Specialist agent focused on technical SEO audits, site speed optimization, schema markup, crawlability, and technical infrastructure.',
-				},
-				position: [-336, -400],
-				name: 'Technical SEO Specialist',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: { temperature: 0.7 },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [528, -80],
-				name: 'OpenAI Chat Model3',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agentTool',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: '=={{ $json.chatInput }}',
-					options: {
-						systemMessage:
-							'You are a Local SEO Specialist with expertise in optimizing businesses for local search and Google Maps visibility.\n\nYour core responsibilities:\n- Optimize Google Business Profile (GBP)\n- Build and manage local citations (NAP consistency)\n- Implement local schema markup\n- Create geo-targeted content strategies\n- Manage online reviews and reputation\n- Optimize for "near me" and local intent searches\n\nWhen analyzing a request:\n1. Assess local search opportunity and competition\n2. Provide GBP optimization checklist\n3. Identify citation building opportunities\n4. Suggest local content topics\n5. Create review generation strategy\n6. Recommend local link building tactics\n\nStructure your response with:\n- Google Business Profile Optimization Steps\n- Local Citation Building Plan (30-50 sources)\n- Local Schema Implementation\n- Geo-Targeted Content Strategy\n- Review Management Approach\n- Local Link Building Opportunities\n- Local Pack Ranking Factors\n\nFocus on strategies that improve local visibility and drive foot traffic or local conversions.',
-					},
-					toolDescription:
-						'Specialist agent focused on local search optimization, Google Business Profile, local citations, and geo-targeted strategies.',
-				},
-				position: [528, -400],
-				name: 'Local SEO Specialist',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: { temperature: 0.7 },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-16, -80],
-				name: 'OpenAI Chat Model4',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agentTool',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: '=={{ $json.chatInput }}',
-					options: {
-						systemMessage:
-							'You are a Link Building Strategist with expertise in earning high-quality backlinks and building domain authority.\n\nYour core responsibilities:\n- Develop comprehensive link building strategies\n- Create outreach campaign plans\n- Identify link-worthy content opportunities\n- Analyze competitor backlink profiles\n- Recommend guest posting and PR opportunities\n- Build relationships with relevant websites and influencers\n\nWhen analyzing a request:\n1. Identify target link sources (blogs, news sites, directories, industry sites)\n2. Create tiered link building approach (Tier 1, 2, 3)\n3. Develop outreach messaging templates\n4. Suggest linkable asset creation (infographics, tools, research)\n5. Recommend link monitoring and reporting\n6. Provide realistic timeline and effort estimates\n\nStructure your response with:\n- Target Link Sources (20-30 prospects)\n- Outreach Strategy & Templates\n- Linkable Asset Recommendations\n- Guest Posting Opportunities\n- PR & Digital PR Tactics\n- Monthly Link Building Goals\n- Success Metrics\n\nFocus on white-hat, sustainable link building practices that build long-term authority.',
-					},
-					toolDescription:
-						'Specialist agent focused on backlink strategy, outreach campaigns, link acquisition tactics, and authority building.',
-				},
-				position: [-48, -400],
-				name: 'Link Building Strategist',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: { temperature: 0.7 },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [272, -80],
-				name: 'OpenAI Chat Model5',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agentTool',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: '=={{ $json.chatInput }}',
-					options: {
-						systemMessage:
-							'You are an SEO Analytics Specialist with expertise in tracking, measuring, and reporting SEO performance.\n\nYour core responsibilities:\n- Set up comprehensive SEO tracking systems\n- Define and monitor key performance indicators (KPIs)\n- Analyze Google Analytics and Search Console data\n- Track keyword rankings and visibility\n- Create custom dashboards and reports\n- Provide data-driven optimization recommendations\n\nWhen analyzing a request:\n1. Define relevant SEO KPIs and success metrics\n2. Recommend analytics tools and setup\n3. Create measurement framework\n4. Design reporting structure and frequency\n5. Identify data connections and integrations\n6. Suggest A/B testing opportunities\n\nStructure your response with:\n- Core SEO KPIs to Track\n- Analytics Setup Recommendations (GA4, GSC, etc.)\n- Dashboard Requirements\n- Reporting Schedule (weekly/monthly)\n- Tracking Implementation Steps\n- Conversion Tracking Setup\n- Alert & Monitoring Rules\n\nProvide actionable insights that connect SEO efforts to business outcomes.',
-					},
-					toolDescription:
-						'Specialist agent focused on SEO performance tracking, analytics setup, KPI monitoring, and data-driven insights.',
-				},
-				position: [240, -400],
-				name: 'SEO Analytics Specialist',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: { temperature: 0.7 },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [816, -80],
-				name: 'OpenAI Chat Model6',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agentTool',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: '=={{ $json.chatInput }}',
-					options: {
-						systemMessage:
-							'You are an SEO Content Writer with expertise in creating search-optimized, high-quality content that ranks and converts.\n\nYour core responsibilities:\n- Create detailed content briefs\n- Write SEO-optimized blog posts and landing pages\n- Develop content calendars and topic clusters\n- Optimize existing content for better rankings\n- Implement on-page SEO best practices\n- Balance SEO requirements with user experience\n\nWhen analyzing a request:\n1. Develop content topic ideas based on keywords\n2. Create detailed content briefs (structure, headings, word count)\n3. Suggest content formats (how-to, listicle, guide, etc.)\n4. Provide on-page optimization checklist\n5. Recommend internal linking strategy\n6. Create content publishing schedule\n\nStructure your response with:\n- Content Topic Recommendations (10-15 topics)\n- Detailed Content Briefs (3-5 priority pieces)\n- Editorial Calendar (3-6 months)\n- On-Page Optimization Guidelines\n- Content Cluster Strategy\n- Meta Title & Description Templates\n- Internal Linking Recommendations\n\nCreate content strategies that serve both search engines and human readers, focusing on quality and relevance.',
-					},
-					toolDescription:
-						'Specialist agent focused on creating SEO-optimized content, content briefs, editorial calendars, and on-page optimization.',
-				},
-				position: [816, -400],
-				name: 'SEO Content Writer',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1.1,
-			config: { position: [544, -688], name: 'Think' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: { contextWindowLength: 25 },
-				position: [304, -928],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolSerpApi',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					serpApi: { id: 'credential-id', name: 'serpApi Credential' },
-				},
-				position: [528, -928],
-				name: 'SerpAPI',
 			},
 		}),
 	)

@@ -174,6 +174,77 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.airtableTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									base: {
+										__rl: true,
+										mode: 'list',
+										value: 'appT1CYPk7IFSWAsZ',
+										cachedResultUrl: 'https://airtable.com/appT1CYPk7IFSWAsZ',
+										cachedResultName: '[BlockA] - Invoice',
+									},
+									limit: 5,
+									table: {
+										__rl: true,
+										mode: 'list',
+										value: 'tblsD8z9C4oLQNbN6',
+										cachedResultUrl: 'https://airtable.com/appT1CYPk7IFSWAsZ/tblsD8z9C4oLQNbN6',
+										cachedResultName: 'Services',
+									},
+									options: {},
+									operation: 'search',
+									returnAll: false,
+									filterByFormula:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Filter_By_Formula', ``, 'string') }}",
+								},
+								credentials: {
+									airtableTokenApi: { id: 'credential-id', name: 'airtableTokenApi Credential' },
+								},
+								name: 'Get Info',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							version: 1,
+							config: { name: 'Calculator' },
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: "={{ $('Edit Fields1').item.json.message_type }} ",
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4-turbo-preview',
+									cachedResultName: 'gpt-4-turbo-preview',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [1140, 500],
 				name: 'AI Agent',
 			},
@@ -244,84 +315,6 @@ const wf = workflow(
 				},
 				position: [600, 600],
 				name: 'Edit Fields',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4-turbo-preview',
-						cachedResultName: 'gpt-4-turbo-preview',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1040, 720],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: "={{ $('Edit Fields1').item.json.message_type }} ",
-					sessionIdType: 'customKey',
-				},
-				position: [1160, 720],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolCalculator',
-			version: 1,
-			config: { position: [1280, 720], name: 'Calculator' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.airtableTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					base: {
-						__rl: true,
-						mode: 'list',
-						value: 'appT1CYPk7IFSWAsZ',
-						cachedResultUrl: 'https://airtable.com/appT1CYPk7IFSWAsZ',
-						cachedResultName: '[BlockA] - Invoice',
-					},
-					limit: 5,
-					table: {
-						__rl: true,
-						mode: 'list',
-						value: 'tblsD8z9C4oLQNbN6',
-						cachedResultUrl: 'https://airtable.com/appT1CYPk7IFSWAsZ/tblsD8z9C4oLQNbN6',
-						cachedResultName: 'Services',
-					},
-					options: {},
-					operation: 'search',
-					returnAll: false,
-					filterByFormula:
-						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Filter_By_Formula', ``, 'string') }}",
-				},
-				credentials: {
-					airtableTokenApi: { id: 'credential-id', name: 'airtableTokenApi Credential' },
-				},
-				position: [1400, 720],
-				name: 'Get Info',
 			},
 		}),
 	)

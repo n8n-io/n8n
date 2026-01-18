@@ -28,6 +28,19 @@ const wf = workflow('LPUpZtHK7gGRA5wa', 'Automated AI YouTube Shorts Factory for
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { model: { __rl: true, value: 'gpt-4.1' } },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+				},
 				position: [1800, 220],
 				name: '1. Generate Trendy Idea',
 			},
@@ -46,6 +59,37 @@ const wf = workflow('LPUpZtHK7gGRA5wa', 'Automated AI YouTube Shorts Factory for
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Think' },
+						}),
+					],
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'[\n  {\n    "Caption": "Diver Removes Nets Off Whale 🐋 #whalerescue #marinelife #oceanrescue #seahelpers #love #nature #instagood #explore #viral #savenature #oceanguardians #cleanoceans",\n    "Idea": "Diver carefully cuts tangled net from distressed whale in open sea",\n    "Environment": "Open ocean, sunlight beams through water, diver and whale, cinematic realism",\n    "Sound": "Primary sound description under 15 words",\n    "Status": "for production"\n  }\n]\n',
+							},
+							name: 'Parser',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { model: { __rl: true, value: 'gpt-4.1' } },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
 				},
 				position: [2200, 220],
 				name: '2. Enrich Idea into Plan',
@@ -97,6 +141,37 @@ const wf = workflow('LPUpZtHK7gGRA5wa', 'Automated AI YouTube Shorts Factory for
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Think' },
+						}),
+					],
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "Idea": "An obsidian rock being sliced with a shimmering knife",\n  "Environment": "Clean studio table, subtle light reflections",\n  "Sound": "Crisp slicing, deep grinding, and delicate crumbling",\n  "Scene 1": "Extreme macro shot: a razor-sharp, polished knife blade presses into the dark, granular surface of an obsidian rock, just beginning to indent.",\n  "Scene 2": "Close-up: fine, iridescent dust particles erupt from the point of contact as the blade cuts deeper into the obsidian, catching the studio light.",\n  "Scene 3": "Mid-shot: the knife, held perfectly steady, has formed a shallow, clean groove across the obsidian\'s shimmering surface, revealing a new, smooth texture."\n}',
+							},
+							name: 'Parser2',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: { model: { __rl: true, value: 'gpt-4.1' } },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
 				},
 				position: [2720, 220],
 				name: 'Prompts AI Agent',
@@ -400,69 +475,6 @@ const wf = workflow('LPUpZtHK7gGRA5wa', 'Automated AI YouTube Shorts Factory for
 				},
 				position: [4600, 640],
 				name: 'Update Sheet with Youtube Link',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [2580, 520], name: 'Think' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { model: { __rl: true, value: 'gpt-4.1' } },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [2220, 440],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'[\n  {\n    "Caption": "Diver Removes Nets Off Whale 🐋 #whalerescue #marinelife #oceanrescue #seahelpers #love #nature #instagood #explore #viral #savenature #oceanguardians #cleanoceans",\n    "Idea": "Diver carefully cuts tangled net from distressed whale in open sea",\n    "Environment": "Open ocean, sunlight beams through water, diver and whale, cinematic realism",\n    "Sound": "Primary sound description under 15 words",\n    "Status": "for production"\n  }\n]\n',
-				},
-				position: [2380, 440],
-				name: 'Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "Idea": "An obsidian rock being sliced with a shimmering knife",\n  "Environment": "Clean studio table, subtle light reflections",\n  "Sound": "Crisp slicing, deep grinding, and delicate crumbling",\n  "Scene 1": "Extreme macro shot: a razor-sharp, polished knife blade presses into the dark, granular surface of an obsidian rock, just beginning to indent.",\n  "Scene 2": "Close-up: fine, iridescent dust particles erupt from the point of contact as the blade cuts deeper into the obsidian, catching the studio light.",\n  "Scene 3": "Mid-shot: the knife, held perfectly steady, has formed a shallow, clean groove across the obsidian\'s shimmering surface, revealing a new, smooth texture."\n}',
-				},
-				position: [2900, 440],
-				name: 'Parser2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: { model: { __rl: true, value: 'gpt-4.1' } },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1800, 420],
-				name: 'OpenAI Chat Model1',
 			},
 		}),
 	)

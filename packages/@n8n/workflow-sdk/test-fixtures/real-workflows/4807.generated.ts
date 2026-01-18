@@ -48,7 +48,6 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.if',
@@ -107,6 +106,19 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 							},
 						],
 					},
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash-exp' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
 				},
 				position: [1820, 400],
 				name: 'Text Classifier',
@@ -291,20 +303,6 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 				credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
 				position: [2260, 760],
 				name: 'Send Email',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash-exp' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [1840, 680],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	);

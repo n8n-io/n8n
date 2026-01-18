@@ -346,7 +346,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',

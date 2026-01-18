@@ -69,6 +69,16 @@ const wf = workflow('', '')
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGroq',
+						version: 1,
+						config: {
+							parameters: { model: 'llama-3.1-8b-instant', options: {} },
+							name: 'Groq Chat Model1',
+						},
+					}),
+				},
 				position: [400, 1500],
 				name: 'AI Agent1',
 			},
@@ -162,17 +172,6 @@ const wf = workflow('', '')
 				},
 				position: [980, 1560],
 				name: 'Log to Google Sheets1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGroq',
-			version: 1,
-			config: {
-				parameters: { model: 'llama-3.1-8b-instant', options: {} },
-				position: [260, 2000],
-				name: 'Groq Chat Model1',
 			},
 		}),
 	)

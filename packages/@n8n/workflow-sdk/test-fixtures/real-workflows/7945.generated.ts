@@ -253,7 +253,6 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.aggregate',
@@ -483,7 +482,6 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-qdrant.qdrant',
@@ -560,7 +558,6 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-qdrant.qdrant',

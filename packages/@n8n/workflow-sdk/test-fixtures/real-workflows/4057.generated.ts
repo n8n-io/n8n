@@ -94,78 +94,72 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'GPT-4o Chat Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									sendTo: '',
+									message:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+									options: {},
+									subject:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Send Email Response via Gmail',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+							version: 1.1,
+							config: {
+								parameters: {
+									url: 'https://app.dumplingai.com/api/v1/agents/generate-completion',
+									method: 'POST',
+									jsonBody:
+										'={\n  "messages": [\n    {\n      "role": "user",\n      "content":"{{ $(\'Watch Gmail for New Incoming Emails\').item.json.snippet }}"\n    }\n  ],\n  "agentId": "a88a9b6c-1578-4da2-800b-561327367713",\n  "parseJson": "True"\n  }',
+									sendBody: true,
+									specifyBody: 'json',
+									authentication: 'genericCredentialType',
+									genericAuthType: 'httpHeaderAuth',
+								},
+								credentials: {
+									httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+								},
+								name: 'Dumpling AI Agent – Search for Relevant Info',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: { contextWindowLength: 10 },
+							name: 'Memory Buffer (Past 10 Interactions)',
+						},
+					}),
+				},
 				position: [-1392, -340],
 				name: 'LangChain Agent Handles Reply Logic',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-1484, -120],
-				name: 'GPT-4o Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: { contextWindowLength: 10 },
-				position: [-1364, -120],
-				name: 'Memory Buffer (Past 10 Interactions)',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
-			version: 1.1,
-			config: {
-				parameters: {
-					url: 'https://app.dumplingai.com/api/v1/agents/generate-completion',
-					method: 'POST',
-					jsonBody:
-						'={\n  "messages": [\n    {\n      "role": "user",\n      "content":"{{ $(\'Watch Gmail for New Incoming Emails\').item.json.snippet }}"\n    }\n  ],\n  "agentId": "a88a9b6c-1578-4da2-800b-561327367713",\n  "parseJson": "True"\n  }',
-					sendBody: true,
-					specifyBody: 'json',
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [-1244, -120],
-				name: 'Dumpling AI Agent – Search for Relevant Info',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: '',
-					message: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
-					options: {},
-					subject: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [-1124, -120],
-				name: 'Send Email Response via Gmail',
 			},
 		}),
 	)

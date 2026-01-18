@@ -78,6 +78,30 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "task_title": "A short, 5-10 word title for this feedback",\n  "category": "Must be one of: \'Bug\', \'Feature Request\', or \'General Feedback\'",\n  "suggested_priority": "Must be one of: \'High\', \'Medium\', or \'Low\'",\n  "tags": [\n    "keyword1",\n    "keyword2"\n  ]\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [1056, 0],
 				name: 'AI Feedback Triage',
 			},
@@ -411,34 +435,6 @@ const wf = workflow('', '')
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
 			config: { position: [496, 528], name: 'Skip Confirmation Email' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "task_title": "A short, 5-10 word title for this feedback",\n  "category": "Must be one of: \'Bug\', \'Feature Request\', or \'General Feedback\'",\n  "suggested_priority": "Must be one of: \'High\', \'Medium\', or \'Low\'",\n  "tags": [\n    "keyword1",\n    "keyword2"\n  ]\n}',
-				},
-				position: [1248, 208],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [1056, 208],
-				name: 'Google Gemini Chat Model',
-			},
 		}),
 	)
 	.add(

@@ -52,6 +52,39 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-mini',
+									cachedResultName: 'gpt-4o-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n    "type": "object",\n    "properties": {\n        "story": {\n            "type": "string",\n            "description": "the detailed story"\n        }\n    },\n    "required": [\n        "story"\n    ]\n}',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [-60, -220],
 				name: 'Generate Full Narrative from Prompt',
 			},
@@ -67,6 +100,34 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 					options: {},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model2',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n    "type": "object",\n    "properties": {\n        "scenes": {\n            "type": "array",\n            "description": "the scenes",\n            "items": {\n                "type": "string"\n            }\n        }\n    },\n    "required": [\n        "scenes"\n    ]\n}',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
 				},
 				position: [260, -220],
 				name: 'Break Narrative into {{n}} Scenes',
@@ -139,6 +200,39 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 					options: {},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n    "type": "object",\n    "properties": {\n        "characters": {\n            "type": "array",\n            "description": "the list of characters in the scene",\n            "items": {\n                "type": "object",\n                "properties": {\n                    "name": {\n                        "type": "string",\n                        "description": "the name of the character"\n                    },\n                    "description": {\n                        "type": "string",\n                        "description": "the detailed description of the character (visual outlook)"\n                    }\n                },\n                "required": [\n                    "name",\n                    "description"\n                ]\n            }\n        },\n        "scene_description": {\n            "type": "string",\n            "description": "the detailed description of the scene"\n        },\n        "camera_movement": {\n            "type": "string",\n            "description": "the description of the camera movement (if any)"\n        },\n        "object_movements": {\n            "type": "string",\n            "description": "the detailed description of the movement of the objects on the screen"\n        },\n        "sound_effects": {\n            "type": "string",\n            "description": "the sound effects the viewer can hear during the scene"\n        }\n    },\n    "required": [\n        "characters",\n        "scene_description",\n        "camera_movement",\n        "object_movements",\n        "sound_effects"\n    ]\n}',
+							},
+							name: 'Structured Output Parser2',
+						},
+					}),
 				},
 				position: [-300, 40],
 				name: 'Describe Each Scene for Video',
@@ -717,112 +811,6 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 				},
 				position: [920, 60],
 				name: 'Get the  video',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n    "type": "object",\n    "properties": {\n        "story": {\n            "type": "string",\n            "description": "the detailed story"\n        }\n    },\n    "required": [\n        "story"\n    ]\n}',
-				},
-				position: [100, -180],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n    "type": "object",\n    "properties": {\n        "scenes": {\n            "type": "array",\n            "description": "the scenes",\n            "items": {\n                "type": "string"\n            }\n        }\n    },\n    "required": [\n        "scenes"\n    ]\n}',
-				},
-				position: [440, -160],
-				name: 'Structured Output Parser1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-mini',
-						cachedResultName: 'gpt-4o-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-60, -160],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-300, 100],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n    "type": "object",\n    "properties": {\n        "characters": {\n            "type": "array",\n            "description": "the list of characters in the scene",\n            "items": {\n                "type": "object",\n                "properties": {\n                    "name": {\n                        "type": "string",\n                        "description": "the name of the character"\n                    },\n                    "description": {\n                        "type": "string",\n                        "description": "the detailed description of the character (visual outlook)"\n                    }\n                },\n                "required": [\n                    "name",\n                    "description"\n                ]\n            }\n        },\n        "scene_description": {\n            "type": "string",\n            "description": "the detailed description of the scene"\n        },\n        "camera_movement": {\n            "type": "string",\n            "description": "the description of the camera movement (if any)"\n        },\n        "object_movements": {\n            "type": "string",\n            "description": "the detailed description of the movement of the objects on the screen"\n        },\n        "sound_effects": {\n            "type": "string",\n            "description": "the sound effects the viewer can hear during the scene"\n        }\n    },\n    "required": [\n        "characters",\n        "scene_description",\n        "camera_movement",\n        "object_movements",\n        "sound_effects"\n    ]\n}',
-				},
-				position: [-120, 100],
-				name: 'Structured Output Parser2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [260, -160],
-				name: 'OpenAI Chat Model2',
 			},
 		}),
 	)

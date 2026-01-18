@@ -26,14 +26,34 @@ const wf = workflow('uALIwhmZBIsiTqvl', 'Instagram Auto Liking - Creators Hub', 
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2,
-			config: { position: [-80, -1984], name: 'Select Cookie' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: { name: 'OpenAI Chat Model1' },
+					}),
+				},
+				position: [-80, -1984],
+				name: 'Select Cookie',
+			},
 		}),
 	)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2,
-			config: { position: [-768, -1568], name: 'Generate Random Hashtag' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: { name: 'OpenAI Chat Model' },
+					}),
+				},
+				position: [-768, -1568],
+				name: 'Generate Random Hashtag',
+			},
 		}),
 	)
 	.then(
@@ -175,20 +195,6 @@ const wf = workflow('uALIwhmZBIsiTqvl', 'Instagram Auto Liking - Creators Hub', 
 			type: 'n8n-nodes-base.phantombuster',
 			version: 1,
 			config: { position: [1168, -1120], name: 'Get Response' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: { position: [-768, -1376], name: 'OpenAI Chat Model' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: { position: [-80, -1840], name: 'OpenAI Chat Model1' },
 		}),
 	)
 	.add(sticky('', { position: [-784, -1696] }))

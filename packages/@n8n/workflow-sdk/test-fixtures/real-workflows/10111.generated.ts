@@ -116,6 +116,22 @@ const wf = workflow(
 			version: 2.2,
 			config: {
 				parameters: { options: {} },
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1,
+						config: {
+							parameters: {
+								model: '=gpt-4o-mini',
+								options: { maxTokens: 500, temperature: 0.7 },
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'Generate Email',
+						},
+					}),
+				},
 				position: [1120, -304],
 				name: 'AI Agent For Generate Email Content',
 			},
@@ -333,23 +349,6 @@ const wf = workflow(
 				},
 				position: [464, 144],
 				name: 'Webhook Response',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1,
-			config: {
-				parameters: {
-					model: '=gpt-4o-mini',
-					options: { maxTokens: 500, temperature: 0.7 },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1200, -80],
-				name: 'Generate Email',
 			},
 		}),
 	)

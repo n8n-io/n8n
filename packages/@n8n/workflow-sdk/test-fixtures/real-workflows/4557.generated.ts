@@ -57,7 +57,6 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 			config: { parameters: { options: {} }, position: [-1580, -560], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.gmail',
@@ -112,7 +111,6 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.merge',
@@ -174,6 +172,27 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 					},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4.1-nano',
+									cachedResultName: 'gpt-4.1-nano',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
 				},
 				position: [-480, -800],
 				name: 'Categorize Email with AI',
@@ -295,28 +314,6 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 				},
 				position: [120, -600],
 				name: 'List All Gmail Labels',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-nano',
-						cachedResultName: 'gpt-4.1-nano',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-400, -580],
-				name: 'OpenAI Chat Model',
 			},
 		}),
 	)

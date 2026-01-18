@@ -110,6 +110,22 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: ' GPT-4o Model',
+						},
+					}),
+				},
 				position: [480, -95],
 				name: 'GPT-4o Agent: Write Video Script',
 			},
@@ -270,23 +286,6 @@ const wf = workflow(
 				parameters: { amount: 20 },
 				position: [1736, 5],
 				name: ' Wait: Retry if Not Complete',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [568, 125],
-				name: ' GPT-4o Model',
 			},
 		}),
 	)

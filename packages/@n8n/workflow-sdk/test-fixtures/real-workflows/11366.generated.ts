@@ -53,7 +53,17 @@ const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOr
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 3,
-			config: { position: [2064, 464], name: 'Crypto Agent' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: { name: 'Google Gemini Chat Model1' },
+					}),
+				},
+				position: [2064, 464],
+				name: 'Crypto Agent',
+			},
 		}),
 	)
 	.then(
@@ -113,13 +123,6 @@ const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOr
 			type: '@n8n/n8n-nodes-langchain.googleGemini',
 			version: 1,
 			config: { position: [1072, 704], name: 'News sentiment Analyzer' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: { position: [2064, 688], name: 'Google Gemini Chat Model1' },
 		}),
 	)
 	.add(sticky('', { position: [368, -256] }))

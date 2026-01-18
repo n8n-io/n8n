@@ -95,7 +95,39 @@ const wf = workflow(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2.2,
-			config: { position: [3248, 880], name: 'AI Expense Analyzer' },
+			config: {
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: { name: 'GPT-4.1 Mini Model' },
+					}),
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { name: 'Conversation Memory' },
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.7,
+							config: { name: 'Read Sheet for Queries' },
+						}),
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: { name: 'Send Low Balance Alert' },
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.7,
+							config: { name: 'Append Transaction to Sheet' },
+						}),
+					],
+				},
+				position: [3248, 880],
+				name: 'AI Expense Analyzer',
+			},
 		}),
 	)
 	.output(0)
@@ -143,41 +175,6 @@ const wf = workflow(
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
 			config: { position: [1424, 1248], name: 'Send Processing Notification (Text)' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.7,
-			config: { position: [3296, 1376], name: 'Append Transaction to Sheet' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.7,
-			config: { position: [3504, 1440], name: 'Read Sheet for Queries' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: { position: [3664, 1408], name: 'Send Low Balance Alert' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: { position: [2944, 1392], name: 'GPT-4.1 Mini Model' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: { position: [3104, 1424], name: 'Conversation Memory' },
 		}),
 	)
 	.add(sticky('', { position: [1040, 400] }))

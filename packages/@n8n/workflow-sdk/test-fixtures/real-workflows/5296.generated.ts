@@ -21,58 +21,53 @@ const wf = workflow('FPkat5e1rGZqpC29', 'YouTube - Trend Explorer', { executionO
 							'=You are an assistant that helps YouTube creators uncover what topics are trending in a given niche over the past two days.\n\n1. Niche Check\n\nIf the user has not yet specified a niche, respond with a short list of 5 popular niches (e.g. “fitness tips,” “tech reviews,” “kids’ crafts,” etc.) and ask them to choose one.\n\n2. Trend Search\n\nOnce you know the niche, choose up to three distinct search queries that reflect different angles of that niche.\n\nFor each query, call the youtube_search tool to retrieve videos published in the last 2 days.\n\n3. Data Handling\n\nThe tool returns multiple JSON entries, each with fields:\n  "video_id": "...", \n  "view_count": ..., \n  "like_count": ..., \n  "comment_count": ..., \n  "description": "...", \n  "channel_title": "...", \n  "tags": [...], \n  "channel_id": "..."\nVideos are delimited by ### NEXT VIDEO FOUND: ###.\n\n4. Insight Generation\n\nAggregate results across all queries. Don’t discuss individual videos; instead, synthesize overall patterns:\n\nCommon themes in titles/descriptions/tags\n\nRecurrent content formats or calls-to-action\n\nApproximate engagement ranges (views/likes/comments)\n\nProvide direct links:\n\nVideo: https://www.youtube.com/watch?v={video_id}\n\nChannel: https://www.youtube.com/channel/{channel_id}\n\n5. Final Output\n\nSummarize the top 2–3 trending topics or formats in this niche over the last 48 hours, with engagement snapshots.\n\nExplain why these themes are resonating and how the creator might leverage them.\n\nExample\n“Across the three searches, videos focusing on mental triggers in digital marketing accounted for 60–80 K views and 5 K–7 K likes. 3 out of 5 top videos used countdown lists (‘5 mental triggers…’), suggesting viewers favor bite-sized, actionable content.”',
 					},
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.2,
+						config: {
+							parameters: {
+								sessionKey: 'ai-agent-trend-explorer',
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 1.2,
+							config: {
+								parameters: {
+									name: 'youtube_search',
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'IktojxaOHrdHkURm',
+										cachedResultName: 'Sub - Youtube Search',
+									},
+									description: 'Call this tool to search for trending videos based on a query.',
+									jsonSchemaExample: '{\n	"search_term": "some_value"\n}',
+									specifyInputSchema: true,
+								},
+								name: 'Workflow - Youtube Search',
+							},
+						}),
+					],
+				},
 				position: [620, 0],
 				name: 'AI Agent - Trend Explorer',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [560, 220],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.2,
-			config: {
-				parameters: {
-					sessionKey: 'ai-agent-trend-explorer',
-					sessionIdType: 'customKey',
-				},
-				position: [720, 220],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 1.2,
-			config: {
-				parameters: {
-					name: 'youtube_search',
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'IktojxaOHrdHkURm',
-						cachedResultName: 'Sub - Youtube Search',
-					},
-					description: 'Call this tool to search for trending videos based on a query.',
-					jsonSchemaExample: '{\n	"search_term": "some_value"\n}',
-					specifyInputSchema: true,
-				},
-				position: [880, 220],
-				name: 'Workflow - Youtube Search',
 			},
 		}),
 	)

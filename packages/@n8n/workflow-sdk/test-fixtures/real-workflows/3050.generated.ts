@@ -21,6 +21,216 @@ const wf = workflow('', '')
 						systemMessage: '=You are a helpful assistant.\nCurrent timestamp is {{ $now }}',
 					},
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							version: 1,
+							config: { name: 'Calculator' },
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2,
+							config: {
+								parameters: {
+									name: 'records_by_date_and_or_status',
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'a2BIIjr2gLBay06M',
+										cachedResultName: 'Template | Your first AI Data Analyst',
+									},
+									description:
+										'Use this tool to get records filtered by date. You can also filter by status at the same time, if you want.',
+									workflowInputs: {
+										value: {
+											status:
+												'={{ $fromAI("status", "Status of the transaction. Can be Completed, Refund or Error. Leave empty if you don\'t need this now.", "string") }}',
+											end_date:
+												'={{ $fromAI("end_date", "End date in format YYYY-MM-DD", "string") }}',
+											start_date:
+												'={{ $fromAI("start_date", "Start date in format YYYY-MM-DD", "string") }}',
+										},
+										schema: [
+											{
+												id: 'start_date',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'start_date',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'end_date',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'end_date',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'status',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'status',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Records by date',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.5,
+							config: {
+								parameters: {
+									options: {},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit#gid=0',
+										cachedResultName: 'Sheet1',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'url',
+										value:
+											'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit?usp=sharing',
+									},
+									descriptionType: 'manual',
+									toolDescription:
+										'Only use this as last resort, because it will pull all data at once.',
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Get all transactions',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.5,
+							config: {
+								parameters: {
+									options: {},
+									filtersUI: {
+										values: [
+											{
+												lookupValue:
+													'={{ $fromAI("transaction_status", "Transaction status can be Refund, Completed or Error", "string") }}',
+												lookupColumn: 'Status',
+											},
+										],
+									},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit#gid=0',
+										cachedResultName: 'Sheet1',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'url',
+										value:
+											'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit?usp=sharing',
+									},
+									descriptionType: 'manual',
+									toolDescription: 'Find transactions by status',
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Get transactions by status',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.5,
+							config: {
+								parameters: {
+									options: {},
+									filtersUI: {
+										values: [
+											{
+												lookupValue: '={{ $fromAI("product_name", "The product name", "string") }}',
+												lookupColumn: 'Product',
+											},
+										],
+									},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit#gid=0',
+										cachedResultName: 'Sheet1',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'url',
+										value:
+											'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit?usp=sharing',
+									},
+									descriptionType: 'manual',
+									toolDescription:
+										'Find transactions by product.\nOur products are:\n- Widget A\n- Widget B\n- Widget C\n- Widget D',
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Get transactions by product name',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { name: 'Buffer Memory' },
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: { temperature: 0.2 },
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [240, -340],
 				name: 'AI Agent',
 			},
@@ -126,229 +336,6 @@ const wf = workflow('', '')
 				parameters: { options: {}, aggregate: 'aggregateAllItemData' },
 				position: [1280, 640],
 				name: 'Aggregate',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: { temperature: 0.2 },
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [160, -100],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolCalculator',
-			version: 1,
-			config: { position: [840, 60], name: 'Calculator' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2,
-			config: {
-				parameters: {
-					name: 'records_by_date_and_or_status',
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'a2BIIjr2gLBay06M',
-						cachedResultName: 'Template | Your first AI Data Analyst',
-					},
-					description:
-						'Use this tool to get records filtered by date. You can also filter by status at the same time, if you want.',
-					workflowInputs: {
-						value: {
-							status:
-								'={{ $fromAI("status", "Status of the transaction. Can be Completed, Refund or Error. Leave empty if you don\'t need this now.", "string") }}',
-							end_date: '={{ $fromAI("end_date", "End date in format YYYY-MM-DD", "string") }}',
-							start_date:
-								'={{ $fromAI("start_date", "Start date in format YYYY-MM-DD", "string") }}',
-						},
-						schema: [
-							{
-								id: 'start_date',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'start_date',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'end_date',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'end_date',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [1020, -120],
-				name: 'Records by date',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [
-							{
-								lookupValue: '={{ $fromAI("product_name", "The product name", "string") }}',
-								lookupColumn: 'Product',
-							},
-						],
-					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'url',
-						value:
-							'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit?usp=sharing',
-					},
-					descriptionType: 'manual',
-					toolDescription:
-						'Find transactions by product.\nOur products are:\n- Widget A\n- Widget B\n- Widget C\n- Widget D',
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [1020, -320],
-				name: 'Get transactions by product name',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'url',
-						value:
-							'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit?usp=sharing',
-					},
-					descriptionType: 'manual',
-					toolDescription: 'Only use this as last resort, because it will pull all data at once.',
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [840, -120],
-				name: 'Get all transactions',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: { position: [360, -100], name: 'Buffer Memory' },
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [
-							{
-								lookupValue:
-									'={{ $fromAI("transaction_status", "Transaction status can be Refund, Completed or Error", "string") }}',
-								lookupColumn: 'Status',
-							},
-						],
-					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'url',
-						value:
-							'https://docs.google.com/spreadsheets/d/18A4d7KYrk8-uEMbu7shoQe_UIzmbTLV1FMN43bjA7qc/edit?usp=sharing',
-					},
-					descriptionType: 'manual',
-					toolDescription: 'Find transactions by status',
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [840, -320],
-				name: 'Get transactions by status',
 			},
 		}),
 	)

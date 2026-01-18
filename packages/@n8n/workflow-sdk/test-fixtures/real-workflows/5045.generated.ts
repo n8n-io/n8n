@@ -88,6 +88,30 @@ const wf = workflow('sCy7Dz1t2CXusiPB', 'Prompt generator', {
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'[\n  {\n    "fieldLabel": "Label for the question to ask",\n    "placeholder": "Short hint to guide the user’s answer",\n    "requiredField": true,\n    "fieldType": "text"\n  }\n]',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [-700, -20],
 				name: 'RelatedQuestionAI',
 			},
@@ -137,6 +161,48 @@ const wf = workflow('sCy7Dz1t2CXusiPB', 'Prompt generator', {
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							subnodes: {
+								model: languageModel({
+									type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+									version: 1,
+									config: {
+										parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+										credentials: {
+											googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+										},
+										name: 'Google Gemini Chat Model1',
+									},
+								}),
+								outputParser: outputParser({
+									type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+									version: 1.2,
+									config: {
+										parameters: { jsonSchemaExample: '{\n	"prompt": "this is the prompt"\n}' },
+										name: 'Structured Output Parser1',
+									},
+								}),
+							},
+							name: 'Auto-fixing Output Parser',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model1',
+						},
+					}),
+				},
 				position: [740, -20],
 				name: 'PromptGenerator',
 			},
@@ -180,71 +246,6 @@ const wf = workflow('sCy7Dz1t2CXusiPB', 'Prompt generator', {
 				},
 				position: [260, 80],
 				name: 'RelevantQuestions',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-680, 180],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'[\n  {\n    "fieldLabel": "Label for the question to ask",\n    "placeholder": "Short hint to guide the user’s answer",\n    "requiredField": true,\n    "fieldType": "text"\n  }\n]',
-				},
-				position: [-520, 180],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [760, 360],
-				name: 'Google Gemini Chat Model1',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				position: [880, 140],
-				name: 'Auto-fixing Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: { jsonSchemaExample: '{\n	"prompt": "this is the prompt"\n}' },
-				position: [960, 360],
-				name: 'Structured Output Parser1',
 			},
 		}),
 	)

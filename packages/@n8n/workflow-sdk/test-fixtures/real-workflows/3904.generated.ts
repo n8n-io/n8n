@@ -127,7 +127,6 @@ const wf = workflow('r82OA8ExycLYuK1u', 'My workflow 8', { executionOrder: 'v1' 
 			config: { parameters: { options: {} }, position: [520, 780], name: 'Process Each Company' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',

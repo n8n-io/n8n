@@ -25,127 +25,113 @@ const wf = workflow('wnDz3dZ455lkg5la', 'Website Chatbot Agent', {
 							"=You are Dan Bot, the helpful, friendly chatbot assistant for Marketing Ladder, a marketing agency. You don’t answer questions yourself, you send every request to the right tool. \n\nAvailable Tools\nRAGagent – Use to answer FAQs and anything about Marketing Ladder.\ncalendarAgent – Use to check availability and book consultations.\nticketAgent – Use when the user wants a human, you don’t have enough info, or you can’t complete the request.\n\n\nCore Capabilities\n1. Answer FAQs\nIf a user asks a question, immediately query the RAGagent.\nNever guess, improvise, or answer on your own.\nNo tool call = no answer.\n\n2. Book Consultations\nIf a user wants to book a consultation, collect the following information:\nFull name, Company Name, Email address, their goal for the consultation, preferred day and time (remember: Chicago timezone, 30-min meetings)\n\nProcess:\n-Check their preferred slot with calendarAgent.\n-If unavailable, offer the closest alternate available times on the same day. \n-Once they pick a slot, confirm all details (name, email, goal, time).\n-After confirmation, use calendarAgent to book and send them confirmation.\nGolden Rule: Never double book. Always check availability first.\n\n3. Escalate to a Human Agent if any of these happen:\n\n-RAGagent can’t find an answer\n-User wants to talk to a human\n-You can’t complete their request\n\nThen:\nAsk if they’d like to be contacted by a human agent. If yes, collect:\nFirst name, Email address, Description of their issue or question\nThen, use ticketAgent to create a support ticket.\n\nRules of Engagement:\n-No improvisation. Tools only.\n-Always clarify if info is missing or unclear.\n-The current date is {{ $now.format('yyyy-MM-dd') }}. You are in the Chicago timezone. Always confirm this when talking about times.\n-Redirect trolls. If someone derails the convo away from Marketing Ladder, steer them back or offer to escalate to a human.\n-Have a friendly, conversational tone of voice, but stick to the point.\n-Default CTA: Always try to book them in for a consultation. That’s your north star.\n",
 					},
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2,
+							config: {
+								parameters: {
+									name: 'RAGagent',
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'IkEdDr98G9p54XDT',
+										cachedResultName: 'RAG Agent',
+									},
+									description:
+										"=Call this tool to get answers for FAQs regarding Kamexa. \nThe input should always be the question you want answered along with the following sessionId - {{ $('When chat message received').item.json.sessionId }}",
+									workflowInputs: {
+										value: {},
+										schema: [],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'RAGagent',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2,
+							config: {
+								parameters: {
+									name: 'ticketAgent',
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'tMyGGwgRHFuqYKg3',
+										cachedResultName: 'Ticket Agent',
+									},
+									description:
+										'Call this tool to create a support ticket for a human agent to followup on via email. \n\nThe input should be the users name and email address and a snippet of the users request. ',
+									workflowInputs: {
+										value: {},
+										schema: [],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'ticketAgent',
+							},
+						}),
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2,
+							config: {
+								parameters: {
+									name: 'calendarAgent',
+									workflowId: {
+										__rl: true,
+										mode: 'list',
+										value: 'LpmYLHWdvevdwt5e',
+										cachedResultName: 'Calendar Agent',
+									},
+									description: 'Call this tool for any calendar action.',
+									workflowInputs: {
+										value: {},
+										schema: [],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'calendarAgent',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: { parameters: { contextWindowLength: 10 }, name: 'Simple Memory' },
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-mini',
+									cachedResultName: 'gpt-4o-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [560, 80],
 				name: 'Ultimate Website Chatbot Agent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-mini',
-						cachedResultName: 'gpt-4o-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [200, 460],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2,
-			config: {
-				parameters: {
-					name: 'calendarAgent',
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'LpmYLHWdvevdwt5e',
-						cachedResultName: 'Calendar Agent',
-					},
-					description: 'Call this tool for any calendar action.',
-					workflowInputs: {
-						value: {},
-						schema: [],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [1140, 500],
-				name: 'calendarAgent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2,
-			config: {
-				parameters: {
-					name: 'RAGagent',
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'IkEdDr98G9p54XDT',
-						cachedResultName: 'RAG Agent',
-					},
-					description:
-						"=Call this tool to get answers for FAQs regarding Kamexa. \nThe input should always be the question you want answered along with the following sessionId - {{ $('When chat message received').item.json.sessionId }}",
-					workflowInputs: {
-						value: {},
-						schema: [],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [940, 580],
-				name: 'RAGagent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2,
-			config: {
-				parameters: {
-					name: 'ticketAgent',
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: 'tMyGGwgRHFuqYKg3',
-						cachedResultName: 'Ticket Agent',
-					},
-					description:
-						'Call this tool to create a support ticket for a human agent to followup on via email. \n\nThe input should be the users name and email address and a snippet of the users request. ',
-					workflowInputs: {
-						value: {},
-						schema: [],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [680, 620],
-				name: 'ticketAgent',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: { contextWindowLength: 10 },
-				position: [440, 540],
-				name: 'Simple Memory',
 			},
 		}),
 	)

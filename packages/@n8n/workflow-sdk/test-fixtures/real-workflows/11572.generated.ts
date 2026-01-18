@@ -71,7 +71,6 @@ const wf = workflow('aRW40LTNzG8bWwiu', 'TEMPLATE - R1 - News Aggregators', {
 			config: { parameters: { options: {} }, position: [560, -448], name: 'Loop Over Mediastack' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -90,7 +89,6 @@ const wf = workflow('aRW40LTNzG8bWwiu', 'TEMPLATE - R1 - News Aggregators', {
 			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.splitOut',
@@ -316,7 +314,6 @@ const wf = workflow('aRW40LTNzG8bWwiu', 'TEMPLATE - R1 - News Aggregators', {
 			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.splitOut',
@@ -498,7 +495,6 @@ const wf = workflow('aRW40LTNzG8bWwiu', 'TEMPLATE - R1 - News Aggregators', {
 			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.splitOut',
@@ -713,7 +709,6 @@ const wf = workflow('aRW40LTNzG8bWwiu', 'TEMPLATE - R1 - News Aggregators', {
 			config: { parameters: { options: {} }, position: [560, 272], name: 'Loop Over NewsAPI' },
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -728,7 +723,6 @@ const wf = workflow('aRW40LTNzG8bWwiu', 'TEMPLATE - R1 - News Aggregators', {
 			},
 		}),
 	)
-	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.splitOut',

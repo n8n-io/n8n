@@ -214,6 +214,20 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+								builtInTools: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [1696, 304],
 				name: '5-Year-Old Story Mode',
 			},
@@ -344,6 +358,20 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+								builtInTools: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [1696, 512],
 				name: 'Teenager Level',
 			},
@@ -376,6 +404,20 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 							'=You are explaining concepts to college graduates with solid educational backgrounds.\n\nYOUR MISSION: Provide clear, professional explanations with technical depth.\n\nSTYLE GUIDELINES:\n• Use proper terminology and academic language\n• Include real-world applications and examples\n• Reference relevant frameworks, theories, or principles\n• Provide concrete data or evidence where applicable\n• Balance technical accuracy with accessibility\n• Assume strong general knowledge but not deep expertise\n• Connect to practical implications\n\nCOVERAGE:\n• Define key terms precisely\n• Explain mechanisms or processes\n• Discuss current applications\n• Mention related concepts or fields\n• Provide enough depth for understanding\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for sections\n- Be professional and clear\n\nQuestion to explain: {{ $json.query }}\n\nBe informative, accurate, and professionally thorough.\n',
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+								builtInTools: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
 				},
 				position: [1696, 720],
 				name: 'Graduate Level',
@@ -417,6 +459,20 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+								builtInTools: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [1712, 928],
 				name: 'PhD Research Level',
 			},
@@ -450,6 +506,20 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.3,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+								builtInTools: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [1728, 1136],
 				name: 'Business Executive Level',
 			},
@@ -466,21 +536,6 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 				},
 				position: [2048, 1168],
 				name: 'Business',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.3,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-					builtInTools: {},
-				},
-				position: [1488, 1072],
-				name: 'OpenAI Chat Model',
 			},
 		}),
 	)

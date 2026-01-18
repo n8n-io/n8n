@@ -87,6 +87,19 @@ const wf = workflow('szS5RoHWF5QAzxqk', 'B2B AI Leads Automation', { executionOr
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGroq',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								groqApi: { id: 'credential-id', name: 'groqApi Credential' },
+							},
+							name: 'Groq Chat Model1',
+						},
+					}),
+				},
 				position: [-100, -20],
 				name: 'AI Agent1',
 			},
@@ -132,6 +145,45 @@ const wf = workflow('szS5RoHWF5QAzxqk', 'B2B AI Leads Automation', { executionOr
 					options: {},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGroq',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								groqApi: { id: 'credential-id', name: 'groqApi Credential' },
+							},
+							name: 'Groq Chat Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.gmailTool',
+							version: 2.1,
+							config: {
+								parameters: {
+									sendTo: "={{ $('HTTP Request').item.json.person.email }}",
+									message:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+									options: {},
+									subject:
+										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+									emailType: 'text',
+								},
+								credentials: {
+									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+								},
+								name: 'Send a message in Gmail',
+							},
+						}),
+					],
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: { name: 'Structured Output Parser' },
+					}),
 				},
 				position: [520, -40],
 				name: 'AI Agent',
@@ -280,61 +332,6 @@ const wf = workflow('szS5RoHWF5QAzxqk', 'B2B AI Leads Automation', { executionOr
 				},
 				position: [-560, -240],
 				name: 'Google Sheets Trigger',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.gmailTool',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: "={{ $('HTTP Request').item.json.person.email }}",
-					message: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
-					options: {},
-					subject: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-					emailType: 'text',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [600, 200],
-				name: 'Send a message in Gmail',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGroq',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					groqApi: { id: 'credential-id', name: 'groqApi Credential' },
-				},
-				position: [480, 200],
-				name: 'Groq Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: { position: [720, 200], name: 'Structured Output Parser' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGroq',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					groqApi: { id: 'credential-id', name: 'groqApi Credential' },
-				},
-				position: [-20, 200],
-				name: 'Groq Chat Model1',
 			},
 		}),
 	);

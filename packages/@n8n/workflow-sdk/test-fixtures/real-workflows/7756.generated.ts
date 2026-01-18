@@ -424,6 +424,331 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+							version: 2.2,
+							config: {
+								parameters: {
+									workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
+									description:
+										'getReport\nPurpose: Generate or fetch the user’s daily nutrition report.\nInput required: date (string, format: YYYY-MM-DD).\nWhen to use: When the user asks to see their daily summary or report for a specific date.',
+									workflowInputs: {
+										value: {
+											Date: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Date', ``, 'string') }}",
+											User_ID: '={{ $json.chat_id }}',
+										},
+										schema: [
+											{
+												id: 'User_ID',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'User_ID',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Date',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'Date',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+								},
+								name: 'Get Report',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.7,
+							config: {
+								parameters: {
+									columns: {
+										value: {
+											Date: '={{ $today.format("yyyy-LL-dd") }}\n',
+											Fats: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Fats', ``, 'string') }}",
+											Carbs:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Carbs', ``, 'string') }}",
+											User_ID: '={{ $json.chat_id }}',
+											Calories:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Calories', ``, 'string') }}",
+											Proteins:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Proteins', ``, 'string') }}",
+											Meal_description:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Meal_description', ``, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'User_ID',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'User_ID',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Date',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Date',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Meal_description',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Meal_description',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Calories',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Calories',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Proteins',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Proteins',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Carbs',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Carbs',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Fats',
+												type: 'string',
+												display: true,
+												required: false,
+												displayName: 'Fats',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: [],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+									options: {},
+									operation: 'append',
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 403788598,
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit#gid=403788598',
+										cachedResultName: 'Meals',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1Dm_YOUR_AWS_SECRET_KEY_HERE',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit?usp=drivesdk',
+										cachedResultName: 'Cal AI',
+									},
+									descriptionType: 'manual',
+									toolDescription:
+										'appendMealData\nPurpose: Store one meal entry into the Meals sheet.\nInputs required:\n\nMeal Description (string)\n\nCalories (number)\n\nProteins (number)\n\nCarbs (number)\n\nFat (number)\nWhen to use: Every time you receive structured meal information from image analysis.',
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Append Meal Data',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.7,
+							config: {
+								parameters: {
+									options: {},
+									filtersUI: {
+										values: [
+											{
+												lookupValue: '={{ $json.chat_id }}',
+												lookupColumn: 'User_ID',
+											},
+										],
+									},
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit#gid=0',
+										cachedResultName: 'Profile',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1Dm_YOUR_AWS_SECRET_KEY_HERE',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit?usp=drivesdk',
+										cachedResultName: 'Cal AI',
+									},
+									descriptionType: 'manual',
+									toolDescription:
+										'=getUserData\nPurpose: Retrieve the user’s profile information.\nInputs: none.\nWhen to use: When the user asks about their profile info or targets.',
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Get Profile Data',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.7,
+							config: {
+								parameters: {
+									columns: {
+										value: {
+											Name: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Name', ``, 'string') }}",
+											User_ID: '={{ $json.chat_id }}',
+											Protein_target:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Protein_target', ``, 'string') }}",
+											Calories_target:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Calories_target', ``, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'User_ID',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'User_ID',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Name',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'Name',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Calories_target',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'Calories_target',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Protein_target',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'Protein_target',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['User_ID'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+									options: {},
+									operation: 'appendOrUpdate',
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit#gid=0',
+										cachedResultName: 'Profile',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1Dm_YOUR_AWS_SECRET_KEY_HERE',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit?usp=drivesdk',
+										cachedResultName: 'Cal AI',
+									},
+									descriptionType: 'manual',
+									toolDescription:
+										'=updateProfileData\nPurpose: Update the user’s profile targets.\nFields that can be updated:\n\nName (string)\n\nCalories_target (string/number)\n\nProtein_target (string/number)\nWhen to use: When the user explicitly asks to update their name, calorie target, or protein target.',
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Update Profile Data',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: '={{ $json.chat_id }}',
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+				},
 				position: [3200, 1136],
 				name: 'Cal IA Agent',
 			},
@@ -712,6 +1037,121 @@ const wf = workflow('', '')
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.googleSheetsTool',
+							version: 4.7,
+							config: {
+								parameters: {
+									columns: {
+										value: {
+											Name: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Name', ``, 'string') }}",
+											User_ID: '={{ $json.chat_id }}',
+											Protein_target:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Protein_target', ``, 'string') }}",
+											Calories_target:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Calories_target', ``, 'string') }}",
+										},
+										schema: [
+											{
+												id: 'User_ID',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'User_ID',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Name',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'Name',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Calories_target',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'Calories_target',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+											{
+												id: 'Protein_target',
+												type: 'string',
+												display: true,
+												removed: false,
+												required: false,
+												displayName: 'Protein_target',
+												defaultMatch: false,
+												canBeUsedToMatch: true,
+											},
+										],
+										mappingMode: 'defineBelow',
+										matchingColumns: ['ID'],
+										attemptToConvertTypes: false,
+										convertFieldsToString: false,
+									},
+									options: {},
+									operation: 'append',
+									sheetName: {
+										__rl: true,
+										mode: 'list',
+										value: 'gid=0',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit#gid=0',
+										cachedResultName: 'Profile',
+									},
+									documentId: {
+										__rl: true,
+										mode: 'list',
+										value: '1Dm_YOUR_AWS_SECRET_KEY_HERE',
+										cachedResultUrl:
+											'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit?usp=drivesdk',
+										cachedResultName: 'Cal AI',
+									},
+								},
+								credentials: {
+									googleSheetsOAuth2Api: {
+										id: 'credential-id',
+										name: 'googleSheetsOAuth2Api Credential',
+									},
+								},
+								name: 'Register User',
+							},
+						}),
+					],
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: '={{ $json.chat_id }}',
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory1',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {} },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model1',
+						},
+					}),
+				},
 				position: [2000, 1776],
 				name: 'Register Agent',
 			},
@@ -764,464 +1204,6 @@ const wf = workflow('', '')
 				},
 				position: [1296, 1040],
 				name: 'Typing…',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [3072, 1312],
-				name: 'Google Gemini Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: '={{ $json.chat_id }}',
-					sessionIdType: 'customKey',
-				},
-				position: [3200, 1328],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {} },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [1872, 1968],
-				name: 'Google Gemini Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: '={{ $json.chat_id }}',
-					sessionIdType: 'customKey',
-				},
-				position: [2032, 2032],
-				name: 'Simple Memory1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							Name: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Name', ``, 'string') }}",
-							User_ID: '={{ $json.chat_id }}',
-							Protein_target:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Protein_target', ``, 'string') }}",
-							Calories_target:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Calories_target', ``, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'User_ID',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'User_ID',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Name',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Calories_target',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Calories_target',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Protein_target',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Protein_target',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['ID'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'append',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit#gid=0',
-						cachedResultName: 'Profile',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1Dm_YOUR_AWS_SECRET_KEY_HERE',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit?usp=drivesdk',
-						cachedResultName: 'Cal AI',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [2192, 2032],
-				name: 'Register User',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							Name: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Name', ``, 'string') }}",
-							User_ID: '={{ $json.chat_id }}',
-							Protein_target:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Protein_target', ``, 'string') }}",
-							Calories_target:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Calories_target', ``, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'User_ID',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'User_ID',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Name',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Calories_target',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Calories_target',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Protein_target',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Protein_target',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['User_ID'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit#gid=0',
-						cachedResultName: 'Profile',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1Dm_YOUR_AWS_SECRET_KEY_HERE',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit?usp=drivesdk',
-						cachedResultName: 'Cal AI',
-					},
-					descriptionType: 'manual',
-					toolDescription:
-						'=updateProfileData\nPurpose: Update the user’s profile targets.\nFields that can be updated:\n\nName (string)\n\nCalories_target (string/number)\n\nProtein_target (string/number)\nWhen to use: When the user explicitly asks to update their name, calorie target, or protein target.',
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [3520, 1392],
-				name: 'Update Profile Data',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.7,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [
-							{
-								lookupValue: '={{ $json.chat_id }}',
-								lookupColumn: 'User_ID',
-							},
-						],
-					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit#gid=0',
-						cachedResultName: 'Profile',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1Dm_YOUR_AWS_SECRET_KEY_HERE',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit?usp=drivesdk',
-						cachedResultName: 'Cal AI',
-					},
-					descriptionType: 'manual',
-					toolDescription:
-						'=getUserData\nPurpose: Retrieve the user’s profile information.\nInputs: none.\nWhen to use: When the user asks about their profile info or targets.',
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [3344, 1392],
-				name: 'Get Profile Data',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-			version: 2.2,
-			config: {
-				parameters: {
-					workflowId: { __rl: true, mode: 'id', value: '={{ $workflow.id }}' },
-					description:
-						'getReport\nPurpose: Generate or fetch the user’s daily nutrition report.\nInput required: date (string, format: YYYY-MM-DD).\nWhen to use: When the user asks to see their daily summary or report for a specific date.',
-					workflowInputs: {
-						value: {
-							Date: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Date', ``, 'string') }}",
-							User_ID: '={{ $json.chat_id }}',
-						},
-						schema: [
-							{
-								id: 'User_ID',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'User_ID',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Date',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Date',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-				},
-				position: [2848, 1808],
-				name: 'Get Report',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.googleSheetsTool',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							Date: '={{ $today.format("yyyy-LL-dd") }}\n',
-							Fats: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Fats', ``, 'string') }}",
-							Carbs: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Carbs', ``, 'string') }}",
-							User_ID: '={{ $json.chat_id }}',
-							Calories:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Calories', ``, 'string') }}",
-							Proteins:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Proteins', ``, 'string') }}",
-							Meal_description:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Meal_description', ``, 'string') }}",
-						},
-						schema: [
-							{
-								id: 'User_ID',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'User_ID',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Date',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Date',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Meal_description',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Meal_description',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Calories',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Calories',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Proteins',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Proteins',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Carbs',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Carbs',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Fats',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Fats',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'append',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 403788598,
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit#gid=403788598',
-						cachedResultName: 'Meals',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1Dm_YOUR_AWS_SECRET_KEY_HERE',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit?usp=drivesdk',
-						cachedResultName: 'Cal AI',
-					},
-					descriptionType: 'manual',
-					toolDescription:
-						'appendMealData\nPurpose: Store one meal entry into the Meals sheet.\nInputs required:\n\nMeal Description (string)\n\nCalories (number)\n\nProteins (number)\n\nCarbs (number)\n\nFat (number)\nWhen to use: Every time you receive structured meal information from image analysis.',
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [3424, 1536],
-				name: 'Append Meal Data',
 			},
 		}),
 	)

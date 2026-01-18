@@ -78,6 +78,36 @@ const wf = workflow('', 'AI Gmail: Prioritize What You Should Read')
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o',
+									cachedResultName: 'gpt-4o',
+								},
+								options: {},
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.3,
+						config: {
+							parameters: {
+								schemaType: 'manual',
+								inputSchema:
+									'{\n  "type": "object",\n  "properties": {\n    "label": { "type": "string" },\n    "summary": { "type": "string" },\n    "id": { "type": "string" },\n    "threadId": { "type": "string" }\n  },\n  "required": ["label", "id"]\n}\n',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+				},
 				position: [-592, 0],
 				name: 'AI Agent',
 			},
@@ -243,59 +273,6 @@ const wf = workflow('', 'AI Gmail: Prioritize What You Should Read')
 				},
 				position: [96, 288],
 				name: 'Delete email',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.3,
-			config: {
-				parameters: {
-					schemaType: 'manual',
-					inputSchema:
-						'{\n  "type": "object",\n  "properties": {\n    "label": { "type": "string" },\n    "summary": { "type": "string" },\n    "id": { "type": "string" },\n    "threadId": { "type": "string" }\n  },\n  "required": ["label", "id"]\n}\n',
-				},
-				position: [-336, 224],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'gpt-4o',
-					},
-					options: {},
-				},
-				position: [-592, 224],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-3.5-turbo',
-						cachedResultName: 'gpt-3.5-turbo',
-					},
-					options: {},
-				},
-				position: [-464, 224],
-				name: 'OpenAI Fall Back Model',
 			},
 		}),
 	)

@@ -43,6 +43,40 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "column1": [\n    "2025-08-01",\n    "2025-08-02",\n    "2025-08-03"\n  ],\n  "column2": [\n    "Instagram",\n    "LinkedIn",\n    "Twitter"\n  ],\n  "column3": [\n    "Image Post",\n    "Blog Link",\n    "Video Snippet"\n  ],\n  "column4": [\n    "Workflow Automation",\n    "AI Agent Demo",\n    "Case Study"\n  ],\n  "column5": [\n    "Alice",\n    "Bob",\n    "Charlie"\n  ]\n}\n',
+							},
+							name: 'Structured Output Parser',
+						},
+					}),
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Tool: Inject Creativity1' },
+						}),
+					],
+				},
 				position: [-520, 1020],
 				name: 'Generate Random Data',
 			},
@@ -207,6 +241,33 @@ const wf = workflow('', '')
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model2',
+						},
+					}),
+					outputParser: outputParser({
+						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						version: 1.2,
+						config: {
+							parameters: {
+								jsonSchemaExample:
+									'{\n  "columnnames": [\n    "first",\n    "second",\n    "third"\n  ]\n}\n',
+							},
+							name: 'Structured Output Parser1',
+						},
+					}),
+				},
 				position: [260, 1480],
 				name: 'Generate Column Names',
 			},
@@ -223,75 +284,6 @@ const wf = workflow('', '')
 				},
 				position: [600, 1660],
 				name: 'Pivot Column Names',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-540, 1340],
-				name: 'OpenAI Chat Model1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [-440, 1520], name: 'Tool: Inject Creativity1' },
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "column1": [\n    "2025-08-01",\n    "2025-08-02",\n    "2025-08-03"\n  ],\n  "column2": [\n    "Instagram",\n    "LinkedIn",\n    "Twitter"\n  ],\n  "column3": [\n    "Image Post",\n    "Blog Link",\n    "Video Snippet"\n  ],\n  "column4": [\n    "Workflow Automation",\n    "AI Agent Demo",\n    "Case Study"\n  ],\n  "column5": [\n    "Alice",\n    "Bob",\n    "Charlie"\n  ]\n}\n',
-				},
-				position: [-300, 1320],
-				name: 'Structured Output Parser',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [240, 1740],
-				name: 'OpenAI Chat Model2',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-			version: 1.2,
-			config: {
-				parameters: {
-					jsonSchemaExample:
-						'{\n  "columnnames": [\n    "first",\n    "second",\n    "third"\n  ]\n}\n',
-				},
-				position: [420, 1760],
-				name: 'Structured Output Parser1',
 			},
 		}),
 	)

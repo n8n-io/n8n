@@ -32,6 +32,163 @@ const wf = workflow(
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					memory: memory({
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						config: {
+							parameters: {
+								sessionKey: '={{ $json.body.sessionId }}',
+								sessionIdType: 'customKey',
+							},
+							name: 'Simple Memory',
+						},
+					}),
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: {
+								options: {},
+								modelName: 'models/gemini-2.5-flash-preview-04-17',
+							},
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Google Gemini Chat Model',
+						},
+					}),
+					tools: [
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://infranodus.com/api/v1/graphAndAdvice?doNotSave=true&addStats=true&optimize=develop&includeGraph=false&includeGraphSummary=true&includeStatements=true',
+									method: 'POST',
+									options: {},
+									sendBody: true,
+									authentication: 'genericCredentialType',
+									bodyParameters: {
+										parameters: [
+											{ name: 'name', value: 'the_flow_and_notion' },
+											{
+												name: 'prompt',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `User's request adjusted to suit this context`, 'string') }}",
+											},
+											{ name: 'requestMode', value: 'response' },
+											{ name: 'aiTopics', value: 'true' },
+										],
+									},
+									genericAuthType: 'httpBearerAuth',
+									toolDescription:
+										"The Flow and the Notion book which is well-versed in the questions of creating with someone, dreaming, making new shapes, dissipating ideas, art, and life. Including the following topics:\n\n<MainTopics>: \n1. Shape Dynamics: shape outline concentric \n2. Time Alignment: long practice time \n3. Man's Journey: bow man candle \n4. Notion Flow: image flow paranyushkin \n5. Essence Realization: process essence essential \n6. Life Choices: slave thing trace \n7. Wave Patterns: found light movement \n8. Synchrony Mediation: book circadian word \n9. Complete Vision: multiple synchrony mediate \n10. Instruction Guide: full \ninstruction foreword : instruction foreword \n</MainTopics>",
+								},
+								credentials: {
+									httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
+								},
+								name: 'The Flow and the Notion Book',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://infranodus.com/api/v1/graphAndAdvice?doNotSave=true&addStats=true&optimize=develop&includeGraph=false&includeGraphSummary=true&includeStatements=true',
+									method: 'POST',
+									options: {},
+									sendBody: true,
+									authentication: 'genericCredentialType',
+									bodyParameters: {
+										parameters: [
+											{ name: 'name', value: 'waves_into_patterns' },
+											{
+												name: 'prompt',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `User's request adjusted to suit this context`, 'string') }}",
+											},
+											{ name: 'requestMode', value: 'response' },
+											{ name: 'aiTopics', value: 'true' },
+										],
+									},
+									genericAuthType: 'httpBearerAuth',
+									toolDescription:
+										'Make a request to The Waves into Patterns book which is well-versed in the questions of natural cycles, variability, fractal states, dynamics, and nonequilibrium stability. Including the following topics:\n\n<MainTopics>: \n1. System Influence: scale influence multiple \n2. Pattern Dynamics: pattern variability fractal \n3. Change Balance: dynamic wave time \n4. Center Transformation: center cycle dominant \n5. Growth Stages: growth exploration period \n6. Long Strategy: term state long \n7. Seasonal Relations: moon summer natural \n8. Flow Connection: exist breaking exploring \n</MainTopics>',
+								},
+								credentials: {
+									httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
+								},
+								name: 'Waves into Patterns Book Expert',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://infranodus.com/api/v1/graphAndAdvice?doNotSave=true&addStats=true&optimize=develop&includeGraph=false&includeGraphSummary=true&includeStatements=true',
+									method: 'POST',
+									options: {},
+									sendBody: true,
+									authentication: 'genericCredentialType',
+									bodyParameters: {
+										parameters: [
+											{ name: 'name', value: 'polysingularity_letters' },
+											{
+												name: 'prompt',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `User's request adjusted to suit this context`, 'string') }}",
+											},
+											{ name: 'requestMode', value: 'response' },
+											{ name: 'aiTopics', value: 'true' },
+										],
+									},
+									genericAuthType: 'httpBearerAuth',
+									toolDescription:
+										'The Polysingularity Letters book which is well-versed in the questions of polysingularity, multiplicity, networks, networking, art, and creative approach. And also these topics:\n\n<MainTopics>: \n1. Community Dynamics: network community connected \n2. Global Equilibrium: state global change \n3. Polysingular Practice: polysingularity thinking exist \n4. Temporal Relations: time moment thing \n5. Consciousness Source: social cognition view \n6. Meaning Creation: make orthodox meaning \n7. Dmitry Connections: post dmitry minute \n8. Linguistic Variations: wa ë ww \n</MainTopics>',
+								},
+								credentials: {
+									httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
+								},
+								name: 'The Polysingularity Letters Book',
+							},
+						}),
+						tool({
+							type: 'n8n-nodes-base.httpRequestTool',
+							version: 4.2,
+							config: {
+								parameters: {
+									url: 'https://infranodus.com/api/v1/graphAndAdvice?doNotSave=true&addStats=true&optimize=develop&includeGraph=false&includeGraphSummary=true&includeStatements=true',
+									method: 'POST',
+									options: {},
+									sendBody: true,
+									authentication: 'genericCredentialType',
+									bodyParameters: {
+										parameters: [
+											{ name: 'name', value: 'special_agents_manual' },
+											{
+												name: 'prompt',
+												value:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `User's request adjusted to suit this context`, 'string') }}",
+											},
+											{ name: 'requestMode', value: 'response' },
+											{ name: 'aiTopics', value: 'true' },
+										],
+									},
+									genericAuthType: 'httpBearerAuth',
+									toolDescription:
+										"Make a request to The Special Agent's Manual book which is well-versed in the questions of human agency, speciality, infiltration and tension dynamics, strategies, identities, finding the special in you as well as the following topics:\n\n<MainTopics>: \n1. Agent Activation: agent special activation \n2. System Dynamics: system body operating \n3. Order Flow: action time order \n4. Creative Process: create identity entity \n5. Movement Patterns: movement wave breathing \n6. Incoming Impact: incoming impulse impact \n7. Fiction Venture: fiction high risk \n8. Social Framework: preset possibility level \n</MainTopics>",
+								},
+								credentials: {
+									httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
+								},
+								name: "Special Agent's Manual Book Expert",
+							},
+						}),
+					],
+				},
 				position: [520, -20],
 				name: 'AI Agent',
 			},
@@ -62,177 +219,6 @@ const wf = workflow(
 				},
 				position: [400, 540],
 				name: 'OpenAI Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-			version: 1.3,
-			config: {
-				parameters: {
-					sessionKey: '={{ $json.body.sessionId }}',
-					sessionIdType: 'customKey',
-				},
-				position: [680, 300],
-				name: 'Simple Memory',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://infranodus.com/api/v1/graphAndAdvice?doNotSave=true&addStats=true&optimize=develop&includeGraph=false&includeGraphSummary=true&includeStatements=true',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					authentication: 'genericCredentialType',
-					bodyParameters: {
-						parameters: [
-							{ name: 'name', value: 'waves_into_patterns' },
-							{
-								name: 'prompt',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `User's request adjusted to suit this context`, 'string') }}",
-							},
-							{ name: 'requestMode', value: 'response' },
-							{ name: 'aiTopics', value: 'true' },
-						],
-					},
-					genericAuthType: 'httpBearerAuth',
-					toolDescription:
-						'Make a request to The Waves into Patterns book which is well-versed in the questions of natural cycles, variability, fractal states, dynamics, and nonequilibrium stability. Including the following topics:\n\n<MainTopics>: \n1. System Influence: scale influence multiple \n2. Pattern Dynamics: pattern variability fractal \n3. Change Balance: dynamic wave time \n4. Center Transformation: center cycle dominant \n5. Growth Stages: growth exploration period \n6. Long Strategy: term state long \n7. Seasonal Relations: moon summer natural \n8. Flow Connection: exist breaking exploring \n</MainTopics>',
-				},
-				credentials: {
-					httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
-				},
-				position: [1120, 300],
-				name: 'Waves into Patterns Book Expert',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://infranodus.com/api/v1/graphAndAdvice?doNotSave=true&addStats=true&optimize=develop&includeGraph=false&includeGraphSummary=true&includeStatements=true',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					authentication: 'genericCredentialType',
-					bodyParameters: {
-						parameters: [
-							{ name: 'name', value: 'special_agents_manual' },
-							{
-								name: 'prompt',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `User's request adjusted to suit this context`, 'string') }}",
-							},
-							{ name: 'requestMode', value: 'response' },
-							{ name: 'aiTopics', value: 'true' },
-						],
-					},
-					genericAuthType: 'httpBearerAuth',
-					toolDescription:
-						"Make a request to The Special Agent's Manual book which is well-versed in the questions of human agency, speciality, infiltration and tension dynamics, strategies, identities, finding the special in you as well as the following topics:\n\n<MainTopics>: \n1. Agent Activation: agent special activation \n2. System Dynamics: system body operating \n3. Order Flow: action time order \n4. Creative Process: create identity entity \n5. Movement Patterns: movement wave breathing \n6. Incoming Impact: incoming impulse impact \n7. Fiction Venture: fiction high risk \n8. Social Framework: preset possibility level \n</MainTopics>",
-				},
-				credentials: {
-					httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
-				},
-				position: [900, 300],
-				name: "Special Agent's Manual Book Expert",
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://infranodus.com/api/v1/graphAndAdvice?doNotSave=true&addStats=true&optimize=develop&includeGraph=false&includeGraphSummary=true&includeStatements=true',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					authentication: 'genericCredentialType',
-					bodyParameters: {
-						parameters: [
-							{ name: 'name', value: 'the_flow_and_notion' },
-							{
-								name: 'prompt',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `User's request adjusted to suit this context`, 'string') }}",
-							},
-							{ name: 'requestMode', value: 'response' },
-							{ name: 'aiTopics', value: 'true' },
-						],
-					},
-					genericAuthType: 'httpBearerAuth',
-					toolDescription:
-						"The Flow and the Notion book which is well-versed in the questions of creating with someone, dreaming, making new shapes, dissipating ideas, art, and life. Including the following topics:\n\n<MainTopics>: \n1. Shape Dynamics: shape outline concentric \n2. Time Alignment: long practice time \n3. Man's Journey: bow man candle \n4. Notion Flow: image flow paranyushkin \n5. Essence Realization: process essence essential \n6. Life Choices: slave thing trace \n7. Wave Patterns: found light movement \n8. Synchrony Mediation: book circadian word \n9. Complete Vision: multiple synchrony mediate \n10. Instruction Guide: full \ninstruction foreword : instruction foreword \n</MainTopics>",
-				},
-				credentials: {
-					httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
-				},
-				position: [1340, 300],
-				name: 'The Flow and the Notion Book',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: 'n8n-nodes-base.httpRequestTool',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://infranodus.com/api/v1/graphAndAdvice?doNotSave=true&addStats=true&optimize=develop&includeGraph=false&includeGraphSummary=true&includeStatements=true',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					authentication: 'genericCredentialType',
-					bodyParameters: {
-						parameters: [
-							{ name: 'name', value: 'polysingularity_letters' },
-							{
-								name: 'prompt',
-								value:
-									"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters1_Value', `User's request adjusted to suit this context`, 'string') }}",
-							},
-							{ name: 'requestMode', value: 'response' },
-							{ name: 'aiTopics', value: 'true' },
-						],
-					},
-					genericAuthType: 'httpBearerAuth',
-					toolDescription:
-						'The Polysingularity Letters book which is well-versed in the questions of polysingularity, multiplicity, networks, networking, art, and creative approach. And also these topics:\n\n<MainTopics>: \n1. Community Dynamics: network community connected \n2. Global Equilibrium: state global change \n3. Polysingular Practice: polysingularity thinking exist \n4. Temporal Relations: time moment thing \n5. Consciousness Source: social cognition view \n6. Meaning Creation: make orthodox meaning \n7. Dmitry Connections: post dmitry minute \n8. Linguistic Variations: wa ë ww \n</MainTopics>',
-				},
-				credentials: {
-					httpBearerAuth: { id: 'credential-id', name: 'httpBearerAuth Credential' },
-				},
-				position: [1540, 300],
-				name: 'The Polysingularity Letters Book',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: {
-					options: {},
-					modelName: 'models/gemini-2.5-flash-preview-04-17',
-				},
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [400, 340],
-				name: 'Google Gemini Chat Model',
 			},
 		}),
 	)

@@ -176,7 +176,6 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 			},
 		}),
 	)
-	.output(1)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.chainLlm',
@@ -194,6 +193,19 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 						],
 					},
 					promptType: 'define',
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Pre-filter Content',
+						},
+					}),
 				},
 				position: [-2040, 360],
 				name: 'AI Pre-filtering',
@@ -266,6 +278,19 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 					batching: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Deep Analysis',
+						},
+					}),
+				},
 				position: [-1180, 240],
 				name: 'AI Deep Analysis',
 			},
@@ -306,6 +331,19 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 					options: {},
 					promptType: 'define',
 					hasOutputParser: true,
+				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						version: 1,
+						config: {
+							parameters: { options: {}, modelName: 'models/gemini-2.5-flash' },
+							credentials: {
+								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+							},
+							name: 'Synthesis',
+						},
+					}),
 				},
 				position: [-440, 240],
 				name: 'AI: Synthesize Final Report',
@@ -641,48 +679,6 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 				},
 				position: [-2580, 1120],
 				name: 'twitterapi抓取x推文',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-2040, 540],
-				name: 'Pre-filter Content',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.0-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-1180, 400],
-				name: 'Deep Analysis',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			version: 1,
-			config: {
-				parameters: { options: {}, modelName: 'models/gemini-2.5-flash' },
-				credentials: {
-					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-				},
-				position: [-440, 420],
-				name: 'Synthesis',
 			},
 		}),
 	)

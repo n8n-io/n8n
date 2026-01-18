@@ -110,6 +110,22 @@ const wf = workflow('7O3XDyjnKZuQ1iOB', 'Email_Summarizer', { executionOrder: 'v
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [1536, -32],
 				name: 'AI Agent',
 			},
@@ -196,23 +212,6 @@ const wf = workflow('7O3XDyjnKZuQ1iOB', 'Email_Summarizer', { executionOrder: 'v
 				parameters: { options: {}, operation: 'text' },
 				position: [1088, 64],
 				name: 'Extract from File1',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1608, 192],
-				name: 'OpenAI Chat Model',
 			},
 		}),
 	)

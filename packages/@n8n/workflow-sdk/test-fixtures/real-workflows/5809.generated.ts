@@ -35,6 +35,27 @@ const wf = workflow('vMvm0kfL6V7u4bPO', 'Client Responder IG/TG', { executionOrd
 					promptType: 'define',
 					hasOutputParser: true,
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-3.5-turbo',
+									cachedResultName: 'gpt-3.5-turbo',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model',
+						},
+					}),
+				},
 				position: [-360, 0],
 				name: 'Parse Request AI',
 			},
@@ -122,6 +143,27 @@ const wf = workflow('vMvm0kfL6V7u4bPO', 'Client Responder IG/TG', { executionOrd
 					},
 					promptType: 'define',
 				},
+				subnodes: {
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4',
+									cachedResultName: 'gpt-4',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI Chat Model1',
+						},
+					}),
+				},
 				position: [740, 0],
 				name: 'AI Manager',
 			},
@@ -154,50 +196,6 @@ const wf = workflow('vMvm0kfL6V7u4bPO', 'Client Responder IG/TG', { executionOrd
 				},
 				position: [1140, 0],
 				name: 'Send Response',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-3.5-turbo',
-						cachedResultName: 'gpt-3.5-turbo',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-340, 220],
-				name: 'OpenAI Chat Model',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4',
-						cachedResultName: 'gpt-4',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [780, 200],
-				name: 'OpenAI Chat Model1',
 			},
 		}),
 	)

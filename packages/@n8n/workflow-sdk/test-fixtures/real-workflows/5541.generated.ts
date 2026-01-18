@@ -16,6 +16,34 @@ const wf = workflow('', '')
 					options: {},
 					promptType: 'define',
 				},
+				subnodes: {
+					tools: [
+						tool({
+							type: '@n8n/n8n-nodes-langchain.toolThink',
+							version: 1,
+							config: { name: 'Think' },
+						}),
+					],
+					model: languageModel({
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						config: {
+							parameters: {
+								model: {
+									__rl: true,
+									mode: 'list',
+									value: 'gpt-4o-mini',
+									cachedResultName: 'gpt-4o-mini',
+								},
+								options: {},
+							},
+							credentials: {
+								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+							},
+							name: 'OpenAI',
+						},
+					}),
+				},
 				position: [-260, -520],
 				name: 'AI Agent',
 			},
@@ -326,13 +354,6 @@ const wf = workflow('', '')
 	)
 	.add(
 		node({
-			type: '@n8n/n8n-nodes-langchain.toolThink',
-			version: 1,
-			config: { position: [-60, -280], name: 'Think' },
-		}),
-	)
-	.add(
-		node({
 			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 			version: 1,
 			config: {
@@ -342,28 +363,6 @@ const wf = workflow('', '')
 				},
 				position: [-400, -280],
 				name: 'Gemini',
-			},
-		}),
-	)
-	.add(
-		node({
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			version: 1.2,
-			config: {
-				parameters: {
-					model: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-mini',
-						cachedResultName: 'gpt-4o-mini',
-					},
-					options: {},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-320, -280],
-				name: 'OpenAI',
 			},
 		}),
 	)
