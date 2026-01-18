@@ -325,6 +325,91 @@ wf.add(trigger(...))
 
 ---
 
+## Code Node
+
+The Code node has special typing considerations due to its two execution modes and dynamic output.
+
+### Modes
+
+**`runOnceForAllItems`** - Receives all input items, returns array of items:
+
+```typescript
+node('n8n-nodes-base.code', 'v2', {
+  parameters: {
+    mode: 'runOnceForAllItems',
+    language: 'javaScript',
+    jsCode: `
+      const items = $input.all();
+      return items.map(item => ({
+        json: { total: item.json.price * item.json.quantity }
+      }));
+    `
+  },
+  outputType: { total: number }  // optional, defaults to unknown
+})
+```
+
+**`runOnceForEachItem`** - Receives one item, returns one item (or null to skip):
+
+```typescript
+node('n8n-nodes-base.code', 'v2', {
+  parameters: {
+    mode: 'runOnceForEachItem',
+    language: 'javaScript',
+    jsCode: `
+      if ($input.item.json.price < 10) return null; // skip item
+      return {
+        json: {
+          label: $input.item.json.name.toUpperCase(),
+          value: $input.item.json.price
+        }
+      };
+    `
+  },
+  outputType: { label: string; value: number }
+})
+```
+
+### Languages
+
+Both JavaScript and Python are supported:
+
+```typescript
+// Python example
+node('n8n-nodes-base.code', 'v2', {
+  parameters: {
+    mode: 'runOnceForAllItems',
+    language: 'python',
+    pythonCode: `
+      return [{"json": {"sum": sum(item["json"]["value"] for item in _items)}}]
+    `
+  },
+  outputType: { sum: number }
+})
+```
+
+### Output Typing
+
+The `outputType` parameter is optional:
+
+- **Specified** → downstream `$('codeNode').item.json` is typed
+- **Omitted** → downstream gets `unknown`
+
+```typescript
+// Unknown output - when schema isn't known at design time
+node('n8n-nodes-base.code', 'v2', {
+  parameters: {
+    mode: 'runOnceForAllItems',
+    jsCode: `return $input.all().map(i => ({ json: transform(i.json) }));`
+  }
+  // no outputType - downstream types are unknown
+})
+```
+
+The mode affects execution semantics (all items vs each item) but both modes produce items for downstream nodes.
+
+---
+
 ## JSON Conversion
 
 ### Export (TS → JSON)
