@@ -1038,6 +1038,17 @@ export function generateIndexFile(nodes: NodeTypeDescription[]): string {
 		lines.push(`${prefix}'${nodes[i].name}'`);
 	}
 	lines.push('\t;');
+	lines.push('');
+
+	// Generate NodeTypeMap for type-safe node creation
+	lines.push('// Node type map for type inference');
+	lines.push('export interface NodeTypeMap {');
+	for (const node of nodes.sort((a, b) => a.name.localeCompare(b.name))) {
+		const prefix = getPackagePrefix(node.name);
+		const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
+		lines.push(`\t'${node.name}': ${nodeName}Node;`);
+	}
+	lines.push('}');
 
 	return lines.join('\n');
 }
