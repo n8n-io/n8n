@@ -30,6 +30,7 @@ import {
   workflow,
   node,
   trigger,
+  merge,
   sticky,
   splitInBatches,
   placeholder,
@@ -423,16 +424,112 @@ wf.add(trigger(...))
   .output(1).then(node(...)); // False branch
 ```
 
-### Parallel Branches (Split)
+### Parallel Branches with Merge
+
+Use `merge()` to run branches in parallel and combine their outputs. The previous node fans out to all branches.
 
 ```typescript
-const branch1 = node('n8n-nodes-base.httpRequest', 'v4.2', { parameters: { url: 'https://api1.com' } });
-const branch2 = node('n8n-nodes-base.httpRequest', 'v4.2', { parameters: { url: 'https://api2.com' } });
+const api1 = node('n8n-nodes-base.httpRequest', 'v4.2', { parameters: { url: 'https://api1.com' } });
+const api2 = node('n8n-nodes-base.httpRequest', 'v4.2', { parameters: { url: 'https://api2.com' } });
 
 wf.add(trigger(...))
-  .split(branch1, branch2)
-  .merge(node('n8n-nodes-base.merge', 'v3', { parameters: { mode: 'combine' } }))
-  .then(node(...));
+  .then(
+    merge([api1, api2], { mode: 'combine' })
+  )
+  .then(processResults);
+```
+
+**Connection structure:**
+
+```
+              ┌── api1 ──┐
+trigger ──────┼          ├── merge ── processResults
+              └── api2 ──┘
+```
+
+### `merge(branches, config)`
+
+Creates a merge composite: the upstream node connects to all branches, branches connect to a merge node.
+
+```typescript
+merge(
+  branches: NodeInstance[],
+  config: {
+    mode: 'append' | 'combine' | 'multiplex' | 'chooseBranch';
+    // Additional mode-specific options...
+  }
+): MergeComposite;
+```
+
+**Input positions match array order:**
+
+```typescript
+const users = node('n8n-nodes-base.httpRequest', 'v4.2', { ... });   // → Input 1 (index 0)
+const orders = node('n8n-nodes-base.httpRequest', 'v4.2', { ... });  // → Input 2 (index 1)
+const products = node('n8n-nodes-base.httpRequest', 'v4.2', { ... }); // → Input 3 (index 2)
+
+wf.add(trigger(...))
+  .then(
+    merge([users, orders, products], { mode: 'append' })
+  );
+```
+
+**Why input position matters:**
+
+```
+┌─────────────┐
+│   Merge     │
+├─────────────┤
+│ Input 1 ←───── branches[0]
+│ Input 2 ←───── branches[1]
+│ Input 3 ←───── branches[2]
+└─────────────┘
+```
+
+| Mode | Input 1 | Input 2+ | Behavior |
+|------|---------|----------|----------|
+| `append` | Items | Items | Concatenate all items into single list |
+| `combine` | Primary data | Data to merge | Merge Input 2 fields into Input 1 items |
+| `multiplex` | Items | Items | Cartesian product of all inputs |
+| `chooseBranch` | Option A | Option B | Pass through selected input only |
+
+- In `combine` mode: `branches[0]` items are the "base" that receive merged fields
+- In `chooseBranch` mode: The `output` parameter selects which branch passes through
+- In `multiplex` mode: Order affects the structure of the cartesian product
+
+**Type signature:**
+
+```typescript
+// merge() returns a MergeComposite that .then() understands
+function merge<T extends NodeInstance[]>(
+  branches: [...T],
+  config: MergeConfig
+): MergeComposite<T>;
+
+interface MergeComposite<Branches extends NodeInstance[]> {
+  readonly branches: Branches;
+  readonly config: MergeConfig;
+  readonly inputCount: Branches['length'];
+}
+
+// WorkflowBuilder.then() accepts nodes or merge composites
+interface WorkflowBuilder {
+  then(node: NodeInstance): WorkflowBuilder;
+  then(merge: MergeComposite): WorkflowBuilder;  // Fans out to all branches
+}
+```
+
+**Branches can be chains:**
+
+```typescript
+wf.add(trigger(...))
+  .then(
+    merge([
+      node('n8n-nodes-base.httpRequest', 'v4.2', { ... })
+        .then(node('n8n-nodes-base.set', 'v3.4', { ... })),  // Chain as branch
+      node('n8n-nodes-base.httpRequest', 'v4.2', { ... })
+    ], { mode: 'append' })
+  );
 ```
 
 ### Named Node References
@@ -894,15 +991,52 @@ Each exports `INodeTypeDescription`:
 
 ### Output
 
-Generated TypeScript types with overloads:
+**All generated types include JSDoc documentation.** Every interface, property, and function overload is documented using descriptions extracted from node definitions. This provides IDE tooltips, autocomplete hints, and inline documentation for all 400+ nodes.
 
 ```typescript
 // Auto-generated: do not edit
+
+/**
+ * HTTP Request node - Makes HTTP requests and returns the response data.
+ * @see https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/
+ */
 export interface HttpRequestV42Params {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | ...;
+  /**
+   * The HTTP method to use for the request.
+   * @default 'GET'
+   */
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
+
+  /**
+   * The URL to make the request to.
+   */
   url: string | Expression<string>;
-  authentication?: 'none' | 'httpBasicAuth' | 'httpHeaderAuth' | ...;
-  // ... all properties typed
+
+  /**
+   * The authentication method to use.
+   * @default 'none'
+   */
+  authentication?: 'none' | 'httpBasicAuth' | 'httpHeaderAuth' | 'oAuth1Api' | 'oAuth2Api';
+
+  /**
+   * Whether to send query parameters with the request.
+   * @default false
+   */
+  sendQuery?: boolean;
+
+  /**
+   * Whether to send headers with the request.
+   * @default false
+   */
+  sendHeaders?: boolean;
+
+  /**
+   * Whether to send a body with the request.
+   * @default false
+   */
+  sendBody?: boolean;
+
+  // ... all properties typed with JSDoc
 }
 
 export interface HttpRequestV42Credentials {
@@ -914,6 +1048,15 @@ export interface HttpRequestV42OutputSchema {
   // For nodes with known output structure
 }
 
+/**
+ * Creates an HTTP Request node (v4.2).
+ *
+ * Makes HTTP requests and returns the response data. Supports authentication,
+ * custom headers, query parameters, and request bodies.
+ *
+ * @see https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/
+ * @category Core Nodes
+ */
 declare function node(
   type: 'n8n-nodes-base.httpRequest',
   version: 'v4.2',
@@ -926,6 +1069,46 @@ declare function node(
     name?: string;
   }
 ): NodeInstance<'n8n-nodes-base.httpRequest', 'v4.2', ...>;
+```
+
+### JSDoc Generation (Required)
+
+The type generator **must** extract documentation from `INodeTypeDescription` properties for every generated type:
+
+| Source Field | JSDoc Target |
+|--------------|--------------|
+| `displayName` | Interface description (node name) |
+| `description` | Interface description (node purpose) |
+| `properties[].description` | Property JSDoc comment |
+| `properties[].default` | `@default` tag |
+| `properties[].hint` | Added to property description |
+| `codex.categories` | `@category` tag |
+| `documentationUrl` | `@see` tag with link |
+
+**Options get inline documentation:**
+
+```typescript
+/**
+ * The HTTP method to use for the request.
+ * @default 'GET'
+ */
+method?:
+  | 'GET'     // Retrieve data
+  | 'POST'    // Create new resource
+  | 'PUT'     // Replace existing resource
+  | 'DELETE'  // Remove resource
+  | 'PATCH'   // Partially update resource
+  | 'HEAD';   // Retrieve headers only
+```
+
+**Conditional fields include display conditions:**
+
+```typescript
+/**
+ * The request body content.
+ * Only used when `sendBody` is true.
+ */
+body?: string | Expression<string>;
 ```
 
 ### Schema Categories
