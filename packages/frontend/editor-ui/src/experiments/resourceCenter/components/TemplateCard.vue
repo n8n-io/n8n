@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
 import { useRouter } from 'vue-router';
@@ -8,6 +9,48 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import WorkflowPreviewSvg from './WorkflowPreviewSvg.vue';
+
+// Static workflow preview images - light mode
+import preview7639 from '../workflow-previews/7639.png';
+import preview3050 from '../workflow-previews/3050.png';
+import preview4966 from '../workflow-previews/4966.png';
+import preview7177 from '../workflow-previews/7177.png';
+import preview8779 from '../workflow-previews/8779.png';
+import preview3100 from '../workflow-previews/3100.png';
+import preview8527 from '../workflow-previews/8527.png';
+import preview6270 from '../workflow-previews/6270.png';
+
+// Static workflow preview images - dark mode
+import preview7639Dark from '../workflow-previews/7639-dark.png';
+import preview3050Dark from '../workflow-previews/3050-dark.png';
+import preview4966Dark from '../workflow-previews/4966-dark.png';
+import preview7177Dark from '../workflow-previews/7177-dark.png';
+import preview8779Dark from '../workflow-previews/8779-dark.png';
+import preview3100Dark from '../workflow-previews/3100-dark.png';
+import preview8527Dark from '../workflow-previews/8527-dark.png';
+import preview6270Dark from '../workflow-previews/6270-dark.png';
+
+const previewImagesLight: Record<number, string> = {
+	7639: preview7639,
+	3050: preview3050,
+	4966: preview4966,
+	7177: preview7177,
+	8779: preview8779,
+	3100: preview3100,
+	8527: preview8527,
+	6270: preview6270,
+};
+
+const previewImagesDark: Record<number, string> = {
+	7639: preview7639Dark,
+	3050: preview3050Dark,
+	4966: preview4966Dark,
+	7177: preview7177Dark,
+	8779: preview8779Dark,
+	3100: preview3100Dark,
+	8527: preview8527Dark,
+	6270: preview6270Dark,
+};
 
 const props = withDefaults(
 	defineProps<{
@@ -25,8 +68,11 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
 const { getTemplateRoute, trackTileClick } = useResourceCenterStore();
 const router = useRouter();
+
+const isDarkMode = computed(() => uiStore.appliedTheme === 'dark');
 
 const templateNodes = computed(() => {
 	if (!props.template?.nodes) return [];
@@ -51,6 +97,11 @@ const setupMinutes = computed(() => {
 	return 15;
 });
 
+const previewImage = computed(() => {
+	const images = isDarkMode.value ? previewImagesDark : previewImagesLight;
+	return images[props.template.id] ?? null;
+});
+
 const handleClick = async () => {
 	if (props.onClickOverride) {
 		props.onClickOverride();
@@ -64,7 +115,13 @@ const handleClick = async () => {
 <template>
 	<div :class="$style.card" @click="handleClick">
 		<div :class="$style.imageContainer">
-			<WorkflowPreviewSvg :class="$style.workflowPreview" />
+			<img
+				v-if="previewImage"
+				:src="previewImage"
+				:alt="template.name"
+				:class="$style.workflowPreview"
+			/>
+			<WorkflowPreviewSvg v-else :class="$style.workflowPreview" />
 			<div v-if="templateNodes.length > 0" :class="$style.nodesBadge">
 				<div v-for="nodeType in templateNodes" :key="nodeType!.name" :class="$style.nodeIcon">
 					<NodeIcon :size="20" :stroke-width="1.5" :node-type="nodeType" />
@@ -125,6 +182,7 @@ const handleClick = async () => {
 	width: 100%;
 	height: 100%;
 	pointer-events: none;
+	object-fit: cover;
 }
 
 .nodesBadge {
