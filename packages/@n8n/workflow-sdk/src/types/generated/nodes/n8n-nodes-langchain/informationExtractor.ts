@@ -53,7 +53,14 @@ export interface LcInformationExtractorV12Params {
 }
  */
 	inputSchema?: IDataObject | string | Expression<string>;
-	attributes?: Record<string, unknown>;
+	attributes?: {
+		attributes?: Array<{
+			name?: string | Expression<string>;
+			type?: 'boolean' | 'date' | 'number' | 'string' | Expression<string>;
+			description?: string | Expression<string>;
+			required?: boolean | Expression<boolean>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 }
 

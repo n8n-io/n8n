@@ -97,7 +97,14 @@ export type GoogleSlidesV2PresentationReplaceTextConfig = {
 	 * ID of the presentation to retrieve. Found in the presentation URL: &lt;code&gt;https://docs.google.com/presentation/d/PRESENTATION_ID/edit&lt;/code&gt;
 	 */
 	presentationId: string | Expression<string>;
-	textUi?: Record<string, unknown>;
+	textUi?: {
+		textValues?: Array<{
+			matchCase?: boolean | Expression<boolean>;
+			pageObjectIds?: string[];
+			text?: string | Expression<string>;
+			replaceText?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 

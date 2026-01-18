@@ -23,7 +23,15 @@ export type TheHiveProjectV1AlertCreateConfig = {
 	resource: 'alert';
 	operation: 'create';
 	alertFields: unknown;
-	observableUi?: Record<string, unknown>;
+	observableUi?: {
+		values?: Array<{
+			dataType?: string | Expression<string>;
+			data?: string | Expression<string>;
+			binaryProperty?: string | Expression<string>;
+			message?: string | Expression<string>;
+			tags?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type TheHiveProjectV1AlertDeleteAlertConfig = {
@@ -76,8 +84,49 @@ export type TheHiveProjectV1AlertSearchConfig = {
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
-	filters?: Record<string, unknown>;
-	sort?: Record<string, unknown>;
+	filters?: {
+		values?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			operator?:
+				| '_between'
+				| '_like'
+				| '_endsWith'
+				| '_eq'
+				| '_gt'
+				| '_gte'
+				| '_in'
+				| '_lt'
+				| '_lte'
+				| '_match'
+				| '_ne'
+				| '_startsWith'
+				| Expression<string>;
+			value?: string | Expression<string>;
+			values?: string | Expression<string>;
+			from?: string | Expression<string>;
+			to?: string | Expression<string>;
+		}>;
+	};
+	sort?: {
+		fields?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			direction?: 'asc' | 'desc' | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -105,7 +154,7 @@ export type TheHiveProjectV1CaseAddAttachmentConfig = {
 	 * Array of supported attachments to add to the message
 	 * @default {}
 	 */
-	attachmentsUi?: Record<string, unknown>;
+	attachmentsUi?: { values?: Array<{ field?: string | Expression<string> }> };
 	options?: Record<string, unknown>;
 };
 
@@ -177,8 +226,49 @@ export type TheHiveProjectV1CaseSearchConfig = {
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
-	filters?: Record<string, unknown>;
-	sort?: Record<string, unknown>;
+	filters?: {
+		values?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			operator?:
+				| '_between'
+				| '_like'
+				| '_endsWith'
+				| '_eq'
+				| '_gt'
+				| '_gte'
+				| '_in'
+				| '_lt'
+				| '_lte'
+				| '_match'
+				| '_ne'
+				| '_startsWith'
+				| Expression<string>;
+			value?: string | Expression<string>;
+			values?: string | Expression<string>;
+			from?: string | Expression<string>;
+			to?: string | Expression<string>;
+		}>;
+	};
+	sort?: {
+		fields?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			direction?: 'asc' | 'desc' | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -222,8 +312,49 @@ export type TheHiveProjectV1CommentSearchConfig = {
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
-	filters?: Record<string, unknown>;
-	sort?: Record<string, unknown>;
+	filters?: {
+		values?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			operator?:
+				| '_between'
+				| '_like'
+				| '_endsWith'
+				| '_eq'
+				| '_gt'
+				| '_gte'
+				| '_in'
+				| '_lt'
+				| '_lte'
+				| '_match'
+				| '_ne'
+				| '_startsWith'
+				| Expression<string>;
+			value?: string | Expression<string>;
+			values?: string | Expression<string>;
+			from?: string | Expression<string>;
+			to?: string | Expression<string>;
+		}>;
+	};
+	sort?: {
+		fields?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			direction?: 'asc' | 'desc' | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -249,7 +380,7 @@ export type TheHiveProjectV1ObservableCreateConfig = {
 	 * Array of supported attachments to add to the message
 	 * @default {}
 	 */
-	attachmentsUi: Record<string, unknown>;
+	attachmentsUi: { values?: Array<{ field?: string | Expression<string> }> };
 	observableFields: unknown;
 };
 
@@ -310,8 +441,49 @@ export type TheHiveProjectV1ObservableSearchConfig = {
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
-	filters?: Record<string, unknown>;
-	sort?: Record<string, unknown>;
+	filters?: {
+		values?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			operator?:
+				| '_between'
+				| '_like'
+				| '_endsWith'
+				| '_eq'
+				| '_gt'
+				| '_gte'
+				| '_in'
+				| '_lt'
+				| '_lte'
+				| '_match'
+				| '_ne'
+				| '_startsWith'
+				| Expression<string>;
+			value?: string | Expression<string>;
+			values?: string | Expression<string>;
+			from?: string | Expression<string>;
+			to?: string | Expression<string>;
+		}>;
+	};
+	sort?: {
+		fields?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			direction?: 'asc' | 'desc' | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -358,8 +530,49 @@ export type TheHiveProjectV1PageSearchConfig = {
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
-	filters?: Record<string, unknown>;
-	sort?: Record<string, unknown>;
+	filters?: {
+		values?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			operator?:
+				| '_between'
+				| '_like'
+				| '_endsWith'
+				| '_eq'
+				| '_gt'
+				| '_gte'
+				| '_in'
+				| '_lt'
+				| '_lte'
+				| '_match'
+				| '_ne'
+				| '_startsWith'
+				| Expression<string>;
+			value?: string | Expression<string>;
+			values?: string | Expression<string>;
+			from?: string | Expression<string>;
+			to?: string | Expression<string>;
+		}>;
+	};
+	sort?: {
+		fields?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			direction?: 'asc' | 'desc' | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -436,8 +649,49 @@ export type TheHiveProjectV1TaskSearchConfig = {
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
-	filters?: Record<string, unknown>;
-	sort?: Record<string, unknown>;
+	filters?: {
+		values?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			operator?:
+				| '_between'
+				| '_like'
+				| '_endsWith'
+				| '_eq'
+				| '_gt'
+				| '_gte'
+				| '_in'
+				| '_lt'
+				| '_lte'
+				| '_match'
+				| '_ne'
+				| '_startsWith'
+				| Expression<string>;
+			value?: string | Expression<string>;
+			values?: string | Expression<string>;
+			from?: string | Expression<string>;
+			to?: string | Expression<string>;
+		}>;
+	};
+	sort?: {
+		fields?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			direction?: 'asc' | 'desc' | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -455,7 +709,7 @@ export type TheHiveProjectV1LogAddAttachmentConfig = {
 	 * Array of supported attachments to add to the message
 	 * @default {}
 	 */
-	attachmentsUi?: Record<string, unknown>;
+	attachmentsUi?: { values?: Array<{ field?: string | Expression<string> }> };
 };
 
 export type TheHiveProjectV1LogCreateConfig = {
@@ -467,7 +721,7 @@ export type TheHiveProjectV1LogCreateConfig = {
 	 * Array of supported attachments to add to the message
 	 * @default {}
 	 */
-	attachmentsUi?: Record<string, unknown>;
+	attachmentsUi?: { values?: Array<{ field?: string | Expression<string> }> };
 };
 
 export type TheHiveProjectV1LogDeleteLogConfig = {
@@ -521,8 +775,49 @@ export type TheHiveProjectV1LogSearchConfig = {
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
-	filters?: Record<string, unknown>;
-	sort?: Record<string, unknown>;
+	filters?: {
+		values?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			operator?:
+				| '_between'
+				| '_like'
+				| '_endsWith'
+				| '_eq'
+				| '_gt'
+				| '_gte'
+				| '_in'
+				| '_lt'
+				| '_lte'
+				| '_match'
+				| '_ne'
+				| '_startsWith'
+				| Expression<string>;
+			value?: string | Expression<string>;
+			values?: string | Expression<string>;
+			from?: string | Expression<string>;
+			to?: string | Expression<string>;
+		}>;
+	};
+	sort?: {
+		fields?: Array<{
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: 'message' | 'date' | Expression<string>;
+			field?: 'message' | Expression<string>;
+			field?: 'category' | 'content' | 'title' | Expression<string>;
+			direction?: 'asc' | 'desc' | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 

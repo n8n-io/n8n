@@ -23,7 +23,13 @@ interface NodeProperty {
 	hint?: string;
 	default?: unknown;
 	required?: boolean;
-	options?: Array<{ name: string; value: string | number | boolean; description?: string }>;
+	options?: Array<{
+		name: string;
+		value?: string | number | boolean;
+		description?: string;
+		displayName?: string;
+		values?: NodeProperty[];
+	}>;
 	displayOptions?: {
 		show?: Record<string, unknown[]>;
 		hide?: Record<string, unknown[]>;
@@ -424,7 +430,7 @@ describe('generate-types', () => {
 			expect(result).toBe('AssignmentCollectionValue');
 		});
 
-		it('should map fixedCollection type to Record<string, unknown>', () => {
+		it('should map fixedCollection type to proper nested interface', () => {
 			const prop: NodeProperty = {
 				name: 'queryParameters',
 				displayName: 'Query Parameters',
@@ -442,8 +448,53 @@ describe('generate-types', () => {
 				],
 			};
 			const result = generateTypes.mapPropertyType(prop);
-			// fixedCollection maps to Record to avoid naming conflicts
-			expect(result).toBe('Record<string, unknown>');
+			// fixedCollection should generate nested structure
+			expect(result).toContain('parameters?:');
+			expect(result).toContain('name?:');
+			expect(result).toContain('value?:');
+		});
+
+		it('should map fixedCollection with multipleValues to array type', () => {
+			const prop: NodeProperty = {
+				name: 'rule',
+				displayName: 'Trigger Rules',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true },
+				default: {},
+				options: [
+					{
+						displayName: 'Trigger Interval',
+						name: 'interval',
+						values: [
+							{
+								displayName: 'Trigger Interval',
+								name: 'field',
+								type: 'options',
+								options: [
+									{ name: 'Seconds', value: 'seconds' },
+									{ name: 'Minutes', value: 'minutes' },
+									{ name: 'Hours', value: 'hours' },
+								],
+								default: 'minutes',
+							},
+							{
+								displayName: 'Seconds Between Triggers',
+								name: 'secondsInterval',
+								type: 'number',
+								default: 30,
+							},
+						],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			// Should have interval as array since multipleValues is true
+			expect(result).toContain('interval?:');
+			expect(result).toContain('Array<');
+			expect(result).toContain('field?:');
+			expect(result).toContain("'seconds'");
+			expect(result).toContain("'minutes'");
+			expect(result).toContain('secondsInterval?:');
 		});
 
 		it('should map collection type to Record<string, unknown>', () => {

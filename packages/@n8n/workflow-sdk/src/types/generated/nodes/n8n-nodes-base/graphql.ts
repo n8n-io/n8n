@@ -76,7 +76,9 @@ export interface GraphqlV11Params {
 	 * The headers to send
 	 * @default {}
 	 */
-	headerParametersUi?: Record<string, unknown>;
+	headerParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 }
 
 // ===========================================================================

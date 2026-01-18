@@ -16,7 +16,26 @@ import type { Expression, NodeConfig } from '../../../base';
 // ===========================================================================
 
 export interface SummarizeV11Params {
-	fieldsToSummarize?: Record<string, unknown>;
+	fieldsToSummarize?: {
+		values?: Array<{
+			aggregation?:
+				| 'append'
+				| 'average'
+				| 'concatenate'
+				| 'count'
+				| 'countUnique'
+				| 'max'
+				| 'min'
+				| 'sum'
+				| Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			field?: string | Expression<string>;
+			includeEmpty?: boolean | Expression<boolean>;
+			separateBy?: ',' | ', ' | '\n' | '' | ' ' | 'other' | Expression<string>;
+			customSeparator?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * The name of the input fields that you want to split the summary by
 	 * @hint Enter the name of the fields as text (separated by commas)

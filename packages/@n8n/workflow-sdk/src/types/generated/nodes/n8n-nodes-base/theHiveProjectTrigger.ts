@@ -47,7 +47,13 @@ export interface TheHiveProjectTriggerV1Params {
 	 * Filter any incoming events based on their fields
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		values?: Array<{
+			field?: string | Expression<string>;
+			operator?: 'equal' | 'notEqual' | 'includes' | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 }
 

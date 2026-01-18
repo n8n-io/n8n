@@ -46,7 +46,11 @@ export type GitlabV1FileCreateConfig = {
 	 * Additional fields to add
 	 * @default {}
 	 */
-	additionalParameters?: Record<string, unknown>;
+	additionalParameters?: {
+		branchStart?: { branchStart?: string | Expression<string> };
+		author?: { name?: string | Expression<string>; email?: string | Expression<string> };
+		encoding?: { encoding?: string | Expression<string> };
+	};
 };
 
 /** Delete a release */
@@ -70,7 +74,11 @@ export type GitlabV1FileDeleteConfig = {
 	 * Additional fields to add
 	 * @default {}
 	 */
-	additionalParameters?: Record<string, unknown>;
+	additionalParameters?: {
+		branchStart?: { branchStart?: string | Expression<string> };
+		author?: { name?: string | Expression<string>; email?: string | Expression<string> };
+		encoding?: { encoding?: string | Expression<string> };
+	};
 };
 
 /** Edit an issue */
@@ -104,7 +112,11 @@ export type GitlabV1FileEditConfig = {
 	 * Additional fields to add
 	 * @default {}
 	 */
-	additionalParameters?: Record<string, unknown>;
+	additionalParameters?: {
+		branchStart?: { branchStart?: string | Expression<string> };
+		author?: { name?: string | Expression<string>; email?: string | Expression<string> };
+		encoding?: { encoding?: string | Expression<string> };
+	};
 };
 
 /** Get the data of a single issue */

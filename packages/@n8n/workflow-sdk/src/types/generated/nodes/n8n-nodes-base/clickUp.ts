@@ -794,7 +794,13 @@ export type ClickUpV1TimeEntryTagAddConfig = {
 	 */
 	team: string | Expression<string>;
 	timeEntryIds: string | Expression<string>;
-	tagsUi?: Record<string, unknown>;
+	tagsUi?: {
+		tagsValues?: Array<{
+			name?: string | Expression<string>;
+			tag_bg?: string | Expression<string>;
+			tag_fg?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Get many comments */

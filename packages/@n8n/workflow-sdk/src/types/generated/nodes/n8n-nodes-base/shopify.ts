@@ -20,7 +20,16 @@ export type ShopifyV1OrderCreateConfig = {
 	resource: 'order';
 	operation: 'create';
 	additionalFields?: Record<string, unknown>;
-	limeItemsUi?: Record<string, unknown>;
+	limeItemsUi?: {
+		lineItemValues?: Array<{
+			productId?: string | Expression<string>;
+			variantId?: string | Expression<string>;
+			title?: string | Expression<string>;
+			grams?: string | Expression<string>;
+			quantity?: number | Expression<number>;
+			price?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Delete an order */

@@ -43,7 +43,23 @@ export interface OracleDatabaseV1Params {
 	 * If not set, all rows will be selected
 	 * @default {}
 	 */
-	where?: Record<string, unknown>;
+	where?: {
+		values?: Array<{
+			column?: string | Expression<string>;
+			condition?:
+				| 'equal'
+				| '!='
+				| 'LIKE'
+				| '>'
+				| '<'
+				| '>='
+				| '<='
+				| 'IS NULL'
+				| 'IS NOT NULL'
+				| Expression<string>;
+			value?: IDataObject | string | Expression<string>;
+		}>;
+	};
 	/**
 	 * How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true
 	 * @default AND
@@ -66,7 +82,12 @@ export interface OracleDatabaseV1Params {
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
-	sort?: Record<string, unknown>;
+	sort?: {
+		values?: Array<{
+			column?: string | Expression<string>;
+			direction?: 'ASC' | 'DESC' | Expression<string>;
+		}>;
+	};
 }
 
 // ===========================================================================

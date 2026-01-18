@@ -45,7 +45,12 @@ export type MailjetV1EmailSendConfig = {
 	 * HTML text message of email
 	 */
 	variablesJson?: string | Expression<string>;
-	variablesUi?: Record<string, unknown>;
+	variablesUi?: {
+		variablesValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Send a email template */
@@ -70,7 +75,12 @@ export type MailjetV1EmailSendTemplateConfig = {
 	templateId: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
-	variablesUi?: Record<string, unknown>;
+	variablesUi?: {
+		variablesValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * HTML text message of email
 	 */

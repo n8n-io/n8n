@@ -20,7 +20,20 @@ export type LcChainLlmV19AutoConfig = {
 	promptType: 'auto';
 	prompt: string | Expression<string>;
 	text: string | Expression<string>;
-	messages?: Record<string, unknown>;
+	messages?: {
+		messageValues?: Array<{
+			type?:
+				| 'AIMessagePromptTemplate'
+				| 'SystemMessagePromptTemplate'
+				| 'HumanMessagePromptTemplate'
+				| Expression<string>;
+			messageType?: 'text' | 'imageBinary' | 'imageUrl' | Expression<string>;
+			binaryImageDataKey?: string | Expression<string>;
+			imageUrl?: string | Expression<string>;
+			imageDetail?: 'auto' | 'low' | 'high' | Expression<string>;
+			message?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Batch processing options for rate limiting
 	 * @default {}
@@ -33,7 +46,20 @@ export type LcChainLlmV19GuardrailsConfig = {
 	promptType: 'guardrails';
 	prompt: string | Expression<string>;
 	text: string | Expression<string>;
-	messages?: Record<string, unknown>;
+	messages?: {
+		messageValues?: Array<{
+			type?:
+				| 'AIMessagePromptTemplate'
+				| 'SystemMessagePromptTemplate'
+				| 'HumanMessagePromptTemplate'
+				| Expression<string>;
+			messageType?: 'text' | 'imageBinary' | 'imageUrl' | Expression<string>;
+			binaryImageDataKey?: string | Expression<string>;
+			imageUrl?: string | Expression<string>;
+			imageDetail?: 'auto' | 'low' | 'high' | Expression<string>;
+			message?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Batch processing options for rate limiting
 	 * @default {}
@@ -46,7 +72,20 @@ export type LcChainLlmV19DefineConfig = {
 	promptType: 'define';
 	prompt: string | Expression<string>;
 	text: string | Expression<string>;
-	messages?: Record<string, unknown>;
+	messages?: {
+		messageValues?: Array<{
+			type?:
+				| 'AIMessagePromptTemplate'
+				| 'SystemMessagePromptTemplate'
+				| 'HumanMessagePromptTemplate'
+				| Expression<string>;
+			messageType?: 'text' | 'imageBinary' | 'imageUrl' | Expression<string>;
+			binaryImageDataKey?: string | Expression<string>;
+			imageUrl?: string | Expression<string>;
+			imageDetail?: 'auto' | 'low' | 'high' | Expression<string>;
+			message?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Batch processing options for rate limiting
 	 * @default {}

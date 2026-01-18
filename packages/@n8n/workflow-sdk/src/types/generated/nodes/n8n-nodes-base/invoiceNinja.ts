@@ -74,9 +74,34 @@ export type InvoiceNinjaV2ClientCreateConfig = {
 	operation: 'create';
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	billingAddressUi?: Record<string, unknown>;
-	contactsUi?: Record<string, unknown>;
-	shippingAddressUi?: Record<string, unknown>;
+	billingAddressUi?: {
+		billingAddressValue?: {
+			streetAddress?: string | Expression<string>;
+			aptSuite?: string | Expression<string>;
+			city?: string | Expression<string>;
+			state?: string | Expression<string>;
+			postalCode?: string | Expression<string>;
+			countryCode?: string | Expression<string>;
+		};
+	};
+	contactsUi?: {
+		contacstValues?: Array<{
+			firstName?: string | Expression<string>;
+			lastName?: string | Expression<string>;
+			email?: string | Expression<string>;
+			phone?: string | Expression<string>;
+		}>;
+	};
+	shippingAddressUi?: {
+		shippingAddressValue?: {
+			streetAddress?: string | Expression<string>;
+			aptSuite?: string | Expression<string>;
+			city?: string | Expression<string>;
+			state?: string | Expression<string>;
+			postalCode?: string | Expression<string>;
+			countryCode?: string | Expression<string>;
+		};
+	};
 };
 
 /** Delete a client */
@@ -161,7 +186,18 @@ export type InvoiceNinjaV2InvoiceCreateConfig = {
 	operation: 'create';
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	invoiceItemsUi?: Record<string, unknown>;
+	invoiceItemsUi?: {
+		invoiceItemsValues?: Array<{
+			cost?: number | Expression<number>;
+			description?: string | Expression<string>;
+			service?: string | Expression<string>;
+			hours?: number | Expression<number>;
+			taxName1?: string | Expression<string>;
+			taxName2?: string | Expression<string>;
+			taxRate1?: number | Expression<number>;
+			taxRate2?: number | Expression<number>;
+		}>;
+	};
 };
 
 /** Delete a client */
@@ -261,7 +297,18 @@ export type InvoiceNinjaV2QuoteCreateConfig = {
 	operation: 'create';
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	invoiceItemsUi?: Record<string, unknown>;
+	invoiceItemsUi?: {
+		invoiceItemsValues?: Array<{
+			cost?: number | Expression<number>;
+			description?: string | Expression<string>;
+			service?: string | Expression<string>;
+			hours?: number | Expression<number>;
+			taxName1?: string | Expression<string>;
+			taxName2?: string | Expression<string>;
+			taxRate1?: number | Expression<number>;
+			taxRate2?: number | Expression<number>;
+		}>;
+	};
 };
 
 /** Delete a client */
@@ -313,7 +360,13 @@ export type InvoiceNinjaV2TaskCreateConfig = {
 	operation: 'create';
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	timeLogsUi?: Record<string, unknown>;
+	timeLogsUi?: {
+		timeLogsValues?: Array<{
+			startDate?: string | Expression<string>;
+			endDate?: string | Expression<string>;
+			duration?: number | Expression<number>;
+		}>;
+	};
 };
 
 /** Delete a client */

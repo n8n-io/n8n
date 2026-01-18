@@ -40,7 +40,91 @@ export interface EditImageV1Params {
 	 * The operations to perform
 	 * @default {}
 	 */
-	operations?: Record<string, unknown>;
+	operations?: {
+		operations?: Array<{
+			operation?:
+				| 'blur'
+				| 'border'
+				| 'composite'
+				| 'create'
+				| 'crop'
+				| 'draw'
+				| 'rotate'
+				| 'resize'
+				| 'shear'
+				| 'text'
+				| 'transparent'
+				| Expression<string>;
+			backgroundColor?: string | Expression<string>;
+			width?: number | Expression<number>;
+			height?: number | Expression<number>;
+			primitive?: 'circle' | 'line' | 'rectangle' | Expression<string>;
+			color?: string | Expression<string>;
+			startPositionX?: number | Expression<number>;
+			startPositionY?: number | Expression<number>;
+			endPositionX?: number | Expression<number>;
+			endPositionY?: number | Expression<number>;
+			cornerRadius?: number | Expression<number>;
+			text?: string | Expression<string>;
+			fontSize?: number | Expression<number>;
+			fontColor?: string | Expression<string>;
+			positionX?: number | Expression<number>;
+			positionY?: number | Expression<number>;
+			lineLength?: number | Expression<number>;
+			blur?: number | Expression<number>;
+			sigma?: number | Expression<number>;
+			borderWidth?: number | Expression<number>;
+			borderHeight?: number | Expression<number>;
+			borderColor?: string | Expression<string>;
+			dataPropertyNameComposite?: string | Expression<string>;
+			operator?:
+				| 'Add'
+				| 'Atop'
+				| 'Bumpmap'
+				| 'Copy'
+				| 'CopyBlack'
+				| 'CopyBlue'
+				| 'CopyCyan'
+				| 'CopyGreen'
+				| 'CopyMagenta'
+				| 'CopyOpacity'
+				| 'CopyRed'
+				| 'CopyYellow'
+				| 'Difference'
+				| 'Divide'
+				| 'In'
+				| 'Minus'
+				| 'Multiply'
+				| 'Out'
+				| 'Over'
+				| 'Plus'
+				| 'Subtract'
+				| 'Xor'
+				| Expression<string>;
+			positionX?: number | Expression<number>;
+			positionY?: number | Expression<number>;
+			width?: number | Expression<number>;
+			height?: number | Expression<number>;
+			positionX?: number | Expression<number>;
+			positionY?: number | Expression<number>;
+			width?: number | Expression<number>;
+			height?: number | Expression<number>;
+			resizeOption?:
+				| 'ignoreAspectRatio'
+				| 'maximumArea'
+				| 'minimumArea'
+				| 'onlyIfLarger'
+				| 'onlyIfSmaller'
+				| 'percent'
+				| Expression<string>;
+			rotate?: number | Expression<number>;
+			backgroundColor?: string | Expression<string>;
+			degreesX?: number | Expression<number>;
+			degreesY?: number | Expression<number>;
+			color?: string | Expression<string>;
+			font?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * The background color of the image to create
 	 * @default #ffffff00

@@ -37,7 +37,12 @@ export interface AdaloV1Params {
 	 * Field must be defined in the collection, otherwise it will be ignored. If field defined in the collection is not set here, it will be set to null.
 	 * @default {}
 	 */
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return all results or only up to a given limit
 	 * @default false

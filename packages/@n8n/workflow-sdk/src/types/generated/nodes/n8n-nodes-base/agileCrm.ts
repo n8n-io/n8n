@@ -69,7 +69,22 @@ export type AgileCrmV1CompanyGetAllConfig = {
 	 * @default false
 	 */
 	simple?: boolean | Expression<boolean>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			field?: string | Expression<string>;
+			condition_type?:
+				| 'AFTER'
+				| 'BEFORE'
+				| 'BETWEEN'
+				| 'EQUALS'
+				| 'LAST'
+				| 'NOTEQUALS'
+				| 'ON'
+				| Expression<string>;
+			value?: string | Expression<string>;
+			value2?: string | Expression<string>;
+		}>;
+	};
 	filterJson?: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -143,7 +158,22 @@ export type AgileCrmV1ContactGetAllConfig = {
 	 * @default false
 	 */
 	simple?: boolean | Expression<boolean>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			field?: string | Expression<string>;
+			condition_type?:
+				| 'AFTER'
+				| 'BEFORE'
+				| 'BETWEEN'
+				| 'EQUALS'
+				| 'LAST'
+				| 'NOTEQUALS'
+				| 'ON'
+				| Expression<string>;
+			value?: string | Expression<string>;
+			value2?: string | Expression<string>;
+		}>;
+	};
 	filterJson?: string | Expression<string>;
 	options?: Record<string, unknown>;
 };

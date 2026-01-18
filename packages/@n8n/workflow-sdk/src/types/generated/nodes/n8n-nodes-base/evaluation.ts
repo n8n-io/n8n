@@ -29,11 +29,21 @@ export interface EvaluationV48Params {
 	 */
 	source?: 'dataTable' | 'googleSheets' | Expression<string>;
 	authentication?: 'serviceAccount' | 'oAuth2' | Expression<string>;
-	inputs?: Record<string, unknown>;
+	inputs?: {
+		values?: Array<{
+			inputName?: string | Expression<string>;
+			inputValue?: string | Expression<string>;
+		}>;
+	};
 	documentId: ResourceLocatorValue;
 	sheetName: string | Expression<string>;
 	dataTableId: ResourceLocatorValue;
-	outputs?: Record<string, unknown>;
+	outputs?: {
+		values?: Array<{
+			outputName?: string | Expression<string>;
+			outputValue?: string | Expression<string>;
+		}>;
+	};
 	metric?: unknown;
 	/**
 	 * The expected output defined in your evaluation dataset, used as ground truth

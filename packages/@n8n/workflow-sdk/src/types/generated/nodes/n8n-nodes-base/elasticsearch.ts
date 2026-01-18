@@ -32,7 +32,12 @@ export type ElasticsearchV1DocumentCreateConfig = {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 	options?: Record<string, unknown>;
 };
@@ -119,7 +124,12 @@ export type ElasticsearchV1DocumentUpdateConfig = {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 

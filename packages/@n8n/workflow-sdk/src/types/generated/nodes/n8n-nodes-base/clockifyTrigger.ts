@@ -20,7 +20,26 @@ export interface ClockifyTriggerV1Params {
 	 * Time at which polling should occur
 	 * @default {"item":[{"mode":"everyMinute"}]}
 	 */
-	pollTimes?: Record<string, unknown>;
+	pollTimes?: {
+		item?: Array<{
+			mode?:
+				| 'everyMinute'
+				| 'everyHour'
+				| 'everyDay'
+				| 'everyWeek'
+				| 'everyMonth'
+				| 'everyX'
+				| 'custom'
+				| Expression<string>;
+			hour?: number | Expression<number>;
+			minute?: number | Expression<number>;
+			dayOfMonth?: number | Expression<number>;
+			weekday?: '1' | '2' | '3' | '4' | '5' | '6' | '0' | Expression<string>;
+			cronExpression?: string | Expression<string>;
+			value?: number | Expression<number>;
+			unit?: 'minutes' | 'hours' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
 	 */

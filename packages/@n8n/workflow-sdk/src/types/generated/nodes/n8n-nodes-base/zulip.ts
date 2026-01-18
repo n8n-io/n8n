@@ -99,7 +99,12 @@ export type ZulipV1StreamCreateConfig = {
 	 * A list of dictionaries containing the the key name and value specifying the name of the stream to subscribe. If the stream does not exist a new stream is created.
 	 * @default {}
 	 */
-	subscriptions: Record<string, unknown>;
+	subscriptions: {
+		properties?: Array<{
+			name?: string | Expression<string>;
+			description?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 

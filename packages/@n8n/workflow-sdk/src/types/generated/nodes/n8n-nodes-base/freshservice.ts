@@ -25,7 +25,18 @@ export type FreshserviceV1AgentCreateConfig = {
 	 * Role to assign to the agent
 	 * @default {}
 	 */
-	roles: Record<string, unknown>;
+	roles: {
+		roleProperties?: Array<{
+			role?: string | Expression<string>;
+			assignment_scope?:
+				| 'entire_helpdesk'
+				| 'member_groups'
+				| 'specified_groups'
+				| 'assigned_items'
+				| Expression<string>;
+			groups?: string[];
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 

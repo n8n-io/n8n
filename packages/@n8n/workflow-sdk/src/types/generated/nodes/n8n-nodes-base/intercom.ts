@@ -34,7 +34,12 @@ export type IntercomV1CompanyCreateConfig = {
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
 	 * @default {}
 	 */
-	customAttributesUi?: Record<string, unknown>;
+	customAttributesUi?: {
+		customAttributesValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Companies allow you to represent commercial organizations using your product */
@@ -86,7 +91,12 @@ export type IntercomV1CompanyUpdateConfig = {
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
 	 * @default {}
 	 */
-	customAttributesUi?: Record<string, unknown>;
+	customAttributesUi?: {
+		customAttributesValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Companies allow you to represent commercial organizations using your product */
@@ -128,7 +138,12 @@ export type IntercomV1LeadCreateConfig = {
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
 	 * @default {}
 	 */
-	customAttributesUi?: Record<string, unknown>;
+	customAttributesUi?: {
+		customAttributesValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Leads are useful for representing logged-out users of your application */
@@ -196,7 +211,12 @@ export type IntercomV1LeadUpdateConfig = {
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
 	 * @default {}
 	 */
-	customAttributesUi?: Record<string, unknown>;
+	customAttributesUi?: {
+		customAttributesValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** The Users resource is the primary way of interacting with Intercom */
@@ -221,7 +241,12 @@ export type IntercomV1UserCreateConfig = {
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
 	 * @default {}
 	 */
-	customAttributesUi?: Record<string, unknown>;
+	customAttributesUi?: {
+		customAttributesValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** The Users resource is the primary way of interacting with Intercom */
@@ -288,7 +313,12 @@ export type IntercomV1UserUpdateConfig = {
 	 * A hash of key/value pairs to represent custom data you want to attribute to a user
 	 * @default {}
 	 */
-	customAttributesUi?: Record<string, unknown>;
+	customAttributesUi?: {
+		customAttributesValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type IntercomV1Params =

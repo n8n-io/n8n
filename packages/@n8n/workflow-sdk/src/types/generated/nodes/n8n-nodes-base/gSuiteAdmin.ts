@@ -63,7 +63,19 @@ export type GSuiteAdminV1DeviceGetAllConfig = {
 	 * Define sorting rules for the results
 	 * @default {}
 	 */
-	sort?: Record<string, unknown>;
+	sort?: {
+		sortRules?: {
+			orderBy?:
+				| 'annotatedLocation'
+				| 'annotatedUser'
+				| 'lastSync'
+				| 'notes'
+				| 'serialNumber'
+				| 'status'
+				| Expression<string>;
+			sortBy?: 'ascending' | 'descending' | Expression<string>;
+		};
+	};
 };
 
 /** Update a ChromeOS device */
@@ -146,7 +158,12 @@ export type GSuiteAdminV1GroupGetAllConfig = {
 	 */
 	limit?: number | Expression<number>;
 	filter?: Record<string, unknown>;
-	sort?: Record<string, unknown>;
+	sort?: {
+		sortRules?: {
+			orderBy?: 'email' | Expression<string>;
+			sortOrder?: 'ASCENDING' | 'DESCENDING' | Expression<string>;
+		};
+	};
 };
 
 /** Update a ChromeOS device */
@@ -275,7 +292,12 @@ export type GSuiteAdminV1UserGetAllConfig = {
 	 * Define sorting rules for the results
 	 * @default {}
 	 */
-	sort?: Record<string, unknown>;
+	sort?: {
+		sortRules?: {
+			orderBy?: 'email' | 'familyName' | 'givenName' | Expression<string>;
+			sortOrder?: 'ASCENDING' | 'DESCENDING' | Expression<string>;
+		};
+	};
 };
 
 /** Remove a user from a group */

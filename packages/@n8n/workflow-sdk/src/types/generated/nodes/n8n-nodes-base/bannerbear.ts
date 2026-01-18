@@ -24,7 +24,15 @@ export type BannerbearV1ImageCreateConfig = {
 	 */
 	templateId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	modificationsUi?: Record<string, unknown>;
+	modificationsUi?: {
+		modificationsValues?: Array<{
+			name?: string | Expression<string>;
+			text?: string | Expression<string>;
+			color?: string | Expression<string>;
+			background?: string | Expression<string>;
+			imageUrl?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Get an image */

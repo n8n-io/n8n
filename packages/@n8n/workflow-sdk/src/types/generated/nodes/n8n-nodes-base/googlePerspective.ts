@@ -18,7 +18,21 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../base'
 export interface GooglePerspectiveV1Params {
 	operation?: 'analyzeComment' | Expression<string>;
 	text: string | Expression<string>;
-	requestedAttributesUi: Record<string, unknown>;
+	requestedAttributesUi: {
+		requestedAttributesValues?: Array<{
+			attributeName?:
+				| 'flirtation'
+				| 'identity_attack'
+				| 'insult'
+				| 'profanity'
+				| 'severe_toxicity'
+				| 'sexually_explicit'
+				| 'threat'
+				| 'toxicity'
+				| Expression<string>;
+			scoreThreshold?: number | Expression<number>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 }
 

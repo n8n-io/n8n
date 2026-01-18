@@ -73,7 +73,16 @@ console.log("Hello World!");
 	 */
 	sourceData?: 'binary' | 'json' | Expression<string>;
 	dataPropertyName: string | Expression<string>;
-	extractionValues?: Record<string, unknown>;
+	extractionValues?: {
+		values?: Array<{
+			key?: string | Expression<string>;
+			cssSelector?: string | Expression<string>;
+			returnValue?: 'attribute' | 'html' | 'text' | 'value' | Expression<string>;
+			attribute?: string | Expression<string>;
+			skipSelectors?: string | Expression<string>;
+			returnArray?: boolean | Expression<boolean>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 }
 

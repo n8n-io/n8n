@@ -22,7 +22,9 @@ export interface RundeckV1Params {
 	 * The job ID to execute
 	 */
 	jobid: string | Expression<string>;
-	arguments?: Record<string, unknown>;
+	arguments?: {
+		arguments?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * Filter Rundeck nodes by name
 	 */

@@ -382,12 +382,19 @@ export type AirtopV11InteractionScrollConfig = {
 	 * The direction to scroll to. When 'Scroll By' is defined, 'Scroll To Edge' action will be executed first, then 'Scroll By' action.
 	 * @default {}
 	 */
-	scrollToEdge?: Record<string, unknown>;
+	scrollToEdge?: {
+		edgeValues?: {
+			yAxis?: '' | 'top' | 'bottom' | Expression<string>;
+			xAxis?: '' | 'left' | 'right' | Expression<string>;
+		};
+	};
 	/**
 	 * The amount to scroll by. When 'Scroll To Edge' is defined, 'Scroll By' action will be executed after 'Scroll To Edge'.
 	 * @default {}
 	 */
-	scrollBy?: Record<string, unknown>;
+	scrollBy?: {
+		scrollValues?: { yAxis?: string | Expression<string>; xAxis?: string | Expression<string> };
+	};
 	/**
 	 * Scroll within an element on the page
 	 */

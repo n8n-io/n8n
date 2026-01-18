@@ -23,7 +23,12 @@ export type SendInBlueV1ContactCreateConfig = {
 	 * Array of attributes to be added
 	 * @default {}
 	 */
-	createContactAttributes?: Record<string, unknown>;
+	createContactAttributes?: {
+		attributesValues?: Array<{
+			fieldName?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	requestOptions?: Record<string, unknown>;
 };
 
@@ -38,7 +43,12 @@ export type SendInBlueV1ContactUpsertConfig = {
 	 * Array of attributes to be updated
 	 * @default {}
 	 */
-	upsertAttributes?: Record<string, unknown>;
+	upsertAttributes?: {
+		upsertAttributesValues?: Array<{
+			fieldName?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	requestOptions?: Record<string, unknown>;
 };
 
@@ -91,7 +101,12 @@ export type SendInBlueV1ContactUpdateConfig = {
 	 * Array of attributes to be updated
 	 * @default {}
 	 */
-	updateAttributes?: Record<string, unknown>;
+	updateAttributes?: {
+		updateAttributesValues?: Array<{
+			fieldName?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	requestOptions?: Record<string, unknown>;
 };
 

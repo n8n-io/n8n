@@ -190,7 +190,35 @@ export type HubspotV22ContactSearchConfig = {
 	 * When multiple filters are provided within a Filter Group, they will be combined using a logical AND operator. When multiple Filter Groups are provided, they will be combined using a logical OR operator. The system supports a maximum of three Filter Groups with up to three filters each. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;
 	 * @default {}
 	 */
-	filterGroupsUi?: Record<string, unknown>;
+	filterGroupsUi?: {
+		filterGroupsValues?: Array<{
+			filtersUi?: {
+				filterValues?: Array<{
+					propertyName?: string | Expression<string>;
+					type?: unknown;
+					operator?:
+						| 'CONTAINS_TOKEN'
+						| 'EQ'
+						| 'HAS_PROPERTY'
+						| 'NOT_HAS_PROPERTY'
+						| 'NEQ'
+						| Expression<string>;
+					operator?:
+						| 'CONTAINS_TOKEN'
+						| 'EQ'
+						| 'GT'
+						| 'GTE'
+						| 'HAS_PROPERTY'
+						| 'NOT_HAS_PROPERTY'
+						| 'LT'
+						| 'LTE'
+						| 'NEQ'
+						| Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 
@@ -290,7 +318,35 @@ export type HubspotV22DealSearchConfig = {
 	 * When multiple filters are provided within a Filter Group, they will be combined using a logical AND operator. When multiple Filter Groups are provided, they will be combined using a logical OR operator. The system supports a maximum of three Filter Groups with up to three filters each. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;
 	 * @default {}
 	 */
-	filterGroupsUi?: Record<string, unknown>;
+	filterGroupsUi?: {
+		filterGroupsValues?: Array<{
+			filtersUi?: {
+				filterValues?: Array<{
+					propertyName?: string | Expression<string>;
+					type?: unknown;
+					operator?:
+						| 'CONTAINS_TOKEN'
+						| 'EQ'
+						| 'HAS_PROPERTY'
+						| 'NOT_HAS_PROPERTY'
+						| 'NEQ'
+						| Expression<string>;
+					operator?:
+						| 'CONTAINS_TOKEN'
+						| 'EQ'
+						| 'GT'
+						| 'GTE'
+						| 'HAS_PROPERTY'
+						| 'NOT_HAS_PROPERTY'
+						| 'LT'
+						| 'LTE'
+						| 'NEQ'
+						| Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 
@@ -631,7 +687,27 @@ export type HubspotV1ContactSearchConfig = {
 	 * When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;
 	 * @default {}
 	 */
-	filterGroupsUi?: Record<string, unknown>;
+	filterGroupsUi?: {
+		filterGroupsValues?: Array<{
+			filtersUi?: {
+				filterValues?: Array<{
+					propertyName?: string | Expression<string>;
+					operator?:
+						| 'CONTAINS_TOKEN'
+						| 'EQ'
+						| 'GT'
+						| 'GTE'
+						| 'HAS_PROPERTY'
+						| 'NOT_HAS_PROPERTY'
+						| 'LT'
+						| 'LTE'
+						| 'NEQ'
+						| Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 
@@ -754,7 +830,27 @@ export type HubspotV1DealSearchConfig = {
 	 * When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info &lt;a href="https://developers.hubspot.com/docs/api/crm/search"&gt;here&lt;/a&gt;
 	 * @default {}
 	 */
-	filterGroupsUi?: Record<string, unknown>;
+	filterGroupsUi?: {
+		filterGroupsValues?: Array<{
+			filtersUi?: {
+				filterValues?: Array<{
+					propertyName?: string | Expression<string>;
+					operator?:
+						| 'CONTAINS_TOKEN'
+						| 'EQ'
+						| 'GT'
+						| 'GTE'
+						| 'HAS_PROPERTY'
+						| 'NOT_HAS_PROPERTY'
+						| 'LT'
+						| 'LTE'
+						| 'NEQ'
+						| Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 
@@ -833,8 +929,36 @@ export type HubspotV1FormSubmitConfig = {
 	 */
 	formId: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	contextUi?: Record<string, unknown>;
-	lengalConsentUi?: Record<string, unknown>;
+	contextUi?: {
+		contextValue?: {
+			hutk?: string | Expression<string>;
+			ipAddress?: string | Expression<string>;
+			pageUri?: string | Expression<string>;
+			pageName?: string | Expression<string>;
+			pageId?: string | Expression<string>;
+			sfdcCampaignId?: string | Expression<string>;
+			goToWebinarWebinarKey?: string | Expression<string>;
+		};
+	};
+	lengalConsentUi?: {
+		lengalConsentValues?: {
+			consentToProcess?: boolean | Expression<boolean>;
+			text?: string | Expression<string>;
+			communicationsUi?: {
+				communicationValues?: Array<{
+					subscriptionTypeId?: string | Expression<string>;
+					value?: boolean | Expression<boolean>;
+					text?: string | Expression<string>;
+				}>;
+			};
+		};
+		legitimateInterestValues?: {
+			subscriptionTypeId?: string | Expression<string>;
+			value?: boolean | Expression<boolean>;
+			legalBasis?: 'CUSTOMER' | 'LEAD' | Expression<string>;
+			text?: string | Expression<string>;
+		};
+	};
 };
 
 /** Create a company */

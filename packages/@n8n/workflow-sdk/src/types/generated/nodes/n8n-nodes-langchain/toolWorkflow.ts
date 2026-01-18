@@ -83,7 +83,23 @@ export interface LcToolWorkflowV13Params {
 	 * These will be output by the 'execute workflow' trigger of the workflow being called
 	 * @default {}
 	 */
-	fields?: Record<string, unknown>;
+	fields?: {
+		values?: Array<{
+			name?: string | Expression<string>;
+			type?:
+				| 'stringValue'
+				| 'numberValue'
+				| 'booleanValue'
+				| 'arrayValue'
+				| 'objectValue'
+				| Expression<string>;
+			stringValue?: string | Expression<string>;
+			numberValue?: string | Expression<string>;
+			booleanValue?: 'true' | 'false' | Expression<string>;
+			arrayValue?: string | Expression<string>;
+			objectValue?: IDataObject | string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to specify the schema for the function. This would require the LLM to provide the input in the correct format and would validate it against the schema.
 	 * @default false

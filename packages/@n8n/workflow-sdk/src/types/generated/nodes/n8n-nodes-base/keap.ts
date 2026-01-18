@@ -21,9 +21,27 @@ export type KeapV1CompanyCreateConfig = {
 	operation: 'create';
 	companyName: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	addressesUi?: Record<string, unknown>;
-	faxesUi?: Record<string, unknown>;
-	phonesUi?: Record<string, unknown>;
+	addressesUi?: {
+		addressesValues?: {
+			countryCode?: string | Expression<string>;
+			line1?: string | Expression<string>;
+			line2?: string | Expression<string>;
+			locality?: string | Expression<string>;
+			postalCode?: string | Expression<string>;
+			region?: string | Expression<string>;
+			zipCode?: string | Expression<string>;
+			zipFour?: string | Expression<string>;
+		};
+	};
+	faxesUi?: {
+		faxesValues?: { type?: string | Expression<string>; number?: string | Expression<string> };
+	};
+	phonesUi?: {
+		phonesValues?: Array<{
+			type?: string | Expression<string>;
+			number?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Retrieve many companies */
@@ -53,11 +71,43 @@ export type KeapV1ContactUpsertConfig = {
 	 */
 	duplicateOption: 'email' | 'emailAndName' | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	addressesUi?: Record<string, unknown>;
-	emailsUi?: Record<string, unknown>;
-	faxesUi?: Record<string, unknown>;
-	phonesUi?: Record<string, unknown>;
-	socialAccountsUi?: Record<string, unknown>;
+	addressesUi?: {
+		addressesValues?: Array<{
+			field?: 'BILLING' | 'SHIPPING' | 'OTHER' | Expression<string>;
+			countryCode?: string | Expression<string>;
+			line1?: string | Expression<string>;
+			line2?: string | Expression<string>;
+			locality?: string | Expression<string>;
+			postalCode?: string | Expression<string>;
+			region?: string | Expression<string>;
+			zipCode?: string | Expression<string>;
+			zipFour?: string | Expression<string>;
+		}>;
+	};
+	emailsUi?: {
+		emailsValues?: Array<{
+			field?: 'EMAIL1' | 'EMAIL2' | 'EMAIL3' | Expression<string>;
+			email?: string | Expression<string>;
+		}>;
+	};
+	faxesUi?: {
+		faxesValues?: Array<{
+			field?: 'FAX1' | 'FAX2' | Expression<string>;
+			number?: string | Expression<string>;
+		}>;
+	};
+	phonesUi?: {
+		phonesValues?: Array<{
+			field?: 'PHONE1' | 'PHONE2' | 'PHONE3' | 'PHONE4' | 'PHONE5' | Expression<string>;
+			number?: string | Expression<string>;
+		}>;
+	};
+	socialAccountsUi?: {
+		socialAccountsValues?: Array<{
+			type?: 'Facebook' | 'Twitter' | 'LinkedIn' | Expression<string>;
+			name?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Delete an contact */
@@ -189,8 +239,30 @@ export type KeapV1EcommerceOrderCreateConfig = {
 	orderTitle: string | Expression<string>;
 	orderType: 'offline' | 'online' | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	addressUi?: Record<string, unknown>;
-	orderItemsUi?: Record<string, unknown>;
+	addressUi?: {
+		addressValues?: {
+			company?: string | Expression<string>;
+			countryCode?: string | Expression<string>;
+			firstName?: string | Expression<string>;
+			middleName?: string | Expression<string>;
+			lastName?: string | Expression<string>;
+			line1?: string | Expression<string>;
+			line2?: string | Expression<string>;
+			locality?: string | Expression<string>;
+			region?: string | Expression<string>;
+			zipCode?: string | Expression<string>;
+			zipFour?: string | Expression<string>;
+			phone?: string | Expression<string>;
+		};
+	};
+	orderItemsUi?: {
+		orderItemsValues?: Array<{
+			description?: string | Expression<string>;
+			price?: number | Expression<number>;
+			'product ID'?: number | Expression<number>;
+			quantity?: number | Expression<number>;
+		}>;
+	};
 };
 
 /** Retrieve an contact */
@@ -310,7 +382,13 @@ export type KeapV1EmailSendConfig = {
 	 * Attachments to be sent with each copy of the email, maximum of 10 with size of 1MB each
 	 * @default {}
 	 */
-	attachmentsUi?: Record<string, unknown>;
+	attachmentsUi?: {
+		attachmentsValues?: Array<{
+			fileData?: string | Expression<string>;
+			fileName?: string | Expression<string>;
+		}>;
+		attachmentsBinary?: Array<{ property?: string | Expression<string> }>;
+	};
 };
 
 /** Delete an contact */

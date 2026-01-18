@@ -42,7 +42,14 @@ export type NocoDbV3RowCreateConfig = {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldName?: string | Expression<string>;
+			binaryData?: boolean | Expression<boolean>;
+			fieldValue?: string | Expression<string>;
+			binaryProperty?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Delete a row */
@@ -177,7 +184,14 @@ export type NocoDbV3RowUpdateConfig = {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldName?: string | Expression<string>;
+			binaryData?: boolean | Expression<boolean>;
+			fieldValue?: string | Expression<string>;
+			binaryProperty?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type NocoDbV3Params =

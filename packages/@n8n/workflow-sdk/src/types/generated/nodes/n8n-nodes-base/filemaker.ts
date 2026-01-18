@@ -58,7 +58,14 @@ export interface FilemakerV1Params {
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
 	 */
 	responseLayout?: string | Expression<string>;
-	queries?: Record<string, unknown>;
+	queries?: {
+		query?: Array<{
+			fields?: {
+				field?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+			};
+			omit?: boolean | Expression<boolean>;
+		}>;
+	};
 	/**
 	 * Whether to sort data
 	 * @default false
@@ -68,7 +75,12 @@ export interface FilemakerV1Params {
 	 * Sort rules
 	 * @default {}
 	 */
-	sortParametersUi?: Record<string, unknown>;
+	sortParametersUi?: {
+		rules?: Array<{
+			name?: string | Expression<string>;
+			value?: 'ascend' | 'descend' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to define a script to be run before the action specified by the API call and after the subsequent sort
 	 * @default false
@@ -116,7 +128,9 @@ export interface FilemakerV1Params {
 	 * Fields to define
 	 * @default {}
 	 */
-	fieldsParametersUi?: Record<string, unknown>;
+	fieldsParametersUi?: {
+		fields?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * The name of the FileMaker script to be run. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
 	 */

@@ -207,7 +207,7 @@ export type LcGoogleGeminiV11ImageEditConfig = {
 	 * Add one or more binary fields to include images with your prompt
 	 * @default {"values":[{"binaryPropertyName":"data"}]}
 	 */
-	images?: Record<string, unknown>;
+	images?: { values?: Array<{ binaryPropertyName?: string | Expression<string> }> };
 	options?: Record<string, unknown>;
 };
 
@@ -233,7 +233,12 @@ export type LcGoogleGeminiV11TextMessageConfig = {
 	resource: 'text';
 	operation: 'message';
 	modelId: ResourceLocatorValue;
-	messages?: Record<string, unknown>;
+	messages?: {
+		values?: Array<{
+			content?: string | Expression<string>;
+			role?: 'user' | 'model' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
 	 * @default true

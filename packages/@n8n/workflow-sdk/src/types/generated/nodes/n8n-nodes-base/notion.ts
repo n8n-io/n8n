@@ -27,7 +27,174 @@ export type NotionV22BlockAppendConfig = {
 	 * @default {"mode":"url","value":""}
 	 */
 	blockId: ResourceLocatorValue;
-	blockUi?: Record<string, unknown>;
+	blockUi?: {
+		blockValues?: Array<{
+			type?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			checked?: boolean | Expression<boolean>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			title?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			url?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Get many child blocks */
@@ -134,8 +301,221 @@ export type NotionV22DatabasePageCreateConfig = {
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
-	propertiesUi?: Record<string, unknown>;
-	blockUi?: Record<string, unknown>;
+	propertiesUi?: {
+		propertyValues?: Array<{
+			key?: string | Expression<string>;
+			type?: unknown;
+			title?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			phoneValue?: string | Expression<string>;
+			multiSelectValue?: string[];
+			selectValue?: string | Expression<string>;
+			statusValue?: string | Expression<string>;
+			emailValue?: string | Expression<string>;
+			ignoreIfEmpty?: boolean | Expression<boolean>;
+			urlValue?: string | Expression<string>;
+			peopleValue?: string[];
+			relationValue?: string | Expression<string>;
+			checkboxValue?: boolean | Expression<boolean>;
+			numberValue?: number | Expression<number>;
+			range?: boolean | Expression<boolean>;
+			includeTime?: boolean | Expression<boolean>;
+			date?: string | Expression<string>;
+			dateStart?: string | Expression<string>;
+			dateEnd?: string | Expression<string>;
+			timezone?: string | Expression<string>;
+			fileUrls?: {
+				fileUrl?: Array<{ name?: string | Expression<string>; url?: string | Expression<string> }>;
+			};
+		}>;
+	};
+	blockUi?: {
+		blockValues?: Array<{
+			type?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			checked?: boolean | Expression<boolean>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			title?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			url?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -181,7 +561,204 @@ export type NotionV22DatabasePageGetAllConfig = {
 	simple?: boolean | Expression<boolean>;
 	filterType?: 'none' | 'manual' | 'json' | Expression<string>;
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			key?: string | Expression<string>;
+			type?: unknown;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'greater_than'
+				| 'less_than'
+				| 'greater_than_or_equal_to'
+				| 'less_than_or_equal_to'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?: 'equals' | 'does_not_equal' | Expression<string>;
+			condition?: 'equals' | 'does_not_equal' | 'is_empty' | 'is_not_empty' | Expression<string>;
+			condition?: 'contains' | 'does_not_equal' | 'is_empty' | 'is_not_empty' | Expression<string>;
+			condition?: 'equals' | 'does_not_equal' | Expression<string>;
+			condition?:
+				| 'equals'
+				| 'before'
+				| 'after'
+				| 'on_or_before'
+				| 'is_empty'
+				| 'is_not_empty'
+				| 'on_or_after'
+				| 'past_week'
+				| 'past_month'
+				| 'past_year'
+				| 'next_week'
+				| 'next_month'
+				| 'next_year'
+				| Expression<string>;
+			condition?:
+				| 'contains'
+				| 'does_not_contain'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?: 'is_empty' | 'is_not_empty' | Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'contains'
+				| 'does_not_contain'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'contains'
+				| 'does_not_contain'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'before'
+				| 'after'
+				| 'on_or_before'
+				| 'is_empty'
+				| 'is_not_empty'
+				| 'on_or_after'
+				| 'past_week'
+				| 'past_month'
+				| 'past_year'
+				| 'next_week'
+				| 'next_month'
+				| 'next_year'
+				| Expression<string>;
+			condition?:
+				| 'contains'
+				| 'does_not_contain'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'before'
+				| 'after'
+				| 'on_or_before'
+				| 'is_empty'
+				| 'is_not_empty'
+				| 'on_or_after'
+				| 'past_week'
+				| 'past_month'
+				| 'past_year'
+				| 'next_week'
+				| 'next_month'
+				| 'next_year'
+				| Expression<string>;
+			returnType?: 'text' | 'checkbox' | 'number' | 'date' | Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?: 'equals' | 'does_not_equal' | Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'greater_than'
+				| 'less_than'
+				| 'greater_than_or_equal_to'
+				| 'less_than_or_equal_to'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'before'
+				| 'after'
+				| 'on_or_before'
+				| 'is_empty'
+				| 'is_not_empty'
+				| 'on_or_after'
+				| 'past_week'
+				| 'past_month'
+				| 'past_year'
+				| 'next_week'
+				| 'next_month'
+				| 'next_year'
+				| Expression<string>;
+			titleValue?: string | Expression<string>;
+			richTextValue?: string | Expression<string>;
+			phoneNumberValue?: string | Expression<string>;
+			multiSelectValue?: string | Expression<string>;
+			selectValue?: string | Expression<string>;
+			statusValue?: string | Expression<string>;
+			emailValue?: string | Expression<string>;
+			urlValue?: string | Expression<string>;
+			peopleValue?: string | Expression<string>;
+			createdByValue?: string | Expression<string>;
+			lastEditedByValue?: string | Expression<string>;
+			relationValue?: string | Expression<string>;
+			checkboxValue?: boolean | Expression<boolean>;
+			numberValue?: number | Expression<number>;
+			date?: string | Expression<string>;
+			createdTimeValue?: string | Expression<string>;
+			lastEditedTime?: string | Expression<string>;
+			numberValue?: number | Expression<number>;
+			textValue?: string | Expression<string>;
+			checkboxValue?: boolean | Expression<boolean>;
+			dateValue?: string | Expression<string>;
+		}>;
+	};
 	filterJson?: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -200,7 +777,53 @@ export type NotionV22DatabasePageUpdateConfig = {
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
-	propertiesUi?: Record<string, unknown>;
+	propertiesUi?: {
+		propertyValues?: Array<{
+			key?: string | Expression<string>;
+			type?: unknown;
+			title?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			phoneValue?: string | Expression<string>;
+			multiSelectValue?: string[];
+			selectValue?: string | Expression<string>;
+			statusValue?: string | Expression<string>;
+			emailValue?: string | Expression<string>;
+			ignoreIfEmpty?: boolean | Expression<boolean>;
+			urlValue?: string | Expression<string>;
+			peopleValue?: string[];
+			relationValue?: string | Expression<string>;
+			checkboxValue?: boolean | Expression<boolean>;
+			numberValue?: number | Expression<number>;
+			range?: boolean | Expression<boolean>;
+			includeTime?: boolean | Expression<boolean>;
+			date?: string | Expression<string>;
+			dateStart?: string | Expression<string>;
+			dateEnd?: string | Expression<string>;
+			timezone?: string | Expression<string>;
+			fileUrls?: {
+				fileUrl?: Array<{ name?: string | Expression<string>; url?: string | Expression<string> }>;
+			};
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -222,7 +845,174 @@ export type NotionV22PageCreateConfig = {
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
-	blockUi?: Record<string, unknown>;
+	blockUi?: {
+		blockValues?: Array<{
+			type?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			checked?: boolean | Expression<boolean>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			title?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			url?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -315,7 +1105,174 @@ export type NotionV1BlockAppendConfig = {
 	 * @default {"mode":"url","value":""}
 	 */
 	blockId: ResourceLocatorValue;
-	blockUi?: Record<string, unknown>;
+	blockUi?: {
+		blockValues?: Array<{
+			type?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			checked?: boolean | Expression<boolean>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			title?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			url?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Get many child blocks */
@@ -422,8 +1379,221 @@ export type NotionV1DatabasePageCreateConfig = {
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
-	propertiesUi?: Record<string, unknown>;
-	blockUi?: Record<string, unknown>;
+	propertiesUi?: {
+		propertyValues?: Array<{
+			key?: string | Expression<string>;
+			type?: unknown;
+			title?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			phoneValue?: string | Expression<string>;
+			multiSelectValue?: string[];
+			selectValue?: string | Expression<string>;
+			statusValue?: string | Expression<string>;
+			emailValue?: string | Expression<string>;
+			ignoreIfEmpty?: boolean | Expression<boolean>;
+			urlValue?: string | Expression<string>;
+			peopleValue?: string[];
+			relationValue?: string | Expression<string>;
+			checkboxValue?: boolean | Expression<boolean>;
+			numberValue?: number | Expression<number>;
+			range?: boolean | Expression<boolean>;
+			includeTime?: boolean | Expression<boolean>;
+			date?: string | Expression<string>;
+			dateStart?: string | Expression<string>;
+			dateEnd?: string | Expression<string>;
+			timezone?: string | Expression<string>;
+			fileUrls?: {
+				fileUrl?: Array<{ name?: string | Expression<string>; url?: string | Expression<string> }>;
+			};
+		}>;
+	};
+	blockUi?: {
+		blockValues?: Array<{
+			type?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			checked?: boolean | Expression<boolean>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			title?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			url?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -469,7 +1639,204 @@ export type NotionV1DatabasePageGetAllConfig = {
 	simple?: boolean | Expression<boolean>;
 	filterType?: 'none' | 'manual' | 'json' | Expression<string>;
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			key?: string | Expression<string>;
+			type?: unknown;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'greater_than'
+				| 'less_than'
+				| 'greater_than_or_equal_to'
+				| 'less_than_or_equal_to'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?: 'equals' | 'does_not_equal' | Expression<string>;
+			condition?: 'equals' | 'does_not_equal' | 'is_empty' | 'is_not_empty' | Expression<string>;
+			condition?: 'contains' | 'does_not_equal' | 'is_empty' | 'is_not_empty' | Expression<string>;
+			condition?: 'equals' | 'does_not_equal' | Expression<string>;
+			condition?:
+				| 'equals'
+				| 'before'
+				| 'after'
+				| 'on_or_before'
+				| 'is_empty'
+				| 'is_not_empty'
+				| 'on_or_after'
+				| 'past_week'
+				| 'past_month'
+				| 'past_year'
+				| 'next_week'
+				| 'next_month'
+				| 'next_year'
+				| Expression<string>;
+			condition?:
+				| 'contains'
+				| 'does_not_contain'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?: 'is_empty' | 'is_not_empty' | Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'contains'
+				| 'does_not_contain'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'contains'
+				| 'does_not_contain'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'before'
+				| 'after'
+				| 'on_or_before'
+				| 'is_empty'
+				| 'is_not_empty'
+				| 'on_or_after'
+				| 'past_week'
+				| 'past_month'
+				| 'past_year'
+				| 'next_week'
+				| 'next_month'
+				| 'next_year'
+				| Expression<string>;
+			condition?:
+				| 'contains'
+				| 'does_not_contain'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'before'
+				| 'after'
+				| 'on_or_before'
+				| 'is_empty'
+				| 'is_not_empty'
+				| 'on_or_after'
+				| 'past_week'
+				| 'past_month'
+				| 'past_year'
+				| 'next_week'
+				| 'next_month'
+				| 'next_year'
+				| Expression<string>;
+			returnType?: 'text' | 'checkbox' | 'number' | 'date' | Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'contains'
+				| 'does_not_contain'
+				| 'starts_with'
+				| 'ends_with'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?: 'equals' | 'does_not_equal' | Expression<string>;
+			condition?:
+				| 'equals'
+				| 'does_not_equal'
+				| 'greater_than'
+				| 'less_than'
+				| 'greater_than_or_equal_to'
+				| 'less_than_or_equal_to'
+				| 'is_empty'
+				| 'is_not_empty'
+				| Expression<string>;
+			condition?:
+				| 'equals'
+				| 'before'
+				| 'after'
+				| 'on_or_before'
+				| 'is_empty'
+				| 'is_not_empty'
+				| 'on_or_after'
+				| 'past_week'
+				| 'past_month'
+				| 'past_year'
+				| 'next_week'
+				| 'next_month'
+				| 'next_year'
+				| Expression<string>;
+			titleValue?: string | Expression<string>;
+			richTextValue?: string | Expression<string>;
+			phoneNumberValue?: string | Expression<string>;
+			multiSelectValue?: string | Expression<string>;
+			selectValue?: string | Expression<string>;
+			statusValue?: string | Expression<string>;
+			emailValue?: string | Expression<string>;
+			urlValue?: string | Expression<string>;
+			peopleValue?: string | Expression<string>;
+			createdByValue?: string | Expression<string>;
+			lastEditedByValue?: string | Expression<string>;
+			relationValue?: string | Expression<string>;
+			checkboxValue?: boolean | Expression<boolean>;
+			numberValue?: number | Expression<number>;
+			date?: string | Expression<string>;
+			createdTimeValue?: string | Expression<string>;
+			lastEditedTime?: string | Expression<string>;
+			numberValue?: number | Expression<number>;
+			textValue?: string | Expression<string>;
+			checkboxValue?: boolean | Expression<boolean>;
+			dateValue?: string | Expression<string>;
+		}>;
+	};
 	filterJson?: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -488,7 +1855,53 @@ export type NotionV1DatabasePageUpdateConfig = {
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
-	propertiesUi?: Record<string, unknown>;
+	propertiesUi?: {
+		propertyValues?: Array<{
+			key?: string | Expression<string>;
+			type?: unknown;
+			title?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			phoneValue?: string | Expression<string>;
+			multiSelectValue?: string[];
+			selectValue?: string | Expression<string>;
+			statusValue?: string | Expression<string>;
+			emailValue?: string | Expression<string>;
+			ignoreIfEmpty?: boolean | Expression<boolean>;
+			urlValue?: string | Expression<string>;
+			peopleValue?: string[];
+			relationValue?: string | Expression<string>;
+			checkboxValue?: boolean | Expression<boolean>;
+			numberValue?: number | Expression<number>;
+			range?: boolean | Expression<boolean>;
+			includeTime?: boolean | Expression<boolean>;
+			date?: string | Expression<string>;
+			dateStart?: string | Expression<string>;
+			dateEnd?: string | Expression<string>;
+			timezone?: string | Expression<string>;
+			fileUrls?: {
+				fileUrl?: Array<{ name?: string | Expression<string>; url?: string | Expression<string> }>;
+			};
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -510,7 +1923,174 @@ export type NotionV1PageCreateConfig = {
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
-	blockUi?: Record<string, unknown>;
+	blockUi?: {
+		blockValues?: Array<{
+			type?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			checked?: boolean | Expression<boolean>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			title?: string | Expression<string>;
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			richText?: boolean | Expression<boolean>;
+			textContent?: string | Expression<string>;
+			text?: {
+				text?: Array<{
+					textType?: 'equation' | 'mention' | 'text' | Expression<string>;
+					text?: string | Expression<string>;
+					isLink?: boolean | Expression<boolean>;
+					textLink?: string | Expression<string>;
+					mentionType?: 'database' | 'date' | 'page' | 'user' | Expression<string>;
+					user?: string | Expression<string>;
+					page?: string | Expression<string>;
+					database?: ResourceLocatorValue;
+					range?: boolean | Expression<boolean>;
+					date?: string | Expression<string>;
+					dateStart?: string | Expression<string>;
+					dateEnd?: string | Expression<string>;
+					expression?: string | Expression<string>;
+					annotationUi?: Record<string, unknown>;
+				}>;
+			};
+			url?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 

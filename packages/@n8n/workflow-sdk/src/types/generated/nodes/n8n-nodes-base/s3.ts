@@ -142,7 +142,9 @@ export type S3V1FileUploadConfig = {
 	 * Optional extra headers to add to the message (most headers are allowed)
 	 * @default {}
 	 */
-	tagsUi?: Record<string, unknown>;
+	tagsUi?: {
+		tagsValues?: Array<{ key?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 /** Create a bucket */

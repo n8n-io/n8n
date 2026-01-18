@@ -101,7 +101,16 @@ export type JiraV1IssueNotifyConfig = {
 	 * The recipients of the email notification for the issue
 	 * @default {}
 	 */
-	notificationRecipientsUi?: Record<string, unknown>;
+	notificationRecipientsUi?: {
+		notificationRecipientsValues?: {
+			reporter?: boolean | Expression<boolean>;
+			assignee?: boolean | Expression<boolean>;
+			watchers?: boolean | Expression<boolean>;
+			voters?: boolean | Expression<boolean>;
+			users?: string[];
+			groups?: string[];
+		};
+	};
 	/**
 	 * The recipients of the email notification for the issue
 	 */
@@ -110,7 +119,9 @@ export type JiraV1IssueNotifyConfig = {
 	 * Restricts the notifications to users with the specified permissions
 	 * @default {}
 	 */
-	notificationRecipientsRestrictionsUi?: Record<string, unknown>;
+	notificationRecipientsRestrictionsUi?: {
+		notificationRecipientsRestrictionsValues?: { users?: string[]; groups?: string[] };
+	};
 	/**
 	 * Restricts the notifications to users with the specified permissions
 	 */

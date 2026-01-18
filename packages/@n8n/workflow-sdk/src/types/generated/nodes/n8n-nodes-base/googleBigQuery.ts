@@ -39,7 +39,12 @@ export interface GoogleBigQueryV21Params {
 	 * @default autoMap
 	 */
 	dataMode?: 'autoMap' | 'define' | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		values?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 }
 
 /** Create a new record */

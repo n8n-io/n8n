@@ -20,7 +20,9 @@ export interface RenameKeysV1Params {
 	 * Adds a key which should be renamed
 	 * @default {}
 	 */
-	keys?: Record<string, unknown>;
+	keys?: {
+		key?: Array<{ currentKey?: string | Expression<string>; newKey?: string | Expression<string> }>;
+	};
 	additionalOptions?: Record<string, unknown>;
 }
 

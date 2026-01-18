@@ -145,7 +145,12 @@ export type LcAnthropicV1PromptImproveConfig = {
 	 * Messages that constitute the prompt to be improved
 	 * @default {"values":[{"content":"","role":"user"}]}
 	 */
-	messages?: Record<string, unknown>;
+	messages?: {
+		values?: Array<{
+			content?: string | Expression<string>;
+			role?: 'user' | 'assistant' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
 	 * @default true
@@ -162,7 +167,12 @@ export type LcAnthropicV1PromptTemplatizeConfig = {
 	 * Messages that constitute the prompt to be templatized
 	 * @default {"values":[{"content":"","role":"user"}]}
 	 */
-	messages?: Record<string, unknown>;
+	messages?: {
+		values?: Array<{
+			content?: string | Expression<string>;
+			role?: 'user' | 'assistant' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
 	 * @default true
@@ -176,7 +186,12 @@ export type LcAnthropicV1TextMessageConfig = {
 	resource: 'text';
 	operation: 'message';
 	modelId: ResourceLocatorValue;
-	messages?: Record<string, unknown>;
+	messages?: {
+		values?: Array<{
+			content?: string | Expression<string>;
+			role?: 'user' | 'assistant' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to add attachments to the message
 	 * @default false

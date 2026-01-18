@@ -61,7 +61,12 @@ export type GoogleCalendarV13EventCreateConfig = {
 	 * If the event doesn't use the default reminders, this lists the reminders specific to the event
 	 * @default {}
 	 */
-	remindersUi?: Record<string, unknown>;
+	remindersUi?: {
+		remindersValues?: Array<{
+			method?: 'email' | 'popup' | Expression<string>;
+			minutes?: number | Expression<number>;
+		}>;
+	};
 };
 
 /** Delete an event */
@@ -139,7 +144,12 @@ export type GoogleCalendarV13EventUpdateConfig = {
 	 * If the event doesn't use the default reminders, this lists the reminders specific to the event
 	 * @default {}
 	 */
-	remindersUi?: Record<string, unknown>;
+	remindersUi?: {
+		remindersValues?: Array<{
+			method?: 'email' | 'popup' | Expression<string>;
+			minutes?: number | Expression<number>;
+		}>;
+	};
 };
 
 export type GoogleCalendarV13Params =

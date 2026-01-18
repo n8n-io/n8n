@@ -100,8 +100,55 @@ export type GoogleChatV1MessageSendAndWaitConfig = {
 	responseType?: 'approval' | 'freeText' | 'customForm' | Expression<string>;
 	defineForm?: 'fields' | 'json' | Expression<string>;
 	jsonOutput?: IDataObject | string | Expression<string>;
-	formFields?: Record<string, unknown>;
-	approvalOptions?: Record<string, unknown>;
+	formFields?: {
+		values?: Array<{
+			fieldName?: string | Expression<string>;
+			fieldLabel?: string | Expression<string>;
+			fieldLabel?: string | Expression<string>;
+			fieldName?: string | Expression<string>;
+			fieldType?:
+				| 'checkbox'
+				| 'html'
+				| 'date'
+				| 'dropdown'
+				| 'email'
+				| 'file'
+				| 'hiddenField'
+				| 'number'
+				| 'password'
+				| 'radio'
+				| 'text'
+				| 'textarea'
+				| Expression<string>;
+			elementName?: string | Expression<string>;
+			fieldName?: string | Expression<string>;
+			placeholder?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			multiselect?: boolean | Expression<boolean>;
+			limitSelection?: 'exact' | 'range' | 'unlimited' | Expression<string>;
+			numberOfSelections?: number | Expression<number>;
+			minSelections?: number | Expression<number>;
+			maxSelections?: number | Expression<number>;
+			html?: string | Expression<string>;
+			multipleFiles?: boolean | Expression<boolean>;
+			acceptFileTypes?: string | Expression<string>;
+			requiredField?: boolean | Expression<boolean>;
+		}>;
+	};
+	approvalOptions?: {
+		values?: {
+			approvalType?: 'single' | 'double' | Expression<string>;
+			approveLabel?: string | Expression<string>;
+			disapproveLabel?: string | Expression<string>;
+		};
+	};
 	options?: Record<string, unknown>;
 };
 

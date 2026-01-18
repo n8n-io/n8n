@@ -91,7 +91,19 @@ export type XeroV1InvoiceCreateConfig = {
 	 * Line item data
 	 * @default {}
 	 */
-	lineItemsUi?: Record<string, unknown>;
+	lineItemsUi?: {
+		lineItemsValues?: Array<{
+			description?: string | Expression<string>;
+			quantity?: number | Expression<number>;
+			unitAmount?: string | Expression<string>;
+			itemCode?: string | Expression<string>;
+			accountCode?: string | Expression<string>;
+			taxType?: 'INPUT' | 'NONE' | 'OUTPUT' | 'GSTONIMPORTS' | Expression<string>;
+			taxAmount?: string | Expression<string>;
+			lineAmount?: string | Expression<string>;
+			discountRate?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 

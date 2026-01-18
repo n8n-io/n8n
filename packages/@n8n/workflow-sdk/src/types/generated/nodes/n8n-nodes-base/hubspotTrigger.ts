@@ -16,7 +16,33 @@ import type { CredentialReference, NodeConfig } from '../../../base';
 // ===========================================================================
 
 export interface HubspotTriggerV1Params {
-	eventsUi?: Record<string, unknown>;
+	eventsUi?: {
+		eventValues?: Array<{
+			name?:
+				| 'company.creation'
+				| 'company.deletion'
+				| 'company.propertyChange'
+				| 'contact.creation'
+				| 'contact.deletion'
+				| 'contact.privacyDeletion'
+				| 'contact.propertyChange'
+				| 'conversation.creation'
+				| 'conversation.deletion'
+				| 'conversation.newMessage'
+				| 'conversation.privacyDeletion'
+				| 'conversation.propertyChange'
+				| 'deal.creation'
+				| 'deal.deletion'
+				| 'deal.propertyChange'
+				| 'ticket.creation'
+				| 'ticket.deletion'
+				| 'ticket.propertyChange'
+				| Expression<string>;
+			property?: string | Expression<string>;
+			property?: string | Expression<string>;
+			property?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 }
 

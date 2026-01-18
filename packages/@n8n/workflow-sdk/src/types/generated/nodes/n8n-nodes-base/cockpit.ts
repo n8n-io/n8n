@@ -37,7 +37,9 @@ export type CockpitV1CollectionCreateConfig = {
 	 * Entry data to send
 	 * @default {}
 	 */
-	dataFieldsUi?: Record<string, unknown>;
+	dataFieldsUi?: {
+		field?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 /** Get many collection entries */
@@ -83,7 +85,9 @@ export type CockpitV1CollectionUpdateConfig = {
 	 * Entry data to send
 	 * @default {}
 	 */
-	dataFieldsUi?: Record<string, unknown>;
+	dataFieldsUi?: {
+		field?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 /** Store data from a form submission */
@@ -107,7 +111,9 @@ export type CockpitV1FormSubmitConfig = {
 	 * Form data to send
 	 * @default {}
 	 */
-	dataFieldsUi?: Record<string, unknown>;
+	dataFieldsUi?: {
+		field?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 /** Get a singleton */

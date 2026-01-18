@@ -25,7 +25,12 @@ export interface SortV1Params {
 	 * The fields of the input items to sort by
 	 * @default {}
 	 */
-	sortFieldsUi?: Record<string, unknown>;
+	sortFieldsUi?: {
+		sortField?: Array<{
+			fieldName?: string | Expression<string>;
+			order?: 'ascending' | 'descending' | Expression<string>;
+		}>;
+	};
 	/**
  * Javascript code to determine the order of any two items
  * @default // The two items to compare are in the variables a and b

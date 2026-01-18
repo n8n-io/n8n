@@ -34,7 +34,9 @@ export type HttpRequestV43NoneConfig = {
 	 */
 	sendQuery?: boolean | Expression<boolean>;
 	specifyQuery?: 'keypair' | 'json' | Expression<string>;
-	queryParameters?: Record<string, unknown>;
+	queryParameters?: {
+		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	jsonQuery?: IDataObject | string | Expression<string>;
 	/**
 	 * Whether the request has headers or not
@@ -42,7 +44,9 @@ export type HttpRequestV43NoneConfig = {
 	 */
 	sendHeaders?: boolean | Expression<boolean>;
 	specifyHeaders?: 'keypair' | 'json' | Expression<string>;
-	headerParameters?: Record<string, unknown>;
+	headerParameters?: {
+		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	jsonHeaders?: IDataObject | string | Expression<string>;
 	/**
 	 * Whether the request has a body or not
@@ -65,7 +69,9 @@ export type HttpRequestV43NoneConfig = {
 	 * @default keypair
 	 */
 	specifyBody?: 'keypair' | 'json' | Expression<string>;
-	bodyParameters?: Record<string, unknown>;
+	bodyParameters?: {
+		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	jsonBody?: IDataObject | string | Expression<string>;
 	body?: string | Expression<string>;
 	/**
@@ -132,7 +138,9 @@ export type HttpRequestV43PredefinedCredentialTypeConfig = {
 	 */
 	sendQuery?: boolean | Expression<boolean>;
 	specifyQuery?: 'keypair' | 'json' | Expression<string>;
-	queryParameters?: Record<string, unknown>;
+	queryParameters?: {
+		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	jsonQuery?: IDataObject | string | Expression<string>;
 	/**
 	 * Whether the request has headers or not
@@ -140,7 +148,9 @@ export type HttpRequestV43PredefinedCredentialTypeConfig = {
 	 */
 	sendHeaders?: boolean | Expression<boolean>;
 	specifyHeaders?: 'keypair' | 'json' | Expression<string>;
-	headerParameters?: Record<string, unknown>;
+	headerParameters?: {
+		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	jsonHeaders?: IDataObject | string | Expression<string>;
 	/**
 	 * Whether the request has a body or not
@@ -163,7 +173,9 @@ export type HttpRequestV43PredefinedCredentialTypeConfig = {
 	 * @default keypair
 	 */
 	specifyBody?: 'keypair' | 'json' | Expression<string>;
-	bodyParameters?: Record<string, unknown>;
+	bodyParameters?: {
+		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	jsonBody?: IDataObject | string | Expression<string>;
 	body?: string | Expression<string>;
 	/**
@@ -230,7 +242,9 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 	 */
 	sendQuery?: boolean | Expression<boolean>;
 	specifyQuery?: 'keypair' | 'json' | Expression<string>;
-	queryParameters?: Record<string, unknown>;
+	queryParameters?: {
+		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	jsonQuery?: IDataObject | string | Expression<string>;
 	/**
 	 * Whether the request has headers or not
@@ -238,7 +252,9 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 	 */
 	sendHeaders?: boolean | Expression<boolean>;
 	specifyHeaders?: 'keypair' | 'json' | Expression<string>;
-	headerParameters?: Record<string, unknown>;
+	headerParameters?: {
+		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	jsonHeaders?: IDataObject | string | Expression<string>;
 	/**
 	 * Whether the request has a body or not
@@ -261,7 +277,9 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 	 * @default keypair
 	 */
 	specifyBody?: 'keypair' | 'json' | Expression<string>;
-	bodyParameters?: Record<string, unknown>;
+	bodyParameters?: {
+		parameters?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	jsonBody?: IDataObject | string | Expression<string>;
 	body?: string | Expression<string>;
 	/**
@@ -373,7 +391,9 @@ export type HttpRequestV2NoneConfig = {
 	 * The body parameter to send
 	 * @default {}
 	 */
-	bodyParametersUi?: Record<string, unknown>;
+	bodyParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * Header parameters as JSON or RAW
 	 */
@@ -382,7 +402,9 @@ export type HttpRequestV2NoneConfig = {
 	 * The headers to send
 	 * @default {}
 	 */
-	headerParametersUi?: Record<string, unknown>;
+	headerParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * Query parameters as JSON (flat object)
 	 */
@@ -391,7 +413,9 @@ export type HttpRequestV2NoneConfig = {
 	 * The query parameter to send
 	 * @default {}
 	 */
-	queryParametersUi?: Record<string, unknown>;
+	queryParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 /** We've already implemented auth for many services so that you don't have to set it up manually */
@@ -454,7 +478,9 @@ export type HttpRequestV2PredefinedCredentialTypeConfig = {
 	 * The body parameter to send
 	 * @default {}
 	 */
-	bodyParametersUi?: Record<string, unknown>;
+	bodyParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * Header parameters as JSON or RAW
 	 */
@@ -463,7 +489,9 @@ export type HttpRequestV2PredefinedCredentialTypeConfig = {
 	 * The headers to send
 	 * @default {}
 	 */
-	headerParametersUi?: Record<string, unknown>;
+	headerParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * Query parameters as JSON (flat object)
 	 */
@@ -472,7 +500,9 @@ export type HttpRequestV2PredefinedCredentialTypeConfig = {
 	 * The query parameter to send
 	 * @default {}
 	 */
-	queryParametersUi?: Record<string, unknown>;
+	queryParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 /** Fully customizable. Choose between basic, header, OAuth2, etc. */
@@ -535,7 +565,9 @@ export type HttpRequestV2GenericCredentialTypeConfig = {
 	 * The body parameter to send
 	 * @default {}
 	 */
-	bodyParametersUi?: Record<string, unknown>;
+	bodyParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * Header parameters as JSON or RAW
 	 */
@@ -544,7 +576,9 @@ export type HttpRequestV2GenericCredentialTypeConfig = {
 	 * The headers to send
 	 * @default {}
 	 */
-	headerParametersUi?: Record<string, unknown>;
+	headerParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * Query parameters as JSON (flat object)
 	 */
@@ -553,7 +587,9 @@ export type HttpRequestV2GenericCredentialTypeConfig = {
 	 * The query parameter to send
 	 * @default {}
 	 */
-	queryParametersUi?: Record<string, unknown>;
+	queryParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 export type HttpRequestV2Params =
@@ -632,7 +668,9 @@ export interface HttpRequestV1Params {
 	 * The body parameter to send
 	 * @default {}
 	 */
-	bodyParametersUi?: Record<string, unknown>;
+	bodyParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * Header parameters as JSON or RAW
 	 */
@@ -641,7 +679,9 @@ export interface HttpRequestV1Params {
 	 * The headers to send
 	 * @default {}
 	 */
-	headerParametersUi?: Record<string, unknown>;
+	headerParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * Query parameters as JSON (flat object)
 	 */
@@ -650,7 +690,9 @@ export interface HttpRequestV1Params {
 	 * The query parameter to send
 	 * @default {}
 	 */
-	queryParametersUi?: Record<string, unknown>;
+	queryParametersUi?: {
+		parameter?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 }
 
 // ===========================================================================

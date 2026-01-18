@@ -128,7 +128,22 @@ export type GoogleDriveV3FileShareConfig = {
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
-	permissionsUi?: Record<string, unknown>;
+	permissionsUi?: {
+		permissionsValues?: {
+			role?:
+				| 'commenter'
+				| 'fileOrganizer'
+				| 'organizer'
+				| 'owner'
+				| 'reader'
+				| 'writer'
+				| Expression<string>;
+			type?: 'user' | 'group' | 'domain' | 'anyone' | Expression<string>;
+			emailAddress?: string | Expression<string>;
+			domain?: string | Expression<string>;
+			allowFileDiscovery?: boolean | Expression<boolean>;
+		};
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -255,7 +270,22 @@ export type GoogleDriveV3FolderShareConfig = {
 	 * @default {"mode":"list","value":""}
 	 */
 	folderNoRootId: ResourceLocatorValue;
-	permissionsUi?: Record<string, unknown>;
+	permissionsUi?: {
+		permissionsValues?: {
+			role?:
+				| 'commenter'
+				| 'fileOrganizer'
+				| 'organizer'
+				| 'owner'
+				| 'reader'
+				| 'writer'
+				| Expression<string>;
+			type?: 'user' | 'group' | 'domain' | 'anyone' | Expression<string>;
+			emailAddress?: string | Expression<string>;
+			domain?: string | Expression<string>;
+			allowFileDiscovery?: boolean | Expression<boolean>;
+		};
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -467,7 +497,34 @@ export type GoogleDriveV2FileListConfig = {
 	 * Filters to use to return only specific files
 	 * @default {}
 	 */
-	queryFilters?: Record<string, unknown>;
+	queryFilters?: {
+		name?: Array<{
+			operation?: 'contains' | 'is' | 'isNot' | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+		mimeType?: Array<{
+			mimeType?:
+				| 'application/vnd.google-apps.drive-sdk'
+				| 'application/vnd.google-apps.audio'
+				| 'custom'
+				| 'application/vnd.google-apps.script'
+				| 'application/vnd.google-apps.document'
+				| 'application/vnd.google-apps.drawing'
+				| 'application/vnd.google-apps.file'
+				| 'application/vnd.google-apps.folder'
+				| 'application/vnd.google-apps.form'
+				| 'application/vnd.google-apps.fusiontable'
+				| 'application/vnd.google-apps.map'
+				| 'application/vnd.google-apps.spreadsheet'
+				| 'application/vnd.google-apps.site'
+				| 'application/vnd.google-apps.presentation'
+				| 'application/vnd.google-apps.photo'
+				| 'application/vnd.google-apps.unknown'
+				| 'application/vnd.google-apps.video'
+				| Expression<string>;
+			customMimeType?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -480,7 +537,22 @@ export type GoogleDriveV2FileShareConfig = {
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
-	permissionsUi?: Record<string, unknown>;
+	permissionsUi?: {
+		permissionsValues?: {
+			role?:
+				| 'commenter'
+				| 'fileOrganizer'
+				| 'organizer'
+				| 'owner'
+				| 'reader'
+				| 'writer'
+				| Expression<string>;
+			type?: 'user' | 'group' | 'domain' | 'anyone' | Expression<string>;
+			emailAddress?: string | Expression<string>;
+			domain?: string | Expression<string>;
+			allowFileDiscovery?: boolean | Expression<boolean>;
+		};
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -560,7 +632,22 @@ export type GoogleDriveV2FolderShareConfig = {
 	 * @default {"mode":"list","value":""}
 	 */
 	fileId: ResourceLocatorValue;
-	permissionsUi?: Record<string, unknown>;
+	permissionsUi?: {
+		permissionsValues?: {
+			role?:
+				| 'commenter'
+				| 'fileOrganizer'
+				| 'organizer'
+				| 'owner'
+				| 'reader'
+				| 'writer'
+				| Expression<string>;
+			type?: 'user' | 'group' | 'domain' | 'anyone' | Expression<string>;
+			emailAddress?: string | Expression<string>;
+			domain?: string | Expression<string>;
+			allowFileDiscovery?: boolean | Expression<boolean>;
+		};
+	};
 	options?: Record<string, unknown>;
 };
 

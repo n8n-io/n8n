@@ -64,7 +64,26 @@ export type Magento2V1CustomerGetAllConfig = {
 	limit?: number | Expression<number>;
 	filterType?: 'none' | 'manual' | 'json' | Expression<string>;
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			field?: string | Expression<string>;
+			condition_type?:
+				| 'eq'
+				| 'gt'
+				| 'gteq'
+				| 'in'
+				| 'lt'
+				| 'lte'
+				| 'like'
+				| 'moreq'
+				| 'neq'
+				| 'nin'
+				| 'notnull'
+				| 'null'
+				| Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	filterJson?: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -124,7 +143,26 @@ export type Magento2V1OrderGetAllConfig = {
 	limit?: number | Expression<number>;
 	filterType?: 'none' | 'manual' | 'json' | Expression<string>;
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			field?: string | Expression<string>;
+			condition_type?:
+				| 'eq'
+				| 'gt'
+				| 'gteq'
+				| 'in'
+				| 'lt'
+				| 'lte'
+				| 'like'
+				| 'moreq'
+				| 'neq'
+				| 'nin'
+				| 'notnull'
+				| 'null'
+				| Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	filterJson?: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -189,7 +227,26 @@ export type Magento2V1ProductGetAllConfig = {
 	limit?: number | Expression<number>;
 	filterType?: 'none' | 'manual' | 'json' | Expression<string>;
 	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			field?: string | Expression<string>;
+			condition_type?:
+				| 'eq'
+				| 'gt'
+				| 'gteq'
+				| 'in'
+				| 'lt'
+				| 'lte'
+				| 'like'
+				| 'moreq'
+				| 'neq'
+				| 'nin'
+				| 'notnull'
+				| 'null'
+				| Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	filterJson?: string | Expression<string>;
 	options?: Record<string, unknown>;
 };

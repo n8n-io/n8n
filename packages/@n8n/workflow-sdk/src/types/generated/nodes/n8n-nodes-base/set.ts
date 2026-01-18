@@ -38,7 +38,23 @@ export type SetV34ManualConfig = {
 	 * Edit existing fields or add new ones to modify the output data
 	 * @default {}
 	 */
-	fields?: Record<string, unknown>;
+	fields?: {
+		values?: Array<{
+			name?: string | Expression<string>;
+			type?:
+				| 'stringValue'
+				| 'numberValue'
+				| 'booleanValue'
+				| 'arrayValue'
+				| 'objectValue'
+				| Expression<string>;
+			stringValue?: string | Expression<string>;
+			numberValue?: string | Expression<string>;
+			booleanValue?: 'true' | 'false' | Expression<string>;
+			arrayValue?: string | Expression<string>;
+			objectValue?: IDataObject | string | Expression<string>;
+		}>;
+	};
 	assignments?: AssignmentCollectionValue;
 	/**
 	 * How to select the fields you want to include in your output items
@@ -98,7 +114,11 @@ export interface SetV2Params {
 	 * The value to set
 	 * @default {}
 	 */
-	values?: Record<string, unknown>;
+	values?: {
+		boolean?: Array<{ name?: string | Expression<string>; value?: boolean | Expression<boolean> }>;
+		number?: Array<{ name?: string | Expression<string>; value?: number | Expression<number> }>;
+		string?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	options?: Record<string, unknown>;
 }
 

@@ -17,7 +17,13 @@ import type { Expression, NodeConfig } from '../../../base';
 
 export interface AggregateV1Params {
 	aggregate?: 'aggregateIndividualFields' | 'aggregateAllItemData' | Expression<string>;
-	fieldsToAggregate?: Record<string, unknown>;
+	fieldsToAggregate?: {
+		fieldToAggregate?: Array<{
+			fieldToAggregate?: string | Expression<string>;
+			renameField?: boolean | Expression<boolean>;
+			outputFieldName?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * The name of the output field to put the data in
 	 * @default data

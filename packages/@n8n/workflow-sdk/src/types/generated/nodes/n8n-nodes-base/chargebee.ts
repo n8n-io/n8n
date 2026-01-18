@@ -39,7 +39,16 @@ export type ChargebeeV1InvoiceListConfig = {
 	 * Filter for invoices
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		date?: Array<{
+			operation?: 'is' | 'is_not' | 'after' | 'before' | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+		total?: Array<{
+			operation?: 'gte' | 'gt' | 'is' | 'is_not' | 'lte' | 'lt' | Expression<string>;
+			value?: number | Expression<number>;
+		}>;
+	};
 };
 
 /** Get URL for the invoice PDF */

@@ -186,7 +186,9 @@ export type SendGridV1MailSendConfig = {
 	 * @default []
 	 */
 	templateId?: string | Expression<string>;
-	dynamicTemplateFields?: Record<string, unknown>;
+	dynamicTemplateFields?: {
+		fields?: Array<{ key?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 

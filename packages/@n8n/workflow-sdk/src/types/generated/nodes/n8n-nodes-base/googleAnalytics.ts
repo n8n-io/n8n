@@ -48,12 +48,50 @@ export type GoogleAnalyticsV2ReportGetConfig = {
 	 * The quantitative measurements of a report. For example, the metric eventCount is the total number of events. Requests are allowed up to 10 metrics.
 	 * @default {"metricValues":[{"listName":"totalUsers"}]}
 	 */
-	metricsGA4?: Record<string, unknown>;
+	metricsGA4?: {
+		metricValues?: Array<{
+			listName?:
+				| 'active1DayUsers'
+				| 'active28DayUsers'
+				| 'active7DayUsers'
+				| 'checkouts'
+				| 'eventCount'
+				| 'screenPageViews'
+				| 'userEngagementDuration'
+				| 'sessions'
+				| 'sessionsPerUser'
+				| 'totalUsers'
+				| 'other'
+				| 'custom'
+				| Expression<string>;
+			name?: string | Expression<string>;
+			name?: string | Expression<string>;
+			expression?: string | Expression<string>;
+			invisible?: boolean | Expression<boolean>;
+		}>;
+	};
 	/**
 	 * Dimensions are attributes of your data. For example, the dimension city indicates the city from which an event originates. Dimension values in report responses are strings; for example, the city could be "Paris" or "New York". Requests are allowed up to 9 dimensions.
 	 * @default {"dimensionValues":[{"listName":"date"}]}
 	 */
-	dimensionsGA4?: Record<string, unknown>;
+	dimensionsGA4?: {
+		dimensionValues?: Array<{
+			listName?:
+				| 'browser'
+				| 'campaignName'
+				| 'city'
+				| 'country'
+				| 'date'
+				| 'deviceCategory'
+				| 'itemName'
+				| 'language'
+				| 'pageLocation'
+				| 'sourceMedium'
+				| 'other'
+				| Expression<string>;
+			name?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return all results or only up to a given limit
 	 * @default false
@@ -80,12 +118,47 @@ export type GoogleAnalyticsV2ReportGetConfig = {
 	 * Metrics in the request
 	 * @default {"metricValues":[{"listName":"ga:users"}]}
 	 */
-	metricsUA?: Record<string, unknown>;
+	metricsUA?: {
+		metricValues?: Array<{
+			listName?:
+				| 'ga:productCheckouts'
+				| 'ga:totalEvents'
+				| 'ga:pageviews'
+				| 'ga:sessionDuration'
+				| 'ga:sessions'
+				| 'ga:sessionsPerUser'
+				| 'ga:users'
+				| 'other'
+				| 'custom'
+				| Expression<string>;
+			name?: string | Expression<string>;
+			name?: string | Expression<string>;
+			expression?: string | Expression<string>;
+			formattingType?: 'CURRENCY' | 'FLOAT' | 'INTEGER' | 'PERCENT' | 'TIME' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, "Paris" or "New York", from which a session originates.
 	 * @default {"dimensionValues":[{"listName":"ga:date"}]}
 	 */
-	dimensionsUA?: Record<string, unknown>;
+	dimensionsUA?: {
+		dimensionValues?: Array<{
+			listName?:
+				| 'ga:browser'
+				| 'ga:campaign'
+				| 'ga:city'
+				| 'ga:country'
+				| 'ga:date'
+				| 'ga:deviceCategory'
+				| 'ga:productName'
+				| 'ga:language'
+				| 'ga:pagePath'
+				| 'ga:sourceMedium'
+				| 'other'
+				| Expression<string>;
+			name?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Return user activity data */

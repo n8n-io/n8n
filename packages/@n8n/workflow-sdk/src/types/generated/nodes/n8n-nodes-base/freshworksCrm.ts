@@ -93,7 +93,13 @@ export type FreshworksCrmV1AppointmentCreateConfig = {
 	 * Timestamp that denotes the end of appointment. End date if this is an all-day appointment.
 	 */
 	endDate: string | Expression<string>;
-	attendees?: Record<string, unknown>;
+	attendees?: {
+		attendee?: Array<{
+			type?: 'contact' | 'user' | Expression<string>;
+			userId?: string | Expression<string>;
+			contactId?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 

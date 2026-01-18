@@ -32,7 +32,12 @@ export type PagerDutyV1IncidentCreateConfig = {
 	 */
 	email: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	conferenceBridgeUi?: Record<string, unknown>;
+	conferenceBridgeUi?: {
+		conferenceBridgeValues?: {
+			conferenceNumber?: string | Expression<string>;
+			conferenceUrl?: string | Expression<string>;
+		};
+	};
 };
 
 /** Get an incident */
@@ -75,7 +80,12 @@ export type PagerDutyV1IncidentUpdateConfig = {
 	 */
 	email: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
-	conferenceBridgeUi?: Record<string, unknown>;
+	conferenceBridgeUi?: {
+		conferenceBridgeValues?: {
+			conferenceNumber?: string | Expression<string>;
+			conferenceUrl?: string | Expression<string>;
+		};
+	};
 };
 
 /** Create an incident */

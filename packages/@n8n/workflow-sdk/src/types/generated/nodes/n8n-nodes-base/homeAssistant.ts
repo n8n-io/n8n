@@ -46,7 +46,9 @@ export type HomeAssistantV1EventCreateConfig = {
 	 * The Entity ID for which an event will be created
 	 */
 	eventType: string | Expression<string>;
-	eventAttributes?: Record<string, unknown>;
+	eventAttributes?: {
+		attributes?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 /** Get many events */
@@ -90,7 +92,9 @@ export type HomeAssistantV1ServiceCallConfig = {
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
 	 */
 	service: string | Expression<string>;
-	serviceAttributes?: Record<string, unknown>;
+	serviceAttributes?: {
+		attributes?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 /** Get many events */
@@ -118,7 +122,9 @@ export type HomeAssistantV1StateUpsertConfig = {
 	 */
 	entityId: string | Expression<string>;
 	state: string | Expression<string>;
-	stateAttributes?: Record<string, unknown>;
+	stateAttributes?: {
+		attributes?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 /** Get the configuration */

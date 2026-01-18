@@ -199,7 +199,7 @@ export type AzureCosmosDbV1ItemQueryConfig = {
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
-	options?: Record<string, unknown>;
+	options?: { queryOptions?: { queryParameters?: string | Expression<string> } };
 	requestOptions?: Record<string, unknown>;
 };
 

@@ -36,7 +36,12 @@ export type BaserowV1RowCreateConfig = {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Delete a row */
@@ -125,7 +130,12 @@ export type BaserowV1RowUpdateConfig = {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type BaserowV1Params =

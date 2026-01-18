@@ -38,7 +38,12 @@ export type SupabaseV1RowCreateConfig = {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Delete a row */
@@ -65,7 +70,25 @@ export type SupabaseV1RowDeleteConfig = {
 	 * Filter to decide which rows get deleted
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			condition?:
+				| 'eq'
+				| 'fullText'
+				| 'gt'
+				| 'gte'
+				| 'ilike'
+				| 'is'
+				| 'lt'
+				| 'lte'
+				| 'like'
+				| 'neq'
+				| Expression<string>;
+			searchFunction?: 'fts' | 'plfts' | 'phfts' | 'wfts' | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 	filterString?: string | Expression<string>;
 };
 
@@ -87,7 +110,12 @@ export type SupabaseV1RowGetConfig = {
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
 	 */
 	tableId: string | Expression<string>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Get many rows */
@@ -124,7 +152,25 @@ export type SupabaseV1RowGetAllConfig = {
 	 * Filter to decide which rows get retrieved
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			condition?:
+				| 'eq'
+				| 'fullText'
+				| 'gt'
+				| 'gte'
+				| 'ilike'
+				| 'is'
+				| 'lt'
+				| 'lte'
+				| 'like'
+				| 'neq'
+				| Expression<string>;
+			searchFunction?: 'fts' | 'plfts' | 'phfts' | 'wfts' | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 	filterString?: string | Expression<string>;
 };
 
@@ -152,14 +198,37 @@ export type SupabaseV1RowUpdateConfig = {
 	 * Filter to decide which rows get updated
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			condition?:
+				| 'eq'
+				| 'fullText'
+				| 'gt'
+				| 'gte'
+				| 'ilike'
+				| 'is'
+				| 'lt'
+				| 'lte'
+				| 'like'
+				| 'neq'
+				| Expression<string>;
+			searchFunction?: 'fts' | 'plfts' | 'phfts' | 'wfts' | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 	filterString?: string | Expression<string>;
 	dataToSend?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
 	/**
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type SupabaseV1Params =

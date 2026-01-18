@@ -58,7 +58,12 @@ export type VeroV1UserCreateConfig = {
 	 * Key value pairs that represent the custom user properties you want to update
 	 * @default {}
 	 */
-	dataAttributesUi?: Record<string, unknown>;
+	dataAttributesUi?: {
+		dataAttributesValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Key value pairs that represent the custom user properties you want to update
 	 */
@@ -127,12 +132,22 @@ export type VeroV1EventTrackConfig = {
 	 * Key value pairs that represent any properties you want to track with this event
 	 * @default {}
 	 */
-	dataAttributesUi?: Record<string, unknown>;
+	dataAttributesUi?: {
+		dataAttributesValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Key value pairs that represent reserved, Vero-specific operators. Refer to the note on “deduplication” below.
 	 * @default {}
 	 */
-	extraAttributesUi?: Record<string, unknown>;
+	extraAttributesUi?: {
+		extraAttributesValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Key value pairs that represent the custom user properties you want to update
 	 */

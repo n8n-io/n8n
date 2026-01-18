@@ -39,7 +39,9 @@ export interface LdapV1Params {
 	 * Attributes to add to the entry
 	 * @default {}
 	 */
-	attributes?: Record<string, unknown>;
+	attributes?: {
+		attribute?: Array<{ id?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * The distinguished name of the subtree to search in
 	 */

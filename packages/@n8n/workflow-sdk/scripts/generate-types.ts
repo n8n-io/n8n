@@ -98,7 +98,13 @@ export interface NodeProperty {
 	hint?: string;
 	default?: unknown;
 	required?: boolean;
-	options?: Array<{ name: string; value: string | number | boolean; description?: string }>;
+	options?: Array<{
+		name: string;
+		value?: string | number | boolean;
+		description?: string;
+		displayName?: string;
+		values?: NodeProperty[];
+	}>;
 	displayOptions?: {
 		show?: Record<string, unknown[]>;
 		hide?: Record<string, unknown[]>;
@@ -142,6 +148,158 @@ export interface VersionGroup {
 // =============================================================================
 // Property Type Mapping
 // =============================================================================
+
+/**
+ * Generate inline type for a nested property (used in fixedCollection)
+ * This is a forward declaration - the actual function is defined below
+ */
+function mapNestedPropertyType(prop: NodeProperty): string {
+	// Handle dynamic options (loadOptionsMethod)
+	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
+		switch (prop.type) {
+			case 'options':
+				return 'string | Expression<string>';
+			case 'multiOptions':
+				return 'string[]';
+			default:
+				return 'string | Expression<string>';
+		}
+	}
+
+	switch (prop.type) {
+		case 'string':
+			return 'string | Expression<string>';
+		case 'number':
+			return 'number | Expression<number>';
+		case 'boolean':
+			return 'boolean | Expression<boolean>';
+		case 'options':
+			if (prop.options && prop.options.length > 0 && prop.options[0].value !== undefined) {
+				const values = prop.options.map((opt) => {
+					if (typeof opt.value === 'string') {
+						const escaped = opt.value
+							.replace(/\\/g, '\\\\')
+							.replace(/'/g, "\\'")
+							.replace(/\n/g, '\\n')
+							.replace(/\r/g, '\\r')
+							.replace(/\t/g, '\\t');
+						return `'${escaped}'`;
+					}
+					return String(opt.value);
+				});
+				const valueType = typeof prop.options[0].value;
+				const expressionType =
+					valueType === 'number'
+						? 'Expression<number>'
+						: valueType === 'boolean'
+							? 'Expression<boolean>'
+							: 'Expression<string>';
+				return `${values.join(' | ')} | ${expressionType}`;
+			}
+			return 'string | Expression<string>';
+		case 'multiOptions':
+			if (prop.options && prop.options.length > 0 && prop.options[0].value !== undefined) {
+				const values = prop.options.map((opt) => {
+					if (typeof opt.value === 'string') {
+						return `'${opt.value}'`;
+					}
+					return String(opt.value);
+				});
+				return `Array<${values.join(' | ')}>`;
+			}
+			return 'string[]';
+		case 'json':
+			return 'IDataObject | string | Expression<string>';
+		case 'resourceLocator':
+			return 'ResourceLocatorValue';
+		case 'filter':
+			return 'FilterValue';
+		case 'assignmentCollection':
+			return 'AssignmentCollectionValue';
+		case 'fixedCollection':
+			return generateFixedCollectionType(prop);
+		case 'collection':
+			return 'Record<string, unknown>';
+		case 'dateTime':
+			return 'string | Expression<string>';
+		case 'color':
+			return 'string | Expression<string>';
+		case 'hidden':
+			return 'unknown';
+		case 'notice':
+		case 'curlImport':
+		case 'credentials':
+		case 'credentialsSelect':
+			return '';
+		default:
+			return 'unknown';
+	}
+}
+
+/**
+ * Check if a property name needs quoting in TypeScript
+ */
+function needsQuoting(name: string): boolean {
+	return RESERVED_WORDS.has(name) || !/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name);
+}
+
+/**
+ * Quote a property name if needed for TypeScript
+ */
+function quotePropertyName(name: string): string {
+	if (needsQuoting(name)) {
+		return `'${name.replace(/'/g, "\\'")}'`;
+	}
+	return name;
+}
+
+/**
+ * Generate inline type for a fixedCollection property
+ * This generates proper nested types instead of Record<string, unknown>
+ */
+function generateFixedCollectionType(prop: NodeProperty): string {
+	if (!prop.options || prop.options.length === 0) {
+		return 'Record<string, unknown>';
+	}
+
+	const isMultipleValues = prop.typeOptions?.multipleValues === true;
+	const groups: string[] = [];
+
+	for (const group of prop.options) {
+		// Skip if this is an option value (not a fixedCollection group)
+		if (group.value !== undefined || !group.values) {
+			continue;
+		}
+
+		const groupName = quotePropertyName(group.name);
+		const nestedProps: string[] = [];
+
+		for (const nestedProp of group.values) {
+			// Skip notice and other display-only types
+			if (['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(nestedProp.type)) {
+				continue;
+			}
+
+			const nestedType = mapNestedPropertyType(nestedProp);
+			if (nestedType) {
+				const quotedName = quotePropertyName(nestedProp.name);
+				nestedProps.push(`${quotedName}?: ${nestedType}`);
+			}
+		}
+
+		if (nestedProps.length > 0) {
+			const innerType = `{ ${nestedProps.join('; ')} }`;
+			const groupType = isMultipleValues ? `Array<${innerType}>` : innerType;
+			groups.push(`${groupName}?: ${groupType}`);
+		}
+	}
+
+	if (groups.length === 0) {
+		return 'Record<string, unknown>';
+	}
+
+	return `{ ${groups.join('; ')} }`;
+}
 
 /**
  * Map n8n property types to TypeScript types with Expression wrappers
@@ -221,9 +379,7 @@ export function mapPropertyType(prop: NodeProperty): string {
 			return 'AssignmentCollectionValue';
 
 		case 'fixedCollection':
-			// Use Record<string, unknown> to avoid naming conflicts
-			// Complex fixedCollection structures vary too much across nodes
-			return 'Record<string, unknown>';
+			return generateFixedCollectionType(prop);
 
 		case 'collection':
 			return 'Record<string, unknown>';

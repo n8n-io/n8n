@@ -23,7 +23,70 @@ export interface ZendeskTriggerV1Params {
 	 * The condition to set
 	 * @default {}
 	 */
-	conditions?: Record<string, unknown>;
+	conditions?: {
+		all?: Array<{
+			resource?: 'ticket' | Expression<string>;
+			field?: 'assignee' | 'group' | 'priority' | 'status' | 'type' | Expression<string>;
+			operation?:
+				| 'changed'
+				| 'value_previous'
+				| 'value'
+				| 'greater_than'
+				| 'is'
+				| 'is_not'
+				| 'less_than'
+				| 'not_changed'
+				| 'not_value_previous'
+				| 'not_value'
+				| Expression<string>;
+			operation?:
+				| 'changed'
+				| 'value_previous'
+				| 'value'
+				| 'is'
+				| 'is_not'
+				| 'not_changed'
+				| 'not_value_previous'
+				| 'not_value'
+				| Expression<string>;
+			value?: 'closed' | 'new' | 'open' | 'pending' | 'solved' | Expression<string>;
+			value?: 'question' | 'incident' | 'problem' | 'task' | Expression<string>;
+			value?: 'low' | 'normal' | 'high' | 'urgent' | Expression<string>;
+			value?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+		any?: Array<{
+			resource?: 'ticket' | Expression<string>;
+			field?: 'assignee' | 'group' | 'priority' | 'status' | 'type' | Expression<string>;
+			operation?:
+				| 'changed'
+				| 'value_previous'
+				| 'value'
+				| 'greater_than'
+				| 'is'
+				| 'is_not'
+				| 'less_than'
+				| 'not_changed'
+				| 'not_value_previous'
+				| 'not_value'
+				| Expression<string>;
+			operation?:
+				| 'changed'
+				| 'value_previous'
+				| 'value'
+				| 'is'
+				| 'is_not'
+				| 'not_changed'
+				| 'not_value_previous'
+				| 'not_value'
+				| Expression<string>;
+			value?: 'closed' | 'new' | 'open' | 'pending' | 'solved' | Expression<string>;
+			value?: 'question' | 'incident' | 'problem' | 'task' | Expression<string>;
+			value?: 'low' | 'normal' | 'high' | 'urgent' | Expression<string>;
+			value?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 }
 
 // ===========================================================================

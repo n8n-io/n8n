@@ -16,7 +16,55 @@ import type { NodeConfig } from '../../../base';
 // ===========================================================================
 
 export interface ScheduleTriggerV13Params {
-	rule?: Record<string, unknown>;
+	rule?: {
+		interval?: Array<{
+			field?:
+				| 'seconds'
+				| 'minutes'
+				| 'hours'
+				| 'days'
+				| 'weeks'
+				| 'months'
+				| 'cronExpression'
+				| Expression<string>;
+			secondsInterval?: number | Expression<number>;
+			minutesInterval?: number | Expression<number>;
+			hoursInterval?: number | Expression<number>;
+			daysInterval?: number | Expression<number>;
+			weeksInterval?: number | Expression<number>;
+			monthsInterval?: number | Expression<number>;
+			triggerAtDayOfMonth?: number | Expression<number>;
+			triggerAtDay?: Array<1 | 2 | 3 | 4 | 5 | 6 | 0>;
+			triggerAtHour?:
+				| 0
+				| 1
+				| 2
+				| 3
+				| 4
+				| 5
+				| 6
+				| 7
+				| 8
+				| 9
+				| 10
+				| 11
+				| 12
+				| 13
+				| 14
+				| 15
+				| 16
+				| 17
+				| 18
+				| 19
+				| 20
+				| 21
+				| 22
+				| 23
+				| Expression<number>;
+			triggerAtMinute?: number | Expression<number>;
+			expression?: string | Expression<string>;
+		}>;
+	};
 }
 
 // ===========================================================================

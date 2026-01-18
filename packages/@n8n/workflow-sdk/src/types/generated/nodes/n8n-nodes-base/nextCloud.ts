@@ -262,7 +262,19 @@ export type NextCloudV1UserUpdateConfig = {
 	 * Username the user will have
 	 */
 	userId: string | Expression<string>;
-	updateFields?: Record<string, unknown>;
+	updateFields?: {
+		field?: {
+			key?:
+				| 'address'
+				| 'displayname'
+				| 'email'
+				| 'password'
+				| 'twitter'
+				| 'website'
+				| Expression<string>;
+			value?: string | Expression<string>;
+		};
+	};
 };
 
 export type NextCloudV1Params =

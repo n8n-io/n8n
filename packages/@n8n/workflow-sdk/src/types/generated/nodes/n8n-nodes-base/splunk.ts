@@ -111,7 +111,13 @@ export type SplunkV2SearchGetAllConfig = {
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
-	sort?: Record<string, unknown>;
+	sort?: {
+		values?: {
+			sort_dir?: 'asc' | 'desc' | Expression<string>;
+			sort_key?: string | Expression<string>;
+			sort_mode?: 'auto' | 'alpha' | 'alpha_case' | 'num' | Expression<string>;
+		};
+	};
 };
 
 /** Get the result of a search job */

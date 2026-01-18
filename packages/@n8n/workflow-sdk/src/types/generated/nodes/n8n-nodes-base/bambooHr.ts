@@ -47,7 +47,15 @@ export type BambooHrV1EmployeeCreateConfig = {
 	synced: boolean | Expression<boolean>;
 	firstName: string | Expression<string>;
 	lastName: string | Expression<string>;
-	address: Record<string, unknown>;
+	address: {
+		value?: {
+			address1?: string | Expression<string>;
+			address2?: string | Expression<string>;
+			city?: string | Expression<string>;
+			state?: string | Expression<string>;
+			country?: string | Expression<string>;
+		};
+	};
 	dateOfBirth: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
@@ -68,7 +76,9 @@ export type BambooHrV1EmployeeCreateConfig = {
 	maritalStatus: 'single' | 'married' | 'domesticPartnership' | Expression<string>;
 	mobilePhone: string | Expression<string>;
 	paidPer: 'hour' | 'day' | 'week' | 'month' | 'quater' | 'year' | Expression<string>;
-	payRate: Record<string, unknown>;
+	payRate: {
+		value?: { value?: string | Expression<string>; currency?: string | Expression<string> };
+	};
 	payType:
 		| 'commission'
 		| 'contract'
@@ -123,7 +133,15 @@ export type BambooHrV1EmployeeUpdateConfig = {
 	 * @default false
 	 */
 	synced: boolean | Expression<boolean>;
-	addasasress: Record<string, unknown>;
+	addasasress: {
+		value?: {
+			address1?: string | Expression<string>;
+			address2?: string | Expression<string>;
+			city?: string | Expression<string>;
+			state?: string | Expression<string>;
+			country?: string | Expression<string>;
+		};
+	};
 	dateOfBirth: string | Expression<string>;
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
@@ -146,7 +164,9 @@ export type BambooHrV1EmployeeUpdateConfig = {
 	maritalStatus: 'single' | 'married' | 'domesticPartnership' | Expression<string>;
 	mobilePhone: string | Expression<string>;
 	paidPer: 'hour' | 'day' | 'week' | 'month' | 'quater' | 'year' | Expression<string>;
-	payRate: Record<string, unknown>;
+	payRate: {
+		value?: { value?: string | Expression<string>; currency?: string | Expression<string> };
+	};
 	payType:
 		| 'commission'
 		| 'contract'

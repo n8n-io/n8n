@@ -21,7 +21,14 @@ export type BitlyV1LinkCreateConfig = {
 	operation: 'create';
 	longUrl: string | Expression<string>;
 	additionalFields?: Record<string, unknown>;
-	deeplink?: Record<string, unknown>;
+	deeplink?: {
+		deeplinkUi?: Array<{
+			appId?: string | Expression<string>;
+			appUriPath?: string | Expression<string>;
+			installType?: string | Expression<string>;
+			installUrl?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Get a link */
@@ -37,7 +44,14 @@ export type BitlyV1LinkUpdateConfig = {
 	operation: 'update';
 	id: string | Expression<string>;
 	updateFields?: Record<string, unknown>;
-	deeplink?: Record<string, unknown>;
+	deeplink?: {
+		deeplinkUi?: Array<{
+			appId?: string | Expression<string>;
+			appUriPath?: string | Expression<string>;
+			installType?: string | Expression<string>;
+			installUrl?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type BitlyV1Params =

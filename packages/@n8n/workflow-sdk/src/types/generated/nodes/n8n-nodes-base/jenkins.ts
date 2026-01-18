@@ -125,7 +125,9 @@ export type JenkinsV1JobTriggerParamsConfig = {
 	 * Parameters for Jenkins job
 	 * @default {}
 	 */
-	param: Record<string, unknown>;
+	param: {
+		params?: Array<{ name?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 export type JenkinsV1Params =

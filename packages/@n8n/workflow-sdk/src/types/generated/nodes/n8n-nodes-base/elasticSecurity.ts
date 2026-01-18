@@ -93,7 +93,12 @@ export type ElasticSecurityV1CaseGetAllConfig = {
 	 */
 	limit?: number | Expression<number>;
 	filters?: Record<string, unknown>;
-	sortOptions?: Record<string, unknown>;
+	sortOptions?: {
+		sortOptionsProperties?: {
+			sortField?: 'createdAt' | 'updatedAt' | Expression<string>;
+			sortOrder?: 'asc' | 'desc' | Expression<string>;
+		};
+	};
 };
 
 /** Retrieve a summary of all case activity */

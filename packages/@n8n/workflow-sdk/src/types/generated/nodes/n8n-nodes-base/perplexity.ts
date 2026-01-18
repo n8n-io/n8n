@@ -33,7 +33,12 @@ export interface PerplexityV1Params {
 	 * Any optional system messages must be sent first, followed by alternating user and assistant messages
 	 * @default {"message":[{"role":"user","content":""}]}
 	 */
-	messages: Record<string, unknown>;
+	messages: {
+		message?: Array<{
+			content?: string | Expression<string>;
+			role?: 'assistant' | 'system' | 'user' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return only essential fields (ID, citations, message)
 	 * @default false

@@ -28,7 +28,13 @@ export type DataTableV11RowDeleteRowsConfig = {
 	 * Filter to decide which rows get
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			condition?: string | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -42,7 +48,13 @@ export type DataTableV11RowGetConfig = {
 	 * Filter to decide which rows get
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			condition?: string | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return all results or only up to a given limit
 	 * @default false
@@ -80,7 +92,13 @@ export type DataTableV11RowRowExistsConfig = {
 	 * Filter to decide which rows get
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			condition?: string | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Match input items that are not in the data table */
@@ -93,7 +111,13 @@ export type DataTableV11RowRowNotExistsConfig = {
 	 * Filter to decide which rows get
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			condition?: string | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Insert a new row */
@@ -115,7 +139,13 @@ export type DataTableV11RowUpdateConfig = {
 	 * Filter to decide which rows get
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			condition?: string | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 	columns: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -130,7 +160,13 @@ export type DataTableV11RowUpsertConfig = {
 	 * Filter to decide which rows get
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			condition?: string | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 	columns: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -147,7 +183,12 @@ export type DataTableV11TableCreateConfig = {
 	 * The columns to create in the data table
 	 * @default {}
 	 */
-	columns?: Record<string, unknown>;
+	columns?: {
+		column?: Array<{
+			name?: string | Expression<string>;
+			type?: 'boolean' | 'date' | 'number' | 'string' | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 

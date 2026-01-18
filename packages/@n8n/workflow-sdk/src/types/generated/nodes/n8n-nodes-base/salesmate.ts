@@ -76,7 +76,27 @@ export type SalesmateV1ActivityGetAllConfig = {
 	jsonParameters?: boolean | Expression<boolean>;
 	options?: Record<string, unknown>;
 	filtersJson?: IDataObject | string | Expression<string>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		filtersUi?: {
+			operator?: 'AND' | 'OR' | Expression<string>;
+			conditions?: {
+				conditionsUi?: Array<{
+					field?: 'title' | 'tags' | Expression<string>;
+					condition?:
+						| 'EQUALS'
+						| 'NOT_EQUALS'
+						| 'Contains'
+						| 'DOES_NOT_CONTAINS'
+						| 'EMPTY'
+						| 'NOT_EMPTY'
+						| 'STARTS_WITH'
+						| 'ENDS_WITH'
+						| Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		};
+	};
 };
 
 /** Update a company */
@@ -148,7 +168,27 @@ export type SalesmateV1CompanyGetAllConfig = {
 	jsonParameters?: boolean | Expression<boolean>;
 	options?: Record<string, unknown>;
 	filtersJson?: IDataObject | string | Expression<string>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		filtersUi?: {
+			operator?: 'AND' | 'OR' | Expression<string>;
+			conditions?: {
+				conditionsUi?: Array<{
+					field?: 'name' | 'email' | 'phone' | Expression<string>;
+					condition?:
+						| 'EQUALS'
+						| 'NOT_EQUALS'
+						| 'Contains'
+						| 'DOES_NOT_CONTAINS'
+						| 'EMPTY'
+						| 'NOT_EMPTY'
+						| 'STARTS_WITH'
+						| 'ENDS_WITH'
+						| Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		};
+	};
 };
 
 /** Update a company */
@@ -234,7 +274,27 @@ export type SalesmateV1DealGetAllConfig = {
 	jsonParameters?: boolean | Expression<boolean>;
 	options?: Record<string, unknown>;
 	filtersJson?: IDataObject | string | Expression<string>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		filtersUi?: {
+			operator?: 'AND' | 'OR' | Expression<string>;
+			conditions?: {
+				conditionsUi?: Array<{
+					field?: 'title' | 'tags' | 'lastCommunicationMode' | Expression<string>;
+					condition?:
+						| 'EQUALS'
+						| 'NOT_EQUALS'
+						| 'Contains'
+						| 'DOES_NOT_CONTAINS'
+						| 'EMPTY'
+						| 'NOT_EMPTY'
+						| 'STARTS_WITH'
+						| 'ENDS_WITH'
+						| Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		};
+	};
 };
 
 /** Update a company */

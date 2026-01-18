@@ -71,7 +71,12 @@ export type OdooV1CustomCreateConfig = {
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
 	 */
 	customResource?: string | Expression<string>;
-	fieldsToCreateOrUpdate?: Record<string, unknown>;
+	fieldsToCreateOrUpdate?: {
+		fields?: Array<{
+			fieldName?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Delete an item */
@@ -120,7 +125,24 @@ export type OdooV1CustomGetAllConfig = {
 	 * Filter request by applying filters
 	 * @default {}
 	 */
-	filterRequest?: Record<string, unknown>;
+	filterRequest?: {
+		filter?: Array<{
+			fieldName?: string | Expression<string>;
+			operator?:
+				| 'notEqual'
+				| 'lesserThen'
+				| 'lesserOrEqual'
+				| 'equal'
+				| 'greaterThen'
+				| 'greaterOrEqual'
+				| 'childOf'
+				| 'in'
+				| 'like'
+				| 'notIn'
+				| Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Update an item */
@@ -132,7 +154,12 @@ export type OdooV1CustomUpdateConfig = {
 	 */
 	customResource?: string | Expression<string>;
 	customResourceId: string | Expression<string>;
-	fieldsToCreateOrUpdate?: Record<string, unknown>;
+	fieldsToCreateOrUpdate?: {
+		fields?: Array<{
+			fieldName?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Create a new item */

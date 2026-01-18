@@ -17,7 +17,9 @@ import type { Expression, NodeConfig } from '../../../base';
 
 export interface ExecutionDataV11Params {
 	operation?: 'save' | Expression<string>;
-	dataToSave?: Record<string, unknown>;
+	dataToSave?: {
+		values?: Array<{ key?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 }
 
 // ===========================================================================

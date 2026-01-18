@@ -29,7 +29,48 @@ export interface FormTriggerV25Params {
 	 * Shown underneath the Form Title. Can be used to prompt the user on how to complete the form. Accepts HTML.
 	 */
 	formDescription?: string | Expression<string>;
-	formFields?: Record<string, unknown>;
+	formFields?: {
+		values?: Array<{
+			fieldName?: string | Expression<string>;
+			fieldLabel?: string | Expression<string>;
+			fieldLabel?: string | Expression<string>;
+			fieldName?: string | Expression<string>;
+			fieldType?:
+				| 'checkbox'
+				| 'html'
+				| 'date'
+				| 'dropdown'
+				| 'email'
+				| 'file'
+				| 'hiddenField'
+				| 'number'
+				| 'password'
+				| 'radio'
+				| 'text'
+				| 'textarea'
+				| Expression<string>;
+			elementName?: string | Expression<string>;
+			fieldName?: string | Expression<string>;
+			placeholder?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			multiselect?: boolean | Expression<boolean>;
+			limitSelection?: 'exact' | 'range' | 'unlimited' | Expression<string>;
+			numberOfSelections?: number | Expression<number>;
+			minSelections?: number | Expression<number>;
+			maxSelections?: number | Expression<number>;
+			html?: string | Expression<string>;
+			multipleFiles?: boolean | Expression<boolean>;
+			acceptFileTypes?: string | Expression<string>;
+			requiredField?: boolean | Expression<boolean>;
+		}>;
+	};
 	/**
 	 * When to respond to the form submission
 	 * @default onReceived
@@ -51,7 +92,48 @@ export interface FormTriggerV1Params {
 	 * Shown underneath the Form Title. Can be used to prompt the user on how to complete the form. Accepts HTML.
 	 */
 	formDescription?: string | Expression<string>;
-	formFields?: Record<string, unknown>;
+	formFields?: {
+		values?: Array<{
+			fieldName?: string | Expression<string>;
+			fieldLabel?: string | Expression<string>;
+			fieldLabel?: string | Expression<string>;
+			fieldName?: string | Expression<string>;
+			fieldType?:
+				| 'checkbox'
+				| 'html'
+				| 'date'
+				| 'dropdown'
+				| 'email'
+				| 'file'
+				| 'hiddenField'
+				| 'number'
+				| 'password'
+				| 'radio'
+				| 'text'
+				| 'textarea'
+				| Expression<string>;
+			elementName?: string | Expression<string>;
+			fieldName?: string | Expression<string>;
+			placeholder?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			multiselect?: boolean | Expression<boolean>;
+			limitSelection?: 'exact' | 'range' | 'unlimited' | Expression<string>;
+			numberOfSelections?: number | Expression<number>;
+			minSelections?: number | Expression<number>;
+			maxSelections?: number | Expression<number>;
+			html?: string | Expression<string>;
+			multipleFiles?: boolean | Expression<boolean>;
+			acceptFileTypes?: string | Expression<string>;
+			requiredField?: boolean | Expression<boolean>;
+		}>;
+	};
 	/**
 	 * When to respond to the form submission
 	 * @default onReceived

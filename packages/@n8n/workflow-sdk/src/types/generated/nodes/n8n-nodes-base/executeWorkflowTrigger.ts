@@ -24,7 +24,12 @@ export interface ExecuteWorkflowTriggerV11Params {
 	 * Define expected input fields. If no inputs are provided, all data from the calling workflow will be passed through.
 	 * @default {}
 	 */
-	workflowInputs?: Record<string, unknown>;
+	workflowInputs?: {
+		values?: Array<{
+			name?: string | Expression<string>;
+			type?: 'any' | 'string' | 'number' | 'boolean' | 'array' | 'object' | Expression<string>;
+		}>;
+	};
 }
 
 // ===========================================================================

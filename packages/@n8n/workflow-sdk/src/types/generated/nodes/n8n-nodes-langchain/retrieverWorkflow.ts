@@ -39,7 +39,23 @@ export interface LcRetrieverWorkflowV11Params {
 	 * Set the values which should be made available in the workflow
 	 * @default {}
 	 */
-	fields?: Record<string, unknown>;
+	fields?: {
+		values?: Array<{
+			name?: string | Expression<string>;
+			type?:
+				| 'stringValue'
+				| 'numberValue'
+				| 'booleanValue'
+				| 'arrayValue'
+				| 'objectValue'
+				| Expression<string>;
+			stringValue?: string | Expression<string>;
+			numberValue?: string | Expression<string>;
+			booleanValue?: 'true' | 'false' | Expression<string>;
+			arrayValue?: string | Expression<string>;
+			objectValue?: IDataObject | string | Expression<string>;
+		}>;
+	};
 }
 
 // ===========================================================================

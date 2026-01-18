@@ -26,7 +26,12 @@ export type GoogleSheetsV47SpreadsheetCreateConfig = {
 	 * The title of the spreadsheet
 	 */
 	title?: string | Expression<string>;
-	sheetsUi?: Record<string, unknown>;
+	sheetsUi?: {
+		sheetValues?: Array<{
+			title?: string | Expression<string>;
+			hidden?: boolean | Expression<boolean>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -54,7 +59,13 @@ export type GoogleSheetsV47SheetAppendOrUpdateConfig = {
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		values?: Array<{
+			column?: string | Expression<string>;
+			columnName?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	columns: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -70,7 +81,12 @@ export type GoogleSheetsV47SheetAppendConfig = {
 	 * @default defineBelow
 	 */
 	dataMode?: 'autoMapInputData' | 'defineBelow' | 'nothing' | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	columns: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -147,7 +163,12 @@ export type GoogleSheetsV47SheetReadConfig = {
 	operation: 'read';
 	documentId: ResourceLocatorValue;
 	sheetName: string | Expression<string>;
-	filtersUI?: Record<string, unknown>;
+	filtersUI?: {
+		values?: Array<{
+			lookupColumn?: string | Expression<string>;
+			lookupValue?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * How to combine the conditions defined in "Filters": AND requires all conditions to be true, OR requires at least one condition to be true
 	 * @default OR
@@ -173,7 +194,13 @@ export type GoogleSheetsV47SheetUpdateConfig = {
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		values?: Array<{
+			column?: string | Expression<string>;
+			columnName?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	columns: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -198,7 +225,7 @@ export type GoogleSheetsV2SpreadsheetCreateConfig = {
 	 * The title of the spreadsheet
 	 */
 	title?: string | Expression<string>;
-	sheetsUi?: Record<string, unknown>;
+	sheetsUi?: { sheetValues?: Array<{ propertiesUi?: Record<string, unknown> }> };
 	options?: Record<string, unknown>;
 };
 
@@ -342,7 +369,18 @@ export type GoogleSheetsV2SheetDeleteConfig = {
 	 * Deletes columns and rows from a sheet
 	 * @default {}
 	 */
-	toDelete?: Record<string, unknown>;
+	toDelete?: {
+		columns?: Array<{
+			sheetId?: string | Expression<string>;
+			startIndex?: number | Expression<number>;
+			amount?: number | Expression<number>;
+		}>;
+		rows?: Array<{
+			sheetId?: string | Expression<string>;
+			startIndex?: number | Expression<number>;
+			amount?: number | Expression<number>;
+		}>;
+	};
 	/**
 	 * Index of the first row which contains the actual data and not the keys. Starts with 0.
 	 * @default 1

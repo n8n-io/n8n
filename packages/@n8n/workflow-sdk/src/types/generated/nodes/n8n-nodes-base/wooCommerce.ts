@@ -80,37 +80,117 @@ export type WooCommerceV1OrderCreateConfig = {
 	 * Billing address
 	 * @default {}
 	 */
-	billingUi?: Record<string, unknown>;
+	billingUi?: {
+		billingValues?: {
+			firstName?: string | Expression<string>;
+			lastName?: string | Expression<string>;
+			company?: string | Expression<string>;
+			address_1?: string | Expression<string>;
+			address_2?: string | Expression<string>;
+			city?: string | Expression<string>;
+			postcode?: string | Expression<string>;
+			country?: string | Expression<string>;
+			email?: string | Expression<string>;
+			phone?: string | Expression<string>;
+		};
+	};
 	/**
 	 * Coupons line data
 	 * @default {}
 	 */
-	couponLinesUi?: Record<string, unknown>;
+	couponLinesUi?: {
+		couponLinesValues?: Array<{
+			code?: string | Expression<string>;
+			metadataUi?: {
+				metadataValues?: Array<{
+					key?: string | Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Fee line data
 	 * @default {}
 	 */
-	feeLinesUi?: Record<string, unknown>;
+	feeLinesUi?: {
+		feeLinesValues?: Array<{
+			name?: string | Expression<string>;
+			taxClass?: string | Expression<string>;
+			taxStatus?: 'taxable' | 'none' | Expression<string>;
+			total?: string | Expression<string>;
+			metadataUi?: {
+				metadataValues?: Array<{
+					key?: string | Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Line item data
 	 * @default {}
 	 */
-	lineItemsUi?: Record<string, unknown>;
+	lineItemsUi?: {
+		lineItemsValues?: Array<{
+			name?: string | Expression<string>;
+			productId?: number | Expression<number>;
+			variationId?: number | Expression<number>;
+			quantity?: number | Expression<number>;
+			taxClass?: string | Expression<string>;
+			subtotal?: string | Expression<string>;
+			total?: string | Expression<string>;
+			metadataUi?: {
+				metadataValues?: Array<{
+					key?: string | Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Meta data
 	 * @default {}
 	 */
-	metadataUi?: Record<string, unknown>;
+	metadataUi?: {
+		metadataValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Shipping address
 	 * @default {}
 	 */
-	shippingUi?: Record<string, unknown>;
+	shippingUi?: {
+		shippingValues?: {
+			firstName?: string | Expression<string>;
+			lastName?: string | Expression<string>;
+			company?: string | Expression<string>;
+			address_1?: string | Expression<string>;
+			address_2?: string | Expression<string>;
+			city?: string | Expression<string>;
+			postcode?: string | Expression<string>;
+			country?: string | Expression<string>;
+		};
+	};
 	/**
 	 * Shipping line data
 	 * @default {}
 	 */
-	shippingLinesUi?: Record<string, unknown>;
+	shippingLinesUi?: {
+		shippingLinesValues?: Array<{
+			methodTitle?: string | Expression<string>;
+			'method ID'?: string | Expression<string>;
+			total?: string | Expression<string>;
+			metadataUi?: {
+				metadataValues?: Array<{
+					key?: string | Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 };
 
 /** Delete a customer */
@@ -154,37 +234,117 @@ export type WooCommerceV1OrderUpdateConfig = {
 	 * Billing address
 	 * @default {}
 	 */
-	billingUi?: Record<string, unknown>;
+	billingUi?: {
+		billingValues?: {
+			firstName?: string | Expression<string>;
+			lastName?: string | Expression<string>;
+			company?: string | Expression<string>;
+			address_1?: string | Expression<string>;
+			address_2?: string | Expression<string>;
+			city?: string | Expression<string>;
+			postalCode?: string | Expression<string>;
+			country?: string | Expression<string>;
+			email?: string | Expression<string>;
+			phone?: string | Expression<string>;
+		};
+	};
 	/**
 	 * Coupons line data
 	 * @default {}
 	 */
-	couponLinesUi?: Record<string, unknown>;
+	couponLinesUi?: {
+		couponLinesValues?: Array<{
+			code?: string | Expression<string>;
+			metadataUi?: {
+				metadataValues?: Array<{
+					key?: string | Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Fee line data
 	 * @default {}
 	 */
-	feeLinesUi?: Record<string, unknown>;
+	feeLinesUi?: {
+		feeLinesValues?: Array<{
+			name?: string | Expression<string>;
+			taxClass?: string | Expression<string>;
+			taxStatus?: 'taxable' | 'none' | Expression<string>;
+			total?: string | Expression<string>;
+			metadataUi?: {
+				metadataValues?: Array<{
+					key?: string | Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Line item data
 	 * @default {}
 	 */
-	lineItemsUi?: Record<string, unknown>;
+	lineItemsUi?: {
+		lineItemsValues?: Array<{
+			name?: string | Expression<string>;
+			productId?: number | Expression<number>;
+			variationId?: number | Expression<number>;
+			quantity?: number | Expression<number>;
+			taxClass?: string | Expression<string>;
+			subtotal?: string | Expression<string>;
+			total?: string | Expression<string>;
+			metadataUi?: {
+				metadataValues?: Array<{
+					key?: string | Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Meta data
 	 * @default {}
 	 */
-	metadataUi?: Record<string, unknown>;
+	metadataUi?: {
+		metadataValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Shipping address
 	 * @default {}
 	 */
-	shippingUi?: Record<string, unknown>;
+	shippingUi?: {
+		shippingValues?: {
+			firstName?: string | Expression<string>;
+			lastName?: string | Expression<string>;
+			company?: string | Expression<string>;
+			address_1?: string | Expression<string>;
+			address_2?: string | Expression<string>;
+			city?: string | Expression<string>;
+			postalCode?: string | Expression<string>;
+			country?: string | Expression<string>;
+		};
+	};
 	/**
 	 * Shipping line data
 	 * @default {}
 	 */
-	shippingLinesUi?: Record<string, unknown>;
+	shippingLinesUi?: {
+		shippingLinesValues?: Array<{
+			methodTitle?: string | Expression<string>;
+			'method ID'?: string | Expression<string>;
+			total?: string | Expression<string>;
+			metadataUi?: {
+				metadataValues?: Array<{
+					key?: string | Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 };
 
 /** Create a customer */
@@ -200,17 +360,34 @@ export type WooCommerceV1ProductCreateConfig = {
 	 * Product dimensions
 	 * @default {}
 	 */
-	dimensionsUi?: Record<string, unknown>;
+	dimensionsUi?: {
+		dimensionsValues?: {
+			height?: string | Expression<string>;
+			length?: string | Expression<string>;
+			width?: string | Expression<string>;
+		};
+	};
 	/**
 	 * Product Image
 	 * @default {}
 	 */
-	imagesUi?: Record<string, unknown>;
+	imagesUi?: {
+		imagesValues?: Array<{
+			alt?: string | Expression<string>;
+			src?: string | Expression<string>;
+			name?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Meta data
 	 * @default {}
 	 */
-	metadataUi?: Record<string, unknown>;
+	metadataUi?: {
+		metadataValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Delete a customer */
@@ -254,17 +431,34 @@ export type WooCommerceV1ProductUpdateConfig = {
 	 * Product dimensions
 	 * @default {}
 	 */
-	dimensionsUi?: Record<string, unknown>;
+	dimensionsUi?: {
+		dimensionsValues?: {
+			height?: string | Expression<string>;
+			length?: string | Expression<string>;
+			width?: string | Expression<string>;
+		};
+	};
 	/**
 	 * Product Image
 	 * @default {}
 	 */
-	imagesUi?: Record<string, unknown>;
+	imagesUi?: {
+		imagesValues?: Array<{
+			alt?: string | Expression<string>;
+			src?: string | Expression<string>;
+			name?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Meta data
 	 * @default {}
 	 */
-	metadataUi?: Record<string, unknown>;
+	metadataUi?: {
+		metadataValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type WooCommerceV1Params =

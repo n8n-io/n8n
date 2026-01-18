@@ -36,7 +36,16 @@ export type ApiTemplateIoV1ImageCreateConfig = {
 	download?: boolean | Expression<boolean>;
 	binaryProperty: string | Expression<string>;
 	overridesJson?: IDataObject | string | Expression<string>;
-	overridesUi?: Record<string, unknown>;
+	overridesUi?: {
+		overrideValues?: Array<{
+			propertiesUi?: {
+				propertyValues?: Array<{
+					key?: string | Expression<string>;
+					value?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -55,7 +64,12 @@ export type ApiTemplateIoV1PdfCreateConfig = {
 	download?: boolean | Expression<boolean>;
 	binaryProperty: string | Expression<string>;
 	propertiesJson?: IDataObject | string | Expression<string>;
-	propertiesUi?: Record<string, unknown>;
+	propertiesUi?: {
+		propertyValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 

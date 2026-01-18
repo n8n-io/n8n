@@ -384,7 +384,12 @@ export type SalesforceV1CustomObjectCreateConfig = {
 	 * Filter by custom fields
 	 * @default {}
 	 */
-	customFieldsUi?: Record<string, unknown>;
+	customFieldsUi?: {
+		customFieldsValues?: Array<{
+			fieldId?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 
@@ -408,7 +413,12 @@ export type SalesforceV1CustomObjectUpsertConfig = {
 	 * Filter by custom fields
 	 * @default {}
 	 */
-	customFieldsUi?: Record<string, unknown>;
+	customFieldsUi?: {
+		customFieldsValues?: Array<{
+			fieldId?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 
@@ -477,7 +487,12 @@ export type SalesforceV1CustomObjectUpdateConfig = {
 	 * Filter by custom fields
 	 * @default {}
 	 */
-	customFieldsUi?: Record<string, unknown>;
+	customFieldsUi?: {
+		customFieldsValues?: Array<{
+			fieldId?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	updateFields?: Record<string, unknown>;
 };
 
@@ -530,7 +545,12 @@ export type SalesforceV1FlowInvokeConfig = {
 	 * The input variable to send
 	 * @default {}
 	 */
-	variablesUi?: Record<string, unknown>;
+	variablesUi?: {
+		variablesValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Represents a prospect or potential */

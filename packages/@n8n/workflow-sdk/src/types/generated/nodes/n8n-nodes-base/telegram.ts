@@ -28,7 +28,16 @@ export type TelegramV12ChatGetConfig = {
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -45,7 +54,16 @@ export type TelegramV12ChatAdministratorsConfig = {
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -66,7 +84,16 @@ export type TelegramV12ChatMemberConfig = {
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -83,7 +110,16 @@ export type TelegramV12ChatLeaveConfig = {
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -104,7 +140,16 @@ export type TelegramV12ChatSetDescriptionConfig = {
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -125,7 +170,16 @@ export type TelegramV12ChatSetTitleConfig = {
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -143,7 +197,16 @@ export type TelegramV12CallbackAnswerQueryConfig = {
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -165,7 +228,16 @@ export type TelegramV12CallbackAnswerInlineQueryConfig = {
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -188,7 +260,16 @@ export type TelegramV12FileGetConfig = {
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -210,12 +291,30 @@ export type TelegramV12MessageDeleteMessageConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -255,12 +354,30 @@ export type TelegramV12MessageEditMessageTextConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
@@ -284,12 +401,30 @@ export type TelegramV12MessagePinChatMessageConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -333,12 +468,30 @@ export type TelegramV12MessageSendAnimationConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
@@ -383,12 +536,30 @@ export type TelegramV12MessageSendAudioConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
@@ -423,12 +594,30 @@ export type TelegramV12MessageSendChatActionConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };
@@ -472,12 +661,30 @@ export type TelegramV12MessageSendDocumentConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
@@ -517,12 +724,30 @@ export type TelegramV12MessageSendLocationConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
@@ -540,18 +765,42 @@ export type TelegramV12MessageSendMediaGroupConfig = {
 	 * The media to add
 	 * @default {}
 	 */
-	media?: Record<string, unknown>;
+	media?: {
+		media?: Array<{
+			type?: 'photo' | 'video' | Expression<string>;
+			media?: string | Expression<string>;
+			additionalFields?: Record<string, unknown>;
+		}>;
+	};
 	forceReply?: Record<string, unknown>;
 	/**
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
@@ -585,12 +834,30 @@ export type TelegramV12MessageSendMessageConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
@@ -605,12 +872,30 @@ export type TelegramV12MessageSendAndWaitConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	/**
@@ -621,8 +906,55 @@ export type TelegramV12MessageSendAndWaitConfig = {
 	responseType?: 'approval' | 'freeText' | 'customForm' | Expression<string>;
 	defineForm?: 'fields' | 'json' | Expression<string>;
 	jsonOutput?: IDataObject | string | Expression<string>;
-	formFields?: Record<string, unknown>;
-	approvalOptions?: Record<string, unknown>;
+	formFields?: {
+		values?: Array<{
+			fieldName?: string | Expression<string>;
+			fieldLabel?: string | Expression<string>;
+			fieldLabel?: string | Expression<string>;
+			fieldName?: string | Expression<string>;
+			fieldType?:
+				| 'checkbox'
+				| 'html'
+				| 'date'
+				| 'dropdown'
+				| 'email'
+				| 'file'
+				| 'hiddenField'
+				| 'number'
+				| 'password'
+				| 'radio'
+				| 'text'
+				| 'textarea'
+				| Expression<string>;
+			elementName?: string | Expression<string>;
+			fieldName?: string | Expression<string>;
+			placeholder?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			multiselect?: boolean | Expression<boolean>;
+			limitSelection?: 'exact' | 'range' | 'unlimited' | Expression<string>;
+			numberOfSelections?: number | Expression<number>;
+			minSelections?: number | Expression<number>;
+			maxSelections?: number | Expression<number>;
+			html?: string | Expression<string>;
+			multipleFiles?: boolean | Expression<boolean>;
+			acceptFileTypes?: string | Expression<string>;
+			requiredField?: boolean | Expression<boolean>;
+		}>;
+	};
+	approvalOptions?: {
+		values?: {
+			approvalType?: 'single' | 'double' | Expression<string>;
+			approveLabel?: string | Expression<string>;
+			disapproveLabel?: string | Expression<string>;
+		};
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -665,12 +997,30 @@ export type TelegramV12MessageSendPhotoConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
@@ -715,12 +1065,30 @@ export type TelegramV12MessageSendStickerConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
@@ -765,12 +1133,30 @@ export type TelegramV12MessageSendVideoConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
@@ -793,12 +1179,30 @@ export type TelegramV12MessageUnpinChatMessageConfig = {
 	 * Adds an inline keyboard that appears right next to the message it belongs to
 	 * @default {}
 	 */
-	inlineKeyboard?: Record<string, unknown>;
+	inlineKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	/**
 	 * Adds a custom keyboard with reply options
 	 * @default {}
 	 */
-	replyKeyboard?: Record<string, unknown>;
+	replyKeyboard?: {
+		rows?: Array<{
+			row?: {
+				buttons?: Array<{
+					text?: string | Expression<string>;
+					additionalFields?: Record<string, unknown>;
+				}>;
+			};
+		}>;
+	};
 	replyKeyboardOptions?: Record<string, unknown>;
 	replyKeyboardRemove?: Record<string, unknown>;
 };

@@ -140,7 +140,20 @@ export type ActionNetworkV1PersonCreateConfig = {
 	 * Person’s email addresses
 	 * @default {}
 	 */
-	email_addresses?: Record<string, unknown>;
+	email_addresses?: {
+		email_addresses_fields?: {
+			address?: string | Expression<string>;
+			primary?: unknown;
+			status?:
+				| 'bouncing'
+				| 'previous bounce'
+				| 'previous spam complaint'
+				| 'spam complaint'
+				| 'subscribed'
+				| 'unsubscribed'
+				| Expression<string>;
+		};
+	};
 	additionalFields?: Record<string, unknown>;
 };
 

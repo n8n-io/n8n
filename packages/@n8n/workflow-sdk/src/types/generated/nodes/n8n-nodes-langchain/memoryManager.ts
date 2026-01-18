@@ -38,7 +38,13 @@ export type LcMemoryManagerV11InsertConfig = {
 	 * Chat messages to insert into memory
 	 * @default {}
 	 */
-	messages?: Record<string, unknown>;
+	messages?: {
+		messageValues?: Array<{
+			type?: 'ai' | 'system' | 'user' | Expression<string>;
+			message?: string | Expression<string>;
+			hideFromUI?: boolean | Expression<boolean>;
+		}>;
+	};
 };
 
 /** Delete chat messages from connected memory */

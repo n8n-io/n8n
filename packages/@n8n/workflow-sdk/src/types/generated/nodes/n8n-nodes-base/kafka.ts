@@ -53,7 +53,12 @@ export interface KafkaV1Params {
 	 * Namespace and Name of Schema in Schema Registry (namespace.name)
 	 */
 	eventName: string | Expression<string>;
-	headersUi?: Record<string, unknown>;
+	headersUi?: {
+		headerValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Header parameters as JSON (flat object)
 	 */

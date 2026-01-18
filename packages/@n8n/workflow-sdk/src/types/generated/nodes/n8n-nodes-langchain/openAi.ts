@@ -24,7 +24,23 @@ export type LcOpenAiV21TextResponseConfig = {
 	resource: 'text';
 	operation: 'response';
 	modelId: ResourceLocatorValue;
-	responses?: Record<string, unknown>;
+	responses?: {
+		values?: Array<{
+			type?: 'text' | 'image' | 'file' | Expression<string>;
+			role?: 'user' | 'assistant' | 'system' | Expression<string>;
+			content?: string | Expression<string>;
+			imageType?: 'url' | 'fileId' | 'base64' | Expression<string>;
+			imageUrl?: string | Expression<string>;
+			binaryPropertyName?: string | Expression<string>;
+			fileId?: string | Expression<string>;
+			imageDetail?: 'auto' | 'low' | 'high' | Expression<string>;
+			fileType?: 'url' | 'fileId' | 'base64' | Expression<string>;
+			fileUrl?: string | Expression<string>;
+			fileId?: string | Expression<string>;
+			binaryPropertyName?: string | Expression<string>;
+			fileName?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
 	 * @default true
@@ -109,7 +125,7 @@ export type LcOpenAiV21ImageEditConfig = {
 	 * Add one or more binary fields to include images with your prompt. Each image should be a png, webp, or jpg file less than 50MB. You can provide up to 16 images.
 	 * @default {"values":[{"binaryPropertyName":"data"}]}
 	 */
-	images?: Record<string, unknown>;
+	images?: { values?: Array<{ binaryPropertyName?: string | Expression<string> }> };
 	/**
 	 * Name of the binary property which contains the image. It should be a square png file less than 4MB.
 	 * @hint The name of the input field containing the binary file data to be processed
@@ -230,7 +246,12 @@ export type LcOpenAiV21FileUploadConfig = {
 export type LcOpenAiV21ConversationCreateConfig = {
 	resource: 'conversation';
 	operation: 'create';
-	messages?: Record<string, unknown>;
+	messages?: {
+		values?: Array<{
+			role?: 'user' | 'assistant' | 'system' | Expression<string>;
+			content?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -409,7 +430,12 @@ export type LcOpenAiV18TextMessageConfig = {
 	resource: 'text';
 	operation: 'message';
 	modelId: ResourceLocatorValue;
-	messages?: Record<string, unknown>;
+	messages?: {
+		values?: Array<{
+			content?: string | Expression<string>;
+			role?: 'user' | 'assistant' | 'system' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
 	 * @default true

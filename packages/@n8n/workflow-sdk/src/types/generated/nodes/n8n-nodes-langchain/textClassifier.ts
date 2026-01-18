@@ -20,7 +20,12 @@ export interface LcTextClassifierV11Params {
 	 * Use an expression to reference data in previous nodes or enter static text
 	 */
 	inputText: string | Expression<string>;
-	categories?: Record<string, unknown>;
+	categories?: {
+		categories?: Array<{
+			category?: string | Expression<string>;
+			description?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 }
 

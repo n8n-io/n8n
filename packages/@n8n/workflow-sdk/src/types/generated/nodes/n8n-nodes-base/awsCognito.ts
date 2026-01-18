@@ -221,7 +221,23 @@ export type AwsCognitoV1UserGetAllConfig = {
 	 * @default true
 	 */
 	simple?: boolean | Expression<boolean>;
-	filters?: Record<string, unknown>;
+	filters?: {
+		filter?: {
+			attribute?:
+				| 'cognito:user_status'
+				| 'email'
+				| 'family_name'
+				| 'given_name'
+				| 'name'
+				| 'phone_number'
+				| 'preferred_username'
+				| 'status'
+				| 'sub'
+				| 'username'
+				| Expression<string>;
+			value?: string | Expression<string>;
+		};
+	};
 	requestOptions?: Record<string, unknown>;
 };
 
@@ -261,7 +277,32 @@ export type AwsCognitoV1UserUpdateConfig = {
 	 * Attributes to update for the user
 	 * @default {"attributes":[]}
 	 */
-	userAttributes: Record<string, unknown>;
+	userAttributes: {
+		attributes?: Array<{
+			attributeType?: 'standard' | 'custom' | Expression<string>;
+			standardName?:
+				| 'address'
+				| 'birthdate'
+				| 'email'
+				| 'family_name'
+				| 'gender'
+				| 'given_name'
+				| 'locale'
+				| 'middle_name'
+				| 'name'
+				| 'nickname'
+				| 'phone_number'
+				| 'preferred_username'
+				| 'profilepicture'
+				| 'updated_at'
+				| 'sub'
+				| 'website'
+				| 'zoneinfo'
+				| Expression<string>;
+			customName?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	requestOptions?: Record<string, unknown>;
 };
 

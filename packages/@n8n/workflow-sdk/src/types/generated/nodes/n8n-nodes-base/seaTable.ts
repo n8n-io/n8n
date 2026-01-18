@@ -45,7 +45,12 @@ export type SeaTableV2RowCreateConfig = {
 	 * Add destination column with its value. Provide the value in this way. Date: YYYY-MM-DD or YYYY-MM-DD hh:mm. Duration: time in seconds. Checkbox: true, on or 1. Multi-Select: comma-separated list.
 	 * @default {}
 	 */
-	columnsUi?: Record<string, unknown>;
+	columnsUi?: {
+		columnValues?: Array<{
+			columnName?: string | Expression<string>;
+			columnValue?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether write to Big Data backend (true) or not (false). True requires the activation of the Big Data backend in the base.
 	 * @default false
@@ -177,7 +182,12 @@ export type SeaTableV2RowUpdateConfig = {
 	 * Add destination column with its value. Provide the value in this way:Date: YYYY-MM-DD or YYYY-MM-DD hh:mmDuration: time in secondsCheckbox: true, on or 1Multi-Select: comma-separated list.
 	 * @default {}
 	 */
-	columnsUi?: Record<string, unknown>;
+	columnsUi?: {
+		columnValues?: Array<{
+			columnName?: string | Expression<string>;
+			columnValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Create a snapshot of the base */
@@ -342,7 +352,12 @@ export interface SeaTableV1Params {
 	 * Add destination column with its value
 	 * @default {}
 	 */
-	columnsUi?: Record<string, unknown>;
+	columnsUi?: {
+		columnValues?: Array<{
+			columnName?: string | Expression<string>;
+			columnValue?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return all results or only up to a given limit
 	 * @default true

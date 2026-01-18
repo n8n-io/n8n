@@ -31,7 +31,12 @@ export type MicrosoftExcelV22TableAppendConfig = {
 	 * Raw values for the specified range as array of string arrays in JSON format
 	 */
 	data: IDataObject | string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		values?: Array<{
+			column?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -192,7 +197,12 @@ export type MicrosoftExcelV22WorksheetAppendConfig = {
 	 * Raw values for the specified range as array of string arrays in JSON format
 	 */
 	data: IDataObject | string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		values?: Array<{
+			column?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -215,7 +225,12 @@ export type MicrosoftExcelV22WorksheetUpsertConfig = {
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		values?: Array<{
+			column?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -310,7 +325,12 @@ export type MicrosoftExcelV22WorksheetUpdateConfig = {
 	 */
 	columnToMatchOn?: string | Expression<string>;
 	valueToMatchOn?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		values?: Array<{
+			column?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	options?: Record<string, unknown>;
 };
 

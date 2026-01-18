@@ -16,17 +16,52 @@ import type { NodeConfig } from '../../../base';
 // ===========================================================================
 
 export interface LcCodeV1Params {
-	code?: Record<string, unknown>;
+	code?: {
+		execute?: { code?: string | Expression<string> };
+		supplyData?: { code?: string | Expression<string> };
+	};
 	/**
 	 * The input to add
 	 * @default {}
 	 */
-	inputs?: Record<string, unknown>;
+	inputs?: {
+		input?: Array<{
+			type?:
+				| 'ai_chain'
+				| 'ai_document'
+				| 'ai_embedding'
+				| 'ai_languageModel'
+				| 'ai_memory'
+				| 'ai_outputParser'
+				| 'ai_textSplitter'
+				| 'ai_tool'
+				| 'ai_vectorStore'
+				| 'main'
+				| Expression<string>;
+			maxConnections?: number | Expression<number>;
+			required?: boolean | Expression<boolean>;
+		}>;
+	};
 	/**
 	 * The output to add
 	 * @default {}
 	 */
-	outputs?: Record<string, unknown>;
+	outputs?: {
+		output?: Array<{
+			type?:
+				| 'ai_chain'
+				| 'ai_document'
+				| 'ai_embedding'
+				| 'ai_languageModel'
+				| 'ai_memory'
+				| 'ai_outputParser'
+				| 'ai_textSplitter'
+				| 'ai_tool'
+				| 'ai_vectorStore'
+				| 'main'
+				| Expression<string>;
+		}>;
+	};
 }
 
 // ===========================================================================

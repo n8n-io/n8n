@@ -48,7 +48,9 @@ export type MergeV32CombineConfig = {
 	 * Specify the fields to use for matching input items
 	 * @default {"values":[{"field1":"","field2":""}]}
 	 */
-	mergeByFields?: Record<string, unknown>;
+	mergeByFields?: {
+		values?: Array<{ field1?: string | Expression<string>; field2?: string | Expression<string> }>;
+	};
 	/**
 	 * How to select the items to send to output
 	 * @default keepMatches
@@ -117,7 +119,9 @@ export type MergeV21AppendConfig = {
 export type MergeV21CombineConfig = {
 	mode: 'combine';
 	combinationMode?: 'mergeByFields' | 'mergeByPosition' | 'multiplex' | Expression<string>;
-	mergeByFields?: Record<string, unknown>;
+	mergeByFields?: {
+		values?: Array<{ field1?: string | Expression<string>; field2?: string | Expression<string> }>;
+	};
 	joinMode?:
 		| 'keepMatches'
 		| 'keepNonMatches'

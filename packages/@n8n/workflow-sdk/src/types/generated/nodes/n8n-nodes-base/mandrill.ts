@@ -42,12 +42,22 @@ export type MandrillV1MessageSendTemplateConfig = {
 	 * Per-recipient merge variables
 	 * @default {}
 	 */
-	mergeVarsUi?: Record<string, unknown>;
+	mergeVarsUi?: {
+		mergeVarsValues?: Array<{
+			name?: string | Expression<string>;
+			content?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.
 	 * @default {}
 	 */
-	metadataUi?: Record<string, unknown>;
+	metadataUi?: {
+		metadataValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.
 	 */
@@ -60,7 +70,14 @@ export type MandrillV1MessageSendTemplateConfig = {
 	 * Array of supported attachments to add to the message
 	 * @default {}
 	 */
-	attachmentsUi?: Record<string, unknown>;
+	attachmentsUi?: {
+		attachmentsValues?: Array<{
+			type?: string | Expression<string>;
+			name?: string | Expression<string>;
+			content?: string | Expression<string>;
+		}>;
+		attachmentsBinary?: Array<{ property?: string | Expression<string> }>;
+	};
 	/**
 	 * Optional extra headers to add to the message (most headers are allowed)
 	 */
@@ -69,7 +86,12 @@ export type MandrillV1MessageSendTemplateConfig = {
 	 * Optional extra headers to add to the message (most headers are allowed)
 	 * @default {}
 	 */
-	headersUi?: Record<string, unknown>;
+	headersUi?: {
+		headersValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Send a message */
@@ -94,12 +116,22 @@ export type MandrillV1MessageSendHtmlConfig = {
 	 * Per-recipient merge variables
 	 * @default {}
 	 */
-	mergeVarsUi?: Record<string, unknown>;
+	mergeVarsUi?: {
+		mergeVarsValues?: Array<{
+			name?: string | Expression<string>;
+			content?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.
 	 * @default {}
 	 */
-	metadataUi?: Record<string, unknown>;
+	metadataUi?: {
+		metadataValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.
 	 */
@@ -112,7 +144,14 @@ export type MandrillV1MessageSendHtmlConfig = {
 	 * Array of supported attachments to add to the message
 	 * @default {}
 	 */
-	attachmentsUi?: Record<string, unknown>;
+	attachmentsUi?: {
+		attachmentsValues?: Array<{
+			type?: string | Expression<string>;
+			name?: string | Expression<string>;
+			content?: string | Expression<string>;
+		}>;
+		attachmentsBinary?: Array<{ property?: string | Expression<string> }>;
+	};
 	/**
 	 * Optional extra headers to add to the message (most headers are allowed)
 	 */
@@ -121,7 +160,12 @@ export type MandrillV1MessageSendHtmlConfig = {
 	 * Optional extra headers to add to the message (most headers are allowed)
 	 * @default {}
 	 */
-	headersUi?: Record<string, unknown>;
+	headersUi?: {
+		headersValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type MandrillV1Params =

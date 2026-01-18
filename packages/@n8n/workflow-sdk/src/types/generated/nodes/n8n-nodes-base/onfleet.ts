@@ -179,7 +179,21 @@ export type OnfleetV1HubCreateConfig = {
 	 * A name to identify the hub
 	 */
 	name: string | Expression<string>;
-	destination?: Record<string, unknown>;
+	destination?: {
+		destinationProperties?: {
+			unparsed?: boolean | Expression<boolean>;
+			address?: string | Expression<string>;
+			addressNumber?: string | Expression<string>;
+			addressStreet?: string | Expression<string>;
+			addressCity?: string | Expression<string>;
+			addressState?: string | Expression<string>;
+			addressCountry?: string | Expression<string>;
+			addressPostalCode?: string | Expression<string>;
+			addressName?: string | Expression<string>;
+			addressApartment?: string | Expression<string>;
+			addressNotes?: string | Expression<string>;
+		};
+	};
 	additionalFields?: Record<string, unknown>;
 };
 
@@ -311,7 +325,21 @@ export type OnfleetV1TaskCreateConfig = {
 	 * The ID of the task object for lookup
 	 */
 	id: string | Expression<string>;
-	destination: Record<string, unknown>;
+	destination: {
+		destinationProperties?: {
+			unparsed?: boolean | Expression<boolean>;
+			address?: string | Expression<string>;
+			addressNumber?: string | Expression<string>;
+			addressStreet?: string | Expression<string>;
+			addressCity?: string | Expression<string>;
+			addressState?: string | Expression<string>;
+			addressCountry?: string | Expression<string>;
+			addressPostalCode?: string | Expression<string>;
+			addressName?: string | Expression<string>;
+			addressApartment?: string | Expression<string>;
+			addressNotes?: string | Expression<string>;
+		};
+	};
 	additionalFields?: Record<string, unknown>;
 };
 

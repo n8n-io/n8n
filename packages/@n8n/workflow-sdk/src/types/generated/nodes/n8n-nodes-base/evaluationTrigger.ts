@@ -38,7 +38,12 @@ export interface EvaluationTriggerV47Params {
 	 * @default 10
 	 */
 	maxRows?: number | Expression<number>;
-	filtersUI?: Record<string, unknown>;
+	filtersUI?: {
+		values?: Array<{
+			lookupColumn?: string | Expression<string>;
+			lookupValue?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to filter rows to process
 	 * @default false
@@ -49,7 +54,13 @@ export interface EvaluationTriggerV47Params {
 	 * Filter to decide which rows get
 	 * @default {}
 	 */
-	filters?: Record<string, unknown>;
+	filters?: {
+		conditions?: Array<{
+			keyName?: string | Expression<string>;
+			condition?: string | Expression<string>;
+			keyValue?: string | Expression<string>;
+		}>;
+	};
 }
 
 // ===========================================================================

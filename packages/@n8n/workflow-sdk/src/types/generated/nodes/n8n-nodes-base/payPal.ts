@@ -25,7 +25,17 @@ export type PayPalV1PayoutCreateConfig = {
 	 */
 	senderBatchId: string | Expression<string>;
 	jsonParameters?: boolean | Expression<boolean>;
-	itemsUi?: Record<string, unknown>;
+	itemsUi?: {
+		itemsValues?: Array<{
+			recipientType?: 'phone' | 'email' | 'paypalId' | Expression<string>;
+			receiverValue?: string | Expression<string>;
+			currency?: 'AUD' | 'BRL' | 'CAD' | 'CZK' | 'DKK' | 'EUR' | 'USD' | Expression<string>;
+			amount?: string | Expression<string>;
+			note?: string | Expression<string>;
+			senderItemId?: string | Expression<string>;
+			recipientWallet?: 'paypal' | 'venmo' | Expression<string>;
+		}>;
+	};
 	/**
 	 * An array of individual payout items
 	 */

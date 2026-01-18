@@ -42,7 +42,16 @@ export type WhatsAppV11MessageSendConfig = {
 		| 'text'
 		| 'video'
 		| Expression<string>;
-	name?: Record<string, unknown>;
+	name?: {
+		data?: {
+			formatted_name?: string | Expression<string>;
+			first_name?: string | Expression<string>;
+			last_name?: string | Expression<string>;
+			middle_name?: string | Expression<string>;
+			suffix?: string | Expression<string>;
+			prefix?: string | Expression<string>;
+		};
+	};
 	additionalFields?: Record<string, unknown>;
 	longitude: number | Expression<number>;
 	latitude: number | Expression<number>;
@@ -91,8 +100,55 @@ export type WhatsAppV11MessageSendAndWaitConfig = {
 	responseType?: 'approval' | 'freeText' | 'customForm' | Expression<string>;
 	defineForm?: 'fields' | 'json' | Expression<string>;
 	jsonOutput?: IDataObject | string | Expression<string>;
-	formFields?: Record<string, unknown>;
-	approvalOptions?: Record<string, unknown>;
+	formFields?: {
+		values?: Array<{
+			fieldName?: string | Expression<string>;
+			fieldLabel?: string | Expression<string>;
+			fieldLabel?: string | Expression<string>;
+			fieldName?: string | Expression<string>;
+			fieldType?:
+				| 'checkbox'
+				| 'html'
+				| 'date'
+				| 'dropdown'
+				| 'email'
+				| 'file'
+				| 'hiddenField'
+				| 'number'
+				| 'password'
+				| 'radio'
+				| 'text'
+				| 'textarea'
+				| Expression<string>;
+			elementName?: string | Expression<string>;
+			fieldName?: string | Expression<string>;
+			placeholder?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			defaultValue?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			fieldOptions?: { values?: Array<{ option?: string | Expression<string> }> };
+			multiselect?: boolean | Expression<boolean>;
+			limitSelection?: 'exact' | 'range' | 'unlimited' | Expression<string>;
+			numberOfSelections?: number | Expression<number>;
+			minSelections?: number | Expression<number>;
+			maxSelections?: number | Expression<number>;
+			html?: string | Expression<string>;
+			multipleFiles?: boolean | Expression<boolean>;
+			acceptFileTypes?: string | Expression<string>;
+			requiredField?: boolean | Expression<boolean>;
+		}>;
+	};
+	approvalOptions?: {
+		values?: {
+			approvalType?: 'single' | 'double' | Expression<string>;
+			approveLabel?: string | Expression<string>;
+			disapproveLabel?: string | Expression<string>;
+		};
+	};
 	options?: Record<string, unknown>;
 };
 
@@ -113,7 +169,400 @@ export type WhatsAppV11MessageSendTemplateConfig = {
 	 * Name of the template
 	 */
 	template: string | Expression<string>;
-	components?: Record<string, unknown>;
+	components?: {
+		component?: Array<{
+			type?: 'body' | 'button' | 'header' | Expression<string>;
+			bodyParameters?: {
+				parameter?: Array<{
+					type?: 'text' | 'currency' | 'date_time' | Expression<string>;
+					text?: string | Expression<string>;
+					code?:
+						| 'AED'
+						| 'AFN'
+						| 'ALL'
+						| 'AMD'
+						| 'ANG'
+						| 'AOA'
+						| 'ARS'
+						| 'AUD'
+						| 'AWG'
+						| 'AZN'
+						| 'BAM'
+						| 'BBD'
+						| 'BDT'
+						| 'BGN'
+						| 'BHD'
+						| 'BIF'
+						| 'BMD'
+						| 'BND'
+						| 'BOB'
+						| 'BOV'
+						| 'BRL'
+						| 'BSD'
+						| 'BTN'
+						| 'BWP'
+						| 'BYN'
+						| 'BZD'
+						| 'CAD'
+						| 'CDF'
+						| 'CHE'
+						| 'CHF'
+						| 'CHW'
+						| 'CLF'
+						| 'CLP'
+						| 'CNY'
+						| 'COP'
+						| 'COU'
+						| 'CRC'
+						| 'CUC'
+						| 'CUP'
+						| 'CVE'
+						| 'CZK'
+						| 'DJF'
+						| 'DKK'
+						| 'DOP'
+						| 'DZD'
+						| 'EGP'
+						| 'ERN'
+						| 'ETB'
+						| 'EUR'
+						| 'FJD'
+						| 'FKP'
+						| 'GBP'
+						| 'GEL'
+						| 'GHS'
+						| 'GIP'
+						| 'GMD'
+						| 'GNF'
+						| 'GTQ'
+						| 'GYD'
+						| 'HKD'
+						| 'HNL'
+						| 'HRK'
+						| 'HTG'
+						| 'HUF'
+						| 'IDR'
+						| 'ILS'
+						| 'INR'
+						| 'IQD'
+						| 'IRR'
+						| 'ISK'
+						| 'JMD'
+						| 'JOD'
+						| 'JPY'
+						| 'KES'
+						| 'KGS'
+						| 'KHR'
+						| 'KMF'
+						| 'KPW'
+						| 'KRW'
+						| 'KWD'
+						| 'KYD'
+						| 'KZT'
+						| 'LAK'
+						| 'LBP'
+						| 'LKR'
+						| 'LRD'
+						| 'LSL'
+						| 'LYD'
+						| 'MAD'
+						| 'MDL'
+						| 'MGA'
+						| 'MKD'
+						| 'MMK'
+						| 'MNT'
+						| 'MOP'
+						| 'MRU'
+						| 'MUR'
+						| 'MVR'
+						| 'MWK'
+						| 'MXN'
+						| 'MXV'
+						| 'MYR'
+						| 'MZN'
+						| 'NAD'
+						| 'NGN'
+						| 'NIO'
+						| 'NOK'
+						| 'NPR'
+						| 'NZD'
+						| 'OMR'
+						| 'PAB'
+						| 'PEN'
+						| 'PGK'
+						| 'PHP'
+						| 'PKR'
+						| 'PLN'
+						| 'PYG'
+						| 'QAR'
+						| 'RON'
+						| 'RSD'
+						| 'RUB'
+						| 'RWF'
+						| 'SAR'
+						| 'SBD'
+						| 'SCR'
+						| 'SDG'
+						| 'SEK'
+						| 'SGD'
+						| 'SHP'
+						| 'SLL'
+						| 'SOS'
+						| 'SRD'
+						| 'SSP'
+						| 'STN'
+						| 'SVC'
+						| 'SYP'
+						| 'SZL'
+						| 'THB'
+						| 'TJS'
+						| 'TMT'
+						| 'TND'
+						| 'TOP'
+						| 'TRY'
+						| 'TTD'
+						| 'TWD'
+						| 'TZS'
+						| 'UAH'
+						| 'UGX'
+						| 'USD'
+						| 'USN'
+						| 'UYI'
+						| 'UYU'
+						| 'UYW'
+						| 'UZS'
+						| 'VES'
+						| 'VND'
+						| 'VUV'
+						| 'WST'
+						| 'XAF'
+						| 'XAG'
+						| 'XAU'
+						| 'XBA'
+						| 'XBB'
+						| 'XBC'
+						| 'XBD'
+						| 'XCD'
+						| 'XDR'
+						| 'XOF'
+						| 'XPD'
+						| 'XPF'
+						| 'XPT'
+						| 'XSU'
+						| 'XTS'
+						| 'XUA'
+						| 'XXX'
+						| 'YER'
+						| 'ZAR'
+						| 'ZMW'
+						| 'ZWL'
+						| Expression<string>;
+					amount_1000?: number | Expression<number>;
+					date_time?: string | Expression<string>;
+					fallback_value?: string | Expression<string>;
+				}>;
+			};
+			sub_type?: 'quick_reply' | 'url' | Expression<string>;
+			index?: number | Expression<number>;
+			buttonParameters?: {
+				parameter?: {
+					type?: 'payload' | 'text' | Expression<string>;
+					payload?: string | Expression<string>;
+					text?: string | Expression<string>;
+				};
+			};
+			headerParameters?: {
+				parameter?: Array<{
+					type?: 'text' | 'currency' | 'date_time' | 'image' | Expression<string>;
+					text?: string | Expression<string>;
+					code?:
+						| 'AED'
+						| 'AFN'
+						| 'ALL'
+						| 'AMD'
+						| 'ANG'
+						| 'AOA'
+						| 'ARS'
+						| 'AUD'
+						| 'AWG'
+						| 'AZN'
+						| 'BAM'
+						| 'BBD'
+						| 'BDT'
+						| 'BGN'
+						| 'BHD'
+						| 'BIF'
+						| 'BMD'
+						| 'BND'
+						| 'BOB'
+						| 'BOV'
+						| 'BRL'
+						| 'BSD'
+						| 'BTN'
+						| 'BWP'
+						| 'BYN'
+						| 'BZD'
+						| 'CAD'
+						| 'CDF'
+						| 'CHE'
+						| 'CHF'
+						| 'CHW'
+						| 'CLF'
+						| 'CLP'
+						| 'CNY'
+						| 'COP'
+						| 'COU'
+						| 'CRC'
+						| 'CUC'
+						| 'CUP'
+						| 'CVE'
+						| 'CZK'
+						| 'DJF'
+						| 'DKK'
+						| 'DOP'
+						| 'DZD'
+						| 'EGP'
+						| 'ERN'
+						| 'ETB'
+						| 'EUR'
+						| 'FJD'
+						| 'FKP'
+						| 'GBP'
+						| 'GEL'
+						| 'GHS'
+						| 'GIP'
+						| 'GMD'
+						| 'GNF'
+						| 'GTQ'
+						| 'GYD'
+						| 'HKD'
+						| 'HNL'
+						| 'HRK'
+						| 'HTG'
+						| 'HUF'
+						| 'IDR'
+						| 'ILS'
+						| 'INR'
+						| 'IQD'
+						| 'IRR'
+						| 'ISK'
+						| 'JMD'
+						| 'JOD'
+						| 'JPY'
+						| 'KES'
+						| 'KGS'
+						| 'KHR'
+						| 'KMF'
+						| 'KPW'
+						| 'KRW'
+						| 'KWD'
+						| 'KYD'
+						| 'KZT'
+						| 'LAK'
+						| 'LBP'
+						| 'LKR'
+						| 'LRD'
+						| 'LSL'
+						| 'LYD'
+						| 'MAD'
+						| 'MDL'
+						| 'MGA'
+						| 'MKD'
+						| 'MMK'
+						| 'MNT'
+						| 'MOP'
+						| 'MRU'
+						| 'MUR'
+						| 'MVR'
+						| 'MWK'
+						| 'MXN'
+						| 'MXV'
+						| 'MYR'
+						| 'MZN'
+						| 'NAD'
+						| 'NGN'
+						| 'NIO'
+						| 'NOK'
+						| 'NPR'
+						| 'NZD'
+						| 'OMR'
+						| 'PAB'
+						| 'PEN'
+						| 'PGK'
+						| 'PHP'
+						| 'PKR'
+						| 'PLN'
+						| 'PYG'
+						| 'QAR'
+						| 'RON'
+						| 'RSD'
+						| 'RUB'
+						| 'RWF'
+						| 'SAR'
+						| 'SBD'
+						| 'SCR'
+						| 'SDG'
+						| 'SEK'
+						| 'SGD'
+						| 'SHP'
+						| 'SLL'
+						| 'SOS'
+						| 'SRD'
+						| 'SSP'
+						| 'STN'
+						| 'SVC'
+						| 'SYP'
+						| 'SZL'
+						| 'THB'
+						| 'TJS'
+						| 'TMT'
+						| 'TND'
+						| 'TOP'
+						| 'TRY'
+						| 'TTD'
+						| 'TWD'
+						| 'TZS'
+						| 'UAH'
+						| 'UGX'
+						| 'USD'
+						| 'USN'
+						| 'UYI'
+						| 'UYU'
+						| 'UYW'
+						| 'UZS'
+						| 'VES'
+						| 'VND'
+						| 'VUV'
+						| 'WST'
+						| 'XAF'
+						| 'XAG'
+						| 'XAU'
+						| 'XBA'
+						| 'XBB'
+						| 'XBC'
+						| 'XBD'
+						| 'XCD'
+						| 'XDR'
+						| 'XOF'
+						| 'XPD'
+						| 'XPF'
+						| 'XPT'
+						| 'XSU'
+						| 'XTS'
+						| 'XUA'
+						| 'XXX'
+						| 'YER'
+						| 'ZAR'
+						| 'ZMW'
+						| 'ZWL'
+						| Expression<string>;
+					amount_1000?: number | Expression<number>;
+					date_time?: string | Expression<string>;
+					imageLink?: string | Expression<string>;
+				}>;
+			};
+		}>;
+	};
 };
 
 export type WhatsAppV11MediaMediaUploadConfig = {

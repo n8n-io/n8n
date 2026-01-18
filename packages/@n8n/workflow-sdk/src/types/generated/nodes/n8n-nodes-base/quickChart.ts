@@ -27,7 +27,7 @@ export interface QuickChartV1Params {
 	 * Labels to use in the chart
 	 * @default {}
 	 */
-	labelsUi: Record<string, unknown>;
+	labelsUi: { labelsValues?: Array<{ label?: string | Expression<string> }> };
 	/**
 	 * The array of labels to be used in the chart
 	 */

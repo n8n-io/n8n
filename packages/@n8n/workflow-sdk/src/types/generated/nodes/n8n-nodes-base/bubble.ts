@@ -22,7 +22,9 @@ export type BubbleV1ObjectCreateConfig = {
 	 * Name of data type of the object to create
 	 */
 	typeName: string | Expression<string>;
-	properties?: Record<string, unknown>;
+	properties?: {
+		property?: Array<{ key?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 export type BubbleV1ObjectDeleteConfig = {
@@ -83,7 +85,9 @@ export type BubbleV1ObjectUpdateConfig = {
 	 * ID of the object to update
 	 */
 	objectId: string | Expression<string>;
-	properties?: Record<string, unknown>;
+	properties?: {
+		property?: Array<{ key?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 export type BubbleV1Params =

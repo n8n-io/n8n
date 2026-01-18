@@ -18,7 +18,13 @@ import type { Expression, NodeConfig } from '../../../base';
 /** Build a matching rule for each output */
 export type SwitchV34RulesConfig = {
 	mode: 'rules';
-	rules?: Record<string, unknown>;
+	rules?: {
+		values?: Array<{
+			conditions?: FilterValue;
+			renameOutput?: boolean | Expression<boolean>;
+			outputKey?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * If the type of an expression doesn't match the type of the comparison, n8n will try to cast the expression to the required type. E.g. for booleans &lt;code&gt;"false"&lt;/code&gt; or &lt;code&gt;0&lt;/code&gt; will be cast to &lt;code&gt;false&lt;/code&gt;
 	 * @default false
@@ -77,7 +83,13 @@ export type SwitchV2RulesConfig = {
 	 * @default false
 	 */
 	value1?: boolean | Expression<boolean>;
-	rules?: Record<string, unknown>;
+	rules?: {
+		rules?: Array<{
+			operation?: 'equal' | 'notEqual' | Expression<string>;
+			value2?: boolean | Expression<boolean>;
+			outputKey?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * The output to which to route all items which do not match any of the rules. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
 	 * @default -1
@@ -110,7 +122,13 @@ export type SwitchV1RulesConfig = {
 	 * @default false
 	 */
 	value1?: boolean | Expression<boolean>;
-	rules?: Record<string, unknown>;
+	rules?: {
+		rules?: Array<{
+			operation?: 'equal' | 'notEqual' | Expression<string>;
+			value2?: boolean | Expression<boolean>;
+			output?: number | Expression<number>;
+		}>;
+	};
 	/**
 	 * The output to which to route all items which do not match any of the rules
 	 * @default -1

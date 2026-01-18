@@ -48,7 +48,12 @@ export type LcOllamaV1TextMessageConfig = {
 	resource: 'text';
 	operation: 'message';
 	modelId: ResourceLocatorValue;
-	messages?: Record<string, unknown>;
+	messages?: {
+		values?: Array<{
+			content?: string | Expression<string>;
+			role?: 'user' | 'assistant' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to simplify the response or not
 	 * @default true

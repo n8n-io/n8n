@@ -125,7 +125,12 @@ export type AirtableV21RecordSearchConfig = {
 	 * Defines how the returned records should be ordered
 	 * @default {}
 	 */
-	sort?: Record<string, unknown>;
+	sort?: {
+		property?: Array<{
+			field?: string | Expression<string>;
+			direction?: 'asc' | 'desc' | Expression<string>;
+		}>;
+	};
 };
 
 /** Update a record in a table */

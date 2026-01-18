@@ -149,7 +149,12 @@ export type AwsSesV1EmailSendTemplateConfig = {
 	 * @default []
 	 */
 	toAddresses?: string | Expression<string>;
-	templateDataUi?: Record<string, unknown>;
+	templateDataUi?: {
+		templateDataValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 

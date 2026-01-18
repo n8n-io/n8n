@@ -141,7 +141,16 @@ export type ZammadV1TicketCreateConfig = {
 	 * Email address of the customer concerned in the ticket to create. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
 	 */
 	customer: string | Expression<string>;
-	article: Record<string, unknown>;
+	article: {
+		articleDetails?: {
+			subject?: string | Expression<string>;
+			body?: string | Expression<string>;
+			visibility?: 'external' | 'internal' | Expression<string>;
+			sender?: 'Agent' | 'Customer' | 'System' | Expression<string>;
+			type?: 'chat' | 'email' | 'fax' | 'note' | 'phone' | 'sms' | Expression<string>;
+			reply_to?: string | Expression<string>;
+		};
+	};
 	additionalFields?: Record<string, unknown>;
 };
 

@@ -340,7 +340,12 @@ export type GoToWebinarV1WebinarCreateConfig = {
 	resource: 'webinar';
 	operation: 'create';
 	subject: string | Expression<string>;
-	times: Record<string, unknown>;
+	times: {
+		timesProperties?: Array<{
+			startTime?: string | Expression<string>;
+			endTime?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 };
 

@@ -23,7 +23,12 @@ export type ErpNextV1DocumentCreateConfig = {
 	 * DocType you would like to create. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
 	 */
 	docType: string | Expression<string>;
-	properties: Record<string, unknown>;
+	properties: {
+		customProperty?: Array<{
+			field?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Delete a document */
@@ -91,7 +96,12 @@ export type ErpNextV1DocumentUpdateConfig = {
 	 * Properties of request body
 	 * @default {}
 	 */
-	properties?: Record<string, unknown>;
+	properties?: {
+		customProperty?: Array<{
+			field?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type ErpNextV1Params =

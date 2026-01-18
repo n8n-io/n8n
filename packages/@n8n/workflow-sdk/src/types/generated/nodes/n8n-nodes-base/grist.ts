@@ -49,7 +49,12 @@ export interface GristV1Params {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsToSend?: Record<string, unknown>;
+	fieldsToSend?: {
+		properties?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 }
 
 // ===========================================================================

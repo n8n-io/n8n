@@ -60,8 +60,72 @@ export type GoogleDocsV2DocumentUpdateConfig = {
 	 * Actions applied to update the document
 	 * @default {"actionFields":[{"object":"text","action":"insert","locationChoice":"endOfSegmentLocation","index":0,"text":""}]}
 	 */
-	actionsUi?: Record<string, unknown>;
-	updateFields?: Record<string, unknown>;
+	actionsUi?: {
+		actionFields?: Array<{
+			object?:
+				| 'footer'
+				| 'header'
+				| 'namedRange'
+				| 'pageBreak'
+				| 'paragraphBullets'
+				| 'positionedObject'
+				| 'table'
+				| 'tableColumn'
+				| 'tableRow'
+				| 'text'
+				| Expression<string>;
+			action?: 'replaceAll' | 'insert' | Expression<string>;
+			action?: 'create' | 'delete' | Expression<string>;
+			action?: 'delete' | 'insert' | Expression<string>;
+			action?: 'insert' | Expression<string>;
+			action?: 'delete' | Expression<string>;
+			insertSegment?: 'header' | 'body' | 'footer' | Expression<string>;
+			segmentId?: string | Expression<string>;
+			index?: number | Expression<number>;
+			name?: string | Expression<string>;
+			startIndex?: number | Expression<number>;
+			endIndex?: number | Expression<number>;
+			bulletPreset?:
+				| 'BULLET_DISC_CIRCLE_SQUARE'
+				| 'BULLET_CHECKBOX'
+				| 'NUMBERED_DECIMAL_NESTED'
+				| Expression<string>;
+			footerId?: string | Expression<string>;
+			headerId?: string | Expression<string>;
+			namedRangeReference?: 'namedRangeId' | 'name' | Expression<string>;
+			value?: string | Expression<string>;
+			value?: string | Expression<string>;
+			objectId?: string | Expression<string>;
+			insertSegment?: 'header' | 'body' | 'footer' | Expression<string>;
+			segmentId?: string | Expression<string>;
+			locationChoice?: 'endOfSegmentLocation' | 'location' | Expression<string>;
+			index?: number | Expression<number>;
+			locationChoice?: 'endOfSegmentLocation' | 'location' | Expression<string>;
+			index?: number | Expression<number>;
+			rows?: number | Expression<number>;
+			columns?: number | Expression<number>;
+			locationChoice?: 'endOfSegmentLocation' | 'location' | Expression<string>;
+			index?: number | Expression<number>;
+			text?: string | Expression<string>;
+			text?: string | Expression<string>;
+			replaceText?: string | Expression<string>;
+			matchCase?: boolean | Expression<boolean>;
+			insertSegment?: 'header' | 'body' | 'footer' | Expression<string>;
+			segmentId?: string | Expression<string>;
+			startIndex?: number | Expression<number>;
+			endIndex?: number | Expression<number>;
+			insertPosition?: false | true | Expression<boolean>;
+			index?: number | Expression<number>;
+			rowIndex?: number | Expression<number>;
+			columnIndex?: number | Expression<number>;
+		}>;
+	};
+	updateFields?: {
+		writeControlObject?: {
+			control?: 'targetRevisionId' | 'requiredRevisionId' | Expression<string>;
+			value?: string | Expression<string>;
+		};
+	};
 };
 
 export type GoogleDocsV2Params =

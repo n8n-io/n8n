@@ -227,7 +227,9 @@ export type ServiceNowV1TableRecordCreateConfig = {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsToSend?: Record<string, unknown>;
+	fieldsToSend?: {
+		field?: Array<{ column?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 /** Delete an attachment */
@@ -296,7 +298,9 @@ export type ServiceNowV1TableRecordUpdateConfig = {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all inputs.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsToSend?: Record<string, unknown>;
+	fieldsToSend?: {
+		field?: Array<{ column?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 };
 
 export type ServiceNowV1UserCreateConfig = {

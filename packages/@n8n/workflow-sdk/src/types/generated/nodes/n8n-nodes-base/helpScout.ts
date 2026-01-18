@@ -41,7 +41,15 @@ export type HelpScoutV1ConversationCreateConfig = {
 	 */
 	resolveData?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
-	threadsUi?: Record<string, unknown>;
+	threadsUi?: {
+		threadsValues?: Array<{
+			type?: 'chat' | 'customer' | 'note' | 'phone' | 'reply' | Expression<string>;
+			text?: string | Expression<string>;
+			bcc?: string | Expression<string>;
+			cc?: string | Expression<string>;
+			draft?: boolean | Expression<boolean>;
+		}>;
+	};
 };
 
 /** Delete a conversation */
@@ -85,12 +93,64 @@ export type HelpScoutV1CustomerCreateConfig = {
 	 */
 	resolveData?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
-	addressUi?: Record<string, unknown>;
-	chatsUi?: Record<string, unknown>;
-	emailsUi?: Record<string, unknown>;
-	phonesUi?: Record<string, unknown>;
-	socialProfilesUi?: Record<string, unknown>;
-	websitesUi?: Record<string, unknown>;
+	addressUi?: {
+		addressValue?: {
+			line1?: string | Expression<string>;
+			line2?: string | Expression<string>;
+			city?: string | Expression<string>;
+			state?: string | Expression<string>;
+			country?: string | Expression<string>;
+			postalCode?: string | Expression<string>;
+		};
+	};
+	chatsUi?: {
+		chatsValues?: Array<{
+			type?:
+				| 'aim'
+				| 'gtalk'
+				| 'icq'
+				| 'msn'
+				| 'other'
+				| 'qq'
+				| 'skype'
+				| 'xmpp'
+				| 'yahoo'
+				| Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
+	emailsUi?: {
+		emailsValues?: Array<{
+			type?: 'home' | 'other' | 'work' | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
+	phonesUi?: {
+		phonesValues?: Array<{
+			type?: 'fax' | 'home' | 'other' | 'pager' | 'work' | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
+	socialProfilesUi?: {
+		socialProfilesValues?: Array<{
+			type?:
+				| 'aboutMe'
+				| 'facebook'
+				| 'flickr'
+				| 'forsquare'
+				| 'google'
+				| 'googleplus'
+				| 'linkedin'
+				| 'other'
+				| 'quora'
+				| 'tungleme'
+				| 'twitter'
+				| 'youtube'
+				| Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
+	websitesUi?: { websitesValues?: Array<{ value?: string | Expression<string> }> };
 };
 
 /** Get a conversation */
@@ -169,7 +229,14 @@ export type HelpScoutV1ThreadCreateConfig = {
 	 * Array of supported attachments to add to the message
 	 * @default {}
 	 */
-	attachmentsUi?: Record<string, unknown>;
+	attachmentsUi?: {
+		attachmentsValues?: Array<{
+			fileName?: string | Expression<string>;
+			mimeType?: string | Expression<string>;
+			data?: string | Expression<string>;
+		}>;
+		attachmentsBinary?: Array<{ property?: string | Expression<string> }>;
+	};
 };
 
 /** Get many conversations */

@@ -31,7 +31,12 @@ export type WebflowV2ItemCreateConfig = {
 	 * @default false
 	 */
 	live: boolean | Expression<boolean>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type WebflowV2ItemDeleteItemConfig = {
@@ -111,7 +116,12 @@ export type WebflowV2ItemUpdateConfig = {
 	 * @default false
 	 */
 	live: boolean | Expression<boolean>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type WebflowV2Params =
@@ -137,7 +147,12 @@ export type WebflowV1ItemCreateConfig = {
 	 * @default false
 	 */
 	live: boolean | Expression<boolean>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type WebflowV1ItemDeleteConfig = {
@@ -217,7 +232,12 @@ export type WebflowV1ItemUpdateConfig = {
 	 * @default false
 	 */
 	live: boolean | Expression<boolean>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 };
 
 export type WebflowV1Params =

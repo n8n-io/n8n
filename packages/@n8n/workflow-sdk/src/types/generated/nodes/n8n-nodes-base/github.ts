@@ -42,7 +42,11 @@ export type GithubV11FileCreateConfig = {
 	 * Additional fields to add
 	 * @default {}
 	 */
-	additionalParameters?: Record<string, unknown>;
+	additionalParameters?: {
+		author?: { name?: string | Expression<string>; email?: string | Expression<string> };
+		branch?: { branch?: string | Expression<string> };
+		committer?: { name?: string | Expression<string>; email?: string | Expression<string> };
+	};
 };
 
 /** Delete a file in repository */
@@ -58,7 +62,11 @@ export type GithubV11FileDeleteConfig = {
 	 * Additional fields to add
 	 * @default {}
 	 */
-	additionalParameters?: Record<string, unknown>;
+	additionalParameters?: {
+		author?: { name?: string | Expression<string>; email?: string | Expression<string> };
+		branch?: { branch?: string | Expression<string> };
+		committer?: { name?: string | Expression<string>; email?: string | Expression<string> };
+	};
 };
 
 /** Edit an issue */
@@ -84,7 +92,11 @@ export type GithubV11FileEditConfig = {
 	 * Additional fields to add
 	 * @default {}
 	 */
-	additionalParameters?: Record<string, unknown>;
+	additionalParameters?: {
+		author?: { name?: string | Expression<string>; email?: string | Expression<string> };
+		branch?: { branch?: string | Expression<string> };
+		committer?: { name?: string | Expression<string>; email?: string | Expression<string> };
+	};
 };
 
 /** Get the data of a single issue */

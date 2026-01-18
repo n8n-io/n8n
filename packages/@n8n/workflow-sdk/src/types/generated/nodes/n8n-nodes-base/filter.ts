@@ -39,7 +39,51 @@ export interface FilterV1Params {
 	 * The type of values to compare
 	 * @default {}
 	 */
-	conditions?: Record<string, unknown>;
+	conditions?: {
+		boolean?: Array<{
+			value1?: boolean | Expression<boolean>;
+			operation?: 'equal' | 'notEqual' | Expression<string>;
+			value2?: boolean | Expression<boolean>;
+		}>;
+		dateTime?: Array<{
+			value1?: string | Expression<string>;
+			operation?: 'after' | 'before' | Expression<string>;
+			value2?: string | Expression<string>;
+		}>;
+		number?: Array<{
+			value1?: number | Expression<number>;
+			operation?:
+				| 'smaller'
+				| 'smallerEqual'
+				| 'equal'
+				| 'notEqual'
+				| 'larger'
+				| 'largerEqual'
+				| 'isEmpty'
+				| 'isNotEmpty'
+				| Expression<string>;
+			value2?: number | Expression<number>;
+		}>;
+		string?: Array<{
+			value1?: string | Expression<string>;
+			operation?:
+				| 'contains'
+				| 'notContains'
+				| 'endsWith'
+				| 'notEndsWith'
+				| 'equal'
+				| 'notEqual'
+				| 'regex'
+				| 'notRegex'
+				| 'startsWith'
+				| 'notStartsWith'
+				| 'isEmpty'
+				| 'isNotEmpty'
+				| Expression<string>;
+			value2?: string | Expression<string>;
+			value2?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * How to combine the conditions: AND requires all conditions to be true, OR requires at least one condition to be true
 	 * @default AND

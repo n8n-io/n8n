@@ -83,7 +83,12 @@ export type TapfiliateV1AffiliateMetadataAddConfig = {
 	 * Meta data
 	 * @default {}
 	 */
-	metadataUi?: Record<string, unknown>;
+	metadataUi?: {
+		metadataValues?: Array<{
+			key?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 };
 
 /** Remove metadata from affiliate */

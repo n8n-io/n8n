@@ -135,15 +135,31 @@ export type MailchimpV1MemberCreateConfig = {
 	 * Subscriber location information.n
 	 * @default {}
 	 */
-	locationFieldsUi?: Record<string, unknown>;
+	locationFieldsUi?: {
+		locationFieldsValues?: {
+			latitude?: string | Expression<string>;
+			longitude?: string | Expression<string>;
+		};
+	};
 	/**
 	 * An individual merge var and value for a member
 	 * @default {}
 	 */
-	mergeFieldsUi?: Record<string, unknown>;
+	mergeFieldsUi?: {
+		mergeFieldsValues?: Array<{
+			name?: string | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	mergeFieldsJson?: IDataObject | string | Expression<string>;
 	locationJson?: IDataObject | string | Expression<string>;
-	groupsUi?: Record<string, unknown>;
+	groupsUi?: {
+		groupsValues?: Array<{
+			categoryId?: string | Expression<string>;
+			categoryFieldId?: string | Expression<string>;
+			value?: boolean | Expression<boolean>;
+		}>;
+	};
 	groupJson?: IDataObject | string | Expression<string>;
 };
 

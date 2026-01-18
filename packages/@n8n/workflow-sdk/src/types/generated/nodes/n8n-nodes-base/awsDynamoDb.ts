@@ -33,7 +33,12 @@ export type AwsDynamoDbV1ItemUpsertConfig = {
 	 * List of input properties to avoid sending, separated by commas. Leave empty to send all properties.
 	 */
 	inputsToIgnore?: string | Expression<string>;
-	fieldsUi?: Record<string, unknown>;
+	fieldsUi?: {
+		fieldValues?: Array<{
+			fieldId?: string | Expression<string>;
+			fieldValue?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded. Empty value will return all Scan results.
@@ -59,7 +64,13 @@ export type AwsDynamoDbV1ItemDeleteConfig = {
 	 * Item's primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.
 	 * @default {}
 	 */
-	keysUi?: Record<string, unknown>;
+	keysUi?: {
+		keyValues?: Array<{
+			key?: string | Expression<string>;
+			type?: 'B' | 'N' | 'S' | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return a simplified version of the response instead of the raw data
 	 * @default true
@@ -95,7 +106,13 @@ export type AwsDynamoDbV1ItemGetConfig = {
 	 * Item's primary key. For example, with a simple primary key, you only need to provide a value for the partition key. For a composite primary key, you must provide values for both the partition key and the sort key.
 	 * @default {}
 	 */
-	keysUi?: Record<string, unknown>;
+	keysUi?: {
+		keyValues?: Array<{
+			key?: string | Expression<string>;
+			type?: 'B' | 'N' | 'S' | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	additionalFields?: Record<string, unknown>;
 	/**
 	 * A filter expression determines which items within the Scan results should be returned to you. All of the other results are discarded. Empty value will return all Scan results.
@@ -129,7 +146,13 @@ export type AwsDynamoDbV1ItemGetAllConfig = {
 	 * Substitution tokens for attribute names in an expression
 	 * @default {}
 	 */
-	eavUi: Record<string, unknown>;
+	eavUi: {
+		eavValues?: Array<{
+			attribute?: string | Expression<string>;
+			type?: 'N' | 'S' | Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * Whether to return all results or only up to a given limit
 	 * @default false

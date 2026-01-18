@@ -38,7 +38,23 @@ export interface MySqlV25Params {
 	 * If not set, all rows will be selected
 	 * @default {}
 	 */
-	where?: Record<string, unknown>;
+	where?: {
+		values?: Array<{
+			column?: string | Expression<string>;
+			condition?:
+				| 'equal'
+				| '!='
+				| 'LIKE'
+				| '>'
+				| '<'
+				| '>='
+				| '<='
+				| 'IS NULL'
+				| 'IS NOT NULL'
+				| Expression<string>;
+			value?: string | Expression<string>;
+		}>;
+	};
 	/**
 	 * How to combine the conditions defined in "Select Rows": AND requires all conditions to be true, OR requires at least one condition to be true
 	 * @default AND
@@ -55,7 +71,9 @@ export interface MySqlV25Params {
 	 * @default autoMapInputData
 	 */
 	dataMode?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
-	valuesToSend?: Record<string, unknown>;
+	valuesToSend?: {
+		values?: Array<{ column?: string | Expression<string>; value?: string | Expression<string> }>;
+	};
 	/**
 	 * Whether to return all results or only up to a given limit
 	 * @default false
@@ -66,7 +84,12 @@ export interface MySqlV25Params {
 	 * @default 50
 	 */
 	limit?: number | Expression<number>;
-	sort?: Record<string, unknown>;
+	sort?: {
+		values?: Array<{
+			column?: string | Expression<string>;
+			direction?: 'ASC' | 'DESC' | Expression<string>;
+		}>;
+	};
 	/**
 	 * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/" target="_blank"&gt;expression&lt;/a&gt;
 	 * @hint Used to find the correct row to update. Doesn't get changed.
