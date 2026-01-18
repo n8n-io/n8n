@@ -315,10 +315,72 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.facebookGraphApi',
+					version: 1,
+					config: {
+						parameters: {
+							edge: 'adaccounts',
+							node: 'me',
+							options: { fields: { field: [{ name: 'name' }] } },
+							graphApiVersion: 'v23.0',
+						},
+						credentials: {
+							facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
+						},
+						position: [288, 312],
+						name: 'graph: adaccounts',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '481319e1-d562-415d-aa04-4063421bc9b1',
+										name: 'id',
+										type: 'string',
+										value: "={{ $json.id.startsWith('act') ? $json.id : 'act_'+$json.id }}",
+									},
+								],
+							},
+							includeOtherFields: true,
+						},
+						position: [288, 504],
+						name: 'fix missing act_',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '481319e1-d562-415d-aa04-4063421bc9b1',
+										name: 'id',
+										type: 'string',
+										value: "={{ $json.id.startsWith('act') ? $json.id : 'act_'+$json.id }}",
+									},
+								],
+							},
+							includeOtherFields: true,
+						},
+						position: [288, 1000],
+						name: 'Edit Fields',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -397,54 +459,8 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [64, 488],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.facebookGraphApi',
-			version: 1,
-			config: {
-				parameters: {
-					edge: 'adaccounts',
-					node: 'me',
-					options: { fields: { field: [{ name: 'name' }] } },
-					graphApiVersion: 'v23.0',
-				},
-				credentials: {
-					facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
-				},
-				position: [288, 312],
-				name: 'graph: adaccounts',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '481319e1-d562-415d-aa04-4063421bc9b1',
-								name: 'id',
-								type: 'string',
-								value: "={{ $json.id.startsWith('act') ? $json.id : 'act_'+$json.id }}",
-							},
-						],
-					},
-					includeOtherFields: true,
-				},
-				position: [288, 504],
-				name: 'fix missing act_',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -453,45 +469,125 @@ const wf = workflow('', '')
 			config: { position: [512, 504], name: 'No Operation, do nothing' },
 		}),
 	)
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.facebookGraphApi',
-			version: 1,
-			config: {
-				parameters: {
-					edge: 'campaigns',
-					node: '={{ $json.id }}',
-					options: {
-						fields: { field: [{ name: 'id,name,status' }] },
-						queryParameters: {
-							parameter: [{ name: 'effective_status', value: '=["ACTIVE"]' }],
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.facebookGraphApi',
+					version: 1,
+					config: {
+						parameters: {
+							edge: 'campaigns',
+							node: '={{ $json.id }}',
+							options: {
+								fields: { field: [{ name: 'id,name,status' }] },
+								queryParameters: {
+									parameter: [{ name: 'effective_status', value: '=["ACTIVE"]' }],
+								},
+							},
+							graphApiVersion: 'v23.0',
 						},
+						credentials: {
+							facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
+						},
+						position: [736, 232],
+						name: 'account: campaigns',
 					},
-					graphApiVersion: 'v23.0',
-				},
-				credentials: {
-					facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
-				},
-				position: [736, 232],
-				name: 'account: campaigns',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
+				}),
+				node({
+					type: 'n8n-nodes-base.facebookGraphApi',
+					version: 1,
+					config: {
+						parameters: {
+							edge: 'adsets',
+							node: '={{ $json.id }}',
+							options: {
+								fields: { field: [{ name: 'id,name,status,campaign' }] },
+								queryParameters: {
+									parameter: [{ name: 'effective_status', value: '=["ACTIVE"]' }],
+								},
+							},
+							graphApiVersion: 'v23.0',
+						},
+						credentials: {
+							facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
+						},
+						position: [736, 424],
+						name: 'account: adsets',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.facebookGraphApi',
+					version: 1,
+					config: {
+						parameters: {
+							edge: 'ads',
+							node: '={{ $json.id }}',
+							options: {
+								fields: {
+									field: [{ name: 'id,name,status,campaign{id,name},adset{id,name}' }],
+								},
+								queryParameters: {
+									parameter: [{ name: 'effective_status', value: '=["ACTIVE"]' }],
+								},
+							},
+							graphApiVersion: 'v23.0',
+						},
+						credentials: {
+							facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
+						},
+						position: [736, 616],
+						name: 'account: ads',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.facebookGraphApi',
+					version: 1,
+					config: {
+						parameters: {
+							edge: 'insights',
+							node: '={{ $json.id }}',
+							options: {
+								fields: {
+									field: [
+										{
+											name: 'attribution_setting,conversion_values,conversions,cost_per_conversion,cpc,cpm,ctr,frequency,impressions,inline_post_engagement,purchase_roas,reach,result_rate,results,spend',
+										},
+									],
+								},
+								queryParameters: {
+									parameter: [
+										{
+											name: 'time_range[since]',
+											value: "={{ $json.since.replace(/T.*/,'') }}",
+										},
+										{
+											name: 'time_range[until]',
+											value: "={{ $json.until.replace(/T.*/,'') }}",
+										},
+									],
+								},
+							},
+							graphApiVersion: 'v23.0',
+						},
+						credentials: {
+							facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
+						},
+						position: [736, 808],
+						name: 'account insights',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					mode: 'combine',
 					options: { includeUnpaired: true },
 					combineBy: 'combineByPosition',
 					numberInputs: 4,
 				},
-				position: [960, 584],
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -504,123 +600,6 @@ const wf = workflow('', '')
 						"return {\n  campaigns: $('account: campaigns').item.json.data,\n  adsets: $('account: adsets').item.json.data,\n  ads:   $('account: ads').item.json.data,\n  account_insights: $('account insights').item.json.data\n}",
 				},
 				position: [1184, 616],
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.facebookGraphApi',
-			version: 1,
-			config: {
-				parameters: {
-					edge: 'adsets',
-					node: '={{ $json.id }}',
-					options: {
-						fields: { field: [{ name: 'id,name,status,campaign' }] },
-						queryParameters: {
-							parameter: [{ name: 'effective_status', value: '=["ACTIVE"]' }],
-						},
-					},
-					graphApiVersion: 'v23.0',
-				},
-				credentials: {
-					facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
-				},
-				position: [736, 424],
-				name: 'account: adsets',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.facebookGraphApi',
-			version: 1,
-			config: {
-				parameters: {
-					edge: 'ads',
-					node: '={{ $json.id }}',
-					options: {
-						fields: {
-							field: [{ name: 'id,name,status,campaign{id,name},adset{id,name}' }],
-						},
-						queryParameters: {
-							parameter: [{ name: 'effective_status', value: '=["ACTIVE"]' }],
-						},
-					},
-					graphApiVersion: 'v23.0',
-				},
-				credentials: {
-					facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
-				},
-				position: [736, 616],
-				name: 'account: ads',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.facebookGraphApi',
-			version: 1,
-			config: {
-				parameters: {
-					edge: 'insights',
-					node: '={{ $json.id }}',
-					options: {
-						fields: {
-							field: [
-								{
-									name: 'attribution_setting,conversion_values,conversions,cost_per_conversion,cpc,cpm,ctr,frequency,impressions,inline_post_engagement,purchase_roas,reach,result_rate,results,spend',
-								},
-							],
-						},
-						queryParameters: {
-							parameter: [
-								{
-									name: 'time_range[since]',
-									value: "={{ $json.since.replace(/T.*/,'') }}",
-								},
-								{
-									name: 'time_range[until]',
-									value: "={{ $json.until.replace(/T.*/,'') }}",
-								},
-							],
-						},
-					},
-					graphApiVersion: 'v23.0',
-				},
-				credentials: {
-					facebookGraphApi: { id: 'credential-id', name: 'facebookGraphApi Credential' },
-				},
-				position: [736, 808],
-				name: 'account insights',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '481319e1-d562-415d-aa04-4063421bc9b1',
-								name: 'id',
-								type: 'string',
-								value: "={{ $json.id.startsWith('act') ? $json.id : 'act_'+$json.id }}",
-							},
-						],
-					},
-					includeOtherFields: true,
-				},
-				position: [288, 1000],
-				name: 'Edit Fields',
 			},
 		}),
 	)

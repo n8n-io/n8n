@@ -136,11 +136,21 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 		node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { position: [4020, 2580] } }),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.1,
-			config: { position: [4760, 2580], name: 'Merge5' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [4580, 2420], name: 'Edit Fields6' },
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { position: [4020, 2580] },
+				}),
+			],
+			{ version: 3.1, name: 'Merge5' },
+		),
 	)
 	.then(
 		node({
@@ -149,7 +159,33 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 			config: { position: [5280, 2580], name: 'LinkedIn' },
 		}),
 	)
-	.then(node({ type: 'n8n-nodes-base.merge', version: 3.1, config: { position: [6720, 2540] } }))
+	.then(
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.facebookGraphApi',
+					version: 1,
+					config: { position: [5420, 420], name: 'Publish Post on IG' },
+				}),
+				node({
+					type: 'n8n-nodes-base.facebookGraphApi',
+					version: 1,
+					config: { position: [5320, 1160], name: 'Facebook Post' },
+				}),
+				node({
+					type: 'n8n-nodes-base.twitter',
+					version: 2,
+					config: { position: [5300, 1860], name: 'X' },
+				}),
+				node({
+					type: 'n8n-nodes-base.linkedIn',
+					version: 1,
+					config: { position: [5280, 2580], name: 'LinkedIn' },
+				}),
+			],
+			{ version: 3.1 },
+		),
+	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.aggregate',
@@ -174,32 +210,27 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.1,
-			config: { position: [4700, 420], name: 'Merge3' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { position: [3820, 400], name: 'Post image Cloudianry IG' },
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [4520, 260], name: 'Edit Fields4' },
+				}),
+			],
+			{ version: 3.1, name: 'Merge3' },
+		),
 	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.facebookGraphApi',
 			version: 1,
 			config: { position: [5140, 420], name: 'Upload media to Instagram' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.facebookGraphApi',
-			version: 1,
-			config: { position: [5420, 420], name: 'Publish Post on IG' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { position: [4520, 260], name: 'Edit Fields4' },
 		}),
 	)
 	.output(0)
@@ -218,26 +249,21 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.1,
-			config: { position: [4700, 1160], name: 'Merge4' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.facebookGraphApi',
-			version: 1,
-			config: { position: [5320, 1160], name: 'Facebook Post' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { position: [4540, 1000], name: 'Edit Fields5' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { position: [3860, 1140], name: 'Post image Cloudianry FB' },
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [4540, 1000], name: 'Edit Fields5' },
+				}),
+			],
+			{ version: 3.1, name: 'Merge4' },
+		),
 	)
 	.output(0)
 	.then(
@@ -255,34 +281,21 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.1,
-			config: { position: [4420, 1860], name: 'Merge6' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.twitter',
-			version: 2,
-			config: { position: [5300, 1860], name: 'X' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { position: [4260, 1700], name: 'Edit Fields7' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { position: [4580, 2420], name: 'Edit Fields6' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { position: [3820, 1840], name: 'Post image Cloudianry X' },
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [4260, 1700], name: 'Edit Fields7' },
+				}),
+			],
+			{ version: 3.1, name: 'Merge6' },
+		),
 	)
 	.output(0)
 	.then(

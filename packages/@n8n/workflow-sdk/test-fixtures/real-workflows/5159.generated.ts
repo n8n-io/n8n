@@ -29,10 +29,50 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						parameters: {
+							options: {
+								dataLocationOnSheet: { values: { rangeDefinition: 'detectAutomatically' } },
+							},
+							filtersUI: { values: [{ lookupValue: 'no', lookupColumn: 'Generated' }] },
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U/edit#gid=0',
+								cachedResultName: 'Sheet1',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'id',
+								value: '1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U',
+							},
+						},
+						position: [-980, 800],
+						name: 'Fetch Unprocessed Ideas',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.form',
+					version: 1,
+					config: {
+						parameters: {
+							options: { buttonLabel: 'NEXT' },
+							formFields: { values: [{ fieldLabel: 'Topic' }] },
+						},
+						position: [-980, 400],
+						name: 'Form: Enter Topic for Ideas',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -54,40 +94,9 @@ const wf = workflow('', '')
 					},
 					looseTypeValidation: true,
 				},
-				position: [-1340, 580],
 				name: 'If Generate Content',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {
-						dataLocationOnSheet: { values: { rangeDefinition: 'detectAutomatically' } },
-					},
-					filtersUI: { values: [{ lookupValue: 'no', lookupColumn: 'Generated' }] },
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: '1UDaTATWOnYorewjEF5-G9edgSBjc2_Rb50BZVFbAu8U',
-					},
-				},
-				position: [-980, 800],
-				name: 'Fetch Unprocessed Ideas',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -385,21 +394,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.form',
-			version: 1,
-			config: {
-				parameters: {
-					options: { buttonLabel: 'NEXT' },
-					formFields: { values: [{ fieldLabel: 'Topic' }] },
-				},
-				position: [-980, 400],
-				name: 'Form: Enter Topic for Ideas',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
@@ -558,10 +552,38 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.form',
+					version: 1,
+					config: {
+						parameters: {
+							options: { buttonLabel: 'NEXT' },
+							formFields: { values: [{ fieldLabel: 'Topic' }] },
+						},
+						position: [-980, 400],
+						name: 'Form: Enter Topic for Ideas',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.form',
+					version: 1,
+					config: {
+						parameters: {
+							options: {},
+							operation: 'completion',
+							completionTitle: 'END',
+							completionMessage:
+								'={{ $items("Generate Blog Topics AI")[0].json.output.map(item => "- " + item.Topic).join(\'\\n\') }}',
+						},
+						position: [680, 420],
+						name: 'Form: End Idea Generation',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -582,28 +604,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [460, 400],
 				name: 'If Add More Topics',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.form',
-			version: 1,
-			config: {
-				parameters: {
-					options: {},
-					operation: 'completion',
-					completionTitle: 'END',
-					completionMessage:
-						'={{ $items("Generate Blog Topics AI")[0].json.output.map(item => "- " + item.Topic).join(\'\\n\') }}',
-				},
-				position: [680, 420],
-				name: 'Form: End Idea Generation',
-			},
-		}),
+		),
 	)
 	.add(
 		sticky('## Generate Topics\nWhat topics should be generated?', {

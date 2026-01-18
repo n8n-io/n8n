@@ -14,6 +14,7 @@ export type {
 	SubnodeConfig,
 	CredentialReference,
 	OnError,
+	DeclaredConnection,
 	// Subnode instance types
 	SubnodeInstance,
 	LanguageModelInstance,
@@ -37,6 +38,10 @@ export type {
 	MergeComposite,
 	MergeConfig,
 	MergeMode,
+	// IF branch types
+	IfBranchComposite,
+	// Switch case types
+	SwitchCaseComposite,
 	// Sticky note types
 	StickyNoteConfig,
 	// Split in batches types
@@ -98,6 +103,12 @@ export {
 
 // Merge composite
 export { merge } from './merge';
+
+// IF branch composite
+export { ifBranch } from './if-branch';
+
+// Switch case composite
+export { switchCase } from './switch-case';
 
 // Split in batches
 export { splitInBatches } from './split-in-batches';

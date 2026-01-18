@@ -149,10 +149,58 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2,
+					config: {
+						parameters: {
+							text: "=<Instructions>\n\nBreak down the following story into a script (for short video) with exacly {{ $('Get Data').item.json.number_of_scene }} scenes.\n\n</Instructions>\n\n<Story>\n{{ $json.output.story }}\n</Story>",
+							options: {},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+										options: {},
+									},
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'OpenAI Chat Model2',
+								},
+							}),
+							outputParser: outputParser({
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								version: 1.2,
+								config: {
+									parameters: {
+										schemaType: 'manual',
+										inputSchema:
+											'{\n    "type": "object",\n    "properties": {\n        "scenes": {\n            "type": "array",\n            "description": "the scenes",\n            "items": {\n                "type": "string"\n            }\n        }\n    },\n    "required": [\n        "scenes"\n    ]\n}',
+									},
+									name: 'Structured Output Parser1',
+								},
+							}),
+						},
+						position: [260, -220],
+						name: 'Break Narrative into {{n}} Scenes',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitOut',
+					version: 1,
+					config: { parameters: { options: {}, fieldToSplitOut: 'scenes' }, position: [940, -180] },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -173,18 +221,9 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 						],
 					},
 				},
-				position: [760, -220],
 				name: 'Scene count',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitOut',
-			version: 1,
-			config: { parameters: { options: {}, fieldToSplitOut: 'scenes' }, position: [940, -180] },
-		}),
+		),
 	)
 	.then(
 		node({
@@ -389,10 +428,46 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: "={{ $('Start merging videos').item.json.response_url }}",
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [400, 480],
+						name: 'Get merged video',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { amount: 1 },
+						position: [620, 320],
+						name: 'Wait for the merge to complete',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { amount: 1 },
+						position: [620, 320],
+						name: 'Wait for the merge to complete',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -471,30 +546,9 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 					},
 					options: {},
 				},
-				position: [960, 320],
 				name: 'Merge videos status',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "={{ $('Start merging videos').item.json.response_url }}",
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [400, 480],
-				name: 'Get merged video',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -568,10 +622,46 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: "={{ $('Start adding audio to the video').item.json.response_url }}",
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [-120, 320],
+						name: 'Get video with audio',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { amount: 1 },
+						position: [-320, 320],
+						name: 'Wait for adding the audio',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { amount: 1 },
+						position: [-320, 320],
+						name: 'Wait for adding the audio',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -650,30 +740,9 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 					},
 					options: {},
 				},
-				position: [-120, 460],
 				name: 'Audio status',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "={{ $('Start adding audio to the video').item.json.response_url }}",
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [-120, 320],
-				name: 'Get video with audio',
-			},
-		}),
+		),
 	)
 	.output(1)
 	.then(
@@ -703,10 +772,38 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: "={{ $('Loop Over Items').item.json.response_url }}",
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [920, 60],
+						name: 'Get the  video',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { position: [380, 80], name: 'Wait for the video' },
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { position: [380, 80], name: 'Wait for the video' },
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -785,30 +882,9 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 					},
 					options: {},
 				},
-				position: [700, 80],
 				name: 'Video status',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "={{ $('Loop Over Items').item.json.response_url }}",
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [920, 60],
-				name: 'Get the  video',
-			},
-		}),
+		),
 	)
 	.add(
 		sticky(

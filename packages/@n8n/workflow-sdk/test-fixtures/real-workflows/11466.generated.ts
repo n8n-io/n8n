@@ -22,18 +22,124 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { parameters: { numberInputs: 8 }, position: [-736, -16], name: 'Merge_Cyber1' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.rssFeedRead',
+					version: 1.2,
+					config: {
+						parameters: {
+							url: 'https://feeds.feedburner.com/TheHackersNews',
+							options: {},
+						},
+						position: [-1040, -448],
+						name: 'RSS_TheHackersNews',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.rssFeedRead',
+					version: 1.2,
+					config: {
+						parameters: { url: 'https://cybersecuritynews.com/feed/', options: {} },
+						position: [-1040, -320],
+						name: 'RSS_cybersecuritynews',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.rssFeedRead',
+					version: 1.2,
+					config: {
+						parameters: { url: 'https://krebsonsecurity.com/feed/', options: {} },
+						position: [-1040, -192],
+						name: 'RSS_krebsonsecurity',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.rssFeedRead',
+					version: 1.2,
+					config: {
+						parameters: {
+							url: 'https://feeds.feedburner.com/TheHackersNews',
+							options: {},
+						},
+						position: [-1040, -64],
+						name: 'RSS_GrahamCluley',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.rssFeedRead',
+					version: 1.2,
+					config: {
+						parameters: {
+							url: 'https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/',
+							options: {},
+						},
+						position: [-1040, 64],
+						name: 'RSS_GoogleCloudBlog',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.rssFeedRead',
+					version: 1.2,
+					config: {
+						parameters: { url: 'https://research.checkpoint.com/feed/', options: {} },
+						position: [-1040, 192],
+						name: 'RSS_darkreading1',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.rssFeedRead',
+					version: 1.2,
+					config: {
+						parameters: { url: 'https://www.darkreading.com/rss.xml', options: {} },
+						position: [-1040, 320],
+						name: 'RSS_darkreading',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.rssFeedRead',
+					version: 1.2,
+					config: {
+						parameters: { url: 'https://isc.sans.edu/rssfeed_full.xml', options: {} },
+						position: [-1040, 464],
+						name: 'RSS_Sans',
+					},
+				}),
+			],
+			{ version: 3.2, parameters: { numberInputs: 8 }, name: 'Merge_Cyber1' },
+		),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { parameters: { numberInputs: 5 }, position: [-48, 1168], name: 'Merge_All' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3.2,
+					config: { parameters: { numberInputs: 8 }, position: [-736, -16], name: 'Merge_Cyber1' },
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3.2,
+					config: { position: [-736, 704], name: 'Merge_Cyber2' },
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3.2,
+					config: { parameters: { numberInputs: 5 }, position: [-736, 1104], name: 'Merge_Cyber3' },
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3.2,
+					config: { parameters: { numberInputs: 4 }, position: [-736, 1808], name: 'Merge_AI' },
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3.2,
+					config: { parameters: { numberInputs: 3 }, position: [-736, 2336], name: 'Merge_Nvidia' },
+				}),
+			],
+			{ version: 3.2, parameters: { numberInputs: 5 }, name: 'Merge_All' },
+		),
 	)
 	.then(
 		node({
@@ -161,84 +267,6 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
 			config: {
-				parameters: { url: 'https://cybersecuritynews.com/feed/', options: {} },
-				position: [-1040, -320],
-				name: 'RSS_cybersecuritynews',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.rssFeedRead',
-			version: 1.2,
-			config: {
-				parameters: { url: 'https://krebsonsecurity.com/feed/', options: {} },
-				position: [-1040, -192],
-				name: 'RSS_krebsonsecurity',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.rssFeedRead',
-			version: 1.2,
-			config: {
-				parameters: {
-					url: 'https://feeds.feedburner.com/TheHackersNews',
-					options: {},
-				},
-				position: [-1040, -64],
-				name: 'RSS_GrahamCluley',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.rssFeedRead',
-			version: 1.2,
-			config: {
-				parameters: {
-					url: 'https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/',
-					options: {},
-				},
-				position: [-1040, 64],
-				name: 'RSS_GoogleCloudBlog',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.rssFeedRead',
-			version: 1.2,
-			config: {
-				parameters: { url: 'https://research.checkpoint.com/feed/', options: {} },
-				position: [-1040, 192],
-				name: 'RSS_darkreading1',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.rssFeedRead',
-			version: 1.2,
-			config: {
-				parameters: { url: 'https://isc.sans.edu/rssfeed_full.xml', options: {} },
-				position: [-1040, 464],
-				name: 'RSS_Sans',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.rssFeedRead',
-			version: 1.2,
-			config: {
 				parameters: {
 					url: 'https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml',
 					options: {},
@@ -246,13 +274,6 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 				position: [-1040, 624],
 				name: 'RSS_cve1',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [-736, 704], name: 'Merge_Cyber2' },
 		}),
 	)
 	.output(0)
@@ -280,13 +301,6 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 				position: [-1040, 912],
 				name: 'RSS_ilsole24ore Cyber',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { parameters: { numberInputs: 5 }, position: [-736, 1104], name: 'Merge_Cyber3' },
 		}),
 	)
 	.output(0)
@@ -355,13 +369,6 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { parameters: { numberInputs: 4 }, position: [-736, 1808], name: 'Merge_AI' },
-		}),
-	)
 	.output(0)
 	.then(
 		node({
@@ -416,13 +423,6 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { parameters: { numberInputs: 3 }, position: [-736, 2336], name: 'Merge_Nvidia' },
-		}),
-	)
 	.output(0)
 	.then(
 		node({
@@ -444,18 +444,6 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 				parameters: { url: 'https://feeds.feedburner.com/nvidiablog', options: {} },
 				position: [-1040, 2464],
 				name: 'RSS_Nvidia3',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.rssFeedRead',
-			version: 1.2,
-			config: {
-				parameters: { url: 'https://www.darkreading.com/rss.xml', options: {} },
-				position: [-1040, 320],
-				name: 'RSS_darkreading',
 			},
 		}),
 	)

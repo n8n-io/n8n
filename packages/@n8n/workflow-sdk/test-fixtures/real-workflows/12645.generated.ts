@@ -48,10 +48,66 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.3,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '065fa52e-70ee-4b41-8fa2-ad66ea218fe6',
+										name: 'image0',
+										type: 'object',
+										value: '={{ $binary.image1 }}',
+									},
+									{
+										id: '70b7494e-b43b-45ff-9da3-7b8e585b2a0d',
+										name: 'image1',
+										type: 'object',
+										value: '={{ $binary.Image2 }}',
+									},
+									{
+										id: '59862088-7957-4281-897b-9569d70a1c75',
+										name: 'image2',
+										type: 'object',
+										value: '={{ $binary.Image3 }}',
+									},
+								],
+							},
+							includeOtherFields: true,
+						},
+						position: [-144, -336],
+						name: 'Normalize binary names',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '20d99650-4a2f-41cc-be31-2f4d1f436712',
+										name: 'error',
+										type: 'string',
+										value: 'Please upload 3 images (image1, image2, image3).',
+									},
+								],
+							},
+						},
+						position: [-144, -64],
+						name: 'Error Response - Missing Files',
+					},
+				}),
+			],
+			{
+				version: 2.3,
 				parameters: {
 					options: {},
 					conditions: {
@@ -85,46 +141,9 @@ const wf = workflow(
 					},
 					looseTypeValidation: true,
 				},
-				position: [-384, -320],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '065fa52e-70ee-4b41-8fa2-ad66ea218fe6',
-								name: 'image0',
-								type: 'object',
-								value: '={{ $binary.image1 }}',
-							},
-							{
-								id: '70b7494e-b43b-45ff-9da3-7b8e585b2a0d',
-								name: 'image1',
-								type: 'object',
-								value: '={{ $binary.Image2 }}',
-							},
-							{
-								id: '59862088-7957-4281-897b-9569d70a1c75',
-								name: 'image2',
-								type: 'object',
-								value: '={{ $binary.Image3 }}',
-							},
-						],
-					},
-					includeOtherFields: true,
-				},
-				position: [-144, -336],
-				name: 'Normalize binary names',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -140,49 +159,95 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					name: '={{$binary.image.fileName}}',
-					driveId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.googleDrive',
+					version: 3,
+					config: {
+						parameters: {
+							name: '={{$binary.image.fileName}}',
+							driveId: {
+								__rl: true,
+								mode: 'id',
+								value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
+							},
+							options: {},
+							folderId: {
+								__rl: true,
+								mode: 'id',
+								value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
+							},
+							inputDataFieldName: 'image',
+						},
+						credentials: {
+							googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' },
+						},
+						position: [304, -576],
+						name: 'Upload file',
 					},
-					options: {},
-					folderId: {
-						__rl: true,
-						mode: 'id',
-						value: '=<__PLACEHOLDER_VALUE__Google DRIVE Document ID___>',
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.3,
+					config: {
+						parameters: {
+							url: 'https://tmpfiles.org/api/v1/upload',
+							method: 'POST',
+							options: { response: { response: { responseFormat: 'json' } } },
+							sendBody: true,
+							contentType: 'multipart-form-data',
+							bodyParameters: {
+								parameters: [
+									{
+										name: 'file',
+										parameterType: 'formBinaryData',
+										inputDataFieldName: 'image',
+									},
+								],
+							},
+						},
+						position: [304, -336],
+						name: 'Build Public Image URL',
 					},
-					inputDataFieldName: 'image',
-				},
-				credentials: {
-					googleDriveOAuth2Api: { id: 'odf7JAwyqVFVZBhQ', name: 'Google Drive account' },
-				},
-				position: [304, -576],
-				name: 'Upload file',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 2.1,
+					config: {
+						parameters: {
+							text: 'Describe the image in detail. Include: objects, people, setting, actions, colors, and any text visible.',
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'gpt-4o',
+								cachedResultName: 'GPT-4O',
+							},
+							options: {},
+							resource: 'image',
+							inputType: 'base64',
+							operation: 'analyze',
+							binaryPropertyName: 'image',
+						},
+						credentials: {
+							openAiApi: { id: 'HUbsD20wv3CFr7gN', name: 'OpenAi account' },
+						},
+						position: [304, -64],
+						name: 'Analyze image',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					mode: 'combine',
 					options: {},
 					combineBy: 'combineByPosition',
 					numberInputs: 3,
 				},
-				position: [528, -352],
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -577,85 +642,6 @@ const wf = workflow(
 				},
 				position: [2448, -336],
 				name: 'Append row in sheet',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 2.1,
-			config: {
-				parameters: {
-					text: 'Describe the image in detail. Include: objects, people, setting, actions, colors, and any text visible.',
-					modelId: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'GPT-4O',
-					},
-					options: {},
-					resource: 'image',
-					inputType: 'base64',
-					operation: 'analyze',
-					binaryPropertyName: 'image',
-				},
-				credentials: {
-					openAiApi: { id: 'HUbsD20wv3CFr7gN', name: 'OpenAi account' },
-				},
-				position: [304, -64],
-				name: 'Analyze image',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.3,
-			config: {
-				parameters: {
-					url: 'https://tmpfiles.org/api/v1/upload',
-					method: 'POST',
-					options: { response: { response: { responseFormat: 'json' } } },
-					sendBody: true,
-					contentType: 'multipart-form-data',
-					bodyParameters: {
-						parameters: [
-							{
-								name: 'file',
-								parameterType: 'formBinaryData',
-								inputDataFieldName: 'image',
-							},
-						],
-					},
-				},
-				position: [304, -336],
-				name: 'Build Public Image URL',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '20d99650-4a2f-41cc-be31-2f4d1f436712',
-								name: 'error',
-								type: 'string',
-								value: 'Please upload 3 images (image1, image2, image3).',
-							},
-						],
-					},
-				},
-				position: [-144, -64],
-				name: 'Error Response - Missing Files',
 			},
 		}),
 	)

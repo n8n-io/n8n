@@ -14,10 +14,59 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.3,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							text: '={{ $json.body.msg }}',
+							chatId: '123456789',
+							replyMarkup: 'replyKeyboard',
+							additionalFields: { appendAttribution: false, reply_to_message_id: 0 },
+							replyKeyboardOptions: {},
+						},
+						position: [112, -944],
+						name: 'OK Message',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							text: '={{ $json.body.monitor.docker_container }} reported an issue : {{ $json.body.heartbeat.msg }} at {{ $json.body.heartbeat.time }}',
+							chatId: '123456789',
+							replyMarkup: 'replyKeyboard',
+							replyKeyboard: {
+								rows: [
+									{
+										row: {
+											buttons: [
+												{
+													text: '={{ $json.body.monitor.docker_container }} Logs',
+													additionalFields: {},
+												},
+												{
+													text: '={{ $json.body.monitor.docker_container }} Restart',
+													additionalFields: {},
+												},
+											],
+										},
+									},
+								],
+							},
+							additionalFields: { appendAttribution: false, reply_to_message_id: 0 },
+							replyKeyboardOptions: {},
+						},
+						position: [112, -752],
+						name: 'ERROR Message',
+					},
+				}),
+			],
+			{
+				version: 3.3,
 				parameters: {
 					rules: {
 						values: [
@@ -63,64 +112,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [-112, -848],
 				name: 'Switch1',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					text: '={{ $json.body.msg }}',
-					chatId: '123456789',
-					replyMarkup: 'replyKeyboard',
-					additionalFields: { appendAttribution: false, reply_to_message_id: 0 },
-					replyKeyboardOptions: {},
-				},
-				position: [112, -944],
-				name: 'OK Message',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					text: '={{ $json.body.monitor.docker_container }} reported an issue : {{ $json.body.heartbeat.msg }} at {{ $json.body.heartbeat.time }}',
-					chatId: '123456789',
-					replyMarkup: 'replyKeyboard',
-					replyKeyboard: {
-						rows: [
-							{
-								row: {
-									buttons: [
-										{
-											text: '={{ $json.body.monitor.docker_container }} Logs',
-											additionalFields: {},
-										},
-										{
-											text: '={{ $json.body.monitor.docker_container }} Restart',
-											additionalFields: {},
-										},
-									],
-								},
-							},
-						],
-					},
-					additionalFields: { appendAttribution: false, reply_to_message_id: 0 },
-					replyKeyboardOptions: {},
-				},
-				position: [112, -752],
-				name: 'ERROR Message',
-			},
-		}),
+		),
 	)
 	.add(
 		trigger({
@@ -368,10 +362,37 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							text: '=Successfull restarting {{ $json.stdout }}',
+							chatId: '123456789',
+							additionalFields: { appendAttribution: false },
+						},
+						position: [1664, -96],
+						name: 'Success restart',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							text: "=Restart failed\n{{ $('restart container').item.json.stderr }}",
+							chatId: '123456789',
+							additionalFields: { appendAttribution: false },
+						},
+						position: [1664, 96],
+						name: 'Restart Failed',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -392,41 +413,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [1376, 0],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					text: '=Successfull restarting {{ $json.stdout }}',
-					chatId: '123456789',
-					additionalFields: { appendAttribution: false },
-				},
-				position: [1664, -96],
-				name: 'Success restart',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					text: "=Restart failed\n{{ $('restart container').item.json.stderr }}",
-					chatId: '123456789',
-					additionalFields: { appendAttribution: false },
-				},
-				position: [1664, 96],
-				name: 'Restart Failed',
-			},
-		}),
+		),
 	)
 	.output(2)
 	.then(

@@ -166,10 +166,70 @@ const wf = workflow('', 'Apply to Jobs from Excel and Track Application Status',
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4,
+					config: {
+						parameters: {
+							url: 'https://api.linkedin.com/v2/jobs/applications',
+							options: { retry: { enabled: true, maxTries: 3 }, timeout: 30000 },
+							sendBody: true,
+							sendHeaders: true,
+							requestMethod: 'POST',
+							authentication: 'predefinedCredentialType',
+							bodyParameters: {
+								parameters: [
+									{ name: 'jobId', value: '={{ $json.Job_ID }}' },
+									{
+										name: 'coverLetter',
+										value: '={{ $json.personalizedCoverLetter }}',
+									},
+									{ name: 'resumeUrl', value: '={{ $json.resumeUrl }}' },
+								],
+							},
+							headerParameters: {
+								parameters: [{ name: 'Content-Type', value: 'application/json' }],
+							},
+							nodeCredentialType: 'linkedInOAuth2Api',
+						},
+						position: [1780, 380],
+						name: '💼 Apply via LinkedIn',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4,
+					config: {
+						parameters: {
+							url: 'https://api.indeed.com/ads/applications',
+							options: { retry: { enabled: true, maxTries: 3 }, timeout: 30000 },
+							sendBody: true,
+							sendHeaders: true,
+							requestMethod: 'POST',
+							authentication: 'predefinedCredentialType',
+							bodyParameters: {
+								parameters: [
+									{ name: 'jobkey', value: '={{ $json.Job_ID }}' },
+									{
+										name: 'message',
+										value: '={{ $json.personalizedCoverLetter }}',
+									},
+								],
+							},
+							headerParameters: {
+								parameters: [{ name: 'Content-Type', value: 'application/json' }],
+							},
+							nodeCredentialType: 'indeedApi',
+						},
+						position: [1780, 580],
+						name: '🔍 Apply via Indeed',
+					},
+				}),
+			],
+			{
+				version: 3,
 				parameters: {
 					conditions: {
 						options: {
@@ -188,43 +248,9 @@ const wf = workflow('', 'Apply to Jobs from Excel and Track Application Status',
 						],
 					},
 				},
-				position: [1560, 480],
 				name: '🔀 Route by Platform',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4,
-			config: {
-				parameters: {
-					url: 'https://api.linkedin.com/v2/jobs/applications',
-					options: { retry: { enabled: true, maxTries: 3 }, timeout: 30000 },
-					sendBody: true,
-					sendHeaders: true,
-					requestMethod: 'POST',
-					authentication: 'predefinedCredentialType',
-					bodyParameters: {
-						parameters: [
-							{ name: 'jobId', value: '={{ $json.Job_ID }}' },
-							{
-								name: 'coverLetter',
-								value: '={{ $json.personalizedCoverLetter }}',
-							},
-							{ name: 'resumeUrl', value: '={{ $json.resumeUrl }}' },
-						],
-					},
-					headerParameters: {
-						parameters: [{ name: 'Content-Type', value: 'application/json' }],
-					},
-					nodeCredentialType: 'linkedInOAuth2Api',
-				},
-				position: [1780, 380],
-				name: '💼 Apply via LinkedIn',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -317,38 +343,6 @@ const wf = workflow('', 'Apply to Jobs from Excel and Track Application Status',
 				},
 				position: [2440, 480],
 				name: '📧 Send Application Notification',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4,
-			config: {
-				parameters: {
-					url: 'https://api.indeed.com/ads/applications',
-					options: { retry: { enabled: true, maxTries: 3 }, timeout: 30000 },
-					sendBody: true,
-					sendHeaders: true,
-					requestMethod: 'POST',
-					authentication: 'predefinedCredentialType',
-					bodyParameters: {
-						parameters: [
-							{ name: 'jobkey', value: '={{ $json.Job_ID }}' },
-							{
-								name: 'message',
-								value: '={{ $json.personalizedCoverLetter }}',
-							},
-						],
-					},
-					headerParameters: {
-						parameters: [{ name: 'Content-Type', value: 'application/json' }],
-					},
-					nodeCredentialType: 'indeedApi',
-				},
-				position: [1780, 580],
-				name: '🔍 Apply via Indeed',
 			},
 		}),
 	)

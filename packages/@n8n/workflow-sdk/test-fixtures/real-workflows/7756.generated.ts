@@ -113,18 +113,71 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								'// Get all input items\nconst items = $input.all();\n\n// Initialize accumulators\nlet totalCalories = 0;\nlet totalProteins = 0;\nlet totalCarbs = 0;\nlet totalFats = 0;\n\n// Sum up each field from every item\nfor (const item of items) {\n  const data = item.json;\n\n  totalCalories += Number(data.Calories || 0);\n  totalProteins += Number(data.Proteins || 0);\n  totalCarbs += Number(data.Carbs || 0);\n  totalFats += Number(data.Fats || 0);\n}\n\n// Return a single result with totals\nreturn [\n  {\n    json: {\n      Total_Calories: totalCalories,\n      Total_Proteins: totalProteins,\n      Total_Carbs: totalCarbs,\n      Total_Fats: totalFats,\n    }\n  }\n];\n',
+						},
+						position: [3472, 1808],
+						name: 'Unify data',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.7,
+					config: {
+						parameters: {
+							options: {},
+							filtersUI: {
+								values: [
+									{
+										lookupValue: '={{ $json.User_ID }}',
+										lookupColumn: 'User_ID',
+									},
+								],
+							},
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit#gid=0',
+								cachedResultName: 'Profile',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1Dm_YOUR_AWS_SECRET_KEY_HERE',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit?usp=drivesdk',
+								cachedResultName: 'Cal AI',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [3056, 2064],
+						name: 'Get User Info',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					mode: 'combine',
 					options: {},
 					combineBy: 'combineByPosition',
 				},
-				position: [3616, 2048],
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -160,50 +213,6 @@ const wf = workflow('', '')
 				},
 				position: [3952, 2048],
 				name: 'Send back message',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [
-							{
-								lookupValue: '={{ $json.User_ID }}',
-								lookupColumn: 'User_ID',
-							},
-						],
-					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit#gid=0',
-						cachedResultName: 'Profile',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1Dm_YOUR_AWS_SECRET_KEY_HERE',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1Dm_YOUR_AWS_SECRET_KEY_HERE/edit?usp=drivesdk',
-						cachedResultName: 'Cal AI',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [3056, 2064],
-				name: 'Get User Info',
 			},
 		}),
 	)
@@ -265,10 +274,121 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.switch',
+					version: 3.2,
+					config: {
+						parameters: {
+							rules: {
+								values: [
+									{
+										outputKey: 'Text',
+										conditions: {
+											options: {
+												version: 2,
+												leftValue: '',
+												caseSensitive: true,
+												typeValidation: 'strict',
+											},
+											combinator: 'and',
+											conditions: [
+												{
+													id: 'fcb767ee-565e-4b56-a54e-6f97f739fc24',
+													operator: { type: 'string', operation: 'exists', singleValue: true },
+													leftValue: "={{ $('Telegram Trigger').item.json.message.text }}",
+													rightValue: '',
+												},
+											],
+										},
+										renameOutput: true,
+									},
+									{
+										outputKey: 'Voice Message',
+										conditions: {
+											options: {
+												version: 2,
+												leftValue: '',
+												caseSensitive: true,
+												typeValidation: 'strict',
+											},
+											combinator: 'and',
+											conditions: [
+												{
+													id: 'c1016c40-f8f2-4e08-8ec8-5cdb88f5c87a',
+													operator: { type: 'object', operation: 'exists', singleValue: true },
+													leftValue: "={{ $('Telegram Trigger').item.json.message.voice }}",
+													rightValue: '',
+												},
+											],
+										},
+										renameOutput: true,
+									},
+									{
+										outputKey: 'Image',
+										conditions: {
+											options: {
+												version: 2,
+												leftValue: '',
+												caseSensitive: true,
+												typeValidation: 'strict',
+											},
+											combinator: 'and',
+											conditions: [
+												{
+													id: 'f8150ac7-eea4-4658-8da9-f7a1c88a471d',
+													operator: { type: 'string', operation: 'exists', singleValue: true },
+													leftValue:
+														"={{ $('Telegram Trigger').item.json.message.photo[0].file_id }}",
+													rightValue: '',
+												},
+											],
+										},
+										renameOutput: true,
+									},
+								],
+							},
+							options: {
+								ignoreCase: false,
+								fallbackOutput: 'extra',
+								allMatchingOutputs: true,
+							},
+						},
+						position: [1776, 1136],
+						name: 'Input Message Router1',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '801ec600-22ad-4a94-a2b4-ae72eb271df0',
+										name: 'message',
+										type: 'string',
+										value: "={{ $('Telegram Trigger').item.json.message.text }}",
+									},
+									{
+										id: '263071fb-bcdf-42b0-bb46-71b75fa0bf2a',
+										name: 'chat_id',
+										type: 'string',
+										value: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+									},
+								],
+							},
+						},
+						position: [1728, 1776],
+						name: 'get_message (register)',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -289,94 +409,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [1472, 1200],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
-				parameters: {
-					rules: {
-						values: [
-							{
-								outputKey: 'Text',
-								conditions: {
-									options: {
-										version: 2,
-										leftValue: '',
-										caseSensitive: true,
-										typeValidation: 'strict',
-									},
-									combinator: 'and',
-									conditions: [
-										{
-											id: 'fcb767ee-565e-4b56-a54e-6f97f739fc24',
-											operator: { type: 'string', operation: 'exists', singleValue: true },
-											leftValue: "={{ $('Telegram Trigger').item.json.message.text }}",
-											rightValue: '',
-										},
-									],
-								},
-								renameOutput: true,
-							},
-							{
-								outputKey: 'Voice Message',
-								conditions: {
-									options: {
-										version: 2,
-										leftValue: '',
-										caseSensitive: true,
-										typeValidation: 'strict',
-									},
-									combinator: 'and',
-									conditions: [
-										{
-											id: 'c1016c40-f8f2-4e08-8ec8-5cdb88f5c87a',
-											operator: { type: 'object', operation: 'exists', singleValue: true },
-											leftValue: "={{ $('Telegram Trigger').item.json.message.voice }}",
-											rightValue: '',
-										},
-									],
-								},
-								renameOutput: true,
-							},
-							{
-								outputKey: 'Image',
-								conditions: {
-									options: {
-										version: 2,
-										leftValue: '',
-										caseSensitive: true,
-										typeValidation: 'strict',
-									},
-									combinator: 'and',
-									conditions: [
-										{
-											id: 'f8150ac7-eea4-4658-8da9-f7a1c88a471d',
-											operator: { type: 'string', operation: 'exists', singleValue: true },
-											leftValue: "={{ $('Telegram Trigger').item.json.message.photo[0].file_id }}",
-											rightValue: '',
-										},
-									],
-								},
-								renameOutput: true,
-							},
-						],
-					},
-					options: {
-						ignoreCase: false,
-						fallbackOutput: 'extra',
-						allMatchingOutputs: true,
-					},
-				},
-				position: [1776, 1136],
-				name: 'Input Message Router1',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(
@@ -988,36 +1023,6 @@ const wf = workflow('', '')
 				},
 				position: [2144, 1408],
 				name: 'get_error_message1',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '801ec600-22ad-4a94-a2b4-ae72eb271df0',
-								name: 'message',
-								type: 'string',
-								value: "={{ $('Telegram Trigger').item.json.message.text }}",
-							},
-							{
-								id: '263071fb-bcdf-42b0-bb46-71b75fa0bf2a',
-								name: 'chat_id',
-								type: 'string',
-								value: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
-							},
-						],
-					},
-				},
-				position: [1728, 1776],
-				name: 'get_message (register)',
 			},
 		}),
 	)

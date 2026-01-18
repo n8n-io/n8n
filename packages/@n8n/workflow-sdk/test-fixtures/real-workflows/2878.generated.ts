@@ -455,10 +455,131 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.notion',
+					version: 2.2,
+					config: {
+						parameters: {
+							limit: 1,
+							filters: {
+								conditions: [
+									{
+										key: 'Request ID|rich_text',
+										condition: 'equals',
+										richTextValue: '={{ $json.requestId.toString() }}',
+									},
+								],
+							},
+							options: {},
+							resource: 'databasePage',
+							matchType: 'allFilters',
+							operation: 'getAll',
+							databaseId: {
+								__rl: true,
+								mode: 'list',
+								value: '19486dd6-0c0c-80da-9cb7-eb1468ea9afd',
+								cachedResultUrl: 'https://www.notion.so/19486dd60c0c80da9cb7eb1468ea9afd',
+								cachedResultName: 'n8n DeepResearch',
+							},
+							filterType: 'manual',
+						},
+						credentials: {
+							notionApi: { id: 'credential-id', name: 'notionApi Credential' },
+						},
+						position: [-1040, 180],
+						name: 'Get Existing Row',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					version: 1.5,
+					config: {
+						parameters: {
+							text: "=Given the following prompt from the user, generate a list of SERP queries to research the topic.\nReduce the number of words in each query to its keywords only.\nReturn a maximum of {{ $('JobType Router').first().json.data.breadth }} queries, but feel free to return less if the original prompt is clear. Make sure each query is unique and not similar to each other: <prompt>{{ $('JobType Router').first().json.data.query.trim() }}</prompt>\n\n{{\n$('JobType Router').first().json.data.learnings.length\n  ? `Here are some learnings from previous research, use them to generate more specific queries:\\n${$('JobType Router').first().json.data.learnings.map(text => `* ${text}`).join('\\n')}`\n  : ''\n}}",
+							messages: {
+								messageValues: [
+									{
+										type: 'HumanMessagePromptTemplate',
+										message:
+											"=You are an expert researcher. Today is {{ $now.toLocaleString() }}. Follow these instructions when responding:\n  - You may be asked to research subjects that is after your knowledge cutoff, assume the user is right when presented with news.\n  - The user is a highly experienced analyst, no need to simplify it, be as detailed as possible and make sure your response is correct.\n  - Be highly organized.\n  - Suggest solutions that I didn't think about.\n  - Be proactive and anticipate my needs.\n  - Treat me as an expert in all subject matter.\n  - Mistakes erode my trust, so be accurate and thorough.\n  - Provide detailed explanations, I'm comfortable with lots of detail.\n  - Value good arguments over authorities, the source is irrelevant.\n  - Consider new technologies and contrarian ideas, not just the conventional wisdom.\n  - You may use high levels of speculation or prediction, just flag it for me.",
+									},
+								],
+							},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'id', value: 'o3-mini' },
+										options: {},
+									},
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'OpenAI Chat Model3',
+								},
+							}),
+							outputParser: outputParser({
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								version: 1.2,
+								config: {
+									parameters: {
+										schemaType: 'manual',
+										inputSchema:
+											'{\n  "type": "object",\n  "properties": {\n    "queries": {\n      "type": "array",\n      "items": {\n        "type": "object",\n        "properties": {\n          "query": {\n            "type": "string",\n            "description": "The SERP query"\n          },\n          "researchGoal": {\n            "type": "string",\n            "description": "First talk about the goal of the research that this query is meant to accomplish, then go deeper into how to advance the research once the results are found, mention additional research directions. Be as specific as possible, especially for additional research directions."\n          }\n        }\n      }\n    }\n  }\n}',
+									},
+									name: 'Structured Output Parser2',
+								},
+							}),
+						},
+						position: [-1040, 820],
+						name: 'Generate SERP Queries',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.notion',
+					version: 2.2,
+					config: {
+						parameters: {
+							limit: 1,
+							filters: {
+								conditions: [
+									{
+										key: 'Request ID|rich_text',
+										condition: 'equals',
+										richTextValue: '={{ $json.requestId.toString() }}',
+									},
+								],
+							},
+							options: {},
+							resource: 'databasePage',
+							matchType: 'allFilters',
+							operation: 'getAll',
+							databaseId: {
+								__rl: true,
+								mode: 'list',
+								value: '19486dd6-0c0c-80da-9cb7-eb1468ea9afd',
+								cachedResultUrl: 'https://www.notion.so/19486dd60c0c80da9cb7eb1468ea9afd',
+								cachedResultName: 'n8n DeepResearch',
+							},
+							filterType: 'manual',
+						},
+						credentials: {
+							notionApi: { id: 'credential-id', name: 'notionApi Credential' },
+						},
+						position: [-1020, 1600],
+						name: 'Get Existing Row1',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -536,48 +657,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [-1520, 820],
 				name: 'JobType Router',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.notion',
-			version: 2.2,
-			config: {
-				parameters: {
-					limit: 1,
-					filters: {
-						conditions: [
-							{
-								key: 'Request ID|rich_text',
-								condition: 'equals',
-								richTextValue: '={{ $json.requestId.toString() }}',
-							},
-						],
-					},
-					options: {},
-					resource: 'databasePage',
-					matchType: 'allFilters',
-					operation: 'getAll',
-					databaseId: {
-						__rl: true,
-						mode: 'list',
-						value: '19486dd6-0c0c-80da-9cb7-eb1468ea9afd',
-						cachedResultUrl: 'https://www.notion.so/19486dd60c0c80da9cb7eb1468ea9afd',
-						cachedResultName: 'n8n DeepResearch',
-					},
-					filterType: 'manual',
-				},
-				credentials: {
-					notionApi: { id: 'credential-id', name: 'notionApi Credential' },
-				},
-				position: [-1040, 180],
-				name: 'Get Existing Row',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -731,10 +813,51 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '90b3da00-dcd5-4289-bd45-953146a3b0ba',
+										name: 'all_learnings',
+										type: 'array',
+										value: '={{ $json.all_learnings }}',
+									},
+									{
+										id: '623dbb3d-83a1-44a9-8ad3-48d92bc42811',
+										name: 'all_urls',
+										type: 'array',
+										value: '={{ $json.all_urls }}',
+									},
+								],
+							},
+						},
+						position: [160, 180],
+						name: 'Get Research Results',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							mode: 'raw',
+							options: {},
+							jsonOutput: "={{ $('Generate Learnings').item.json }}",
+						},
+						position: [160, 360],
+						name: 'DeepResearch Results',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -755,40 +878,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-40, 180],
 				name: 'Is Depth Reached?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '90b3da00-dcd5-4289-bd45-953146a3b0ba',
-								name: 'all_learnings',
-								type: 'array',
-								value: '={{ $json.all_learnings }}',
-							},
-							{
-								id: '623dbb3d-83a1-44a9-8ad3-48d92bc42811',
-								name: 'all_urls',
-								type: 'array',
-								value: '={{ $json.all_urls }}',
-							},
-						],
-					},
-				},
-				position: [160, 180],
-				name: 'Get Research Results',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -843,22 +935,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					mode: 'raw',
-					options: {},
-					jsonOutput: "={{ $('Generate Learnings').item.json }}",
-				},
-				position: [160, 360],
-				name: 'DeepResearch Results',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.splitOut',
@@ -903,59 +979,6 @@ const wf = workflow('', '')
 				},
 				position: [480, 360],
 				name: 'Set Next Queries',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.chainLlm',
-			version: 1.5,
-			config: {
-				parameters: {
-					text: "=Given the following prompt from the user, generate a list of SERP queries to research the topic.\nReduce the number of words in each query to its keywords only.\nReturn a maximum of {{ $('JobType Router').first().json.data.breadth }} queries, but feel free to return less if the original prompt is clear. Make sure each query is unique and not similar to each other: <prompt>{{ $('JobType Router').first().json.data.query.trim() }}</prompt>\n\n{{\n$('JobType Router').first().json.data.learnings.length\n  ? `Here are some learnings from previous research, use them to generate more specific queries:\\n${$('JobType Router').first().json.data.learnings.map(text => `* ${text}`).join('\\n')}`\n  : ''\n}}",
-					messages: {
-						messageValues: [
-							{
-								type: 'HumanMessagePromptTemplate',
-								message:
-									"=You are an expert researcher. Today is {{ $now.toLocaleString() }}. Follow these instructions when responding:\n  - You may be asked to research subjects that is after your knowledge cutoff, assume the user is right when presented with news.\n  - The user is a highly experienced analyst, no need to simplify it, be as detailed as possible and make sure your response is correct.\n  - Be highly organized.\n  - Suggest solutions that I didn't think about.\n  - Be proactive and anticipate my needs.\n  - Treat me as an expert in all subject matter.\n  - Mistakes erode my trust, so be accurate and thorough.\n  - Provide detailed explanations, I'm comfortable with lots of detail.\n  - Value good arguments over authorities, the source is irrelevant.\n  - Consider new technologies and contrarian ideas, not just the conventional wisdom.\n  - You may use high levels of speculation or prediction, just flag it for me.",
-							},
-						],
-					},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'id', value: 'o3-mini' },
-								options: {},
-							},
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-							},
-							name: 'OpenAI Chat Model3',
-						},
-					}),
-					outputParser: outputParser({
-						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-						version: 1.2,
-						config: {
-							parameters: {
-								schemaType: 'manual',
-								inputSchema:
-									'{\n  "type": "object",\n  "properties": {\n    "queries": {\n      "type": "array",\n      "items": {\n        "type": "object",\n        "properties": {\n          "query": {\n            "type": "string",\n            "description": "The SERP query"\n          },\n          "researchGoal": {\n            "type": "string",\n            "description": "First talk about the goal of the research that this query is meant to accomplish, then go deeper into how to advance the research once the results are found, mention additional research directions. Be as specific as possible, especially for additional research directions."\n          }\n        }\n      }\n    }\n  }\n}',
-							},
-							name: 'Structured Output Parser2',
-						},
-					}),
-				},
-				position: [-1040, 820],
-				name: 'Generate SERP Queries',
 			},
 		}),
 	)
@@ -1036,10 +1059,57 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.stopAndError',
+					version: 1,
+					config: {
+						parameters: {
+							errorMessage:
+								'=Apify Auth Error! Check your API token is valid and make sure you put "Bearer <api_key>" if using HeaderAuth.',
+						},
+						position: [300, 860],
+						name: 'Stop and Error',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.filter',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: 'f44691e4-f753-47b0-b66a-068a723b6beb',
+										operator: { type: 'string', operation: 'equals' },
+										leftValue: '={{ $json.crawl.requestStatus }}',
+										rightValue: 'handled',
+									},
+									{
+										id: '8e05df2b-0d4a-47da-9aab-da7e8907cbca',
+										operator: { type: 'string', operation: 'notEmpty', singleValue: true },
+										leftValue: '={{ $json.markdown }}',
+										rightValue: '',
+									},
+								],
+							},
+						},
+						position: [300, 1020],
+						name: 'Valid Results',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -1060,68 +1130,82 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [140, 1020],
 				name: 'Is Apify Auth Error?',
 			},
-		}),
+		),
 	)
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.stopAndError',
-			version: 1,
-			config: {
-				parameters: {
-					errorMessage:
-						'=Apify Auth Error! Check your API token is valid and make sure you put "Bearer <api_key>" if using HeaderAuth.',
-				},
-				position: [300, 860],
-				name: 'Stop and Error',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.filter',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'c41592db-f9f0-4228-b6d8-0514c9a21fca',
+										name: 'markdown',
+										type: 'string',
+										value: '={{ $json.markdown }}',
+									},
+									{
+										id: '5579a411-94dc-4b10-a276-24adf775be1d',
+										name: 'url',
+										type: 'string',
+										value: '={{ $json.searchResult.url }}',
+									},
+								],
+							},
 						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: 'f44691e4-f753-47b0-b66a-068a723b6beb',
-								operator: { type: 'string', operation: 'equals' },
-								leftValue: '={{ $json.crawl.requestStatus }}',
-								rightValue: 'handled',
-							},
-							{
-								id: '8e05df2b-0d4a-47da-9aab-da7e8907cbca',
-								operator: { type: 'string', operation: 'notEmpty', singleValue: true },
-								leftValue: '={{ $json.markdown }}',
-								rightValue: '',
-							},
-						],
+						position: [940, 1020],
+						name: 'Get Markdown + URL',
 					},
-				},
-				position: [300, 1020],
-				name: 'Valid Results',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '1de40158-338b-4db3-9e22-6fd63b21f825',
+										name: 'ResearchGoal',
+										type: 'string',
+										value: "={{ $('Item Ref').first().json.researchGoal }}",
+									},
+									{
+										id: '9f59a2d4-5e5a-4d0b-8adf-2832ce746f0f',
+										name: 'learnings',
+										type: 'array',
+										value: '={{ [] }}',
+									},
+									{
+										id: '972ab5f5-0537-4755-afcb-d1db4f09ad60',
+										name: 'followUpQuestions',
+										type: 'array',
+										value: '={{ [] }}',
+									},
+									{
+										id: '90cef471-76b0-465d-91a4-a0e256335cd3',
+										name: 'urls',
+										type: 'array',
+										value: '={{ [] }}',
+									},
+								],
+							},
+						},
+						position: [640, 1160],
+						name: 'Empty Response',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -1142,40 +1226,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [480, 1020],
 				name: 'Has Content?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'c41592db-f9f0-4228-b6d8-0514c9a21fca',
-								name: 'markdown',
-								type: 'string',
-								value: '={{ $json.markdown }}',
-							},
-							{
-								id: '5579a411-94dc-4b10-a276-24adf775be1d',
-								name: 'url',
-								type: 'string',
-								value: '={{ $json.searchResult.url }}',
-							},
-						],
-					},
-				},
-				position: [940, 1020],
-				name: 'Get Markdown + URL',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -1267,86 +1320,6 @@ const wf = workflow('', '')
 				},
 				position: [1460, 1160],
 				name: 'Research Goal + Learnings',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '1de40158-338b-4db3-9e22-6fd63b21f825',
-								name: 'ResearchGoal',
-								type: 'string',
-								value: "={{ $('Item Ref').first().json.researchGoal }}",
-							},
-							{
-								id: '9f59a2d4-5e5a-4d0b-8adf-2832ce746f0f',
-								name: 'learnings',
-								type: 'array',
-								value: '={{ [] }}',
-							},
-							{
-								id: '972ab5f5-0537-4755-afcb-d1db4f09ad60',
-								name: 'followUpQuestions',
-								type: 'array',
-								value: '={{ [] }}',
-							},
-							{
-								id: '90cef471-76b0-465d-91a4-a0e256335cd3',
-								name: 'urls',
-								type: 'array',
-								value: '={{ [] }}',
-							},
-						],
-					},
-				},
-				position: [640, 1160],
-				name: 'Empty Response',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.notion',
-			version: 2.2,
-			config: {
-				parameters: {
-					limit: 1,
-					filters: {
-						conditions: [
-							{
-								key: 'Request ID|rich_text',
-								condition: 'equals',
-								richTextValue: '={{ $json.requestId.toString() }}',
-							},
-						],
-					},
-					options: {},
-					resource: 'databasePage',
-					matchType: 'allFilters',
-					operation: 'getAll',
-					databaseId: {
-						__rl: true,
-						mode: 'list',
-						value: '19486dd6-0c0c-80da-9cb7-eb1468ea9afd',
-						cachedResultUrl: 'https://www.notion.so/19486dd60c0c80da9cb7eb1468ea9afd',
-						cachedResultName: 'n8n DeepResearch',
-					},
-					filterType: 'manual',
-				},
-				credentials: {
-					notionApi: { id: 'credential-id', name: 'notionApi Credential' },
-				},
-				position: [-1020, 1600],
-				name: 'Get Existing Row1',
 			},
 		}),
 	)
@@ -1489,43 +1462,52 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.filter',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: 'f68cefe0-e109-4d41-9aa3-043f3bc6c449',
-								operator: { type: 'string', operation: 'notExists', singleValue: true },
-								leftValue: '={{ $json.error }}',
-								rightValue: '',
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.filter',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: 'f68cefe0-e109-4d41-9aa3-043f3bc6c449',
+										operator: { type: 'string', operation: 'notExists', singleValue: true },
+										leftValue: '={{ $json.error }}',
+										rightValue: '',
+									},
+								],
 							},
-						],
+						},
+						position: [740, 1600],
+						name: 'Valid Blocks',
 					},
-				},
-				position: [740, 1600],
-				name: 'Valid Blocks',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3,
-			config: { position: [1000, 1760], name: 'Append Blocks' },
-		}),
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								'const urls = Object.values($(\'JobType Router\').first().json.data.all_urls\n  .reduce((acc, url) => ({ ...acc, [url]: url }),{}));\nconst chunksize = 50;\nconst splits = Math.max(1, Math.floor(urls.length/chunksize));\n\nconst blocks = Array(splits).fill(0)\n  .map((_, idx) => {\n    const block = urls\n      .slice(\n        idx * chunksize, \n        (idx * chunksize) + chunksize - 1\n      )\n      .map(url => {\n        return {\n          object: "block",\n          type: "bulleted_list_item",\n          bulleted_list_item: {\n            rich_text: [\n              { type: "text", text: { content: url } }\n            ]\n          }\n        }\n      });\n    return { json: { block } }\n  });\n\nreturn [\n  { json: {\n    block:[{\n      "object": "block",\n      "type": "heading_2",\n      "heading_2": {\n        "rich_text": [\n          {\n            "type": "text",\n            "text": {\n              "content": "Sources"\n            }\n          }\n        ]\n      }\n    }]\n  } },\n  ...blocks\n];',
+						},
+						position: [740, 1760],
+						name: 'URL Sources to Lists',
+					},
+				}),
+			],
+			{ version: 3, name: 'Append Blocks' },
+		),
 	)
 	.then(
 		node({
@@ -1589,21 +1571,6 @@ const wf = workflow('', '')
 				},
 				position: [1680, 1760],
 				name: 'Upload to Notion Page',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						'const urls = Object.values($(\'JobType Router\').first().json.data.all_urls\n  .reduce((acc, url) => ({ ...acc, [url]: url }),{}));\nconst chunksize = 50;\nconst splits = Math.max(1, Math.floor(urls.length/chunksize));\n\nconst blocks = Array(splits).fill(0)\n  .map((_, idx) => {\n    const block = urls\n      .slice(\n        idx * chunksize, \n        (idx * chunksize) + chunksize - 1\n      )\n      .map(url => {\n        return {\n          object: "block",\n          type: "bulleted_list_item",\n          bulleted_list_item: {\n            rich_text: [\n              { type: "text", text: { content: url } }\n            ]\n          }\n        }\n      });\n    return { json: { block } }\n  });\n\nreturn [\n  { json: {\n    block:[{\n      "object": "block",\n      "type": "heading_2",\n      "heading_2": {\n        "rich_text": [\n          {\n            "type": "text",\n            "text": {\n              "content": "Sources"\n            }\n          }\n        ]\n      }\n    }]\n  } },\n  ...blocks\n];',
-				},
-				position: [740, 1760],
-				name: 'URL Sources to Lists',
 			},
 		}),
 	)

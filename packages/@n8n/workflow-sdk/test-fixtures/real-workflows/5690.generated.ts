@@ -127,10 +127,105 @@ const wf = workflow('XVI3nC7HVl7JU6C5', 'Youtube - Get Video Comments', { execut
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.splitOut',
+					version: 1,
+					config: {
+						parameters: { options: {}, fieldToSplitOut: 'body.items' },
+						position: [-620, 340],
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									status: 'error',
+									row_number: "={{ $('Google Sheets - Get Video URLs').item.json.row_number }}",
+									last_fetched_time:
+										"={{ $now.toISO().toString().slice(0, 19).replace('T', ' ') }}",
+								},
+								schema: [
+									{
+										id: 'status',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'status',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'video_url',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'video_url',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'last_fetched_time',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'last_fetched_time',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'row_number',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: true,
+										required: false,
+										displayName: 'row_number',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: ['row_number'],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'update',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 426418282,
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y/edit#gid=426418282',
+								cachedResultName: 'Video URLs',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y/edit?usp=drivesdk',
+								cachedResultName: 'YouTube - Get Video Comments',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [140, 580],
+						name: 'Google Sheets - Update Status - Error',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -151,24 +246,219 @@ const wf = workflow('XVI3nC7HVl7JU6C5', 'Youtube - Get Video Comments', { execut
 						],
 					},
 				},
-				position: [-840, 500],
 				name: 'If - Check Success Response',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitOut',
-			version: 1,
-			config: { parameters: { options: {}, fieldToSplitOut: 'body.items' }, position: [-620, 340] },
-		}),
+		),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									likes: '={{ $json.snippet.topLevelComment.snippet.likeCount }}',
+									reply: '={{ $json.snippet.totalReplyCount }}',
+									comment: '={{ $json.snippet.topLevelComment.snippet.textOriginal }}',
+									video_url: '=https://www.youtube.com/watch?v={{ $json.snippet.videoId }}',
+									comment_id: '={{ $json.snippet.topLevelComment.id }}',
+									author_name: '={{ $json.snippet.topLevelComment.snippet.authorDisplayName }}',
+									published_at:
+										"={{ $json.snippet.topLevelComment.snippet.publishedAt.toString().slice(0, 19).replace('T', ' ') }}",
+								},
+								schema: [
+									{
+										id: 'video_url',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'video_url',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'comment_id',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'comment_id',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'comment',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'comment',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'author_name',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'author_name',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'likes',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'likes',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'reply',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'reply',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'published_at',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'published_at',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: ['comment_id'],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'appendOrUpdate',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/18-3CmJPbC73MycmNiSWotdsyGBAAzqESf33vktwnYmM/edit#gid=0',
+								cachedResultName: 'Results ',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y/edit?usp=drivesdk',
+								cachedResultName: 'YouTube - Crawl Video Comments',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [140, 340],
+						name: 'Google Sheets - Insert/Update Comment',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									status: 'error',
+									row_number: "={{ $('Google Sheets - Get Video URLs').item.json.row_number }}",
+									last_fetched_time:
+										"={{ $now.toISO().toString().slice(0, 19).replace('T', ' ') }}",
+								},
+								schema: [
+									{
+										id: 'status',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'status',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'video_url',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'video_url',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'last_fetched_time',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'last_fetched_time',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'row_number',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: true,
+										required: false,
+										displayName: 'row_number',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: ['row_number'],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'update',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 426418282,
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y/edit#gid=426418282',
+								cachedResultName: 'Video URLs',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y/edit?usp=drivesdk',
+								cachedResultName: 'YouTube - Get Video Comments',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [140, 580],
+						name: 'Google Sheets - Update Status - Error',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -189,130 +479,9 @@ const wf = workflow('XVI3nC7HVl7JU6C5', 'Youtube - Get Video Comments', { execut
 						],
 					},
 				},
-				position: [-420, 340],
 				name: 'If - Check Comment Exists',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.5,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							likes: '={{ $json.snippet.topLevelComment.snippet.likeCount }}',
-							reply: '={{ $json.snippet.totalReplyCount }}',
-							comment: '={{ $json.snippet.topLevelComment.snippet.textOriginal }}',
-							video_url: '=https://www.youtube.com/watch?v={{ $json.snippet.videoId }}',
-							comment_id: '={{ $json.snippet.topLevelComment.id }}',
-							author_name: '={{ $json.snippet.topLevelComment.snippet.authorDisplayName }}',
-							published_at:
-								"={{ $json.snippet.topLevelComment.snippet.publishedAt.toString().slice(0, 19).replace('T', ' ') }}",
-						},
-						schema: [
-							{
-								id: 'video_url',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'video_url',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'comment_id',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'comment_id',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'comment',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'comment',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'author_name',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'author_name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'likes',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'likes',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'reply',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'reply',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'published_at',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'published_at',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['comment_id'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/18-3CmJPbC73MycmNiSWotdsyGBAAzqESf33vktwnYmM/edit#gid=0',
-						cachedResultName: 'Results ',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y/edit?usp=drivesdk',
-						cachedResultName: 'YouTube - Crawl Video Comments',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [140, 340],
-				name: 'Google Sheets - Insert/Update Comment',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -400,94 +569,6 @@ const wf = workflow('XVI3nC7HVl7JU6C5', 'Youtube - Get Video Comments', { execut
 				},
 				position: [340, 480],
 				name: 'Google Sheets - Update Status',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.6,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							status: 'error',
-							row_number: "={{ $('Google Sheets - Get Video URLs').item.json.row_number }}",
-							last_fetched_time: "={{ $now.toISO().toString().slice(0, 19).replace('T', ' ') }}",
-						},
-						schema: [
-							{
-								id: 'status',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'video_url',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'video_url',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'last_fetched_time',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'last_fetched_time',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'string',
-								display: true,
-								removed: false,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['row_number'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 426418282,
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y/edit#gid=426418282',
-						cachedResultName: 'Video URLs',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1F5yEhjBWu3fnwgHGLsPLD9_tWRqUnxu4p0DEvUTae1Y/edit?usp=drivesdk',
-						cachedResultName: 'YouTube - Get Video Comments',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [140, 580],
-				name: 'Google Sheets - Update Status - Error',
 			},
 		}),
 	)

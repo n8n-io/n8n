@@ -36,10 +36,95 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.4,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									CPC: '${{ $json.metrics.avgCpc }}',
+									CTR: '={{ $json.metrics.ctr }}%',
+									Cost: '={{ $json.metrics.cost }}',
+									Date: "={{ $now.toFormat('yyyy-MM-dd') }}",
+									Tier: '={{ $json.performanceTier }}',
+									Score: '={{ $json.performanceScore }}',
+									Clicks: '={{ $json.metrics.clicks }}',
+									Status: '={{ $json.campaignStatus }}',
+									Campaign: '={{ $json.campaignName }}',
+									'Conv Rate': '={{ $json.metrics.conversionRate }}%',
+									'Cost/Conv': '${{ $json.metrics.costPerConversion }}',
+									Conversions: '={{ $json.metrics.conversions }}',
+									Impressions: '={{ $json.metrics.impressions }}',
+								},
+								mappingMode: 'defineBelow',
+							},
+							options: {},
+							operation: 'appendOrUpdate',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultName: 'Daily Performance',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: 'your-dashboard-spreadsheet-id',
+								cachedResultName: 'PPC Performance Dashboard',
+							},
+						},
+						position: [160, 48],
+						name: 'Update Campaign Dashboard',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.4,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									CPC: '${{ $json.metrics.avgCpc }}',
+									CTR: '={{ $json.metrics.ctr }}%',
+									Cost: '={{ $json.metrics.cost }}',
+									Date: "={{ $now.toFormat('yyyy-MM-dd') }}",
+									Tier: '={{ $json.performanceTier }}',
+									Score: '={{ $json.performanceScore }}',
+									Clicks: '={{ $json.metrics.clicks }}',
+									Status: '={{ $json.campaignStatus }}',
+									Campaign: '={{ $json.campaignName }}',
+									'Conv Rate': '={{ $json.metrics.conversionRate }}%',
+									'Cost/Conv': '${{ $json.metrics.costPerConversion }}',
+									Conversions: '={{ $json.metrics.conversions }}',
+									Impressions: '={{ $json.metrics.impressions }}',
+								},
+								mappingMode: 'defineBelow',
+							},
+							options: {},
+							operation: 'appendOrUpdate',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultName: 'Daily Performance',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: 'your-dashboard-spreadsheet-id',
+								cachedResultName: 'PPC Performance Dashboard',
+							},
+						},
+						position: [160, 48],
+						name: 'Update Campaign Dashboard',
+					},
+				}),
+			],
+			{
+				version: 2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -65,55 +150,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-288, 240],
 				name: 'Route by Performance',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.4,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							CPC: '${{ $json.metrics.avgCpc }}',
-							CTR: '={{ $json.metrics.ctr }}%',
-							Cost: '={{ $json.metrics.cost }}',
-							Date: "={{ $now.toFormat('yyyy-MM-dd') }}",
-							Tier: '={{ $json.performanceTier }}',
-							Score: '={{ $json.performanceScore }}',
-							Clicks: '={{ $json.metrics.clicks }}',
-							Status: '={{ $json.campaignStatus }}',
-							Campaign: '={{ $json.campaignName }}',
-							'Conv Rate': '={{ $json.metrics.conversionRate }}%',
-							'Cost/Conv': '${{ $json.metrics.costPerConversion }}',
-							Conversions: '={{ $json.metrics.conversions }}',
-							Impressions: '={{ $json.metrics.impressions }}',
-						},
-						mappingMode: 'defineBelow',
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultName: 'Daily Performance',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: 'your-dashboard-spreadsheet-id',
-						cachedResultName: 'PPC Performance Dashboard',
-					},
-				},
-				position: [160, 48],
-				name: 'Update Campaign Dashboard',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -187,8 +226,8 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	// Disconnected: Log All Campaigns
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.4,
@@ -227,8 +266,8 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	// Disconnected: Alert: Scale Opportunity
+	.add(
 		node({
 			type: 'n8n-nodes-base.slack',
 			version: 2.1,
@@ -242,8 +281,8 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	// Disconnected: Generate Action Plan
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -257,7 +296,8 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.then(
+	// Disconnected: Email Performance Report
+	.add(
 		node({
 			type: 'n8n-nodes-base.emailSend',
 			version: 2.1,
@@ -273,8 +313,8 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	// Disconnected: Alert: Issues Detected
+	.add(
 		node({
 			type: 'n8n-nodes-base.slack',
 			version: 2.1,

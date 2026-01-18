@@ -147,15 +147,97 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 2,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.airtable',
+					version: 2,
+					config: {
+						parameters: {
+							base: { __rl: true, mode: 'list', value: 'content-research-base' },
+							table: { __rl: true, mode: 'list', value: 'competitor-intelligence' },
+							columns: {
+								value: {
+									domain: "={{ $('🔄 Process Competitor Data').first().json.domain }}",
+									backlinks: "={{ $('🔄 Process Competitor Data').first().json.backlinks }}",
+									timestamp: "={{ $('🔄 Process Competitor Data').first().json.timestamp }}",
+									content_gaps:
+										"={{ $('🔄 Process Competitor Data').first().json.content_gaps.join(', ') }}",
+									traffic_estimate:
+										"={{ $('🔄 Process Competitor Data').first().json.traffic_estimate }}",
+									publishing_frequency:
+										"={{ $('🔄 Process Competitor Data').first().json.publishing_frequency }}",
+								},
+								mappingMode: 'defineBelow',
+							},
+							options: {},
+							operation: 'create',
+						},
+						position: [1200, 20],
+						name: '💾 Save to Airtable - Competitors',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.airtable',
+					version: 2,
+					config: {
+						parameters: {
+							base: { __rl: true, mode: 'list', value: 'content-research-base' },
+							table: { __rl: true, mode: 'list', value: 'keyword-opportunities' },
+							columns: {
+								value: {
+									timestamp: "={{ $('📈 Process Keyword Trends').first().json.timestamp }}",
+									top_questions:
+										"={{ $('📈 Process Keyword Trends').first().json.long_tail_questions.map(q => q.question).slice(0, 5).join('; ') }}",
+									trending_keywords:
+										"={{ $('📈 Process Keyword Trends').first().json.trending_keywords.map(k => k.keyword).join(', ') }}",
+									content_opportunities:
+										"={{ $('📈 Process Keyword Trends').first().json.content_opportunities.map(o => o.title).join('; ') }}",
+								},
+								mappingMode: 'defineBelow',
+							},
+							options: {},
+							operation: 'create',
+						},
+						position: [1200, 140],
+						name: '💾 Save to Airtable - Keywords',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.notion',
+					version: 2,
+					config: {
+						parameters: {
+							pageId: { __rl: true, mode: 'url', value: '' },
+							simple: false,
+							options: {},
+						},
+						position: [1200, 260],
+						name: '📝 Save to Notion',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.slack',
+					version: 2,
+					config: {
+						parameters: {
+							text: "=🚨 **Content Research Alert**\n\n**New competitor activity detected!**\n\n📊 **Top Findings:**\n• {{ $('🔄 Process Competitor Data').first().json.content_gaps.slice(0, 3).join('\\n• ') }}\n\n📈 **Trending Keywords:**\n• {{ $('📈 Process Keyword Trends').first().json.trending_keywords.slice(0, 3).map(k => k.keyword).join('\\n• ') }}\n\n💡 **AI Recommendations:**\n{{ $('🤖 AI Content Recommendations').first().json.choices?.[0]?.message?.content?.substring(0, 300) || 'Processing recommendations...' }}...\n\n📋 **Full report saved to Airtable & Notion**\n\n*Generated: {{ new Date().toLocaleString() }}*",
+							select: 'channel',
+							channelId: { __rl: true, mode: 'list', value: 'content-research-alerts' },
+							otherOptions: { mrkdwn: true },
+							authentication: 'oAuth2',
+						},
+						position: [1200, 380],
+						name: '📢 Send Slack Alert',
+					},
+				}),
+			],
+			{
+				version: 2,
 				parameters: { mode: 'combine', options: {}, combinationMode: 'multiplex' },
-				position: [1420, 200],
 				name: '🔗 Merge All Data',
 			},
-		}),
+		),
 	)
 	.output(1)
 	.then(
@@ -211,69 +293,6 @@ const wf = workflow('', '')
 				},
 				position: [960, 320],
 				name: '🔧 OpenAI HTTP Request Alternative',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.airtable',
-			version: 2,
-			config: {
-				parameters: {
-					base: { __rl: true, mode: 'list', value: 'content-research-base' },
-					table: { __rl: true, mode: 'list', value: 'keyword-opportunities' },
-					columns: {
-						value: {
-							timestamp: "={{ $('📈 Process Keyword Trends').first().json.timestamp }}",
-							top_questions:
-								"={{ $('📈 Process Keyword Trends').first().json.long_tail_questions.map(q => q.question).slice(0, 5).join('; ') }}",
-							trending_keywords:
-								"={{ $('📈 Process Keyword Trends').first().json.trending_keywords.map(k => k.keyword).join(', ') }}",
-							content_opportunities:
-								"={{ $('📈 Process Keyword Trends').first().json.content_opportunities.map(o => o.title).join('; ') }}",
-						},
-						mappingMode: 'defineBelow',
-					},
-					options: {},
-					operation: 'create',
-				},
-				position: [1200, 140],
-				name: '💾 Save to Airtable - Keywords',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.notion',
-			version: 2,
-			config: {
-				parameters: {
-					pageId: { __rl: true, mode: 'url', value: '' },
-					simple: false,
-					options: {},
-				},
-				position: [1200, 260],
-				name: '📝 Save to Notion',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.slack',
-			version: 2,
-			config: {
-				parameters: {
-					text: "=🚨 **Content Research Alert**\n\n**New competitor activity detected!**\n\n📊 **Top Findings:**\n• {{ $('🔄 Process Competitor Data').first().json.content_gaps.slice(0, 3).join('\\n• ') }}\n\n📈 **Trending Keywords:**\n• {{ $('📈 Process Keyword Trends').first().json.trending_keywords.slice(0, 3).map(k => k.keyword).join('\\n• ') }}\n\n💡 **AI Recommendations:**\n{{ $('🤖 AI Content Recommendations').first().json.choices?.[0]?.message?.content?.substring(0, 300) || 'Processing recommendations...' }}...\n\n📋 **Full report saved to Airtable & Notion**\n\n*Generated: {{ new Date().toLocaleString() }}*",
-					select: 'channel',
-					channelId: { __rl: true, mode: 'list', value: 'content-research-alerts' },
-					otherOptions: { mrkdwn: true },
-					authentication: 'oAuth2',
-				},
-				position: [1200, 380],
-				name: '📢 Send Slack Alert',
 			},
 		}),
 	)

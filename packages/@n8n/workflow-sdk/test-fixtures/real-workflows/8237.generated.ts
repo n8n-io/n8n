@@ -35,10 +35,172 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.1,
+					config: {
+						parameters: {
+							fileId: "={{ $('Listen for incoming events').item.json.message.voice.file_id }}",
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1552, 128],
+						name: 'Get Voice File',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 1.6,
+					config: {
+						parameters: {
+							text: '={{ $json.text }}',
+							options: {
+								systemMessage:
+									"=You are a helpful personal assistant called Jackie. \n\nToday's date is {{ $today.format('yyyy-MM-dd') }}.\n\nGuidelines:\n- When summarizing emails, include Sender, Message date, subject, and brief summary of email.\n- if the user did not specify a date in the request assume they are asking for today\n- When answering questions about calendar events, filter out events that don't apply to the question.  For example, the question is about events for today, only reply with events for today. Don't mention future events if it's more than 1 week away\n- When creating calendar entry, the attendee email is optional",
+							},
+							promptType: 'define',
+						},
+						subnodes: {
+							tools: [
+								tool({
+									type: 'n8n-nodes-base.gmailTool',
+									version: 2.1,
+									config: {
+										parameters: {
+											limit: 20,
+											filters: {
+												labelIds: ['INBOX'],
+												readStatus: 'unread',
+												receivedAfter:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_After', ``, 'string') }}",
+												receivedBefore:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_Before', ``, 'string') }}",
+											},
+											operation: 'getAll',
+										},
+										credentials: {
+											gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+										},
+										name: 'Get Email',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.gmailTool',
+									version: 2.1,
+									config: {
+										parameters: {
+											sendTo:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+											message:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `Please format this nicely in html`, 'string') }}",
+											options: { appendAttribution: false },
+											subject:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+										},
+										credentials: {
+											gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+										},
+										name: 'Send Email',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleCalendarTool',
+									version: 1.1,
+									config: {
+										parameters: {
+											options: {
+												fields: '=items(summary, start(dateTime))',
+												timeMax:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+												timeMin:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+											},
+											calendar: { __rl: true, mode: 'id', value: '=<insert email here>' },
+											operation: 'getAll',
+										},
+										credentials: {
+											googleCalendarOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleCalendarOAuth2Api Credential',
+											},
+										},
+										name: 'Google Calendar',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleTasksTool',
+									version: 1,
+									config: {
+										parameters: {
+											task: 'MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow',
+											title:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', ``, 'string') }}",
+											additionalFields: {},
+										},
+										credentials: {
+											googleTasksOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleTasksOAuth2Api Credential',
+											},
+										},
+										name: 'Create a task in Google Tasks',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleTasksTool',
+									version: 1,
+									config: {
+										parameters: {
+											task: 'MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow',
+											operation: 'getAll',
+											additionalFields: {},
+										},
+										credentials: {
+											googleTasksOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleTasksOAuth2Api Credential',
+											},
+										},
+										name: 'Get many tasks in Google Tasks',
+									},
+								}),
+							],
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+								version: 1,
+								config: {
+									parameters: { options: {} },
+									credentials: {
+										openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+									},
+									name: 'OpenRouter',
+								},
+							}),
+							memory: memory({
+								type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+								version: 1.2,
+								config: {
+									parameters: {
+										sessionKey:
+											"={{ $('Listen for incoming events').first().json.message.from.id }}",
+										sessionIdType: 'customKey',
+									},
+									name: 'Window Buffer Memory',
+								},
+							}),
+						},
+						position: [2224, 192],
+						name: 'Jackie, AI Assistant 👩🏻‍🏫',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -59,28 +221,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [1328, 208],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.1,
-			config: {
-				parameters: {
-					fileId: "={{ $('Listen for incoming events').item.json.message.voice.file_id }}",
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1552, 128],
-				name: 'Get Voice File',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -93,152 +236,6 @@ const wf = workflow('', '')
 				},
 				position: [1872, 128],
 				name: 'Transcribe a recording',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 1.6,
-			config: {
-				parameters: {
-					text: '={{ $json.text }}',
-					options: {
-						systemMessage:
-							"=You are a helpful personal assistant called Jackie. \n\nToday's date is {{ $today.format('yyyy-MM-dd') }}.\n\nGuidelines:\n- When summarizing emails, include Sender, Message date, subject, and brief summary of email.\n- if the user did not specify a date in the request assume they are asking for today\n- When answering questions about calendar events, filter out events that don't apply to the question.  For example, the question is about events for today, only reply with events for today. Don't mention future events if it's more than 1 week away\n- When creating calendar entry, the attendee email is optional",
-					},
-					promptType: 'define',
-				},
-				subnodes: {
-					tools: [
-						tool({
-							type: 'n8n-nodes-base.gmailTool',
-							version: 2.1,
-							config: {
-								parameters: {
-									limit: 20,
-									filters: {
-										labelIds: ['INBOX'],
-										readStatus: 'unread',
-										receivedAfter:
-											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_After', ``, 'string') }}",
-										receivedBefore:
-											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Received_Before', ``, 'string') }}",
-									},
-									operation: 'getAll',
-								},
-								credentials: {
-									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-								},
-								name: 'Get Email',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.gmailTool',
-							version: 2.1,
-							config: {
-								parameters: {
-									sendTo:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
-									message:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `Please format this nicely in html`, 'string') }}",
-									options: { appendAttribution: false },
-									subject:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-								},
-								credentials: {
-									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-								},
-								name: 'Send Email',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleCalendarTool',
-							version: 1.1,
-							config: {
-								parameters: {
-									options: {
-										fields: '=items(summary, start(dateTime))',
-										timeMax:
-											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
-										timeMin:
-											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
-									},
-									calendar: { __rl: true, mode: 'id', value: '=<insert email here>' },
-									operation: 'getAll',
-								},
-								credentials: {
-									googleCalendarOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleCalendarOAuth2Api Credential',
-									},
-								},
-								name: 'Google Calendar',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleTasksTool',
-							version: 1,
-							config: {
-								parameters: {
-									task: 'MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow',
-									title:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', ``, 'string') }}",
-									additionalFields: {},
-								},
-								credentials: {
-									googleTasksOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleTasksOAuth2Api Credential',
-									},
-								},
-								name: 'Create a task in Google Tasks',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleTasksTool',
-							version: 1,
-							config: {
-								parameters: {
-									task: 'MTY1MTc5NzMxMzA5NDc5MTQ5NzQ6MDow',
-									operation: 'getAll',
-									additionalFields: {},
-								},
-								credentials: {
-									googleTasksOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleTasksOAuth2Api Credential',
-									},
-								},
-								name: 'Get many tasks in Google Tasks',
-							},
-						}),
-					],
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
-						version: 1,
-						config: {
-							parameters: { options: {} },
-							credentials: {
-								openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
-							},
-							name: 'OpenRouter',
-						},
-					}),
-					memory: memory({
-						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-						version: 1.2,
-						config: {
-							parameters: {
-								sessionKey: "={{ $('Listen for incoming events').first().json.message.from.id }}",
-								sessionIdType: 'customKey',
-							},
-							name: 'Window Buffer Memory',
-						},
-					}),
-				},
-				position: [2224, 192],
-				name: 'Jackie, AI Assistant 👩🏻‍🏫',
 			},
 		}),
 	)

@@ -149,10 +149,56 @@ const wf = workflow('r82OA8ExycLYuK1u', 'My workflow 8', { executionOrder: 'v1' 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						parameters: {
+							options: {},
+							filtersUI: {
+								values: [{ lookupValue: '={{ $json.id }}', lookupColumn: 'ID' }],
+							},
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1LfhqpyjimLjyQcmWY8mUr6YtNBcifiOVLIhAJGV9jiM/edit#gid=0',
+								cachedResultName: 'Companies',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1LfhqpyjimLjyQcmWY8mUr6YtNBcifiOVLIhAJGV9jiM',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1LfhqpyjimLjyQcmWY8mUr6YtNBcifiOVLIhAJGV9jiM/edit?usp=drivesdk',
+								cachedResultName: 'CRM',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [1200, 780],
+						name: 'Check If Company Exists',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitInBatches',
+					version: 3,
+					config: {
+						parameters: { options: {} },
+						position: [520, 780],
+						name: 'Process Each Company',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -179,55 +225,59 @@ const wf = workflow('r82OA8ExycLYuK1u', 'My workflow 8', { executionOrder: 'v1' 
 						],
 					},
 				},
-				position: [980, 780],
 				name: 'Filter Valid Companies',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [{ lookupValue: '={{ $json.id }}', lookupColumn: 'ID' }],
-					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1LfhqpyjimLjyQcmWY8mUr6YtNBcifiOVLIhAJGV9jiM/edit#gid=0',
-						cachedResultName: 'Companies',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1LfhqpyjimLjyQcmWY8mUr6YtNBcifiOVLIhAJGV9jiM',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1LfhqpyjimLjyQcmWY8mUr6YtNBcifiOVLIhAJGV9jiM/edit?usp=drivesdk',
-						cachedResultName: 'CRM',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [1200, 780],
-				name: 'Check If Company Exists',
-			},
-		}),
+		),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'gpt-4.1',
+								cachedResultName: 'GPT-4.1',
+							},
+							options: { temperature: 0.2 },
+							messages: {
+								values: [
+									{
+										role: 'system',
+										content:
+											"=You are an AI assistant that evaluates companies to determine if they might be interested in {{ $('Set Variables').item.json['Your product or service'] }}.\n\nEvaluate the company information provided on a scale of 0 to 10, where:\n- 0 = Not at all likely to be interested\n- 10 = Extremely likely to be interested\n\nBase your evaluation on these criteria:\n1. Industry fit: How well does the company's industry align with {{ $('Set Variables').item.json['Your product or service'] }}?\n2. Company profile: Is the company size, growth stage, and location appropriate for {{ $('Set Variables').item.json['Your product or service'] }}?\n3. Pain points: Based on their description, do they likely have challenges that {{ $('Set Variables').item.json['Your product or service'] }} solves?\n\nFactors that indicate a good fit:\n{{ $('Set Variables').item.json['Positive indicators (3-5 specific factors that indicate a company might need your product)'] }}\n\nFactors that indicate a poor fit:\n{{ $('Set Variables').item.json['Negative indicators (3-5 specific factors that indicate a company might NOT need your product)'] }}\n\nRespond ONLY with this JSON format:\n```json\n{\n  \"score\": [number between 0 and 10],\n}",
+									},
+									{
+										content:
+											"=Here is the company to analyze:\nName: {{ $('Filter Valid Companies').item.json.name }}\n{{ $('Filter Valid Companies').item.json.tagline }}\n{{ $('Filter Valid Companies').item.json.description }}\nNumber of employees: {{ $('Filter Valid Companies').item.json.staff_count }}\nIndustry: {{ $('Filter Valid Companies').item.json.industries }}\nSpecialties: {{ $('Filter Valid Companies').item.json.specialities }}\nLocation: {{ $('Filter Valid Companies').item.json.locations?.toJsonString() }}\nFounded in: {{ $('Filter Valid Companies').item.json.founded_on }}\nFunding: {{ $('Filter Valid Companies').item.json.funding?.toJsonString() }}\n",
+									},
+								],
+							},
+							jsonOutput: true,
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [1700, 800],
+						name: 'AI Company Scoring',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitInBatches',
+					version: 3,
+					config: {
+						parameters: { options: {} },
+						position: [520, 780],
+						name: 'Process Each Company',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -248,47 +298,9 @@ const wf = workflow('r82OA8ExycLYuK1u', 'My workflow 8', { executionOrder: 'v1' 
 						],
 					},
 				},
-				position: [1380, 780],
 				name: 'Is New Company?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					modelId: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1',
-						cachedResultName: 'GPT-4.1',
-					},
-					options: { temperature: 0.2 },
-					messages: {
-						values: [
-							{
-								role: 'system',
-								content:
-									"=You are an AI assistant that evaluates companies to determine if they might be interested in {{ $('Set Variables').item.json['Your product or service'] }}.\n\nEvaluate the company information provided on a scale of 0 to 10, where:\n- 0 = Not at all likely to be interested\n- 10 = Extremely likely to be interested\n\nBase your evaluation on these criteria:\n1. Industry fit: How well does the company's industry align with {{ $('Set Variables').item.json['Your product or service'] }}?\n2. Company profile: Is the company size, growth stage, and location appropriate for {{ $('Set Variables').item.json['Your product or service'] }}?\n3. Pain points: Based on their description, do they likely have challenges that {{ $('Set Variables').item.json['Your product or service'] }} solves?\n\nFactors that indicate a good fit:\n{{ $('Set Variables').item.json['Positive indicators (3-5 specific factors that indicate a company might need your product)'] }}\n\nFactors that indicate a poor fit:\n{{ $('Set Variables').item.json['Negative indicators (3-5 specific factors that indicate a company might NOT need your product)'] }}\n\nRespond ONLY with this JSON format:\n```json\n{\n  \"score\": [number between 0 and 10],\n}",
-							},
-							{
-								content:
-									"=Here is the company to analyze:\nName: {{ $('Filter Valid Companies').item.json.name }}\n{{ $('Filter Valid Companies').item.json.tagline }}\n{{ $('Filter Valid Companies').item.json.description }}\nNumber of employees: {{ $('Filter Valid Companies').item.json.staff_count }}\nIndustry: {{ $('Filter Valid Companies').item.json.industries }}\nSpecialties: {{ $('Filter Valid Companies').item.json.specialities }}\nLocation: {{ $('Filter Valid Companies').item.json.locations?.toJsonString() }}\nFounded in: {{ $('Filter Valid Companies').item.json.founded_on }}\nFunding: {{ $('Filter Valid Companies').item.json.funding?.toJsonString() }}\n",
-							},
-						],
-					},
-					jsonOutput: true,
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1700, 800],
-				name: 'AI Company Scoring',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

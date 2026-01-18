@@ -78,10 +78,40 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '18f61f00-03e8-4fd4-b305-f3742bb32d17',
+										name: 'text',
+										type: 'string',
+										value: "={{ $('Extract from File').item.json.text }}",
+									},
+								],
+							},
+						},
+						position: [1340, 520],
+						name: 'Send Raw Text Again',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitOut',
+					version: 1,
+					config: {
+						parameters: { options: {}, fieldToSplitOut: 'line_items' },
+						position: [1276, 280],
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -116,41 +146,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [1100, 340],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '18f61f00-03e8-4fd4-b305-f3742bb32d17',
-								name: 'text',
-								type: 'string',
-								value: "={{ $('Extract from File').item.json.text }}",
-							},
-						],
-					},
-				},
-				position: [1340, 520],
-				name: 'Send Raw Text Again',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitOut',
-			version: 1,
-			config: { parameters: { options: {}, fieldToSplitOut: 'line_items' }, position: [1276, 280] },
-		}),
+		),
 	)
 	.then(
 		node({

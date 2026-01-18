@@ -45,10 +45,91 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.1,
+					config: {
+						parameters: {
+							text: '=Analyze the following Airtable inventory records and return the optimized stock details.\n\nInput Data:\n{{ JSON.stringify($json, null, 2) }}\n\nReturn ONLY this JSON structure:\n\n{\n  "results": [\n    {\n      "id": "...",\n      "ItemName": "...",\n      "SKU": "...",\n      "QuantityInStock": number,\n      "ReorderLevel": number,\n      "SuggestedReorderPoint": number,\n      "SuggestedSafetyStock": number,\n      "StockStatus": "OK | Needs Reorder | Critical"\n    }\n  ]\n}\n',
+							options: {
+								systemMessage:
+									'=Analyze the following Airtable inventory records and return the optimized stock details.\n\nInput Data:\n{{ JSON.stringify($json, null, 2) }}\n\nReturn ONLY this JSON structure:\n\n{\n  "results": [\n    {\n      "id": "...",\n      "ItemName": "...",\n      "SKU": "...",\n      "QuantityInStock": number,\n      "ReorderLevel": number,\n      "SuggestedReorderPoint": number,\n      "SuggestedSafetyStock": number,\n      "StockStatus": "OK | Needs Reorder | Critical"\n    }\n  ]\n}\n\n\nImportant:\n- NEVER wrap the output in backticks.\n- NEVER include markdown.\n- Return ONLY raw JSON.\n- The final output MUST be a valid JSON object. \nYou are an Inventory Optimization Engine.\nFollow formulas strictly and NEVER improvise:\n\nFormula 1:\nSuggestedReorderPoint = ReorderLevel * 1.2\n\nFormula 2:\nSuggestedSafetyStock = ReorderLevel * 0.5\n\nRules:\n- DO NOT round values unless needed.\n- DO NOT swap the formulas.\n- DO NOT invent new logic.\n- Only use the formulas exactly as written.\n\nStockStatus:\n- "Critical" if QuantityInStock <= SuggestedSafetyStock\n- "Needs Reorder" if QuantityInStock <= SuggestedReorderPoint\n- "OK" otherwise\n\nReturn ONLY raw JSON.\n\n',
+							},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+								version: 1,
+								config: {
+									parameters: { model: 'gpt-4o', options: {} },
+									credentials: {
+										azureOpenAiApi: { id: 'C3WzT18XqF8OdVM6', name: 'Azure Open AI account' },
+									},
+									name: 'Configure GPT-4o — Inventory Optimization Model',
+								},
+							}),
+						},
+						position: [-1184, 672],
+						name: 'Generate Inventory Optimization Output (AI)',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							columns: {
+								value: {},
+								schema: [
+									{
+										id: 'output',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'output',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: ['output'],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'append',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 1318002027,
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/17rcNd_ZpUQLm0uWEVbD-NY6GyFUkrD4BglvawlyBygM/edit#gid=1318002027',
+								cachedResultName: 'hacker news',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '17rcNd_ZpUQLm0uWEVbD-NY6GyFUkrD4BglvawlyBygM',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/17rcNd_ZpUQLm0uWEVbD-NY6GyFUkrD4BglvawlyBygM/edit?usp=drivesdk',
+								cachedResultName: 'sample_leads_50',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: { id: 'kpPEOLCGn963qpoh', name: 'automations@techdome.ai' },
+						},
+						position: [-1520, 960],
+						name: 'Log Invalid Inventory Rows to Google Sheet',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -69,43 +150,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [-1648, 688],
 				name: 'Validate Inventory Record Structure',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2.1,
-			config: {
-				parameters: {
-					text: '=Analyze the following Airtable inventory records and return the optimized stock details.\n\nInput Data:\n{{ JSON.stringify($json, null, 2) }}\n\nReturn ONLY this JSON structure:\n\n{\n  "results": [\n    {\n      "id": "...",\n      "ItemName": "...",\n      "SKU": "...",\n      "QuantityInStock": number,\n      "ReorderLevel": number,\n      "SuggestedReorderPoint": number,\n      "SuggestedSafetyStock": number,\n      "StockStatus": "OK | Needs Reorder | Critical"\n    }\n  ]\n}\n',
-					options: {
-						systemMessage:
-							'=Analyze the following Airtable inventory records and return the optimized stock details.\n\nInput Data:\n{{ JSON.stringify($json, null, 2) }}\n\nReturn ONLY this JSON structure:\n\n{\n  "results": [\n    {\n      "id": "...",\n      "ItemName": "...",\n      "SKU": "...",\n      "QuantityInStock": number,\n      "ReorderLevel": number,\n      "SuggestedReorderPoint": number,\n      "SuggestedSafetyStock": number,\n      "StockStatus": "OK | Needs Reorder | Critical"\n    }\n  ]\n}\n\n\nImportant:\n- NEVER wrap the output in backticks.\n- NEVER include markdown.\n- Return ONLY raw JSON.\n- The final output MUST be a valid JSON object. \nYou are an Inventory Optimization Engine.\nFollow formulas strictly and NEVER improvise:\n\nFormula 1:\nSuggestedReorderPoint = ReorderLevel * 1.2\n\nFormula 2:\nSuggestedSafetyStock = ReorderLevel * 0.5\n\nRules:\n- DO NOT round values unless needed.\n- DO NOT swap the formulas.\n- DO NOT invent new logic.\n- Only use the formulas exactly as written.\n\nStockStatus:\n- "Critical" if QuantityInStock <= SuggestedSafetyStock\n- "Needs Reorder" if QuantityInStock <= SuggestedReorderPoint\n- "OK" otherwise\n\nReturn ONLY raw JSON.\n\n',
-					},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
-						version: 1,
-						config: {
-							parameters: { model: 'gpt-4o', options: {} },
-							credentials: {
-								azureOpenAiApi: { id: 'C3WzT18XqF8OdVM6', name: 'Azure Open AI account' },
-							},
-							name: 'Configure GPT-4o — Inventory Optimization Model',
-						},
-					}),
-				},
-				position: [-1184, 672],
-				name: 'Generate Inventory Optimization Output (AI)',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -280,59 +327,6 @@ const wf = workflow(
 				},
 				position: [-64, -176],
 				name: 'Log Trade Decision to Notion (inventory db)',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.6,
-			config: {
-				parameters: {
-					columns: {
-						value: {},
-						schema: [
-							{
-								id: 'output',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'output',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['output'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'append',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 1318002027,
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/17rcNd_ZpUQLm0uWEVbD-NY6GyFUkrD4BglvawlyBygM/edit#gid=1318002027',
-						cachedResultName: 'hacker news',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '17rcNd_ZpUQLm0uWEVbD-NY6GyFUkrD4BglvawlyBygM',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/17rcNd_ZpUQLm0uWEVbD-NY6GyFUkrD4BglvawlyBygM/edit?usp=drivesdk',
-						cachedResultName: 'sample_leads_50',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'kpPEOLCGn963qpoh', name: 'automations@techdome.ai' },
-				},
-				position: [-1520, 960],
-				name: 'Log Invalid Inventory Rows to Google Sheet',
 			},
 		}),
 	)

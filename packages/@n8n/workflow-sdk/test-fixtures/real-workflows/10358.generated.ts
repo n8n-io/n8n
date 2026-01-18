@@ -323,43 +323,166 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
 	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'tiktok',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '9332',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/9332',
-						cachedResultName: 'docteur.firas',
+		merge(
+			[
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'tiktok',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '9332',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/9332',
+								cachedResultName: 'docteur.firas',
+							},
+							postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1632, 2000],
+						name: 'Tiktok',
 					},
-					postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1632, 2000],
-				name: 'Tiktok',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
-				parameters: { mode: 'chooseBranch', numberInputs: 6 },
-				position: [2128, 2160],
-				name: 'Merge1',
-			},
-		}),
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'linkedin',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1446',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1446',
+								cachedResultName: 'Samuel Amalric',
+							},
+							postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1840, 2000],
+						name: 'Linkedin',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'facebook',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1759',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1759',
+								cachedResultName: 'Firass Ben',
+							},
+							facebookPageId: {
+								__rl: true,
+								mode: 'list',
+								value: '101603614680195',
+								cachedResultUrl:
+									'https://backend.blotato.com/v2/accounts/1759/subaccounts/101603614680195',
+								cachedResultName: 'Dr. Firas',
+							},
+							postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1632, 2224],
+						name: 'Facebook',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1687',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1687',
+								cachedResultName: 'acces.a.vie',
+							},
+							postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1840, 2224],
+						name: 'Instagram',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'twitter',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1289',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1289',
+								cachedResultName: 'Docteur_Firas',
+							},
+							postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1632, 2464],
+						name: 'Twitter (X)',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'youtube',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '8047',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/8047',
+								cachedResultName: 'DR FIRASS (Dr. Firas)',
+							},
+							postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
+							postContentMediaUrls: '={{ $json.url }}',
+							postCreateYoutubeOptionTitle: "={{ $('Save to Google Sheets').item.json.IDEA }}",
+							postCreateYoutubeOptionPrivacyStatus: 'private',
+							postCreateYoutubeOptionShouldNotifySubscribers: false,
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1856, 2464],
+						name: 'Youtube',
+					},
+				}),
+			],
+			{ version: 3.2, parameters: { mode: 'chooseBranch', numberInputs: 6 }, name: 'Merge1' },
+		),
 	)
 	.then(
 		node({
@@ -494,151 +617,6 @@ const wf = workflow(
 				},
 				position: [2128, 2464],
 				name: 'Google Sheets Append1',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'linkedin',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1446',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1446',
-						cachedResultName: 'Samuel Amalric',
-					},
-					postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1840, 2000],
-				name: 'Linkedin',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'facebook',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1759',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1759',
-						cachedResultName: 'Firass Ben',
-					},
-					facebookPageId: {
-						__rl: true,
-						mode: 'list',
-						value: '101603614680195',
-						cachedResultUrl:
-							'https://backend.blotato.com/v2/accounts/1759/subaccounts/101603614680195',
-						cachedResultName: 'Dr. Firas',
-					},
-					postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1632, 2224],
-				name: 'Facebook',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1687',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1687',
-						cachedResultName: 'acces.a.vie',
-					},
-					postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1840, 2224],
-				name: 'Instagram',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'twitter',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1289',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1289',
-						cachedResultName: 'Docteur_Firas',
-					},
-					postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1632, 2464],
-				name: 'Twitter (X)',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'youtube',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '8047',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/8047',
-						cachedResultName: 'DR FIRASS (Dr. Firas)',
-					},
-					postContentText: "={{ $('Save to Google Sheets').item.json.CAPTION }}",
-					postContentMediaUrls: '={{ $json.url }}',
-					postCreateYoutubeOptionTitle: "={{ $('Save to Google Sheets').item.json.IDEA }}",
-					postCreateYoutubeOptionPrivacyStatus: 'private',
-					postCreateYoutubeOptionShouldNotifySubscribers: false,
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1856, 2464],
-				name: 'Youtube',
 			},
 		}),
 	)

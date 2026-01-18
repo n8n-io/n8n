@@ -81,10 +81,45 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.brightdata.com/datasets/v3/snapshot/{{ $json.snapshot_id }}',
+							options: {},
+							sendQuery: true,
+							sendHeaders: true,
+							queryParameters: { parameters: [{ name: 'format', value: 'json' }] },
+							headerParameters: {
+								parameters: [{ name: 'Authorization', value: 'Bearer YOUR_TOKEN_HERE' }],
+							},
+						},
+						position: [-1380, -585],
+						name: 'Gets TikTok influencer details from Bright Data using snapshot ID',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.brightdata.com/datasets/v3/progress/{{ $json.snapshot_id }}',
+							options: {},
+							sendHeaders: true,
+							headerParameters: {
+								parameters: [{ name: 'Authorization', value: 'Bearer YOUR_TOKEN_HERE' }],
+							},
+						},
+						position: [-2040, -585],
+						name: 'Checks scraping progress from Bright Data',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -109,31 +144,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [-1600, -585],
 				name: 'IF condition to check if Bright Data returned ready status',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.brightdata.com/datasets/v3/snapshot/{{ $json.snapshot_id }}',
-					options: {},
-					sendQuery: true,
-					sendHeaders: true,
-					queryParameters: { parameters: [{ name: 'format', value: 'json' }] },
-					headerParameters: {
-						parameters: [{ name: 'Authorization', value: 'Bearer YOUR_TOKEN_HERE' }],
-					},
-				},
-				position: [-1380, -585],
-				name: 'Gets TikTok influencer details from Bright Data using snapshot ID',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

@@ -73,10 +73,37 @@ const wf = workflow('WczQxQgtvjjk1HC1', 'LinkedIn Profile Enrichment With Error 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							mode: 'runOnceForEachItem',
+							jsCode:
+								"// Get the dataset ID from the previous node\nconst datasetId = $json.data.defaultDatasetId;\n\ntry {\n  // Get the Apify token\n  const apifyToken = '[YOUR APIFY TOKEN]';\n  \n  // Make the HTTP request to get the dataset\n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api.apify.com/v2/datasets/${datasetId}/items?token=YOUR_TOKEN_HERE\n    json: true\n  });\n\n  // Check if we have valid data\n  if (!Array.isArray(response) || response.length === 0) {\n    // No data found - this is a 404 profile\n    throw new Error('Empty dataset - LinkedIn profile not found or inaccessible');\n  }\n\n  // Check if the profile data is actually valid\n  const firstItem = response[0];\n  if (!firstItem || !firstItem.linkedinUrl || !firstItem.fullName) {\n    throw new Error('Invalid LinkedIn profile data');\n  }\n\n  // IMPORTANT: For runOnceForEachItem mode, we must return a single object\n  // n8n will handle the array data by flattening it\n  // We need to pass the array as a property of an object\n  return {\n    linkedinData: response\n  };\n} catch (error) {\n  // For HTTP errors (like 404 on dataset endpoint)\n  if (error.response && error.response.statusCode === 404) {\n    throw new Error('Dataset not found - LinkedIn profile not accessible');\n  }\n  // Re-throw other errors to route to error output\n  throw error;\n}",
+						},
+						position: [1340, 80],
+						name: 'Get Scraper Results',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							mode: 'runOnceForEachItem',
+							jsCode:
+								"// Get the guest ID and error info\nlet guestId = null;\nlet errorMessage = 'Unknown error';\n\ntry {\n  guestId = $('Get Guests with LinkedIn').item.json.Id;\n  \n  // Try to get error details from the failed request\n  if ($json.error) {\n    errorMessage = $json.error.message || $json.error;\n  } else if ($json.data && $json.data.status === 'FAILED') {\n    errorMessage = 'Apify scraper failed';\n  }\n} catch (error) {\n  errorMessage = error.message;\n}\n\n// Get the current timestamp\nconst currentTimestamp = new Date().toISOString();\n\n// Return error update data\nreturn {\n  Id: guestId,\n  linkedin_scrape_status: 'error',\n  linkedin_scrape_error_reason: errorMessage,\n  linkedin_scrape_last_attempt: currentTimestamp\n};",
+						},
+						position: [1640, 620],
+						name: 'Handle Scraper Error',
+					},
+				}),
+			],
+			{
+				version: 2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -97,26 +124,9 @@ const wf = workflow('WczQxQgtvjjk1HC1', 'LinkedIn Profile Enrichment With Error 
 						],
 					},
 				},
-				position: [1120, 180],
 				name: 'Check Run Status',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					mode: 'runOnceForEachItem',
-					jsCode:
-						"// Get the dataset ID from the previous node\nconst datasetId = $json.data.defaultDatasetId;\n\ntry {\n  // Get the Apify token\n  const apifyToken = '[YOUR APIFY TOKEN]';\n  \n  // Make the HTTP request to get the dataset\n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api.apify.com/v2/datasets/${datasetId}/items?token=YOUR_TOKEN_HERE\n    json: true\n  });\n\n  // Check if we have valid data\n  if (!Array.isArray(response) || response.length === 0) {\n    // No data found - this is a 404 profile\n    throw new Error('Empty dataset - LinkedIn profile not found or inaccessible');\n  }\n\n  // Check if the profile data is actually valid\n  const firstItem = response[0];\n  if (!firstItem || !firstItem.linkedinUrl || !firstItem.fullName) {\n    throw new Error('Invalid LinkedIn profile data');\n  }\n\n  // IMPORTANT: For runOnceForEachItem mode, we must return a single object\n  // n8n will handle the array data by flattening it\n  // We need to pass the array as a property of an object\n  return {\n    linkedinData: response\n  };\n} catch (error) {\n  // For HTTP errors (like 404 on dataset endpoint)\n  if (error.response && error.response.statusCode === 404) {\n    throw new Error('Dataset not found - LinkedIn profile not accessible');\n  }\n  // Re-throw other errors to route to error output\n  throw error;\n}",
-				},
-				position: [1340, 80],
-				name: 'Get Scraper Results',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(
@@ -189,22 +199,6 @@ const wf = workflow('WczQxQgtvjjk1HC1', 'LinkedIn Profile Enrichment With Error 
 				},
 				position: [1880, 260],
 				name: 'Update Guest - Clear URL',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					mode: 'runOnceForEachItem',
-					jsCode:
-						"// Get the guest ID and error info\nlet guestId = null;\nlet errorMessage = 'Unknown error';\n\ntry {\n  guestId = $('Get Guests with LinkedIn').item.json.Id;\n  \n  // Try to get error details from the failed request\n  if ($json.error) {\n    errorMessage = $json.error.message || $json.error;\n  } else if ($json.data && $json.data.status === 'FAILED') {\n    errorMessage = 'Apify scraper failed';\n  }\n} catch (error) {\n  errorMessage = error.message;\n}\n\n// Get the current timestamp\nconst currentTimestamp = new Date().toISOString();\n\n// Return error update data\nreturn {\n  Id: guestId,\n  linkedin_scrape_status: 'error',\n  linkedin_scrape_error_reason: errorMessage,\n  linkedin_scrape_last_attempt: currentTimestamp\n};",
-				},
-				position: [1640, 620],
-				name: 'Handle Scraper Error',
 			},
 		}),
 	)

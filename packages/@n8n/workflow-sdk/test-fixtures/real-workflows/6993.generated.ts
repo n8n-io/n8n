@@ -157,10 +157,56 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@brightdata/n8n-nodes-brightdata.brightData',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'webScrapper',
+							operation: 'downloadSnapshot',
+							snapshot_id: "={{ $('Bright Data | Request data').item.json.snapshot_id }}",
+							requestOptions: {},
+						},
+						credentials: {
+							brightdataApi: { id: 'credential-id', name: 'brightdataApi Credential' },
+						},
+						position: [-1168, 384],
+						name: 'Download the snapshot content',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: 'f118e0f7-8+1234567890-f0f31b4cdfd6',
+										operator: { type: 'number', operation: 'equals' },
+										leftValue: "={{ $('No Operation, do nothing4').last().json.count }}",
+										rightValue: 10,
+									},
+								],
+							},
+						},
+						position: [-1824, 640],
+						name: 'Reached retry limit',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -181,36 +227,108 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-1424, 384],
 				name: 'Request finished',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@brightdata/n8n-nodes-brightdata.brightData',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'webScrapper',
-					operation: 'downloadSnapshot',
-					snapshot_id: "={{ $('Bright Data | Request data').item.json.snapshot_id }}",
-					requestOptions: {},
-				},
-				credentials: {
-					brightdataApi: { id: 'credential-id', name: 'brightdataApi Credential' },
-				},
-				position: [-1168, 384],
-				name: 'Download the snapshot content',
-			},
-		}),
+		),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'e695fad7-d55c-4d88-8ce8-f7940f0bb902',
+										name: 'place_id',
+										type: 'string',
+										value: '={{ $json.place_id }}',
+									},
+									{
+										id: '5ec77d22-6cae-49a2-9bad-16a542f0929c',
+										name: '=company.google_url',
+										type: 'string',
+										value: '={{ $json.url }}',
+									},
+									{
+										id: 'd318da82-27c7-431c-9fe0-dfd1819436e1',
+										name: 'company.name',
+										type: 'string',
+										value: '={{ $json.name }}',
+									},
+									{
+										id: '6b040b65-255c-4f3a-9bb8-e40eda983106',
+										name: 'company.category',
+										type: 'string',
+										value: '={{ $json.category }}',
+									},
+									{
+										id: '13ebb481-c965-4c2e-aa4f-da4a5a5f9de2',
+										name: 'company.address',
+										type: 'string',
+										value: '={{ $json.address }}',
+									},
+									{
+										id: 'eeebdad8-ca95-4b94-a7d1-f9a260b91844',
+										name: 'company.description',
+										type: 'string',
+										value: '={{ $json.description }}',
+									},
+									{
+										id: 'f4d61c24-1dea-48c8-b0c5-b34db06f434a',
+										name: 'company.reviews_count',
+										type: 'number',
+										value: '={{ $json.reviews_count }}',
+									},
+									{
+										id: '06cc04a8-dc98-4deb-aaa9-8d3258cefc31',
+										name: 'company.rating',
+										type: 'number',
+										value: '={{ $json.rating }}',
+									},
+									{
+										id: '5db1cdc7-e02f-4aa0-8a63-fac3b404ba5f',
+										name: 'company.services_provided',
+										type: 'array',
+										value: '={{ $json.services_provided }}',
+									},
+									{
+										id: '0d22b017-0cc9-4e04-9b1e-1cb15474f56c',
+										name: 'company.open_website',
+										type: 'string',
+										value: '={{ $json.open_website }}',
+									},
+									{
+										id: '2abb740f-0dcf-4d1b-96a9-408013eb76fe',
+										name: 'company.phone_number',
+										type: 'string',
+										value: '={{ $json.phone_number }}',
+									},
+									{
+										id: '11b1a2e5-c226-4585-a2cc-42d08918dcd8',
+										name: 'company.top_reviews',
+										type: 'array',
+										value: '={{ $json.top_reviews }}',
+									},
+								],
+							},
+						},
+						position: [-688, 384],
+						name: 'Organize data',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 10 }, position: [-912, 592] },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -231,100 +349,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-928, 384],
 				name: 'Snapshot finished building',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'e695fad7-d55c-4d88-8ce8-f7940f0bb902',
-								name: 'place_id',
-								type: 'string',
-								value: '={{ $json.place_id }}',
-							},
-							{
-								id: '5ec77d22-6cae-49a2-9bad-16a542f0929c',
-								name: '=company.google_url',
-								type: 'string',
-								value: '={{ $json.url }}',
-							},
-							{
-								id: 'd318da82-27c7-431c-9fe0-dfd1819436e1',
-								name: 'company.name',
-								type: 'string',
-								value: '={{ $json.name }}',
-							},
-							{
-								id: '6b040b65-255c-4f3a-9bb8-e40eda983106',
-								name: 'company.category',
-								type: 'string',
-								value: '={{ $json.category }}',
-							},
-							{
-								id: '13ebb481-c965-4c2e-aa4f-da4a5a5f9de2',
-								name: 'company.address',
-								type: 'string',
-								value: '={{ $json.address }}',
-							},
-							{
-								id: 'eeebdad8-ca95-4b94-a7d1-f9a260b91844',
-								name: 'company.description',
-								type: 'string',
-								value: '={{ $json.description }}',
-							},
-							{
-								id: 'f4d61c24-1dea-48c8-b0c5-b34db06f434a',
-								name: 'company.reviews_count',
-								type: 'number',
-								value: '={{ $json.reviews_count }}',
-							},
-							{
-								id: '06cc04a8-dc98-4deb-aaa9-8d3258cefc31',
-								name: 'company.rating',
-								type: 'number',
-								value: '={{ $json.rating }}',
-							},
-							{
-								id: '5db1cdc7-e02f-4aa0-8a63-fac3b404ba5f',
-								name: 'company.services_provided',
-								type: 'array',
-								value: '={{ $json.services_provided }}',
-							},
-							{
-								id: '0d22b017-0cc9-4e04-9b1e-1cb15474f56c',
-								name: 'company.open_website',
-								type: 'string',
-								value: '={{ $json.open_website }}',
-							},
-							{
-								id: '2abb740f-0dcf-4d1b-96a9-408013eb76fe',
-								name: 'company.phone_number',
-								type: 'string',
-								value: '={{ $json.phone_number }}',
-							},
-							{
-								id: '11b1a2e5-c226-4585-a2cc-42d08918dcd8',
-								name: 'company.top_reviews',
-								type: 'array',
-								value: '={{ $json.top_reviews }}',
-							},
-						],
-					},
-				},
-				position: [-688, 384],
-				name: 'Organize data',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -341,10 +368,64 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.2,
+					config: {
+						parameters: {
+							text: "=Use the tool 'scrape_as_markdown' with the url:\n{{ $json.company.open_website }}",
+							options: {
+								systemMessage:
+									"=You are a web-scraping AI agent equipped with the tool 'scrape_as_markdown'.\n\n# TASK\nScrape the homepage of the provided website and generate a structured summary of the company based on the main content.\n\n## OBJECTIVES\n1. Scrape.\n2. Extract only the core content of the page.\n3. Identify key information:\n   - Company mission or vision\n   - Products or services offered\n   - Target audience or market\n   - Key messaging, branding, or positioning\n   - Any highlighted achievements, updates, or announcements\n\n## CONSTRAINTS\n- Prioritize meaningful textual content over visuals or layout elements.\n- Ensure clarity and neutrality in the summary.\n\n# OUTPUT REQUIREMENTS\nReturn a summary of 300-500 words in the following format:\n[Company Name]:\n\n[Summary of company in 300-500 words, clearly structured and written in neutral, informative language.]",
+							},
+							promptType: 'define',
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: {
+											__rl: true,
+											mode: 'list',
+											value: 'gpt-5-mini',
+											cachedResultName: 'gpt-5-mini',
+										},
+										options: {},
+									},
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'gpt-5-mini',
+								},
+							}),
+							tools: [
+								tool({
+									type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+									version: 1.1,
+									config: {
+										parameters: {
+											include: 'selected',
+											endpointUrl: '=https://mcp.brightdata.com/mcp?token=YOUR_BRIGHT_DATA_TOKEN',
+											includeTools: ['scrape_as_markdown'],
+											serverTransport: 'httpStreamable',
+										},
+										name: 'scrape_as_markdown',
+									},
+								}),
+							],
+						},
+						position: [272, 0],
+						name: 'Scrape & Summarize',
+					},
+				}),
+				node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [880, 384] } }),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -365,65 +446,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [16, 384],
 				name: 'Company website exists',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: "=Use the tool 'scrape_as_markdown' with the url:\n{{ $json.company.open_website }}",
-					options: {
-						systemMessage:
-							"=You are a web-scraping AI agent equipped with the tool 'scrape_as_markdown'.\n\n# TASK\nScrape the homepage of the provided website and generate a structured summary of the company based on the main content.\n\n## OBJECTIVES\n1. Scrape.\n2. Extract only the core content of the page.\n3. Identify key information:\n   - Company mission or vision\n   - Products or services offered\n   - Target audience or market\n   - Key messaging, branding, or positioning\n   - Any highlighted achievements, updates, or announcements\n\n## CONSTRAINTS\n- Prioritize meaningful textual content over visuals or layout elements.\n- Ensure clarity and neutrality in the summary.\n\n# OUTPUT REQUIREMENTS\nReturn a summary of 300-500 words in the following format:\n[Company Name]:\n\n[Summary of company in 300-500 words, clearly structured and written in neutral, informative language.]",
-					},
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: {
-									__rl: true,
-									mode: 'list',
-									value: 'gpt-5-mini',
-									cachedResultName: 'gpt-5-mini',
-								},
-								options: {},
-							},
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-							},
-							name: 'gpt-5-mini',
-						},
-					}),
-					tools: [
-						tool({
-							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-							version: 1.1,
-							config: {
-								parameters: {
-									include: 'selected',
-									endpointUrl: '=https://mcp.brightdata.com/mcp?token=YOUR_BRIGHT_DATA_TOKEN',
-									includeTools: ['scrape_as_markdown'],
-									serverTransport: 'httpStreamable',
-								},
-								name: 'scrape_as_markdown',
-							},
-						}),
-					],
-				},
-				position: [272, 0],
-				name: 'Scrape & Summarize',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -460,7 +485,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [880, 384] } }))
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.chainLlm',
@@ -669,45 +693,6 @@ const wf = workflow('', '')
 				},
 				position: [1456, 384],
 				name: 'Supabase | Upsert row',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { amount: 10 }, position: [-912, 592] },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: 'f118e0f7-8+1234567890-f0f31b4cdfd6',
-								operator: { type: 'number', operation: 'equals' },
-								leftValue: "={{ $('No Operation, do nothing4').last().json.count }}",
-								rightValue: 10,
-							},
-						],
-					},
-				},
-				position: [-1824, 640],
-				name: 'Reached retry limit',
 			},
 		}),
 	)

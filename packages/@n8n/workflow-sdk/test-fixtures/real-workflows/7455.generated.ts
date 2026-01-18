@@ -283,10 +283,160 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '801ec600-22ad-4a94-a2b4-ae72eb271df0',
+										name: 'message',
+										type: 'string',
+										value: '={{ $json.message.text }}',
+									},
+									{
+										id: '263071fb-bcdf-42b0-bb46-71b75fa0bf2a',
+										name: 'chat_id',
+										type: 'string',
+										value: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+									},
+								],
+							},
+						},
+						position: [1152, 928],
+						name: 'get_message (text)',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId: '={{ $json.message.voice.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 1072],
+						name: 'Download Voice Message',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 1232],
+						name: 'Download VIDEO NOTE',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ $json.message.photo[3]?.file_id || $json.message.photo[2]?.file_id || $json.message.photo[1]?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 1376],
+						name: 'Download IMAGE',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId: '={{ $json.message.audio.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 1520],
+						name: 'Download AUDIO',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 1664],
+						name: 'Download VIDEO',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"const results = [];\nfor (const item of $input.all()) {\n  const fileName = item.json?.fileName || item.json?.message?.document?.file_name || '';\n  const ext = fileName.toLowerCase().split('.').pop();\n\n  let type = 'fallback';\n  if (['csv'].includes(ext)) type = 'csv';\n  else if (['html', 'htm'].includes(ext)) type = 'html';\n  else if (['ics'].includes(ext)) type = 'ics';\n  else if (['json'].includes(ext)) type = 'json';\n  else if (['ods'].includes(ext)) type = 'ods';\n  else if (['pdf'].includes(ext)) type = 'pdf';\n  else if (['rtf'].includes(ext)) type = 'rtf';\n  else if (['txt', 'md', 'log'].includes(ext)) type = 'text file';\n  else if (['xml'].includes(ext)) type = 'xml';\n  else if (['xls', 'xlsx'].includes(ext)) type = 'spreadsheet';\n  else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tiff'].includes(ext)) type = 'image';\n  else if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) type = 'audio';\n  else if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) type = 'video';\n\n  item.json.fileTypeCategory = type;\n  results.push(item);\n}\nreturn results;",
+						},
+						position: [608, 2864],
+						name: 'Group Similar Documents',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'd8935452-fe20-469d-a68d-1aad056cb8dd',
+										name: 'message',
+										type: 'string',
+										value: '=It was not possible to process the file.File type not supported.',
+									},
+									{
+										id: '38ba2498-2141-4a04-a22a-64563fe2ee6f',
+										name: 'chat_id',
+										type: 'string',
+										value: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+									},
+								],
+							},
+						},
+						position: [1152, 1808],
+						name: 'get_error_message1',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -445,59 +595,9 @@ const wf = workflow('', '')
 						allMatchingOutputs: true,
 					},
 				},
-				position: [784, 1296],
 				name: 'Input Message Router1',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '801ec600-22ad-4a94-a2b4-ae72eb271df0',
-								name: 'message',
-								type: 'string',
-								value: '={{ $json.message.text }}',
-							},
-							{
-								id: '263071fb-bcdf-42b0-bb46-71b75fa0bf2a',
-								name: 'chat_id',
-								type: 'string',
-								value: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
-							},
-						],
-					},
-				},
-				position: [1152, 928],
-				name: 'get_message (text)',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId: '={{ $json.message.voice.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 1072],
-				name: 'Download Voice Message',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -569,26 +669,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 1232],
-				name: 'Download VIDEO NOTE',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.code',
@@ -627,26 +707,6 @@ const wf = workflow('', '')
 				},
 				position: [1488, 1232],
 				name: 'Analyze video note',
-			},
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ $json.message.photo[3]?.file_id || $json.message.photo[2]?.file_id || $json.message.photo[1]?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 1376],
-				name: 'Download IMAGE',
 			},
 		}),
 	)
@@ -720,10 +780,67 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: 'df19fe9e-d1bd-42e4-9617-654fb984cc55',
+										operator: { type: 'string', operation: 'exists', singleValue: true },
+										leftValue: "={{ $('Telegram Trigger').item.json.message.media_group_id }}",
+										rightValue: '',
+									},
+								],
+							},
+						},
+						position: [2448, 1376],
+						name: 'Media_group?2',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: 'df19fe9e-d1bd-42e4-9617-654fb984cc55',
+										operator: { type: 'string', operation: 'exists', singleValue: true },
+										leftValue: "={{ $('Telegram Trigger').first().json.message.media_group_id }}",
+										rightValue: '',
+									},
+								],
+							},
+						},
+						position: [2448, 1648],
+						name: 'Media_group?3',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -744,41 +861,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [2272, 1520],
 				name: 'Captions?1',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: 'df19fe9e-d1bd-42e4-9617-654fb984cc55',
-								operator: { type: 'string', operation: 'exists', singleValue: true },
-								leftValue: "={{ $('Telegram Trigger').item.json.message.media_group_id }}",
-								rightValue: '',
-							},
-						],
-					},
-				},
-				position: [2448, 1376],
-				name: 'Media_group?2',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(
@@ -936,37 +1021,6 @@ const wf = workflow('', '')
 				},
 				position: [2656, 1440],
 				name: 'Get_file_and_captions',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: 'df19fe9e-d1bd-42e4-9617-654fb984cc55',
-								operator: { type: 'string', operation: 'exists', singleValue: true },
-								leftValue: "={{ $('Telegram Trigger').first().json.message.media_group_id }}",
-								rightValue: '',
-							},
-						],
-					},
-				},
-				position: [2448, 1648],
-				name: 'Media_group?3',
 			},
 		}),
 	)
@@ -1139,25 +1193,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(4)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId: '={{ $json.message.audio.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 1520],
-				name: 'Download AUDIO',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.code',
@@ -1195,26 +1230,6 @@ const wf = workflow('', '')
 				},
 				position: [1488, 1520],
 				name: 'Analyze audio',
-			},
-		}),
-	)
-	.output(5)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 1664],
-				name: 'Download VIDEO',
 			},
 		}),
 	)
@@ -1258,26 +1273,209 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(6)
 	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"const results = [];\nfor (const item of $input.all()) {\n  const fileName = item.json?.fileName || item.json?.message?.document?.file_name || '';\n  const ext = fileName.toLowerCase().split('.').pop();\n\n  let type = 'fallback';\n  if (['csv'].includes(ext)) type = 'csv';\n  else if (['html', 'htm'].includes(ext)) type = 'html';\n  else if (['ics'].includes(ext)) type = 'ics';\n  else if (['json'].includes(ext)) type = 'json';\n  else if (['ods'].includes(ext)) type = 'ods';\n  else if (['pdf'].includes(ext)) type = 'pdf';\n  else if (['rtf'].includes(ext)) type = 'rtf';\n  else if (['txt', 'md', 'log'].includes(ext)) type = 'text file';\n  else if (['xml'].includes(ext)) type = 'xml';\n  else if (['xls', 'xlsx'].includes(ext)) type = 'spreadsheet';\n  else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tiff'].includes(ext)) type = 'image';\n  else if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) type = 'audio';\n  else if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) type = 'video';\n\n  item.json.fileTypeCategory = type;\n  results.push(item);\n}\nreturn results;",
-				},
-				position: [608, 2864],
-				name: 'Group Similar Documents',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 2048],
+						name: 'Download CSV',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 2192],
+						name: 'Download HTML',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 2336],
+						name: 'Download ICS',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 2480],
+						name: 'Download JSON',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 2624],
+						name: 'Download ODS',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 2864],
+						name: 'Download PDF',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 3088],
+						name: 'Download RTF',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 3232],
+						name: 'Download TEXT FILE',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 3376],
+						name: 'Download XML',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId:
+								'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1152, 3520],
+						name: 'Download XLSX',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'd8935452-fe20-469d-a68d-1aad056cb8dd',
+										name: 'message',
+										type: 'string',
+										value: '=It was not possible to process the file.File type not supported.',
+									},
+									{
+										id: '38ba2498-2141-4a04-a22a-64563fe2ee6f',
+										name: 'chat_id',
+										type: 'string',
+										value: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+									},
+								],
+							},
+						},
+						position: [1152, 3680],
+						name: 'get_error_message',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -1531,29 +1729,8 @@ const wf = workflow('', '')
 					},
 					options: { fallbackOutput: 'extra' },
 				},
-				position: [784, 2720],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 2048],
-				name: 'Download CSV',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -1625,26 +1802,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 2192],
-				name: 'Download HTML',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.html',
@@ -1698,26 +1855,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 2336],
-				name: 'Download ICS',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.extractFromFile',
@@ -1752,26 +1889,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(3)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 2480],
-				name: 'Download JSON',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.extractFromFile',
@@ -1803,26 +1920,6 @@ const wf = workflow('', '')
 				},
 				position: [1488, 2480],
 				name: 'Normalize JSON',
-			},
-		}),
-	)
-	.output(4)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 2624],
-				name: 'Download ODS',
 			},
 		}),
 	)
@@ -1874,26 +1971,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(5)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 2864],
-				name: 'Download PDF',
-			},
-		}),
-	)
 	.output(0)
 	.then(
 		node({
@@ -1907,10 +1984,40 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '24b93984-e305-4c11-a856-5fa0bfaaaa79',
+										name: 'data',
+										type: 'string',
+										value: '={{ $json.text }}',
+									},
+								],
+							},
+						},
+						position: [1648, 2768],
+						name: 'Normalize PDF',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3.2,
+					config: {
+						parameters: { mode: 'chooseBranch', useDataOfInput: 2 },
+						position: [1312, 2928],
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -1931,42 +2038,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [1488, 2784],
 				name: 'Text?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '24b93984-e305-4c11-a856-5fa0bfaaaa79',
-								name: 'data',
-								type: 'string',
-								value: '={{ $json.text }}',
-							},
-						],
-					},
-				},
-				position: [1648, 2768],
-				name: 'Normalize PDF',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { parameters: { mode: 'chooseBranch', useDataOfInput: 2 }, position: [1312, 2928] },
-		}),
+		),
 	)
 	.then(
 		node({
@@ -2012,26 +2086,6 @@ const wf = workflow('', '')
 				},
 				position: [1648, 2928],
 				name: 'Normalize PDF (AI)',
-			},
-		}),
-	)
-	.output(6)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 3088],
-				name: 'Download RTF',
 			},
 		}),
 	)
@@ -2083,26 +2137,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(7)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 3232],
-				name: 'Download TEXT FILE',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.extractFromFile',
@@ -2137,26 +2171,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(8)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 3376],
-				name: 'Download XML',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.extractFromFile',
@@ -2188,26 +2202,6 @@ const wf = workflow('', '')
 				},
 				position: [1488, 3376],
 				name: 'Normalize XML',
-			},
-		}),
-	)
-	.output(9)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId:
-						'={{ ($json.message.photo?.[3]?.file_id ?? $json.message.photo?.[2]?.file_id ?? $json.message.photo?.[1]?.file_id ?? $json.message.photo?.[0]?.file_id) ?? $json.message.document?.file_id ?? $json.message.video?.file_id ?? $json.message.voice?.file_id ?? $json.message.video_note?.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1152, 3520],
-				name: 'Download XLSX',
 			},
 		}),
 	)
@@ -2256,66 +2250,6 @@ const wf = workflow('', '')
 				},
 				position: [1648, 3520],
 				name: 'Normalize XLSX',
-			},
-		}),
-	)
-	.output(10)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'd8935452-fe20-469d-a68d-1aad056cb8dd',
-								name: 'message',
-								type: 'string',
-								value: '=It was not possible to process the file.File type not supported.',
-							},
-							{
-								id: '38ba2498-2141-4a04-a22a-64563fe2ee6f',
-								name: 'chat_id',
-								type: 'string',
-								value: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
-							},
-						],
-					},
-				},
-				position: [1152, 3680],
-				name: 'get_error_message',
-			},
-		}),
-	)
-	.output(7)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'd8935452-fe20-469d-a68d-1aad056cb8dd',
-								name: 'message',
-								type: 'string',
-								value: '=It was not possible to process the file.File type not supported.',
-							},
-							{
-								id: '38ba2498-2141-4a04-a22a-64563fe2ee6f',
-								name: 'chat_id',
-								type: 'string',
-								value: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
-							},
-						],
-					},
-				},
-				position: [1152, 1808],
-				name: 'get_error_message1',
 			},
 		}),
 	)

@@ -73,10 +73,67 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.2,
+					config: {
+						parameters: {
+							text: "={{ $json.output['info gathered'] }}",
+							options: {
+								systemMessage: 'take in this info and parse it into this json. ',
+							},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+										options: {},
+									},
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'OpenAI Chat Model2',
+								},
+							}),
+							outputParser: outputParser({
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								version: 1.3,
+								config: {
+									parameters: {
+										jsonSchemaExample:
+											'{\n	"task": "task",\n	"description": "description",\n  "status": "status"\n}',
+									},
+									name: 'Structured Output Parser1',
+								},
+							}),
+						},
+						position: [1264, -288],
+						name: 'Write Json',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.chat',
+					version: 1,
+					config: {
+						parameters: {
+							message: '={{ $json.output.response }}',
+							options: {},
+							waitUserReply: false,
+						},
+						position: [992, 128],
+						name: 'Get More Info',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -97,56 +154,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [640, 0],
 				name: 'Have All Info?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: "={{ $json.output['info gathered'] }}",
-					options: {
-						systemMessage: 'take in this info and parse it into this json. ',
-					},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-								options: {},
-							},
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-							},
-							name: 'OpenAI Chat Model2',
-						},
-					}),
-					outputParser: outputParser({
-						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-						version: 1.3,
-						config: {
-							parameters: {
-								jsonSchemaExample:
-									'{\n	"task": "task",\n	"description": "description",\n  "status": "status"\n}',
-							},
-							name: 'Structured Output Parser1',
-						},
-					}),
-				},
-				position: [1264, -288],
-				name: 'Write Json',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -233,22 +243,6 @@ const wf = workflow('', '')
 				parameters: { message: '=Item Added', options: {}, waitUserReply: false },
 				position: [2000, -288],
 				name: 'Respond Complete',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.chat',
-			version: 1,
-			config: {
-				parameters: {
-					message: '={{ $json.output.response }}',
-					options: {},
-					waitUserReply: false,
-				},
-				position: [992, 128],
-				name: 'Get More Info',
 			},
 		}),
 	)

@@ -36,10 +36,94 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.n8n',
+					version: 1,
+					config: {
+						parameters: { filters: { tags: 'mcp' }, requestOptions: {} },
+						credentials: { n8nApi: { id: 'credential-id', name: 'n8nApi Credential' } },
+						position: [-2400, 200],
+						name: 'Get MCP-tagged Workflows',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'bce29a06-cff6-4409-96d2-04cc858a0e98',
+										name: 'data',
+										type: 'array',
+										value: '={{ $json.data.parseJson() }}',
+									},
+								],
+							},
+						},
+						position: [-2400, 400],
+						name: 'Convert to JSON',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'bce29a06-cff6-4409-96d2-04cc858a0e98',
+										name: 'response',
+										type: 'array',
+										value: '={{\n$json.data\n  ? $json.data.parseJson()\n  : []\n}}',
+									},
+								],
+							},
+						},
+						position: [-2400, 600],
+						name: 'listTools Success',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.n8n',
+					version: 1,
+					config: {
+						parameters: { filters: { tags: 'mcp' }, requestOptions: {} },
+						credentials: { n8nApi: { id: 'credential-id', name: 'n8nApi Credential' } },
+						position: [-2180, 600],
+						name: 'Get MCP-tagged Workflows1',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'bce29a06-cff6-4409-96d2-04cc858a0e98',
+										name: 'data',
+										type: 'array',
+										value: '={{ $json.data.parseJson() }}',
+									},
+								],
+							},
+						},
+						position: [-2360, 1120],
+						name: 'Convert to JSON1',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -173,23 +257,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [-2660, 560],
 				name: 'Operations',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.n8n',
-			version: 1,
-			config: {
-				parameters: { filters: { tags: 'mcp' }, requestOptions: {} },
-				credentials: { n8nApi: { id: 'credential-id', name: 'n8nApi Credential' } },
-				position: [-2400, 200],
-				name: 'Get MCP-tagged Workflows',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -223,10 +293,73 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '821226b0-12ad-4d1d-81c3-dfa3c286cce4',
+										name: 'id',
+										type: 'string',
+										value: '={{ $json.id }}',
+									},
+									{
+										id: '629d95d6-2501-4ad4-a5ed-e557237e1cc2',
+										name: 'name',
+										type: 'string',
+										value: '={{ $json.name }}',
+									},
+									{
+										id: '30699f7c-98d3-44ee-9749-c5528579f7e6',
+										name: 'description',
+										type: 'string',
+										value:
+											"={{\n$json.nodes\n  .filter(node => node.type === 'n8n-nodes-base.stickyNote')\n  .filter(node => node.parameters.content.toLowerCase().includes('try it out'))\n  .map(node => node.parameters.content.substr(0,255) + '...')\n  .join('\\n')\n}}",
+									},
+									{
+										id: '6199c275-1ced-4f72-ba59-cb068db54c1b',
+										name: 'parameters',
+										type: 'string',
+										value:
+											'={{\n(function(node) {\n  if (!node) return {};\n  const inputs = node.parameters.workflowInputs.values;\n  return {\n    "type": "object",\n    "required": inputs.map(input => input.name),\n    "properties": inputs.reduce((acc, input) => ({\n      ...acc,\n      [input.name]: { type: input.type ?? \'string\' }\n    }), {})\n  }\n})(\n$json.nodes\n  .filter(node => node.type === \'n8n-nodes-base.executeWorkflowTrigger\')\n  .first()\n)\n.toJsonString()\n}}',
+									},
+								],
+							},
+						},
+						position: [-1740, 0],
+						name: 'Simplify Workflows',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '8c4e0763-a4ff-4e8a-a992-13e4e12a5685',
+										name: 'response',
+										type: 'string',
+										value: 'Expected Tools matching Ids given, but none found.',
+									},
+								],
+							},
+						},
+						position: [-1740, 200],
+						name: 'AddTool Error',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -247,54 +380,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-1960, 200],
 				name: 'Workflow Exists?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '821226b0-12ad-4d1d-81c3-dfa3c286cce4',
-								name: 'id',
-								type: 'string',
-								value: '={{ $json.id }}',
-							},
-							{
-								id: '629d95d6-2501-4ad4-a5ed-e557237e1cc2',
-								name: 'name',
-								type: 'string',
-								value: '={{ $json.name }}',
-							},
-							{
-								id: '30699f7c-98d3-44ee-9749-c5528579f7e6',
-								name: 'description',
-								type: 'string',
-								value:
-									"={{\n$json.nodes\n  .filter(node => node.type === 'n8n-nodes-base.stickyNote')\n  .filter(node => node.parameters.content.toLowerCase().includes('try it out'))\n  .map(node => node.parameters.content.substr(0,255) + '...')\n  .join('\\n')\n}}",
-							},
-							{
-								id: '6199c275-1ced-4f72-ba59-cb068db54c1b',
-								name: 'parameters',
-								type: 'string',
-								value:
-									'={{\n(function(node) {\n  if (!node) return {};\n  const inputs = node.parameters.workflowInputs.values;\n  return {\n    "type": "object",\n    "required": inputs.map(input => input.name),\n    "properties": inputs.reduce((acc, input) => ({\n      ...acc,\n      [input.name]: { type: input.type ?? \'string\' }\n    }), {})\n  }\n})(\n$json.nodes\n  .filter(node => node.type === \'n8n-nodes-base.executeWorkflowTrigger\')\n  .first()\n)\n.toJsonString()\n}}',
-							},
-						],
-					},
-				},
-				position: [-1740, 0],
-				name: 'Simplify Workflows',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -333,54 +421,6 @@ const wf = workflow('', '')
 				},
 				position: [-1300, 0],
 				name: 'AddTool Success',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '8c4e0763-a4ff-4e8a-a992-13e4e12a5685',
-								name: 'response',
-								type: 'string',
-								value: 'Expected Tools matching Ids given, but none found.',
-							},
-						],
-					},
-				},
-				position: [-1740, 200],
-				name: 'AddTool Error',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'bce29a06-cff6-4409-96d2-04cc858a0e98',
-								name: 'data',
-								type: 'array',
-								value: '={{ $json.data.parseJson() }}',
-							},
-						],
-					},
-				},
-				position: [-2400, 400],
-				name: 'Convert to JSON',
 			},
 		}),
 	)
@@ -423,10 +463,35 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.redis',
+					version: 1,
+					config: {
+						parameters: { key: 'mcp_n8n_tools', operation: 'delete' },
+						credentials: { redis: { id: 'credential-id', name: 'redis Credential' } },
+						position: [-1520, 300],
+						name: 'Delete Key',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.redis',
+					version: 1,
+					config: {
+						parameters: {
+							key: 'mcp_n8n_tools',
+							value: '={{ $input.all().flatMap(item => item.json.data).compact() }}',
+							operation: 'set',
+						},
+						credentials: { redis: { id: 'credential-id', name: 'redis Credential' } },
+						position: [-1520, 500],
+						name: 'Store In Memory1',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -447,23 +512,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-1740, 400],
 				name: 'Is Empty Array?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.redis',
-			version: 1,
-			config: {
-				parameters: { key: 'mcp_n8n_tools', operation: 'delete' },
-				credentials: { redis: { id: 'credential-id', name: 'redis Credential' } },
-				position: [-1520, 300],
-				name: 'Delete Key',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -486,60 +537,6 @@ const wf = workflow('', '')
 				},
 				position: [-1300, 400],
 				name: 'Remove Tool Success',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.redis',
-			version: 1,
-			config: {
-				parameters: {
-					key: 'mcp_n8n_tools',
-					value: '={{ $input.all().flatMap(item => item.json.data).compact() }}',
-					operation: 'set',
-				},
-				credentials: { redis: { id: 'credential-id', name: 'redis Credential' } },
-				position: [-1520, 500],
-				name: 'Store In Memory1',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'bce29a06-cff6-4409-96d2-04cc858a0e98',
-								name: 'response',
-								type: 'array',
-								value: '={{\n$json.data\n  ? $json.data.parseJson()\n  : []\n}}',
-							},
-						],
-					},
-				},
-				position: [-2400, 600],
-				name: 'listTools Success',
-			},
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: 'n8n-nodes-base.n8n',
-			version: 1,
-			config: {
-				parameters: { filters: { tags: 'mcp' }, requestOptions: {} },
-				credentials: { n8nApi: { id: 'credential-id', name: 'n8nApi Credential' } },
-				position: [-2180, 600],
-				name: 'Get MCP-tagged Workflows1',
 			},
 		}),
 	)
@@ -601,35 +598,47 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(4)
 	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'bce29a06-cff6-4409-96d2-04cc858a0e98',
-								name: 'data',
-								type: 'array',
-								value: '={{ $json.data.parseJson() }}',
-							},
-						],
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							mode: 'raw',
+							options: {},
+							jsonOutput: "={{ $('When Executed by Another Workflow').first().json.parameters }}",
+						},
+						position: [-1920, 1020],
+						name: 'Get Parameters',
 					},
-				},
-				position: [-2360, 1120],
-				name: 'Convert to JSON1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '2fa3e311-e836-42f4-922a-fae19d8e0267',
+										name: 'response',
+										type: 'string',
+										value:
+											'=Expected workflow to be available but not yet added. You can only use workflows which have been added to the available pool. Use the listWorkflows tool to see available workflows.',
+									},
+								],
+							},
+						},
+						position: [-1920, 1220],
+						name: 'ExecuteTool Error',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -651,26 +660,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-2140, 1120],
 				name: 'Has Workflow Available?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					mode: 'raw',
-					options: {},
-					jsonOutput: "={{ $('When Executed by Another Workflow').first().json.parameters }}",
-				},
-				position: [-1920, 1020],
-				name: 'Get Parameters',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -710,31 +702,6 @@ const wf = workflow('', '')
 				},
 				position: [-1440, 1020],
 				name: 'executeTool Result',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '2fa3e311-e836-42f4-922a-fae19d8e0267',
-								name: 'response',
-								type: 'string',
-								value:
-									'=Expected workflow to be available but not yet added. You can only use workflows which have been added to the available pool. Use the listWorkflows tool to see available workflows.',
-							},
-						],
-					},
-				},
-				position: [-1920, 1220],
-				name: 'ExecuteTool Error',
 			},
 		}),
 	)

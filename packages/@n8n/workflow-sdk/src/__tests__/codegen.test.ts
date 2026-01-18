@@ -458,4 +458,193 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 		expect(code).toContain('embedding: embedding(');
 	});
+
+	describe('complex connection patterns', () => {
+		it('should generate merge() for fan-in patterns', () => {
+			const json: WorkflowJSON = {
+				id: 'merge-test',
+				name: 'Merge Workflow',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: 'source-1',
+						name: 'Source 1',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, -100],
+						parameters: { url: 'https://api1.example.com' },
+					},
+					{
+						id: 'source-2',
+						name: 'Source 2',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 100],
+						parameters: { url: 'https://api2.example.com' },
+					},
+					{
+						id: 'merge-1',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3.2,
+						position: [400, 0],
+						parameters: { mode: 'append' },
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{ node: 'Source 1', type: 'main', index: 0 },
+								{ node: 'Source 2', type: 'main', index: 0 },
+							],
+						],
+					},
+					'Source 1': {
+						main: [[{ node: 'Merge', type: 'main', index: 0 }]],
+					},
+					'Source 2': {
+						main: [[{ node: 'Merge', type: 'main', index: 1 }]],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(json);
+
+			// Should use merge() function instead of regular node()
+			expect(code).toContain('merge(');
+			// Should include the source nodes in the merge array
+			expect(code).toMatch(/merge\s*\(\s*\[/);
+		});
+
+		it('should generate ifBranch() for IF node patterns', () => {
+			const json: WorkflowJSON = {
+				id: 'if-test',
+				name: 'IF Workflow',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: 'if-1',
+						name: 'IF',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 2.3,
+						position: [200, 0],
+						parameters: {
+							conditions: {
+								conditions: [{ leftValue: '={{ $json.value }}', rightValue: 100 }],
+							},
+						},
+					},
+					{
+						id: 'true-1',
+						name: 'True Path',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, -100],
+					},
+					{
+						id: 'false-1',
+						name: 'False Path',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 100],
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'IF', type: 'main', index: 0 }]],
+					},
+					IF: {
+						main: [
+							[{ node: 'True Path', type: 'main', index: 0 }],
+							[{ node: 'False Path', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(json);
+
+			// Should use ifBranch() function
+			expect(code).toContain('ifBranch(');
+			// Should include both true and false branches
+			expect(code).toMatch(/ifBranch\s*\(\s*\[/);
+		});
+
+		it('should generate switchCase() for Switch node patterns', () => {
+			const json: WorkflowJSON = {
+				id: 'switch-test',
+				name: 'Switch Workflow',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: 'switch-1',
+						name: 'Switch',
+						type: 'n8n-nodes-base.switch',
+						typeVersion: 3.4,
+						position: [200, 0],
+						parameters: { mode: 'rules' },
+					},
+					{
+						id: 'case-0',
+						name: 'Case 0',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, -100],
+					},
+					{
+						id: 'case-1',
+						name: 'Case 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0],
+					},
+					{
+						id: 'case-2',
+						name: 'Case 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 100],
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Switch', type: 'main', index: 0 }]],
+					},
+					Switch: {
+						main: [
+							[{ node: 'Case 0', type: 'main', index: 0 }],
+							[{ node: 'Case 1', type: 'main', index: 0 }],
+							[{ node: 'Case 2', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(json);
+
+			// Should use switchCase() function
+			expect(code).toContain('switchCase(');
+			// Should include all case branches
+			expect(code).toMatch(/switchCase\s*\(\s*\[/);
+		});
+	});
 });

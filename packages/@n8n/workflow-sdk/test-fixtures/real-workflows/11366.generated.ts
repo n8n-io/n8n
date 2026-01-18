@@ -28,7 +28,28 @@ const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOr
 			config: { position: [608, 0], name: 'Edit Fields' },
 		}),
 	)
-	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [1088, 176] } }))
+	.then(
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [608, 0], name: 'Edit Fields' },
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [608, 192], name: 'Edit Fields1' },
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [608, 400], name: 'Edit Fields2' },
+				}),
+			],
+			{ version: 3.2 },
+		),
+	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.code',
@@ -37,11 +58,21 @@ const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOr
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [1664, 464], name: 'Merge1' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: { position: [1312, 192], name: 'Combine candlestick' },
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.googleGemini',
+					version: 1,
+					config: { position: [1072, 704], name: 'News sentiment Analyzer' },
+				}),
+			],
+			{ version: 3.2, name: 'Merge1' },
+		),
 	)
 	.then(
 		node({
@@ -75,26 +106,12 @@ const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOr
 			config: { position: [400, 192], name: '1 hour' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { position: [608, 192], name: 'Edit Fields1' },
-		}),
-	)
 	.output(0)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.3,
 			config: { position: [400, 400], name: '1 day' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { position: [608, 400], name: 'Edit Fields2' },
 		}),
 	)
 	.output(0)
@@ -110,13 +127,6 @@ const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOr
 			type: 'n8n-nodes-base.code',
 			version: 2,
 			config: { position: [768, 704], name: 'Filtering News' },
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.googleGemini',
-			version: 1,
-			config: { position: [1072, 704], name: 'News sentiment Analyzer' },
 		}),
 	)
 	.add(sticky('', { position: [368, -256] }))

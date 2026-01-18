@@ -128,10 +128,63 @@ const wf = workflow('', 'AI Gmail: Prioritize What You Should Read')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.gmail',
+					version: 2.1,
+					config: {
+						parameters: {
+							labelIds: ['Label_4190586288433010009', 'IMPORTANT'],
+							messageId: '={{ $json.output.id }}',
+							operation: 'addLabels',
+						},
+						position: [96, -288],
+						name: 'Add label "Action" to email',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.gmail',
+					version: 2.1,
+					config: {
+						parameters: {
+							labelIds: ['Label_4104611383523107189'],
+							messageId: '={{ $json.output.id }}',
+							operation: 'addLabels',
+						},
+						position: [96, -96],
+						name: 'Add label "Informational" to email',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.gmail',
+					version: 2.1,
+					config: {
+						parameters: {
+							labelIds: ['Label_3361902760602362460'],
+							messageId: '={{ $json.output.id }}',
+							operation: 'addLabels',
+						},
+						position: [96, 96],
+						name: 'Add label "Receipt" to email',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.gmail',
+					version: 2.1,
+					config: {
+						parameters: {
+							resource: 'thread',
+							threadId: '={{ $json.output.threadId }}',
+							operation: 'delete',
+						},
+						position: [96, 288],
+						name: 'Delete email',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -210,25 +263,8 @@ const wf = workflow('', 'AI Gmail: Prioritize What You Should Read')
 					},
 					options: { fallbackOutput: 'extra' },
 				},
-				position: [-128, -32],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.gmail',
-			version: 2.1,
-			config: {
-				parameters: {
-					labelIds: ['Label_4190586288433010009', 'IMPORTANT'],
-					messageId: '={{ $json.output.id }}',
-					operation: 'addLabels',
-				},
-				position: [96, -288],
-				name: 'Add label "Action" to email',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -238,54 +274,6 @@ const wf = workflow('', 'AI Gmail: Prioritize What You Should Read')
 				parameters: { messageId: '={{ $json.id }}', operation: 'markAsRead' },
 				position: [432, -64],
 				name: 'Mark email as read',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.gmail',
-			version: 2.1,
-			config: {
-				parameters: {
-					labelIds: ['Label_4104611383523107189'],
-					messageId: '={{ $json.output.id }}',
-					operation: 'addLabels',
-				},
-				position: [96, -96],
-				name: 'Add label "Informational" to email',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.gmail',
-			version: 2.1,
-			config: {
-				parameters: {
-					labelIds: ['Label_3361902760602362460'],
-					messageId: '={{ $json.output.id }}',
-					operation: 'addLabels',
-				},
-				position: [96, 96],
-				name: 'Add label "Receipt" to email',
-			},
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: 'n8n-nodes-base.gmail',
-			version: 2.1,
-			config: {
-				parameters: {
-					resource: 'thread',
-					threadId: '={{ $json.output.threadId }}',
-					operation: 'delete',
-				},
-				position: [96, 288],
-				name: 'Delete email',
 			},
 		}),
 	)

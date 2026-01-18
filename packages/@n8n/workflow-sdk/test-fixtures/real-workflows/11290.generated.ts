@@ -157,10 +157,54 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.extractFromFile',
+					version: 1,
+					config: {
+						parameters: {
+							options: {},
+							operation: 'pdf',
+							binaryPropertyName: "={{ Object.keys($json.binary || {})[0] || 'attachment_0' }}",
+						},
+						position: [-240, 816],
+						name: 'Extract PDF Data',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 1.9,
+					config: {
+						parameters: {
+							text: "={{ $('Get Email Content').item.json.text }}",
+							options: {
+								systemMessage:
+									'=You are a Financial OCR Expert. Extract receipt data from the email body text.\n\nCRITICAL INSTRUCTIONS:\n1. Return ONLY a JSON object.\n2. Normalize dates to YYYY-MM-DD.\n3. Clean currency symbols from amounts (return numbers).\n\nREQUIRED JSON STRUCTURE:\n{\n  "vendor_name": "string",\n  "invoice_date": "YYYY-MM-DD",\n  "invoice_id": "string (or \'EMAIL-RECEIPT\' if missing)",\n  "total_amount": number,\n  "tax_amount": number,\n  "currency": "USD/EUR/GBP",\n  "items_summary": "string (brief description)",\n  "vendor_tax_id": "string or null"\n}',
+							},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+										options: { temperature: 0.2, responseFormat: 'json_object' },
+									},
+									name: 'gpt 4o mini',
+								},
+							}),
+						},
+						position: [-32, 1088],
+						name: 'AI Agent (Email OCR)',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -182,26 +226,9 @@ const wf = workflow('', '')
 					},
 					looseTypeValidation: true,
 				},
-				position: [-576, 1040],
 				name: 'Check for Attachment',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.extractFromFile',
-			version: 1,
-			config: {
-				parameters: {
-					options: {},
-					operation: 'pdf',
-					binaryPropertyName: "={{ Object.keys($json.binary || {})[0] || 'attachment_0' }}",
-				},
-				position: [-240, 816],
-				name: 'Extract PDF Data',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -251,10 +278,79 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							mode: 'runOnceForEachItem',
+							jsCode:
+								'const data = $json.validated_data;\n\n// Business Logic for GL Coding\nlet glCategory = "Uncategorized";\n// Convert vendor to lowercase for easier matching\nconst vendor = (data.vendor_name || "").toLowerCase();\n\n// FIX 1: Added "amazon" to the check so it catches "Amazon Web Services"\nif (vendor.includes("aws") || vendor.includes("amazon") || vendor.includes("google cloud") || vendor.includes("digitalocean")) {\n	glCategory = "6000 - Software & Hosting";\n} else if (vendor.includes("uber") || vendor.includes("lyft") || vendor.includes("airline") || vendor.includes("flight")) {\n	glCategory = "5000 - Travel & Meals";\n} else if (vendor.includes("wework") || vendor.includes("office")) {\n	glCategory = "4000 - Rent & Utilities";\n}\n\n// Approval Thresholds\nlet approvalStatus = "Auto-Approved";\n// Ensure amount is a number\nconst amount = parseFloat(data.total_amount);\n\n// FIX 2: Check the HIGHEST value first.\n// If we checked > 1000 first, 5200 would trigger that and stop.\nif (amount > 5000) {\n	approvalStatus = "VP Approval Needed";\n} else if (amount > 1000) {\n	approvalStatus = "Manager Approval Needed";\n}\n\nreturn {\n	json: {\n		...data,\n		gl_category: glCategory,\n		approval_status: approvalStatus,\n		case_id: `INV-${Date.now()}`,\n		processed_at: new Date().toISOString()\n	}\n};',
+						},
+						position: [1040, 672],
+						name: 'Apply Finance Rules',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									timestamp: '={{ $json.timestamp }}',
+									error_type: '={{ $json.error_type }}',
+									error_message: '={{ $json.error_message }}',
+									original_subject: "={{ $('Look for Invoices').item.json.subject }}",
+									workflow_execution_id: '={{ $workflow.id }}',
+								},
+								schema: [
+									{ id: 'timestamp', type: 'string', displayName: 'timestamp' },
+									{ id: 'error_type', type: 'string', displayName: 'error_type' },
+									{
+										id: 'error_message',
+										type: 'string',
+										displayName: 'error_message',
+									},
+									{
+										id: 'original_subject',
+										type: 'string',
+										displayName: 'original_subject',
+									},
+									{
+										id: 'workflow_execution_id',
+										type: 'string',
+										displayName: 'workflow_execution_id',
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: [],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'append',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'Error Logs',
+								cachedResultName: 'Error Logs',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'expression',
+								value: "={{ $('Configuration: User Settings').item.json.gSheetID }}",
+							},
+						},
+						position: [1088, 1248],
+						name: 'Log Error to Sheet',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -276,26 +372,9 @@ const wf = workflow('', '')
 					},
 					looseTypeValidation: true,
 				},
-				position: [800, 992],
 				name: 'Check for Errors',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					mode: 'runOnceForEachItem',
-					jsCode:
-						'const data = $json.validated_data;\n\n// Business Logic for GL Coding\nlet glCategory = "Uncategorized";\n// Convert vendor to lowercase for easier matching\nconst vendor = (data.vendor_name || "").toLowerCase();\n\n// FIX 1: Added "amazon" to the check so it catches "Amazon Web Services"\nif (vendor.includes("aws") || vendor.includes("amazon") || vendor.includes("google cloud") || vendor.includes("digitalocean")) {\n	glCategory = "6000 - Software & Hosting";\n} else if (vendor.includes("uber") || vendor.includes("lyft") || vendor.includes("airline") || vendor.includes("flight")) {\n	glCategory = "5000 - Travel & Meals";\n} else if (vendor.includes("wework") || vendor.includes("office")) {\n	glCategory = "4000 - Rent & Utilities";\n}\n\n// Approval Thresholds\nlet approvalStatus = "Auto-Approved";\n// Ensure amount is a number\nconst amount = parseFloat(data.total_amount);\n\n// FIX 2: Check the HIGHEST value first.\n// If we checked > 1000 first, 5200 would trigger that and stop.\nif (amount > 5000) {\n	approvalStatus = "VP Approval Needed";\n} else if (amount > 1000) {\n	approvalStatus = "Manager Approval Needed";\n}\n\nreturn {\n	json: {\n		...data,\n		gl_category: glCategory,\n		approval_status: approvalStatus,\n		case_id: `INV-${Date.now()}`,\n		processed_at: new Date().toISOString()\n	}\n};',
-				},
-				position: [1040, 672],
-				name: 'Apply Finance Rules',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -583,64 +662,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.5,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							timestamp: '={{ $json.timestamp }}',
-							error_type: '={{ $json.error_type }}',
-							error_message: '={{ $json.error_message }}',
-							original_subject: "={{ $('Look for Invoices').item.json.subject }}",
-							workflow_execution_id: '={{ $workflow.id }}',
-						},
-						schema: [
-							{ id: 'timestamp', type: 'string', displayName: 'timestamp' },
-							{ id: 'error_type', type: 'string', displayName: 'error_type' },
-							{
-								id: 'error_message',
-								type: 'string',
-								displayName: 'error_message',
-							},
-							{
-								id: 'original_subject',
-								type: 'string',
-								displayName: 'original_subject',
-							},
-							{
-								id: 'workflow_execution_id',
-								type: 'string',
-								displayName: 'workflow_execution_id',
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'append',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'Error Logs',
-						cachedResultName: 'Error Logs',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'expression',
-						value: "={{ $('Configuration: User Settings').item.json.gSheetID }}",
-					},
-				},
-				position: [1088, 1248],
-				name: 'Log Error to Sheet',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.gmail',
@@ -655,39 +676,6 @@ const wf = workflow('', '')
 				},
 				position: [1424, 1248],
 				name: 'Send Error Notification',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 1.9,
-			config: {
-				parameters: {
-					text: "={{ $('Get Email Content').item.json.text }}",
-					options: {
-						systemMessage:
-							'=You are a Financial OCR Expert. Extract receipt data from the email body text.\n\nCRITICAL INSTRUCTIONS:\n1. Return ONLY a JSON object.\n2. Normalize dates to YYYY-MM-DD.\n3. Clean currency symbols from amounts (return numbers).\n\nREQUIRED JSON STRUCTURE:\n{\n  "vendor_name": "string",\n  "invoice_date": "YYYY-MM-DD",\n  "invoice_id": "string (or \'EMAIL-RECEIPT\' if missing)",\n  "total_amount": number,\n  "tax_amount": number,\n  "currency": "USD/EUR/GBP",\n  "items_summary": "string (brief description)",\n  "vendor_tax_id": "string or null"\n}',
-					},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-								options: { temperature: 0.2, responseFormat: 'json_object' },
-							},
-							name: 'gpt 4o mini',
-						},
-					}),
-				},
-				position: [-32, 1088],
-				name: 'AI Agent (Email OCR)',
 			},
 		}),
 	)

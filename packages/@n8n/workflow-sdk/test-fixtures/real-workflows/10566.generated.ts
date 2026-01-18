@@ -64,10 +64,45 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.subworkflow.ai/v1/datasets/{{ $json.data.datasetId }}',
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [608, -128],
+						name: 'Get Dataset',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.subworkflow.ai/v1/jobs/{{ $json.data.id }}',
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [128, 32],
+						name: 'Check Job Status',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -102,30 +137,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-48, 32],
 				name: 'Job Complete?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.subworkflow.ai/v1/datasets/{{ $json.data.datasetId }}',
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [608, -128],
-				name: 'Get Dataset',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -194,26 +208,6 @@ const wf = workflow('', '')
 				},
 				position: [1440, -128],
 				name: 'Document OCR via VLM',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.subworkflow.ai/v1/jobs/{{ $json.data.id }}',
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [128, 32],
-				name: 'Check Job Status',
 			},
 		}),
 	)

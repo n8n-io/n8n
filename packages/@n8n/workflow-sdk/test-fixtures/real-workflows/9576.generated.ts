@@ -121,10 +121,33 @@ const wf = workflow('IIQhSqMWv4u6e0Jh', 'Create Video with Sora2 Pro and Upload 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://queue.fal.run/fal-ai/sora-2/requests/{{ $json.request_id }}',
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [-528, 1344],
+						name: 'Get Url Video',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 60 }, position: [352, 976], name: 'Wait 60 sec.' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -149,30 +172,9 @@ const wf = workflow('IIQhSqMWv4u6e0Jh', 'Create Video with Sora2 Pro and Upload 
 						],
 					},
 				},
-				position: [720, 976],
 				name: 'Completed?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://queue.fal.run/fal-ai/sora-2/requests/{{ $json.request_id }}',
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [-528, 1344],
-				name: 'Get Url Video',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

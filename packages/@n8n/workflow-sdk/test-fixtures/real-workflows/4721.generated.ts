@@ -399,18 +399,113 @@ const wf = workflow('gMlV2BS7Aj3XlgCC', 'Lead Magnet Agent - Trigify', { executi
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.splitOut',
+					version: 1,
+					config: {
+						parameters: { options: {}, fieldToSplitOut: 'output.chapters' },
+						position: [3320, 280],
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 1.7,
+					config: {
+						parameters: {
+							text: "=Write a chapter for this article -> {{ $('Project Planner').item.json.output.title }}\n\nwrite a chapter for -> {{ $json.title }} that {{ $json.prompt }}\n\nMake sure to use the Trigify knowledge hub.",
+							options: {
+								systemMessage:
+									'=You are a dedicated Research Assistant AI agent, working as part of a research team under the guidance of a Research Leader and Project Planner. Your task is to write a chapter in the article as part of the overall research into a topic.\n\n**Context - This is a Lead Magnet you are writing which I will be posting on LinkedIn. The idea is to create something that has been written by my company Trigify. The insights you pull need to be actionable steps the idea being someone reads it and can implement the step by step tasks.**\n\nGuidelines:\n- Just return the plain text for each chapter (no JSON structure).\n- Use the perplexity_ai_search tool to research the topic in the chapter.\n- Use html format for output\n- Don\'t add internal titles or headings.\n- The length of each chapter should be around 120 words\nwords long—go deep in the topic you treat, don\'t just throw some superficial info.\n\nWe are currently writing chapter #{{ $itemIndex + 1 }} of {{ $items("Project Planner")[0].json.output.chapters.length }}.\n\nPrevious chapter:\n{{ $itemIndex > 0 ? $items("Project Planner")[0].json.output.chapters[$itemIndex - 1].title : "None" }}\n\nNext chapter:\n{{ $itemIndex < $items("Project Planner")[0].json.output.chapters.length - 1 ? $items("Project Planner")[0].json.output.chapters[$itemIndex + 1].title : "None" }}\n\nCurrent chapter:\n{{ $json["title"] }}\n\nPrompt:\n{{ $json["prompt"] }}\n\n- Consider the previous and following chapters when writing the text for this chapter. The text must be coherent with the previous and following chapters.\n- This chapter should not repeat the concepts already exposed in the previous chapter.\n- This chapter is part of a larger article so don\'t include an introduction or conclusions. This chapter should merge seamlessly with the rest of the article.\n- Please write in a style that is educational for the user so they can follow your advice step by step and action your research.\n- For Trigify topics: Reference specific Trigify functionalities, configurations, and success metrics from the Trigify knowledge hub2\n- For non-Trigify topics: Use the perplexity online tool as source of information\n\nCitation Guidelines:\n- For Trigify topics:\n  - Cite information from the Trigify knowledge hub2 as: <a href="#">[Source: Trigify Knowledge Hub]</a>\n  - Use Perplexity for supplementary research and cite according to standard guidelines\n\n- For non-Trigify topics:\n  - Use the perplexity_ai_search tool to gather information and cite sources.\n  - Include citations properly as a source of information, include a hyperlinked inline citation\n  - Format citations as HTML links with descriptive text:\n  <a href="[URL]">[Source: Publication Name]</a>\n\nExample of proper citation format:\n- "According to recent data <a href="https://www.mckinsey.com/article-url">[Source: McKinsey & Company]</a>..."\n- When directly quoting from a source, use quotation marks and include the citation\n\nFor Trigify topics, ensure the chapter includes:\n- Specific Trigify features or tools relevant to the topic\n- Step-by-step implementation guidance using Trigify\n- Real-world applications or success metrics from Trigify users\n- Technical details on configuration or setup where applicable',
+							},
+							promptType: 'define',
+						},
+						subnodes: {
+							tools: [
+								tool({
+									type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+									version: 2,
+									config: {
+										parameters: {
+											name: 'Perplexity_tool',
+											workflowId: {
+												__rl: true,
+												mode: 'list',
+												value: '[REDACTED_WORKFLOW_ID]',
+												cachedResultName: 'Trigify Agents — My Sub-Workflow 2',
+											},
+											description: 'Call this tool to run your research.',
+											workflowInputs: {
+												value: {},
+												schema: [],
+												mappingMode: 'defineBelow',
+												matchingColumns: [],
+												attemptToConvertTypes: false,
+												convertFieldsToString: false,
+											},
+										},
+										name: 'Perplexity tool',
+									},
+								}),
+								tool({
+									type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+									version: 1.1,
+									config: {
+										parameters: {
+											url: 'https://www.chatbase.co/api/v1/chat',
+											method: 'POST',
+											jsonBody:
+												'{\n  "messages": [\n    {\n      "role": "user",\n      "content": "{placeholder}"\n    }\n  ],\n  "chatbotId": "[REDACTED_CHATBOT_ID]",\n  "stream": false,\n  "temperature": 0,\n  "model": "claude-3-5-sonnet"\n}',
+											sendBody: true,
+											sendHeaders: true,
+											specifyBody: 'json',
+											toolDescription: 'Trigify knowledge hub.',
+											parametersHeaders: {
+												values: [
+													{
+														name: 'Authorization',
+														value: 'Bearer [REDACTED_API_TOKEN]',
+														valueProvider: 'fieldValue',
+													},
+													{
+														name: 'Content-Type',
+														value: 'application/json',
+														valueProvider: 'fieldValue',
+													},
+												],
+											},
+										},
+										name: 'Trigify knowledge hub',
+									},
+								}),
+							],
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+								version: 1,
+								config: {
+									parameters: { model: 'anthropic/claude-3.7-sonnet:thinking', options: {} },
+									credentials: {
+										openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+									},
+									name: 'OpenRouter Chat Model1',
+								},
+							}),
+						},
+						position: [3520, 280],
+						name: 'Team of Research Assistants',
+					},
+				}),
+			],
+			{
+				version: 3,
 				parameters: {
 					mode: 'combine',
 					options: {},
 					combineBy: 'combineByPosition',
 				},
-				position: [3900, 280],
 			},
-		}),
+		),
 	)
 	.then(
 		node({

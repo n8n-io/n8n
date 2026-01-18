@@ -116,10 +116,35 @@ const wf = workflow('P6LeLqxzbkO3FiPE', '10 Track Email Campaign Performance', {
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.gmail',
+					version: 2.1,
+					config: {
+						parameters: {
+							sendTo: 'user@example.com',
+							message:
+								'Hi [First Name],  \nWe noticed you opened our recent email — thank you for staying connected! \n🙌 But we think you might have missed the best part…  \n👉 [Big Benefit or Offer — e.g., “Get 20% off your next order — today only!”]  \nWe don’t want you to miss out — just click below and grab your exclusive [deal / resource / upgrade].  \n[CTA Button: “Claim Your Offer”]  Still not sure? We’re here to help if you have any questions. Just hit reply — we love hearing from you!  Talk soon, [Your Name] [Your Company]',
+							options: {},
+							subject: 'Did you miss this? Here’s something special for you!',
+							emailType: 'text',
+						},
+						credentials: {
+							gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+						},
+						position: [1340, -100],
+						name: '📧 Send Follow-Up Engagement Email',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [1340, 100], name: '🚫 Skip — No Action Needed' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -146,40 +171,9 @@ const wf = workflow('P6LeLqxzbkO3FiPE', '10 Track Email Campaign Performance', {
 						],
 					},
 				},
-				position: [1100, 0],
 				name: '🔎 IF: Open ≥30% & CTR <10%?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.gmail',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: 'user@example.com',
-					message:
-						'Hi [First Name],  \nWe noticed you opened our recent email — thank you for staying connected! \n🙌 But we think you might have missed the best part…  \n👉 [Big Benefit or Offer — e.g., “Get 20% off your next order — today only!”]  \nWe don’t want you to miss out — just click below and grab your exclusive [deal / resource / upgrade].  \n[CTA Button: “Claim Your Offer”]  Still not sure? We’re here to help if you have any questions. Just hit reply — we love hearing from you!  Talk soon, [Your Name] [Your Company]',
-					options: {},
-					subject: 'Did you miss this? Here’s something special for you!',
-					emailType: 'text',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [1340, -100],
-				name: '📧 Send Follow-Up Engagement Email',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [1340, 100], name: '🚫 Skip — No Action Needed' },
-		}),
+		),
 	)
 	.add(
 		sticky(

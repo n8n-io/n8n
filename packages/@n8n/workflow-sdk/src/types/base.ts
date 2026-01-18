@@ -270,6 +270,16 @@ export interface WorkflowContext {
 export type Expression<T> = ($: ExpressionContext) => T;
 
 /**
+ * Declared connection from a node to a target
+ */
+export interface DeclaredConnection {
+	/** Target node instance */
+	target: NodeInstance<string, string, unknown>;
+	/** Output index to connect from (default: 0) */
+	outputIndex: number;
+}
+
+/**
  * Node instance representing a configured node in the workflow
  */
 export interface NodeInstance<TType extends string, TVersion extends string, TOutput = unknown> {
@@ -290,6 +300,20 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * Update node configuration
 	 */
 	update(config: Partial<NodeConfig>): NodeInstance<TType, TVersion, TOutput>;
+
+	/**
+	 * Declare a connection from this node to another node.
+	 * Can be called multiple times for fan-out patterns.
+	 * @param target - The target node to connect to
+	 * @param outputIndex - The output index to connect from (default: 0)
+	 * @returns The target node (for chaining)
+	 */
+	then<T extends NodeInstance<string, string, unknown>>(target: T, outputIndex?: number): T;
+
+	/**
+	 * Get all declared connections from this node
+	 */
+	getConnections(): DeclaredConnection[];
 }
 
 /**
@@ -424,6 +448,38 @@ export interface MergeConfig {
 	mode?: MergeMode;
 	/** Additional merge node parameters */
 	parameters?: IDataObject;
+	/** Node version (defaults to 3) */
+	version?: number | string;
+	/** Custom node name */
+	name?: string;
+	/** Node ID (auto-generated if omitted) */
+	id?: string;
+}
+
+/**
+ * IF branch composite - represents IF node with true/false branches
+ * branches[0] = true branch (output 0)
+ * branches[1] = false branch (output 1)
+ */
+export interface IfBranchComposite {
+	/** The IF node */
+	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
+	/** True branch (output 0) */
+	readonly trueBranch: NodeInstance<string, string, unknown>;
+	/** False branch (output 1) */
+	readonly falseBranch: NodeInstance<string, string, unknown>;
+}
+
+/**
+ * Switch case composite - represents Switch node with case outputs
+ * cases[i] connects to output i
+ * Fallback is just another case at the end of the array
+ */
+export interface SwitchCaseComposite {
+	/** The Switch node */
+	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+	/** Case nodes - cases[i] connects to output i */
+	readonly cases: NodeInstance<string, string, unknown>[];
 }
 
 /**
@@ -488,9 +544,24 @@ export interface WorkflowBuilder {
 	then<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
 
 	/**
-	 * Chain a merge composite (fans out to branches)
+	 * Chain a merge composite (fans out to branches, then merges)
 	 */
 	then<M extends MergeComposite>(merge: M): WorkflowBuilder;
+
+	/**
+	 * Chain an IF branch composite (conditional branching)
+	 */
+	then(ifBranch: IfBranchComposite): WorkflowBuilder;
+
+	/**
+	 * Chain a switch case composite (multi-way branching)
+	 */
+	then(switchCase: SwitchCaseComposite): WorkflowBuilder;
+
+	/**
+	 * Chain a split in batches builder (batch processing with loop)
+	 */
+	then<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;
 
 	/**
 	 * Select an output branch by index

@@ -322,10 +322,41 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.3,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '={{ $json.data.resultJson.parseJson().resultUrls.first() }}',
+							options: {},
+						},
+						position: [1312, 1328],
+						name: 'Download Finished Video',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitInBatches',
+					version: 3,
+					config: {
+						parameters: { options: {} },
+						position: [64, 1328],
+						name: 'Iterate Over Ad Examples',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { unit: 'minutes', amount: 1 },
+						position: [1312, 1552],
+						name: 'Wait Before Checking Again',
+					},
+				}),
+			],
+			{
+				version: 3.3,
 				parameters: {
 					rules: {
 						values: [
@@ -379,25 +410,9 @@ const wf = workflow('', '')
 					},
 					options: { fallbackOutput: 'extra' },
 				},
-				position: [1088, 1360],
 				name: 'Video Generation Status',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '={{ $json.data.resultJson.parseJson().resultUrls.first() }}',
-					options: {},
-				},
-				position: [1312, 1328],
-				name: 'Download Finished Video',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -422,18 +437,6 @@ const wf = workflow('', '')
 				},
 				position: [1536, 1632],
 				name: 'Upload Generated Video to Google Drive',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: {
-				parameters: { unit: 'minutes', amount: 1 },
-				position: [1312, 1552],
-				name: 'Wait Before Checking Again',
 			},
 		}),
 	)

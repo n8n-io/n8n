@@ -79,11 +79,53 @@ const wf = workflow('Tq4g5UK8c3GZ8tm7', 'Ade_Technical_Analyst', { executionOrde
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 2.1,
-			config: { parameters: { mode: 'chooseBranch' }, position: [-240, 60] },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 2,
+					config: {
+						parameters: {
+							values: {
+								number: [
+									{ name: 'model_temperature', value: 0.8 },
+									{ name: 'token_length', value: 500 },
+								],
+								string: [
+									{
+										name: 'system_command',
+										value:
+											'=You are a friendly chatbot. User name is {{ $json?.message?.from?.first_name }}. User system language is {{ $json?.message?.from?.language_code }}. First, detect user text language. Next, provide your reply in the same language. Include several suitable emojis in your answer.',
+									},
+									{
+										name: 'bot_typing',
+										value:
+											'={{ $json?.message?.text.startsWith(\'/image\') ? "upload_photo" : "typing" }}',
+									},
+								],
+							},
+							options: {},
+						},
+						position: [-420, 180],
+						name: 'Settings',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1,
+					config: {
+						parameters: {
+							action: '={{ $json.bot_typing }}',
+							chatId: '={{ $json.message.from.id }}',
+							operation: 'sendChatAction',
+						},
+						position: [-240, 320],
+						name: 'Send Typing action',
+					},
+				}),
+			],
+			{ version: 2.1, parameters: { mode: 'chooseBranch' } },
+		),
 	)
 	.then(
 		node({

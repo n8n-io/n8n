@@ -401,43 +401,166 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
 	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'tiktok',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '2079',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/2079',
-						cachedResultName: 'elitecybzcs',
+		merge(
+			[
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'tiktok',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '2079',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/2079',
+								cachedResultName: 'elitecybzcs',
+							},
+							postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1552, 1056],
+						name: 'Tiktok',
 					},
-					postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1552, 1056],
-				name: 'Tiktok',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
-				parameters: { mode: 'chooseBranch', numberInputs: 6 },
-				position: [2144, 1072],
-				name: 'Merge1',
-			},
-		}),
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'linkedin',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1446',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1446',
+								cachedResultName: 'Samuel Amalric',
+							},
+							postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1712, 1056],
+						name: 'Linkedin',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'facebook',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1759',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1759',
+								cachedResultName: 'Firass Ben',
+							},
+							facebookPageId: {
+								__rl: true,
+								mode: 'list',
+								value: '101603614680195',
+								cachedResultUrl:
+									'https://backend.blotato.com/v2/accounts/1759/subaccounts/101603614680195',
+								cachedResultName: 'Dr. Firas',
+							},
+							postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1872, 1056],
+						name: 'Facebook',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1687',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1687',
+								cachedResultName: 'acces.a.vie',
+							},
+							postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1552, 1216],
+						name: 'Instagram',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'twitter',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1289',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1289',
+								cachedResultName: 'Docteur_Firas',
+							},
+							postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1712, 1216],
+						name: 'Twitter (X)',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'youtube',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '8047',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/8047',
+								cachedResultName: 'DR FIRASS (Dr. Firas)',
+							},
+							postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
+							postContentMediaUrls: '={{ $json.url }}',
+							postCreateYoutubeOptionTitle: "={{ $('Parse GPT Response').first().json.title }}",
+							postCreateYoutubeOptionPrivacyStatus: 'private',
+							postCreateYoutubeOptionShouldNotifySubscribers: false,
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [1872, 1216],
+						name: 'Youtube',
+					},
+				}),
+			],
+			{ version: 3.2, parameters: { mode: 'chooseBranch', numberInputs: 6 }, name: 'Merge1' },
+		),
 	)
 	.then(
 		node({
@@ -454,151 +577,6 @@ const wf = workflow(
 				},
 				position: [2368, 1136],
 				name: 'Send a text message',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'linkedin',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1446',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1446',
-						cachedResultName: 'Samuel Amalric',
-					},
-					postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1712, 1056],
-				name: 'Linkedin',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'facebook',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1759',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1759',
-						cachedResultName: 'Firass Ben',
-					},
-					facebookPageId: {
-						__rl: true,
-						mode: 'list',
-						value: '101603614680195',
-						cachedResultUrl:
-							'https://backend.blotato.com/v2/accounts/1759/subaccounts/101603614680195',
-						cachedResultName: 'Dr. Firas',
-					},
-					postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1872, 1056],
-				name: 'Facebook',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1687',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1687',
-						cachedResultName: 'acces.a.vie',
-					},
-					postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1552, 1216],
-				name: 'Instagram',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'twitter',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1289',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1289',
-						cachedResultName: 'Docteur_Firas',
-					},
-					postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1712, 1216],
-				name: 'Twitter (X)',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'youtube',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '8047',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/8047',
-						cachedResultName: 'DR FIRASS (Dr. Firas)',
-					},
-					postContentText: "={{ $('Parse GPT Response').first().json.caption }}",
-					postContentMediaUrls: '={{ $json.url }}',
-					postCreateYoutubeOptionTitle: "={{ $('Parse GPT Response').first().json.title }}",
-					postCreateYoutubeOptionPrivacyStatus: 'private',
-					postCreateYoutubeOptionShouldNotifySubscribers: false,
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [1872, 1216],
-				name: 'Youtube',
 			},
 		}),
 	)

@@ -310,14 +310,27 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						// For sticky notes, treat content: '' as equivalent to no content
 						const normalizeParams = (p: unknown, nodeType: string) => {
 							if (!p || typeof p !== 'object') return p;
-							const obj = p as Record<string, unknown>;
+							const obj = { ...(p as Record<string, unknown>) };
 							if (Object.keys(obj).length === 0) return undefined;
 							// For sticky notes, normalize empty content
 							if (nodeType === 'n8n-nodes-base.stickyNote' && obj.content === '') {
 								const { content, ...rest } = obj;
 								return Object.keys(rest).length === 0 ? undefined : rest;
 							}
-							return p;
+							// For merge nodes, normalize defaults that SDK adds automatically
+							if (nodeType === 'n8n-nodes-base.merge') {
+								// Remove numberInputs if it's 2 (the default)
+								if (obj.numberInputs === 2) {
+									delete obj.numberInputs;
+								}
+								// Remove mode if it's 'append' (the default)
+								if (obj.mode === 'append') {
+									delete obj.mode;
+								}
+								// Return undefined if object is now empty
+								if (Object.keys(obj).length === 0) return undefined;
+							}
+							return obj;
 						};
 						expect(normalizeParams(parsedNode.parameters, parsedNode.type)).toEqual(
 							normalizeParams(originalNode.parameters, originalNode.type),

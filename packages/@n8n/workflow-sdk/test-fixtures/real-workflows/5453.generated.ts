@@ -97,19 +97,96 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.1,
-			config: {
+		merge(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.chainSummarization',
+					version: 2,
+					config: {
+						parameters: {
+							options: {
+								summarizationMethodAndPrompts: {
+									values: {
+										prompt:
+											'=Write a concise summary of the following:\n\nCity: {{ $json.output.city }}\nBirthdate: {{ $json.output.birthdate }}\nEducational qualification: {{ $json.output["Educational qualification"] }}\nJob History: {{ $json.output["Job History"] }}\nSkills: {{ $json.output.Skills }}\n\nUse 100 words or less. Be concise and conversational.',
+										combineMapPrompt:
+											'=Write a concise summary of the following:\n\nCity: {{ $json.output.city }}\nBirthdate: {{ $json.output.birthdate }}\nEducational qualification: {{ $json.output["Educational qualification"] }}\nJob History: {{ $json.output["Job History"] }}\nSkills: {{ $json.output.Skills }}\n\nUse 100 words or less. Be concise and conversational.',
+									},
+								},
+							},
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+								version: 1,
+								config: {
+									parameters: {
+										options: {},
+										modelName: 'models/gemini-2.5-flash-preview-05-20',
+									},
+									credentials: {
+										googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+									},
+									name: 'Google Gemini Chat Model',
+								},
+							}),
+						},
+						position: [1460, 460],
+						name: 'Summarization Chain',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							options: {},
+							filtersUI: {
+								values: [
+									{
+										lookupValue: "={{ $('On form submission').item.json['Job Role'] }}",
+										lookupColumn: 'Role',
+									},
+								],
+							},
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1PjQranztEMv18bh2U8-i82OREoqt1R2nGN92TO8j54o/edit#gid=0',
+								cachedResultName: 'Sheet1',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1PjQranztEMv18bh2U8-i82OREoqt1R2nGN92TO8j54o',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1PjQranztEMv18bh2U8-i82OREoqt1R2nGN92TO8j54o/edit?usp=drivesdk',
+								cachedResultName: 'JobProfiles',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [1560, 1020],
+						name: 'job roles',
+					},
+				}),
+			],
+			{
+				version: 3.1,
 				parameters: {
 					mode: 'combine',
 					options: {},
 					combineBy: 'combineByPosition',
 				},
-				position: [1900, 460],
 				name: 'Merge2',
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -378,146 +455,99 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 			},
 		}),
 	)
-	.output(0)
 	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.informationExtractor',
-			version: 1,
-			config: {
-				parameters: {
-					text: '={{ $json.text }}',
-					options: {
-						systemPromptTemplate:
-							"You are an expert extraction algorithm.\nOnly extract relevant information from the text.\nIf you do not know the value of an attribute asked to extract, you may omit the attribute's value.",
-					},
-					attributes: {
-						attributes: [
-							{
-								name: 'Educational qualification',
-								required: true,
-								description:
-									'Summary of your academic career. Focus on your high school and university studies. Summarize in 100 words maximum and also include your grade if applicable.',
+		merge(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.informationExtractor',
+					version: 1,
+					config: {
+						parameters: {
+							text: '={{ $json.text }}',
+							options: {
+								systemPromptTemplate:
+									"You are an expert extraction algorithm.\nOnly extract relevant information from the text.\nIf you do not know the value of an attribute asked to extract, you may omit the attribute's value.",
 							},
-							{
-								name: 'Job History',
-								required: true,
-								description:
-									'Work history summary. Focus on your most recent work experiences. Summarize in 100 words maximum',
-							},
-							{
-								name: 'Skills',
-								required: true,
-								description:
-									'Extract the candidate’s technical skills. What software and frameworks they are proficient in. Make a bulleted list.',
-							},
-						],
-					},
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-						version: 1,
-						config: {
-							parameters: {
-								options: {},
-								modelName: 'models/gemini-2.5-flash-preview-05-20',
-							},
-							credentials: {
-								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-							},
-							name: 'Google Gemini Chat Model',
+							schemaType: 'manual',
+							inputSchema:
+								'{\n	"type": "object",\n	"properties": {\n		"telephone": {\n			"type": "string"\n		},\n      "city": {\n			"type": "string"\n		},\n      "birthdate": {\n			"type": "string"\n		}\n	}\n}',
 						},
-					}),
-				},
-				position: [720, 580],
-				name: 'Qualifications',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3,
-			config: {
-				parameters: { mode: 'combine', options: {}, combineBy: 'combineAll' },
-				position: [1220, 460],
-			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.chainSummarization',
-			version: 2,
-			config: {
-				parameters: {
-					options: {
-						summarizationMethodAndPrompts: {
-							values: {
-								prompt:
-									'=Write a concise summary of the following:\n\nCity: {{ $json.output.city }}\nBirthdate: {{ $json.output.birthdate }}\nEducational qualification: {{ $json.output["Educational qualification"] }}\nJob History: {{ $json.output["Job History"] }}\nSkills: {{ $json.output.Skills }}\n\nUse 100 words or less. Be concise and conversational.',
-								combineMapPrompt:
-									'=Write a concise summary of the following:\n\nCity: {{ $json.output.city }}\nBirthdate: {{ $json.output.birthdate }}\nEducational qualification: {{ $json.output["Educational qualification"] }}\nJob History: {{ $json.output["Job History"] }}\nSkills: {{ $json.output.Skills }}\n\nUse 100 words or less. Be concise and conversational.',
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+								version: 1,
+								config: {
+									parameters: {
+										options: {},
+										modelName: 'models/gemini-2.5-flash-preview-05-20',
+									},
+									credentials: {
+										googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+									},
+									name: 'Google Gemini Chat Model',
+								},
+							}),
+						},
+						position: [720, 400],
+						name: 'Personal Data',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.informationExtractor',
+					version: 1,
+					config: {
+						parameters: {
+							text: '={{ $json.text }}',
+							options: {
+								systemPromptTemplate:
+									"You are an expert extraction algorithm.\nOnly extract relevant information from the text.\nIf you do not know the value of an attribute asked to extract, you may omit the attribute's value.",
+							},
+							attributes: {
+								attributes: [
+									{
+										name: 'Educational qualification',
+										required: true,
+										description:
+											'Summary of your academic career. Focus on your high school and university studies. Summarize in 100 words maximum and also include your grade if applicable.',
+									},
+									{
+										name: 'Job History',
+										required: true,
+										description:
+											'Work history summary. Focus on your most recent work experiences. Summarize in 100 words maximum',
+									},
+									{
+										name: 'Skills',
+										required: true,
+										description:
+											'Extract the candidate’s technical skills. What software and frameworks they are proficient in. Make a bulleted list.',
+									},
+								],
 							},
 						},
-					},
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-						version: 1,
-						config: {
-							parameters: {
-								options: {},
-								modelName: 'models/gemini-2.5-flash-preview-05-20',
-							},
-							credentials: {
-								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-							},
-							name: 'Google Gemini Chat Model',
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+								version: 1,
+								config: {
+									parameters: {
+										options: {},
+										modelName: 'models/gemini-2.5-flash-preview-05-20',
+									},
+									credentials: {
+										googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+									},
+									name: 'Google Gemini Chat Model',
+								},
+							}),
 						},
-					}),
-				},
-				position: [1460, 460],
-				name: 'Summarization Chain',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.informationExtractor',
-			version: 1,
-			config: {
-				parameters: {
-					text: '={{ $json.text }}',
-					options: {
-						systemPromptTemplate:
-							"You are an expert extraction algorithm.\nOnly extract relevant information from the text.\nIf you do not know the value of an attribute asked to extract, you may omit the attribute's value.",
+						position: [720, 580],
+						name: 'Qualifications',
 					},
-					schemaType: 'manual',
-					inputSchema:
-						'{\n	"type": "object",\n	"properties": {\n		"telephone": {\n			"type": "string"\n		},\n      "city": {\n			"type": "string"\n		},\n      "birthdate": {\n			"type": "string"\n		}\n	}\n}',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-						version: 1,
-						config: {
-							parameters: {
-								options: {},
-								modelName: 'models/gemini-2.5-flash-preview-05-20',
-							},
-							credentials: {
-								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-							},
-							name: 'Google Gemini Chat Model',
-						},
-					}),
-				},
-				position: [720, 400],
-				name: 'Personal Data',
-			},
-		}),
+				}),
+			],
+			{ version: 3, parameters: { mode: 'combine', options: {}, combineBy: 'combineAll' } },
+		),
 	)
 	.add(
 		sticky(

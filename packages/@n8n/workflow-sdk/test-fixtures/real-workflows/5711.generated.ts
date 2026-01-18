@@ -247,11 +247,72 @@ const wf = workflow('6Bn6KSpg1le9mG4Y', 'Alapaca Trade automation', {
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [1840, 680], name: 'merge_orders_to_write_to_sheets' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://paper-api.alpaca.markets/v2/positions/{{$json.asset_id}}',
+							method: 'DELETE',
+							options: {},
+							sendBody: true,
+							sendQuery: true,
+							sendHeaders: true,
+							authentication: 'genericCredentialType',
+							bodyParameters: { parameters: [{}] },
+							genericAuthType: 'httpCustomAuth',
+							queryParameters: { parameters: [{}] },
+							headerParameters: { parameters: [{}] },
+						},
+						credentials: {
+							httpQueryAuth: { id: 'credential-id', name: 'httpQueryAuth Credential' },
+							httpCustomAuth: { id: 'credential-id', name: 'httpCustomAuth Credential' },
+						},
+						position: [1620, 580],
+						name: 'Alpaca-post-order-sell',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://paper-api.alpaca.markets/v2/orders',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							sendQuery: true,
+							sendHeaders: true,
+							authentication: 'genericCredentialType',
+							bodyParameters: {
+								parameters: [
+									{ name: 'symbol', value: '={{ $json.symbol }}' },
+									{
+										name: 'notional',
+										value: '={{ $json.market_value_per_symbol.toFixed(2) }}',
+									},
+									{ name: 'side', value: 'buy' },
+									{ name: 'type', value: 'market' },
+									{ name: 'time_in_force', value: 'day' },
+								],
+							},
+							genericAuthType: 'httpCustomAuth',
+							queryParameters: { parameters: [{}] },
+							headerParameters: { parameters: [{}] },
+						},
+						credentials: {
+							httpQueryAuth: { id: 'credential-id', name: 'httpQueryAuth Credential' },
+							httpCustomAuth: { id: 'credential-id', name: 'httpCustomAuth Credential' },
+						},
+						position: [1620, 780],
+						name: 'Alpaca-post-order-buy',
+					},
+				}),
+			],
+			{ version: 3.2, name: 'merge_orders_to_write_to_sheets' },
+		),
 	)
 	.then(
 		node({
@@ -361,44 +422,6 @@ const wf = workflow('6Bn6KSpg1le9mG4Y', 'Alapaca Trade automation', {
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
 			config: { parameters: { unit: 'minutes', amount: 2 }, position: [1400, 780] },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://paper-api.alpaca.markets/v2/orders',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendQuery: true,
-					sendHeaders: true,
-					authentication: 'genericCredentialType',
-					bodyParameters: {
-						parameters: [
-							{ name: 'symbol', value: '={{ $json.symbol }}' },
-							{
-								name: 'notional',
-								value: '={{ $json.market_value_per_symbol.toFixed(2) }}',
-							},
-							{ name: 'side', value: 'buy' },
-							{ name: 'type', value: 'market' },
-							{ name: 'time_in_force', value: 'day' },
-						],
-					},
-					genericAuthType: 'httpCustomAuth',
-					queryParameters: { parameters: [{}] },
-					headerParameters: { parameters: [{}] },
-				},
-				credentials: {
-					httpQueryAuth: { id: 'credential-id', name: 'httpQueryAuth Credential' },
-					httpCustomAuth: { id: 'credential-id', name: 'httpCustomAuth Credential' },
-				},
-				position: [1620, 780],
-				name: 'Alpaca-post-order-buy',
-			},
 		}),
 	)
 	.add(

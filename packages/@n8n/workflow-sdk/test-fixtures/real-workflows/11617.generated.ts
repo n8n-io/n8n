@@ -81,7 +81,33 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 			config: { position: [2192, 1568], name: 'Label URL 1' },
 		}),
 	)
-	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [2416, 2272] } }))
+	.then(
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [2192, 1568], name: 'Label URL 1' },
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [2192, 1952], name: 'Label URL 2' },
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [2192, 2336], name: 'Label URL 3' },
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { position: [2192, 2720], name: 'Label URL 4' },
+				}),
+			],
+			{ version: 3.2 },
+		),
+	)
 	.then(
 		node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { position: [2640, 2304] } }),
 	)
@@ -92,14 +118,18 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 			config: { position: [2864, 2304], name: 'HTTP Request1' },
 		}),
 	)
-	.then(node({ type: 'n8n-nodes-base.if', version: 2.2, config: { position: [3088, 2224] } }))
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.3,
-			config: { position: [3312, 2176], name: 'HTTP Request2' },
-		}),
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.3,
+					config: { position: [3312, 2176], name: 'HTTP Request2' },
+				}),
+				node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [3312, 2400] } }),
+			],
+			{ version: 2.2, name: 'If' },
+		),
 	)
 	.then(
 		node({
@@ -157,8 +187,6 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 			config: { position: [5104, 2176], name: 'Upload a video' },
 		}),
 	)
-	.output(1)
-	.then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [3312, 2400] } }))
 	.output(0)
 	.then(
 		node({
@@ -181,13 +209,6 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
 			config: { position: [1968, 1952], name: 'Upload video' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { position: [2192, 1952], name: 'Label URL 2' },
 		}),
 	)
 	.output(0)
@@ -221,13 +242,6 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 			config: { position: [1968, 2336], name: 'Upload video3' },
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { position: [2192, 2336], name: 'Label URL 3' },
-		}),
-	)
 	.output(0)
 	.then(
 		node({
@@ -250,13 +264,6 @@ const wf = workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execu
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
 			config: { position: [1968, 2720], name: 'Upload video4' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: { position: [2192, 2720], name: 'Label URL 4' },
 		}),
 	)
 	.output(0)

@@ -155,10 +155,184 @@ const wf = workflow('w9YVsuUtlNgXOEAQ', 'LinkedIn Post Generation & Approval Aut
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: '9a78220d-35f5-48b6-9ce3-faecaac24b74',
+										operator: { type: 'string', operation: 'notEmpty', singleValue: true },
+										leftValue: "={{ $('Get Data from Sheets').item.json.Image }}",
+										rightValue: '',
+									},
+								],
+							},
+						},
+						position: [1294, 2220],
+						name: 'If Image Provided',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					version: 1.6,
+					config: {
+						parameters: {
+							text: "=Apply the modification requests on the following LinkedIn post. Besides applying the reqested modifications, return the same linkedin post.\n\nLinkedIn post:\n```\n{{ $('Data Formatting 1').item.json['Post Content'] }}\n```\n\nChange requests:\n{{ $('Send Content Confirmation').item.json.data['Any Changes?'] }}\n\n**Task:**\nUsing the information above, update the LinkedIn post content:\n- Do not include any explanations, just the final post content only (with all the change requests included in the post), ready to publish on LinkedIn.\n- Limit to 1300 characters.\n- If the user demands to keep the same post as the Post Description (in the instructions), then keep the same post content as provided in the Post Description, and output it.",
+							promptType: 'define',
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+										options: {},
+									},
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'OpenAI Chat Model',
+								},
+							}),
+						},
+						position: [1216, 2670],
+						name: 'Regenerate Post Content',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									Output: '={{ $json.urn }}',
+									Status: '=Completed',
+									'Post Link': '={{ $json.urn }}',
+									row_number: "={{ $('Get Data from Sheets').item.json.row_number }}",
+								},
+								schema: [
+									{
+										id: 'Post Description',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Post Description',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Instructions',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Instructions',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Image',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Image',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Status',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'Status',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Output',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'Output',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Post Link',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'Post Link',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'row_number',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: true,
+										required: false,
+										displayName: 'row_number',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: ['row_number'],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'update',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8/edit#gid=0',
+								cachedResultName: 'Sheet1',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8/edit?usp=drivesdk',
+								cachedResultName: 'LinkedIn Post Automation',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [2032, 2320],
+						name: 'Update Google Sheet',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -237,41 +411,9 @@ const wf = workflow('w9YVsuUtlNgXOEAQ', 'LinkedIn Post Generation & Approval Aut
 					},
 					options: {},
 				},
-				position: [996, 2495],
 				name: 'Content Confirmation Logic',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: '9a78220d-35f5-48b6-9ce3-faecaac24b74',
-								operator: { type: 'string', operation: 'notEmpty', singleValue: true },
-								leftValue: "={{ $('Get Data from Sheets').item.json.Image }}",
-								rightValue: '',
-							},
-						],
-					},
-				},
-				position: [1294, 2220],
-				name: 'If Image Provided',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(
@@ -307,125 +449,6 @@ const wf = workflow('w9YVsuUtlNgXOEAQ', 'LinkedIn Post Generation & Approval Aut
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.5,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							Output: '={{ $json.urn }}',
-							Status: '=Completed',
-							'Post Link': '={{ $json.urn }}',
-							row_number: "={{ $('Get Data from Sheets').item.json.row_number }}",
-						},
-						schema: [
-							{
-								id: 'Post Description',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Post Description',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Instructions',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Instructions',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Image',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Image',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Status',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Output',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Output',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Post Link',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Post Link',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'string',
-								display: true,
-								removed: false,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['row_number'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1EAdLU9-l0ATGDa5_xwTwFO-rPhvZurM2BOSKjH2P-W8/edit?usp=drivesdk',
-						cachedResultName: 'LinkedIn Post Automation',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [2032, 2320],
-				name: 'Update Google Sheet',
-			},
-		}),
-	)
 	.output(1)
 	.then(
 		node({
@@ -442,37 +465,6 @@ const wf = workflow('w9YVsuUtlNgXOEAQ', 'LinkedIn Post Generation & Approval Aut
 				},
 				position: [1812, 2320],
 				name: 'Post Without Image',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.chainLlm',
-			version: 1.6,
-			config: {
-				parameters: {
-					text: "=Apply the modification requests on the following LinkedIn post. Besides applying the reqested modifications, return the same linkedin post.\n\nLinkedIn post:\n```\n{{ $('Data Formatting 1').item.json['Post Content'] }}\n```\n\nChange requests:\n{{ $('Send Content Confirmation').item.json.data['Any Changes?'] }}\n\n**Task:**\nUsing the information above, update the LinkedIn post content:\n- Do not include any explanations, just the final post content only (with all the change requests included in the post), ready to publish on LinkedIn.\n- Limit to 1300 characters.\n- If the user demands to keep the same post as the Post Description (in the instructions), then keep the same post content as provided in the Post Description, and output it.",
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-								options: {},
-							},
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-							},
-							name: 'OpenAI Chat Model',
-						},
-					}),
-				},
-				position: [1216, 2670],
-				name: 'Regenerate Post Content',
 			},
 		}),
 	)

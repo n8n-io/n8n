@@ -113,15 +113,111 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.dataTable',
+					version: 1,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									Q1: '={{ $json["Q1: Where did you learn about n8n?"] }}',
+									Q2: '={{ $json["Q2: What is your experience with n8n?"] }}',
+									Q3: '={{ $json["Q3: What kind of automations do you need help with?"] }}',
+									Name: '={{ $json.Name }}',
+								},
+								schema: [
+									{
+										id: 'Name',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'Name',
+										defaultMatch: false,
+									},
+									{
+										id: 'Q1',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'Q1',
+										defaultMatch: false,
+									},
+									{
+										id: 'Q2',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'Q2',
+										defaultMatch: false,
+									},
+									{
+										id: 'Q3',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'Q3',
+										defaultMatch: false,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: [],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							filters: {
+								conditions: [{ keyName: 'Name', keyValue: '={{ $json.Name }}' }],
+							},
+							operation: 'upsert',
+							dataTableId: {
+								__rl: true,
+								mode: 'list',
+								value: 'OQV4v3sGHFOgIdi1',
+								cachedResultUrl: '/projects/hQhYsbYCXUcQaMSY/datatables/OQV4v3sGHFOgIdi1',
+								cachedResultName: 'Survey Responses',
+							},
+						},
+						position: [2048, 288],
+						name: 'Store Survey Result',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'b12a41cb-5aaa-4a47-91c8-856a3970e3e1',
+										name: 'Available Courses',
+										type: 'string',
+										value: '={{ $json.data }}',
+									},
+								],
+							},
+						},
+						position: [2592, 592],
+						name: 'Convert to Text',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: { mode: 'combine', options: {}, combineBy: 'combineAll' },
-				position: [2704, 208],
 				name: 'Combine Results',
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -213,29 +309,6 @@ const wf = workflow('', '')
 				parameters: { options: {}, aggregate: 'aggregateAllItemData' },
 				position: [2368, 912],
 				name: 'Aggregate Courses',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'b12a41cb-5aaa-4a47-91c8-856a3970e3e1',
-								name: 'Available Courses',
-								type: 'string',
-								value: '={{ $json.data }}',
-							},
-						],
-					},
-				},
-				position: [2592, 592],
-				name: 'Convert to Text',
 			},
 		}),
 	)

@@ -231,14 +231,65 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
-				parameters: { mode: 'combine', options: {}, combineBy: 'combineAll' },
-				position: [2224, 784],
-			},
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '23528728-83f3-4f11-9d66-feddc3bf27d1',
+										name: 'idx',
+										type: 'number',
+										value: '={{ $itemIndex }}',
+									},
+									{
+										id: 'f663bae7-ff0c-440f-9a57-cb363322fc9c',
+										name: 'text',
+										type: 'string',
+										value: '={{ $json.text }}',
+									},
+									{
+										id: 'bfb956b4-d5e2-46b2-b41a-850a4e00765f',
+										name: 'ids_qa',
+										type: 'array',
+										value: '={{ $json.appended_id_qa }}',
+									},
+								],
+							},
+						},
+						position: [1200, 944],
+						name: 'Restructure for Batching',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '0f436085-17d6-4131-8e6d-7ffee50b60be',
+										name: 'avg_len',
+										type: 'number',
+										value: '={{ $json.sum_words_in_text / 500 }}',
+									},
+								],
+							},
+						},
+						position: [2064, 1264],
+						name: 'Get the Average Text Length',
+					},
+				}),
+			],
+			{ version: 3.2, parameters: { mode: 'combine', options: {}, combineBy: 'combineAll' } },
+		),
 	)
 	.output(0)
 	.then(

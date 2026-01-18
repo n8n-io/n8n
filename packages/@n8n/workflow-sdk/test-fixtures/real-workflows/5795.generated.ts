@@ -96,10 +96,38 @@ const wf = workflow('', 'Reels Trends Watcher')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: '@apify/n8n-nodes-apify.apify',
+					version: 1,
+					config: {
+						parameters: {
+							limit: null,
+							resource: 'Datasets',
+							datasetId: '={{ $json.defaultDatasetId }}',
+							operation: 'Get items',
+						},
+						credentials: {
+							apifyApi: { id: 'credential-id', name: 'apifyApi Credential' },
+						},
+						position: [900, 540],
+						name: 'Get dataset items',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { unit: 'minutes', amount: 1 }, position: [900, 760] },
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { unit: 'minutes', amount: 1 }, position: [900, 760] },
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -178,29 +206,8 @@ const wf = workflow('', 'Reels Trends Watcher')
 					},
 					options: {},
 				},
-				position: [680, 600],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@apify/n8n-nodes-apify.apify',
-			version: 1,
-			config: {
-				parameters: {
-					limit: null,
-					resource: 'Datasets',
-					datasetId: '={{ $json.defaultDatasetId }}',
-					operation: 'Get items',
-				},
-				credentials: {
-					apifyApi: { id: 'credential-id', name: 'apifyApi Credential' },
-				},
-				position: [900, 540],
-				name: 'Get dataset items',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -482,10 +489,42 @@ const wf = workflow('', 'Reels Trends Watcher')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '01c3ca92-795f-4528-8df5-204c324c352b',
+										name: 'AnalyzePrompt',
+										type: 'string',
+										value:
+											"=Perform the following tasks based on the video/audio content:\n\n1. Create a full transcription of the audio — convert speech to text exactly as spoken, without interpretation or summarization, so it can be easily read or re-voiced later.\n\n2. Identify a strong hook from the first few seconds of the content that can grab attention.\n\n3. Determine the category of the content using the following rules:\n- Business: if the video shares business advice\n- Marketing: if the video shares marketing advice\n- Cooking: if the video shares cooking advice\n- Interview: if the video is an interview with a guest\n- Unknown: if the category cannot be determined\n\n4. Identify the video format using the following options:\n- Head: if it's a talking-head video\n- Animation: if it's animated or presented with drawings\n- Unknown: if the format is unclear\n\n5. Translate the full transcription and the hook into {{ $('Variables').first().json.translationLang }}.\n\nReturn the result in **pure JSON format** with the following fields:  \n`transcription`, `hook`, `category`, `format`, `translation`, `translation_hook`.\n\n**Do not include any commentary or explanations. Only return the JSON.**",
+									},
+								],
+							},
+						},
+						position: [1160, 1240],
+						name: 'Set Prompt',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { unit: 'minutes', amount: 1 },
+						position: [480, 1220],
+						name: 'Processing Delay',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -510,35 +549,9 @@ const wf = workflow('', 'Reels Trends Watcher')
 						],
 					},
 				},
-				position: [920, 1220],
 				name: 'Is Uploaded And Active?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '01c3ca92-795f-4528-8df5-204c324c352b',
-								name: 'AnalyzePrompt',
-								type: 'string',
-								value:
-									"=Perform the following tasks based on the video/audio content:\n\n1. Create a full transcription of the audio — convert speech to text exactly as spoken, without interpretation or summarization, so it can be easily read or re-voiced later.\n\n2. Identify a strong hook from the first few seconds of the content that can grab attention.\n\n3. Determine the category of the content using the following rules:\n- Business: if the video shares business advice\n- Marketing: if the video shares marketing advice\n- Cooking: if the video shares cooking advice\n- Interview: if the video is an interview with a guest\n- Unknown: if the category cannot be determined\n\n4. Identify the video format using the following options:\n- Head: if it's a talking-head video\n- Animation: if it's animated or presented with drawings\n- Unknown: if the format is unclear\n\n5. Translate the full transcription and the hook into {{ $('Variables').first().json.translationLang }}.\n\nReturn the result in **pure JSON format** with the following fields:  \n`transcription`, `hook`, `category`, `format`, `translation`, `translation_hook`.\n\n**Do not include any commentary or explanations. Only return the JSON.**",
-							},
-						],
-					},
-				},
-				position: [1160, 1240],
-				name: 'Set Prompt',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -669,14 +682,6 @@ const wf = workflow('', 'Reels Trends Watcher')
 				position: [60, 1620],
 				name: 'Update',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { unit: 'minutes', amount: 1 }, position: [900, 760] },
 		}),
 	)
 	.add(

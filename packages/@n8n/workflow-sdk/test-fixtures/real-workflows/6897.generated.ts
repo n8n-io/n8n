@@ -14,10 +14,39 @@ const wf = workflow('[WORKFLOW_ID_REMOVED]', 'HR CVs Filter', { executionOrder: 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.telegram.org/bot[YOUR_BOT_TOKEN]/getFile?file_id={{ $json.message.document.file_id }}',
+							options: {},
+						},
+						position: [-624, 256],
+						name: 'Download CV File',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							text: 'Please send your CV in PDF format only',
+							chatId: '={{ $json.message.chat.id }}',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [-928, 688],
+						name: 'PDF Request',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -38,25 +67,9 @@ const wf = workflow('[WORKFLOW_ID_REMOVED]', 'HR CVs Filter', { executionOrder: 
 						],
 					},
 				},
-				position: [-944, 352],
 				name: 'File Validation',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.telegram.org/bot[YOUR_BOT_TOKEN]/getFile?file_id={{ $json.message.document.file_id }}',
-					options: {},
-				},
-				position: [-624, 256],
-				name: 'Download CV File',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -101,11 +114,48 @@ const wf = workflow('[WORKFLOW_ID_REMOVED]', 'HR CVs Filter', { executionOrder: 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { parameters: { mode: 'chooseBranch', useDataOfInput: 2 }, position: [0, 544] },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.googleDrive',
+					version: 3,
+					config: {
+						parameters: {
+							name: "={{ $('Message Trigger').item.json.message.document.file_name }}",
+							driveId: { __rl: true, mode: 'list', value: 'My Drive' },
+							options: {},
+							folderId: {
+								__rl: true,
+								mode: 'list',
+								value: '[YOUR_FOLDER_ID]',
+								cachedResultUrl: 'https://drive.google.com/drive/folders/[YOUR_FOLDER_ID]',
+								cachedResultName: 'HR-CVs',
+							},
+						},
+						credentials: {
+							googleDriveOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleDriveOAuth2Api Credential',
+							},
+						},
+						name: 'Store CV',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.telegram.org/file/bot[YOUR_BOT_TOKEN]/{{ $json.result.file_path }}',
+							options: {},
+						},
+						position: [-384, 256],
+						name: 'Download Actual File',
+					},
+				}),
+			],
+			{ version: 3.2, parameters: { mode: 'chooseBranch', useDataOfInput: 2 } },
+		),
 	)
 	.then(
 		node({
@@ -302,25 +352,6 @@ const wf = workflow('[WORKFLOW_ID_REMOVED]', 'HR CVs Filter', { executionOrder: 
 				},
 				position: [800, 256],
 				name: 'Save Candidate Info to Sheet',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					text: 'Please send your CV in PDF format only',
-					chatId: '={{ $json.message.chat.id }}',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [-928, 688],
-				name: 'PDF Request',
 			},
 		}),
 	)

@@ -112,10 +112,28 @@ const wf = workflow('mtCQYada6O64BILe', 'Building Prospecting Lists', { executio
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"const people = $json.people || [];\n\nreturn people.map(person => {\n  return {\n    json: {\n      id: person.id || '',\n      firstName: person.firstName || '',\n      lastName: person.lastName || '',\n      email: person.emails?.[0]?.email || '',\n      phone: person.mobilePhones?.[0]?.mobilePhone || '',\n      jobTitle: person.jobTitle || '',\n      companyName: person.companyName || '',\n      companyWebsite: person.companyDomain || '',\n      linkedinUrl: person.linkedInUrl || '',\n      country: person.country || '',\n      status: person.status || ''\n    }\n  };\n});",
+						},
+						position: [-20, 0],
+						name: 'Extract list of peoples from Surfe API response',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 3 }, position: [-20, 225], name: 'Wait 3 secondes' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -140,25 +158,9 @@ const wf = workflow('mtCQYada6O64BILe', 'Building Prospecting Lists', { executio
 						],
 					},
 				},
-				position: [-240, 50],
 				name: 'Is enrichment complete ?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"const people = $json.people || [];\n\nreturn people.map(person => {\n  return {\n    json: {\n      id: person.id || '',\n      firstName: person.firstName || '',\n      lastName: person.lastName || '',\n      email: person.emails?.[0]?.email || '',\n      phone: person.mobilePhones?.[0]?.mobilePhone || '',\n      jobTitle: person.jobTitle || '',\n      companyName: person.companyName || '',\n      companyWebsite: person.companyDomain || '',\n      linkedinUrl: person.linkedInUrl || '',\n      country: person.country || '',\n      status: person.status || ''\n    }\n  };\n});",
-				},
-				position: [-20, 0],
-				name: 'Extract list of peoples from Surfe API response',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -233,13 +235,5 @@ const wf = workflow('mtCQYada6O64BILe', 'Building Prospecting Lists', { executio
 				},
 				position: [640, 0],
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { amount: 3 }, position: [-20, 225], name: 'Wait 3 secondes' },
 		}),
 	);

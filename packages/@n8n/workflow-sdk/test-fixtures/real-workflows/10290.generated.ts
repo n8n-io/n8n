@@ -11,19 +11,21 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.3,
-			config: { position: [1120, 992], name: 'Route by Message Type' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.3,
-			config: { position: [1392, 720], name: 'Check Voice Quality' },
-		}),
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.switch',
+					version: 3.3,
+					config: { position: [1392, 720], name: 'Check Voice Quality' },
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: { position: [1424, 1248], name: 'Send Processing Notification (Text)' },
+				}),
+			],
+			{ version: 3.3, name: 'Route by Message Type' },
+		),
 	)
 	.output(0)
 	.then(
@@ -70,19 +72,21 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { position: [2480, 848], name: 'Check Transcription Status' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: { position: [2784, 1248], name: 'Read Transaction History' },
-		}),
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.7,
+					config: { position: [2784, 1248], name: 'Read Transaction History' },
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { position: [2128, 848], name: 'Wait for Transcription' },
+				}),
+			],
+			{ version: 2.2, name: 'Check Transcription Status' },
+		),
 	)
 	.then(
 		node({
@@ -167,14 +171,6 @@ const wf = workflow(
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.7,
 			config: { position: [4208, 704], name: 'Log Cost to Sheet' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: { position: [1424, 1248], name: 'Send Processing Notification (Text)' },
 		}),
 	)
 	.add(sticky('', { position: [1040, 400] }))

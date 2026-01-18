@@ -170,10 +170,25 @@ const wf = workflow('gkf2gpDVeNbAoCYO', 'Save_your_workflows_into_a_GitHub_repos
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: { url: '={{ $json.download_url }}', options: {} },
+						position: [580, 40],
+						name: 'Get File',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 2,
+					config: { position: [800, 240], name: 'Merge Items' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -200,29 +215,9 @@ const wf = workflow('gkf2gpDVeNbAoCYO', 'Save_your_workflows_into_a_GitHub_repos
 						],
 					},
 				},
-				position: [360, 40],
 				name: 'Is File too large?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: { url: '={{ $json.download_url }}', options: {} },
-				position: [580, 40],
-				name: 'Get File',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 2,
-			config: { position: [800, 240], name: 'Merge Items' },
-		}),
+		),
 	)
 	.then(
 		node({
@@ -239,10 +234,85 @@ const wf = workflow('gkf2gpDVeNbAoCYO', 'Save_your_workflows_into_a_GitHub_repos
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.github',
+					version: 1,
+					config: {
+						parameters: {
+							owner: {
+								__rl: true,
+								mode: 'name',
+								value: "={{ $('Config').item.json.repo_owner }}",
+							},
+							filePath:
+								"={{ $('Config').item.json.sub_path }}/{{$('Loop Over Items').item.json.name}}.json",
+							resource: 'file',
+							operation: 'edit',
+							repository: { __rl: true, mode: 'name', value: 'n8n-workflows' },
+							fileContent: '={{$(\'isDiffOrNew\').item.json["n8n_data_stringy"]}}',
+							commitMessage: "={{$('Loop Over Items').item.json.name}} ({{$json.github_status}})",
+						},
+						credentials: {
+							githubApi: { id: 'credential-id', name: 'githubApi Credential' },
+						},
+						position: [1460, 40],
+						name: 'Edit existing file',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.github',
+					version: 1,
+					config: {
+						parameters: {
+							owner: {
+								__rl: true,
+								mode: 'name',
+								value: "={{ $('Config').item.json.repo_owner }}",
+							},
+							filePath:
+								"={{ $('Config').item.json.sub_path }}/{{$('Loop Over Items').item.json.name}}.json",
+							resource: 'file',
+							repository: {
+								__rl: true,
+								mode: 'name',
+								value: "={{ $('Config').item.json.repo_name }}",
+							},
+							fileContent: '={{$(\'isDiffOrNew\').item.json["n8n_data_stringy"]}}',
+							commitMessage: "={{$('Loop Over Items').item.json.name}} ({{$json.github_status}})",
+						},
+						credentials: {
+							githubApi: { id: 'credential-id', name: 'githubApi Credential' },
+						},
+						position: [1460, 240],
+						name: 'Create new file',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.3,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '8d513345-6484-431f-afb7-7cf045c90f4f',
+										name: 'Done',
+										type: 'boolean',
+										value: true,
+									},
+								],
+							},
+						},
+						position: [1680, 440],
+						name: 'Return',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -321,91 +391,8 @@ const wf = workflow('gkf2gpDVeNbAoCYO', 'Save_your_workflows_into_a_GitHub_repos
 					},
 					options: {},
 				},
-				position: [1240, 240],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.github',
-			version: 1,
-			config: {
-				parameters: {
-					owner: {
-						__rl: true,
-						mode: 'name',
-						value: "={{ $('Config').item.json.repo_owner }}",
-					},
-					filePath:
-						"={{ $('Config').item.json.sub_path }}/{{$('Loop Over Items').item.json.name}}.json",
-					resource: 'file',
-					operation: 'edit',
-					repository: { __rl: true, mode: 'name', value: 'n8n-workflows' },
-					fileContent: '={{$(\'isDiffOrNew\').item.json["n8n_data_stringy"]}}',
-					commitMessage: "={{$('Loop Over Items').item.json.name}} ({{$json.github_status}})",
-				},
-				credentials: {
-					githubApi: { id: 'credential-id', name: 'githubApi Credential' },
-				},
-				position: [1460, 40],
-				name: 'Edit existing file',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.3,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '8d513345-6484-431f-afb7-7cf045c90f4f',
-								name: 'Done',
-								type: 'boolean',
-								value: true,
-							},
-						],
-					},
-				},
-				position: [1680, 440],
-				name: 'Return',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.github',
-			version: 1,
-			config: {
-				parameters: {
-					owner: {
-						__rl: true,
-						mode: 'name',
-						value: "={{ $('Config').item.json.repo_owner }}",
-					},
-					filePath:
-						"={{ $('Config').item.json.sub_path }}/{{$('Loop Over Items').item.json.name}}.json",
-					resource: 'file',
-					repository: {
-						__rl: true,
-						mode: 'name',
-						value: "={{ $('Config').item.json.repo_name }}",
-					},
-					fileContent: '={{$(\'isDiffOrNew\').item.json["n8n_data_stringy"]}}',
-					commitMessage: "={{$('Loop Over Items').item.json.name}} ({{$json.github_status}})",
-				},
-				credentials: {
-					githubApi: { id: 'credential-id', name: 'githubApi Credential' },
-				},
-				position: [1460, 240],
-				name: 'Create new file',
-			},
-		}),
+		),
 	)
 	.add(
 		sticky('# Links\n- ## [Github Folder](https://github.com/AndrewBoichenko/n8n-workflows/)', {

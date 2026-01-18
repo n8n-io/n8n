@@ -1,6 +1,9 @@
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
 import { languageModel, memory, tool } from '../subnode-builders';
+import { merge } from '../merge';
+import { ifBranch } from '../if-branch';
+import { switchCase } from '../switch-case';
 
 describe('Workflow Builder', () => {
 	describe('workflow()', () => {
@@ -344,6 +347,452 @@ describe('Workflow Builder', () => {
 			expect(modelConnections).toBeDefined();
 			expect(modelConnections.ai_languageModel).toBeDefined();
 			expect(modelConnections.ai_languageModel[0][0].node).toBe(agentNode.name);
+		});
+	});
+
+	describe('merge() with correct input indices', () => {
+		it('should connect branches to different merge inputs', () => {
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: {},
+			});
+			const source1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Source 1' },
+			});
+			const source2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Source 2' },
+			});
+			const source3 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Source 3' },
+			});
+
+			const wf = workflow('test', 'Test')
+				.add(triggerNode)
+				.then(
+					merge([source1, source2, source3], {
+						mode: 'append',
+					}),
+				);
+
+			const json = wf.toJSON();
+
+			// Each source should connect to Merge at a DIFFERENT input index
+			// source1 -> Merge input 0
+			// source2 -> Merge input 1
+			// source3 -> Merge input 2
+			expect(json.connections['Source 1'].main[0][0].node).toBe('Merge');
+			expect(json.connections['Source 1'].main[0][0].index).toBe(0);
+
+			expect(json.connections['Source 2'].main[0][0].node).toBe('Merge');
+			expect(json.connections['Source 2'].main[0][0].index).toBe(1);
+
+			expect(json.connections['Source 3'].main[0][0].node).toBe('Merge');
+			expect(json.connections['Source 3'].main[0][0].index).toBe(2);
+
+			// Merge node should have numberInputs set to 3
+			const mergeNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(mergeNode).toBeDefined();
+			expect(mergeNode?.parameters?.numberInputs).toBe(3);
+		});
+
+		it('should auto-calculate numberInputs from branches length', () => {
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: {},
+			});
+			const source1 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Source 1' },
+			});
+			const source2 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Source 2' },
+			});
+
+			const wf = workflow('test', 'Test')
+				.add(triggerNode)
+				.then(
+					merge([source1, source2], {
+						mode: 'append',
+						// numberInputs NOT specified - should be auto-calculated
+					}),
+				);
+
+			const json = wf.toJSON();
+
+			const mergeNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(mergeNode?.parameters?.numberInputs).toBe(2);
+		});
+
+		it('should support merge with custom name and parameters', () => {
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: {},
+			});
+			const source1 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Branch A' },
+			});
+			const source2 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Branch B' },
+			});
+
+			const wf = workflow('test', 'Test')
+				.add(triggerNode)
+				.then(
+					merge([source1, source2], {
+						mode: 'combine',
+						parameters: {
+							combineBy: 'combineByPosition',
+						},
+					}),
+				);
+
+			const json = wf.toJSON();
+
+			const mergeNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(mergeNode?.parameters?.mode).toBe('combine');
+			expect(mergeNode?.parameters?.combineBy).toBe('combineByPosition');
+		});
+	});
+
+	describe('NodeInstance.then() for fan-out', () => {
+		it('should support fan-out via multiple .then() calls on same node', () => {
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: {},
+			});
+			const http1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP 1' },
+			});
+			const http2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP 2' },
+			});
+
+			// Fan-out: trigger connects to both http1 and http2
+			triggerNode.then(http1);
+			triggerNode.then(http2);
+
+			const wf = workflow('test', 'Test').add(triggerNode).add(http1).add(http2);
+
+			const json = wf.toJSON();
+
+			// Trigger should have 2 connections from output 0
+			expect(json.connections[triggerNode.name].main[0]).toHaveLength(2);
+			expect(json.connections[triggerNode.name].main[0].map((c) => c.node)).toContain('HTTP 1');
+			expect(json.connections[triggerNode.name].main[0].map((c) => c.node)).toContain('HTTP 2');
+		});
+
+		it('should support chaining: nodeA.then(nodeB).then(nodeC)', () => {
+			const nodeA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'A' } });
+			const nodeB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'B' } });
+			const nodeC = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'C' } });
+
+			// Chain: A → B → C
+			nodeA.then(nodeB).then(nodeC);
+
+			const wf = workflow('test', 'Test').add(nodeA).add(nodeB).add(nodeC);
+
+			const json = wf.toJSON();
+
+			expect(json.connections['A'].main[0][0].node).toBe('B');
+			expect(json.connections['B'].main[0][0].node).toBe('C');
+		});
+
+		it('should support fan-out from specific output index', () => {
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'If Check' },
+			});
+			const truePath = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True Path' },
+			});
+			const falsePath = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False Path' },
+			});
+
+			// Connect IF outputs to different paths
+			ifNode.then(truePath, 0); // output 0 -> truePath
+			ifNode.then(falsePath, 1); // output 1 -> falsePath
+
+			const wf = workflow('test', 'Test').add(ifNode).add(truePath).add(falsePath);
+
+			const json = wf.toJSON();
+
+			expect(json.connections['If Check'].main[0][0].node).toBe('True Path');
+			expect(json.connections['If Check'].main[1][0].node).toBe('False Path');
+		});
+
+		it('should return target node for chaining', () => {
+			const nodeA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'A' } });
+			const nodeB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'B' } });
+
+			const result = nodeA.then(nodeB);
+
+			// .then() should return the target node for chaining
+			expect(result).toBe(nodeB);
+		});
+
+		it('should allow getting declared connections', () => {
+			const nodeA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'A' } });
+			const nodeB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'B' } });
+			const nodeC = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'C' } });
+
+			nodeA.then(nodeB);
+			nodeA.then(nodeC, 1);
+
+			const connections = nodeA.getConnections();
+
+			expect(connections).toHaveLength(2);
+			expect(connections[0]).toEqual({ target: nodeB, outputIndex: 0 });
+			expect(connections[1]).toEqual({ target: nodeC, outputIndex: 1 });
+		});
+	});
+
+	describe('ifBranch()', () => {
+		it('should create IF node with true and false branches', () => {
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: {},
+			});
+			const trueNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True Path' },
+			});
+			const falseNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False Path' },
+			});
+
+			const wf = workflow('test', 'Test')
+				.add(triggerNode)
+				.then(
+					ifBranch([trueNode, falseNode], {
+						name: 'Check Value',
+						parameters: {
+							conditions: {
+								conditions: [
+									{
+										leftValue: '={{ $json.value }}',
+										operator: { type: 'number', operation: 'gt' },
+										rightValue: 100,
+									},
+								],
+							},
+						},
+					}),
+				);
+
+			const json = wf.toJSON();
+
+			// IF node should have correct connections
+			expect(json.connections['Check Value'].main[0][0].node).toBe('True Path');
+			expect(json.connections['Check Value'].main[1][0].node).toBe('False Path');
+
+			// Trigger should connect to IF
+			expect(json.connections[triggerNode.name].main[0][0].node).toBe('Check Value');
+
+			// All nodes should be present (trigger, IF, true, false)
+			expect(json.nodes).toHaveLength(4);
+		});
+
+		it('should use generated IF types for config', () => {
+			const trueNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True' },
+			});
+			const falseNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False' },
+			});
+
+			const wf = workflow('test', 'Test').then(
+				ifBranch([trueNode, falseNode], {
+					name: 'Type Check',
+					parameters: { looseTypeValidation: true },
+				}),
+			);
+
+			const json = wf.toJSON();
+
+			const ifNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.if');
+			expect(ifNode?.typeVersion).toBe(2.3);
+			expect(ifNode?.parameters?.looseTypeValidation).toBe(true);
+		});
+
+		it('should chain after IF node', () => {
+			const trueNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'True' },
+			});
+			const falseNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'False' },
+			});
+			const afterNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'After' },
+			});
+
+			const wf = workflow('test', 'Test')
+				.then(ifBranch([trueNode, falseNode], { name: 'IF' }))
+				.then(afterNode);
+
+			const json = wf.toJSON();
+
+			// IF should be connected to true and false
+			expect(json.connections['IF'].main[0][0].node).toBe('True');
+			expect(json.connections['IF'].main[1][0].node).toBe('False');
+
+			// After should be in the workflow (chained from IF's output 0)
+			expect(json.nodes.find((n) => n.name === 'After')).toBeDefined();
+		});
+	});
+
+	describe('switchCase()', () => {
+		it('should create Switch node with case branches', () => {
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: {},
+			});
+			const case0 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Case 0' },
+			});
+			const case1 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Case 1' },
+			});
+			const case2 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Case 2' },
+			});
+
+			const wf = workflow('test', 'Test')
+				.add(triggerNode)
+				.then(
+					switchCase([case0, case1, case2], {
+						name: 'Route by Type',
+						parameters: { mode: 'rules' },
+					}),
+				);
+
+			const json = wf.toJSON();
+
+			// Switch node should have correct connections
+			expect(json.connections['Route by Type'].main[0][0].node).toBe('Case 0');
+			expect(json.connections['Route by Type'].main[1][0].node).toBe('Case 1');
+			expect(json.connections['Route by Type'].main[2][0].node).toBe('Case 2');
+
+			// All nodes should be present (trigger, switch, case0, case1, case2)
+			expect(json.nodes).toHaveLength(5);
+		});
+
+		it('should include fallback as last case in array', () => {
+			const case0 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Case 0' },
+			});
+			const fallback = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Fallback' },
+			});
+
+			const wf = workflow('test', 'Test').then(
+				switchCase([case0, fallback], {
+					name: 'Router',
+					parameters: { mode: 'rules' },
+				}),
+			);
+
+			const json = wf.toJSON();
+
+			// Fallback is just the last case (output 1)
+			expect(json.connections['Router'].main[1][0].node).toBe('Fallback');
+
+			// Switch node should exist
+			const switchNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.switch');
+			expect(switchNode).toBeDefined();
+		});
+
+		it('should use latest Switch version', () => {
+			const case0 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Case 0' },
+			});
+
+			const wf = workflow('test', 'Test').then(
+				switchCase([case0], {
+					name: 'Switch',
+					parameters: { mode: 'expression', numberOutputs: 4 },
+				}),
+			);
+
+			const json = wf.toJSON();
+
+			const switchNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.switch');
+			expect(switchNode?.typeVersion).toBe(3.4);
+		});
+
+		it('should connect trigger to switch', () => {
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: {},
+			});
+			const case0 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Case 0' },
+			});
+
+			const wf = workflow('test', 'Test')
+				.add(triggerNode)
+				.then(switchCase([case0], { name: 'Switch' }));
+
+			const json = wf.toJSON();
+
+			// Trigger should connect to Switch
+			expect(json.connections[triggerNode.name].main[0][0].node).toBe('Switch');
 		});
 	});
 });

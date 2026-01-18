@@ -120,14 +120,22 @@ const wf = workflow('uALIwhmZBIsiTqvl', 'Instagram Auto Liking - Creators Hub', 
 			config: { position: [-928, -1120], name: 'Check if in List' },
 		}),
 	)
-	.then(node({ type: 'n8n-nodes-base.if', version: 2.2, config: { position: [-752, -1120] } }))
-	.output(1)
 	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: { position: [-528, -1120], name: 'Prepare Updated Data' },
-		}),
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { position: [-1696, -1120], name: 'Wait2' },
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: { position: [-528, -1120], name: 'Prepare Updated Data' },
+				}),
+			],
+			{ version: 2.2, name: 'If' },
+		),
 	)
 	.then(
 		node({

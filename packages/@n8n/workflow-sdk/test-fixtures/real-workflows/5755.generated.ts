@@ -116,10 +116,35 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: "=https://queue.fal.run/fal-ai/flux-pro/requests/{{ $('Colorize Image').item.json.request_id }}",
+							options: {},
+							sendHeaders: true,
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+							headerParameters: { parameters: [{ name: 'Accept', value: 'application/json' }] },
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [1360, 120],
+						name: 'Get Colorized Image',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { position: [700, 120], name: 'Wait for Colorization' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -144,32 +169,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [1140, 120],
 				name: 'Colorization Completed?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "=https://queue.fal.run/fal-ai/flux-pro/requests/{{ $('Colorize Image').item.json.request_id }}",
-					options: {},
-					sendHeaders: true,
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-					headerParameters: { parameters: [{ name: 'Accept', value: 'application/json' }] },
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [1360, 120],
-				name: 'Get Colorized Image',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -226,10 +228,33 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: "=https://queue.fal.run/fal-ai/kling-video/requests/{{ $('Animate Image').item.json.request_id }}",
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [2460, 120],
+						name: 'Get Animated Video',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 60 }, position: [1800, 120], name: 'Wait for Animation' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -254,30 +279,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [2240, 120],
 				name: 'Animation Completed?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "=https://queue.fal.run/fal-ai/kling-video/requests/{{ $('Animate Image').item.json.request_id }}",
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [2460, 120],
-				name: 'Get Animated Video',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

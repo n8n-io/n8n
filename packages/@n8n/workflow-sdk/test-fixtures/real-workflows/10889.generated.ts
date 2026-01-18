@@ -249,10 +249,56 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'de87c369-7ca7-4242-8278-effec174c191',
+										name: 'new_nodes',
+										type: 'array',
+										value:
+											"={{ $json.old_workflow.nodes.map(node => {\n  // Find mapping for the node name\n  const mapping = $json.AI_output.find(item => item.old_name === node.name);\n  \n  // Update parameters by replacing all node name references\n  let updatedParameters = JSON.stringify(node.parameters);\n  $json.AI_output.forEach(aiMapping => {\n    const pattern = new RegExp(aiMapping.old_name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'), 'g');\n    updatedParameters = updatedParameters.replace(pattern, aiMapping.new_name);\n  });\n  \n  return {\n    ...node,\n    name: mapping ? mapping.new_name : node.name,\n    parameters: JSON.parse(updatedParameters)\n  };\n}) }}",
+									},
+									{
+										id: '90f8a9c1-e9a1-46ae-8af9-2130993a51f3',
+										name: 'new_connections',
+										type: 'object',
+										value:
+											'={{\n  (() => {\n    const newConnections = {};\n    \n    for (const [sourceNode, connections] of Object.entries($json.old_workflow.connections)) {\n      // Find mapping for the source node (key)\n      const sourceMapping = $json.AI_output.find(item => item.old_name === sourceNode);\n      const newSourceNode = sourceMapping ? sourceMapping.new_name : sourceNode;\n      \n      // Deep copy and update target nodes\n      const updatedConnections = {};\n      for (const [connectionType, connectionArrays] of Object.entries(connections)) {\n        updatedConnections[connectionType] = connectionArrays.map(connArray => \n          connArray.map(conn => {\n            const targetMapping = $json.AI_output.find(item => item.old_name === conn.node);\n            return {\n              ...conn,\n              node: targetMapping ? targetMapping.new_name : conn.node\n            };\n          })\n        );\n      }\n      \n      newConnections[newSourceNode] = updatedConnections;\n    }\n    \n    return newConnections;\n  })()\n}}',
+									},
+									{
+										id: '3bf1958f-17e9-4719-824c-2282f807e4a6',
+										name: 'new_workflow_without',
+										type: 'object',
+										value:
+											"={{\n  $json.old_workflow\n    .removeField('nodes')\n    .removeField('connections')\n}}",
+									},
+								],
+							},
+						},
+						position: [2896, -1232],
+						name: 'Apply Renamed Nodes Connections',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.stopAndError',
+					version: 1,
+					config: {
+						parameters: { errorMessage: 'Validation Error' },
+						position: [2896, -1040],
+						name: 'Stop',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -274,49 +320,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [2688, -1216],
 				name: 'Validate All Nodes Renamed',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'de87c369-7ca7-4242-8278-effec174c191',
-								name: 'new_nodes',
-								type: 'array',
-								value:
-									"={{ $json.old_workflow.nodes.map(node => {\n  // Find mapping for the node name\n  const mapping = $json.AI_output.find(item => item.old_name === node.name);\n  \n  // Update parameters by replacing all node name references\n  let updatedParameters = JSON.stringify(node.parameters);\n  $json.AI_output.forEach(aiMapping => {\n    const pattern = new RegExp(aiMapping.old_name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&'), 'g');\n    updatedParameters = updatedParameters.replace(pattern, aiMapping.new_name);\n  });\n  \n  return {\n    ...node,\n    name: mapping ? mapping.new_name : node.name,\n    parameters: JSON.parse(updatedParameters)\n  };\n}) }}",
-							},
-							{
-								id: '90f8a9c1-e9a1-46ae-8af9-2130993a51f3',
-								name: 'new_connections',
-								type: 'object',
-								value:
-									'={{\n  (() => {\n    const newConnections = {};\n    \n    for (const [sourceNode, connections] of Object.entries($json.old_workflow.connections)) {\n      // Find mapping for the source node (key)\n      const sourceMapping = $json.AI_output.find(item => item.old_name === sourceNode);\n      const newSourceNode = sourceMapping ? sourceMapping.new_name : sourceNode;\n      \n      // Deep copy and update target nodes\n      const updatedConnections = {};\n      for (const [connectionType, connectionArrays] of Object.entries(connections)) {\n        updatedConnections[connectionType] = connectionArrays.map(connArray => \n          connArray.map(conn => {\n            const targetMapping = $json.AI_output.find(item => item.old_name === conn.node);\n            return {\n              ...conn,\n              node: targetMapping ? targetMapping.new_name : conn.node\n            };\n          })\n        );\n      }\n      \n      newConnections[newSourceNode] = updatedConnections;\n    }\n    \n    return newConnections;\n  })()\n}}',
-							},
-							{
-								id: '3bf1958f-17e9-4719-824c-2282f807e4a6',
-								name: 'new_workflow_without',
-								type: 'object',
-								value:
-									"={{\n  $json.old_workflow\n    .removeField('nodes')\n    .removeField('connections')\n}}",
-							},
-						],
-					},
-				},
-				position: [2896, -1232],
-				name: 'Apply Renamed Nodes Connections',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -395,10 +401,35 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.form',
+					version: 2.3,
+					config: {
+						parameters: {
+							options: {},
+							operation: 'completion',
+							completionTitle: 'Terminate Workflow Execution!',
+							completionMessage:
+								"=<a href='{{ $json.Link_to_new_version }}'>Go to new version</a>\n<br>\n<a href='{{ $json.Link_to_previous_version }}'>Go to previous version</a>",
+						},
+						position: [3968, -1328],
+						name: 'Display Workflow Version Links',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: { options: {}, includeOtherFields: true },
+						position: [3968, -1104],
+						name: 'Done',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -419,52 +450,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [3744, -1232],
 				name: 'Check Trigger Source Type',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.form',
-			version: 2.3,
-			config: {
-				parameters: {
-					options: {},
-					operation: 'completion',
-					completionTitle: 'Terminate Workflow Execution!',
-					completionMessage:
-						"=<a href='{{ $json.Link_to_new_version }}'>Go to new version</a>\n<br>\n<a href='{{ $json.Link_to_previous_version }}'>Go to previous version</a>",
-				},
-				position: [3968, -1328],
-				name: 'Display Workflow Version Links',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: { options: {}, includeOtherFields: true },
-				position: [3968, -1104],
-				name: 'Done',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.stopAndError',
-			version: 1,
-			config: {
-				parameters: { errorMessage: 'Validation Error' },
-				position: [2896, -1040],
-				name: 'Stop',
-			},
-		}),
+		),
 	)
 	.add(
 		trigger({

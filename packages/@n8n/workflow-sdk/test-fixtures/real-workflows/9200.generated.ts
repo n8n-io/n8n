@@ -193,15 +193,71 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '={{ $json.response_url }}',
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [3440, 96],
+						name: 'NanoBanana – fetch edited image',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '04c7d6bf-430a-4423-bd36-d76f8a6ff1c9',
+										name: 'url_video',
+										type: 'string',
+										value:
+											"={{ ($json.data.resultJson.match(/https:\\/\\/tempfile\\.aiquickdraw\\.com\\/r\\/[^\\s\"']+\\.(?:png|jpg|jpeg|mp4|webm)/i)?.[0] || '').trim() }}\n\n\n\n",
+									},
+								],
+							},
+						},
+						position: [3696, 272],
+						name: 'Set – select Seedream image URL',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.kie.ai/api/v1/gpt4o-image/record-info?taskId={{ $json.data.taskId }}',
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [3440, 448],
+						name: 'ChatGPT Image – fetch generated image',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: { mode: 'chooseBranch', numberInputs: 3 },
-				position: [3984, 256],
 				name: 'Merge – collect image sources (3 providers)',
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -1123,43 +1179,240 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
 	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'tiktok',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '2079',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/2079',
-						cachedResultName: 'elitecybzcs',
+		merge(
+			[
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'tiktok',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '2079',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/2079',
+								cachedResultName: 'elitecybzcs',
+							},
+							postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [3232, 1152],
+						name: 'Tiktok',
 					},
-					postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [3232, 1152],
-				name: 'Tiktok',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
-				parameters: { mode: 'chooseBranch', numberInputs: 9 },
-				position: [3936, 1216],
-				name: 'Merge1',
-			},
-		}),
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'linkedin',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1446',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1446',
+								cachedResultName: 'Samuel Amalric',
+							},
+							postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [3424, 1152],
+						name: 'Linkedin',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'facebook',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1759',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1759',
+								cachedResultName: 'Firass Ben',
+							},
+							facebookPageId: {
+								__rl: true,
+								mode: 'list',
+								value: '101603614680195',
+								cachedResultUrl:
+									'https://backend.blotato.com/v2/accounts/1759/subaccounts/101603614680195',
+								cachedResultName: 'Dr. Firas',
+							},
+							postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [3600, 1152],
+						name: 'Facebook',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '11892',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/11892',
+								cachedResultName: 'doc.firass',
+							},
+							postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [3232, 1328],
+						name: 'Instagram',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'twitter',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '1289',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1289',
+								cachedResultName: 'Docteur_Firas',
+							},
+							postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [3424, 1328],
+						name: 'Twitter (X)',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'youtube',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '8047',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/8047',
+								cachedResultName: 'DR FIRASS (Dr. Firas)',
+							},
+							postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
+							postContentMediaUrls: '={{ $json.url }}',
+							postCreateYoutubeOptionTitle:
+								"={{ $('AI Agent: Generate Video Script').first().json.output.title }}",
+							postCreateYoutubeOptionPrivacyStatus: 'private',
+							postCreateYoutubeOptionShouldNotifySubscribers: false,
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [3600, 1328],
+						name: 'Youtube',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'threads',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '2280',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/2280',
+								cachedResultName: 'doc.firass',
+							},
+							postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [3232, 1536],
+						name: 'Threads',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'bluesky',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '6012',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/6012',
+								cachedResultName: 'formationinternet.bsky.social',
+							},
+							postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [3424, 1536],
+						name: 'Bluesky',
+					},
+				}),
+				node({
+					type: '@blotato/n8n-nodes-blotato.blotato',
+					version: 2,
+					config: {
+						parameters: {
+							options: {},
+							platform: 'pinterest',
+							accountId: {
+								__rl: true,
+								mode: 'list',
+								value: '363',
+								cachedResultUrl: 'https://backend.blotato.com/v2/accounts/363',
+								cachedResultName: 'formationinternet2022',
+							},
+							postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
+							pinterestBoardId: { __rl: true, mode: 'id', value: '1146658823815436667' },
+							postContentMediaUrls: '={{ $json.url }}',
+						},
+						credentials: {
+							blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
+						},
+						position: [3600, 1536],
+						name: 'Pinterest',
+					},
+				}),
+			],
+			{ version: 3.2, parameters: { mode: 'chooseBranch', numberInputs: 9 }, name: 'Merge1' },
+		),
 	)
 	.then(
 		node({
@@ -1306,234 +1559,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'linkedin',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1446',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1446',
-						cachedResultName: 'Samuel Amalric',
-					},
-					postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [3424, 1152],
-				name: 'Linkedin',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'facebook',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1759',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1759',
-						cachedResultName: 'Firass Ben',
-					},
-					facebookPageId: {
-						__rl: true,
-						mode: 'list',
-						value: '101603614680195',
-						cachedResultUrl:
-							'https://backend.blotato.com/v2/accounts/1759/subaccounts/101603614680195',
-						cachedResultName: 'Dr. Firas',
-					},
-					postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [3600, 1152],
-				name: 'Facebook',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '11892',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/11892',
-						cachedResultName: 'doc.firass',
-					},
-					postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [3232, 1328],
-				name: 'Instagram',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'twitter',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '1289',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/1289',
-						cachedResultName: 'Docteur_Firas',
-					},
-					postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [3424, 1328],
-				name: 'Twitter (X)',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'youtube',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '8047',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/8047',
-						cachedResultName: 'DR FIRASS (Dr. Firas)',
-					},
-					postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
-					postContentMediaUrls: '={{ $json.url }}',
-					postCreateYoutubeOptionTitle:
-						"={{ $('AI Agent: Generate Video Script').first().json.output.title }}",
-					postCreateYoutubeOptionPrivacyStatus: 'private',
-					postCreateYoutubeOptionShouldNotifySubscribers: false,
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [3600, 1328],
-				name: 'Youtube',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'threads',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '2280',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/2280',
-						cachedResultName: 'doc.firass',
-					},
-					postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [3232, 1536],
-				name: 'Threads',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'bluesky',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '6012',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/6012',
-						cachedResultName: 'formationinternet.bsky.social',
-					},
-					postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [3424, 1536],
-				name: 'Bluesky',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@blotato/n8n-nodes-blotato.blotato',
-			version: 2,
-			config: {
-				parameters: {
-					options: {},
-					platform: 'pinterest',
-					accountId: {
-						__rl: true,
-						mode: 'list',
-						value: '363',
-						cachedResultUrl: 'https://backend.blotato.com/v2/accounts/363',
-						cachedResultName: 'formationinternet2022',
-					},
-					postContentText: "={{ $('Save Ad Data to Google Sheets').item.json['ADS TEXT'] }}",
-					pinterestBoardId: { __rl: true, mode: 'id', value: '1146658823815436667' },
-					postContentMediaUrls: '={{ $json.url }}',
-				},
-				credentials: {
-					blotatoApi: { id: 'credential-id', name: 'blotatoApi Credential' },
-				},
-				position: [3600, 1536],
-				name: 'Pinterest',
-			},
-		}),
-	)
 	.output(1)
 	.then(
 		node({
@@ -1667,30 +1692,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '04c7d6bf-430a-4423-bd36-d76f8a6ff1c9',
-								name: 'url_video',
-								type: 'string',
-								value:
-									"={{ ($json.data.resultJson.match(/https:\\/\\/tempfile\\.aiquickdraw\\.com\\/r\\/[^\\s\"']+\\.(?:png|jpg|jpeg|mp4|webm)/i)?.[0] || '').trim() }}\n\n\n\n",
-							},
-						],
-					},
-				},
-				position: [3696, 272],
-				name: 'Set – select Seedream image URL',
-			},
-		}),
-	)
 	.output(0)
 	.then(
 		node({
@@ -1724,25 +1725,6 @@ const wf = workflow(
 				parameters: { unit: 'minutes', amount: 4 },
 				position: [3104, 448],
 				name: 'Wait – image rendering II',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.kie.ai/api/v1/gpt4o-image/record-info?taskId={{ $json.data.taskId }}',
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [3440, 448],
-				name: 'ChatGPT Image – fetch generated image',
 			},
 		}),
 	)

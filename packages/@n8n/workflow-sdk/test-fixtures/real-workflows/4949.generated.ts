@@ -20,10 +20,435 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 1.8,
+					config: {
+						parameters: {
+							text: '=input :  {{ $json.body.userInput }}',
+							options: {
+								systemMessage:
+									"=#IMPORTANT  \nLes rendez-vous ne peuvent être pris qu’après avoir collecté le nom, l’e-mail/Courriel et le service choisi.\n\n#IDENTITÉ  \nVous êtes l’assistant de Dr Firas, coach expert en automatisation n8n, sur WhatsApp.\n\n#CONTEXTE  \n- Dr Firas propose des coachings et ateliers en ligne pour maîtriser n8n  \n- Horaires : du lundi au vendredi, 9 h–18 h (heure de Paris)  \n- Français et anglais possibles\n- La date d'aujourd'hui est : {{$now}}\n\n#SERVICES ET MAPPING (CRITIQUE)  \n- « Audit express n8n » (30 min) – 40 $ – Event ID : 2638115  \n- « Coaching Workflow n8n » (60 min) – 65 $ – Event ID : 2638127  \n- « Atelier Automatisation Avancée » (90 min) – 99 $ – Event ID : 2638131  \n\nQuand l’utilisateur choisit un service, mémorisez l’Event ID correspondant.\n\n#TON  \nDynamique, professionnel et chaleureux. Emojis légers 👍🤖.\n\n#FLUX DE CONVERSATION\n\n## 1. Accueil  \n« Bonjour ! Je suis l’assistant de Dr Firas, prêt à vous guider pour votre session n8n. Puis-je vous poser quelques questions ? »\n\n## 2. Choix du service (une question à la fois)  \na) « Quel service souhaitez-vous ? »  \n- Si « je ne sais pas » ou « que proposez-vous » → listez les 3 services avec durée, prix et bénéfice court.  \n- Sinon, continuez.\n\n## 3. Collecte des infos client  \n« Parfait ! Pour réserver votre [nom du service], j’ai besoin de votre prénom et de votre e-mail. »\n\n→ Après avoir reçu nom + e-mail/Courriel , enregistrez dans le Google Sheet Prospect (nom, e-mail, téléphone={{ $json.body.phoneNumber }}, service, Event ID, résumé).\n\n## 4. Proposition de créneaux  \n« Souhaitez-vous voir les disponibilités immédiatement ? »  \n- Si oui :  \n  1. Appelez l’outil **Get Availability** avec :  \n     - Event ID du service  \n     - startTime = maintenant (ISO 8601, UTC, ex. `2025-06-13T12:00:00Z`)  \n     - endTime = +48 h (ISO 8601, UTC)  \n     - max 5 créneaux  \n  2. Convertissez chaque horaire UTC en heure de Paris (+02:00) et affichez-les en plain text (ex. “14:30”).\n\n## 5. Choix du créneau  \n« Lequel de ces créneaux vous convient ? »  \n- L’utilisateur répond date+heure →  \n  - Demandez « Tapez “oui” pour confirmer ce créneau ».  \n  - À « oui », enregistrez via Google Sheet Update_Leads (nom, e-mail, service, Event ID, date+heure).  \n  - Puis : « Votre rendez-vous est fixé au [date] à [heure] (heure de Paris). Tapez “confirm” pour finaliser. »\n\n## 6. Confirmation finale  \n- À “confirm” →  \n  - Confirmez la réservation et rappelez la politique d’annulation 24 h à l’avance.  \n  - Proposez un lien d’ajout au calendrier si besoin.\n\n#CONTRAINTES OUTIL “Get Availability”  \n- Toujours ISO 8601 UTC  \n- startTime = maintenant, endTime = +48 h  \n- Maximum 5 créneaux  \n- Plain text, < 400 car.\n\n#RÈGLES GÉNÉRALES  \n- Une question à la fois  \n- Ne jamais redemander une info déjà fournie  \n- “RESET” relance la conversation depuis le début  \n",
+							},
+							promptType: 'define',
+						},
+						subnodes: {
+							memory: memory({
+								type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+								version: 1.3,
+								config: {
+									parameters: {
+										sessionKey: '={{ $json.body.contactId }}',
+										sessionIdType: 'customKey',
+										contextWindowLength: 50,
+									},
+									name: 'AI Conversation Memory',
+								},
+							}),
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: {
+											__rl: true,
+											mode: 'list',
+											value: 'gpt-4o',
+											cachedResultName: 'gpt-4o',
+										},
+										options: {},
+									},
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'LLM: GPT-4o Chat Model',
+								},
+							}),
+							tools: [
+								tool({
+									type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+									version: 1.1,
+									config: {
+										parameters: {
+											url: 'https://api.cal.com/v2/slots/available',
+											sendQuery: true,
+											sendHeaders: true,
+											parametersQuery: {
+												values: [
+													{ name: 'eventTypeId' },
+													{ name: 'startTime' },
+													{ name: 'endTime' },
+												],
+											},
+											toolDescription:
+												'Appelez cet outil pour récupérer la disponibilité des rendez-vous.\nVous devez impérativement utiliser le fuseau horaire de Paris.\nRespectez strictement le format ISO pour les dates, par exemple :\n2025-01-01T09:00:00-02:00\nExemple de schéma d’entrée :\n{\n  "startTime": "...",\n  "endTime": "..."\n}',
+											parametersHeaders: {
+												values: [
+													{
+														name: 'Authorization',
+														value: 'Bearer YOUR_TOKEN_HERE',
+														valueProvider: 'fieldValue',
+													},
+													{
+														name: 'Content-Type',
+														value: 'application/json',
+														valueProvider: 'fieldValue',
+													},
+												],
+											},
+										},
+										name: 'Fetch Available Time Slots',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleSheetsTool',
+									version: 4.5,
+									config: {
+										parameters: {
+											columns: {
+												value: {
+													Nom: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Nom', ``, 'string') }}",
+													Courriel:
+														"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Courriel', ``, 'string') }}",
+													Résumé:
+														"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('R_sum_', `ici il y a le résumé de toute la conversation`, 'string') }}",
+													'ID du contact': '={{ $json.body.contactId }}',
+													'Numéro de téléphone': '={{ $json.body.phoneNumber }}',
+												},
+												schema: [
+													{
+														id: 'Nom',
+														type: 'string',
+														display: true,
+														required: false,
+														displayName: 'Nom',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Courriel',
+														type: 'string',
+														display: true,
+														required: false,
+														displayName: 'Courriel',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Numéro de téléphone',
+														type: 'string',
+														display: true,
+														required: false,
+														displayName: 'Numéro de téléphone',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Résumé',
+														type: 'string',
+														display: true,
+														required: false,
+														displayName: 'Résumé',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Réservé',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'Réservé',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Nom de l’événement',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'Nom de l’événement',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'ID de l’événement',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'ID de l’événement',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Date du rendez-vous',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'Date du rendez-vous',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Rappel SMS envoyé',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'Rappel SMS envoyé',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'ID du contact',
+														type: 'string',
+														display: true,
+														removed: false,
+														required: false,
+														displayName: 'ID du contact',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+												],
+												mappingMode: 'defineBelow',
+												matchingColumns: ['ID du contact'],
+												attemptToConvertTypes: false,
+												convertFieldsToString: false,
+											},
+											options: {},
+											operation: 'appendOrUpdate',
+											sheetName: {
+												__rl: true,
+												mode: 'list',
+												value: 'gid=0',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit#gid=0',
+												cachedResultName: 'mes RDV',
+											},
+											documentId: {
+												__rl: true,
+												mode: 'list',
+												value: '1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit?usp=drivesdk',
+												cachedResultName: 'MES RDV',
+											},
+										},
+										credentials: {
+											googleSheetsOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleSheetsOAuth2Api Credential',
+											},
+										},
+										name: 'Create New Prospect in Google Sheet',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleSheetsTool',
+									version: 4.5,
+									config: {
+										parameters: {
+											columns: {
+												value: {
+													'ID du contact': '={{ $json.body.contactId }}',
+													'Date du rendez-vous':
+														"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Date_du_rendez-vous', ``, 'string') }}",
+													'ID de l’événement':
+														"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('ID_de_l__v_nement', ``, 'string') }}",
+													'Nom de l’événement':
+														"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Nom_de_l__v_nement', ``, 'string') }}",
+												},
+												schema: [
+													{
+														id: 'Nom',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'Nom',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Courriel',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'Courriel',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Numéro de téléphone',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'Numéro de téléphone',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Résumé',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'Résumé',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Réservé',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'Réservé',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Nom de l’événement',
+														type: 'string',
+														display: true,
+														removed: false,
+														required: false,
+														displayName: 'Nom de l’événement',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'ID de l’événement',
+														type: 'string',
+														display: true,
+														removed: false,
+														required: false,
+														displayName: 'ID de l’événement',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Date du rendez-vous',
+														type: 'string',
+														display: true,
+														removed: false,
+														required: false,
+														displayName: 'Date du rendez-vous',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'Rappel SMS envoyé',
+														type: 'string',
+														display: true,
+														removed: true,
+														required: false,
+														displayName: 'Rappel SMS envoyé',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+													{
+														id: 'ID du contact',
+														type: 'string',
+														display: true,
+														removed: false,
+														required: false,
+														displayName: 'ID du contact',
+														defaultMatch: false,
+														canBeUsedToMatch: true,
+													},
+												],
+												mappingMode: 'defineBelow',
+												matchingColumns: ['ID du contact'],
+												attemptToConvertTypes: false,
+												convertFieldsToString: false,
+											},
+											options: {},
+											operation: 'update',
+											sheetName: {
+												__rl: true,
+												mode: 'list',
+												value: 'gid=0',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit#gid=0',
+												cachedResultName: 'mes RDV',
+											},
+											documentId: {
+												__rl: true,
+												mode: 'list',
+												value: '1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit?usp=drivesdk',
+												cachedResultName: 'MES RDV',
+											},
+										},
+										credentials: {
+											googleSheetsOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleSheetsOAuth2Api Credential',
+											},
+										},
+										name: 'Update Prospect with Booking Details',
+									},
+								}),
+							],
+						},
+						position: [40, -460],
+						name: 'AI Booking Assistant (Dr Firas)',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						parameters: {
+							options: {},
+							filtersUI: {
+								values: [
+									{
+										lookupValue:
+											"={{ $('Webhook Trigger (WhatsApp Input)').item.json.body.contactId }}",
+										lookupColumn: 'ID du contact',
+									},
+								],
+							},
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit#gid=0',
+								cachedResultName: 'mes RDV',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit?usp=drivesdk',
+								cachedResultName: 'MES RDV',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [-420, 140],
+						name: 'Retrieve Prospect Details',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -73,391 +498,9 @@ const wf = workflow(
 					},
 					options: {},
 				},
-				position: [-740, -80],
 				name: 'Switch: Confirm vs Chat Flow',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 1.8,
-			config: {
-				parameters: {
-					text: '=input :  {{ $json.body.userInput }}',
-					options: {
-						systemMessage:
-							"=#IMPORTANT  \nLes rendez-vous ne peuvent être pris qu’après avoir collecté le nom, l’e-mail/Courriel et le service choisi.\n\n#IDENTITÉ  \nVous êtes l’assistant de Dr Firas, coach expert en automatisation n8n, sur WhatsApp.\n\n#CONTEXTE  \n- Dr Firas propose des coachings et ateliers en ligne pour maîtriser n8n  \n- Horaires : du lundi au vendredi, 9 h–18 h (heure de Paris)  \n- Français et anglais possibles\n- La date d'aujourd'hui est : {{$now}}\n\n#SERVICES ET MAPPING (CRITIQUE)  \n- « Audit express n8n » (30 min) – 40 $ – Event ID : 2638115  \n- « Coaching Workflow n8n » (60 min) – 65 $ – Event ID : 2638127  \n- « Atelier Automatisation Avancée » (90 min) – 99 $ – Event ID : 2638131  \n\nQuand l’utilisateur choisit un service, mémorisez l’Event ID correspondant.\n\n#TON  \nDynamique, professionnel et chaleureux. Emojis légers 👍🤖.\n\n#FLUX DE CONVERSATION\n\n## 1. Accueil  \n« Bonjour ! Je suis l’assistant de Dr Firas, prêt à vous guider pour votre session n8n. Puis-je vous poser quelques questions ? »\n\n## 2. Choix du service (une question à la fois)  \na) « Quel service souhaitez-vous ? »  \n- Si « je ne sais pas » ou « que proposez-vous » → listez les 3 services avec durée, prix et bénéfice court.  \n- Sinon, continuez.\n\n## 3. Collecte des infos client  \n« Parfait ! Pour réserver votre [nom du service], j’ai besoin de votre prénom et de votre e-mail. »\n\n→ Après avoir reçu nom + e-mail/Courriel , enregistrez dans le Google Sheet Prospect (nom, e-mail, téléphone={{ $json.body.phoneNumber }}, service, Event ID, résumé).\n\n## 4. Proposition de créneaux  \n« Souhaitez-vous voir les disponibilités immédiatement ? »  \n- Si oui :  \n  1. Appelez l’outil **Get Availability** avec :  \n     - Event ID du service  \n     - startTime = maintenant (ISO 8601, UTC, ex. `2025-06-13T12:00:00Z`)  \n     - endTime = +48 h (ISO 8601, UTC)  \n     - max 5 créneaux  \n  2. Convertissez chaque horaire UTC en heure de Paris (+02:00) et affichez-les en plain text (ex. “14:30”).\n\n## 5. Choix du créneau  \n« Lequel de ces créneaux vous convient ? »  \n- L’utilisateur répond date+heure →  \n  - Demandez « Tapez “oui” pour confirmer ce créneau ».  \n  - À « oui », enregistrez via Google Sheet Update_Leads (nom, e-mail, service, Event ID, date+heure).  \n  - Puis : « Votre rendez-vous est fixé au [date] à [heure] (heure de Paris). Tapez “confirm” pour finaliser. »\n\n## 6. Confirmation finale  \n- À “confirm” →  \n  - Confirmez la réservation et rappelez la politique d’annulation 24 h à l’avance.  \n  - Proposez un lien d’ajout au calendrier si besoin.\n\n#CONTRAINTES OUTIL “Get Availability”  \n- Toujours ISO 8601 UTC  \n- startTime = maintenant, endTime = +48 h  \n- Maximum 5 créneaux  \n- Plain text, < 400 car.\n\n#RÈGLES GÉNÉRALES  \n- Une question à la fois  \n- Ne jamais redemander une info déjà fournie  \n- “RESET” relance la conversation depuis le début  \n",
-					},
-					promptType: 'define',
-				},
-				subnodes: {
-					memory: memory({
-						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-						version: 1.3,
-						config: {
-							parameters: {
-								sessionKey: '={{ $json.body.contactId }}',
-								sessionIdType: 'customKey',
-								contextWindowLength: 50,
-							},
-							name: 'AI Conversation Memory',
-						},
-					}),
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: {
-									__rl: true,
-									mode: 'list',
-									value: 'gpt-4o',
-									cachedResultName: 'gpt-4o',
-								},
-								options: {},
-							},
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-							},
-							name: 'LLM: GPT-4o Chat Model',
-						},
-					}),
-					tools: [
-						tool({
-							type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
-							version: 1.1,
-							config: {
-								parameters: {
-									url: 'https://api.cal.com/v2/slots/available',
-									sendQuery: true,
-									sendHeaders: true,
-									parametersQuery: {
-										values: [{ name: 'eventTypeId' }, { name: 'startTime' }, { name: 'endTime' }],
-									},
-									toolDescription:
-										'Appelez cet outil pour récupérer la disponibilité des rendez-vous.\nVous devez impérativement utiliser le fuseau horaire de Paris.\nRespectez strictement le format ISO pour les dates, par exemple :\n2025-01-01T09:00:00-02:00\nExemple de schéma d’entrée :\n{\n  "startTime": "...",\n  "endTime": "..."\n}',
-									parametersHeaders: {
-										values: [
-											{
-												name: 'Authorization',
-												value: 'Bearer YOUR_TOKEN_HERE',
-												valueProvider: 'fieldValue',
-											},
-											{
-												name: 'Content-Type',
-												value: 'application/json',
-												valueProvider: 'fieldValue',
-											},
-										],
-									},
-								},
-								name: 'Fetch Available Time Slots',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleSheetsTool',
-							version: 4.5,
-							config: {
-								parameters: {
-									columns: {
-										value: {
-											Nom: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Nom', ``, 'string') }}",
-											Courriel:
-												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Courriel', ``, 'string') }}",
-											Résumé:
-												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('R_sum_', `ici il y a le résumé de toute la conversation`, 'string') }}",
-											'ID du contact': '={{ $json.body.contactId }}',
-											'Numéro de téléphone': '={{ $json.body.phoneNumber }}',
-										},
-										schema: [
-											{
-												id: 'Nom',
-												type: 'string',
-												display: true,
-												required: false,
-												displayName: 'Nom',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Courriel',
-												type: 'string',
-												display: true,
-												required: false,
-												displayName: 'Courriel',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Numéro de téléphone',
-												type: 'string',
-												display: true,
-												required: false,
-												displayName: 'Numéro de téléphone',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Résumé',
-												type: 'string',
-												display: true,
-												required: false,
-												displayName: 'Résumé',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Réservé',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'Réservé',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Nom de l’événement',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'Nom de l’événement',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'ID de l’événement',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'ID de l’événement',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Date du rendez-vous',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'Date du rendez-vous',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Rappel SMS envoyé',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'Rappel SMS envoyé',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'ID du contact',
-												type: 'string',
-												display: true,
-												removed: false,
-												required: false,
-												displayName: 'ID du contact',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-										],
-										mappingMode: 'defineBelow',
-										matchingColumns: ['ID du contact'],
-										attemptToConvertTypes: false,
-										convertFieldsToString: false,
-									},
-									options: {},
-									operation: 'appendOrUpdate',
-									sheetName: {
-										__rl: true,
-										mode: 'list',
-										value: 'gid=0',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit#gid=0',
-										cachedResultName: 'mes RDV',
-									},
-									documentId: {
-										__rl: true,
-										mode: 'list',
-										value: '1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit?usp=drivesdk',
-										cachedResultName: 'MES RDV',
-									},
-								},
-								credentials: {
-									googleSheetsOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleSheetsOAuth2Api Credential',
-									},
-								},
-								name: 'Create New Prospect in Google Sheet',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleSheetsTool',
-							version: 4.5,
-							config: {
-								parameters: {
-									columns: {
-										value: {
-											'ID du contact': '={{ $json.body.contactId }}',
-											'Date du rendez-vous':
-												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Date_du_rendez-vous', ``, 'string') }}",
-											'ID de l’événement':
-												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('ID_de_l__v_nement', ``, 'string') }}",
-											'Nom de l’événement':
-												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Nom_de_l__v_nement', ``, 'string') }}",
-										},
-										schema: [
-											{
-												id: 'Nom',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'Nom',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Courriel',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'Courriel',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Numéro de téléphone',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'Numéro de téléphone',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Résumé',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'Résumé',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Réservé',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'Réservé',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Nom de l’événement',
-												type: 'string',
-												display: true,
-												removed: false,
-												required: false,
-												displayName: 'Nom de l’événement',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'ID de l’événement',
-												type: 'string',
-												display: true,
-												removed: false,
-												required: false,
-												displayName: 'ID de l’événement',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Date du rendez-vous',
-												type: 'string',
-												display: true,
-												removed: false,
-												required: false,
-												displayName: 'Date du rendez-vous',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'Rappel SMS envoyé',
-												type: 'string',
-												display: true,
-												removed: true,
-												required: false,
-												displayName: 'Rappel SMS envoyé',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-											{
-												id: 'ID du contact',
-												type: 'string',
-												display: true,
-												removed: false,
-												required: false,
-												displayName: 'ID du contact',
-												defaultMatch: false,
-												canBeUsedToMatch: true,
-											},
-										],
-										mappingMode: 'defineBelow',
-										matchingColumns: ['ID du contact'],
-										attemptToConvertTypes: false,
-										convertFieldsToString: false,
-									},
-									options: {},
-									operation: 'update',
-									sheetName: {
-										__rl: true,
-										mode: 'list',
-										value: 'gid=0',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit#gid=0',
-										cachedResultName: 'mes RDV',
-									},
-									documentId: {
-										__rl: true,
-										mode: 'list',
-										value: '1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit?usp=drivesdk',
-										cachedResultName: 'MES RDV',
-									},
-								},
-								credentials: {
-									googleSheetsOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleSheetsOAuth2Api Credential',
-									},
-								},
-								name: 'Update Prospect with Booking Details',
-							},
-						}),
-					],
-				},
-				position: [40, -460],
-				name: 'AI Booking Assistant (Dr Firas)',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -467,51 +510,6 @@ const wf = workflow(
 				parameters: { options: {}, respondWith: 'allIncomingItems' },
 				position: [700, -460],
 				name: 'Send Response to WhatsApp',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [
-							{
-								lookupValue:
-									"={{ $('Webhook Trigger (WhatsApp Input)').item.json.body.contactId }}",
-								lookupColumn: 'ID du contact',
-							},
-						],
-					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit#gid=0',
-						cachedResultName: 'mes RDV',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1PsuURJg5nxVnb18OMDShjC-sTA9i_32pyBSjfswOpqc/edit?usp=drivesdk',
-						cachedResultName: 'MES RDV',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [-420, 140],
-				name: 'Retrieve Prospect Details',
 			},
 		}),
 	)
@@ -571,10 +569,39 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.respondToWebhook',
+					version: 1.1,
+					config: {
+						parameters: {
+							options: {},
+							respondWith: 'json',
+							responseBody:
+								'\n[\n{\n"output": "Votre réservation a été effectuée avec succès. Vous recevrez bientôt un e-mail de confirmation pour votre massage, RDV : ."\n}\n]',
+						},
+						position: [700, -20],
+						name: 'Webhook Response: Booking Confirmed',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.respondToWebhook',
+					version: 1.1,
+					config: {
+						parameters: {
+							options: {},
+							respondWith: 'json',
+							responseBody:
+								'[\n{\n"output": "Il semble que le créneau horaire que vous avez choisi ne soit plus disponible. Veuillez en sélectionner un autre."\n}\n]',
+						},
+						position: [700, 280],
+						name: 'Webhook Response: Booking Failed',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -632,27 +659,9 @@ const wf = workflow(
 					},
 					options: {},
 				},
-				position: [460, 140],
 				name: 'Check Booking Status (Success or Error)',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'json',
-					responseBody:
-						'\n[\n{\n"output": "Votre réservation a été effectuée avec succès. Vous recevrez bientôt un e-mail de confirmation pour votre massage, RDV : ."\n}\n]',
-				},
-				position: [700, -20],
-				name: 'Webhook Response: Booking Confirmed',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -809,23 +818,6 @@ const wf = workflow(
 				},
 				position: [920, 140],
 				name: 'Mark Booking as Confirmed in Sheet',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {},
-					respondWith: 'json',
-					responseBody:
-						'[\n{\n"output": "Il semble que le créneau horaire que vous avez choisi ne soit plus disponible. Veuillez en sélectionner un autre."\n}\n]',
-				},
-				position: [700, 280],
-				name: 'Webhook Response: Booking Failed',
 			},
 		}),
 	)

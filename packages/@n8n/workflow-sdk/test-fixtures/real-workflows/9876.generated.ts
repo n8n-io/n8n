@@ -28,15 +28,42 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3,
-			config: {
-				parameters: { mode: 'combine', options: {} },
-				position: [608, 208],
-				name: 'Merge Triggers',
-			},
-		}),
+		merge(
+			[
+				trigger({
+					type: 'n8n-nodes-base.webhook',
+					version: 2,
+					config: {
+						parameters: {
+							path: 'dhl-tracking-inquiry',
+							options: {},
+							httpMethod: 'POST',
+							responseMode: 'responseNode',
+						},
+						position: [304, 112],
+						name: 'Webhook Form Trigger',
+					},
+				}),
+				trigger({
+					type: 'n8n-nodes-base.gmailTrigger',
+					version: 1.1,
+					config: {
+						parameters: {
+							simple: false,
+							filters: { sender: [], readStatus: 'unread' },
+							options: {},
+							pollTimes: { item: [{ mode: 'everyMinute' }] },
+						},
+						credentials: {
+							gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+						},
+						position: [304, 304],
+						name: 'Gmail Email Trigger',
+					},
+				}),
+			],
+			{ version: 3, parameters: { mode: 'combine', options: {} }, name: 'Merge Triggers' },
+		),
 	)
 	.then(
 		node({
@@ -99,10 +126,46 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.respondToWebhook',
+					version: 1.1,
+					config: {
+						parameters: {
+							options: {
+								responseCode: 200,
+								responseHeaders: {
+									entries: [{ name: 'Content-Type', value: 'application/json' }],
+								},
+							},
+							respondWith: 'json',
+							responseBody: '={{ JSON.stringify($json.trackingDetails) }}',
+						},
+						position: [1600, 112],
+						name: 'Webhook Response',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.gmail',
+					version: 2.1,
+					config: {
+						parameters: {
+							sendTo: '={{ $json.customerEmail }}',
+							message: '={{ $json.message }}',
+							options: { replyTo: 'user@example.com' },
+							subject: '={{ $json.subject }}',
+						},
+						credentials: {
+							gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+						},
+						position: [1600, 304],
+						name: 'Send Gmail Response',
+					},
+				}),
+			],
+			{
+				version: 2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -122,51 +185,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [1408, 208],
 				name: 'Check Source',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.respondToWebhook',
-			version: 1.1,
-			config: {
-				parameters: {
-					options: {
-						responseCode: 200,
-						responseHeaders: {
-							entries: [{ name: 'Content-Type', value: 'application/json' }],
-						},
-					},
-					respondWith: 'json',
-					responseBody: '={{ JSON.stringify($json.trackingDetails) }}',
-				},
-				position: [1600, 112],
-				name: 'Webhook Response',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.gmail',
-			version: 2.1,
-			config: {
-				parameters: {
-					sendTo: '={{ $json.customerEmail }}',
-					message: '={{ $json.message }}',
-					options: { replyTo: 'user@example.com' },
-					subject: '={{ $json.subject }}',
-				},
-				credentials: {
-					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-				},
-				position: [1600, 304],
-				name: 'Send Gmail Response',
-			},
-		}),
+		),
 	)
 	.add(
 		trigger({

@@ -102,10 +102,70 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.kie.ai/api/v1/jobs/createTask',
+							method: 'POST',
+							options: {},
+							jsonBody:
+								'={\n  "model": "kling-2.6/text-to-video",\n    "input": {\n      "prompt": "{{ $json.prompt }}",\n      "sound": {{ $json.sound }},\n      "duration": {{ $json.duration }},\n      "aspect_ratio":{{ $json.aspect_ratio }}\n    }\n}',
+							sendBody: true,
+							specifyBody: 'json',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpBearerAuth',
+						},
+						credentials: { httpBearerAuth: { id: 'vX52jw1dTyyouVZr', name: 'KIA.AI' } },
+						position: [-256, 1872],
+						name: 'Submit Video Generation Request',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"// n8n Function node\nconst items = $input.all();\nconst out = [];\n\nfor (const item of items) {\n  // Your HTTP node sometimes returns an array at top-level\n  const payload = item.json;\n  const first = Array.isArray(payload) ? payload[0] : payload;\n\n  // Get the stringified resultJson safely\n  const resultJsonStr = first?.data?.resultJson ?? '';\n\n  // Parse and extract\n  let resultUrls = [];\n  try {\n    const parsed = JSON.parse(resultJsonStr);\n    resultUrls = parsed?.resultUrls ?? [];\n  } catch (e) {\n    // leave resultUrls as []\n  }\n\n  out.push({ json: { resultUrls } });\n}\n\nreturn out;\n",
+						},
+						position: [608, 1840],
+						name: 'Extract Video URL',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1,
+					config: {
+						parameters: { unit: 'seconds', amount: 5 },
+						position: [-16, 1872],
+						name: 'Wait for Video Generation',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1,
+					config: {
+						parameters: { unit: 'seconds', amount: 5 },
+						position: [-16, 1872],
+						name: 'Wait for Video Generation',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1,
+					config: {
+						parameters: { unit: 'seconds', amount: 5 },
+						position: [-16, 1872],
+						name: 'Wait for Video Generation',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -238,25 +298,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [368, 1824],
 				name: 'Switch Video Generation Status',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"// n8n Function node\nconst items = $input.all();\nconst out = [];\n\nfor (const item of items) {\n  // Your HTTP node sometimes returns an array at top-level\n  const payload = item.json;\n  const first = Array.isArray(payload) ? payload[0] : payload;\n\n  // Get the stringified resultJson safely\n  const resultJsonStr = first?.data?.resultJson ?? '';\n\n  // Parse and extract\n  let resultUrls = [];\n  try {\n    const parsed = JSON.parse(resultJsonStr);\n    resultUrls = parsed?.resultUrls ?? [];\n  } catch (e) {\n    // leave resultUrls as []\n  }\n\n  out.push({ json: { resultUrls } });\n}\n\nreturn out;\n",
-				},
-				position: [608, 1840],
-				name: 'Extract Video URL',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -365,10 +409,70 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.kie.ai/api/v1/jobs/createTask',
+							method: 'POST',
+							options: {},
+							jsonBody:
+								'={\n  "model": "kling-2.6/image-to-video",\n    "input": {\n      "prompt": "{{ $json.prompt }}",\n      "image_urls": [\n        "{{ $json.image_urls }}"\n      ],\n      "sound": {{ $json.sound }},\n      "duration": {{ $json.duration }}\n    }\n}',
+							sendBody: true,
+							specifyBody: 'json',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpBearerAuth',
+						},
+						credentials: { httpBearerAuth: { id: 'vX52jw1dTyyouVZr', name: 'KIA.AI' } },
+						position: [-208, 2384],
+						name: 'Submit Video Generation1',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"// n8n Function node\nconst items = $input.all();\nconst out = [];\n\nfor (const item of items) {\n  // Your HTTP node sometimes returns an array at top-level\n  const payload = item.json;\n  const first = Array.isArray(payload) ? payload[0] : payload;\n\n  // Get the stringified resultJson safely\n  const resultJsonStr = first?.data?.resultJson ?? '';\n\n  // Parse and extract\n  let resultUrls = [];\n  try {\n    const parsed = JSON.parse(resultJsonStr);\n    resultUrls = parsed?.resultUrls ?? [];\n  } catch (e) {\n    // leave resultUrls as []\n  }\n\n  out.push({ json: { resultUrls } });\n}\n\nreturn out;\n",
+						},
+						position: [640, 2352],
+						name: 'Video URL',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1,
+					config: {
+						parameters: { unit: 'seconds', amount: 5 },
+						position: [16, 2384],
+						name: 'Wait for Image-to-Video Generation',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1,
+					config: {
+						parameters: { unit: 'seconds', amount: 5 },
+						position: [16, 2384],
+						name: 'Wait for Image-to-Video Generation',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1,
+					config: {
+						parameters: { unit: 'seconds', amount: 5 },
+						position: [16, 2384],
+						name: 'Wait for Image-to-Video Generation',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -501,24 +605,8 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [400, 2336],
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"// n8n Function node\nconst items = $input.all();\nconst out = [];\n\nfor (const item of items) {\n  // Your HTTP node sometimes returns an array at top-level\n  const payload = item.json;\n  const first = Array.isArray(payload) ? payload[0] : payload;\n\n  // Get the stringified resultJson safely\n  const resultJsonStr = first?.data?.resultJson ?? '';\n\n  // Parse and extract\n  let resultUrls = [];\n  try {\n    const parsed = JSON.parse(resultJsonStr);\n    resultUrls = parsed?.resultUrls ?? [];\n  } catch (e) {\n    // leave resultUrls as []\n  }\n\n  out.push({ json: { resultUrls } });\n}\n\nreturn out;\n",
-				},
-				position: [640, 2352],
-				name: 'Video URL',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

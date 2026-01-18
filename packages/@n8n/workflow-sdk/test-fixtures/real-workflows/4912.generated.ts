@@ -214,10 +214,48 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: 'f01bd215-c406-493c-a6e4-2b8ec5686b44',
+										operator: { type: 'number', operation: 'notEquals' },
+										leftValue: '={{ $json.records }}',
+										rightValue: '={{ 0 }}',
+									},
+								],
+							},
+						},
+						position: [940, -2820],
+						name: 'If Trustpilot Has Records',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { unit: 'minutes', amount: 1 },
+						position: [560, -2840],
+						name: 'Wait (1 min) Trustpilot Completion',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -242,41 +280,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [400, -2940],
 				name: 'Verify Trustpilot Scraper Ready',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: 'f01bd215-c406-493c-a6e4-2b8ec5686b44',
-								operator: { type: 'number', operation: 'notEquals' },
-								leftValue: '={{ $json.records }}',
-								rightValue: '={{ 0 }}',
-							},
-						],
-					},
-				},
-				position: [940, -2820],
-				name: 'If Trustpilot Has Records',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(
@@ -533,18 +539,6 @@ const wf = workflow(
 	.output(1)
 	.then(
 		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: {
-				parameters: { unit: 'minutes', amount: 1 },
-				position: [560, -2840],
-				name: 'Wait (1 min) Trustpilot Completion',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
 			config: {
@@ -606,10 +600,55 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: '80b55138-4007-47ce-9e4a-bf001c875047',
+										operator: { type: 'number', operation: 'notEquals' },
+										leftValue: '={{ $json.records }}',
+										rightValue: 0,
+									},
+								],
+							},
+						},
+						position: [1420, -3380],
+						name: 'If Yelp Has Records',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.brightdata.com/datasets/v3/progress/{{ $json.snapshot_id }}',
+							options: {},
+							sendHeaders: true,
+							headerParameters: {
+								parameters: [{ name: 'Authorization', value: 'Bearer YOUR_TOKEN_HERE' }],
+							},
+						},
+						position: [760, -3360],
+						name: 'Check Yelp Scrape Progress',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -634,41 +673,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [1200, -3360],
 				name: 'Verify Yelp Ready',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: '80b55138-4007-47ce-9e4a-bf001c875047',
-								operator: { type: 'number', operation: 'notEquals' },
-								leftValue: '={{ $json.records }}',
-								rightValue: 0,
-							},
-						],
-					},
-				},
-				position: [1420, -3380],
-				name: 'If Yelp Has Records',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

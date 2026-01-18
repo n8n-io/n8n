@@ -360,11 +360,95 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3,
-			config: { parameters: { numberInputs: 4 }, position: [2340, 780], name: 'Merge Results' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '5c6edc76-1e3b-45b0-8baa-33a14c678150',
+										name: 'Instagram Post Result',
+										type: 'string',
+										value: '={{ $json }}',
+									},
+								],
+							},
+						},
+						position: [2040, 160],
+						name: 'Instagram Result',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '5c6edc76-1e3b-45b0-8baa-33a14c678150',
+										name: 'X Post Result',
+										type: 'string',
+										value: '={{ $json }}',
+									},
+								],
+							},
+						},
+						position: [2040, 380],
+						name: 'X Result',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '5c6edc76-1e3b-45b0-8baa-33a14c678150',
+										name: 'Facebook Post Result',
+										type: 'string',
+										value: '={{ $json }}',
+									},
+								],
+							},
+						},
+						position: [2040, 600],
+						name: 'Facebook Result',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '5c6edc76-1e3b-45b0-8baa-33a14c678150',
+										name: 'LinkedIn Post Result',
+										type: 'string',
+										value: '={{ $json }}',
+									},
+								],
+							},
+						},
+						position: [2040, 780],
+						name: 'LinkedIn Result',
+					},
+				}),
+			],
+			{ version: 3, parameters: { numberInputs: 4 }, name: 'Merge Results' },
+		),
 	)
 	.then(
 		node({
@@ -567,29 +651,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '5c6edc76-1e3b-45b0-8baa-33a14c678150',
-								name: 'Instagram Post Result',
-								type: 'string',
-								value: '={{ $json }}',
-							},
-						],
-					},
-				},
-				position: [2040, 160],
-				name: 'Instagram Result',
-			},
-		}),
-	)
 	.output(0)
 	.then(
 		node({
@@ -644,29 +705,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '5c6edc76-1e3b-45b0-8baa-33a14c678150',
-								name: 'Facebook Post Result',
-								type: 'string',
-								value: '={{ $json }}',
-							},
-						],
-					},
-				},
-				position: [2040, 600],
-				name: 'Facebook Result',
-			},
-		}),
-	)
 	.output(0)
 	.then(
 		node({
@@ -686,29 +724,6 @@ const wf = workflow(
 				},
 				position: [1700, 780],
 				name: 'LinkedIn Post',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '5c6edc76-1e3b-45b0-8baa-33a14c678150',
-								name: 'LinkedIn Post Result',
-								type: 'string',
-								value: '={{ $json }}',
-							},
-						],
-					},
-				},
-				position: [2040, 780],
-				name: 'LinkedIn Result',
 			},
 		}),
 	)

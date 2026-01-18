@@ -106,10 +106,80 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '38aec976-a32c-4b0e-85f4-c90adc16abc9',
+										name: 'text',
+										type: 'string',
+										value: '={{ $json.messages[0].text.body }}',
+									},
+								],
+							},
+						},
+						position: [2020, -40],
+						name: 'Map text prompt',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'media',
+							operation: 'mediaUrlGet',
+							mediaGetId: '={{ $json.messages[0].audio.id}}',
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [2020, 160],
+						name: 'Gets WhatsApp Voicemail Source URL',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'media',
+							operation: 'mediaUrlGet',
+							mediaGetId: '={{ $json.messages[0].image.id }}',
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [2020, 400],
+						name: 'Gets WhatsApp Image Source URL',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'media',
+							operation: 'mediaUrlGet',
+							mediaGetId: '={{ $json.messages[0].document.id }}',
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [2020, 740],
+						name: 'Gets WhatsApp Document Source URL',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -213,34 +283,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [1600, 380],
 				name: 'Route Types',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '38aec976-a32c-4b0e-85f4-c90adc16abc9',
-								name: 'text',
-								type: 'string',
-								value: '={{ $json.messages[0].text.body }}',
-							},
-						],
-					},
-				},
-				position: [2020, -40],
-				name: 'Map text prompt',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -342,25 +387,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'media',
-					operation: 'mediaUrlGet',
-					mediaGetId: '={{ $json.messages[0].audio.id}}',
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [2020, 160],
-				name: 'Gets WhatsApp Voicemail Source URL',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -391,25 +417,6 @@ const wf = workflow('', '')
 				},
 				position: [2460, 160],
 				name: 'OpenAI',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'media',
-					operation: 'mediaUrlGet',
-					mediaGetId: '={{ $json.messages[0].image.id }}',
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [2020, 400],
-				name: 'Gets WhatsApp Image Source URL',
 			},
 		}),
 	)
@@ -481,25 +488,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(3)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'media',
-					operation: 'mediaUrlGet',
-					mediaGetId: '={{ $json.messages[0].document.id }}',
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [2020, 740],
-				name: 'Gets WhatsApp Document Source URL',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -534,10 +522,209 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'da68bcca-a2a6-4676-8649-6fb1b664e44c',
+										name: 'text',
+										type: 'string',
+										value:
+											"=Parsed text: {{ $json.text || $json.data || $json }}\n\nCaption text: {{ $('Route Types').item.json.messages[0].document.caption }}\n\nMimeType: {{ $('Gets WhatsApp Document Source URL').item.json.mime_type }}",
+									},
+								],
+							},
+						},
+						position: [3440, 800],
+						name: 'Map document prompt',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'da68bcca-a2a6-4676-8649-6fb1b664e44c',
+										name: 'text',
+										type: 'string',
+										value:
+											"=Parsed text: {{ $json.text || $json.data || $json }}\n\nCaption text: {{ $('Route Types').item.json.messages[0].document.caption }}\n\nMimeType: {{ $('Gets WhatsApp Document Source URL').item.json.mime_type }}",
+									},
+								],
+							},
+						},
+						position: [3440, 800],
+						name: 'Map document prompt',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'da68bcca-a2a6-4676-8649-6fb1b664e44c',
+										name: 'text',
+										type: 'string',
+										value:
+											"=Parsed text: {{ $json.text || $json.data || $json }}\n\nCaption text: {{ $('Route Types').item.json.messages[0].document.caption }}\n\nMimeType: {{ $('Gets WhatsApp Document Source URL').item.json.mime_type }}",
+									},
+								],
+							},
+						},
+						position: [3440, 800],
+						name: 'Map document prompt',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'da68bcca-a2a6-4676-8649-6fb1b664e44c',
+										name: 'text',
+										type: 'string',
+										value:
+											"=Parsed text: {{ $json.text || $json.data || $json }}\n\nCaption text: {{ $('Route Types').item.json.messages[0].document.caption }}\n\nMimeType: {{ $('Gets WhatsApp Document Source URL').item.json.mime_type }}",
+									},
+								],
+							},
+						},
+						position: [3440, 800],
+						name: 'Map document prompt',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'da68bcca-a2a6-4676-8649-6fb1b664e44c',
+										name: 'text',
+										type: 'string',
+										value:
+											"=Parsed text: {{ $json.text || $json.data || $json }}\n\nCaption text: {{ $('Route Types').item.json.messages[0].document.caption }}\n\nMimeType: {{ $('Gets WhatsApp Document Source URL').item.json.mime_type }}",
+									},
+								],
+							},
+						},
+						position: [3440, 800],
+						name: 'Map document prompt',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'da68bcca-a2a6-4676-8649-6fb1b664e44c',
+										name: 'text',
+										type: 'string',
+										value:
+											"=Parsed text: {{ $json.text || $json.data || $json }}\n\nCaption text: {{ $('Route Types').item.json.messages[0].document.caption }}\n\nMimeType: {{ $('Gets WhatsApp Document Source URL').item.json.mime_type }}",
+									},
+								],
+							},
+						},
+						position: [3440, 800],
+						name: 'Map document prompt',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.extractFromFile',
+					version: 1,
+					config: {
+						parameters: { options: {}, operation: 'pdf' },
+						position: [3060, 860],
+						name: 'Extract from PDF',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '72ae0d20-616a-4a65-9b14-53bf53656091',
+										name: 'data',
+										type: 'string',
+										value: '={{ $json }}',
+									},
+								],
+							},
+						},
+						position: [3200, 980],
+						name: 'Map JSON',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.extractFromFile',
+					version: 1,
+					config: {
+						parameters: { options: {}, operation: 'xls' },
+						position: [2960, 1060],
+						name: 'Extract from XLS',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.extractFromFile',
+					version: 1,
+					config: {
+						parameters: { options: {}, operation: 'xlsx', binaryPropertyName: '=data' },
+						position: [2960, 1220],
+						name: 'Extract from XLSX',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							textBody: '=The File type you provided is unsupported.',
+							operation: 'send',
+							phoneNumberId: '677680658761861',
+							additionalFields: {},
+							recipientPhoneNumber: "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [2960, 1380],
+						name: 'Send Unsupported Response',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -813,116 +1000,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [2680, 580],
 				name: 'Route Document Types',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'da68bcca-a2a6-4676-8649-6fb1b664e44c',
-								name: 'text',
-								type: 'string',
-								value:
-									"=Parsed text: {{ $json.text || $json.data || $json }}\n\nCaption text: {{ $('Route Types').item.json.messages[0].document.caption }}\n\nMimeType: {{ $('Gets WhatsApp Document Source URL').item.json.mime_type }}",
-							},
-						],
-					},
-				},
-				position: [3440, 800],
-				name: 'Map document prompt',
-			},
-		}),
-	)
-	.output(6)
-	.then(
-		node({
-			type: 'n8n-nodes-base.extractFromFile',
-			version: 1,
-			config: {
-				parameters: { options: {}, operation: 'pdf' },
-				position: [3060, 860],
-				name: 'Extract from PDF',
-			},
-		}),
-	)
-	.output(7)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '72ae0d20-616a-4a65-9b14-53bf53656091',
-								name: 'data',
-								type: 'string',
-								value: '={{ $json }}',
-							},
-						],
-					},
-				},
-				position: [3200, 980],
-				name: 'Map JSON',
-			},
-		}),
-	)
-	.output(8)
-	.then(
-		node({
-			type: 'n8n-nodes-base.extractFromFile',
-			version: 1,
-			config: {
-				parameters: { options: {}, operation: 'xls' },
-				position: [2960, 1060],
-				name: 'Extract from XLS',
-			},
-		}),
-	)
-	.output(9)
-	.then(
-		node({
-			type: 'n8n-nodes-base.extractFromFile',
-			version: 1,
-			config: {
-				parameters: { options: {}, operation: 'xlsx', binaryPropertyName: '=data' },
-				position: [2960, 1220],
-				name: 'Extract from XLSX',
-			},
-		}),
-	)
-	.output(10)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					textBody: '=The File type you provided is unsupported.',
-					operation: 'send',
-					phoneNumberId: '677680658761861',
-					additionalFields: {},
-					recipientPhoneNumber: "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [2960, 1380],
-				name: 'Send Unsupported Response',
-			},
-		}),
+		),
 	)
 	.add(
 		sticky(

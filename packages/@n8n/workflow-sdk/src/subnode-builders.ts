@@ -44,6 +44,7 @@ import type {
 	RetrieverInstance,
 	DocumentLoaderInstance,
 	TextSplitterInstance,
+	DeclaredConnection,
 } from './types/base';
 
 // =============================================================================
@@ -116,6 +117,14 @@ class SubnodeInstanceImpl<
 			this.id,
 			this.name,
 		);
+	}
+
+	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
+		throw new Error('Subnode connections are managed by parent node SubnodeConfig');
+	}
+
+	getConnections(): DeclaredConnection[] {
+		return [];
 	}
 }
 

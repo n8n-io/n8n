@@ -76,10 +76,51 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: { url: '={{ $json.url }}', options: {} },
+						position: [-288, 960],
+						name: 'Fetch URL Content',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '80a0f7dc-ee66-4499-ac84-1e21fca8e6c7',
+										name: 'raw_content',
+										type: 'string',
+										value:
+											"={{ $json.raw_content || $json.data || $json.text || $json.text_content || $json.ParsedResults?.[0]?.ParsedText || '' }}",
+									},
+								],
+							},
+						},
+						position: [448, 1040],
+						name: 'Clean & Format Content',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: { url: '={{ $json.file_content }}', options: {} },
+						position: [-608, 1296],
+						name: 'Fetch PDF File',
+					},
+				}),
+			],
+			{
+				version: 3,
 				parameters: {
 					rules: {
 						values: [
@@ -148,46 +189,9 @@ const wf = workflow(
 					},
 					options: {},
 				},
-				position: [-944, 1024],
 				name: 'Input Type Switch',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: { url: '={{ $json.url }}', options: {} },
-				position: [-288, 960],
-				name: 'Fetch URL Content',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '80a0f7dc-ee66-4499-ac84-1e21fca8e6c7',
-								name: 'raw_content',
-								type: 'string',
-								value:
-									"={{ $json.raw_content || $json.data || $json.text || $json.text_content || $json.ParsedResults?.[0]?.ParsedText || '' }}",
-							},
-						],
-					},
-				},
-				position: [448, 1040],
-				name: 'Clean & Format Content',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -260,18 +264,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: { url: '={{ $json.file_content }}', options: {} },
-				position: [-608, 1296],
-				name: 'Fetch PDF File',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.extractFromFile',
@@ -280,10 +272,45 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.function',
+					version: 1,
+					config: {
+						parameters: {
+							functionCode:
+								"const lang = $json.language?.toLowerCase() || 'english';\nlet code = 'eng';\nif (lang.includes('spanish')) code = 'spa';\nelse if (lang.includes('french')) code = 'fra';\nelse if (lang.includes('german')) code = 'ger';\nreturn { json: { language_code: code } };",
+						},
+						position: [16, 1344],
+						name: 'Map Language Code',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '80a0f7dc-ee66-4499-ac84-1e21fca8e6c7',
+										name: 'raw_content',
+										type: 'string',
+										value:
+											"={{ $json.raw_content || $json.data || $json.text || $json.text_content || $json.ParsedResults?.[0]?.ParsedText || '' }}",
+									},
+								],
+							},
+						},
+						position: [448, 1040],
+						name: 'Clean & Format Content',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -304,25 +331,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [-320, 1296],
 				name: 'Check If Extracted Text Empty',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.function',
-			version: 1,
-			config: {
-				parameters: {
-					functionCode:
-						"const lang = $json.language?.toLowerCase() || 'english';\nlet code = 'eng';\nif (lang.includes('spanish')) code = 'spa';\nelse if (lang.includes('french')) code = 'fra';\nelse if (lang.includes('german')) code = 'ger';\nreturn { json: { language_code: code } };",
-				},
-				position: [16, 1344],
-				name: 'Map Language Code',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -790,10 +801,45 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.function',
+					version: 1,
+					config: {
+						parameters: {
+							functionCode:
+								"const lang = $json.language?.toLowerCase() || 'english';\nlet code = 'eng';\nif (lang.includes('spanish')) code = 'spa';\nelse if (lang.includes('french')) code = 'fra';\nelse if (lang.includes('german')) code = 'ger';\nreturn { json: { language_code: code } };",
+						},
+						position: [-192, 2624],
+						name: 'Map OCR Language Code',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '80a0f7dc-ee66-4499-ac84-1e21fca8e6c7',
+										name: 'raw_content',
+										type: 'string',
+										value:
+											"={{ $json.raw_content || $json.data || $json.text || $json.text_content || $json.ParsedResults?.[0]?.ParsedText || '' }}",
+									},
+								],
+							},
+						},
+						position: [160, 2816],
+						name: 'Process Extracted Text',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -814,25 +860,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [-416, 2800],
 				name: 'Check PDF Text Extraction',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.function',
-			version: 1,
-			config: {
-				parameters: {
-					functionCode:
-						"const lang = $json.language?.toLowerCase() || 'english';\nlet code = 'eng';\nif (lang.includes('spanish')) code = 'spa';\nelse if (lang.includes('french')) code = 'fra';\nelse if (lang.includes('german')) code = 'ger';\nreturn { json: { language_code: code } };",
-				},
-				position: [-192, 2624],
-				name: 'Map OCR Language Code',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -857,30 +887,6 @@ const wf = workflow(
 				},
 				position: [-32, 2624],
 				name: 'OCR Fallback Processing',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '80a0f7dc-ee66-4499-ac84-1e21fca8e6c7',
-								name: 'raw_content',
-								type: 'string',
-								value:
-									"={{ $json.raw_content || $json.data || $json.text || $json.text_content || $json.ParsedResults?.[0]?.ParsedText || '' }}",
-							},
-						],
-					},
-				},
-				position: [160, 2816],
-				name: 'Process Extracted Text',
 			},
 		}),
 	)

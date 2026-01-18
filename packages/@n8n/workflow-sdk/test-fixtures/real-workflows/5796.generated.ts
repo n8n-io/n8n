@@ -184,10 +184,73 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							columns: {
+								value: { 'Video link': '={{ $json.data.video_url }}' },
+								schema: [
+									{
+										id: 'Video link',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'Video link',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: ['Video link'],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'append',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1AUADRf5MafbEazIZKuEBuDb7ETBEpCI0WSEnxFDJqn4/edit#gid=0',
+								cachedResultName: 'Sheet1',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1AUADRf5MafbEazIZKuEBuDb7ETBEpCI0WSEnxFDJqn4/edit?usp=drivesdk',
+								cachedResultName: 'Videos',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [1736, -220],
+						name: 'Google Sheets: Log Video URL',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { amount: 20 },
+						position: [1736, 5],
+						name: ' Wait: Retry if Not Complete',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -212,78 +275,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [1516, -170],
 				name: 'IF: Video Completed?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.6,
-			config: {
-				parameters: {
-					columns: {
-						value: { 'Video link': '={{ $json.data.video_url }}' },
-						schema: [
-							{
-								id: 'Video link',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Video link',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['Video link'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'append',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1AUADRf5MafbEazIZKuEBuDb7ETBEpCI0WSEnxFDJqn4/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1AUADRf5MafbEazIZKuEBuDb7ETBEpCI0WSEnxFDJqn4/edit?usp=drivesdk',
-						cachedResultName: 'Videos',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [1736, -220],
-				name: 'Google Sheets: Log Video URL',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: {
-				parameters: { amount: 20 },
-				position: [1736, 5],
-				name: ' Wait: Retry if Not Complete',
-			},
-		}),
+		),
 	)
 	.add(
 		sticky(

@@ -121,10 +121,33 @@ const wf = workflow('g1hmK8jw38TOYX7D', 'Create Video with Google Veo3 and Uploa
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://queue.fal.run/fal-ai/veo3/requests/{{ $json.request_id }}',
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [-220, 1220],
+						name: 'Get Url Video',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 60 }, position: [660, 840], name: 'Wait 60 sec.' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -149,30 +172,9 @@ const wf = workflow('g1hmK8jw38TOYX7D', 'Create Video with Google Veo3 and Uploa
 						],
 					},
 				},
-				position: [1020, 840],
 				name: 'Completed?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://queue.fal.run/fal-ai/veo3/requests/{{ $json.request_id }}',
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [-220, 1220],
-				name: 'Get Url Video',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

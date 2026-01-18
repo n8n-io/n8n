@@ -236,10 +236,87 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.1,
+					config: {
+						parameters: {
+							text: "=You are an email formatting expert. Convert the following LinkedIn post into a clean, professional HTML email that works perfectly in Gmail.\n\nLinkedIn Post Content:\n{{ $json.final_post }}\n\nRequirements:\n- Create Gmail-compatible HTML (inline CSS only, no external stylesheets)\n- Use a clean, professional email layout\n- Make it mobile-responsive\n- Include the post content with proper formatting and line breaks\n- Add the hashtags at the bottom in a subtle, styled way\n- Use web-safe fonts (Arial, Helvetica, Georgia, Times New Roman)\n- Keep it simple - Gmail strips many CSS properties\n- Ensure good readability with proper spacing and typography\n- Use a maximum width of 600px for email clients\n- If the post contains a call-to-action, format it as regular text (not a button)\n- NEVER create button elements (<button>, <a>) or styled link buttons\n- Do not add any interactive elements that weren't in the original post content\n- Simply present the post content as formatted text with proper styling\n\nReturn ONLY the complete HTML code, nothing else. No explanations, no markdown code blocks, just pure HTML.",
+							options: {},
+							promptType: 'define',
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: {
+											__rl: true,
+											mode: 'list',
+											value: 'gpt-4.1-mini',
+											cachedResultName: 'gpt-4.1-mini',
+										},
+										options: {},
+									},
+									credentials: { openAiApi: { id: 'rxfg6jEjEjPWmANV', name: 'Dummy' } },
+									name: 'OpenAI Chat Model1',
+								},
+							}),
+						},
+						position: [-224, 768],
+						name: 'Format Content to HTML',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.1,
+					config: {
+						parameters: {
+							text: '=You are a LinkedIn content expert. Create an engaging LinkedIn post based on these inputs:\n\nTopic: {{ $(\'Limit to One Post\').item.json[\'Topic/Subject\'] }}\nContent Type: {{ $(\'Limit to One Post\').item.json[\'Content Type\'] }}\nTone: {{ $(\'Limit to One Post\').item.json[\'Tone\'] }}\nTarget Audience: {{ $(\'Limit to One Post\').item.json[\'Target Audience\'] }}\nAdditional Notes: {{ $(\'Limit to One Post\').item.json[\'Additional Notes\'] }}\n\nRequirements:\n- Write a compelling LinkedIn post (150–300 words optimal)\n- Use short paragraphs (2–3 lines max) for readability\n- Include a strong hook in the first line\n- Add 3–5 relevant hashtags\n- Include a clear call-to-action that encourages comments\n- Match the specified tone exactly\n- Format specifically for LinkedIn (line breaks, no markdown)\n- Write in a natural, conversational human voice\n- Avoid corporate jargon, buzzwords, and overly formal language\n- Use contractions (I\'m, don\'t, we\'re) and casual phrasing where appropriate\n- Vary sentence length; avoid repetitive sentence structures\n- Include light personal perspective or storytelling when relevant\n- Avoid clichés such as "game-changer," "leverage," "synergy," "circle back," or "deep dive"\n- Do not use the character "—" anywhere\n- Write one word image queries separated by commas. \n\nOutput Instructions:\nReturn your response as valid JSON in the following structure only:\n\n{\n  "post_content": "The full LinkedIn post text goes here...",\n  "hashtags": ["#Marketing", "#Leadership", "#AI"],\n  "character_count": 285,\n  "engagement_tip": "Best time to post: Tuesday–Thursday, 8–10 AM",\n  "call_to_action": "What\'s your experience with this? Share in the comments.",\n  "image_query": "AI, Computer, IT"\n}\n',
+							options: {},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: {
+											__rl: true,
+											mode: 'list',
+											value: 'gpt-5.1',
+											cachedResultName: 'gpt-5.1',
+										},
+										options: {},
+									},
+									credentials: { openAiApi: { id: 'rxfg6jEjEjPWmANV', name: 'Dummy' } },
+									name: 'OpenAI Chat Model',
+								},
+							}),
+							outputParser: outputParser({
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								version: 1.3,
+								config: {
+									parameters: {
+										jsonSchemaExample:
+											'{\n  "post_content": "The main LinkedIn post text goes here with emojis naturally integrated...",\n  "hashtags": ["#Marketing", "#Leadership", "#AI"],\n  "character_count": 285,\n  "engagement_tip": "Best time to post: Tuesday-Thursday, 8-10 AM",\n  "call_to_action": "What\'s your experience with this? Share in the comments!",\n  "image_prompt": "A detailed DALL-E prompt for generating a professional LinkedIn post image"\n}',
+									},
+									name: 'Structured Output Parser',
+								},
+							}),
+						},
+						position: [560, 176],
+						name: 'AI Content Generation',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -260,45 +337,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [1360, 336],
 				name: 'Validate Post Quality',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2.1,
-			config: {
-				parameters: {
-					text: "=You are an email formatting expert. Convert the following LinkedIn post into a clean, professional HTML email that works perfectly in Gmail.\n\nLinkedIn Post Content:\n{{ $json.final_post }}\n\nRequirements:\n- Create Gmail-compatible HTML (inline CSS only, no external stylesheets)\n- Use a clean, professional email layout\n- Make it mobile-responsive\n- Include the post content with proper formatting and line breaks\n- Add the hashtags at the bottom in a subtle, styled way\n- Use web-safe fonts (Arial, Helvetica, Georgia, Times New Roman)\n- Keep it simple - Gmail strips many CSS properties\n- Ensure good readability with proper spacing and typography\n- Use a maximum width of 600px for email clients\n- If the post contains a call-to-action, format it as regular text (not a button)\n- NEVER create button elements (<button>, <a>) or styled link buttons\n- Do not add any interactive elements that weren't in the original post content\n- Simply present the post content as formatted text with proper styling\n\nReturn ONLY the complete HTML code, nothing else. No explanations, no markdown code blocks, just pure HTML.",
-					options: {},
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: {
-									__rl: true,
-									mode: 'list',
-									value: 'gpt-4.1-mini',
-									cachedResultName: 'gpt-4.1-mini',
-								},
-								options: {},
-							},
-							credentials: { openAiApi: { id: 'rxfg6jEjEjPWmANV', name: 'Dummy' } },
-							name: 'OpenAI Chat Model1',
-						},
-					}),
-				},
-				position: [-224, 768],
-				name: 'Format Content to HTML',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -338,10 +379,163 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: '46e8311b-ef84-4e79-9d89-d8207521e5c6',
+										operator: { type: 'string', operation: 'equals' },
+										leftValue: "={{ $('Get Post Idea').item.json['Include Image?'] }}",
+										rightValue: 'Yes',
+									},
+								],
+							},
+						},
+						position: [592, 1024],
+						name: 'Check Image Preference',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									Status: '=Rejected',
+									row_number: "={{ $('Update Post Status').first().json.row_number }}",
+								},
+								schema: [
+									{
+										id: 'Topic/Subject',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Topic/Subject',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Content Type',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Content Type',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Tone',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Tone',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Target Audience',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Target Audience',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Additional Notes',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Additional Notes',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Image link for your post',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Image link for your post',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Status',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'Status',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'row_number',
+										type: 'number',
+										display: true,
+										removed: false,
+										readOnly: true,
+										required: false,
+										displayName: 'row_number',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: ['row_number'],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'update',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 1500824165,
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1qUir1c-_ScMnoYVoQ0W41nsv5IpLW6rjK8HUNqvNnAg/edit#gid=1500824165',
+								cachedResultName:
+									'Automate LinkedIn Social Media Content Creation with AI - Gsheet',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1qUir1c-_ScMnoYVoQ0W41nsv5IpLW6rjK8HUNqvNnAg',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1qUir1c-_ScMnoYVoQ0W41nsv5IpLW6rjK8HUNqvNnAg/edit?usp=drivesdk',
+								cachedResultName: 'example',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: { id: 'oURwy13SlM7ZHMDw', name: 'Dummy' },
+						},
+						position: [320, 1120],
+						name: 'Update Post Status to Rejected',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -362,41 +556,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [320, 880],
 				name: 'Check Email Approval',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: '46e8311b-ef84-4e79-9d89-d8207521e5c6',
-								operator: { type: 'string', operation: 'equals' },
-								leftValue: "={{ $('Get Post Idea').item.json['Include Image?'] }}",
-								rightValue: 'Yes',
-							},
-						],
-					},
-				},
-				position: [592, 1024],
-				name: 'Check Image Preference',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(
@@ -699,132 +861,6 @@ const wf = workflow(
 				},
 				position: [2256, 1040],
 				name: 'Create a post',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.6,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							Status: '=Rejected',
-							row_number: "={{ $('Update Post Status').first().json.row_number }}",
-						},
-						schema: [
-							{
-								id: 'Topic/Subject',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Topic/Subject',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Content Type',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Content Type',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Tone',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Tone',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Target Audience',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Target Audience',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Additional Notes',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Additional Notes',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Image link for your post',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Image link for your post',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Status',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'number',
-								display: true,
-								removed: false,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['row_number'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 1500824165,
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1qUir1c-_ScMnoYVoQ0W41nsv5IpLW6rjK8HUNqvNnAg/edit#gid=1500824165',
-						cachedResultName: 'Automate LinkedIn Social Media Content Creation with AI - Gsheet',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1qUir1c-_ScMnoYVoQ0W41nsv5IpLW6rjK8HUNqvNnAg',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1qUir1c-_ScMnoYVoQ0W41nsv5IpLW6rjK8HUNqvNnAg/edit?usp=drivesdk',
-						cachedResultName: 'example',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: 'oURwy13SlM7ZHMDw', name: 'Dummy' },
-				},
-				position: [320, 1120],
-				name: 'Update Post Status to Rejected',
 			},
 		}),
 	)

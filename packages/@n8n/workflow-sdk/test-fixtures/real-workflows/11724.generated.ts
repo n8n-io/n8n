@@ -177,10 +177,48 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '444f5cb7-c647-4371-a6e0-8778a28a9d16',
+										name: 'photo_url',
+										type: 'string',
+										value: "={{ $('Config Variables').item.json.default_photo_url }}",
+									},
+								],
+							},
+							includeOtherFields: true,
+						},
+						position: [1664, 256],
+						name: 'Assign Default Image',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.3,
+					config: {
+						parameters: {
+							url: '=https://your-site.com/wp-json/wp/v2/media/{{ $json.photo_id }}',
+							options: {},
+							authentication: 'predefinedCredentialType',
+							nodeCredentialType: 'wordpressApi',
+						},
+						credentials: { wordpressApi: { id: '', name: '' } },
+						position: [1200, 448],
+						name: 'Get Image',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -201,42 +239,51 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [1040, 272],
 				name: 'Check for missing images',
 			},
-		}),
+		),
 	)
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '444f5cb7-c647-4371-a6e0-8778a28a9d16',
-								name: 'photo_url',
-								type: 'string',
-								value: "={{ $('Config Variables').item.json.default_photo_url }}",
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '444f5cb7-c647-4371-a6e0-8778a28a9d16',
+										name: 'photo_url',
+										type: 'string',
+										value: "={{ $('Config Variables').item.json.default_photo_url }}",
+									},
+								],
 							},
-						],
+							includeOtherFields: true,
+						},
+						position: [1664, 256],
+						name: 'Assign Default Image',
 					},
-					includeOtherFields: true,
-				},
-				position: [1664, 256],
-				name: 'Assign Default Image',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [1936, 272], name: 'Merge all articles' },
-		}),
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3.2,
+					config: {
+						parameters: {
+							mode: 'combine',
+							options: { includeUnpaired: false },
+							combineBy: 'combineByPosition',
+						},
+						position: [1664, 432],
+						name: 'Merge image url with article details',
+					},
+				}),
+			],
+			{ version: 3.2, name: 'Merge all articles' },
+		),
 	)
 	.then(
 		node({
@@ -302,10 +349,29 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.3,
+					config: {
+						parameters: { url: '={{ $json.response.url }}', options: {} },
+						position: [3664, 256],
+						name: 'Download video',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { amount: 30 },
+						position: [2944, 272],
+						name: 'Wait - Shotstack Works',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -326,22 +392,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [3408, 272],
 				name: 'If video is ready',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.3,
-			config: {
-				parameters: { url: '={{ $json.response.url }}', options: {} },
-				position: [3664, 256],
-				name: 'Download video',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -372,24 +425,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.3,
-			config: {
-				parameters: {
-					url: '=https://your-site.com/wp-json/wp/v2/media/{{ $json.photo_id }}',
-					options: {},
-					authentication: 'predefinedCredentialType',
-					nodeCredentialType: 'wordpressApi',
-				},
-				credentials: { wordpressApi: { id: '', name: '' } },
-				position: [1200, 448],
-				name: 'Get Image',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -410,21 +445,6 @@ const wf = workflow('', '')
 				},
 				position: [1376, 448],
 				name: 'Assign image URL',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
-				parameters: {
-					mode: 'combine',
-					options: { includeUnpaired: false },
-					combineBy: 'combineByPosition',
-				},
-				position: [1664, 432],
-				name: 'Merge image url with article details',
 			},
 		}),
 	)

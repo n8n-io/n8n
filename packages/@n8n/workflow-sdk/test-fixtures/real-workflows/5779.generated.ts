@@ -237,10 +237,33 @@ const wf = workflow('yNlNZi8P0wL4Tj5u', 'Google Text-to-Speech Generator', { exe
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '={{ $json.response_url }}',
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [1180, 20],
+						name: 'Get Duration',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 1 }, position: [1180, 180] },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -265,29 +288,9 @@ const wf = workflow('yNlNZi8P0wL4Tj5u', 'Google Text-to-Speech Generator', { exe
 						],
 					},
 				},
-				position: [1000, 40],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '={{ $json.response_url }}',
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [1180, 20],
-				name: 'Get Duration',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -498,14 +501,6 @@ const wf = workflow('yNlNZi8P0wL4Tj5u', 'Google Text-to-Speech Generator', { exe
 				position: [1360, 20],
 				name: 'Create a record',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { amount: 1 }, position: [1180, 180] },
 		}),
 	)
 	.add(

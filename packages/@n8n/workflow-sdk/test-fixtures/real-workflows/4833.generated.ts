@@ -68,10 +68,94 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 1,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							options: {},
+							filtersUI: {
+								values: [
+									{
+										lookupValue: "={{ $('Loop Over Items').item.json['Website URL'] }}",
+										lookupColumn: 'Website URL',
+									},
+									{ lookupColumn: 'Up Time' },
+								],
+							},
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit#gid=0',
+								cachedResultName: 'Sheet2',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit?usp=drivesdk',
+								cachedResultName: 'Website Moniter',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [-20, 1800],
+						name: 'Get Active Down Record',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							options: {},
+							filtersUI: {
+								values: [
+									{
+										lookupValue: "={{ $('Loop Over Items').item.json['Website URL'] }}",
+										lookupColumn: 'Website URL',
+									},
+								],
+							},
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit#gid=0',
+								cachedResultName: 'Sheet2',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit?usp=drivesdk',
+								cachedResultName: 'Website Moniter',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [-20, 2200],
+						name: 'Get Existing Down Records',
+					},
+				}),
+			],
+			{
+				version: 1,
 				parameters: {
 					conditions: {
 						number: [
@@ -83,61 +167,121 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 						],
 					},
 				},
-				position: [-240, 1900],
 				name: 'If Site Up',
 			},
-		}),
+		),
 	)
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [
-							{
-								lookupValue: "={{ $('Loop Over Items').item.json['Website URL'] }}",
-								lookupColumn: 'Website URL',
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									'Up Time': "={{ new Date().toLocaleTimeString('en-GB', { hour12: false }) }}",
+									row_number: '={{ $json.row_number }}',
+									'Website URL': "={{ $json['Website URL'] }}",
+									'Total downtime':
+										"={{(() => {\n  const downTimeStr = $input.first().json['Down Time'];\n\n  // Get current time in HH:MM:SS format\n  const now = new Date();\n  const upTimeStr = now.toLocaleTimeString('en-GB', { hour12: false });\n\n  function parseTime(timeStr) {\n    const [h, m, s] = timeStr.split(\":\").map(Number);\n    const date = new Date();\n    date.setHours(h, m, s, 0);\n    return date;\n  }\n\n  const downTime = parseTime(downTimeStr);\n  const upTime = parseTime(upTimeStr);\n\n  // Handle overnight scenario\n  if (upTime < downTime) {\n    upTime.setDate(upTime.getDate() + 1);\n  }\n\n  const diffMs = upTime - downTime;\n  const totalMinutes = Math.floor(diffMs / 60000);\n  const hours = Math.floor(totalMinutes / 60);\n  const minutes = totalMinutes % 60;\n  const seconds = Math.floor((diffMs % 60000) / 1000);\n\n  return `${hours}h ${minutes}m ${seconds}s`;\n})()}}",
+								},
+								schema: [
+									{
+										id: 'Website URL',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'Website URL',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Down Time',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Down Time',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Up Time',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'Up Time',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Total downtime',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'Total downtime',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'row_number',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: true,
+										required: false,
+										displayName: 'row_number',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: ['row_number'],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
 							},
-							{ lookupColumn: 'Up Time' },
-						],
+							options: {},
+							operation: 'update',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit#gid=0',
+								cachedResultName: 'Sheet2',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit?usp=drivesdk',
+								cachedResultName: 'Website Moniter',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [420, 1800],
+						name: 'Update Uptime and Total Downtime',
 					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit#gid=0',
-						cachedResultName: 'Sheet2',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit?usp=drivesdk',
-						cachedResultName: 'Website Moniter',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [-20, 1800],
-				name: 'Get Active Down Record',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+				}),
+				node({
+					type: 'n8n-nodes-base.splitInBatches',
+					version: 3,
+					config: { parameters: { options: {} }, position: [-680, 2425], name: 'Loop Over Items' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -159,113 +303,9 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 						],
 					},
 				},
-				position: [200, 1800],
 				name: 'If Down Record Exist',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.6,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							'Up Time': "={{ new Date().toLocaleTimeString('en-GB', { hour12: false }) }}",
-							row_number: '={{ $json.row_number }}',
-							'Website URL': "={{ $json['Website URL'] }}",
-							'Total downtime':
-								"={{(() => {\n  const downTimeStr = $input.first().json['Down Time'];\n\n  // Get current time in HH:MM:SS format\n  const now = new Date();\n  const upTimeStr = now.toLocaleTimeString('en-GB', { hour12: false });\n\n  function parseTime(timeStr) {\n    const [h, m, s] = timeStr.split(\":\").map(Number);\n    const date = new Date();\n    date.setHours(h, m, s, 0);\n    return date;\n  }\n\n  const downTime = parseTime(downTimeStr);\n  const upTime = parseTime(upTimeStr);\n\n  // Handle overnight scenario\n  if (upTime < downTime) {\n    upTime.setDate(upTime.getDate() + 1);\n  }\n\n  const diffMs = upTime - downTime;\n  const totalMinutes = Math.floor(diffMs / 60000);\n  const hours = Math.floor(totalMinutes / 60);\n  const minutes = totalMinutes % 60;\n  const seconds = Math.floor((diffMs % 60000) / 1000);\n\n  return `${hours}h ${minutes}m ${seconds}s`;\n})()}}",
-						},
-						schema: [
-							{
-								id: 'Website URL',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Website URL',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Down Time',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Down Time',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Up Time',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Up Time',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Total downtime',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Total downtime',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'string',
-								display: true,
-								removed: false,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['row_number'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'update',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit#gid=0',
-						cachedResultName: 'Sheet2',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit?usp=drivesdk',
-						cachedResultName: 'Website Moniter',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [420, 1800],
-				name: 'Update Uptime and Total Downtime',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(
@@ -333,50 +373,6 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.6,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [
-							{
-								lookupValue: "={{ $('Loop Over Items').item.json['Website URL'] }}",
-								lookupColumn: 'Website URL',
-							},
-						],
-					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit#gid=0',
-						cachedResultName: 'Sheet2',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit?usp=drivesdk',
-						cachedResultName: 'Website Moniter',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [-20, 2200],
-				name: 'Get Existing Down Records',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.code',
@@ -392,10 +388,113 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.splitInBatches',
+					version: 3,
+					config: { parameters: { options: {} }, position: [-680, 2425], name: 'Loop Over Items' },
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									'Down Time': "={{ new Date().toLocaleTimeString('en-GB', { hour12: false }) }}",
+									'Website URL': '={{ $(\'Loop Over Items\').item.json["Website URL"] }}',
+								},
+								schema: [
+									{
+										id: 'Website URL',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'Website URL',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Down Time',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'Down Time',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Up Time',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Up Time',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Total downtime',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Total downtime',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'row_number',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: true,
+										required: false,
+										displayName: 'row_number',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: ['Website URL'],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'append',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit#gid=0',
+								cachedResultName: 'Sheet2',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit?usp=drivesdk',
+								cachedResultName: 'Website Moniter',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [640, 2200],
+						name: 'Add Downtime Record',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -416,110 +515,9 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 						],
 					},
 				},
-				position: [420, 2200],
 				name: 'Check Downtime Exists',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.6,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							'Down Time': "={{ new Date().toLocaleTimeString('en-GB', { hour12: false }) }}",
-							'Website URL': '={{ $(\'Loop Over Items\').item.json["Website URL"] }}',
-						},
-						schema: [
-							{
-								id: 'Website URL',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Website URL',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Down Time',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Down Time',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Up Time',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Up Time',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Total downtime',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Total downtime',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'row_number',
-								type: 'string',
-								display: true,
-								removed: false,
-								readOnly: true,
-								required: false,
-								displayName: 'row_number',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['Website URL'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'append',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit#gid=0',
-						cachedResultName: 'Sheet2',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1_VVpkIvpYQigw5q0KmPXUAC2aV2rk1nRQLQZ7YK2KwY/edit?usp=drivesdk',
-						cachedResultName: 'Website Moniter',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [640, 2200],
-				name: 'Add Downtime Record',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(

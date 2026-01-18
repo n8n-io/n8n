@@ -91,10 +91,33 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.upload-post.com/api/uploadposts/ffmpeg/jobs/{{ $json.job_id }}/download',
+							options: { response: { response: {} } },
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [208, 144],
+						name: 'Download Audio',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { position: [208, 288], name: 'Wait 5s & Retry (Audio)' },
+				}),
+			],
+			{
+				version: 2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -115,30 +138,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [32, 272],
 				name: 'Is Audio Job Completed?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.upload-post.com/api/uploadposts/ffmpeg/jobs/{{ $json.job_id }}/download',
-					options: { response: { response: {} } },
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [208, 144],
-				name: 'Download Audio',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -295,10 +297,33 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.upload-post.com/api/uploadposts/ffmpeg/jobs/{{ $json.job_id }}/download',
+							options: { response: { response: {} } },
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [2160, 128],
+						name: 'Download Short',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { position: [2160, 288], name: 'Wait 5s & Retry (Short)' },
+				}),
+			],
+			{
+				version: 2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -319,30 +344,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [1904, 144],
 				name: 'Is Short Job Completed?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.upload-post.com/api/uploadposts/ffmpeg/jobs/{{ $json.job_id }}/download',
-					options: { response: { response: {} } },
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [2160, 128],
-				name: 'Download Short',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -368,22 +372,6 @@ const wf = workflow('', '')
 				position: [2432, 128],
 				name: 'Schedule to TikTok, Instagram, and YouTube',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [2160, 288], name: 'Wait 5s & Retry (Short)' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [208, 288], name: 'Wait 5s & Retry (Audio)' },
 		}),
 	)
 	.add(

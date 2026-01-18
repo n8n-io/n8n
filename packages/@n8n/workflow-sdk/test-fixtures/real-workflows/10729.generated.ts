@@ -163,26 +163,35 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [2096, 1216], name: 'Combine Result' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						'const item = $input.item.json;\n\n// Get ALL items from Preserve Original Data\nlet preserved = {\n  _id: \'unknown\',\n  _category: \'unknown\',\n  _expected: \'unknown\',\n  _description: \'unknown\'\n};\n\ntry {\n  const allPreserved = $(\'Preserve Original Data\').all();\n  \n  // Strategy 1: Try to match by text content\n  const currentIndex = allPreserved.findIndex(p => {\n    return p.json.text === (item.text || item.guardrailsInput);\n  });\n  \n  if (currentIndex >= 0) {\n    preserved = allPreserved[currentIndex].json;\n  } else {\n    // Strategy 2: Use the last item (works for sequential processing)\n    const lastItem = allPreserved[allPreserved.length - 1];\n    if (lastItem && lastItem.json) {\n      preserved = lastItem.json;\n    }\n  }\n} catch (e) {\n  // Fallback: Check if fields exist in current item\n  if (item._id !== undefined) {\n    preserved = {\n      _id: item._id,\n      _category: item._category,\n      _expected: item._expected,\n      _description: item._description\n    };\n  }\n  console.error("Could not access Preserve Original Data:", e.message);\n}\n\n// Extract violation information from checks array\nlet violationType = "Unknown";\nlet score = 1.0;\n\nif (item.checks && Array.isArray(item.checks)) {\n  const triggeredChecks = item.checks.filter(check => check.triggered === true);\n  \n  if (triggeredChecks.length > 0) {\n    violationType = triggeredChecks.map(c => c.name).join(", ");\n    \n    const scores = triggeredChecks\n      .filter(c => c.confidenceScore !== undefined && c.confidenceScore !== null)\n      .map(c => c.confidenceScore);\n    \n    if (scores.length > 0) {\n      score = Math.max(...scores);\n    }\n  }\n}\n\nreturn {\n  json: {\n    id: preserved._id || "unknown",\n    category: preserved._category || "unknown",\n    text: item.text || item.guardrailsInput || "unknown",\n    expected: preserved._expected || "unknown",\n    actual: "VIOLATION",\n    correct: preserved._expected === "VIOLATION",\n    score: score,\n    violation_type: violationType,\n    description: preserved._description || "unknown",\n    timestamp: new Date().toISOString()\n  }\n};\n',
-				},
-				position: [1632, 1168],
-				name: 'Format Fail Result',
-			},
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								'const item = $input.item.json;\n\n// Get ALL items from Preserve Original Data\nlet preserved = {\n  _id: \'unknown\',\n  _category: \'unknown\',\n  _expected: \'unknown\',\n  _description: \'unknown\'\n};\n\ntry {\n  const allPreserved = $(\'Preserve Original Data\').all();\n  \n  // Strategy 1: Try to match by index from Loop Over Items\n  // The loop processes items sequentially, so we can use array position\n  const currentIndex = allPreserved.findIndex(p => {\n    // Match by text content (most reliable identifier)\n    return p.json.text === (item.text || item.guardrailsInput);\n  });\n  \n  if (currentIndex >= 0) {\n    preserved = allPreserved[currentIndex].json;\n  } else {\n    // Strategy 2: If we\'re processing sequentially, use the last item\n    // This works because Loop Over Items processes one at a time\n    const lastItem = allPreserved[allPreserved.length - 1];\n    if (lastItem && lastItem.json) {\n      preserved = lastItem.json;\n    }\n  }\n} catch (e) {\n  // If we can\'t access Preserve Original Data, check if fields exist in current item\n  if (item._id !== undefined) {\n    preserved = {\n      _id: item._id,\n      _category: item._category,\n      _expected: item._expected,\n      _description: item._description\n    };\n  }\n  console.error("Could not access Preserve Original Data:", e.message);\n}\n\nreturn {\n  json: {\n    id: preserved._id || "unknown",\n    category: preserved._category || "unknown",\n    text: item.text || item.guardrailsInput || "unknown",\n    expected: preserved._expected || "unknown",\n    actual: "PASS",\n    correct: preserved._expected === "PASS",\n    score: 0,\n    violation_type: "None",\n    description: preserved._description || "unknown",\n    timestamp: new Date().toISOString()\n  }\n};\n',
+						},
+						position: [1616, 976],
+						name: 'Format Pass Result',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								'const item = $input.item.json;\n\n// Get ALL items from Preserve Original Data\nlet preserved = {\n  _id: \'unknown\',\n  _category: \'unknown\',\n  _expected: \'unknown\',\n  _description: \'unknown\'\n};\n\ntry {\n  const allPreserved = $(\'Preserve Original Data\').all();\n  \n  // Strategy 1: Try to match by text content\n  const currentIndex = allPreserved.findIndex(p => {\n    return p.json.text === (item.text || item.guardrailsInput);\n  });\n  \n  if (currentIndex >= 0) {\n    preserved = allPreserved[currentIndex].json;\n  } else {\n    // Strategy 2: Use the last item (works for sequential processing)\n    const lastItem = allPreserved[allPreserved.length - 1];\n    if (lastItem && lastItem.json) {\n      preserved = lastItem.json;\n    }\n  }\n} catch (e) {\n  // Fallback: Check if fields exist in current item\n  if (item._id !== undefined) {\n    preserved = {\n      _id: item._id,\n      _category: item._category,\n      _expected: item._expected,\n      _description: item._description\n    };\n  }\n  console.error("Could not access Preserve Original Data:", e.message);\n}\n\n// Extract violation information from checks array\nlet violationType = "Unknown";\nlet score = 1.0;\n\nif (item.checks && Array.isArray(item.checks)) {\n  const triggeredChecks = item.checks.filter(check => check.triggered === true);\n  \n  if (triggeredChecks.length > 0) {\n    violationType = triggeredChecks.map(c => c.name).join(", ");\n    \n    const scores = triggeredChecks\n      .filter(c => c.confidenceScore !== undefined && c.confidenceScore !== null)\n      .map(c => c.confidenceScore);\n    \n    if (scores.length > 0) {\n      score = Math.max(...scores);\n    }\n  }\n}\n\nreturn {\n  json: {\n    id: preserved._id || "unknown",\n    category: preserved._category || "unknown",\n    text: item.text || item.guardrailsInput || "unknown",\n    expected: preserved._expected || "unknown",\n    actual: "VIOLATION",\n    correct: preserved._expected === "VIOLATION",\n    score: score,\n    violation_type: violationType,\n    description: preserved._description || "unknown",\n    timestamp: new Date().toISOString()\n  }\n};\n',
+						},
+						position: [1632, 1168],
+						name: 'Format Fail Result',
+					},
+				}),
+			],
+			{ version: 3.2, name: 'Combine Result' },
+		),
 	)
 	.add(
 		sticky(

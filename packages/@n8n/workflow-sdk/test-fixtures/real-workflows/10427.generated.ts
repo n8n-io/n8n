@@ -45,10 +45,54 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://graph.facebook.com/v22.0/oauth/access_token',
+							method: 'POST',
+							options: {},
+							sendQuery: true,
+							queryParameters: {
+								parameters: [
+									{ name: 'grant_type', value: 'fb_exchange_token' },
+									{ name: 'client_id' },
+									{ name: 'client_secret' },
+									{ name: 'fb_exchange_token', value: '=' },
+								],
+							},
+						},
+						position: [-2240, 704],
+						name: 'Getting Long-Lived Access Token1',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'f3604846-252c-438b-8266-36ec0819d3fa',
+										name: 'longAccessToken',
+										type: 'string',
+										value: "={{ $('Getting Long-Term Token').item.json.longTermAccessToken }}",
+									},
+								],
+							},
+						},
+						position: [-1872, 976],
+						name: 'Getting Long-Term Token1',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -69,35 +113,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [-2464, 768],
 				name: 'Does Token Needs Refreshing?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://graph.facebook.com/v22.0/oauth/access_token',
-					method: 'POST',
-					options: {},
-					sendQuery: true,
-					queryParameters: {
-						parameters: [
-							{ name: 'grant_type', value: 'fb_exchange_token' },
-							{ name: 'client_id' },
-							{ name: 'client_secret' },
-							{ name: 'fb_exchange_token', value: '=' },
-						],
-					},
-				},
-				position: [-2240, 704],
-				name: 'Getting Long-Lived Access Token1',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -354,11 +372,35 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.1,
-			config: { position: [224, 512], name: 'Combining Ad Data and Benchmarking Data' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"// --- START OF CODE NODE 4 SCRIPT (Stringify Output) ---\n// Mode: Run Once for All Items\n// Input: The array of aggregated ad creative performance objects\n\nconst allAggregatedItems = $input.all(); // This is an array of n8n items\n\n// Extract the .json part from each n8n item to get the actual data objects\nconst dataToConvert = allAggregatedItems.map(item => item.json);\n\n// Stringify the array of data objects\n// The 'null, 2' arguments pretty-print the JSON string with an indent of 2 spaces,\n// which can be helpful for readability if you're inspecting it, but not strictly necessary for an LLM.\n// If the LLM prefers a more compact JSON, you can omit 'null, 2'.\nconst jsonString = JSON.stringify(dataToConvert, null, 2);\n\n// Output a single item containing this string\nreturn [{ json: { all_ads_data_string: jsonString } }];\n// --- END OF CODE NODE 4 SCRIPT ---",
+						},
+						position: [-96, 448],
+						name: 'Stringify Everything',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"// --- START OF CODE NODE 4 SCRIPT (Stringify Output) ---\n// Mode: Run Once for All Items\n// Input: The array of aggregated ad creative performance objects\n\nconst allAggregatedItems = $input.all(); // This is an array of n8n items\n\n// Extract the .json part from each n8n item to get the actual data objects\nconst dataToConvert = allAggregatedItems.map(item => item.json);\n\n// Stringify the array of data objects\n// The 'null, 2' arguments pretty-print the JSON string with an indent of 2 spaces,\n// which can be helpful for readability if you're inspecting it, but not strictly necessary for an LLM.\n// If the LLM prefers a more compact JSON, you can omit 'null, 2'.\nconst jsonString = JSON.stringify(dataToConvert, null, 2);\n\n// Output a single item containing this string\nreturn [{ json: { benchmarkData: jsonString } }];\n// --- END OF CODE NODE 4 SCRIPT ---",
+						},
+						position: [-48, 784],
+						name: 'Stringify Benchmark Data',
+					},
+				}),
+			],
+			{ version: 3.1, name: 'Combining Ad Data and Benchmarking Data' },
+		),
 	)
 	.then(
 		node({
@@ -793,44 +835,6 @@ const wf = workflow(
 				},
 				position: [-464, 784],
 				name: 'Calculate Account Benchmarks',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"// --- START OF CODE NODE 4 SCRIPT (Stringify Output) ---\n// Mode: Run Once for All Items\n// Input: The array of aggregated ad creative performance objects\n\nconst allAggregatedItems = $input.all(); // This is an array of n8n items\n\n// Extract the .json part from each n8n item to get the actual data objects\nconst dataToConvert = allAggregatedItems.map(item => item.json);\n\n// Stringify the array of data objects\n// The 'null, 2' arguments pretty-print the JSON string with an indent of 2 spaces,\n// which can be helpful for readability if you're inspecting it, but not strictly necessary for an LLM.\n// If the LLM prefers a more compact JSON, you can omit 'null, 2'.\nconst jsonString = JSON.stringify(dataToConvert, null, 2);\n\n// Output a single item containing this string\nreturn [{ json: { benchmarkData: jsonString } }];\n// --- END OF CODE NODE 4 SCRIPT ---",
-				},
-				position: [-48, 784],
-				name: 'Stringify Benchmark Data',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'f3604846-252c-438b-8266-36ec0819d3fa',
-								name: 'longAccessToken',
-								type: 'string',
-								value: "={{ $('Getting Long-Term Token').item.json.longTermAccessToken }}",
-							},
-						],
-					},
-				},
-				position: [-1872, 976],
-				name: 'Getting Long-Term Token1',
 			},
 		}),
 	)

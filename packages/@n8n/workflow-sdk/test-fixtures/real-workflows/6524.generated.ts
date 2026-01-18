@@ -274,10 +274,54 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"let content = $('Setup Heygen Parameters').item.json.caption;\n\nif (content) {\n  content = content\n    .replace(/[\\n\\r\\t]+/g, ' ')\n    .replace(/\\s{2,}/g, ' ')\n    .replace(/[\\\\'\"]/g, (match) => match === '\"' ? '\\\\\"' : \"'\")\n    .replace(/[\\\\]/g, '\\\\\\\\')\n    .trim();\n\n  const limit = 2200;\n  if (content.length > limit) {\n    content = content.substring(0, limit - 3) + '...';\n  }\n}\n\nreturn [{\n  json: {\n    ...items[0].json,\n    instagram_reel_caption: content\n  }\n}];",
+						},
+						position: [-16, 1808],
+						name: 'Clean Instagram Caption',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"let content = $('Setup Heygen Parameters').item.json.caption;\n\nif (content) {\n  content = content\n    .replace(/[\\n\\r\\t]+/g, ' ')\n    .replace(/\\s{2,}/g, ' ')\n    .replace(/[\\\\'\"]/g, (match) => match === '\"' ? '\\\\\"' : \"'\")\n    .replace(/[\\\\]/g, '\\\\\\\\')\n    .trim();\n\n  const limit = 63206;\n  if (content.length > limit) {\n    content = content.substring(0, limit - 3) + '...';\n  }\n}\n\nreturn [{\n  json: {\n    ...items[0].json,\n    facebook_video_caption: content\n  }\n}];",
+						},
+						position: [-16, 2000],
+						name: 'Clean Facebook Video Caption',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4,
+					config: {
+						parameters: {
+							url: 'https://postiz.yourdomain.com/api/public/v1/posts',
+							method: 'POST',
+							options: {},
+							jsonBody:
+								'={\n "type": "now",\n "date": "{{ $now.plus(1, \'minute\').toISO() }}",\n "order": "",\n "shortLink": true,\n "inter": 0,\n "tags": [],\n "posts": [\n   {\n     "integration": {\n       "id": "{{ $json.id }}"\n     },\n     "value": [\n       {\n         "content": "{{ $(\'Setup Heygen Parameters\').item.json.caption }}",\n         "video": [\n           {\n             "id": "1",\n             "path": "{{ $(\'Upload Video to Postiz\').item.json.path }}"\n           }\n         ]\n       }\n     ],\n     "settings": {\n       "__type": "youtube",\n       "title": "{{ $(\'Setup Heygen Parameters\').item.json.news_title }}",\n       "type": "public",\n       "tags": ["news", "AI"],\n       "categoryId": "22",\n       "madeForKids": false\n     }\n   }\n ]\n}',
+							sendBody: true,
+							specifyBody: 'json',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						position: [-16, 2192],
+						name: 'YouTube Video Publisher',
+					},
+				}),
+			],
+			{
+				version: 3,
 				parameters: {
 					rules: {
 						values: [
@@ -333,25 +377,9 @@ const wf = workflow(
 					},
 					options: {},
 				},
-				position: [-240, 1984],
 				name: 'Video Platform Router',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"let content = $('Setup Heygen Parameters').item.json.caption;\n\nif (content) {\n  content = content\n    .replace(/[\\n\\r\\t]+/g, ' ')\n    .replace(/\\s{2,}/g, ' ')\n    .replace(/[\\\\'\"]/g, (match) => match === '\"' ? '\\\\\"' : \"'\")\n    .replace(/[\\\\]/g, '\\\\\\\\')\n    .trim();\n\n  const limit = 2200;\n  if (content.length > limit) {\n    content = content.substring(0, limit - 3) + '...';\n  }\n}\n\nreturn [{\n  json: {\n    ...items[0].json,\n    instagram_reel_caption: content\n  }\n}];",
-				},
-				position: [-16, 1808],
-				name: 'Clean Instagram Caption',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -377,21 +405,6 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"let content = $('Setup Heygen Parameters').item.json.caption;\n\nif (content) {\n  content = content\n    .replace(/[\\n\\r\\t]+/g, ' ')\n    .replace(/\\s{2,}/g, ' ')\n    .replace(/[\\\\'\"]/g, (match) => match === '\"' ? '\\\\\"' : \"'\")\n    .replace(/[\\\\]/g, '\\\\\\\\')\n    .trim();\n\n  const limit = 63206;\n  if (content.length > limit) {\n    content = content.substring(0, limit - 3) + '...';\n  }\n}\n\nreturn [{\n  json: {\n    ...items[0].json,\n    facebook_video_caption: content\n  }\n}];",
-				},
-				position: [-16, 2000],
-				name: 'Clean Facebook Video Caption',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -410,28 +423,6 @@ const wf = workflow(
 				},
 				position: [208, 2000],
 				name: 'Facebook Video Publisher',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4,
-			config: {
-				parameters: {
-					url: 'https://postiz.yourdomain.com/api/public/v1/posts',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n "type": "now",\n "date": "{{ $now.plus(1, \'minute\').toISO() }}",\n "order": "",\n "shortLink": true,\n "inter": 0,\n "tags": [],\n "posts": [\n   {\n     "integration": {\n       "id": "{{ $json.id }}"\n     },\n     "value": [\n       {\n         "content": "{{ $(\'Setup Heygen Parameters\').item.json.caption }}",\n         "video": [\n           {\n             "id": "1",\n             "path": "{{ $(\'Upload Video to Postiz\').item.json.path }}"\n           }\n         ]\n       }\n     ],\n     "settings": {\n       "__type": "youtube",\n       "title": "{{ $(\'Setup Heygen Parameters\').item.json.news_title }}",\n       "type": "public",\n       "tags": ["news", "AI"],\n       "categoryId": "22",\n       "madeForKids": false\n     }\n   }\n ]\n}',
-					sendBody: true,
-					specifyBody: 'json',
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				position: [-16, 2192],
-				name: 'YouTube Video Publisher',
 			},
 		}),
 	)

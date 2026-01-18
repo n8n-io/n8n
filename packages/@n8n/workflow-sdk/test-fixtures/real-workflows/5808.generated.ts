@@ -204,10 +204,55 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '0a616fd3-6227-4902-9d1d-1ca09f14412e',
+										name: 'output.user_choice_id',
+										type: 'string',
+										value: '={{ $json.output.user_choice_id }}',
+									},
+								],
+							},
+							includeOtherFields: true,
+						},
+						position: [880, 920],
+						name: 'User Choice Match Correct',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '0bd79b8c-66b5-4a4e-9888-6a0af9276061',
+										name: 'pdf_id',
+										type: 'string',
+										value:
+											'The template name selected by the user does not match the template matched by the agent. Please check if the template name selected by the user matches its id.',
+									},
+								],
+							},
+						},
+						position: [880, 1120],
+						name: 'User Choice Matching Error',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -228,34 +273,9 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 						],
 					},
 				},
-				position: [660, 1020],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '0a616fd3-6227-4902-9d1d-1ca09f14412e',
-								name: 'output.user_choice_id',
-								type: 'string',
-								value: '={{ $json.output.user_choice_id }}',
-							},
-						],
-					},
-					includeOtherFields: true,
-				},
-				position: [880, 920],
-				name: 'User Choice Match Correct',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -364,10 +384,55 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '4dec2470-f7cb-4b0a-92a8-31cf88581921',
+										name: 'Belge oluşturulamama sebebi:',
+										type: 'string',
+										value: '=The document id to be filled with the copied document does not match',
+									},
+								],
+							},
+						},
+						position: [2560, 820],
+						name: 'Cop. Document ID Matching Error',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://script.google.com/macros/s/<YOUR_DEPLOY_ID>/exec',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							bodyParameters: {
+								parameters: [
+									{ name: 'docId', value: '={{ $json.id }}' },
+									{
+										name: 'data',
+										value: "={{ $('Formatting Correction').item.json.data }}",
+									},
+								],
+							},
+						},
+						position: [2560, 1020],
+						name: 'FillDocument',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -388,66 +453,113 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 						],
 					},
 				},
-				position: [2340, 920],
 				name: 'If1',
 			},
-		}),
+		),
 	)
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '4dec2470-f7cb-4b0a-92a8-31cf88581921',
-								name: 'Belge oluşturulamama sebebi:',
-								type: 'string',
-								value: '=The document id to be filled with the copied document does not match',
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: "=https://www.googleapis.com/drive/v3/files/{{ $('CopyTemplate').item.json.id }}?fields=webContentLink,exportLinks ",
+							options: {},
+							authentication: 'predefinedCredentialType',
+							nodeCredentialType: 'googleDriveOAuth2Api',
+						},
+						credentials: {
+							googleDriveOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleDriveOAuth2Api Credential',
 							},
-						],
+						},
+						position: [3000, 820],
+						name: 'Generate Download Link',
 					},
-				},
-				position: [2560, 820],
-				name: 'Cop. Document ID Matching Error',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://script.google.com/macros/s/<YOUR_DEPLOY_ID>/exec',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					bodyParameters: {
-						parameters: [
-							{ name: 'docId', value: '={{ $json.id }}' },
-							{
-								name: 'data',
-								value: "={{ $('Formatting Correction').item.json.data }}",
+				}),
+				node({
+					type: 'n8n-nodes-base.switch',
+					version: 3.2,
+					config: {
+						parameters: {
+							rules: {
+								values: [
+									{
+										outputKey: 'Template Technical Error',
+										conditions: {
+											options: {
+												version: 2,
+												leftValue: '',
+												caseSensitive: true,
+												typeValidation: 'strict',
+											},
+											combinator: 'and',
+											conditions: [
+												{
+													id: 'c35889e4-f027-49b9-9b59-69cf996f0e9c',
+													operator: { type: 'array', operation: 'notEmpty', singleValue: true },
+													leftValue: "={{ $('FillDocument').item.json.unknown }}",
+													rightValue: '',
+												},
+											],
+										},
+										renameOutput: true,
+									},
+									{
+										outputKey: 'Incomplete Information Error',
+										conditions: {
+											options: {
+												version: 2,
+												leftValue: '',
+												caseSensitive: true,
+												typeValidation: 'strict',
+											},
+											combinator: 'and',
+											conditions: [
+												{
+													id: '08a43597-51af-4632-82c5-ff54505bae13',
+													operator: { type: 'array', operation: 'notEmpty', singleValue: true },
+													leftValue: "={{ $('FillDocument').item.json.missing }}",
+													rightValue: '',
+												},
+											],
+										},
+										renameOutput: true,
+									},
+									{
+										outputKey: 'Other Errors',
+										conditions: {
+											options: {
+												version: 2,
+												leftValue: '',
+												caseSensitive: true,
+												typeValidation: 'strict',
+											},
+											combinator: 'and',
+											conditions: [
+												{
+													id: 'b42acb05-8237-46c2-80f4-27cfb1232710',
+													operator: { type: 'string', operation: 'notEquals' },
+													leftValue: "={{ $('FillDocument').item.json.message }}",
+													rightValue: ' Placeholder validation failed',
+												},
+											],
+										},
+										renameOutput: true,
+									},
+								],
 							},
-						],
+							options: {},
+						},
+						position: [3000, 1120],
 					},
-				},
-				position: [2560, 1020],
-				name: 'FillDocument',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -472,33 +584,9 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 						],
 					},
 				},
-				position: [2780, 1020],
 				name: 'if',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "=https://www.googleapis.com/drive/v3/files/{{ $('CopyTemplate').item.json.id }}?fields=webContentLink,exportLinks ",
-					options: {},
-					authentication: 'predefinedCredentialType',
-					nodeCredentialType: 'googleDriveOAuth2Api',
-				},
-				credentials: {
-					googleDriveOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleDriveOAuth2Api Credential',
-					},
-				},
-				position: [3000, 820],
-				name: 'Generate Download Link',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -520,86 +608,6 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 				},
 				position: [3220, 820],
 				name: 'Download Link Format',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
-				parameters: {
-					rules: {
-						values: [
-							{
-								outputKey: 'Template Technical Error',
-								conditions: {
-									options: {
-										version: 2,
-										leftValue: '',
-										caseSensitive: true,
-										typeValidation: 'strict',
-									},
-									combinator: 'and',
-									conditions: [
-										{
-											id: 'c35889e4-f027-49b9-9b59-69cf996f0e9c',
-											operator: { type: 'array', operation: 'notEmpty', singleValue: true },
-											leftValue: "={{ $('FillDocument').item.json.unknown }}",
-											rightValue: '',
-										},
-									],
-								},
-								renameOutput: true,
-							},
-							{
-								outputKey: 'Incomplete Information Error',
-								conditions: {
-									options: {
-										version: 2,
-										leftValue: '',
-										caseSensitive: true,
-										typeValidation: 'strict',
-									},
-									combinator: 'and',
-									conditions: [
-										{
-											id: '08a43597-51af-4632-82c5-ff54505bae13',
-											operator: { type: 'array', operation: 'notEmpty', singleValue: true },
-											leftValue: "={{ $('FillDocument').item.json.missing }}",
-											rightValue: '',
-										},
-									],
-								},
-								renameOutput: true,
-							},
-							{
-								outputKey: 'Other Errors',
-								conditions: {
-									options: {
-										version: 2,
-										leftValue: '',
-										caseSensitive: true,
-										typeValidation: 'strict',
-									},
-									combinator: 'and',
-									conditions: [
-										{
-											id: 'b42acb05-8237-46c2-80f4-27cfb1232710',
-											operator: { type: 'string', operation: 'notEquals' },
-											leftValue: "={{ $('FillDocument').item.json.message }}",
-											rightValue: ' Placeholder validation failed',
-										},
-									],
-								},
-								renameOutput: true,
-							},
-						],
-					},
-					options: {},
-				},
-				position: [3000, 1120],
 			},
 		}),
 	)
@@ -675,31 +683,6 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 				},
 				position: [3220, 1420],
 				name: 'Other Errors',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '0bd79b8c-66b5-4a4e-9888-6a0af9276061',
-								name: 'pdf_id',
-								type: 'string',
-								value:
-									'The template name selected by the user does not match the template matched by the agent. Please check if the template name selected by the user matches its id.',
-							},
-						],
-					},
-				},
-				position: [880, 1120],
-				name: 'User Choice Matching Error',
 			},
 		}),
 	)

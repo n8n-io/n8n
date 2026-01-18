@@ -17,20 +17,22 @@ const wf = workflow(
 			config: { position: [-560, 192], name: 'Set Config' },
 		}),
 	)
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 3,
-			config: { position: [-336, 48], name: 'Reddit API' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 2.1,
-			config: { position: [-96, 192], name: 'Merge Data' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 3,
+					config: { position: [-336, 48], name: 'Reddit API' },
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { position: [-336, 320], name: 'Get Twitter Trends' },
+				}),
+			],
+			{ version: 2.1, name: 'Merge Data' },
+		),
 	)
 	.then(
 		node({
@@ -75,14 +77,6 @@ const wf = workflow(
 			type: 'n8n-nodes-base.microsoftSharePoint',
 			version: 1,
 			config: { position: [1040, 192], name: 'Microsoft SharePoint' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: { position: [-336, 320], name: 'Get Twitter Trends' },
 		}),
 	)
 	.add(sticky('', { position: [-832, -208] }))

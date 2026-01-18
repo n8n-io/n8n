@@ -309,10 +309,55 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [4060, 200], name: 'End of Debate' },
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '607ac7e5-900e-4128-80f6-52d0ceb24164',
+										name: 'input',
+										type: 'string',
+										value: '={{ $json.output.data.rewritten_input }}',
+									},
+									{
+										id: '4cc6ddeb-44c3-4b41-8052-f5f65c584e11',
+										name: 'current_round',
+										type: 'number',
+										value: "={{ $('Guarantee Input').item.json.current_round + 1 }}",
+									},
+									{
+										id: '1c9d3a2b-6743-4bfd-a152-81fd22276dc4',
+										name: 'round_summary',
+										type: 'string',
+										value: '={{ $json.output.data.round_summary }}',
+									},
+									{
+										id: '095b4f5c-3ed0-446b-908e-ac4efde28af2',
+										name: 'round_result',
+										type: 'string',
+										value: '={{ $json.output.data.round_result }}',
+									},
+								],
+							},
+						},
+						position: [2900, 740],
+						name: 'Update Input',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -333,60 +378,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [3640, 220],
 				name: 'If No More Rounds',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [4060, 200], name: 'End of Debate' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '607ac7e5-900e-4128-80f6-52d0ceb24164',
-								name: 'input',
-								type: 'string',
-								value: '={{ $json.output.data.rewritten_input }}',
-							},
-							{
-								id: '4cc6ddeb-44c3-4b41-8052-f5f65c584e11',
-								name: 'current_round',
-								type: 'number',
-								value: "={{ $('Guarantee Input').item.json.current_round + 1 }}",
-							},
-							{
-								id: '1c9d3a2b-6743-4bfd-a152-81fd22276dc4',
-								name: 'round_summary',
-								type: 'string',
-								value: '={{ $json.output.data.round_summary }}',
-							},
-							{
-								id: '095b4f5c-3ed0-446b-908e-ac4efde28af2',
-								name: 'round_result',
-								type: 'string',
-								value: '={{ $json.output.data.round_result }}',
-							},
-						],
-					},
-				},
-				position: [2900, 740],
-				name: 'Update Input',
-			},
-		}),
+		),
 	)
 	.add(
 		trigger({

@@ -136,10 +136,33 @@ const wf = workflow('HQcHQhEaig6JXOH4', 'AI Virtual TryOn for WooCommerce Nano B
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://queue.fal.run/fal-ai/nano-banana/requests/{{ $json.request_id }}',
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [224, 1872],
+						name: 'Get Url image',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 10 }, position: [672, 1616], name: 'Wait 60 sec.' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -164,30 +187,9 @@ const wf = workflow('HQcHQhEaig6JXOH4', 'AI Virtual TryOn for WooCommerce Nano B
 						],
 					},
 				},
-				position: [1040, 1616],
 				name: 'Completed?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://queue.fal.run/fal-ai/nano-banana/requests/{{ $json.request_id }}',
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [224, 1872],
-				name: 'Get Url image',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

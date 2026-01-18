@@ -20,20 +20,22 @@ const wf = workflow('', '')
 			config: { position: [544, 496], name: 'Download Image File' },
 		}),
 	)
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.extractFromFile',
-			version: 1,
-			config: { position: [880, 400], name: 'Image to Base64' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [1200, 496], name: 'Combine Image & Analysis' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.extractFromFile',
+					version: 1,
+					config: { position: [880, 400], name: 'Image to Base64' },
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.googleGemini',
+					version: 1,
+					config: { position: [880, 592], name: 'AI Design Analysis' },
+				}),
+			],
+			{ version: 3.2, name: 'Combine Image & Analysis' },
+		),
 	)
 	.then(
 		node({
@@ -61,14 +63,6 @@ const wf = workflow('', '')
 			type: 'n8n-nodes-base.whatsApp',
 			version: 1,
 			config: { position: [2080, 496], name: 'Send Image' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.googleGemini',
-			version: 1,
-			config: { position: [880, 592], name: 'AI Design Analysis' },
 		}),
 	)
 	.add(sticky('', { position: [-608, -224] }));

@@ -169,10 +169,58 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							mode: 'raw',
+							options: {},
+							jsonOutput: '={\n  "company_url": "{{ $json.basic_info.current_company_url }}"\n}\n',
+						},
+						position: [1200, 340],
+						name: 'Set Company URL',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.apify.com/v2/acts/apify~rag-web-browser/run-sync-get-dataset-items',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							sendQuery: true,
+							authentication: 'genericCredentialType',
+							bodyParameters: {
+								parameters: [
+									{
+										name: 'query',
+										value: "={{\n`${$json['Company']} site:linkedin.com`\n}}",
+									},
+								],
+							},
+							genericAuthType: 'httpHeaderAuth',
+							queryParameters: {
+								parameters: [
+									{ name: 'memory', value: '4096' },
+									{ name: 'timeout', value: '180' },
+								],
+							},
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [620, 500],
+						name: 'Google Search for Company LinkedIn',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -193,26 +241,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [400, 360],
 				name: 'Current Company Exists?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					mode: 'raw',
-					options: {},
-					jsonOutput: '={\n  "company_url": "{{ $json.basic_info.current_company_url }}"\n}\n',
-				},
-				position: [1200, 340],
-				name: 'Set Company URL',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -355,43 +386,6 @@ const wf = workflow('', '')
 					gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
 				},
 				position: [900, 1060],
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.apify.com/v2/acts/apify~rag-web-browser/run-sync-get-dataset-items',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendQuery: true,
-					authentication: 'genericCredentialType',
-					bodyParameters: {
-						parameters: [
-							{
-								name: 'query',
-								value: "={{\n`${$json['Company']} site:linkedin.com`\n}}",
-							},
-						],
-					},
-					genericAuthType: 'httpHeaderAuth',
-					queryParameters: {
-						parameters: [
-							{ name: 'memory', value: '4096' },
-							{ name: 'timeout', value: '180' },
-						],
-					},
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [620, 500],
-				name: 'Google Search for Company LinkedIn',
 			},
 		}),
 	)

@@ -48,10 +48,197 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.3,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.form',
+					version: 2.3,
+					config: {
+						parameters: {
+							options: {},
+							formFields: {
+								values: [
+									{
+										fieldName: 'URL',
+										fieldType: 'hiddenField',
+										fieldValue: '={{ $json["Target URL"] }}',
+									},
+									{
+										fieldName: 'Site Type',
+										fieldType: 'hiddenField',
+										fieldValue: '={{ $json["Select Site Category"] }}',
+									},
+									{
+										fieldType: 'dropdown',
+										fieldLabel: 'What is your extraction goal?',
+										fieldOptions: {
+											values: [
+												{ option: 'Scrape details of a SINGLE item' },
+												{ option: 'Get List of items from THIS PAGE only' },
+												{ option: 'Scrape details of all items on THIS page' },
+												{ option: 'Get List of items from all pages' },
+												{ option: 'Scrape details of all items on ALL pages' },
+											],
+										},
+										requiredField: true,
+									},
+								],
+							},
+						},
+						position: [-3152, 1152],
+						name: 'AI Extraction Goal Form',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.form',
+					version: 2.3,
+					config: {
+						parameters: {
+							options: {},
+							formFields: {
+								values: [
+									{
+										fieldName: 'URL',
+										fieldType: 'hiddenField',
+										fieldValue: '={{ $json["Target URL"] }}',
+									},
+									{
+										fieldName: 'Site Type',
+										fieldType: 'hiddenField',
+										fieldValue: '={{ $json["Select Site Category"] }}',
+									},
+									{
+										fieldType: 'dropdown',
+										fieldLabel: 'What is your extraction goal?',
+										fieldOptions: {
+											values: [
+												{ option: 'Scrape details of a SINGLE item' },
+												{ option: 'Get List of items from THIS PAGE only' },
+												{ option: 'Scrape details of all items on THIS page' },
+												{ option: 'Get List of items from all pages' },
+												{ option: 'Scrape details of all items on ALL pages' },
+											],
+										},
+										requiredField: true,
+									},
+								],
+							},
+						},
+						position: [-3152, 1152],
+						name: 'AI Extraction Goal Form',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.form',
+					version: 2.3,
+					config: {
+						parameters: {
+							options: {},
+							formFields: {
+								values: [
+									{
+										fieldName: 'URL',
+										fieldType: 'hiddenField',
+										fieldValue: '={{ $json["Target URL"] }}',
+									},
+									{
+										fieldName: 'Site Type',
+										fieldType: 'hiddenField',
+										fieldValue: '={{ $json["Select Site Category"] }}',
+									},
+									{
+										fieldType: 'dropdown',
+										fieldLabel: 'What is your extraction goal?',
+										fieldOptions: {
+											values: [
+												{ option: 'Scrape details of a SINGLE item' },
+												{ option: 'Get List of items from THIS PAGE only' },
+												{ option: 'Scrape details of all items on THIS page' },
+												{ option: 'Get List of items from all pages' },
+												{ option: 'Scrape details of all items on ALL pages' },
+											],
+										},
+										requiredField: true,
+									},
+								],
+							},
+						},
+						position: [-3152, 1152],
+						name: 'AI Extraction Goal Form',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.zyte.com/v1/extract',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							sendHeaders: true,
+							bodyParameters: {
+								parameters: [
+									{ name: 'url', value: '={{ $json["Target URL"] }}' },
+									{ name: 'serp', value: '={{true}}' },
+								],
+							},
+							headerParameters: {
+								parameters: [
+									{
+										name: 'authorization',
+										value:
+											'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
+									},
+								],
+							},
+						},
+						position: [-1248, 1504],
+						name: 'HTTP Node: SERP Extraction',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.form',
+					version: 2.3,
+					config: {
+						parameters: {
+							options: {},
+							formFields: {
+								values: [
+									{
+										fieldName: 'URL',
+										fieldType: 'hiddenField',
+										fieldValue: '={{ $json["Target URL"] }}',
+									},
+									{
+										fieldName: 'Site Type',
+										fieldType: 'hiddenField',
+										fieldValue: '={{ $json["Select Site Category"] }}',
+									},
+									{
+										fieldType: 'dropdown',
+										fieldLabel: 'What is your extraction goal?',
+										fieldOptions: {
+											values: [
+												{ option: 'BrowserHtml' },
+												{ option: 'httpResponseBody' },
+												{ option: 'Capture Network API' },
+												{ option: 'Infinite Scroll' },
+												{ option: 'Screenshot' },
+											],
+										},
+										requiredField: true,
+									},
+								],
+							},
+						},
+						position: [-3168, 1760],
+						name: 'General Extraction Goal Form',
+					},
+				}),
+			],
+			{
+				version: 3.3,
 				parameters: {
 					rules: {
 						values: [
@@ -170,52 +357,9 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 					},
 					options: {},
 				},
-				position: [-3472, 1424],
 				name: 'Route by Category',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.form',
-			version: 2.3,
-			config: {
-				parameters: {
-					options: {},
-					formFields: {
-						values: [
-							{
-								fieldName: 'URL',
-								fieldType: 'hiddenField',
-								fieldValue: '={{ $json["Target URL"] }}',
-							},
-							{
-								fieldName: 'Site Type',
-								fieldType: 'hiddenField',
-								fieldValue: '={{ $json["Select Site Category"] }}',
-							},
-							{
-								fieldType: 'dropdown',
-								fieldLabel: 'What is your extraction goal?',
-								fieldOptions: {
-									values: [
-										{ option: 'Scrape details of a SINGLE item' },
-										{ option: 'Get List of items from THIS PAGE only' },
-										{ option: 'Scrape details of all items on THIS page' },
-										{ option: 'Get List of items from all pages' },
-										{ option: 'Scrape details of all items on ALL pages' },
-									],
-								},
-								requiredField: true,
-							},
-						],
-					},
-				},
-				position: [-3152, 1152],
-				name: 'AI Extraction Goal Form',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -232,10 +376,167 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.3,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.zyte.com/v1/extract',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							sendHeaders: true,
+							bodyParameters: {
+								parameters: [
+									{ name: 'url', value: '={{ $json.url }}' },
+									{ name: '={{ $json.target_schema }}', value: '={{true}}' },
+								],
+							},
+							headerParameters: {
+								parameters: [
+									{
+										name: 'authorization',
+										value:
+											'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
+									},
+								],
+							},
+						},
+						position: [-192, -1296],
+						name: 'HTTP Node: [Single Item] Get Details',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.zyte.com/v1/extract',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							sendHeaders: true,
+							bodyParameters: {
+								parameters: [
+									{ name: 'url', value: '={{ $json.url }}' },
+									{ name: '={{ $json.target_schema }}', value: '={{true}}' },
+								],
+							},
+							headerParameters: {
+								parameters: [
+									{
+										name: 'authorization',
+										value:
+											'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
+									},
+								],
+							},
+						},
+						position: [-192, -992],
+						name: 'HTTP Node: [List] Get Current Page',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.zyte.com/v1/extract',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							sendHeaders: true,
+							bodyParameters: {
+								parameters: [
+									{ name: 'url', value: '={{ $json.url }}' },
+									{ name: '={{ $json.navigation_schema }}', value: '={{true}}' },
+								],
+							},
+							headerParameters: {
+								parameters: [
+									{
+										name: 'authorization',
+										value:
+											"=Basic {{ ($('Main form submission').item.json['Zyte API Key'] + \":\").base64Encode() }}",
+									},
+								],
+							},
+						},
+						position: [-192, -640],
+						name: 'HTTP Node: [Current Page] Get Item URLs',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '8e00d19a-bb7c-460e-b2b7-2bd4320287bc',
+										name: 'url',
+										type: 'string',
+										value: '={{ $json.url }}',
+									},
+									{
+										id: '517201f4-1765-4c36-a6ae-3b82091416a2',
+										name: 'target_schema',
+										type: 'string',
+										value: '={{ $json.target_schema }}',
+									},
+									{
+										id: 'efd367fb-fe6f-4c5e-b49d-773c9e611901',
+										name: 'navigation_schema',
+										type: 'string',
+										value: '={{ $json.navigation_schema }}',
+									},
+								],
+							},
+						},
+						position: [-464, -80],
+						name: '[List-All] Init State',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'ca1aad2b-7dbc-4a00-aad4-d3e28259523b',
+										name: 'target_url',
+										type: 'string',
+										value: '={{ $json.url }}',
+									},
+									{
+										id: '5542d947-4475-4d5c-9543-4434d30ae8e6',
+										name: 'target_schema',
+										type: 'string',
+										value: '={{ $json.target_schema }}',
+									},
+									{
+										id: '12d0829d-1e1c-4174-a566-b5b834fa88ac',
+										name: 'navigation_schema',
+										type: 'string',
+										value: '={{ $json.navigation_schema }}',
+									},
+								],
+							},
+						},
+						position: [-464, 496],
+						name: '[Details-All] Init State',
+					},
+				}),
+			],
+			{
+				version: 3.3,
 				parameters: {
 					rules: {
 						values: [
@@ -354,43 +655,9 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 					},
 					options: {},
 				},
-				position: [-2624, 1104],
 				name: 'Product Extraction Goal',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.zyte.com/v1/extract',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendHeaders: true,
-					bodyParameters: {
-						parameters: [
-							{ name: 'url', value: '={{ $json.url }}' },
-							{ name: '={{ $json.target_schema }}', value: '={{true}}' },
-						],
-					},
-					headerParameters: {
-						parameters: [
-							{
-								name: 'authorization',
-								value:
-									'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
-							},
-						],
-					},
-				},
-				position: [-192, -1296],
-				name: 'HTTP Node: [Single Item] Get Details',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -421,72 +688,6 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 			type: 'n8n-nodes-base.convertToFile',
 			version: 1.1,
 			config: { parameters: { options: {} }, position: [3248, -368], name: 'Extracted AI Output' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.zyte.com/v1/extract',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendHeaders: true,
-					bodyParameters: {
-						parameters: [
-							{ name: 'url', value: '={{ $json.url }}' },
-							{ name: '={{ $json.target_schema }}', value: '={{true}}' },
-						],
-					},
-					headerParameters: {
-						parameters: [
-							{
-								name: 'authorization',
-								value:
-									'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
-							},
-						],
-					},
-				},
-				position: [-192, -992],
-				name: 'HTTP Node: [List] Get Current Page',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.zyte.com/v1/extract',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendHeaders: true,
-					bodyParameters: {
-						parameters: [
-							{ name: 'url', value: '={{ $json.url }}' },
-							{ name: '={{ $json.navigation_schema }}', value: '={{true}}' },
-						],
-					},
-					headerParameters: {
-						parameters: [
-							{
-								name: 'authorization',
-								value:
-									"=Basic {{ ($('Main form submission').item.json['Zyte API Key'] + \":\").base64Encode() }}",
-							},
-						],
-					},
-				},
-				position: [-192, -640],
-				name: 'HTTP Node: [Current Page] Get Item URLs',
-			},
 		}),
 	)
 	.then(
@@ -551,48 +752,66 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 			},
 		}),
 	)
-	.output(3)
 	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '8e00d19a-bb7c-460e-b2b7-2bd4320287bc',
-								name: 'url',
-								type: 'string',
-								value: '={{ $json.url }}',
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '8e00d19a-bb7c-460e-b2b7-2bd4320287bc',
+										name: 'url',
+										type: 'string',
+										value: '={{ $json.url }}',
+									},
+									{
+										id: '517201f4-1765-4c36-a6ae-3b82091416a2',
+										name: 'target_schema',
+										type: 'string',
+										value: '={{ $json.target_schema }}',
+									},
+									{
+										id: 'efd367fb-fe6f-4c5e-b49d-773c9e611901',
+										name: 'navigation_schema',
+										type: 'string',
+										value: '={{ $json.navigation_schema }}',
+									},
+								],
 							},
-							{
-								id: '517201f4-1765-4c36-a6ae-3b82091416a2',
-								name: 'target_schema',
-								type: 'string',
-								value: '={{ $json.target_schema }}',
-							},
-							{
-								id: 'efd367fb-fe6f-4c5e-b49d-773c9e611901',
-								name: 'navigation_schema',
-								type: 'string',
-								value: '={{ $json.navigation_schema }}',
-							},
-						],
+						},
+						position: [-464, -80],
+						name: '[List-All] Init State',
 					},
-				},
-				position: [-464, -80],
-				name: '[List-All] Init State',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [-64, -64], name: '[List-All] Merge Pages' },
-		}),
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '082744c5-a824-4f98-9ae4-6620a5c07af3',
+										name: 'url',
+										type: 'string',
+										value: "={{ $('[List-All] Page Controller').item.json.nextLoopUrl }}",
+									},
+								],
+							},
+						},
+						position: [1488, -48],
+						name: '[List-All] Set Next URL',
+					},
+				}),
+			],
+			{ version: 3.2, name: '[List-All] Merge Pages' },
+		),
 	)
 	.then(
 		node({
@@ -644,10 +863,56 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"// [List-All] FINAL OUTPUT\nconst staticData = $getWorkflowStaticData('global');\n\n// 1. Retrieve Data\nconst allProducts = staticData.backpack || [];\n\n// 2. CLEANUP\nstaticData.backpack = [];\nstaticData.visited = [];\n\n// 3. SAFETY FILTER (New Optimization)\n// Removes nulls or bad data before sending to CSV\nconst validProducts = allProducts.filter(item => item && typeof item === 'object');\n\n// 4. Format\nreturn validProducts.map(item => {\n    return {\n        json: item\n    };\n});",
+						},
+						position: [1280, -240],
+						name: '[List-All] Final Output',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.zyte.com/v1/extract',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							sendHeaders: true,
+							bodyParameters: {
+								parameters: [
+									{ name: 'url', value: '={{ $json.currentScrapeUrl }}' },
+									{
+										name: "={{ $('[List-All] Init State').item.json.target_schema }}",
+										value: '={{true}}',
+									},
+								],
+							},
+							headerParameters: {
+								parameters: [
+									{
+										name: 'authorization',
+										value:
+											'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
+									},
+								],
+							},
+						},
+						position: [1072, -48],
+						name: '[List-All] Get Item List',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -668,61 +933,9 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 						],
 					},
 				},
-				position: [560, -64],
 				name: '[List-All] Check Next Page',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"// [List-All] FINAL OUTPUT\nconst staticData = $getWorkflowStaticData('global');\n\n// 1. Retrieve Data\nconst allProducts = staticData.backpack || [];\n\n// 2. CLEANUP\nstaticData.backpack = [];\nstaticData.visited = [];\n\n// 3. SAFETY FILTER (New Optimization)\n// Removes nulls or bad data before sending to CSV\nconst validProducts = allProducts.filter(item => item && typeof item === 'object');\n\n// 4. Format\nreturn validProducts.map(item => {\n    return {\n        json: item\n    };\n});",
-				},
-				position: [1280, -240],
-				name: '[List-All] Final Output',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.zyte.com/v1/extract',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendHeaders: true,
-					bodyParameters: {
-						parameters: [
-							{ name: 'url', value: '={{ $json.currentScrapeUrl }}' },
-							{
-								name: "={{ $('[List-All] Init State').item.json.target_schema }}",
-								value: '={{true}}',
-							},
-						],
-					},
-					headerParameters: {
-						parameters: [
-							{
-								name: 'authorization',
-								value:
-									'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
-							},
-						],
-					},
-				},
-				position: [1072, -48],
-				name: '[List-All] Get Item List',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -739,70 +952,65 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '082744c5-a824-4f98-9ae4-6620a5c07af3',
-								name: 'url',
-								type: 'string',
-								value: "={{ $('[List-All] Page Controller').item.json.nextLoopUrl }}",
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'ca1aad2b-7dbc-4a00-aad4-d3e28259523b',
+										name: 'target_url',
+										type: 'string',
+										value: '={{ $json.url }}',
+									},
+									{
+										id: '5542d947-4475-4d5c-9543-4434d30ae8e6',
+										name: 'target_schema',
+										type: 'string',
+										value: '={{ $json.target_schema }}',
+									},
+									{
+										id: '12d0829d-1e1c-4174-a566-b5b834fa88ac',
+										name: 'navigation_schema',
+										type: 'string',
+										value: '={{ $json.navigation_schema }}',
+									},
+								],
 							},
-						],
+						},
+						position: [-464, 496],
+						name: '[Details-All] Init State',
 					},
-				},
-				position: [1488, -48],
-				name: '[List-All] Set Next URL',
-			},
-		}),
-	)
-	.output(4)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'ca1aad2b-7dbc-4a00-aad4-d3e28259523b',
-								name: 'target_url',
-								type: 'string',
-								value: '={{ $json.url }}',
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '223e56ca-4ed7-402c-9e28-972f7820b841',
+										name: 'target_url',
+										type: 'string',
+										value: '={{ $json.nextPageUrl }}',
+									},
+								],
 							},
-							{
-								id: '5542d947-4475-4d5c-9543-4434d30ae8e6',
-								name: 'target_schema',
-								type: 'string',
-								value: '={{ $json.target_schema }}',
-							},
-							{
-								id: '12d0829d-1e1c-4174-a566-b5b834fa88ac',
-								name: 'navigation_schema',
-								type: 'string',
-								value: '={{ $json.navigation_schema }}',
-							},
-						],
+						},
+						position: [752, 608],
+						name: '[Details-All] Set Next URL',
 					},
-				},
-				position: [-464, 496],
-				name: '[Details-All] Init State',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [-64, 512], name: '[Details-All] Merge Pages' },
-		}),
+				}),
+			],
+			{ version: 3.2, name: '[Details-All] Merge Pages' },
+		),
 	)
 	.then(
 		node({
@@ -854,10 +1062,44 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"const staticData = $getWorkflowStaticData('global');\nconst allUrls = staticData.allItemUrls || [];\n\n// Reset the static data so next run starts fresh\nstaticData.allItemUrls = [];\nstaticData.visitedPages = [];\n\n// Output the items so the next Loop node sees them!\nreturn allUrls.map(u => ({ json: { url: u.url } }));",
+						},
+						position: [752, 416],
+						name: '[Details-All] Unpack List (Phase 2)',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '223e56ca-4ed7-402c-9e28-972f7820b841',
+										name: 'target_url',
+										type: 'string',
+										value: '={{ $json.nextPageUrl }}',
+									},
+								],
+							},
+						},
+						position: [752, 608],
+						name: '[Details-All] Set Next URL',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -878,25 +1120,9 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 						],
 					},
 				},
-				position: [544, 512],
 				name: '[Details-All] More Pages?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"const staticData = $getWorkflowStaticData('global');\nconst allUrls = staticData.allItemUrls || [];\n\n// Reset the static data so next run starts fresh\nstaticData.allItemUrls = [];\nstaticData.visitedPages = [];\n\n// Output the items so the next Loop node sees them!\nreturn allUrls.map(u => ({ json: { url: u.url } }));",
-				},
-				position: [752, 416],
-				name: '[Details-All] Unpack List (Phase 2)',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -977,63 +1203,6 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '223e56ca-4ed7-402c-9e28-972f7820b841',
-								name: 'target_url',
-								type: 'string',
-								value: '={{ $json.nextPageUrl }}',
-							},
-						],
-					},
-				},
-				position: [752, 608],
-				name: '[Details-All] Set Next URL',
-			},
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.zyte.com/v1/extract',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendHeaders: true,
-					bodyParameters: {
-						parameters: [
-							{ name: 'url', value: '={{ $json["Target URL"] }}' },
-							{ name: 'serp', value: '={{true}}' },
-						],
-					},
-					headerParameters: {
-						parameters: [
-							{
-								name: 'authorization',
-								value:
-									'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
-							},
-						],
-					},
-				},
-				position: [-1248, 1504],
-				name: 'HTTP Node: SERP Extraction',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -1057,53 +1226,156 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 			},
 		}),
 	)
-	.output(4)
 	.then(
-		node({
-			type: 'n8n-nodes-base.form',
-			version: 2.3,
-			config: {
-				parameters: {
-					options: {},
-					formFields: {
-						values: [
-							{
-								fieldName: 'URL',
-								fieldType: 'hiddenField',
-								fieldValue: '={{ $json["Target URL"] }}',
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.zyte.com/v1/extract',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							sendHeaders: true,
+							bodyParameters: {
+								parameters: [
+									{ name: 'url', value: '={{ $json.URL }}' },
+									{ name: 'browserHtml', value: '={{true}}' },
+								],
 							},
-							{
-								fieldName: 'Site Type',
-								fieldType: 'hiddenField',
-								fieldValue: '={{ $json["Select Site Category"] }}',
+							headerParameters: {
+								parameters: [
+									{
+										name: 'authorization',
+										value:
+											'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
+									},
+								],
 							},
-							{
-								fieldType: 'dropdown',
-								fieldLabel: 'What is your extraction goal?',
-								fieldOptions: {
-									values: [
-										{ option: 'BrowserHtml' },
-										{ option: 'httpResponseBody' },
-										{ option: 'Capture Network API' },
-										{ option: 'Infinite Scroll' },
-										{ option: 'Screenshot' },
-									],
-								},
-								requiredField: true,
-							},
-						],
+						},
+						position: [-1328, 2192],
+						name: 'HTTP BrowserHtml',
 					},
-				},
-				position: [-3168, 1760],
-				name: 'General Extraction Goal Form',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.3,
-			config: {
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.zyte.com/v1/extract',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							sendHeaders: true,
+							bodyParameters: {
+								parameters: [
+									{ name: 'url', value: '={{ $json.URL }}' },
+									{ name: 'httpResponseBody', value: '={{true}}' },
+								],
+							},
+							headerParameters: {
+								parameters: [
+									{
+										name: 'authorization',
+										value:
+											'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
+									},
+								],
+							},
+						},
+						position: [-1328, 2496],
+						name: 'HTTP Response Body',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.zyte.com/v1/extract',
+							method: 'POST',
+							options: {},
+							jsonBody:
+								'={\n"url": "{{ $json.URL }}",\n  "browserHtml": true,\n  "networkCapture": [\n    {\n      "filterType": "url",\n      "httpResponseBody": true,\n      "value": "/api/",\n      "matchType": "contains"\n    }\n  ]\n}',
+							sendBody: true,
+							sendHeaders: true,
+							specifyBody: 'json',
+							headerParameters: {
+								parameters: [
+									{
+										name: 'authorization',
+										value:
+											'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
+									},
+								],
+							},
+						},
+						position: [-1328, 2816],
+						name: 'HTTP Node: Capture Network API',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.zyte.com/v1/extract',
+							method: 'POST',
+							options: {},
+							jsonBody:
+								'={\n  "url": "{{ $json.URL }}",\n  "browserHtml": true,\n  "actions": [\n    {\n      "action": "scrollBottom"\n    }\n  ]\n}',
+							sendBody: true,
+							sendHeaders: true,
+							specifyBody: 'json',
+							headerParameters: {
+								parameters: [
+									{
+										name: 'authorization',
+										value:
+											'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
+									},
+								],
+							},
+						},
+						position: [-1328, 3136],
+						name: 'HTTP Node: Infinite Scroll',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.zyte.com/v1/extract',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							sendHeaders: true,
+							bodyParameters: {
+								parameters: [
+									{ name: 'url', value: '={{ $json.URL }}' },
+									{ name: 'screenshot', value: '={{true}}' },
+								],
+							},
+							headerParameters: {
+								parameters: [
+									{
+										name: 'authorization',
+										value:
+											'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
+									},
+								],
+							},
+						},
+						position: [-1328, 3456],
+						name: 'HTTP Node: Capture Page Screenshot',
+					},
+				}),
+			],
+			{
+				version: 3.3,
 				parameters: {
 					rules: {
 						values: [
@@ -1222,43 +1494,9 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 					},
 					options: {},
 				},
-				position: [-2720, 1712],
 				name: 'General Extract Goal',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.zyte.com/v1/extract',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendHeaders: true,
-					bodyParameters: {
-						parameters: [
-							{ name: 'url', value: '={{ $json.URL }}' },
-							{ name: 'browserHtml', value: '={{true}}' },
-						],
-					},
-					headerParameters: {
-						parameters: [
-							{
-								name: 'authorization',
-								value:
-									'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
-							},
-						],
-					},
-				},
-				position: [-1328, 2192],
-				name: 'HTTP BrowserHtml',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -1280,132 +1518,6 @@ const wf = workflow('', 'Zyte AI Web Scraper')
 				},
 				position: [3264, 2720],
 				name: 'Custom Output',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.zyte.com/v1/extract',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendHeaders: true,
-					bodyParameters: {
-						parameters: [
-							{ name: 'url', value: '={{ $json.URL }}' },
-							{ name: 'httpResponseBody', value: '={{true}}' },
-						],
-					},
-					headerParameters: {
-						parameters: [
-							{
-								name: 'authorization',
-								value:
-									'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
-							},
-						],
-					},
-				},
-				position: [-1328, 2496],
-				name: 'HTTP Response Body',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.zyte.com/v1/extract',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n"url": "{{ $json.URL }}",\n  "browserHtml": true,\n  "networkCapture": [\n    {\n      "filterType": "url",\n      "httpResponseBody": true,\n      "value": "/api/",\n      "matchType": "contains"\n    }\n  ]\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{
-								name: 'authorization',
-								value:
-									'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
-							},
-						],
-					},
-				},
-				position: [-1328, 2816],
-				name: 'HTTP Node: Capture Network API',
-			},
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.zyte.com/v1/extract',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "url": "{{ $json.URL }}",\n  "browserHtml": true,\n  "actions": [\n    {\n      "action": "scrollBottom"\n    }\n  ]\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					headerParameters: {
-						parameters: [
-							{
-								name: 'authorization',
-								value:
-									'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
-							},
-						],
-					},
-				},
-				position: [-1328, 3136],
-				name: 'HTTP Node: Infinite Scroll',
-			},
-		}),
-	)
-	.output(4)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.zyte.com/v1/extract',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendHeaders: true,
-					bodyParameters: {
-						parameters: [
-							{ name: 'url', value: '={{ $json.URL }}' },
-							{ name: 'screenshot', value: '={{true}}' },
-						],
-					},
-					headerParameters: {
-						parameters: [
-							{
-								name: 'authorization',
-								value:
-									'=Basic {{ ($(\'Main form submission\').item.json["Zyte API Key"] + ":").base64Encode() }}',
-							},
-						],
-					},
-				},
-				position: [-1328, 3456],
-				name: 'HTTP Node: Capture Page Screenshot',
 			},
 		}),
 	)

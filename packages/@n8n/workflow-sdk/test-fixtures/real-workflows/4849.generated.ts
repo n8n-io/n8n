@@ -14,10 +14,33 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '={{ $vars.url_sap }}Login',
+							method: 'POST',
+							options: { allowUnauthorizedCerts: true },
+							jsonBody:
+								'={\n       "UserName": "{{ $vars.user_sap }}",\n       "Password": "{{ $vars.password_sap }}",\n       "CompanyDB": "{{ $vars.company_db }}"\n}',
+							sendBody: true,
+							specifyBody: 'json',
+						},
+						position: [760, 520],
+						name: 'Connect to SAP',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [760, 820], name: 'No Operation, do nothing' },
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -71,30 +94,9 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 					},
 					options: {},
 				},
-				position: [300, 640],
 				name: 'Answer?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '={{ $vars.url_sap }}Login',
-					method: 'POST',
-					options: { allowUnauthorizedCerts: true },
-					jsonBody:
-						'={\n       "UserName": "{{ $vars.user_sap }}",\n       "Password": "{{ $vars.password_sap }}",\n       "CompanyDB": "{{ $vars.company_db }}"\n}',
-					sendBody: true,
-					specifyBody: 'json',
-				},
-				position: [760, 520],
-				name: 'Connect to SAP',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -164,18 +166,54 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: '',
+								cachedResultUrl: '',
+								cachedResultName: '',
+							},
+							documentId: { __rl: true, mode: 'list', value: '' },
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [1160, 520],
+						name: 'Get Header',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								'const items = $input.all();  // capturamos todos los items que entran\nconst DocumentLines = [];\n\nfor (let i = 0; i < items.length; i++) {\n  const item = items[i].json;\n\n  DocumentLines.push({\n    ItemCode: item.código,\n    Quantity: item.cantidad,\n    UnitPrice: item.precio\n  });\n}\n\nreturn [{ DocumentLines }];\n',
+						},
+						position: [1880, 680],
+						name: 'Generate DocumentLines',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					mode: 'combine',
 					options: {},
 					combineBy: 'combineByPosition',
 				},
-				position: [2240, 540],
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -235,14 +273,6 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 				position: [3360, 540],
 				name: 'PurchaseInvoices created',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [760, 820], name: 'No Operation, do nothing' },
 		}),
 	)
 	.add(
@@ -392,10 +422,38 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.cloud.llamaindex.ai/api/v1/parsing/job/{{ $json.id }}/result/markdown',
+							options: {},
+							sendHeaders: true,
+							headerParameters: {
+								parameters: [
+									{ name: 'accept', value: 'application/json' },
+									{
+										name: 'Authorization',
+										value: '=Bearer {{ $vars.llamaindex_apikey }}',
+									},
+								],
+							},
+						},
+						position: [1620, -100],
+						name: 'Get Results LlamaIndex',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 3 }, position: [1620, 100] },
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -449,35 +507,9 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 					},
 					options: {},
 				},
-				position: [1400, 0],
 				name: 'Status?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.cloud.llamaindex.ai/api/v1/parsing/job/{{ $json.id }}/result/markdown',
-					options: {},
-					sendHeaders: true,
-					headerParameters: {
-						parameters: [
-							{ name: 'accept', value: 'application/json' },
-							{
-								name: 'Authorization',
-								value: '=Bearer {{ $vars.llamaindex_apikey }}',
-							},
-						],
-					},
-				},
-				position: [1620, -100],
-				name: 'Get Results LlamaIndex',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -683,14 +715,6 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 				position: [2900, -100],
 				name: '¿Upload to SAP?',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { amount: 3 }, position: [1620, 100] },
 		}),
 	)
 	.add(

@@ -141,10 +141,71 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'o3-mini',
+								cachedResultName: 'O3-MINI',
+							},
+							options: {},
+							messages: {
+								values: [
+									{
+										content:
+											"=You are an advanced, unhinged, hilariously entertaining prompt-generation AI specializing in expanding short POV image prompt ideas into detailed, hyper-realistic prompts optimized for Qubico/flux1-dev. Your task is to take a brief input tied to job seeking, job hunting, or resume building and morph it into a cinematic, immersive prompt locked in a first-person perspective, making the viewer feel they’re living the scene.\n\nNEVER include quotation marks or emojis in your response—flux API will choke on them, and that’s a hard no.\n\nThe topic of this narrative is: {{ $('Load Google Sheet').item.json.idea }}\n\nThe short prompt idea to expand for this image generation is: {{ $json.response.text }}\n\nONLY GENERATE ONE PROMPT PER IDEA—NO COMBINING. In at least one scene, weave in this environment descriptor: {{ $('Load Google Sheet').first().json.environment_prompt }}, but go wild with unhinged, edgy, funny twists elsewhere (skip the cringe or cheesy garbage). Most job hunting happens on laptops or desktops, so prioritize those over phones. If a phone sneaks in, it’s only showing job-related content like email, LinkedIn, a resume, or a job posting—never a photo or video app.\n\nEvery prompt has two parts:\n\nForeground: Kick off with First person view POV GoPro shot of... and show the viewer’s hands, limbs, or feet locked in a job-related action.\n\nBackground: Start with In the background,... and paint the scenery, blending the environment descriptor when required, plus sensory zingers.\n\nTop Rules:\n\nNO quotation marks or emojis—EVER. This is life or death for flux.\nStick to first-person POV—the viewer’s in the driver’s seat, not watching from the sidelines.\nShow a limb (hands, feet) doing something job-focused—typing, holding a resume, adjusting a tie.\nKeep it dynamic, like a GoPro clip, with motion and depth mimicking human vision.\nIf tech’s involved (phone, computer), it’s displaying job-hunting gold—email, job boards, resumes—not random trash.\nNo off-topic actions like recording videos or snapping pics—job hunting only, fam.\nExtra Vibes:\n\nFull-body awareness: Drop hints of physical feels—cramping fingers, racing pulse, slumping shoulders.\nSensory overload: Hit sight, touch, sound, smell, temperature for max realism (coffee whiffs, keyboard clacks).\nWorld grip: Limbs interact with the scene—tapping keys, handing over papers, stepping up.\nKeep it under 1000 characters, one slick sentence, no fluff or formatting.\nMake it entertaining, relatable, with an Andrew Tate viral edge for the down-and-out job hustlers.\nExamples:\n\nInput: Updating a LinkedIn profile after a long day\n\nEnvironment_prompt: Tired, cluttered apartment, laptop glow\n\nOutput: First person view POV GoPro shot of my hands hammering a laptop, cheeto-dusted fingers aching from the grind, the screen flashing my LinkedIn profile with a fresh connection ping; in the background, a trashed apartment lit by the laptop’s ghostly glow, pizza boxes toppling, traffic humming outside, stale takeout stench hitting my nose as my back screams from the hustle.\n\nInput: Handing over a resume at a job fair\n\nEnvironment_prompt: Hopeful, busy convention hall, suits everywhere\n\nOutput: First person view POV GoPro shot of my hand thrusting out a crisp resume, fingers twitching with nerves as it brushes another palm; in the background, a buzzing convention hall packed with suits, coffee fumes and shoe polish in the air, chatter drowning my pounding heart as I lock eyes with the recruiter.\n\nNO QUOTATION MARKS. NO EMOJIS. EVER.",
+									},
+								],
+							},
+							simplify: false,
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [-540, 120],
+						name: 'Generate Image Prompts',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'gpt-4o-mini',
+								cachedResultName: 'GPT-4O-MINI',
+							},
+							options: {},
+							messages: {
+								values: [
+									{
+										role: 'system',
+										content:
+											'DO NOT include any quotation marks in your response. Do not put a quote at the beginning or the end of your response.\n\nYou are a prompt-generation AI specializing in crafting unhinged, entertaining TikTok captions for a "day in the life" POV story about job hunting or resume writing. Generate five concise, action-driven captions (5-10 words each) that follow a Problem > Action > Reward structure. The first caption should be a shocking or funny hook, and the last should conclude with a satisfying reward. Use emojis sparingly—only one per caption at most, and only when they add impact; skip them if they don’t enhance the message.\n\nGuidelines:\n\nPerspective: Always first-person POV, immersing the viewer in the story.\nTone: Channel Andrew Tate mixed with Charlie Sheen—cursing and sexual innuendos are fair game.\nContent: Focus on job seeking, hunting, or resume building, spotlighting AI as the game-changer.\nNarrative: Start with the grind of unemployment or a shitty job, pivot to using AI for resumes and cover letters, and end with scoring the dream gig.\nScenes: Highlight raw, emotional moments—skip the boring stuff.\nYour captions should be wild and entertaining, not polished or professional. The first caption is the hook—make it shocking, hilarious, or ballsy, something Andrew Tate would growl. Use emojis sparingly—max one per caption, only if it hits harder with it.\n\nYour response should be a list of 5 items separated by "\\n" (for example: "item1\\nitem2\\nitem3\\nitem4\\nitem5")',
+									},
+									{ content: '={{ $json.idea }}' },
+								],
+							},
+							simplify: false,
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [-980, 780],
+						name: 'Generate Video Captions',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -165,42 +226,9 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 						],
 					},
 				},
-				position: [-660, 840],
 				name: 'Validate list formatting',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					modelId: {
-						__rl: true,
-						mode: 'list',
-						value: 'o3-mini',
-						cachedResultName: 'O3-MINI',
-					},
-					options: {},
-					messages: {
-						values: [
-							{
-								content:
-									"=You are an advanced, unhinged, hilariously entertaining prompt-generation AI specializing in expanding short POV image prompt ideas into detailed, hyper-realistic prompts optimized for Qubico/flux1-dev. Your task is to take a brief input tied to job seeking, job hunting, or resume building and morph it into a cinematic, immersive prompt locked in a first-person perspective, making the viewer feel they’re living the scene.\n\nNEVER include quotation marks or emojis in your response—flux API will choke on them, and that’s a hard no.\n\nThe topic of this narrative is: {{ $('Load Google Sheet').item.json.idea }}\n\nThe short prompt idea to expand for this image generation is: {{ $json.response.text }}\n\nONLY GENERATE ONE PROMPT PER IDEA—NO COMBINING. In at least one scene, weave in this environment descriptor: {{ $('Load Google Sheet').first().json.environment_prompt }}, but go wild with unhinged, edgy, funny twists elsewhere (skip the cringe or cheesy garbage). Most job hunting happens on laptops or desktops, so prioritize those over phones. If a phone sneaks in, it’s only showing job-related content like email, LinkedIn, a resume, or a job posting—never a photo or video app.\n\nEvery prompt has two parts:\n\nForeground: Kick off with First person view POV GoPro shot of... and show the viewer’s hands, limbs, or feet locked in a job-related action.\n\nBackground: Start with In the background,... and paint the scenery, blending the environment descriptor when required, plus sensory zingers.\n\nTop Rules:\n\nNO quotation marks or emojis—EVER. This is life or death for flux.\nStick to first-person POV—the viewer’s in the driver’s seat, not watching from the sidelines.\nShow a limb (hands, feet) doing something job-focused—typing, holding a resume, adjusting a tie.\nKeep it dynamic, like a GoPro clip, with motion and depth mimicking human vision.\nIf tech’s involved (phone, computer), it’s displaying job-hunting gold—email, job boards, resumes—not random trash.\nNo off-topic actions like recording videos or snapping pics—job hunting only, fam.\nExtra Vibes:\n\nFull-body awareness: Drop hints of physical feels—cramping fingers, racing pulse, slumping shoulders.\nSensory overload: Hit sight, touch, sound, smell, temperature for max realism (coffee whiffs, keyboard clacks).\nWorld grip: Limbs interact with the scene—tapping keys, handing over papers, stepping up.\nKeep it under 1000 characters, one slick sentence, no fluff or formatting.\nMake it entertaining, relatable, with an Andrew Tate viral edge for the down-and-out job hustlers.\nExamples:\n\nInput: Updating a LinkedIn profile after a long day\n\nEnvironment_prompt: Tired, cluttered apartment, laptop glow\n\nOutput: First person view POV GoPro shot of my hands hammering a laptop, cheeto-dusted fingers aching from the grind, the screen flashing my LinkedIn profile with a fresh connection ping; in the background, a trashed apartment lit by the laptop’s ghostly glow, pizza boxes toppling, traffic humming outside, stale takeout stench hitting my nose as my back screams from the hustle.\n\nInput: Handing over a resume at a job fair\n\nEnvironment_prompt: Hopeful, busy convention hall, suits everywhere\n\nOutput: First person view POV GoPro shot of my hand thrusting out a crisp resume, fingers twitching with nerves as it brushes another palm; in the background, a buzzing convention hall packed with suits, coffee fumes and shoe polish in the air, chatter drowning my pounding heart as I lock eyes with the recruiter.\n\nNO QUOTATION MARKS. NO EMOJIS. EVER.",
-							},
-						],
-					},
-					simplify: false,
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-540, 120],
-				name: 'Generate Image Prompts',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -275,10 +303,42 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { unit: 'minutes' }, position: [540, -40], name: 'Wait 5min' },
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.piapi.ai/api/v1/task',
+							body: '={\n  "model": "kling",\n  "task_type": "video_generation",\n  "input": {\n    "prompt": "{{ $json.data.input.prompt }}",\n    "negative_prompt": "blurry motion, distorted faces, unnatural lighting, over produced, bad quality",\n    "cfg_scale": 0.5,\n    "duration": 5,\n    "mode": "pro",\n    "image_url": "{{ $json.data.output.image_url }}",\n    "version": "1.6",\n    "camera_control": {\n      "type": "simple",\n      "config": {\n        "horizontal": 0,\n        "vertical": 0,\n        "pan": 0,\n        "tilt": 0,\n        "roll": 0,\n        "zoom": 5\n      }\n    }\n  },\n  "config": {}\n}',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							contentType: 'raw',
+							sendHeaders: true,
+							rawContentType: 'application/json',
+							headerParameters: {
+								parameters: [
+									{
+										name: 'X-API-Key',
+										value: "={{ $('Set API Keys').item.json['PiAPI Key'] }}",
+									},
+								],
+							},
+						},
+						position: [-420, 560],
+						name: 'Image-to-Video',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -303,47 +363,9 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 						],
 					},
 				},
-				position: [360, 40],
 				name: 'Check for failures',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { unit: 'minutes' }, position: [540, -40], name: 'Wait 5min' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.piapi.ai/api/v1/task',
-					body: '={\n  "model": "kling",\n  "task_type": "video_generation",\n  "input": {\n    "prompt": "{{ $json.data.input.prompt }}",\n    "negative_prompt": "blurry motion, distorted faces, unnatural lighting, over produced, bad quality",\n    "cfg_scale": 0.5,\n    "duration": 5,\n    "mode": "pro",\n    "image_url": "{{ $json.data.output.image_url }}",\n    "version": "1.6",\n    "camera_control": {\n      "type": "simple",\n      "config": {\n        "horizontal": 0,\n        "vertical": 0,\n        "pan": 0,\n        "tilt": 0,\n        "roll": 0,\n        "zoom": 5\n      }\n    }\n  },\n  "config": {}\n}',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					contentType: 'raw',
-					sendHeaders: true,
-					rawContentType: 'application/json',
-					headerParameters: {
-						parameters: [
-							{
-								name: 'X-API-Key',
-								value: "={{ $('Set API Keys').item.json['PiAPI Key'] }}",
-							},
-						],
-					},
-				},
-				position: [-420, 560],
-				name: 'Image-to-Video',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -380,10 +402,29 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { unit: 'minutes' }, position: [120, 520], name: 'Wait to retry' },
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3,
+					config: {
+						parameters: {
+							mode: 'combine',
+							options: {},
+							combineBy: 'combineByPosition',
+						},
+						position: [300, 600],
+						name: 'Match captions with videos',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -408,34 +449,9 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 						],
 					},
 				},
-				position: [-20, 560],
 				name: 'Fail check',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { unit: 'minutes' }, position: [120, 520], name: 'Wait to retry' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3,
-			config: {
-				parameters: {
-					mode: 'combine',
-					options: {},
-					combineBy: 'combineByPosition',
-				},
-				position: [300, 600],
-				name: 'Match captions with videos',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -452,19 +468,43 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"return [\n  {\n    scene_titles: items.map(item => item.json.response.text),\n    video_urls: items.map(item => item.json.data.output.video_url),\n    input_tokens: $('Calculate Token Usage').first().json.total_prompt_tokens,\n    output_tokens: $('Calculate Token Usage').first().json.total_completion_tokens,\n    model: $('Generate Image Prompts').first().json.model\n  }\n];",
+						},
+						position: [460, 600],
+						name: 'List Elements',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"return [\n  {\n    sound_urls: items.map(item => $('Upload Voice Audio').first().json.webContentLink)\n  }\n];",
+						},
+						position: [460, 820],
+						name: 'List Elements1',
+					},
+				}),
+			],
+			{
+				version: 3,
 				parameters: {
 					mode: 'combine',
 					options: {},
 					combineBy: 'combineByPosition',
 				},
-				position: [680, 700],
 				name: 'Pair Videos with Audio',
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -980,8 +1020,42 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	// Disconnected: Generate voice
+	.add(
+		node({
+			type: 'n8n-nodes-base.httpRequest',
+			version: 4.2,
+			config: {
+				parameters: {
+					url: 'https://api.elevenlabs.io/v1/text-to-speech/onwK4e9ZLuTAKqWW03F9',
+					method: 'POST',
+					options: {},
+					sendBody: true,
+					sendHeaders: true,
+					bodyParameters: {
+						parameters: [
+							{
+								name: 'text',
+								value: '={{ $json.choices[0].message.content }}',
+							},
+						],
+					},
+					headerParameters: {
+						parameters: [
+							{
+								name: 'xi-api-key',
+								value: "={{ $('Set API Keys').item.json['ElevenLabs API Key'] }}",
+							},
+						],
+					},
+				},
+				position: [-60, 1020],
+				name: 'Generate voice',
+			},
+		}),
+	)
+	// Disconnected: Generate Script
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.openAi',
 			version: 1.8,
@@ -1016,40 +1090,8 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.elevenlabs.io/v1/text-to-speech/onwK4e9ZLuTAKqWW03F9',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					sendHeaders: true,
-					bodyParameters: {
-						parameters: [
-							{
-								name: 'text',
-								value: '={{ $json.choices[0].message.content }}',
-							},
-						],
-					},
-					headerParameters: {
-						parameters: [
-							{
-								name: 'xi-api-key',
-								value: "={{ $('Set API Keys').item.json['ElevenLabs API Key'] }}",
-							},
-						],
-					},
-				},
-				position: [-60, 1020],
-				name: 'Generate voice',
-			},
-		}),
-	)
-	.then(
+	// Disconnected: Upload Voice Audio
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
@@ -1078,7 +1120,8 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 			},
 		}),
 	)
-	.then(
+	// Disconnected: Set Access Permissions
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
@@ -1099,20 +1142,6 @@ const wf = workflow('aqLL3BAXqQIjeJDt', 'AI Automated TikTok/Youtube Shorts/Reel
 				},
 				position: [320, 1020],
 				name: 'Set Access Permissions',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"return [\n  {\n    sound_urls: items.map(item => $('Upload Voice Audio').first().json.webContentLink)\n  }\n];",
-				},
-				position: [460, 820],
-				name: 'List Elements1',
 			},
 		}),
 	)

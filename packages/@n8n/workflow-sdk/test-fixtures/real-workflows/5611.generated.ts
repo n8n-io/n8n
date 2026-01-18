@@ -14,10 +14,47 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId: '={{ $json.message.voice.file_id }}',
+							resource: 'file',
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [-2416, -384],
+						name: 'Download File1',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'fe7ecc99-e1e8-4a5e-bdd6-6fce9757b234',
+										name: 'text',
+										type: 'string',
+										value: '={{ $json.message.text }}',
+									},
+								],
+							},
+						},
+						position: [-2304, -128],
+						name: 'Text1',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -66,28 +103,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [-2640, -288],
 				name: 'Voice or Text1',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId: '={{ $json.message.voice.file_id }}',
-					resource: 'file',
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [-2416, -384],
-				name: 'Download File1',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -470,30 +488,6 @@ const wf = workflow('', '')
 				},
 				position: [-1136, -480],
 				name: 'Select already scraped mails',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'fe7ecc99-e1e8-4a5e-bdd6-6fce9757b234',
-								name: 'text',
-								type: 'string',
-								value: '={{ $json.message.text }}',
-							},
-						],
-					},
-				},
-				position: [-2304, -128],
-				name: 'Text1',
 			},
 		}),
 	)

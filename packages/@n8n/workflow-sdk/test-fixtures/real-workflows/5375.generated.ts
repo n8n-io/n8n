@@ -150,15 +150,114 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3,
-			config: {
-				parameters: { numberInputs: 3 },
-				position: [-2360, 360],
-				name: 'Merge: All Sources',
-			},
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'reddit-weight',
+										name: 'source_weight',
+										type: 'number',
+										value: 0.7,
+									},
+									{
+										id: 'reddit-source',
+										name: 'source_type',
+										type: 'string',
+										value: 'reddit',
+									},
+									{
+										id: 'reddit-content',
+										name: 'content',
+										type: 'string',
+										value: "={{ $json.title + ' ' + ($json.selftext || '') }}",
+									},
+									{
+										id: 'reddit-url',
+										name: 'url',
+										type: 'string',
+										value: '={{ $json.url }}',
+									},
+									{
+										id: 'reddit-score',
+										name: 'engagement_score',
+										type: 'number',
+										value: '={{ $json.ups }}',
+									},
+								],
+							},
+						},
+						position: [-2760, 160],
+						name: 'Format Reddit Data',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'youtube-weight',
+										name: 'source_weight',
+										type: 'number',
+										value: 0.8,
+									},
+									{
+										id: 'youtube-source',
+										name: 'source_type',
+										type: 'string',
+										value: 'youtube',
+									},
+									{
+										id: 'youtube-content',
+										name: 'content',
+										type: 'string',
+										value: "={{ $json.snippet.title + ' ' + $json.snippet.description }}",
+									},
+									{
+										id: 'youtube-url',
+										name: 'url',
+										type: 'string',
+										value: '=https://www.youtube.com/watch?v={{ $json.id.videoId }}',
+									},
+									{
+										id: 'youtube-channel',
+										name: 'channel',
+										type: 'string',
+										value: '={{ $json.snippet.channelTitle }}',
+									},
+								],
+							},
+						},
+						position: [-2580, 340],
+						name: 'Format YouTube Data',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							mode: 'runOnceForEachItem',
+							jsCode:
+								"// 新代码：输出与其他平台完全一致的格式，并增加 engagement_score\ntry {\n  const tweetObject = $input.item.json;\n\n  // 从推文的公开指标(public_metrics)中计算一个综合的互动分数\n  // 同时增加安全检查，防止某些指标不存在时报错\n  const metrics = tweetObject.public_metrics || {};\n  const likeCount = metrics.like_count || 0;\n  const retweetCount = metrics.retweet_count || 0;\n  const replyCount = metrics.reply_count || 0;\n  const quoteCount = metrics.quote_count || 0;\n  const engagementScore = likeCount + retweetCount + replyCount + quoteCount;\n\n  // 构建与其他平台格式完全一致的result对象\n  const result = {\n    source_weight: 0.9,                        // 权重\n    source_type: 'twitter',                    // 来源类型\n    content: tweetObject.text,                 // 推文内容\n    url: `https://x.com/anyuser/status/${tweetObject.id}`, // 推文链接\n    engagement_score: engagementScore          // 互动分数\n  };\n\n  return { json: result };\n\n} catch (error) {\n  console.error('处理推文JSON时出错:', error);\n  return { json: { error: '处理推文JSON失败', raw_data: $input.item.json } };\n}",
+						},
+						position: [-2760, 520],
+						name: 'Parse Twitter Data',
+					},
+				}),
+			],
+			{ version: 3, parameters: { numberInputs: 3 }, name: 'Merge: All Sources' },
+		),
 	)
 	.then(
 		node({
@@ -222,10 +321,32 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.aggregate',
+					version: 1,
+					config: {
+						parameters: { options: {}, aggregate: 'aggregateAllItemData' },
+						position: [-1340, 240],
+						name: 'Aggregate: Relevant Items',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"try {\n  const errorInfo = {\n    error: '工作流执行出错',\n    timestamp: new Date().toISOString(),\n    node_error: $input.item(0).json.error || '未知错误',\n    analysis_id: $('Analysis Parameters').item.json.analysis_id || 'unknown'\n  };\n  \n  console.error('工作流错误:', errorInfo);\n  return { json: errorInfo };\n} catch (e) {\n  return { \n    json: { \n      error: '严重错误: 错误处理节点也失败了',\n      timestamp: new Date().toISOString()\n    } \n  };\n}",
+						},
+						position: [-1340, 520],
+						name: 'Handle Filter Errors',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -246,22 +367,9 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 						],
 					},
 				},
-				position: [-1560, 360],
 				name: 'IF: Is Content Relevant',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.aggregate',
-			version: 1,
-			config: {
-				parameters: { options: {}, aggregate: 'aggregateAllItemData' },
-				position: [-1340, 240],
-				name: 'Aggregate: Relevant Items',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -473,21 +581,6 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"try {\n  const errorInfo = {\n    error: '工作流执行出错',\n    timestamp: new Date().toISOString(),\n    node_error: $input.item(0).json.error || '未知错误',\n    analysis_id: $('Analysis Parameters').item.json.analysis_id || 'unknown'\n  };\n  \n  console.error('工作流错误:', errorInfo);\n  return { json: errorInfo };\n} catch (e) {\n  return { \n    json: { \n      error: '严重错误: 错误处理节点也失败了',\n      timestamp: new Date().toISOString()\n    } \n  };\n}",
-				},
-				position: [-1340, 520],
-				name: 'Handle Filter Errors',
-			},
-		}),
-	)
 	.output(0)
 	.then(
 		node({
@@ -508,53 +601,6 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 			},
 		}),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'reddit-weight',
-								name: 'source_weight',
-								type: 'number',
-								value: 0.7,
-							},
-							{
-								id: 'reddit-source',
-								name: 'source_type',
-								type: 'string',
-								value: 'reddit',
-							},
-							{
-								id: 'reddit-content',
-								name: 'content',
-								type: 'string',
-								value: "={{ $json.title + ' ' + ($json.selftext || '') }}",
-							},
-							{
-								id: 'reddit-url',
-								name: 'url',
-								type: 'string',
-								value: '={{ $json.url }}',
-							},
-							{
-								id: 'reddit-score',
-								name: 'engagement_score',
-								type: 'number',
-								value: '={{ $json.ups }}',
-							},
-						],
-					},
-				},
-				position: [-2760, 160],
-				name: 'Format Reddit Data',
-			},
-		}),
-	)
 	.output(0)
 	.then(
 		node({
@@ -571,21 +617,6 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 				},
 				position: [-2940, 520],
 				name: 'X: Search Tweets',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					mode: 'runOnceForEachItem',
-					jsCode:
-						"// 新代码：输出与其他平台完全一致的格式，并增加 engagement_score\ntry {\n  const tweetObject = $input.item.json;\n\n  // 从推文的公开指标(public_metrics)中计算一个综合的互动分数\n  // 同时增加安全检查，防止某些指标不存在时报错\n  const metrics = tweetObject.public_metrics || {};\n  const likeCount = metrics.like_count || 0;\n  const retweetCount = metrics.retweet_count || 0;\n  const replyCount = metrics.reply_count || 0;\n  const quoteCount = metrics.quote_count || 0;\n  const engagementScore = likeCount + retweetCount + replyCount + quoteCount;\n\n  // 构建与其他平台格式完全一致的result对象\n  const result = {\n    source_weight: 0.9,                        // 权重\n    source_type: 'twitter',                    // 来源类型\n    content: tweetObject.text,                 // 推文内容\n    url: `https://x.com/anyuser/status/${tweetObject.id}`, // 推文链接\n    engagement_score: engagementScore          // 互动分数\n  };\n\n  return { json: result };\n\n} catch (error) {\n  console.error('处理推文JSON时出错:', error);\n  return { json: { error: '处理推文JSON失败', raw_data: $input.item.json } };\n}",
-				},
-				position: [-2760, 520],
-				name: 'Parse Twitter Data',
 			},
 		}),
 	)

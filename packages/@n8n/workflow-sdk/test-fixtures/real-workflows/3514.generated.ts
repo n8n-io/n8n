@@ -121,10 +121,77 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '42333f26-8e14-438a-9965-eec31bf4b6a3',
+										name: 'converted_text',
+										type: 'string',
+										value: '={{ $json.payload.text.toUpperCase() }}',
+									},
+								],
+							},
+						},
+						position: [2000, 520],
+						name: 'Convert Text to Upper Case',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '42333f26-8e14-438a-9965-eec31bf4b6a3',
+										name: 'converted_text',
+										type: 'string',
+										value: '={{ $json.payload.text.toLowerCase() }}',
+									},
+								],
+							},
+						},
+						position: [2000, 720],
+						name: 'Convert Text to Lower Case',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.debugHelper',
+					version: 1,
+					config: {
+						parameters: {
+							category: 'randomData',
+							randomDataCount: '={{ $json.payload.number }}',
+						},
+						position: [2000, 1020],
+						name: 'Random user data',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://official-joke-api.appspot.com/jokes/random/{{ $json.payload.number }}',
+							options: {},
+						},
+						position: [2000, 1220],
+						name: 'Joke Request',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -228,72 +295,8 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [1660, 860],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '42333f26-8e14-438a-9965-eec31bf4b6a3',
-								name: 'converted_text',
-								type: 'string',
-								value: '={{ $json.payload.text.toUpperCase() }}',
-							},
-						],
-					},
-				},
-				position: [2000, 520],
-				name: 'Convert Text to Upper Case',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '42333f26-8e14-438a-9965-eec31bf4b6a3',
-								name: 'converted_text',
-								type: 'string',
-								value: '={{ $json.payload.text.toLowerCase() }}',
-							},
-						],
-					},
-				},
-				position: [2000, 720],
-				name: 'Convert Text to Lower Case',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.debugHelper',
-			version: 1,
-			config: {
-				parameters: {
-					category: 'randomData',
-					randomDataCount: '={{ $json.payload.number }}',
-				},
-				position: [2000, 1020],
-				name: 'Random user data',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -327,21 +330,6 @@ const wf = workflow('', '')
 				},
 				position: [2220, 1020],
 				name: 'Return only some fields',
-			},
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://official-joke-api.appspot.com/jokes/random/{{ $json.payload.number }}',
-					options: {},
-				},
-				position: [2000, 1220],
-				name: 'Joke Request',
 			},
 		}),
 	)

@@ -343,18 +343,56 @@ const wf = workflow('CXHBDt6tSiHrMyZj', '🎬 AI YouTube Video Generator - One-C
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.aggregate',
+					version: 1,
+					config: {
+						parameters: {
+							include: 'specifiedFields',
+							options: {},
+							aggregate: 'aggregateAllItemData',
+							fieldsToInclude: '=output',
+							destinationFieldName: 'Videos',
+						},
+						position: [2060, -180],
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/raw/upload',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							contentType: 'form-urlencoded',
+							bodyParameters: {
+								parameters: [
+									{
+										name: 'file',
+										value: '=data:audio/mp3;base64,{{ $json.audio_base64 }}',
+									},
+									{ name: 'upload_preset', value: 'default' },
+								],
+							},
+						},
+						position: [-780, 220],
+						name: 'Upload Cloudinary',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					mode: 'combine',
 					options: { includeUnpaired: true },
 					combineBy: 'combineByPosition',
 				},
-				position: [2300, 0],
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -466,33 +504,6 @@ const wf = workflow('CXHBDt6tSiHrMyZj', '🎬 AI YouTube Video Generator - One-C
 				},
 				position: [3560, -100],
 				name: 'Get final video',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/raw/upload',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					contentType: 'form-urlencoded',
-					bodyParameters: {
-						parameters: [
-							{
-								name: 'file',
-								value: '=data:audio/mp3;base64,{{ $json.audio_base64 }}',
-							},
-							{ name: 'upload_preset', value: 'default' },
-						],
-					},
-				},
-				position: [-780, 220],
-				name: 'Upload Cloudinary',
 			},
 		}),
 	)

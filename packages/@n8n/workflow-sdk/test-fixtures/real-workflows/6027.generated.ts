@@ -56,10 +56,55 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						parameters: {
+							options: {},
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE/edit#gid=0',
+								cachedResultName: 'Companies',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE/edit?usp=drivesdk',
+								cachedResultName: 'Copy of Lead Machine - Ghost Genius',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [-1360, 2160],
+						name: 'Companies Recovery',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.stopAndError',
+					version: 1,
+					config: {
+						parameters: {
+							errorMessage: 'Missing API Key or Account ID in the Google Sheet',
+						},
+						position: [-1340, 2420],
+						name: 'Missing API Key or Account ID1',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -86,46 +131,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-1600, 2160],
 				name: 'If1',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE/edit#gid=0',
-						cachedResultName: 'Companies',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE/edit?usp=drivesdk',
-						cachedResultName: 'Copy of Lead Machine - Ghost Genius',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [-1360, 2160],
-				name: 'Companies Recovery',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -225,10 +233,145 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.splitOut',
+					version: 1,
+					config: {
+						parameters: { options: {}, fieldToSplitOut: 'data' },
+						position: [40, 2160],
+						name: 'Split Profiles',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									State: 'No decision maker found',
+									LinkedIn: "={{ $('Loop Over Items').item.json.LinkedIn }}",
+								},
+								schema: [
+									{
+										id: 'Name',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Name',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Website',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Website',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'LinkedIn',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'LinkedIn',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'ID',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'ID',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Summary',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Summary',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Score',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Score',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Explanation',
+										type: 'string',
+										display: true,
+										removed: true,
+										required: false,
+										displayName: 'Explanation',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'State',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'State',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: ['LinkedIn'],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'appendOrUpdate',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1j8AHiPiHEXVOkUhO2ms-lw1Ygu1eWIWW-8Qe1OoHpCo/edit#gid=0',
+								cachedResultName: 'Companies',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE/edit?usp=drivesdk',
+								cachedResultName: 'Copy of Lead Machine - Ghost Genius',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [40, 2420],
+						name: 'No decision maker found',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -249,22 +392,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-200, 2160],
 				name: 'Check profiles Found',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitOut',
-			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'data' },
-				position: [40, 2160],
-				name: 'Split Profiles',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -747,148 +877,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.5,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							State: 'No decision maker found',
-							LinkedIn: "={{ $('Loop Over Items').item.json.LinkedIn }}",
-						},
-						schema: [
-							{
-								id: 'Name',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Website',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Website',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'LinkedIn',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'LinkedIn',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'ID',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'ID',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Summary',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Summary',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Score',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Score',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Explanation',
-								type: 'string',
-								display: true,
-								removed: true,
-								required: false,
-								displayName: 'Explanation',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'State',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'State',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: ['LinkedIn'],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1j8AHiPiHEXVOkUhO2ms-lw1Ygu1eWIWW-8Qe1OoHpCo/edit#gid=0',
-						cachedResultName: 'Companies',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE/edit?usp=drivesdk',
-						cachedResultName: 'Copy of Lead Machine - Ghost Genius',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [40, 2420],
-				name: 'No decision maker found',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.stopAndError',
-			version: 1,
-			config: {
-				parameters: {
-					errorMessage: 'Missing API Key or Account ID in the Google Sheet',
-				},
-				position: [-1340, 2420],
-				name: 'Missing API Key or Account ID1',
-			},
-		}),
-	)
 	.add(
 		trigger({
 			type: 'n8n-nodes-base.manualTrigger',
@@ -947,10 +935,56 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'o3-mini',
+								cachedResultName: 'O3-MINI',
+							},
+							options: {},
+							messages: {
+								values: [
+									{
+										role: 'system',
+										content:
+											'You are an AI assistant that extracts clean, relevant keywords to search for companies on LinkedIn.\n\nThe user input is often noisy, vague, or includes unnecessary details. Your job is to return only **clear, concise keywords** that describe the **type of company** the user is looking for.\n\nOnly keep terms related to:\n- Industry or sector (e.g. fintech, legal tech, SaaS)\n- Company activity or profession (e.g. digital agency, HR software, logistics)\n\nIgnore anything related to:\n- Location (e.g. in Paris, Europe)\n- Company size (e.g. startups, large enterprise)\n- Intent or service needs (e.g. looking for CRM, needs automation)\n- Personal perspective (e.g. I’m looking for, I want to target)\n\nYour answer must contain:\n- A space-separated list of keywords (no punctuation, no full sentences, no extra text)\n- If there are no relevant keywords, respond with: `no keywords`',
+									},
+									{
+										content:
+											"=Extract the relevant company keywords from this input:\n\n{{ $json.settings[1]['Value (edit with your use case)'] }}",
+									},
+								],
+							},
+							jsonOutput: true,
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [-860, 1100],
+						name: 'Make the perfect request',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.stopAndError',
+					version: 1,
+					config: {
+						parameters: {
+							errorMessage: 'Missing API Key or Account ID in the Google Sheet',
+						},
+						position: [-760, 1360],
+						name: 'Missing API Key or Account ID',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -977,46 +1011,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [-1060, 1100],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					modelId: {
-						__rl: true,
-						mode: 'list',
-						value: 'o3-mini',
-						cachedResultName: 'O3-MINI',
-					},
-					options: {},
-					messages: {
-						values: [
-							{
-								role: 'system',
-								content:
-									'You are an AI assistant that extracts clean, relevant keywords to search for companies on LinkedIn.\n\nThe user input is often noisy, vague, or includes unnecessary details. Your job is to return only **clear, concise keywords** that describe the **type of company** the user is looking for.\n\nOnly keep terms related to:\n- Industry or sector (e.g. fintech, legal tech, SaaS)\n- Company activity or profession (e.g. digital agency, HR software, logistics)\n\nIgnore anything related to:\n- Location (e.g. in Paris, Europe)\n- Company size (e.g. startups, large enterprise)\n- Intent or service needs (e.g. looking for CRM, needs automation)\n- Personal perspective (e.g. I’m looking for, I want to target)\n\nYour answer must contain:\n- A space-separated list of keywords (no punctuation, no full sentences, no extra text)\n- If there are no relevant keywords, respond with: `no keywords`',
-							},
-							{
-								content:
-									"=Extract the relevant company keywords from this input:\n\n{{ $json.settings[1]['Value (edit with your use case)'] }}",
-							},
-						],
-					},
-					jsonOutput: true,
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-860, 1100],
-				name: 'Make the perfect request',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -1119,10 +1116,56 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						parameters: {
+							options: {},
+							filtersUI: {
+								values: [{ lookupValue: '={{ $json.id }}', lookupColumn: 'ID' }],
+							},
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1j8AHiPiHEXVOkUhO2ms-lw1Ygu1eWIWW-8Qe1OoHpCo/edit#gid=0',
+								cachedResultName: 'Companies',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE/edit?usp=drivesdk',
+								cachedResultName: 'Copy of Lead Machine - Ghost Genius',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [660, 1100],
+						name: 'Check If Company Exists',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitInBatches',
+					version: 3,
+					config: {
+						parameters: { options: {} },
+						position: [20, 1100],
+						name: 'Process Each Company',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -1149,55 +1192,59 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [440, 1100],
 				name: 'Filter Valid Companies',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					filtersUI: {
-						values: [{ lookupValue: '={{ $json.id }}', lookupColumn: 'ID' }],
-					},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1j8AHiPiHEXVOkUhO2ms-lw1Ygu1eWIWW-8Qe1OoHpCo/edit#gid=0',
-						cachedResultName: 'Companies',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1tRjZTbM10koP6kpXzfIf9LzuuvnDcPAtv7fTTC36SnE/edit?usp=drivesdk',
-						cachedResultName: 'Copy of Lead Machine - Ghost Genius',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [660, 1100],
-				name: 'Check If Company Exists',
-			},
-		}),
+		),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'gpt-4.1-mini',
+								cachedResultName: 'GPT-4.1-MINI',
+							},
+							options: { temperature: 0.2 },
+							messages: {
+								values: [
+									{
+										role: 'system',
+										content:
+											"=You are an AI assistant that evaluates companies to determine if they might be interested in {{ $('Aggregate1').item.json.settings[0]['Value (edit with your use case)'] }}.\n\nEvaluate the company information provided on a scale of 0 to 10, where:\n- 0 = Not at all likely to be interested\n- 10 = Extremely likely to be interested\n\nBase your evaluation on these criteria:\n1. Industry fit: How well does the company's industry align with {{ $('Aggregate1').item.json.settings[0]['Value (edit with your use case)'] }}?\n2. Company profile: Is the company size, growth stage, and location appropriate for {{ $('Aggregate1').item.json.settings[0]['Value (edit with your use case)'] }}?\n3. Pain points: Based on their description, do they likely have challenges that {{ $('Aggregate1').item.json.settings[0]['Value (edit with your use case)'] }} solves?\n\nRespond ONLY with this JSON format:\n```json\n{\n  \"score\": [number between 0 and 10],\n  \"explanation\":\n}",
+									},
+									{
+										content:
+											"=Here is the company to analyze:\nName: {{ $('Filter Valid Companies').item.json.name }}\n{{ $('Filter Valid Companies').item.json.tagline }}\n{{ $('Filter Valid Companies').item.json.description }}\nNumber of employees: {{ $('Filter Valid Companies').item.json.staff_count }}\nIndustry: {{ $('Filter Valid Companies').item.json.industries }}\nSpecialties: {{ $('Filter Valid Companies').item.json.specialities }}\nLocation: {{ $('Filter Valid Companies').item.json.locations?.toJsonString() }}\nFounded in: {{ $('Filter Valid Companies').item.json.founded_on }}",
+									},
+								],
+							},
+							jsonOutput: true,
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [1220, 1100],
+						name: 'AI Company Scoring',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitInBatches',
+					version: 3,
+					config: {
+						parameters: { options: {} },
+						position: [20, 1100],
+						name: 'Process Each Company',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -1218,47 +1265,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [880, 1100],
 				name: 'Is New Company?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					modelId: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4.1-mini',
-						cachedResultName: 'GPT-4.1-MINI',
-					},
-					options: { temperature: 0.2 },
-					messages: {
-						values: [
-							{
-								role: 'system',
-								content:
-									"=You are an AI assistant that evaluates companies to determine if they might be interested in {{ $('Aggregate1').item.json.settings[0]['Value (edit with your use case)'] }}.\n\nEvaluate the company information provided on a scale of 0 to 10, where:\n- 0 = Not at all likely to be interested\n- 10 = Extremely likely to be interested\n\nBase your evaluation on these criteria:\n1. Industry fit: How well does the company's industry align with {{ $('Aggregate1').item.json.settings[0]['Value (edit with your use case)'] }}?\n2. Company profile: Is the company size, growth stage, and location appropriate for {{ $('Aggregate1').item.json.settings[0]['Value (edit with your use case)'] }}?\n3. Pain points: Based on their description, do they likely have challenges that {{ $('Aggregate1').item.json.settings[0]['Value (edit with your use case)'] }} solves?\n\nRespond ONLY with this JSON format:\n```json\n{\n  \"score\": [number between 0 and 10],\n  \"explanation\":\n}",
-							},
-							{
-								content:
-									"=Here is the company to analyze:\nName: {{ $('Filter Valid Companies').item.json.name }}\n{{ $('Filter Valid Companies').item.json.tagline }}\n{{ $('Filter Valid Companies').item.json.description }}\nNumber of employees: {{ $('Filter Valid Companies').item.json.staff_count }}\nIndustry: {{ $('Filter Valid Companies').item.json.industries }}\nSpecialties: {{ $('Filter Valid Companies').item.json.specialities }}\nLocation: {{ $('Filter Valid Companies').item.json.locations?.toJsonString() }}\nFounded in: {{ $('Filter Valid Companies').item.json.founded_on }}",
-							},
-						],
-					},
-					jsonOutput: true,
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1220, 1100],
-				name: 'AI Company Scoring',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -1383,20 +1392,6 @@ const wf = workflow('', '')
 				},
 				position: [1580, 1100],
 				name: 'Add Company to CRM',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.stopAndError',
-			version: 1,
-			config: {
-				parameters: {
-					errorMessage: 'Missing API Key or Account ID in the Google Sheet',
-				},
-				position: [-760, 1360],
-				name: 'Missing API Key or Account ID',
 			},
 		}),
 	)

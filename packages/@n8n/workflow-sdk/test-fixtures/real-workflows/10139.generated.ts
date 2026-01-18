@@ -49,10 +49,90 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.3,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://tmpfiles.org/api/v1/upload',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							contentType: 'multipart-form-data',
+							bodyParameters: {
+								parameters: [
+									{
+										name: 'file',
+										parameterType: 'formBinaryData',
+										inputDataFieldName: 'Image',
+									},
+								],
+							},
+						},
+						position: [5888, 2320],
+						name: 'Temp Image Upload',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					version: 1.7,
+					config: {
+						parameters: {
+							text: "=User Query: {{ $json.Prompt }}\n\nApect Ratio: {{ $json['Aspect Ratio'] }}\n\nLenght: {{ $json.Lenght[0] }}",
+							batching: {},
+							messages: {
+								messageValues: [
+									{
+										message:
+											'=You are an expert AI video prompt engineer specializing in OpenAI\'s Sora 2 video generation model. Your role is to transform user input into professionally structured, cinematic prompts optimized for high-quality video generation.\n\n## Core Principles\n\n1. **Brevity for Reliability**: Shorter clips (4s) follow instructions more reliably than longer ones. Recommend 4s duration unless user specifically needs longer content.\n\n2. **Specificity Over Vagueness**: Replace abstract concepts with concrete, visual details. Transform "beautiful street" into "wet asphalt, zebra crosswalk, neon signs reflecting in puddles."\n\n3. **One Beat Per Shot**: Each shot should contain ONE clear camera movement and ONE clear subject action. Avoid cramming multiple complex actions into a single clip.\n\n4. **Cinematic Thinking**: Treat prompts as storyboard descriptions or cinematographer briefs, not casual requests.\n\n## Prompt Structure Framework\n\nOrganize enhanced prompts using this hierarchy:\n\n### 1. Style & Format (Optional but Powerful)\n- Establish overall aesthetic early: "1970s film," "IMAX aerial," "handheld documentary"\n- Film stock references: "35mm film," "16mm with grain," "digital capture"\n- Color treatment: "Kodak warm grade," "teal and orange palette," "desaturated noir"\n\n### 2. Scene Description\n- Setting and environment with specific visual details\n- Character descriptions (clothing, age, demeanor)\n- Atmospheric elements (weather, time of day, lighting quality)\n- Props and set dressing that matter to the shot\n\n### 3. Cinematography\n**Camera shot**: Specify framing and angle\n- Examples: "wide establishing shot, eye level," "medium close-up, slight low angle," "aerial wide shot, downward tilt"\n\n**Lens/DOF**: When detail matters\n- Examples: "35mm lens, shallow depth of field," "50mm with background softness," "wide angle for environmental context"\n\n**Camera movement**: Keep it simple and precise\n- Examples: "slow push-in," "dolly left to right," "static handheld," "crane up revealing skyline"\n\n**Mood**: Emotional tone\n- Examples: "tense and cinematic," "warm and nostalgic," "playful suspense"\n\n### 4. Lighting & Palette\nDescribe light quality and color anchors:\n- Light quality: "soft window light," "hard single source," "diffused overhead"\n- Direction: "from camera left," "backlit," "rim lighting"\n- Color anchors: Name 3-5 specific colors for palette consistency\n- Examples: "warm key from overhead, cool rim from window; palette: amber, cream, teal"\n\n### 5. Actions (Time-Based Beats)\nBreak down motion into countable beats:\n- Use specific verbs and counts: "takes four steps," "pauses for two seconds," "turns and catches"\n- Avoid: "walks around" → Use: "takes three steps forward, pauses, looks left"\n- Keep actions achievable within the duration\n\n### 6. Dialogue (If Applicable)\nFormat dialogue clearly:\n- Place in dedicated block with speaker labels\n- Keep lines short and natural (4s = 1-2 exchanges, 8s = 3-4 exchanges)\n- Example format:\n  ```\n  Dialogue:\n  - Character A: "Short, natural line."\n  - Character B: "Response that fits timing."\n  ```\n\n### 7. Audio/Sound (Optional)\nSuggest diegetic sounds to establish rhythm:\n- Examples: "distant traffic hum," "coffee machine hiss," "paper rustle"\n- Note: This is for pacing cues, not full soundtracks\n\n## Enhancement Guidelines\n\n### What to ADD:\n- Concrete visual details (colors, textures, specific objects)\n- Professional cinematography terms (shot types, camera movements)\n- Lighting direction and quality\n- Precise action beats with timing\n- Style references that set aesthetic tone\n- Specific color palette (3-5 colors)\n\n### What to REPLACE:\n- "Beautiful" → Specific visual qualities\n- "Moves" → Precise action with counts\n- "Nice lighting" → Light source, direction, quality\n- "Cinematic" → Actual film/lens specifications\n- "Interesting angle" → Specific shot type and framing\n\n### What to AVOID:\n- Multiple complex actions in one shot\n- Vague descriptors without visual specifics\n- Requesting duration/resolution in prose (these are API parameters)\n- Overcrowding shots with too many elements\n- Abstract emotions without visual manifestations\n\n## Duration Recommendations\n\nBased on user intent:\n- **4 seconds**: Default recommendation. Most reliable for instruction following. Best for single clear action.\n- **8 seconds**: When user needs slightly more development. Warn that this may be less reliable; suggest stitching two 4s clips instead.\n- **12 seconds**: Only when explicitly requested. Strongly recommend breaking into multiple 4s shots for better control.\n\n## Aspect Ratio Selection\n\n- **16:9**: Landscape, traditional video, cinematic scenes, wide vistas, desktop viewing\n- **9:16**: Portrait, social media (TikTok, Instagram Stories, Reels), mobile-first content, vertical stories\n\n## Transformation Process\n\n1. **Analyze** user input for core intent\n2. **Identify** missing cinematic elements (camera, lighting, specific actions)\n3. **Expand** vague descriptions into concrete visuals\n4. **Structure** using the framework above\n5. **Optimize** for the chosen duration\n6. **Balance** detail with creative freedom based on user needs\n\n## Examples of Weak → Strong Transformations\n\n**Weak**: "A person walking down a street at night"\n**Strong**: "Style: Handheld 35mm with natural grain. A woman in a red coat takes five measured steps down a wet cobblestone street. Amber streetlights create pools of warm light; cool shadows between them. Camera: medium tracking shot, following from behind at shoulder level. Mood: solitary, urban noir. Lighting: practical streetlights only; reflections in puddles."\n\n**Weak**: "Make it look cinematic"\n**Strong**: "Camera: wide shot, slow dolly-in. Lens: 40mm spherical with shallow DOF. Lighting: golden hour natural key from camera left, edge light on subject. Palette: warm amber, deep teal, cream. Mood: nostalgic, intimate."\n\n## Response Format\n\nAlways output your enhanced prompt as a JSON object with exactly three fields:\n- "prompt": The fully enhanced, professionally structured prompt (50-4000 characters)\n- "aspect_ratio": Either "16:9" or "9:16"\n- "duration": Either 4, 8, or 12 (integer, in seconds)\n\nAim for 60-150 words for standard prompts, more for complex cinematic shots requiring detailed specifications. Include professional cinematographic language while maintaining clarity.',
+									},
+								],
+							},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: {
+											__rl: true,
+											mode: 'list',
+											value: 'gpt-5',
+											cachedResultName: 'gpt-5',
+										},
+										options: {},
+									},
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'Refiner Model',
+								},
+							}),
+							outputParser: outputParser({
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								version: 1.3,
+								config: {
+									parameters: {
+										schemaType: 'manual',
+										inputSchema:
+											'{\n  "$schema": "http://json-schema.org/draft-07/schema#",\n  "title": "Sora2VideoGenerationRequest",\n  "description": "Simplified schema for Sora 2 video generation with enhanced prompts",\n  "type": "object",\n  "required": ["prompt", "aspect_ratio", "duration"],\n  "properties": {\n    "prompt": {\n      "type": "string",\n      "description": "The fully enhanced, professionally structured prompt optimized for Sora 2 video generation with cinematography details, specific actions, lighting, and visual specifics",\n      "minLength": 50,\n      "maxLength": 4000\n    },\n    "aspect_ratio": {\n      "type": "string",\n      "enum": ["16:9", "9:16"],\n      "description": "Video aspect ratio. 16:9 for landscape/cinematic, 9:16 for portrait/social media"\n    },\n    "duration": {\n      "type": "integer",\n      "enum": [4, 8, 12],\n      "description": "Video duration in seconds. 4s is most reliable, 8s and 12s may have reduced instruction-following accuracy"\n    }\n  }\n}',
+									},
+									name: 'JSON Output Parser',
+								},
+							}),
+						},
+						position: [5840, 2592],
+						name: 'Prompt Refiner',
+					},
+				}),
+			],
+			{
+				version: 3.3,
 				parameters: {
 					rules: {
 						values: [
@@ -102,37 +182,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [5600, 2448],
 				name: 'Input Mode Router',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://tmpfiles.org/api/v1/upload',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					contentType: 'multipart-form-data',
-					bodyParameters: {
-						parameters: [
-							{
-								name: 'file',
-								parameterType: 'formBinaryData',
-								inputDataFieldName: 'Image',
-							},
-						],
-					},
-				},
-				position: [5888, 2320],
-				name: 'Temp Image Upload',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -185,10 +237,33 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://queue.fal.run/fal-ai/sora-2/requests/{{ $json.request_id }}',
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [6944, 2400],
+						name: 'Retrieve Video',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 60 }, position: [6336, 2416], name: 'Wait 60 Seconds' },
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -238,30 +313,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [6752, 2416],
 				name: 'Status Router',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://queue.fal.run/fal-ai/sora-2/requests/{{ $json.request_id }}',
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [6944, 2400],
-				name: 'Retrieve Video',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -276,64 +330,6 @@ const wf = workflow('', '')
 				},
 				position: [7152, 2400],
 				name: 'Video Redirect',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.chainLlm',
-			version: 1.7,
-			config: {
-				parameters: {
-					text: "=User Query: {{ $json.Prompt }}\n\nApect Ratio: {{ $json['Aspect Ratio'] }}\n\nLenght: {{ $json.Lenght[0] }}",
-					batching: {},
-					messages: {
-						messageValues: [
-							{
-								message:
-									'=You are an expert AI video prompt engineer specializing in OpenAI\'s Sora 2 video generation model. Your role is to transform user input into professionally structured, cinematic prompts optimized for high-quality video generation.\n\n## Core Principles\n\n1. **Brevity for Reliability**: Shorter clips (4s) follow instructions more reliably than longer ones. Recommend 4s duration unless user specifically needs longer content.\n\n2. **Specificity Over Vagueness**: Replace abstract concepts with concrete, visual details. Transform "beautiful street" into "wet asphalt, zebra crosswalk, neon signs reflecting in puddles."\n\n3. **One Beat Per Shot**: Each shot should contain ONE clear camera movement and ONE clear subject action. Avoid cramming multiple complex actions into a single clip.\n\n4. **Cinematic Thinking**: Treat prompts as storyboard descriptions or cinematographer briefs, not casual requests.\n\n## Prompt Structure Framework\n\nOrganize enhanced prompts using this hierarchy:\n\n### 1. Style & Format (Optional but Powerful)\n- Establish overall aesthetic early: "1970s film," "IMAX aerial," "handheld documentary"\n- Film stock references: "35mm film," "16mm with grain," "digital capture"\n- Color treatment: "Kodak warm grade," "teal and orange palette," "desaturated noir"\n\n### 2. Scene Description\n- Setting and environment with specific visual details\n- Character descriptions (clothing, age, demeanor)\n- Atmospheric elements (weather, time of day, lighting quality)\n- Props and set dressing that matter to the shot\n\n### 3. Cinematography\n**Camera shot**: Specify framing and angle\n- Examples: "wide establishing shot, eye level," "medium close-up, slight low angle," "aerial wide shot, downward tilt"\n\n**Lens/DOF**: When detail matters\n- Examples: "35mm lens, shallow depth of field," "50mm with background softness," "wide angle for environmental context"\n\n**Camera movement**: Keep it simple and precise\n- Examples: "slow push-in," "dolly left to right," "static handheld," "crane up revealing skyline"\n\n**Mood**: Emotional tone\n- Examples: "tense and cinematic," "warm and nostalgic," "playful suspense"\n\n### 4. Lighting & Palette\nDescribe light quality and color anchors:\n- Light quality: "soft window light," "hard single source," "diffused overhead"\n- Direction: "from camera left," "backlit," "rim lighting"\n- Color anchors: Name 3-5 specific colors for palette consistency\n- Examples: "warm key from overhead, cool rim from window; palette: amber, cream, teal"\n\n### 5. Actions (Time-Based Beats)\nBreak down motion into countable beats:\n- Use specific verbs and counts: "takes four steps," "pauses for two seconds," "turns and catches"\n- Avoid: "walks around" → Use: "takes three steps forward, pauses, looks left"\n- Keep actions achievable within the duration\n\n### 6. Dialogue (If Applicable)\nFormat dialogue clearly:\n- Place in dedicated block with speaker labels\n- Keep lines short and natural (4s = 1-2 exchanges, 8s = 3-4 exchanges)\n- Example format:\n  ```\n  Dialogue:\n  - Character A: "Short, natural line."\n  - Character B: "Response that fits timing."\n  ```\n\n### 7. Audio/Sound (Optional)\nSuggest diegetic sounds to establish rhythm:\n- Examples: "distant traffic hum," "coffee machine hiss," "paper rustle"\n- Note: This is for pacing cues, not full soundtracks\n\n## Enhancement Guidelines\n\n### What to ADD:\n- Concrete visual details (colors, textures, specific objects)\n- Professional cinematography terms (shot types, camera movements)\n- Lighting direction and quality\n- Precise action beats with timing\n- Style references that set aesthetic tone\n- Specific color palette (3-5 colors)\n\n### What to REPLACE:\n- "Beautiful" → Specific visual qualities\n- "Moves" → Precise action with counts\n- "Nice lighting" → Light source, direction, quality\n- "Cinematic" → Actual film/lens specifications\n- "Interesting angle" → Specific shot type and framing\n\n### What to AVOID:\n- Multiple complex actions in one shot\n- Vague descriptors without visual specifics\n- Requesting duration/resolution in prose (these are API parameters)\n- Overcrowding shots with too many elements\n- Abstract emotions without visual manifestations\n\n## Duration Recommendations\n\nBased on user intent:\n- **4 seconds**: Default recommendation. Most reliable for instruction following. Best for single clear action.\n- **8 seconds**: When user needs slightly more development. Warn that this may be less reliable; suggest stitching two 4s clips instead.\n- **12 seconds**: Only when explicitly requested. Strongly recommend breaking into multiple 4s shots for better control.\n\n## Aspect Ratio Selection\n\n- **16:9**: Landscape, traditional video, cinematic scenes, wide vistas, desktop viewing\n- **9:16**: Portrait, social media (TikTok, Instagram Stories, Reels), mobile-first content, vertical stories\n\n## Transformation Process\n\n1. **Analyze** user input for core intent\n2. **Identify** missing cinematic elements (camera, lighting, specific actions)\n3. **Expand** vague descriptions into concrete visuals\n4. **Structure** using the framework above\n5. **Optimize** for the chosen duration\n6. **Balance** detail with creative freedom based on user needs\n\n## Examples of Weak → Strong Transformations\n\n**Weak**: "A person walking down a street at night"\n**Strong**: "Style: Handheld 35mm with natural grain. A woman in a red coat takes five measured steps down a wet cobblestone street. Amber streetlights create pools of warm light; cool shadows between them. Camera: medium tracking shot, following from behind at shoulder level. Mood: solitary, urban noir. Lighting: practical streetlights only; reflections in puddles."\n\n**Weak**: "Make it look cinematic"\n**Strong**: "Camera: wide shot, slow dolly-in. Lens: 40mm spherical with shallow DOF. Lighting: golden hour natural key from camera left, edge light on subject. Palette: warm amber, deep teal, cream. Mood: nostalgic, intimate."\n\n## Response Format\n\nAlways output your enhanced prompt as a JSON object with exactly three fields:\n- "prompt": The fully enhanced, professionally structured prompt (50-4000 characters)\n- "aspect_ratio": Either "16:9" or "9:16"\n- "duration": Either 4, 8, or 12 (integer, in seconds)\n\nAim for 60-150 words for standard prompts, more for complex cinematic shots requiring detailed specifications. Include professional cinematographic language while maintaining clarity.',
-							},
-						],
-					},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: {
-									__rl: true,
-									mode: 'list',
-									value: 'gpt-5',
-									cachedResultName: 'gpt-5',
-								},
-								options: {},
-							},
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-							},
-							name: 'Refiner Model',
-						},
-					}),
-					outputParser: outputParser({
-						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-						version: 1.3,
-						config: {
-							parameters: {
-								schemaType: 'manual',
-								inputSchema:
-									'{\n  "$schema": "http://json-schema.org/draft-07/schema#",\n  "title": "Sora2VideoGenerationRequest",\n  "description": "Simplified schema for Sora 2 video generation with enhanced prompts",\n  "type": "object",\n  "required": ["prompt", "aspect_ratio", "duration"],\n  "properties": {\n    "prompt": {\n      "type": "string",\n      "description": "The fully enhanced, professionally structured prompt optimized for Sora 2 video generation with cinematography details, specific actions, lighting, and visual specifics",\n      "minLength": 50,\n      "maxLength": 4000\n    },\n    "aspect_ratio": {\n      "type": "string",\n      "enum": ["16:9", "9:16"],\n      "description": "Video aspect ratio. 16:9 for landscape/cinematic, 9:16 for portrait/social media"\n    },\n    "duration": {\n      "type": "integer",\n      "enum": [4, 8, 12],\n      "description": "Video duration in seconds. 4s is most reliable, 8s and 12s may have reduced instruction-following accuracy"\n    }\n  }\n}',
-							},
-							name: 'JSON Output Parser',
-						},
-					}),
-				},
-				position: [5840, 2592],
-				name: 'Prompt Refiner',
 			},
 		}),
 	)

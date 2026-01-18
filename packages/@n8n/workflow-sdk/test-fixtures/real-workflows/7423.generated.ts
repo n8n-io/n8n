@@ -121,10 +121,133 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.6,
+					config: {
+						parameters: {
+							columns: {
+								value: {
+									Address: "={{ $('Filter').item.json.address }}",
+									Website: "={{ $('Filter').item.json.website }}",
+									Category: "={{ $('Filter').item.json.categoryName }}",
+									'Company Name': "={{ $('Filter').item.json.title }}",
+									'Email Address': "={{ $json.output['Email Address'] }}",
+									'Phone Nummber': "={{ $('Filter').item.json.phoneUnformatted }}",
+								},
+								schema: [
+									{
+										id: 'Company Name',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'Company Name',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Category',
+										type: 'string',
+										display: true,
+										removed: false,
+										required: false,
+										displayName: 'Category',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Website',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'Website',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Phone Nummber',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'Phone Nummber',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Email Address',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'Email Address',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Address',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'Address',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Cold Mail Status',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'Cold Mail Status',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'SEND Time',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'SEND Time',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: [],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							operation: 'append',
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1LmOvSzCOAlrgxQg5r77eVkyJWw3V0VDUAWgkoHWql1Y/edit#gid=0',
+								cachedResultName: 'Sheet1',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1LmOvSzCOAlrgxQg5r77eVkyJWw3V0VDUAWgkoHWql1Y',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1LmOvSzCOAlrgxQg5r77eVkyJWw3V0VDUAWgkoHWql1Y/edit?usp=drivesdk',
+								cachedResultName: 'n8n Test',
+							},
+						},
+						position: [640, 432],
+						name: 'Append row in sheet',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [640, 608], name: 'No Operation, do nothing' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -145,129 +268,9 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 						],
 					},
 				},
-				position: [352, 448],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.6,
-			config: {
-				parameters: {
-					columns: {
-						value: {
-							Address: "={{ $('Filter').item.json.address }}",
-							Website: "={{ $('Filter').item.json.website }}",
-							Category: "={{ $('Filter').item.json.categoryName }}",
-							'Company Name': "={{ $('Filter').item.json.title }}",
-							'Email Address': "={{ $json.output['Email Address'] }}",
-							'Phone Nummber': "={{ $('Filter').item.json.phoneUnformatted }}",
-						},
-						schema: [
-							{
-								id: 'Company Name',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Company Name',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Category',
-								type: 'string',
-								display: true,
-								removed: false,
-								required: false,
-								displayName: 'Category',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Website',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Website',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Phone Nummber',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Phone Nummber',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Email Address',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Email Address',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Address',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Address',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Cold Mail Status',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'Cold Mail Status',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'SEND Time',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'SEND Time',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					operation: 'append',
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1LmOvSzCOAlrgxQg5r77eVkyJWw3V0VDUAWgkoHWql1Y/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1LmOvSzCOAlrgxQg5r77eVkyJWw3V0VDUAWgkoHWql1Y',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1LmOvSzCOAlrgxQg5r77eVkyJWw3V0VDUAWgkoHWql1Y/edit?usp=drivesdk',
-						cachedResultName: 'n8n Test',
-					},
-				},
-				position: [640, 432],
-				name: 'Append row in sheet',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -484,14 +487,6 @@ const wf = workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrde
 				position: [1248, 864],
 				name: 'Append or update row in sheet',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [640, 608], name: 'No Operation, do nothing' },
 		}),
 	)
 	.add(sticky('# Business Data', { color: 3, width: 752, height: 336 }))

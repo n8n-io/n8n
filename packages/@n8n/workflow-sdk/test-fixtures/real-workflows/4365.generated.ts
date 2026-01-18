@@ -125,10 +125,77 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '70c93816-7110-48e3-a105-568dd766bdf4',
+										name: 'prompt',
+										type: 'string',
+										value:
+											'=1.  General instructions\nCreate a prompt that generates only one response with no comments and no line breaks. Based on the input provided, generate a detailed visual description of the request in a clear and coherent manner. Avoid using quotation marks, apostrophes, or any other punctuation marks.\n\n2. Visual specifications\n- Composition: maintain a balanced and harmonious layout where all elements (images, shapes, and text) work together seamlessly. Ensure that no part of the image feels overcrowded, and the design directs the viewer’s attention naturally. Use a minimalistic approach, avoiding excessive detail or distractions.\n\n- Color palette: choose a color scheme that complements the overall theme and enhances the mood. The colors should be visually pleasing and work together harmoniously. Use no more than 3-4 main colors to maintain simplicity and coherence, ensuring they do not overpower the design.\n\n- Visual clarity: the image should be crisp and clear, with all elements legible and easy to interpret. Avoid blurry or pixelated visuals. Maintain sharp contrasts between key elements for emphasis and visual clarity.\n\n- Image size and resolution: the image should be sized to fit standard display requirements (e.g., social media, web posts). Ensure the resolution is high enough for clarity on both desktop and mobile devices. The image must maintain visual quality without losing sharpness or details when viewed on different screens.\n\n- Aesthetic appeal: aim for a design that is not only functional but also visually appealing. The overall style should be modern, clean, and aesthetically pleasing, with a consistent look that aligns with the intended mood or message. Ensure the design is pleasing to the eye, evoking the intended response from the viewer.\n\n- Visual balance: ensure the elements in the image are well-spaced, with no part feeling too heavy or too light. Create a natural flow of focus, guiding the viewer’s eye through the composition without distraction.',
+									},
+								],
+							},
+						},
+						position: [0, -1040],
+						name: 'generatePrompt',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'b3ce66e0-2b6f-4714-a672-59ef6e43ced9',
+										name: 'prompt',
+										type: 'string',
+										value:
+											'=1. Rules\n- Communicate formally, clearly, and respectfully at all times.\n- Be concise and precise, avoiding unnecessary details.\n- Maintain a positive, professional tone as a reliable and knowledgeable assistant.\n- Respect user boundaries and refrain from engaging in prohibited or inappropriate topics.\n- Keep the conversation engaging by encouraging user participation, but when requesting clarification or additional information, ask only one focused question at a time to avoid overwhelming the user. Avoid abrupt endings to the dialogue.\n- Follow user instructions precisely.\n- Do not include any additional text or explanations unless explicitly requested.\n\n2. Response instructions\n- Analyze the message and conversation history to maintain context and continuity.\n- If repetition is requested, return the message exactly as provided. Otherwise, respond clearly and appropriately based on intent and context.\n- If the message is vague, suggest an interpretation and ask for clarification while keeping the conversation active.',
+									},
+								],
+							},
+						},
+						position: [0, -880],
+						name: 'chatPrompt',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'd78c64d5-3c9e-4ffd-875e-973eb3c4d20a',
+										name: 'prompt',
+										type: 'string',
+										value:
+											'=1. Rules\n- Communicate formally, clearly, and respectfully at all times.\n- Be concise and precise, avoiding unnecessary details.\n- Maintain a positive, professional tone as a reliable and knowledgeable assistant.\n- Respect user boundaries and refrain from engaging in prohibited or inappropriate topics.\n- Keep the conversation engaging by encouraging user participation, but when requesting clarification or additional information, ask only one focused question at a time to avoid overwhelming the user. Avoid abrupt endings to the dialogue.\n- Follow user instructions precisely.\n- Do not include any additional text or explanations unless explicitly requested.\n\n2. General Instructions\n- If a message is unclear or lacks details, respond with your best understanding as a suggestion, and politely ask the user to confirm or provide more details if it is not what they meant.\n- If the request is inappropriate or irrelevant, respond politely and clearly refuse, maintaining respect and professionalism, and invite a valid request.\n- Always follow the established rules to maintain professionalism and accuracy.',
+									},
+								],
+							},
+						},
+						position: [0, -720],
+						name: 'otherPrompt',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -199,35 +266,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [-180, -880],
 				name: 'intentHandler',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '70c93816-7110-48e3-a105-568dd766bdf4',
-								name: 'prompt',
-								type: 'string',
-								value:
-									'=1.  General instructions\nCreate a prompt that generates only one response with no comments and no line breaks. Based on the input provided, generate a detailed visual description of the request in a clear and coherent manner. Avoid using quotation marks, apostrophes, or any other punctuation marks.\n\n2. Visual specifications\n- Composition: maintain a balanced and harmonious layout where all elements (images, shapes, and text) work together seamlessly. Ensure that no part of the image feels overcrowded, and the design directs the viewer’s attention naturally. Use a minimalistic approach, avoiding excessive detail or distractions.\n\n- Color palette: choose a color scheme that complements the overall theme and enhances the mood. The colors should be visually pleasing and work together harmoniously. Use no more than 3-4 main colors to maintain simplicity and coherence, ensuring they do not overpower the design.\n\n- Visual clarity: the image should be crisp and clear, with all elements legible and easy to interpret. Avoid blurry or pixelated visuals. Maintain sharp contrasts between key elements for emphasis and visual clarity.\n\n- Image size and resolution: the image should be sized to fit standard display requirements (e.g., social media, web posts). Ensure the resolution is high enough for clarity on both desktop and mobile devices. The image must maintain visual quality without losing sharpness or details when viewed on different screens.\n\n- Aesthetic appeal: aim for a design that is not only functional but also visually appealing. The overall style should be modern, clean, and aesthetically pleasing, with a consistent look that aligns with the intended mood or message. Ensure the design is pleasing to the eye, evoking the intended response from the viewer.\n\n- Visual balance: ensure the elements in the image are well-spaced, with no part feeling too heavy or too light. Create a natural flow of focus, guiding the viewer’s eye through the composition without distraction.',
-							},
-						],
-					},
-				},
-				position: [0, -1040],
-				name: 'generatePrompt',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -297,10 +338,49 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'd11831d7-533b-4132-9849-612e093d6b32',
+										name: 'prompt',
+										type: 'string',
+										value:
+											"={{ $('ChatCore').item.json.output }} It is mandatory to add a description of the image you are going to make.",
+									},
+								],
+							},
+						},
+						position: [700, -980],
+						name: 'errorPreprocessor',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1,
+					config: {
+						parameters: {
+							text: "={{ $('ChatCore').item.json.output }}",
+							chatId: "={{ $('sessionData').item.json.sessionId }}",
+							additionalFields: { parse_mode: 'HTML', appendAttribution: false },
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1180, -780],
+						name: 'sendTextMessage',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -350,35 +430,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [580, -800],
 				name: 'contentType',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'd11831d7-533b-4132-9849-612e093d6b32',
-								name: 'prompt',
-								type: 'string',
-								value:
-									"={{ $('ChatCore').item.json.output }} It is mandatory to add a description of the image you are going to make.",
-							},
-						],
-					},
-				},
-				position: [700, -980],
-				name: 'errorPreprocessor',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -449,75 +503,6 @@ const wf = workflow('', '')
 				},
 				position: [1180, -980],
 				name: 'sendImage',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1,
-			config: {
-				parameters: {
-					text: "={{ $('ChatCore').item.json.output }}",
-					chatId: "={{ $('sessionData').item.json.sessionId }}",
-					additionalFields: { parse_mode: 'HTML', appendAttribution: false },
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1180, -780],
-				name: 'sendTextMessage',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'b3ce66e0-2b6f-4714-a672-59ef6e43ced9',
-								name: 'prompt',
-								type: 'string',
-								value:
-									'=1. Rules\n- Communicate formally, clearly, and respectfully at all times.\n- Be concise and precise, avoiding unnecessary details.\n- Maintain a positive, professional tone as a reliable and knowledgeable assistant.\n- Respect user boundaries and refrain from engaging in prohibited or inappropriate topics.\n- Keep the conversation engaging by encouraging user participation, but when requesting clarification or additional information, ask only one focused question at a time to avoid overwhelming the user. Avoid abrupt endings to the dialogue.\n- Follow user instructions precisely.\n- Do not include any additional text or explanations unless explicitly requested.\n\n2. Response instructions\n- Analyze the message and conversation history to maintain context and continuity.\n- If repetition is requested, return the message exactly as provided. Otherwise, respond clearly and appropriately based on intent and context.\n- If the message is vague, suggest an interpretation and ask for clarification while keeping the conversation active.',
-							},
-						],
-					},
-				},
-				position: [0, -880],
-				name: 'chatPrompt',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'd78c64d5-3c9e-4ffd-875e-973eb3c4d20a',
-								name: 'prompt',
-								type: 'string',
-								value:
-									'=1. Rules\n- Communicate formally, clearly, and respectfully at all times.\n- Be concise and precise, avoiding unnecessary details.\n- Maintain a positive, professional tone as a reliable and knowledgeable assistant.\n- Respect user boundaries and refrain from engaging in prohibited or inappropriate topics.\n- Keep the conversation engaging by encouraging user participation, but when requesting clarification or additional information, ask only one focused question at a time to avoid overwhelming the user. Avoid abrupt endings to the dialogue.\n- Follow user instructions precisely.\n- Do not include any additional text or explanations unless explicitly requested.\n\n2. General Instructions\n- If a message is unclear or lacks details, respond with your best understanding as a suggestion, and politely ask the user to confirm or provide more details if it is not what they meant.\n- If the request is inappropriate or irrelevant, respond politely and clearly refuse, maintaining respect and professionalism, and invite a valid request.\n- Always follow the established rules to maintain professionalism and accuracy.',
-							},
-						],
-					},
-				},
-				position: [0, -720],
-				name: 'otherPrompt',
 			},
 		}),
 	)

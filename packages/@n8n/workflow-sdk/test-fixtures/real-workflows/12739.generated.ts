@@ -143,10 +143,92 @@ const wf = workflow('L87pnGIo6Q1Bmxwe', 'Automated Client Onboarding and Task As
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.4,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.7,
+					config: {
+						parameters: {
+							columns: {
+								value: null,
+								schema: [],
+								mappingMode: 'autoMapInputData',
+								matchingColumns: ['Email'],
+							},
+							options: {},
+							operation: 'appendOrUpdate',
+							sheetName: { __rl: true, mode: 'name', value: 'Strategy Clients' },
+							documentId: {
+								__rl: true,
+								mode: 'id',
+								value: "={{ $('Workflow Configuration').first().json.googleSheetId }}",
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: { id: '5b6oIAuqcO9HRb2A', name: 'Google Sheets account 3' },
+						},
+						position: [1376, -64],
+						name: 'Log to Google Sheets - Strategy',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.7,
+					config: {
+						parameters: {
+							columns: {
+								value: null,
+								schema: [],
+								mappingMode: 'autoMapInputData',
+								matchingColumns: ['Email'],
+							},
+							options: {},
+							operation: 'appendOrUpdate',
+							sheetName: { __rl: true, mode: 'name', value: 'Management Clients' },
+							documentId: {
+								__rl: true,
+								mode: 'id',
+								value: "={{ $('Workflow Configuration').first().json.googleSheetId }}",
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: { id: '5b6oIAuqcO9HRb2A', name: 'Google Sheets account 3' },
+						},
+						position: [1376, 128],
+						name: 'Log to Google Sheets - Management',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.7,
+					config: {
+						parameters: {
+							columns: {
+								value: null,
+								schema: [],
+								mappingMode: 'autoMapInputData',
+								matchingColumns: ['Email'],
+							},
+							options: {},
+							operation: 'appendOrUpdate',
+							sheetName: { __rl: true, mode: 'name', value: 'IT Clients' },
+							documentId: {
+								__rl: true,
+								mode: 'id',
+								value: "={{ $('Workflow Configuration').first().json.googleSheetId }}",
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: { id: '5b6oIAuqcO9HRb2A', name: 'Google Sheets account 3' },
+						},
+						position: [1376, 320],
+						name: 'Log to Google Sheets - IT',
+					},
+				}),
+			],
+			{
+				version: 3.4,
 				parameters: {
 					rules: {
 						values: [
@@ -211,40 +293,9 @@ const wf = workflow('L87pnGIo6Q1Bmxwe', 'Automated Client Onboarding and Task As
 					},
 					options: {},
 				},
-				position: [1152, 112],
 				name: 'Route by Project Type',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: null,
-						schema: [],
-						mappingMode: 'autoMapInputData',
-						matchingColumns: ['Email'],
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: { __rl: true, mode: 'name', value: 'Strategy Clients' },
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: "={{ $('Workflow Configuration').first().json.googleSheetId }}",
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: '5b6oIAuqcO9HRb2A', name: 'Google Sheets account 3' },
-				},
-				position: [1376, -64],
-				name: 'Log to Google Sheets - Strategy',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -324,36 +375,6 @@ const wf = workflow('L87pnGIo6Q1Bmxwe', 'Automated Client Onboarding and Task As
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: null,
-						schema: [],
-						mappingMode: 'autoMapInputData',
-						matchingColumns: ['Email'],
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: { __rl: true, mode: 'name', value: 'Management Clients' },
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: "={{ $('Workflow Configuration').first().json.googleSheetId }}",
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: '5b6oIAuqcO9HRb2A', name: 'Google Sheets account 3' },
-				},
-				position: [1376, 128],
-				name: 'Log to Google Sheets - Management',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.slack',
@@ -371,36 +392,6 @@ const wf = workflow('L87pnGIo6Q1Bmxwe', 'Automated Client Onboarding and Task As
 				},
 				position: [1600, 128],
 				name: 'Notify Management Consultant',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.7,
-			config: {
-				parameters: {
-					columns: {
-						value: null,
-						schema: [],
-						mappingMode: 'autoMapInputData',
-						matchingColumns: ['Email'],
-					},
-					options: {},
-					operation: 'appendOrUpdate',
-					sheetName: { __rl: true, mode: 'name', value: 'IT Clients' },
-					documentId: {
-						__rl: true,
-						mode: 'id',
-						value: "={{ $('Workflow Configuration').first().json.googleSheetId }}",
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: { id: '5b6oIAuqcO9HRb2A', name: 'Google Sheets account 3' },
-				},
-				position: [1376, 320],
-				name: 'Log to Google Sheets - IT',
 			},
 		}),
 	)

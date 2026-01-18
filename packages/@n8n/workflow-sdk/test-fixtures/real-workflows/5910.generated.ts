@@ -99,10 +99,49 @@ const wf = workflow('', 'Veo3 Instagram Agent Workflow', { executionOrder: 'v1' 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 30 }, position: [1020, 180], name: 'Wait 30 Secs' },
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'chatgpt-4o-latest',
+								cachedResultName: 'CHATGPT-4O-LATEST',
+							},
+							options: {},
+							messages: {
+								values: [
+									{
+										content:
+											"=Based on this video generation prompt, create an impactful accompanying caption for the Instagram Post: {{ $('AI Video Prompt Agent').item.json.message.content }}",
+									},
+									{
+										role: 'system',
+										content:
+											"You're an Instagram Caption copywriter. You'll receive a set of video prompt message that is used for generating an Instagram short reel video. Your job is to write an effective accompanying caption. Language style should be playful and impactful.",
+									},
+								],
+							},
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [1280, -20],
+						name: 'Caption Agent',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -127,53 +166,9 @@ const wf = workflow('', 'Veo3 Instagram Agent Workflow', { executionOrder: 'v1' 
 						],
 					},
 				},
-				position: [1060, -20],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { parameters: { amount: 30 }, position: [1020, 180], name: 'Wait 30 Secs' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					modelId: {
-						__rl: true,
-						mode: 'list',
-						value: 'chatgpt-4o-latest',
-						cachedResultName: 'CHATGPT-4O-LATEST',
-					},
-					options: {},
-					messages: {
-						values: [
-							{
-								content:
-									"=Based on this video generation prompt, create an impactful accompanying caption for the Instagram Post: {{ $('AI Video Prompt Agent').item.json.message.content }}",
-							},
-							{
-								role: 'system',
-								content:
-									"You're an Instagram Caption copywriter. You'll receive a set of video prompt message that is used for generating an Instagram short reel video. Your job is to write an effective accompanying caption. Language style should be playful and impactful.",
-							},
-						],
-					},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [1280, -20],
-				name: 'Caption Agent',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

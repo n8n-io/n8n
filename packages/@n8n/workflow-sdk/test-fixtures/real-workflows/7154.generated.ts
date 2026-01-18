@@ -95,20 +95,65 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.splitOut',
+					version: 1,
+					config: {
+						parameters: { options: {}, fieldToSplitOut: 'output.column1' },
+						position: [1100, 1020],
+						name: 'Split Column 1',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitOut',
+					version: 1,
+					config: {
+						parameters: { options: {}, fieldToSplitOut: 'output.column2' },
+						position: [920, 1120],
+						name: 'Split Column 2',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitOut',
+					version: 1,
+					config: {
+						parameters: { options: {}, fieldToSplitOut: 'output.column3' },
+						position: [1120, 1240],
+						name: 'Split Column 3',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitOut',
+					version: 1,
+					config: {
+						parameters: { options: {}, fieldToSplitOut: 'output.column4' },
+						position: [880, 1320],
+						name: 'Split Column 4',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.splitOut',
+					version: 1,
+					config: {
+						parameters: { options: {}, fieldToSplitOut: 'output.column5' },
+						position: [1100, 1480],
+						name: 'Split Column 5',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					mode: 'combine',
 					options: {},
 					combineBy: 'combineByPosition',
 					numberInputs: 5,
 				},
-				position: [1380, 1260],
 				name: 'Merge Columns together',
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -158,59 +203,68 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { position: [1840, 1680], name: 'Append Column Names' },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitOut',
-			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'output.column2' },
-				position: [920, 1120],
-				name: 'Split Column 2',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitOut',
-			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'output.column3' },
-				position: [1120, 1240],
-				name: 'Split Column 3',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitOut',
-			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'output.column4' },
-				position: [880, 1320],
-				name: 'Split Column 4',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitOut',
-			version: 1,
-			config: {
-				parameters: { options: {}, fieldToSplitOut: 'output.column5' },
-				position: [1100, 1480],
-				name: 'Split Column 5',
-			},
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								'const columnNames = $input.first().json.output.columnnames;\n\n// Build a single row with column1, column2, etc. as keys and names as values\nconst row = {};\n\ncolumnNames.forEach((name, index) => {\n  row[`column${index + 1}`] = name;\n});\n\nreturn [\n  { json: row }\n];\n',
+						},
+						position: [600, 1660],
+						name: 'Pivot Column Names',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '3b6cd7c0-b2ab-48bd-9d3d-c6f577d43a32',
+										name: 'column1',
+										type: 'string',
+										value: "={{ $('Split Column 1').item.json['output.column1'] }}",
+									},
+									{
+										id: 'e19027d6-5ebd-43ed-922c-bb5183844875',
+										name: 'column2',
+										type: 'string',
+										value: "={{ $('Split Column 2').item.json['output.column2'] }}",
+									},
+									{
+										id: '81339019-9a39-4e7c-a3a1-53e7370ce7c1',
+										name: 'column3',
+										type: 'string',
+										value: "={{ $('Split Column 3').item.json['output.column3'] }}",
+									},
+									{
+										id: '7cfb8fa4-e25c-49e6-96dc-66da82f95882',
+										name: 'column4',
+										type: 'string',
+										value: "={{ $('Split Column 4').item.json['output.column4'] }}",
+									},
+									{
+										id: '3301a0dc-ff0c-42a1-8df0-e3dcafed4001',
+										name: 'column5',
+										type: 'string',
+										value: "={{ $('Split Column 5').item.json['output.column5'] }}",
+									},
+								],
+							},
+						},
+						position: [1620, 1300],
+						name: 'Rename Columns',
+					},
+				}),
+			],
+			{ version: 3.2, name: 'Append Column Names' },
+		),
 	)
 	.output(0)
 	.then(
@@ -270,20 +324,6 @@ const wf = workflow('', '')
 				},
 				position: [260, 1480],
 				name: 'Generate Column Names',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						'const columnNames = $input.first().json.output.columnnames;\n\n// Build a single row with column1, column2, etc. as keys and names as values\nconst row = {};\n\ncolumnNames.forEach((name, index) => {\n  row[`column${index + 1}`] = name;\n});\n\nreturn [\n  { json: row }\n];\n',
-				},
-				position: [600, 1660],
-				name: 'Pivot Column Names',
 			},
 		}),
 	)

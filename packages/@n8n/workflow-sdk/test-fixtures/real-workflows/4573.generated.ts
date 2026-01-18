@@ -118,10 +118,41 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { position: [660, -125], name: 'Wait for Job Succeed' },
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.apify.com/v2/datasets/{{ $json.data.defaultDatasetId }}/items',
+							options: { timeout: 10000 },
+							sendHeaders: true,
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpQueryAuth',
+							headerParameters: {
+								parameters: [
+									{ name: 'Content-Type', value: 'application/json' },
+									{ name: 'Accept', value: 'application/json' },
+								],
+							},
+						},
+						credentials: {
+							httpQueryAuth: { id: 'credential-id', name: 'httpQueryAuth Credential' },
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [1320, -125],
+						name: 'Fetch Scraped Results',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -143,38 +174,9 @@ const wf = workflow(
 					},
 					looseTypeValidation: true,
 				},
-				position: [1100, -125],
 				name: 'Loop Until Complete',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.apify.com/v2/datasets/{{ $json.data.defaultDatasetId }}/items',
-					options: { timeout: 10000 },
-					sendHeaders: true,
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpQueryAuth',
-					headerParameters: {
-						parameters: [
-							{ name: 'Content-Type', value: 'application/json' },
-							{ name: 'Accept', value: 'application/json' },
-						],
-					},
-				},
-				credentials: {
-					httpQueryAuth: { id: 'credential-id', name: 'httpQueryAuth Credential' },
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [1320, -125],
-				name: 'Fetch Scraped Results',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

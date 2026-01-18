@@ -108,10 +108,61 @@ const wf = workflow('995Zs4albP6ZWzOD', 'The Recap AI - Email Scraper', { execut
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '9efaad04-014a-45a4-9760-1b3edbf51c8d',
+										name: 'scraped_email_addresses',
+										type: 'array',
+										value:
+											'={{\n  ($node["fetch_scrape_results"].json.data || [])\n    .flatMap(item => item?.json?.email_addresses || [])\n    .filter(email => typeof email === \'string\' && email.trim())\n}}',
+									},
+								],
+							},
+						},
+						position: [1900, -20],
+						name: 'set_result',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: '7e16bcbe-7ea6-48ca-b98e-5b0ec18be8c3',
+										operator: { type: 'number', operation: 'gte' },
+										leftValue: '={{ $runIndex }}',
+										rightValue: 12,
+									},
+								],
+							},
+						},
+						position: [1580, 160],
+						name: 'check_retry_count',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -136,66 +187,9 @@ const wf = workflow('995Zs4albP6ZWzOD', 'The Recap AI - Email Scraper', { execut
 						],
 					},
 				},
-				position: [1300, 0],
 				name: 'check_scrape_completed',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '9efaad04-014a-45a4-9760-1b3edbf51c8d',
-								name: 'scraped_email_addresses',
-								type: 'array',
-								value:
-									'={{\n  ($node["fetch_scrape_results"].json.data || [])\n    .flatMap(item => item?.json?.email_addresses || [])\n    .filter(email => typeof email === \'string\' && email.trim())\n}}',
-							},
-						],
-					},
-				},
-				position: [1900, -20],
-				name: 'set_result',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: '7e16bcbe-7ea6-48ca-b98e-5b0ec18be8c3',
-								operator: { type: 'number', operation: 'gte' },
-								leftValue: '={{ $runIndex }}',
-								rightValue: 12,
-							},
-						],
-					},
-				},
-				position: [1580, 160],
-				name: 'check_retry_count',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(

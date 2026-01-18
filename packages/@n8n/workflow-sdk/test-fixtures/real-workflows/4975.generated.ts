@@ -54,10 +54,235 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3.2,
+					config: { parameters: { mode: 'chooseBranch' }, position: [1720, -420], name: 'Merge2' },
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3.2,
+					config: { parameters: { mode: 'chooseBranch' }, position: [1720, -180], name: 'Merge1' },
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 3.2,
+					config: { parameters: { mode: 'chooseBranch', useDataOfInput: 2 }, position: [1720, 40] },
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2,
+					config: {
+						parameters: {
+							text: "=based on {{ $('WhatsApp Trigger').item.json.messages[0].text.body }} , you need to generate an email for the users dept head from the google sheets tool and generate a mail based on whats in the whatspp message body \nitll be to the dept head email from the sheet and cc the user email.\nmatch using {{ $('WhatsApp Trigger').item.json.contacts[0].profile.name }}\nand generate a proper mail and send it with the gmail tool \n",
+							options: {},
+							promptType: 'define',
+						},
+						subnodes: {
+							tools: [
+								tool({
+									type: 'n8n-nodes-base.gmailTool',
+									version: 2.1,
+									config: {
+										parameters: {
+											sendTo:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+											message:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+											options: {},
+											subject:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+											emailType: 'text',
+										},
+										credentials: {
+											gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+										},
+										name: 'Gmail2',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleSheetsTool',
+									version: 4.6,
+									config: {
+										parameters: {
+											options: {},
+											sheetName: {
+												__rl: true,
+												mode: 'list',
+												value: 1608741360,
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1608741360',
+												cachedResultName: 'leaves',
+											},
+											documentId: {
+												__rl: true,
+												mode: 'list',
+												value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+												cachedResultName: 'Untitled spreadsheet',
+											},
+										},
+										credentials: {
+											googleSheetsOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleSheetsOAuth2Api Credential',
+											},
+										},
+										name: 'dept head email',
+									},
+								}),
+							],
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+										options: {},
+									},
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'OpenAI Chat Model6',
+								},
+							}),
+						},
+						position: [3340, 1120],
+						name: 'Email Agent',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 1.7,
+					config: {
+						parameters: {
+							text: '={{ $json.messages[0].text.body }} is the user input.\nuse the JD sheet tool to extract the respective JD for the given poistion in the user input.\nuse the applicants sheets tool to extract applicant data , only name, email phone, you have a filter for returning only rows matching the required "applied for" role\nuse n8n tool to get cv text and compare with jd and make reaons for required output parser content\nalways return a new output with proper reasoning\ngive a score 1-10 based on exp, relevance of projects and listed skills\n',
+							options: {},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							tools: [
+								tool({
+									type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+									version: 2.2,
+									config: {
+										parameters: {
+											source: 'parameter',
+											description: 'call this tool to get downloaded and extracted cv',
+											workflowJson:
+												'={\n  "name": "My workflow 3",\n  "nodes": [\n    {\n      "parameters": {\n        "operation": "download",\n        "fileId": {\n          "__rl": true,\n          "value": "=https://drive.google.com/file/d/1_lAwQBG7BITidr8DPXclZSxWp_2ZPJ3H/view?usp=sharing",\n          "mode": "url"\n        },\n        "options": {}\n      },\n      "id": "9feaa5fc-b85a-41d5-8e37-4c52fd0fddee",\n      "name": "download CV",\n      "type": "n8n-nodes-base.googleDrive",\n      "position": [\n        -1520,\n        160\n      ],\n      "typeVersion": 3,\n      "credentials": {\n        "googleDriveOAuth2Api": {\n          "id": "LQx4eK8lTDnFORcL",\n          "name": "Google Drive account 3"\n        }\n      }\n    },\n    {\n      "parameters": {\n        "operation": "pdf",\n        "options": {}\n      },\n      "id": "18774bfe-6a10-4a3f-a12b-ae374ad9d928",\n      "name": "Extract from File",\n      "type": "n8n-nodes-base.extractFromFile",\n      "position": [\n        -1060,\n        160\n      ],\n      "typeVersion": 1\n    },\n    {\n      "parameters": {\n        "documentId": {\n          "__rl": true,\n          "value": "1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc",\n          "mode": "list",\n          "cachedResultName": "Untitled spreadsheet",\n          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk"\n        },\n        "sheetName": {\n          "__rl": true,\n          "value": 1214220799,\n          "mode": "list",\n          "cachedResultName": "applicants",\n          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1214220799"\n        },\n        "options": {}\n      },\n      "type": "n8n-nodes-base.googleSheets",\n      "typeVersion": 4.6,\n      "position": [\n        -1800,\n        160\n      ],\n      "id": "88198974-6f9a-4a4c-a400-1efe61634584",\n      "name": "Google Sheets",\n      "credentials": {\n        "googleSheetsOAuth2Api": {\n          "id": "U3oQStbFsePTfOCg",\n          "name": "Google Sheets account 3"\n        }\n      }\n    },\n    {\n      "parameters": {},\n      "type": "n8n-nodes-base.manualTrigger",\n      "typeVersion": 1,\n      "position": [\n        -2040,\n        160\n      ],\n      "id": "444d8fb5-f167-4228-8870-cc8c6ee5d2e7",\n      "name": "When clicking ‘Execute workflow’"\n    }\n  ],\n  "pinData": {},\n  "connections": {\n    "download CV": {\n      "main": [\n        [\n          {\n            "node": "Extract from File",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    },\n    "Extract from File": {\n      "main": [\n        []\n      ]\n    },\n    "Google Sheets": {\n      "main": [\n        [\n          {\n            "node": "download CV",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    },\n    "When clicking ‘Execute workflow’": {\n      "main": [\n        [\n          {\n            "node": "Google Sheets",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    }\n  },\n  "active": false,\n  "settings": {\n    "executionOrder": "v1"\n  },\n  "versionId": "b83a5fe1-8ad2-48cc-8d2a-778c0131c618",\n  "meta": {\n    "templateCredsSetupCompleted": true,\n    "instanceId": "60ec675227f8b8ddf9f06a67b49cab3340ac72df709fd0ce0a5249b51b99f4fe"\n  },\n  "id": "ljyzZaJUlYFCG9go",\n  "tags": [\n    {\n      "createdAt": "2025-06-06T05:05:58.931Z",\n      "updatedAt": "2025-06-06T05:05:58.931Z",\n      "id": "cGamkQygZH77eaiZ",\n      "name": "AI Assistant"\n    }\n  ]\n}',
+										},
+										name: 'n8n',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleSheetsTool',
+									version: 4.6,
+									config: {
+										parameters: {
+											options: {},
+											sheetName: {
+												__rl: true,
+												mode: 'list',
+												value: 1467426312,
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1467426312',
+												cachedResultName: 'jd sheet',
+											},
+											documentId: {
+												__rl: true,
+												mode: 'list',
+												value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+												cachedResultName: 'Untitled spreadsheet',
+											},
+										},
+										credentials: {
+											googleSheetsOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleSheetsOAuth2Api Credential',
+											},
+										},
+										name: 'JD tool',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleSheetsTool',
+									version: 4.6,
+									config: {
+										parameters: {
+											options: {},
+											filtersUI: {
+												values: [
+													{
+														lookupValue:
+															"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values0_Value', ``, 'string') }}",
+														lookupColumn: 'Applying for',
+													},
+												],
+											},
+											sheetName: {
+												__rl: true,
+												mode: 'list',
+												value: 1214220799,
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1214220799',
+												cachedResultName: 'applicants',
+											},
+											documentId: {
+												__rl: true,
+												mode: 'list',
+												value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+												cachedResultName: 'Untitled spreadsheet',
+											},
+										},
+										credentials: {
+											googleSheetsOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleSheetsOAuth2Api Credential',
+											},
+										},
+										name: 'applicants',
+									},
+								}),
+							],
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1,
+								config: {
+									parameters: { options: {} },
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'OpenAI Chat Model4',
+								},
+							}),
+							outputParser: outputParser({
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								version: 1.2,
+								config: {
+									parameters: {
+										jsonSchemaExample:
+											'{\n  "name": "tanay",\n  "email" : "user@example.com",\n  "score": 0.8,\n  "shortlist" : "yes",\n  "reason": "Does not meet required number of experience in years",\n  "missing skills": "list of missing skills"\n}',
+									},
+									name: 'Structured Output Parser',
+								},
+							}),
+						},
+						position: [3200, 1780],
+						name: 'Shortlist Agent',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -186,17 +411,8 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					},
 					options: {},
 				},
-				position: [1140, -120],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { parameters: { mode: 'chooseBranch' }, position: [1720, -420], name: 'Merge2' },
-		}),
+		),
 	)
 	.then(
 		node({
@@ -447,19 +663,66 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 			},
 		}),
 	)
-	.output(1)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { parameters: { mode: 'chooseBranch' }, position: [1720, -180], name: 'Merge1' },
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '1b053bb4-ee13-478f-a254-e2c0873bfe3f',
+										name: 'messages[0].text.body',
+										type: 'string',
+										value: '={{ $json.messages[0].text.body }}',
+									},
+								],
+							},
+							includeOtherFields: true,
+						},
+						position: [4640, -1000],
+						name: 'Edit Fields',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'media',
+							operation: 'mediaUrlGet',
+							mediaGetId: '={{ $json.messages[0].audio.id }}',
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [4720, -680],
+						name: 'download media1',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'media',
+							operation: 'mediaUrlGet',
+							mediaGetId: '={{ $json.messages[0].image.id }}',
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [4720, -440],
+						name: 'download media',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -530,35 +793,9 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 					},
 					options: {},
 				},
-				position: [4480, -720],
 				name: 'Verify Message Type',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '1b053bb4-ee13-478f-a254-e2c0873bfe3f',
-								name: 'messages[0].text.body',
-								type: 'string',
-								value: '={{ $json.messages[0].text.body }}',
-							},
-						],
-					},
-					includeOtherFields: true,
-				},
-				position: [4640, -1000],
-				name: 'Edit Fields',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -689,25 +926,6 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'media',
-					operation: 'mediaUrlGet',
-					mediaGetId: '={{ $json.messages[0].audio.id }}',
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [4720, -680],
-				name: 'download media1',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -765,25 +983,6 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 				},
 				position: [4920, -1000],
 				name: 'Edit Fields1',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'media',
-					operation: 'mediaUrlGet',
-					mediaGetId: '={{ $json.messages[0].image.id }}',
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [4720, -440],
-				name: 'download media',
 			},
 		}),
 	)
@@ -852,14 +1051,6 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 				position: [5200, -1000],
 				name: 'Edit Fields2',
 			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: { parameters: { mode: 'chooseBranch', useDataOfInput: 2 }, position: [1720, 40] },
 		}),
 	)
 	.then(
@@ -1046,221 +1237,6 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 				},
 				position: [3300, 420],
 				name: 'Attendance Agent',
-			},
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2,
-			config: {
-				parameters: {
-					text: "=based on {{ $('WhatsApp Trigger').item.json.messages[0].text.body }} , you need to generate an email for the users dept head from the google sheets tool and generate a mail based on whats in the whatspp message body \nitll be to the dept head email from the sheet and cc the user email.\nmatch using {{ $('WhatsApp Trigger').item.json.contacts[0].profile.name }}\nand generate a proper mail and send it with the gmail tool \n",
-					options: {},
-					promptType: 'define',
-				},
-				subnodes: {
-					tools: [
-						tool({
-							type: 'n8n-nodes-base.gmailTool',
-							version: 2.1,
-							config: {
-								parameters: {
-									sendTo:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
-									message:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
-									options: {},
-									subject:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-									emailType: 'text',
-								},
-								credentials: {
-									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-								},
-								name: 'Gmail2',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleSheetsTool',
-							version: 4.6,
-							config: {
-								parameters: {
-									options: {},
-									sheetName: {
-										__rl: true,
-										mode: 'list',
-										value: 1608741360,
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1608741360',
-										cachedResultName: 'leaves',
-									},
-									documentId: {
-										__rl: true,
-										mode: 'list',
-										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-										cachedResultName: 'Untitled spreadsheet',
-									},
-								},
-								credentials: {
-									googleSheetsOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleSheetsOAuth2Api Credential',
-									},
-								},
-								name: 'dept head email',
-							},
-						}),
-					],
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-								options: {},
-							},
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-							},
-							name: 'OpenAI Chat Model6',
-						},
-					}),
-				},
-				position: [3340, 1120],
-				name: 'Email Agent',
-			},
-		}),
-	)
-	.output(4)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 1.7,
-			config: {
-				parameters: {
-					text: '={{ $json.messages[0].text.body }} is the user input.\nuse the JD sheet tool to extract the respective JD for the given poistion in the user input.\nuse the applicants sheets tool to extract applicant data , only name, email phone, you have a filter for returning only rows matching the required "applied for" role\nuse n8n tool to get cv text and compare with jd and make reaons for required output parser content\nalways return a new output with proper reasoning\ngive a score 1-10 based on exp, relevance of projects and listed skills\n',
-					options: {},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					tools: [
-						tool({
-							type: '@n8n/n8n-nodes-langchain.toolWorkflow',
-							version: 2.2,
-							config: {
-								parameters: {
-									source: 'parameter',
-									description: 'call this tool to get downloaded and extracted cv',
-									workflowJson:
-										'={\n  "name": "My workflow 3",\n  "nodes": [\n    {\n      "parameters": {\n        "operation": "download",\n        "fileId": {\n          "__rl": true,\n          "value": "=https://drive.google.com/file/d/1_lAwQBG7BITidr8DPXclZSxWp_2ZPJ3H/view?usp=sharing",\n          "mode": "url"\n        },\n        "options": {}\n      },\n      "id": "9feaa5fc-b85a-41d5-8e37-4c52fd0fddee",\n      "name": "download CV",\n      "type": "n8n-nodes-base.googleDrive",\n      "position": [\n        -1520,\n        160\n      ],\n      "typeVersion": 3,\n      "credentials": {\n        "googleDriveOAuth2Api": {\n          "id": "LQx4eK8lTDnFORcL",\n          "name": "Google Drive account 3"\n        }\n      }\n    },\n    {\n      "parameters": {\n        "operation": "pdf",\n        "options": {}\n      },\n      "id": "18774bfe-6a10-4a3f-a12b-ae374ad9d928",\n      "name": "Extract from File",\n      "type": "n8n-nodes-base.extractFromFile",\n      "position": [\n        -1060,\n        160\n      ],\n      "typeVersion": 1\n    },\n    {\n      "parameters": {\n        "documentId": {\n          "__rl": true,\n          "value": "1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc",\n          "mode": "list",\n          "cachedResultName": "Untitled spreadsheet",\n          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk"\n        },\n        "sheetName": {\n          "__rl": true,\n          "value": 1214220799,\n          "mode": "list",\n          "cachedResultName": "applicants",\n          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1214220799"\n        },\n        "options": {}\n      },\n      "type": "n8n-nodes-base.googleSheets",\n      "typeVersion": 4.6,\n      "position": [\n        -1800,\n        160\n      ],\n      "id": "88198974-6f9a-4a4c-a400-1efe61634584",\n      "name": "Google Sheets",\n      "credentials": {\n        "googleSheetsOAuth2Api": {\n          "id": "U3oQStbFsePTfOCg",\n          "name": "Google Sheets account 3"\n        }\n      }\n    },\n    {\n      "parameters": {},\n      "type": "n8n-nodes-base.manualTrigger",\n      "typeVersion": 1,\n      "position": [\n        -2040,\n        160\n      ],\n      "id": "444d8fb5-f167-4228-8870-cc8c6ee5d2e7",\n      "name": "When clicking ‘Execute workflow’"\n    }\n  ],\n  "pinData": {},\n  "connections": {\n    "download CV": {\n      "main": [\n        [\n          {\n            "node": "Extract from File",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    },\n    "Extract from File": {\n      "main": [\n        []\n      ]\n    },\n    "Google Sheets": {\n      "main": [\n        [\n          {\n            "node": "download CV",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    },\n    "When clicking ‘Execute workflow’": {\n      "main": [\n        [\n          {\n            "node": "Google Sheets",\n            "type": "main",\n            "index": 0\n          }\n        ]\n      ]\n    }\n  },\n  "active": false,\n  "settings": {\n    "executionOrder": "v1"\n  },\n  "versionId": "b83a5fe1-8ad2-48cc-8d2a-778c0131c618",\n  "meta": {\n    "templateCredsSetupCompleted": true,\n    "instanceId": "60ec675227f8b8ddf9f06a67b49cab3340ac72df709fd0ce0a5249b51b99f4fe"\n  },\n  "id": "ljyzZaJUlYFCG9go",\n  "tags": [\n    {\n      "createdAt": "2025-06-06T05:05:58.931Z",\n      "updatedAt": "2025-06-06T05:05:58.931Z",\n      "id": "cGamkQygZH77eaiZ",\n      "name": "AI Assistant"\n    }\n  ]\n}',
-								},
-								name: 'n8n',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleSheetsTool',
-							version: 4.6,
-							config: {
-								parameters: {
-									options: {},
-									sheetName: {
-										__rl: true,
-										mode: 'list',
-										value: 1467426312,
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1467426312',
-										cachedResultName: 'jd sheet',
-									},
-									documentId: {
-										__rl: true,
-										mode: 'list',
-										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-										cachedResultName: 'Untitled spreadsheet',
-									},
-								},
-								credentials: {
-									googleSheetsOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleSheetsOAuth2Api Credential',
-									},
-								},
-								name: 'JD tool',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleSheetsTool',
-							version: 4.6,
-							config: {
-								parameters: {
-									options: {},
-									filtersUI: {
-										values: [
-											{
-												lookupValue:
-													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values0_Value', ``, 'string') }}",
-												lookupColumn: 'Applying for',
-											},
-										],
-									},
-									sheetName: {
-										__rl: true,
-										mode: 'list',
-										value: 1214220799,
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=1214220799',
-										cachedResultName: 'applicants',
-									},
-									documentId: {
-										__rl: true,
-										mode: 'list',
-										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-										cachedResultName: 'Untitled spreadsheet',
-									},
-								},
-								credentials: {
-									googleSheetsOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleSheetsOAuth2Api Credential',
-									},
-								},
-								name: 'applicants',
-							},
-						}),
-					],
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1,
-						config: {
-							parameters: { options: {} },
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-							},
-							name: 'OpenAI Chat Model4',
-						},
-					}),
-					outputParser: outputParser({
-						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-						version: 1.2,
-						config: {
-							parameters: {
-								jsonSchemaExample:
-									'{\n  "name": "tanay",\n  "email" : "user@example.com",\n  "score": 0.8,\n  "shortlist" : "yes",\n  "reason": "Does not meet required number of experience in years",\n  "missing skills": "list of missing skills"\n}',
-							},
-							name: 'Structured Output Parser',
-						},
-					}),
-				},
-				position: [3200, 1780],
-				name: 'Shortlist Agent',
 			},
 		}),
 	)

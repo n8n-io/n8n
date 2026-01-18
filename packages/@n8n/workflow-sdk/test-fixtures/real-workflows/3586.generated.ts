@@ -18,10 +18,114 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'c53cd9f9-77c1-4331-98ff-bfc9bdf95a3c',
+										name: 'text',
+										type: 'string',
+										value: "={{ $('WhatsApp Trigger').item.json.messages[0].text.body }}",
+									},
+								],
+							},
+						},
+						position: [1240, -520],
+						name: 'Text',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'media',
+							operation: 'mediaUrlGet',
+							mediaGetId: "={{ $('WhatsApp Trigger').item.json.messages[0].audio.id }}",
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [460, -180],
+						name: 'Get Audio Url',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'media',
+							operation: 'mediaUrlGet',
+							mediaGetId: "={{ $('WhatsApp Trigger').item.json.messages[0].image.id }}",
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [480, 120],
+						name: 'Get Image Url',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: 'f52d2aaa-e0b2-45e5-8c4b-ceef42182a0d',
+										operator: {
+											name: 'filter.operator.equals',
+											type: 'string',
+											operation: 'equals',
+										},
+										leftValue: '={{ $json.messages[0].document.mime_type }}',
+										rightValue: 'application/pdf',
+									},
+								],
+							},
+						},
+						position: [220, 480],
+						name: 'Only PDF File',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							textBody: '=You can only send text messages, images, audio files and PDF documents.',
+							operation: 'send',
+							phoneNumberId: '470271332838881',
+							additionalFields: {},
+							recipientPhoneNumber: "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [-260, 360],
+						name: 'Not supported',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -113,34 +217,9 @@ const wf = workflow(
 					},
 					options: { fallbackOutput: 'extra' },
 				},
-				position: [-420, 40],
 				name: 'Input type',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'c53cd9f9-77c1-4331-98ff-bfc9bdf95a3c',
-								name: 'text',
-								type: 'string',
-								value: "={{ $('WhatsApp Trigger').item.json.messages[0].text.body }}",
-							},
-						],
-					},
-				},
-				position: [1240, -520],
-				name: 'Text',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -189,10 +268,46 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							input: "={{ $('AI Agent1').item.json.output }}",
+							voice: 'onyx',
+							options: {},
+							resource: 'audio',
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [840, 1080],
+						name: 'Generate Audio Response',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							textBody: '={{ $json.output }}',
+							operation: 'send',
+							phoneNumberId: '470271332838881',
+							additionalFields: {},
+							recipientPhoneNumber: "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [840, 1360],
+						name: 'Send message',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -213,30 +328,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [580, 1220],
 				name: 'From audio to audio?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					input: "={{ $('AI Agent1').item.json.output }}",
-					voice: 'onyx',
-					options: {},
-					resource: 'audio',
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [840, 1080],
-				name: 'Generate Audio Response',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -270,46 +364,6 @@ const wf = workflow(
 				},
 				position: [1260, 1080],
 				name: 'Send audio',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					textBody: '={{ $json.output }}',
-					operation: 'send',
-					phoneNumberId: '470271332838881',
-					additionalFields: {},
-					recipientPhoneNumber: "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [840, 1360],
-				name: 'Send message',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'media',
-					operation: 'mediaUrlGet',
-					mediaGetId: "={{ $('WhatsApp Trigger').item.json.messages[0].audio.id }}",
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [460, -180],
-				name: 'Get Audio Url',
 			},
 		}),
 	)
@@ -366,25 +420,6 @@ const wf = workflow(
 				},
 				position: [1240, -180],
 				name: 'Audio',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'media',
-					operation: 'mediaUrlGet',
-					mediaGetId: "={{ $('WhatsApp Trigger').item.json.messages[0].image.id }}",
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [480, 120],
-				name: 'Get Image Url',
 			},
 		}),
 	)
@@ -454,41 +489,6 @@ const wf = workflow(
 				},
 				position: [1220, 120],
 				name: 'Image',
-			},
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: 'f52d2aaa-e0b2-45e5-8c4b-ceef42182a0d',
-								operator: {
-									name: 'filter.operator.equals',
-									type: 'string',
-									operation: 'equals',
-								},
-								leftValue: '={{ $json.messages[0].document.mime_type }}',
-								rightValue: 'application/pdf',
-							},
-						],
-					},
-				},
-				position: [220, 480],
-				name: 'Only PDF File',
 			},
 		}),
 	)
@@ -583,27 +583,6 @@ const wf = workflow(
 				},
 				position: [500, 700],
 				name: 'Incorrect format',
-			},
-		}),
-	)
-	.output(4)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					textBody: '=You can only send text messages, images, audio files and PDF documents.',
-					operation: 'send',
-					phoneNumberId: '470271332838881',
-					additionalFields: {},
-					recipientPhoneNumber: "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [-260, 360],
-				name: 'Not supported',
 			},
 		}),
 	)

@@ -472,10 +472,32 @@ const wf = workflow('Njfc4Qsoi6p35Bfj', '3D Product Video', { executionOrder: 'v
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 40 }, position: [1120, 180] },
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '={{ $json.response_url }}',
+							options: {},
+							sendHeaders: true,
+							headerParameters: {
+								parameters: [{ name: 'Authorization', value: 'Key api_key' }],
+							},
+						},
+						position: [1780, 180],
+						name: 'Get Video Link',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -496,29 +518,9 @@ const wf = workflow('Njfc4Qsoi6p35Bfj', '3D Product Video', { executionOrder: 'v
 						],
 					},
 				},
-				position: [1560, 180],
 				name: 'Is In Progress',
 			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '={{ $json.response_url }}',
-					options: {},
-					sendHeaders: true,
-					headerParameters: {
-						parameters: [{ name: 'Authorization', value: 'Key api_key' }],
-					},
-				},
-				position: [1780, 180],
-				name: 'Get Video Link',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

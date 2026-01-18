@@ -108,10 +108,151 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.trello',
+					version: 1,
+					config: {
+						parameters: {
+							name: "={{ $('AI Feedback Triage').item.json.output.task_title }}",
+							listId:
+								"={{ $json.output.category.trim().toLowerCase() === 'bug' ? '68f7a8a8d35b96b34942f6f4' : '68f7a8a8d35b96b34942f6f3' }}",
+							description:
+								"=**Feedback from:**\n{{ $('JotForm Trigger').item.json['I am a...'] }} {{ $('JotForm Trigger').item.json['Your Email (Optional)'] ? '(Email: ' + $('JotForm Trigger').item.json['Your Email (Optional)'] + ')' : '' }}\n\n---\n\n**Full Feedback:**\n{{ $('JotForm Trigger').item.json['Feedback Details'] }}\n\n---\n\n**AI Tags:**\n{{ $('AI Feedback Triage').item.json.output.tags.join(', ') }}\n",
+							additionalFields: {
+								pos: 'top',
+								idLabels:
+									"={{ (['Customer', 'Staff', 'Other'].includes($('JotForm Trigger').item.json['I am a...']) ? ($('JotForm Trigger').item.json['I am a...'] === 'Customer' ? $('Config').item.json.customer_label_id : ($('JotForm Trigger').item.json['I am a...'] === 'Staff' ? $('Config').item.json.staff_label_id : $('Config').item.json.other_label_id)) : '') + ($('AI Feedback Triage').item.json.output.suggested_priority.trim().toLowerCase() === 'high' ? ','+$('Config').item.json.urgent_label_id : '') }}",
+							},
+						},
+						credentials: {
+							trelloApi: { id: 'credential-id', name: 'trelloApi Credential' },
+						},
+						position: [2016, -352],
+						name: 'Create Trello Card',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.airtable',
+					version: 2.1,
+					config: {
+						parameters: {
+							base: {
+								__rl: true,
+								mode: 'list',
+								value: 'appKqfaCnM6Ea50x6',
+								cachedResultUrl: 'https://airtable.com/appKqfaCnM6Ea50x6',
+								cachedResultName: 'Product Feedback Log',
+							},
+							table: {
+								__rl: true,
+								mode: 'list',
+								value: 'tblfQMf9cDi9LSds4',
+								cachedResultUrl: 'https://airtable.com/appKqfaCnM6Ea50x6/tblfQMf9cDi9LSds4',
+								cachedResultName: 'Feedback Submissions',
+							},
+							columns: {
+								value: {
+									Email:
+										"={{ $('JotForm Trigger').item.json['Your Email (Optional)'] ? $('JotForm Trigger').item.json['Your Email (Optional)'] : '' }}",
+									Source: "={{ $('JotForm Trigger').item.json['I am a...'] }}",
+									'AI Tags': "={{ $('AI Feedback Triage').item.json.output.tags }}",
+									'Full Feedback': "={{ $('JotForm Trigger').item.json['Feedback Details'] }}",
+									'Feedback Summary': "={{ $('AI Feedback Triage').item.json.output.task_title }}",
+								},
+								schema: [
+									{
+										id: 'Feedback Summary',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'Feedback Summary',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Full Feedback',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'Full Feedback',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Source',
+										type: 'options',
+										display: true,
+										options: [
+											{ name: 'Customer', value: 'Customer' },
+											{ name: 'Staff', value: 'Staff' },
+											{ name: 'Other', value: 'Other' },
+										],
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'Source',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Email',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'Email',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'AI Tags',
+										type: 'array',
+										display: true,
+										options: [],
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'AI Tags',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'Submitted At',
+										type: 'string',
+										display: true,
+										removed: true,
+										readOnly: true,
+										required: false,
+										displayName: 'Submitted At',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: [],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: { typecast: true },
+							operation: 'create',
+						},
+						credentials: {
+							airtableTokenApi: { id: 'credential-id', name: 'airtableTokenApi Credential' },
+						},
+						position: [2016, 128],
+						name: 'Log General Feedback to Airtable',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -146,42 +287,43 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [1568, 0],
 				name: 'Is it a Bug or Feature?',
 			},
-		}),
+		),
 	)
-	.output(0)
 	.then(
-		node({
-			type: 'n8n-nodes-base.trello',
-			version: 1,
-			config: {
-				parameters: {
-					name: "={{ $('AI Feedback Triage').item.json.output.task_title }}",
-					listId:
-						"={{ $json.output.category.trim().toLowerCase() === 'bug' ? '68f7a8a8d35b96b34942f6f4' : '68f7a8a8d35b96b34942f6f3' }}",
-					description:
-						"=**Feedback from:**\n{{ $('JotForm Trigger').item.json['I am a...'] }} {{ $('JotForm Trigger').item.json['Your Email (Optional)'] ? '(Email: ' + $('JotForm Trigger').item.json['Your Email (Optional)'] + ')' : '' }}\n\n---\n\n**Full Feedback:**\n{{ $('JotForm Trigger').item.json['Feedback Details'] }}\n\n---\n\n**AI Tags:**\n{{ $('AI Feedback Triage').item.json.output.tags.join(', ') }}\n",
-					additionalFields: {
-						pos: 'top',
-						idLabels:
-							"={{ (['Customer', 'Staff', 'Other'].includes($('JotForm Trigger').item.json['I am a...']) ? ($('JotForm Trigger').item.json['I am a...'] === 'Customer' ? $('Config').item.json.customer_label_id : ($('JotForm Trigger').item.json['I am a...'] === 'Staff' ? $('Config').item.json.staff_label_id : $('Config').item.json.other_label_id)) : '') + ($('AI Feedback Triage').item.json.output.suggested_priority.trim().toLowerCase() === 'high' ? ','+$('Config').item.json.urgent_label_id : '') }}",
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.slack',
+					version: 2.3,
+					config: {
+						parameters: {
+							text: "=🚨 *High Priority Bug Reported!* 🚨\n\n*Title:* {{ $('AI Feedback Triage').item.json.output.task_title }}\n*Source:* {{ $('JotForm Trigger').item.json['I am a...'] }}\n*Feedback:* {{ $('JotForm Trigger').item.json['Feedback Details'] }}\n\n*Trello Card:*\n{{ $('Create Trello Card').item.json.shortUrl }}",
+							select: 'channel',
+							channelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'C09MQB3PWUE',
+								cachedResultName: 'dev-alerts',
+							},
+							otherOptions: { includeLinkToWorkflow: false },
+						},
+						credentials: {
+							slackApi: { id: 'credential-id', name: 'slackApi Credential' },
+						},
+						position: [2848, -544],
+						name: 'Alert Dev Team',
 					},
-				},
-				credentials: {
-					trelloApi: { id: 'credential-id', name: 'trelloApi Credential' },
-				},
-				position: [2016, -352],
-				name: 'Create Trello Card',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+				}),
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [2864, -224], name: 'No Alert Needed' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -218,163 +360,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [2464, -352],
 				name: 'Is it an Urgent Bug?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.slack',
-			version: 2.3,
-			config: {
-				parameters: {
-					text: "=🚨 *High Priority Bug Reported!* 🚨\n\n*Title:* {{ $('AI Feedback Triage').item.json.output.task_title }}\n*Source:* {{ $('JotForm Trigger').item.json['I am a...'] }}\n*Feedback:* {{ $('JotForm Trigger').item.json['Feedback Details'] }}\n\n*Trello Card:*\n{{ $('Create Trello Card').item.json.shortUrl }}",
-					select: 'channel',
-					channelId: {
-						__rl: true,
-						mode: 'list',
-						value: 'C09MQB3PWUE',
-						cachedResultName: 'dev-alerts',
-					},
-					otherOptions: { includeLinkToWorkflow: false },
-				},
-				credentials: {
-					slackApi: { id: 'credential-id', name: 'slackApi Credential' },
-				},
-				position: [2848, -544],
-				name: 'Alert Dev Team',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [2864, -224], name: 'No Alert Needed' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.airtable',
-			version: 2.1,
-			config: {
-				parameters: {
-					base: {
-						__rl: true,
-						mode: 'list',
-						value: 'appKqfaCnM6Ea50x6',
-						cachedResultUrl: 'https://airtable.com/appKqfaCnM6Ea50x6',
-						cachedResultName: 'Product Feedback Log',
-					},
-					table: {
-						__rl: true,
-						mode: 'list',
-						value: 'tblfQMf9cDi9LSds4',
-						cachedResultUrl: 'https://airtable.com/appKqfaCnM6Ea50x6/tblfQMf9cDi9LSds4',
-						cachedResultName: 'Feedback Submissions',
-					},
-					columns: {
-						value: {
-							Email:
-								"={{ $('JotForm Trigger').item.json['Your Email (Optional)'] ? $('JotForm Trigger').item.json['Your Email (Optional)'] : '' }}",
-							Source: "={{ $('JotForm Trigger').item.json['I am a...'] }}",
-							'AI Tags': "={{ $('AI Feedback Triage').item.json.output.tags }}",
-							'Full Feedback': "={{ $('JotForm Trigger').item.json['Feedback Details'] }}",
-							'Feedback Summary': "={{ $('AI Feedback Triage').item.json.output.task_title }}",
-						},
-						schema: [
-							{
-								id: 'Feedback Summary',
-								type: 'string',
-								display: true,
-								removed: false,
-								readOnly: false,
-								required: false,
-								displayName: 'Feedback Summary',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Full Feedback',
-								type: 'string',
-								display: true,
-								removed: false,
-								readOnly: false,
-								required: false,
-								displayName: 'Full Feedback',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Source',
-								type: 'options',
-								display: true,
-								options: [
-									{ name: 'Customer', value: 'Customer' },
-									{ name: 'Staff', value: 'Staff' },
-									{ name: 'Other', value: 'Other' },
-								],
-								removed: false,
-								readOnly: false,
-								required: false,
-								displayName: 'Source',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Email',
-								type: 'string',
-								display: true,
-								removed: false,
-								readOnly: false,
-								required: false,
-								displayName: 'Email',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'AI Tags',
-								type: 'array',
-								display: true,
-								options: [],
-								removed: false,
-								readOnly: false,
-								required: false,
-								displayName: 'AI Tags',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'Submitted At',
-								type: 'string',
-								display: true,
-								removed: true,
-								readOnly: true,
-								required: false,
-								displayName: 'Submitted At',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: { typecast: true },
-					operation: 'create',
-				},
-				credentials: {
-					airtableTokenApi: { id: 'credential-id', name: 'airtableTokenApi Credential' },
-				},
-				position: [2016, 128],
-				name: 'Log General Feedback to Airtable',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(

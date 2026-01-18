@@ -23,10 +23,53 @@ const wf = workflow('7O3XDyjnKZuQ1iOB', 'Email_Summarizer', { executionOrder: 'v
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleDrive',
+					version: 3,
+					config: {
+						parameters: {
+							fileId: { __rl: true, mode: 'id', value: '={{ $json.id }}' },
+							options: {},
+							operation: 'download',
+						},
+						credentials: {
+							googleDriveOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleDriveOAuth2Api Credential',
+							},
+						},
+						position: [864, -128],
+						name: 'Download file',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleDrive',
+					version: 3,
+					config: {
+						parameters: {
+							fileId: {
+								__rl: true,
+								mode: 'id',
+								value: "={{ $('Google Drive Trigger').item.json.parents[0] }}",
+							},
+							options: {},
+							operation: 'download',
+						},
+						credentials: {
+							googleDriveOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleDriveOAuth2Api Credential',
+							},
+						},
+						position: [864, 64],
+						name: 'Download file1',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -51,31 +94,9 @@ const wf = workflow('7O3XDyjnKZuQ1iOB', 'Email_Summarizer', { executionOrder: 'v
 						],
 					},
 				},
-				position: [640, -32],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					fileId: { __rl: true, mode: 'id', value: '={{ $json.id }}' },
-					options: {},
-					operation: 'download',
-				},
-				credentials: {
-					googleDriveOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleDriveOAuth2Api Credential',
-					},
-				},
-				position: [864, -128],
-				name: 'Download file',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -88,7 +109,31 @@ const wf = workflow('7O3XDyjnKZuQ1iOB', 'Email_Summarizer', { executionOrder: 'v
 			},
 		}),
 	)
-	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [1312, -32] } }))
+	.then(
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.extractFromFile',
+					version: 1,
+					config: {
+						parameters: { options: {}, operation: 'pdf' },
+						position: [1088, -128],
+						name: 'Extract from File',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.extractFromFile',
+					version: 1,
+					config: {
+						parameters: { options: {}, operation: 'text' },
+						position: [1088, 64],
+						name: 'Extract from File1',
+					},
+				}),
+			],
+			{ version: 3.2 },
+		),
+	)
 	.then(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
@@ -167,43 +212,6 @@ const wf = workflow('7O3XDyjnKZuQ1iOB', 'Email_Summarizer', { executionOrder: 'v
 				},
 				position: [2336, -32],
 				name: 'Send a message',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					fileId: {
-						__rl: true,
-						mode: 'id',
-						value: "={{ $('Google Drive Trigger').item.json.parents[0] }}",
-					},
-					options: {},
-					operation: 'download',
-				},
-				credentials: {
-					googleDriveOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleDriveOAuth2Api Credential',
-					},
-				},
-				position: [864, 64],
-				name: 'Download file1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.extractFromFile',
-			version: 1,
-			config: {
-				parameters: { options: {}, operation: 'text' },
-				position: [1088, 64],
-				name: 'Extract from File1',
 			},
 		}),
 	)

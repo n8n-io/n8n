@@ -15,6 +15,9 @@ import {
 	documentLoader as documentLoaderFn,
 	textSplitter as textSplitterFn,
 } from './subnode-builders';
+import { merge as mergeFn } from './merge';
+import { ifBranch as ifBranchFn } from './if-branch';
+import { switchCase as switchCaseFn } from './switch-case';
 import type { WorkflowJSON } from './types/base';
 
 /**
@@ -49,10 +52,13 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		'retriever',
 		'documentLoader',
 		'textSplitter',
+		'merge',
+		'ifBranch',
+		'switchCase',
 		executableCode,
 	);
 
-	// Execute with our SDK functions (including subnode factories)
+	// Execute with our SDK functions (including subnode factories and composites)
 	const wf = factory(
 		workflowFn,
 		nodeFn,
@@ -67,6 +73,9 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		retrieverFn,
 		documentLoaderFn,
 		textSplitterFn,
+		mergeFn,
+		ifBranchFn,
+		switchCaseFn,
 	);
 
 	// Return the JSON representation

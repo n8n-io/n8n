@@ -32,10 +32,139 @@ const wf = workflow('N3fK4Vfe4OHmEujy', 'Anthropic Agent Skills API v2', { execu
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.3,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.1,
+					config: {
+						parameters: {
+							url: 'https://api.anthropic.com/v1/messages',
+							method: 'POST',
+							options: {},
+							jsonBody:
+								'={\n  "model": "claude-haiku-4-5-20251001",\n  "max_tokens": 50000,\n  "system": "# Professional PowerPoint Creator\\n\\n## Overview\\nThis skill enables Claude to create stunning, professional PowerPoint presentations with modern design principles, clear visual hierarchy, and optimal use of space.\\n\\n## Core Instructions\\n\\n### Primary Objective\\nCreate a single, visually appealing PowerPoint file that follows professional design standards and modern aesthetic principles.\\n\\n### Key Requirements\\n1. **Single File Output**: Create only ONE .pptx file - no additional files or readme documents\\n2. **Professional Design**: Apply clean, modern design principles throughout\\n3. **Visual Hierarchy**: Establish clear information hierarchy on each slide\\n4. **Space Utilization**: Use whitespace effectively to create breathing room and focus\\n5. **Consistency**: Maintain consistent styling across all slides\\n\\n## Design Principles\\n\\n### Layout Standards\\n- Use generous margins and padding\\n- Avoid cluttered slides - prioritize clarity over quantity of information\\n- Align elements consistently (left, center, or right alignment per slide)\\n- Create visual balance between text and imagery\\n\\n### Typography\\n- Use 2-3 complementary fonts maximum\\n- Establish clear size hierarchy (titles, subtitles, body text)\\n- Ensure sufficient contrast for readability\\n- Avoid excessive text on individual slides\\n\\n### Color Scheme\\n- Select a cohesive color palette (3-5 colors)\\n- Use colors purposefully to guide attention\\n- Ensure adequate contrast between text and backgrounds\\n- Consider color psychology appropriate to the content\\n\\n### Visual Elements\\n- Incorporate relevant imagery, icons, or graphics when appropriate\\n- Use high-quality visual assets\\n- Apply consistent styling to shapes and graphics\\n- Consider data visualization for numerical information\\n\\n## Implementation Notes\\n- Focus on creating a polished, professional output\\n- Prioritize quality over quantity of slides\\n- Adapt design choices to the presentation\'s purpose and audience\\n- Test that all elements are properly formatted and aligned",\n  "container": {\n    "skills": [\n      {\n        "type": "anthropic",\n        "skill_id": "pptx",\n        "version": "latest"\n      }\n    ]\n  },\n  "messages": [\n    {\n      "role": "user",\n      "content": "{{ $(\'On form submission\').item.json.Prompt }}"\n    }\n  ],\n  "tools": [\n    {\n      "type": "code_execution_20250825",\n      "name": "code_execution"\n    }\n  ]\n}',
+							sendBody: true,
+							sendHeaders: true,
+							specifyBody: 'json',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+							headerParameters: {
+								parameters: [
+									{ name: 'anthropic-version', value: '2023-06-01' },
+									{
+										name: 'anthropic-beta',
+										value: 'code-execution-2025-08-25,skills-2025-10-02',
+									},
+								],
+							},
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [976, -32],
+						name: 'Create PPTX',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.1,
+					config: {
+						parameters: {
+							url: 'https://api.anthropic.com/v1/messages',
+							method: 'POST',
+							options: {},
+							jsonBody:
+								'={\n  "model": "claude-haiku-4-5-20251001",\n  "max_tokens": 4096,\n  "system": "# Professional PDF Creator\\n\\n## Overview\\nThis skill enables Claude to create professional, well-formatted PDF documents with proper structure, clean styling, and excellent readability.\\n\\n## Core Instructions\\n\\n### Primary Objective\\nCreate a single, professional PDF file that follows document formatting standards and modern design principles.\\n\\n### Key Requirements\\n1. **Single File Output**: Create only ONE .pdf file - no additional files or readme documents\\n2. **Clean Formatting**: Apply professional formatting throughout the document\\n3. **Proper Structure**: Establish clear document hierarchy with appropriate headings and sections\\n4. **Readability**: Ensure optimal readability through proper spacing, typography, and layout\\n5. **Consistency**: Maintain consistent styling across all pages\\n\\n## Design Principles\\n\\n### Document Structure\\n- Use clear heading hierarchy (H1, H2, H3)\\n- Organize content into logical sections\\n- Include appropriate page breaks where needed\\n- Maintain consistent margins throughout\\n\\n### Typography\\n- Use professional, readable fonts\\n- Establish clear size hierarchy for different text levels\\n- Ensure sufficient line spacing for comfortable reading\\n- Use appropriate font weights (bold, regular) for emphasis\\n\\n### Layout Standards\\n- Use generous margins (typically 1-1.5 inches)\\n- Apply consistent spacing between sections\\n- Align text appropriately (left-aligned for body text)\\n- Create visual balance on each page\\n\\n### Visual Elements\\n- Incorporate tables, lists, or graphics when appropriate\\n- Ensure high-quality rendering of any images\\n- Use subtle styling for visual interest without distraction\\n- Consider adding headers/footers if appropriate\\n\\n## Implementation Notes\\n- Focus on creating a polished, professional output\\n- Prioritize clarity and readability\\n- Adapt formatting choices to the document\'s purpose\\n- Test that all elements render properly in the PDF format",\n  "container": {\n    "skills": [\n      {\n        "type": "anthropic",\n        "skill_id": "pdf",\n        "version": "latest"\n      }\n    ]\n  },\n  "messages": [\n    {\n      "role": "user",\n      "content": "{{ $(\'On form submission\').item.json.Prompt }}"\n    }\n  ],\n  "tools": [\n    {\n      "type": "code_execution_20250825",\n      "name": "code_execution"\n    }\n  ]\n}',
+							sendBody: true,
+							sendHeaders: true,
+							specifyBody: 'json',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+							headerParameters: {
+								parameters: [
+									{ name: 'anthropic-version', value: '2023-06-01' },
+									{
+										name: 'anthropic-beta',
+										value: 'code-execution-2025-08-25,skills-2025-10-02',
+									},
+								],
+							},
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [976, 208],
+						name: 'Create PDF',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.1,
+					config: {
+						parameters: {
+							url: 'https://api.anthropic.com/v1/messages',
+							method: 'POST',
+							options: {},
+							jsonBody:
+								'={\n  "model": "claude-haiku-4-5-20251001",\n  "max_tokens": 4096,\n  "system": "# Professional Word Document Creator\\n\\n## Overview\\nThis skill enables Claude to create professional, well-formatted Word documents with proper structure, consistent styling, and excellent readability.\\n\\n## Core Instructions\\n\\n### Primary Objective\\nCreate a single, professional DOCX file that follows document formatting standards and modern design principles.\\n\\n### Key Requirements\\n1. **Single File Output**: Create only ONE .docx file - no additional files or readme documents\\n2. **Professional Formatting**: Apply proper Word document formatting throughout\\n3. **Clear Structure**: Establish document hierarchy with appropriate heading styles\\n4. **Consistent Styling**: Maintain uniform formatting across all sections\\n5. **Readability**: Ensure optimal reading experience through proper spacing and typography\\n\\n## Design Principles\\n\\n### Document Structure\\n- Use Word heading styles (Heading 1, Heading 2, Heading 3) for proper hierarchy\\n- Organize content into logical sections and subsections\\n- Apply appropriate paragraph spacing\\n- Use page breaks strategically when needed\\n\\n### Typography\\n- Use professional, readable fonts (e.g., Calibri, Arial, Times New Roman)\\n- Establish clear size hierarchy for different text levels\\n- Apply proper line spacing (typically 1.15 or 1.5)\\n- Use font weights and styles (bold, italic) purposefully for emphasis\\n\\n### Layout Standards\\n- Set appropriate margins (typically 1 inch on all sides)\\n- Use consistent spacing between paragraphs and sections\\n- Align text appropriately (left-aligned for body text, centered for titles)\\n- Maintain professional indentation for lists and quotes\\n\\n### Content Elements\\n- Use bulleted and numbered lists where appropriate\\n- Format tables professionally with clear headers\\n- Incorporate images or graphics when relevant\\n- Apply styles consistently (e.g., Normal, Heading, List)\\n\\n## Implementation Notes\\n- Focus on creating a polished, professional output\\n- Prioritize clarity and document flow\\n- Adapt formatting choices to the document\'s purpose and audience\\n- Ensure all elements are properly styled using Word\'s built-in features",\n  "container": {\n    "skills": [\n      {\n        "type": "anthropic",\n        "skill_id": "docx",\n        "version": "latest"\n      }\n    ]\n  },\n  "messages": [\n    {\n      "role": "user",\n      "content": "{{ $(\'On form submission\').item.json.Prompt }}"\n    }\n  ],\n  "tools": [\n    {\n      "type": "code_execution_20250825",\n      "name": "code_execution"\n    }\n  ]\n}',
+							sendBody: true,
+							sendHeaders: true,
+							specifyBody: 'json',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+							headerParameters: {
+								parameters: [
+									{ name: 'anthropic-version', value: '2023-06-01' },
+									{
+										name: 'anthropic-beta',
+										value: 'code-execution-2025-08-25,skills-2025-10-02',
+									},
+								],
+							},
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [976, 448],
+						name: 'Create DOCX',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.1,
+					config: {
+						parameters: {
+							url: 'https://api.anthropic.com/v1/messages',
+							method: 'POST',
+							options: {},
+							jsonBody:
+								'={\n  "model": "claude-haiku-4-5-20251001",\n  "max_tokens": 4096,\n  "system": "# Professional Excel Spreadsheet Creator\\n\\n## Overview\\nThis skill enables Claude to create professional, well-formatted Excel spreadsheets with proper formulas, consistent formatting, and logical data organization.\\n\\n## Core Instructions\\n\\n### Primary Objective\\nCreate a single, professional XLSX file that follows spreadsheet best practices and modern data organization principles.\\n\\n### Key Requirements\\n1. **Single File Output**: Create only ONE .xlsx file - no additional files or readme documents\\n2. **Professional Formatting**: Apply proper Excel formatting throughout\\n3. **Clear Structure**: Organize data logically with appropriate headers and sections\\n4. **Functional Formulas**: Implement accurate, efficient formulas where needed\\n5. **Data Integrity**: Ensure data is properly structured and validated\\n\\n## Design Principles\\n\\n### Data Organization\\n- Use clear, descriptive column headers in the first row\\n- Organize data in a logical table structure\\n- Apply consistent data types within columns\\n- Use separate sheets for different data categories when appropriate\\n- Freeze panes for headers when datasets are large\\n\\n### Formatting Standards\\n- Apply professional cell formatting (borders, colors, alignment)\\n- Use bold headers with background colors for visibility\\n- Format numbers appropriately (currency, percentages, decimals)\\n- Apply consistent date formatting\\n- Use cell styles for uniformity\\n\\n### Formula Implementation\\n- Use clear, efficient formulas (SUM, AVERAGE, IF, VLOOKUP, etc.)\\n- Apply formulas consistently across rows/columns\\n- Use absolute references ($) where appropriate\\n- Include calculated columns and summary rows when relevant\\n- Verify formula accuracy\\n\\n### Visual Elements\\n- Apply conditional formatting to highlight key data\\n- Use data validation for controlled inputs\\n- Create charts or graphs when data visualization adds value\\n- Apply appropriate column widths for readability\\n- Use subtle color schemes that enhance rather than distract\\n\\n## Implementation Notes\\n- Focus on creating a functional, professional output\\n- Prioritize data clarity and usability\\n- Adapt formatting choices to the spreadsheet\'s purpose\\n- Test that all formulas calculate correctly\\n- Ensure the spreadsheet is easy to navigate and understand",\n  "container": {\n    "skills": [\n      {\n        "type": "anthropic",\n        "skill_id": "xlsx",\n        "version": "latest"\n      }\n    ]\n  },\n  "messages": [\n    {\n      "role": "user",\n      "content": "{{ $(\'On form submission\').item.json.Prompt }}"\n    }\n  ],\n  "tools": [\n    {\n      "type": "code_execution_20250825",\n      "name": "code_execution"\n    }\n  ]\n}',
+							sendBody: true,
+							sendHeaders: true,
+							specifyBody: 'json',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+							headerParameters: {
+								parameters: [
+									{ name: 'anthropic-version', value: '2023-06-01' },
+									{
+										name: 'anthropic-beta',
+										value: 'code-execution-2025-08-25,skills-2025-10-02',
+									},
+								],
+							},
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
+						},
+						position: [976, 688],
+						name: 'Create XLSX',
+					},
+				}),
+			],
+			{
+				version: 3.3,
 				parameters: {
 					rules: {
 						values: [
@@ -139,44 +268,8 @@ const wf = workflow('N3fK4Vfe4OHmEujy', 'Anthropic Agent Skills API v2', { execu
 					},
 					options: {},
 				},
-				position: [480, 288],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.1,
-			config: {
-				parameters: {
-					url: 'https://api.anthropic.com/v1/messages',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "model": "claude-haiku-4-5-20251001",\n  "max_tokens": 50000,\n  "system": "# Professional PowerPoint Creator\\n\\n## Overview\\nThis skill enables Claude to create stunning, professional PowerPoint presentations with modern design principles, clear visual hierarchy, and optimal use of space.\\n\\n## Core Instructions\\n\\n### Primary Objective\\nCreate a single, visually appealing PowerPoint file that follows professional design standards and modern aesthetic principles.\\n\\n### Key Requirements\\n1. **Single File Output**: Create only ONE .pptx file - no additional files or readme documents\\n2. **Professional Design**: Apply clean, modern design principles throughout\\n3. **Visual Hierarchy**: Establish clear information hierarchy on each slide\\n4. **Space Utilization**: Use whitespace effectively to create breathing room and focus\\n5. **Consistency**: Maintain consistent styling across all slides\\n\\n## Design Principles\\n\\n### Layout Standards\\n- Use generous margins and padding\\n- Avoid cluttered slides - prioritize clarity over quantity of information\\n- Align elements consistently (left, center, or right alignment per slide)\\n- Create visual balance between text and imagery\\n\\n### Typography\\n- Use 2-3 complementary fonts maximum\\n- Establish clear size hierarchy (titles, subtitles, body text)\\n- Ensure sufficient contrast for readability\\n- Avoid excessive text on individual slides\\n\\n### Color Scheme\\n- Select a cohesive color palette (3-5 colors)\\n- Use colors purposefully to guide attention\\n- Ensure adequate contrast between text and backgrounds\\n- Consider color psychology appropriate to the content\\n\\n### Visual Elements\\n- Incorporate relevant imagery, icons, or graphics when appropriate\\n- Use high-quality visual assets\\n- Apply consistent styling to shapes and graphics\\n- Consider data visualization for numerical information\\n\\n## Implementation Notes\\n- Focus on creating a polished, professional output\\n- Prioritize quality over quantity of slides\\n- Adapt design choices to the presentation\'s purpose and audience\\n- Test that all elements are properly formatted and aligned",\n  "container": {\n    "skills": [\n      {\n        "type": "anthropic",\n        "skill_id": "pptx",\n        "version": "latest"\n      }\n    ]\n  },\n  "messages": [\n    {\n      "role": "user",\n      "content": "{{ $(\'On form submission\').item.json.Prompt }}"\n    }\n  ],\n  "tools": [\n    {\n      "type": "code_execution_20250825",\n      "name": "code_execution"\n    }\n  ]\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-					headerParameters: {
-						parameters: [
-							{ name: 'anthropic-version', value: '2023-06-01' },
-							{
-								name: 'anthropic-beta',
-								value: 'code-execution-2025-08-25,skills-2025-10-02',
-							},
-						],
-					},
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [976, -32],
-				name: 'Create PPTX',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -244,41 +337,6 @@ const wf = workflow('N3fK4Vfe4OHmEujy', 'Anthropic Agent Skills API v2', { execu
 				},
 				position: [1584, -32],
 				name: 'Upload PPTX',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.1,
-			config: {
-				parameters: {
-					url: 'https://api.anthropic.com/v1/messages',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "model": "claude-haiku-4-5-20251001",\n  "max_tokens": 4096,\n  "system": "# Professional PDF Creator\\n\\n## Overview\\nThis skill enables Claude to create professional, well-formatted PDF documents with proper structure, clean styling, and excellent readability.\\n\\n## Core Instructions\\n\\n### Primary Objective\\nCreate a single, professional PDF file that follows document formatting standards and modern design principles.\\n\\n### Key Requirements\\n1. **Single File Output**: Create only ONE .pdf file - no additional files or readme documents\\n2. **Clean Formatting**: Apply professional formatting throughout the document\\n3. **Proper Structure**: Establish clear document hierarchy with appropriate headings and sections\\n4. **Readability**: Ensure optimal readability through proper spacing, typography, and layout\\n5. **Consistency**: Maintain consistent styling across all pages\\n\\n## Design Principles\\n\\n### Document Structure\\n- Use clear heading hierarchy (H1, H2, H3)\\n- Organize content into logical sections\\n- Include appropriate page breaks where needed\\n- Maintain consistent margins throughout\\n\\n### Typography\\n- Use professional, readable fonts\\n- Establish clear size hierarchy for different text levels\\n- Ensure sufficient line spacing for comfortable reading\\n- Use appropriate font weights (bold, regular) for emphasis\\n\\n### Layout Standards\\n- Use generous margins (typically 1-1.5 inches)\\n- Apply consistent spacing between sections\\n- Align text appropriately (left-aligned for body text)\\n- Create visual balance on each page\\n\\n### Visual Elements\\n- Incorporate tables, lists, or graphics when appropriate\\n- Ensure high-quality rendering of any images\\n- Use subtle styling for visual interest without distraction\\n- Consider adding headers/footers if appropriate\\n\\n## Implementation Notes\\n- Focus on creating a polished, professional output\\n- Prioritize clarity and readability\\n- Adapt formatting choices to the document\'s purpose\\n- Test that all elements render properly in the PDF format",\n  "container": {\n    "skills": [\n      {\n        "type": "anthropic",\n        "skill_id": "pdf",\n        "version": "latest"\n      }\n    ]\n  },\n  "messages": [\n    {\n      "role": "user",\n      "content": "{{ $(\'On form submission\').item.json.Prompt }}"\n    }\n  ],\n  "tools": [\n    {\n      "type": "code_execution_20250825",\n      "name": "code_execution"\n    }\n  ]\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-					headerParameters: {
-						parameters: [
-							{ name: 'anthropic-version', value: '2023-06-01' },
-							{
-								name: 'anthropic-beta',
-								value: 'code-execution-2025-08-25,skills-2025-10-02',
-							},
-						],
-					},
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [976, 208],
-				name: 'Create PDF',
 			},
 		}),
 	)
@@ -351,41 +409,6 @@ const wf = workflow('N3fK4Vfe4OHmEujy', 'Anthropic Agent Skills API v2', { execu
 			},
 		}),
 	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.1,
-			config: {
-				parameters: {
-					url: 'https://api.anthropic.com/v1/messages',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "model": "claude-haiku-4-5-20251001",\n  "max_tokens": 4096,\n  "system": "# Professional Word Document Creator\\n\\n## Overview\\nThis skill enables Claude to create professional, well-formatted Word documents with proper structure, consistent styling, and excellent readability.\\n\\n## Core Instructions\\n\\n### Primary Objective\\nCreate a single, professional DOCX file that follows document formatting standards and modern design principles.\\n\\n### Key Requirements\\n1. **Single File Output**: Create only ONE .docx file - no additional files or readme documents\\n2. **Professional Formatting**: Apply proper Word document formatting throughout\\n3. **Clear Structure**: Establish document hierarchy with appropriate heading styles\\n4. **Consistent Styling**: Maintain uniform formatting across all sections\\n5. **Readability**: Ensure optimal reading experience through proper spacing and typography\\n\\n## Design Principles\\n\\n### Document Structure\\n- Use Word heading styles (Heading 1, Heading 2, Heading 3) for proper hierarchy\\n- Organize content into logical sections and subsections\\n- Apply appropriate paragraph spacing\\n- Use page breaks strategically when needed\\n\\n### Typography\\n- Use professional, readable fonts (e.g., Calibri, Arial, Times New Roman)\\n- Establish clear size hierarchy for different text levels\\n- Apply proper line spacing (typically 1.15 or 1.5)\\n- Use font weights and styles (bold, italic) purposefully for emphasis\\n\\n### Layout Standards\\n- Set appropriate margins (typically 1 inch on all sides)\\n- Use consistent spacing between paragraphs and sections\\n- Align text appropriately (left-aligned for body text, centered for titles)\\n- Maintain professional indentation for lists and quotes\\n\\n### Content Elements\\n- Use bulleted and numbered lists where appropriate\\n- Format tables professionally with clear headers\\n- Incorporate images or graphics when relevant\\n- Apply styles consistently (e.g., Normal, Heading, List)\\n\\n## Implementation Notes\\n- Focus on creating a polished, professional output\\n- Prioritize clarity and document flow\\n- Adapt formatting choices to the document\'s purpose and audience\\n- Ensure all elements are properly styled using Word\'s built-in features",\n  "container": {\n    "skills": [\n      {\n        "type": "anthropic",\n        "skill_id": "docx",\n        "version": "latest"\n      }\n    ]\n  },\n  "messages": [\n    {\n      "role": "user",\n      "content": "{{ $(\'On form submission\').item.json.Prompt }}"\n    }\n  ],\n  "tools": [\n    {\n      "type": "code_execution_20250825",\n      "name": "code_execution"\n    }\n  ]\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-					headerParameters: {
-						parameters: [
-							{ name: 'anthropic-version', value: '2023-06-01' },
-							{
-								name: 'anthropic-beta',
-								value: 'code-execution-2025-08-25,skills-2025-10-02',
-							},
-						],
-					},
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [976, 448],
-				name: 'Create DOCX',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.code',
@@ -452,41 +475,6 @@ const wf = workflow('N3fK4Vfe4OHmEujy', 'Anthropic Agent Skills API v2', { execu
 				},
 				position: [1584, 448],
 				name: 'Upload DOCX',
-			},
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.1,
-			config: {
-				parameters: {
-					url: 'https://api.anthropic.com/v1/messages',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n  "model": "claude-haiku-4-5-20251001",\n  "max_tokens": 4096,\n  "system": "# Professional Excel Spreadsheet Creator\\n\\n## Overview\\nThis skill enables Claude to create professional, well-formatted Excel spreadsheets with proper formulas, consistent formatting, and logical data organization.\\n\\n## Core Instructions\\n\\n### Primary Objective\\nCreate a single, professional XLSX file that follows spreadsheet best practices and modern data organization principles.\\n\\n### Key Requirements\\n1. **Single File Output**: Create only ONE .xlsx file - no additional files or readme documents\\n2. **Professional Formatting**: Apply proper Excel formatting throughout\\n3. **Clear Structure**: Organize data logically with appropriate headers and sections\\n4. **Functional Formulas**: Implement accurate, efficient formulas where needed\\n5. **Data Integrity**: Ensure data is properly structured and validated\\n\\n## Design Principles\\n\\n### Data Organization\\n- Use clear, descriptive column headers in the first row\\n- Organize data in a logical table structure\\n- Apply consistent data types within columns\\n- Use separate sheets for different data categories when appropriate\\n- Freeze panes for headers when datasets are large\\n\\n### Formatting Standards\\n- Apply professional cell formatting (borders, colors, alignment)\\n- Use bold headers with background colors for visibility\\n- Format numbers appropriately (currency, percentages, decimals)\\n- Apply consistent date formatting\\n- Use cell styles for uniformity\\n\\n### Formula Implementation\\n- Use clear, efficient formulas (SUM, AVERAGE, IF, VLOOKUP, etc.)\\n- Apply formulas consistently across rows/columns\\n- Use absolute references ($) where appropriate\\n- Include calculated columns and summary rows when relevant\\n- Verify formula accuracy\\n\\n### Visual Elements\\n- Apply conditional formatting to highlight key data\\n- Use data validation for controlled inputs\\n- Create charts or graphs when data visualization adds value\\n- Apply appropriate column widths for readability\\n- Use subtle color schemes that enhance rather than distract\\n\\n## Implementation Notes\\n- Focus on creating a functional, professional output\\n- Prioritize data clarity and usability\\n- Adapt formatting choices to the spreadsheet\'s purpose\\n- Test that all formulas calculate correctly\\n- Ensure the spreadsheet is easy to navigate and understand",\n  "container": {\n    "skills": [\n      {\n        "type": "anthropic",\n        "skill_id": "xlsx",\n        "version": "latest"\n      }\n    ]\n  },\n  "messages": [\n    {\n      "role": "user",\n      "content": "{{ $(\'On form submission\').item.json.Prompt }}"\n    }\n  ],\n  "tools": [\n    {\n      "type": "code_execution_20250825",\n      "name": "code_execution"\n    }\n  ]\n}',
-					sendBody: true,
-					sendHeaders: true,
-					specifyBody: 'json',
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-					headerParameters: {
-						parameters: [
-							{ name: 'anthropic-version', value: '2023-06-01' },
-							{
-								name: 'anthropic-beta',
-								value: 'code-execution-2025-08-25,skills-2025-10-02',
-							},
-						],
-					},
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' },
-				},
-				position: [976, 688],
-				name: 'Create XLSX',
 			},
 		}),
 	)

@@ -15,10 +15,58 @@ const wf = workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							text: '=Describe the content of the image or pdf in detail then wait for questions about it. Based on what is in the content, suggest 3 questions the user may ask',
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'gpt-4o',
+								cachedResultName: 'GPT-4O',
+							},
+							options: { detail: 'high' },
+							resource: 'image',
+							inputType: 'base64',
+							operation: 'analyze',
+							binaryPropertyName: 'data0',
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [-882, -620],
+						name: 'OpenAI',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.memoryManager',
+					version: 1.1,
+					config: {
+						parameters: { options: {}, simplifyOutput: false },
+						subnodes: {
+							memory: memory({
+								type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+								version: 1.3,
+								config: {
+									parameters: {
+										sessionKey: '={{ $("chat").item.json.sessionId }}',
+										sessionIdType: 'customKey',
+									},
+									name: 'Simple Memory2',
+								},
+							}),
+						},
+						position: [-960, -20],
+						name: 'chatmem1',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -39,37 +87,9 @@ const wf = workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
 						],
 					},
 				},
-				position: [-1180, -420],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					text: '=Describe the content of the image or pdf in detail then wait for questions about it. Based on what is in the content, suggest 3 questions the user may ask',
-					modelId: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'GPT-4O',
-					},
-					options: { detail: 'high' },
-					resource: 'image',
-					inputType: 'base64',
-					operation: 'analyze',
-					binaryPropertyName: 'data0',
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [-882, -620],
-				name: 'OpenAI',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(
@@ -135,31 +155,6 @@ const wf = workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
 				},
 				position: [-584, -920],
 				name: 'chatmem',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.memoryManager',
-			version: 1.1,
-			config: {
-				parameters: { options: {}, simplifyOutput: false },
-				subnodes: {
-					memory: memory({
-						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-						version: 1.3,
-						config: {
-							parameters: {
-								sessionKey: '={{ $("chat").item.json.sessionId }}',
-								sessionIdType: 'customKey',
-							},
-							name: 'Simple Memory2',
-						},
-					}),
-				},
-				position: [-960, -20],
-				name: 'chatmem1',
 			},
 		}),
 	)

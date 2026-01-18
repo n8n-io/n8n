@@ -157,10 +157,37 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://queue.fal.run/fal-ai/ffmpeg-api/requests/{{ $json.request_id }}',
+							options: {},
+							sendHeaders: true,
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+							headerParameters: {
+								parameters: [{ name: 'Content-Type', value: 'application/json' }],
+							},
+						},
+						credentials: {
+							httpHeaderAuth: { id: 'daOZafXpRXLtoLUV', name: 'Fal.run API' },
+						},
+						position: [2608, 176],
+						name: 'Get final video url',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 30 }, position: [1968, 192], name: 'Wait 30 sec.' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -185,34 +212,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [2336, 192],
 				name: 'Completed?2',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://queue.fal.run/fal-ai/ffmpeg-api/requests/{{ $json.request_id }}',
-					options: {},
-					sendHeaders: true,
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-					headerParameters: {
-						parameters: [{ name: 'Content-Type', value: 'application/json' }],
-					},
-				},
-				credentials: {
-					httpHeaderAuth: { id: 'daOZafXpRXLtoLUV', name: 'Fal.run API' },
-				},
-				position: [2608, 176],
-				name: 'Get final video url',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -489,10 +491,34 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: "=https://queue.fal.run/fal-ai/veo3.1/requests/{{ $('Generate clip').item.json.request_id }}",
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						credentials: {
+							httpBearerAuth: { id: 'u75HwwBnJXHF7gx6', name: 'Runpods' },
+							httpHeaderAuth: { id: 'daOZafXpRXLtoLUV', name: 'Fal.run API' },
+						},
+						position: [2624, 736],
+						name: 'Get Clip Url',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 60 }, position: [1984, 752], name: 'Wait 60 sec.' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -517,31 +543,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [2352, 752],
 				name: 'Completed?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "=https://queue.fal.run/fal-ai/veo3.1/requests/{{ $('Generate clip').item.json.request_id }}",
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				credentials: {
-					httpBearerAuth: { id: 'u75HwwBnJXHF7gx6', name: 'Runpods' },
-					httpHeaderAuth: { id: 'daOZafXpRXLtoLUV', name: 'Fal.run API' },
-				},
-				position: [2624, 736],
-				name: 'Get Clip Url',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

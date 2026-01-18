@@ -37,10 +37,30 @@ const wf = workflow('e5XxiuYXr5atCH64', 'Stock Analysis Assistant', {
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							mode: 'raw',
+							options: {},
+							jsonOutput:
+								'{\n  "symbols": "AAPL,MSFT,NVDA,TSLA,AMZN,GOOGL,META,JPM,XOM,UNH,GME"\n}\n',
+						},
+						position: [800, 0],
+						name: 'Ticker List',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [800, 200], name: 'Market is Closed' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -61,26 +81,9 @@ const wf = workflow('e5XxiuYXr5atCH64', 'Stock Analysis Assistant', {
 						],
 					},
 				},
-				position: [560, 0],
 				name: 'Check if Market is open',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					mode: 'raw',
-					options: {},
-					jsonOutput: '{\n  "symbols": "AAPL,MSFT,NVDA,TSLA,AMZN,GOOGL,META,JPM,XOM,UNH,GME"\n}\n',
-				},
-				position: [800, 0],
-				name: 'Ticker List',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -186,14 +189,6 @@ const wf = workflow('e5XxiuYXr5atCH64', 'Stock Analysis Assistant', {
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
 			config: { position: [2040, 0], name: 'End of Flow' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [800, 200], name: 'Market is Closed' },
 		}),
 	)
 	.add(

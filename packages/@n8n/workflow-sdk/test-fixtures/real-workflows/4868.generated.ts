@@ -39,10 +39,73 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.3,
+					config: {
+						parameters: {
+							options: {},
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'gid=0',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1WNXkB6SpJyGtPVcHmj1oaaDFikyACCuq6RY5rEPH4OQ/edit#gid=0',
+								cachedResultName: 'Sheet1',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: '1WNXkB6SpJyGtPVcHmj1oaaDFikyACCuq6RY5rEPH4OQ',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/1WNXkB6SpJyGtPVcHmj1oaaDFikyACCuq6RY5rEPH4OQ/edit?usp=drivesdk',
+								cachedResultName: 'n8n_ocr_invoices',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [1160, -80],
+						name: 'Get already processed rows from Sheets',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.googleDrive',
+					version: 3,
+					config: {
+						parameters: {
+							filter: {
+								folderId: {
+									__rl: true,
+									mode: 'list',
+									value: '15Xpvr0Q4cBwYv1e_jNI8JO4LKAQmgYC2',
+									cachedResultUrl:
+										'https://drive.google.com/drive/folders/15Xpvr0Q4cBwYv1e_jNI8JO4LKAQmgYC2',
+									cachedResultName: 'Invoices_Inbox',
+								},
+							},
+							options: {},
+							resource: 'fileFolder',
+							returnAll: true,
+						},
+						credentials: {
+							googleDriveOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleDriveOAuth2Api Credential',
+							},
+						},
+						position: [880, 260],
+						name: 'Load files from Google Drive folder',
+					},
+				}),
+			],
+			{
+				version: 3,
 				parameters: {
 					mode: 'combine',
 					options: {},
@@ -50,10 +113,9 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 					outputDataFrom: 'input2',
 					fieldsToMatchString: 'id',
 				},
-				position: [1360, 140],
 				name: 'Filter processed files',
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -77,10 +139,71 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.mistral.ai/v1/files',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							contentType: 'multipart-form-data',
+							authentication: 'predefinedCredentialType',
+							bodyParameters: {
+								parameters: [
+									{ name: 'purpose', value: 'ocr' },
+									{
+										name: 'file',
+										parameterType: 'formBinaryData',
+										inputDataFieldName: 'data',
+									},
+								],
+							},
+							nodeCredentialType: 'mistralCloudApi',
+						},
+						credentials: {
+							mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
+						},
+						position: [2080, 340],
+						name: 'Mistral Upload1',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: 'https://api.mistral.ai/v1/files',
+							method: 'POST',
+							options: {},
+							sendBody: true,
+							contentType: 'multipart-form-data',
+							authentication: 'predefinedCredentialType',
+							bodyParameters: {
+								parameters: [
+									{ name: 'purpose', value: 'ocr' },
+									{
+										name: 'file',
+										parameterType: 'formBinaryData',
+										inputDataFieldName: 'data',
+									},
+								],
+							},
+							nodeCredentialType: 'mistralCloudApi',
+						},
+						credentials: {
+							mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
+						},
+						position: [2060, 120],
+						name: 'Mistral Upload',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -101,42 +224,9 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 						],
 					},
 				},
-				position: [1780, 140],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.mistral.ai/v1/files',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					contentType: 'multipart-form-data',
-					authentication: 'predefinedCredentialType',
-					bodyParameters: {
-						parameters: [
-							{ name: 'purpose', value: 'ocr' },
-							{
-								name: 'file',
-								parameterType: 'formBinaryData',
-								inputDataFieldName: 'data',
-							},
-						],
-					},
-					nodeCredentialType: 'mistralCloudApi',
-				},
-				credentials: {
-					mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
-				},
-				position: [2080, 340],
-				name: 'Mistral Upload1',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -346,39 +436,6 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: 'https://api.mistral.ai/v1/files',
-					method: 'POST',
-					options: {},
-					sendBody: true,
-					contentType: 'multipart-form-data',
-					authentication: 'predefinedCredentialType',
-					bodyParameters: {
-						parameters: [
-							{ name: 'purpose', value: 'ocr' },
-							{
-								name: 'file',
-								parameterType: 'formBinaryData',
-								inputDataFieldName: 'data',
-							},
-						],
-					},
-					nodeCredentialType: 'mistralCloudApi',
-				},
-				credentials: {
-					mistralCloudApi: { id: 'credential-id', name: 'mistralCloudApi Credential' },
-				},
-				position: [2060, 120],
-				name: 'Mistral Upload',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
@@ -478,41 +535,6 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 				},
 				position: [920, -80],
 				name: 'extract schema',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.3,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'gid=0',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1WNXkB6SpJyGtPVcHmj1oaaDFikyACCuq6RY5rEPH4OQ/edit#gid=0',
-						cachedResultName: 'Sheet1',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: '1WNXkB6SpJyGtPVcHmj1oaaDFikyACCuq6RY5rEPH4OQ',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/1WNXkB6SpJyGtPVcHmj1oaaDFikyACCuq6RY5rEPH4OQ/edit?usp=drivesdk',
-						cachedResultName: 'n8n_ocr_invoices',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [1160, -80],
-				name: 'Get already processed rows from Sheets',
 			},
 		}),
 	)

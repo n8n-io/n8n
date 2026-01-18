@@ -5,6 +5,7 @@ import type {
 	MergeMode,
 	NodeInstance,
 	NodeConfig,
+	DeclaredConnection,
 } from './types/base';
 
 /**
@@ -17,9 +18,14 @@ class MergeNodeInstance implements NodeInstance<'n8n-nodes-base.merge', string, 
 	readonly id: string;
 	readonly name: string;
 
-	constructor(version: string, mode: MergeMode, numInputs: number, config?: NodeConfig) {
+	constructor(
+		version: string,
+		mode: MergeMode,
+		numInputs: number,
+		config?: { name?: string; id?: string; parameters?: NodeConfig['parameters'] },
+	) {
 		this.version = version;
-		this.id = uuid();
+		this.id = config?.id ?? uuid();
 		this.name = config?.name ?? 'Merge';
 		this.config = {
 			...config,
@@ -39,6 +45,14 @@ class MergeNodeInstance implements NodeInstance<'n8n-nodes-base.merge', string, 
 			{ ...this.config, ...config },
 		);
 	}
+
+	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
+		throw new Error('Merge node connections are managed by MergeComposite');
+	}
+
+	getConnections(): DeclaredConnection[] {
+		return [];
+	}
 }
 
 /**
@@ -54,7 +68,10 @@ class MergeCompositeImpl<TBranches extends NodeInstance<string, string, unknown>
 	constructor(branches: TBranches, config: MergeConfig = {}) {
 		this.branches = branches;
 		this.mode = config.mode ?? 'append';
-		this.mergeNode = new MergeNodeInstance('v3', this.mode, branches.length, {
+		const version = config.version != null ? String(config.version) : '3';
+		this.mergeNode = new MergeNodeInstance(version, this.mode, branches.length, {
+			name: config.name,
+			id: config.id,
 			parameters: config.parameters,
 		});
 	}

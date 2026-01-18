@@ -79,10 +79,28 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [992, 128], name: 'Success - Basic Access' },
+				}),
+				node({
+					type: 'n8n-nodes-base.stopAndError',
+					version: 1,
+					config: {
+						parameters: {
+							errorMessage:
+								"Incorrect. Hint: Use the format `{{ $('Source Data').item.json.city }}` to get the city value.",
+						},
+						position: [992, 448],
+						name: 'Error - Basic Access',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -110,18 +128,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [752, 240],
 				name: 'Check - Basic Access',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [992, 128], name: 'Success - Basic Access' },
-		}),
+		),
 	)
 	.then(
 		node({
@@ -147,10 +156,28 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [1808, 128], name: 'Success - Array Access' },
+				}),
+				node({
+					type: 'n8n-nodes-base.stopAndError',
+					version: 1,
+					config: {
+						parameters: {
+							errorMessage:
+								'Incorrect. Hint: Remember that arrays are zero-indexed. The third item is at index `[2]`.',
+						},
+						position: [1808, 448],
+						name: 'Error - Array Access',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -178,18 +205,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [1568, 240],
 				name: 'Check - Array Access',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [1808, 128], name: 'Success - Array Access' },
-		}),
+		),
 	)
 	.then(
 		node({
@@ -215,10 +233,28 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [2624, 128], name: 'Success - Nested Object' },
+				}),
+				node({
+					type: 'n8n-nodes-base.stopAndError',
+					version: 1,
+					config: {
+						parameters: {
+							errorMessage:
+								'Incorrect. Hint: Chain the keys using dots, like `...json.address.street`.',
+						},
+						position: [2624, 448],
+						name: 'Error - Nested Object',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -246,18 +282,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [2384, 240],
 				name: 'Check - Nested Object',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [2624, 128], name: 'Success - Nested Object' },
-		}),
+		),
 	)
 	.then(
 		node({
@@ -283,10 +310,28 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [3440, 128], name: 'Success - Array of Objects' },
+				}),
+				node({
+					type: 'n8n-nodes-base.stopAndError',
+					version: 1,
+					config: {
+						parameters: {
+							errorMessage:
+								'Incorrect. Hint: Combine array access `[1]` with object access `.name`.',
+						},
+						position: [3440, 448],
+						name: 'Error - Array of Objects',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -314,18 +359,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [3200, 240],
 				name: 'Check - Array of Objects',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [3440, 128], name: 'Success - Array of Objects' },
-		}),
+		),
 	)
 	.then(
 		node({
@@ -351,10 +387,28 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [4256, 128], name: 'Success - JS Function' },
+				}),
+				node({
+					type: 'n8n-nodes-base.stopAndError',
+					version: 1,
+					config: {
+						parameters: {
+							errorMessage:
+								'Incorrect. Hint: Add `.toUpperCase()` to the end of your expression, inside the `{{ }}`.',
+						},
+						position: [4256, 448],
+						name: 'Error - JS Function',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -383,18 +437,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [4016, 240],
 				name: 'Check - JS Function',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [4256, 128], name: 'Success - JS Function' },
-		}),
+		),
 	)
 	.then(
 		node({
@@ -420,10 +465,28 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [5072, 112], name: 'Success - Final' },
+				}),
+				node({
+					type: 'n8n-nodes-base.stopAndError',
+					version: 1,
+					config: {
+						parameters: {
+							errorMessage:
+								"Incorrect. Hint: Combine static text and expressions like this: `Some text '{{ expression1 }}' and '{{ expression2 }}`.",
+						},
+						position: [5072, 448],
+						name: 'Error - Final',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -452,18 +515,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [4832, 240],
 				name: 'Check - Final',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [5072, 112], name: 'Success - Final' },
-		}),
+		),
 	)
 	.then(
 		node({
@@ -475,95 +529,6 @@ const wf = workflow('', '')
 				},
 				position: [5424, 224],
 				name: '🎉 SUCCESS 🎉',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.stopAndError',
-			version: 1,
-			config: {
-				parameters: {
-					errorMessage:
-						"Incorrect. Hint: Combine static text and expressions like this: `Some text '{{ expression1 }}' and '{{ expression2 }}`.",
-				},
-				position: [5072, 448],
-				name: 'Error - Final',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.stopAndError',
-			version: 1,
-			config: {
-				parameters: {
-					errorMessage:
-						'Incorrect. Hint: Add `.toUpperCase()` to the end of your expression, inside the `{{ }}`.',
-				},
-				position: [4256, 448],
-				name: 'Error - JS Function',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.stopAndError',
-			version: 1,
-			config: {
-				parameters: {
-					errorMessage: 'Incorrect. Hint: Combine array access `[1]` with object access `.name`.',
-				},
-				position: [3440, 448],
-				name: 'Error - Array of Objects',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.stopAndError',
-			version: 1,
-			config: {
-				parameters: {
-					errorMessage:
-						'Incorrect. Hint: Chain the keys using dots, like `...json.address.street`.',
-				},
-				position: [2624, 448],
-				name: 'Error - Nested Object',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.stopAndError',
-			version: 1,
-			config: {
-				parameters: {
-					errorMessage:
-						'Incorrect. Hint: Remember that arrays are zero-indexed. The third item is at index `[2]`.',
-				},
-				position: [1808, 448],
-				name: 'Error - Array Access',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.stopAndError',
-			version: 1,
-			config: {
-				parameters: {
-					errorMessage:
-						"Incorrect. Hint: Use the format `{{ $('Source Data').item.json.city }}` to get the city value.",
-				},
-				position: [992, 448],
-				name: 'Error - Basic Access',
 			},
 		}),
 	)

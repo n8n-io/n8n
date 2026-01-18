@@ -138,6 +138,34 @@ interface NodeInfo {
 	isSubnodeOf?: string;
 	/** If this node is a subnode, the AI connection type */
 	subnodeConnectionType?: string;
+	/** If this node is part of a composite pattern (merge source, if branch, switch case) */
+	isPartOfComposite?: boolean;
+}
+
+/**
+ * Determines if a node is a Merge node.
+ */
+function isMergeNode(node: NodeJSON): boolean {
+	return node.type === 'n8n-nodes-base.merge';
+}
+
+/**
+ * Determines if a node is an IF node.
+ */
+function isIfNode(node: NodeJSON): boolean {
+	return node.type === 'n8n-nodes-base.if';
+}
+
+/**
+ * Determines if a node is a Switch node.
+ */
+function isSwitchNode(node: NodeJSON): boolean {
+	return node.type === 'n8n-nodes-base.switch';
+}
+
+interface MergePattern {
+	mergeNode: string;
+	sources: { nodeName: string; inputIndex: number }[];
 }
 
 /**
@@ -312,6 +340,51 @@ function generateChain(
 
 		// Skip subnodes - they're included in parent config
 		if (targetInfo && !addedNodes.has(target.to) && !targetInfo.isSubnodeOf) {
+			// Check if target is a Merge node - use merge() composite
+			if (isMergeNode(targetInfo.node)) {
+				const mergeCall = generateMergeCall(targetInfo, nodeInfoMap, addedNodes);
+				if (mergeCall) {
+					lines.push(`  .then(${mergeCall})`);
+					addedNodes.add(target.to);
+					generateChain(targetInfo, nodeInfoMap, addedNodes, lines, depth);
+					return;
+				}
+			}
+
+			// Check if target is an IF node with both branches - use ifBranch() composite
+			if (isIfNode(targetInfo.node)) {
+				const ifResult = generateIfBranchCall(targetInfo, nodeInfoMap, addedNodes);
+				if (ifResult) {
+					lines.push(`  .then(${ifResult.call})`);
+					addedNodes.add(target.to);
+					// Generate downstream chains for each branch
+					for (const branchName of ifResult.branchNames) {
+						const branchInfo = nodeInfoMap.get(branchName);
+						if (branchInfo) {
+							generateChain(branchInfo, nodeInfoMap, addedNodes, lines, depth + 1);
+						}
+					}
+					return;
+				}
+			}
+
+			// Check if target is a Switch node with outputs - use switchCase() composite
+			if (isSwitchNode(targetInfo.node)) {
+				const switchResult = generateSwitchCaseCall(targetInfo, nodeInfoMap, addedNodes);
+				if (switchResult) {
+					lines.push(`  .then(${switchResult.call})`);
+					addedNodes.add(target.to);
+					// Generate downstream chains for each case
+					for (const caseName of switchResult.caseNames) {
+						const caseInfo = nodeInfoMap.get(caseName);
+						if (caseInfo) {
+							generateChain(caseInfo, nodeInfoMap, addedNodes, lines, depth + 1);
+						}
+					}
+					return;
+				}
+			}
+
 			lines.push(`  .then(${generateNodeCall(targetInfo.node, nodeInfoMap)})`);
 			addedNodes.add(target.to);
 			generateChain(targetInfo, nodeInfoMap, addedNodes, lines, depth);
@@ -319,10 +392,52 @@ function generateChain(
 		return;
 	}
 
-	// Multiple outputs (branching) - use .output(n)
+	// Multiple outputs (branching) - check for special patterns first
+	// Check if all targets from a single output feed into the same merge node
 	for (const [outputIndex, targets] of outputs) {
 		if (targets.length === 0) continue;
 
+		// Check if all targets feed into the same merge node
+		if (targets.length >= 2) {
+			const mergePattern = detectMergePattern(targets, nodeInfoMap, addedNodes);
+			if (mergePattern) {
+				// Generate merge() call for all branches
+				const branchCalls = mergePattern.sources.map((s) => {
+					const info = nodeInfoMap.get(s.nodeName);
+					return info ? generateNodeCall(info.node, nodeInfoMap) : '';
+				});
+
+				const mergeInfo = nodeInfoMap.get(mergePattern.mergeNode);
+				if (mergeInfo) {
+					const configParts: string[] = [];
+					// Always include version to preserve original node version
+					if (mergeInfo.node.typeVersion != null) {
+						configParts.push(`version: ${mergeInfo.node.typeVersion}`);
+					}
+					if (mergeInfo.node.parameters && Object.keys(mergeInfo.node.parameters).length > 0) {
+						configParts.push(`parameters: ${formatValue(mergeInfo.node.parameters, 2)}`);
+					}
+					if (mergeInfo.node.name !== 'Merge') {
+						configParts.push(`name: '${escapeString(mergeInfo.node.name)}'`);
+					}
+					const configStr = configParts.length > 0 ? `, { ${configParts.join(', ')} }` : '';
+
+					lines.push(`  .then(merge([${branchCalls.join(', ')}]${configStr}))`);
+
+					// Mark all source nodes and merge as added
+					for (const source of mergePattern.sources) {
+						addedNodes.add(source.nodeName);
+					}
+					addedNodes.add(mergePattern.mergeNode);
+
+					// Continue chain from merge node
+					generateChain(mergeInfo, nodeInfoMap, addedNodes, lines, depth + 1);
+				}
+				continue; // Don't process these targets individually
+			}
+		}
+
+		// Regular branching - use .output(n).then()
 		for (const target of targets) {
 			const targetInfo = nodeInfoMap.get(target.to);
 			// Skip subnodes - they're included in parent config
@@ -335,6 +450,214 @@ function generateChain(
 			generateChain(targetInfo, nodeInfoMap, addedNodes, lines, depth + 1);
 		}
 	}
+}
+
+/**
+ * Detect if targets all feed into the same merge node.
+ * Returns the merge pattern if found, null otherwise.
+ */
+function detectMergePattern(
+	targets: { to: string; inputIndex: number }[],
+	nodeInfoMap: Map<string, NodeInfo>,
+	addedNodes: Set<string>,
+): MergePattern | null {
+	// Check where each target's output goes
+	let mergeNode: string | null = null;
+	const sources: { nodeName: string; inputIndex: number }[] = [];
+
+	for (const target of targets) {
+		const targetInfo = nodeInfoMap.get(target.to);
+		if (!targetInfo || addedNodes.has(target.to)) return null;
+
+		// Check if this target has exactly one output that goes to a merge node
+		const targetOutputs = Array.from(targetInfo.outgoingConnections.entries());
+		if (targetOutputs.length !== 1) return null;
+
+		const [_outIdx, targetTargets] = targetOutputs[0];
+		if (targetTargets.length !== 1) return null;
+
+		const nextTarget = targetTargets[0];
+		const nextInfo = nodeInfoMap.get(nextTarget.to);
+		if (!nextInfo || !isMergeNode(nextInfo.node)) return null;
+
+		// All targets must feed into the same merge node
+		if (mergeNode === null) {
+			mergeNode = nextTarget.to;
+		} else if (mergeNode !== nextTarget.to) {
+			return null;
+		}
+
+		sources.push({
+			nodeName: target.to,
+			inputIndex: nextTarget.inputIndex,
+		});
+	}
+
+	if (!mergeNode || sources.length < 2) return null;
+
+	// Sort sources by input index
+	sources.sort((a, b) => a.inputIndex - b.inputIndex);
+
+	return { mergeNode, sources };
+}
+
+/**
+ * Generate a merge() call for a Merge node.
+ * Returns the merge call string, or null if pattern doesn't match.
+ */
+function generateMergeCall(
+	mergeInfo: NodeInfo,
+	nodeInfoMap: Map<string, NodeInfo>,
+	addedNodes: Set<string>,
+): string | null {
+	// Collect ALL nodes that connect to this merge, sorted by input index
+	// Include already-added nodes since they're part of the merge pattern
+	const sources: { node: NodeJSON; inputIndex: number; alreadyAdded: boolean }[] = [];
+
+	for (const [sourceName, sourceInfo] of nodeInfoMap.entries()) {
+		// Skip subnodes and sticky notes
+		if (sourceInfo.isSubnodeOf || isStickyNote(sourceInfo.node)) continue;
+
+		for (const [_outputIdx, targets] of sourceInfo.outgoingConnections.entries()) {
+			for (const target of targets) {
+				if (target.to === mergeInfo.node.name) {
+					sources.push({
+						node: sourceInfo.node,
+						inputIndex: target.inputIndex,
+						alreadyAdded: addedNodes.has(sourceName),
+					});
+				}
+			}
+		}
+	}
+
+	// Need at least 2 sources for a merge pattern
+	if (sources.length < 2) return null;
+
+	// Sort by input index
+	sources.sort((a, b) => a.inputIndex - b.inputIndex);
+
+	// Mark source nodes as added (those that weren't already)
+	for (const source of sources) {
+		addedNodes.add(source.node.name);
+	}
+
+	// Generate the merge call
+	const branchCalls = sources.map((s) => generateNodeCall(s.node, nodeInfoMap));
+	const configParts: string[] = [];
+
+	// Always include version to preserve original node version
+	if (mergeInfo.node.typeVersion != null) {
+		configParts.push(`version: ${mergeInfo.node.typeVersion}`);
+	}
+	if (mergeInfo.node.parameters && Object.keys(mergeInfo.node.parameters).length > 0) {
+		configParts.push(`parameters: ${formatValue(mergeInfo.node.parameters, 2)}`);
+	}
+	if (mergeInfo.node.name !== 'Merge') {
+		configParts.push(`name: '${escapeString(mergeInfo.node.name)}'`);
+	}
+
+	const configStr = configParts.length > 0 ? `, { ${configParts.join(', ')} }` : '';
+	return `merge([${branchCalls.join(', ')}]${configStr})`;
+}
+
+/**
+ * Generate an ifBranch() call for an IF node.
+ * Returns the ifBranch call string and branch names, or null if pattern doesn't match.
+ */
+function generateIfBranchCall(
+	ifInfo: NodeInfo,
+	nodeInfoMap: Map<string, NodeInfo>,
+	addedNodes: Set<string>,
+): { call: string; branchNames: string[] } | null {
+	const outputs = ifInfo.outgoingConnections;
+
+	// Need both true (output 0) and false (output 1) branches
+	const trueBranch = outputs.get(0)?.[0];
+	const falseBranch = outputs.get(1)?.[0];
+
+	if (!trueBranch || !falseBranch) return null;
+
+	const trueInfo = nodeInfoMap.get(trueBranch.to);
+	const falseInfo = nodeInfoMap.get(falseBranch.to);
+
+	if (!trueInfo || !falseInfo) return null;
+
+	// Mark branch nodes as added
+	addedNodes.add(trueBranch.to);
+	addedNodes.add(falseBranch.to);
+
+	// Generate the ifBranch call
+	const trueCall = generateNodeCall(trueInfo.node, nodeInfoMap);
+	const falseCall = generateNodeCall(falseInfo.node, nodeInfoMap);
+
+	const configParts: string[] = [];
+	// Always include version to preserve original node version
+	if (ifInfo.node.typeVersion != null) {
+		configParts.push(`version: ${ifInfo.node.typeVersion}`);
+	}
+	if (ifInfo.node.parameters && Object.keys(ifInfo.node.parameters).length > 0) {
+		configParts.push(`parameters: ${formatValue(ifInfo.node.parameters, 2)}`);
+	}
+	if (ifInfo.node.name !== 'IF') {
+		configParts.push(`name: '${escapeString(ifInfo.node.name)}'`);
+	}
+
+	const configStr = configParts.length > 0 ? `, { ${configParts.join(', ')} }` : '';
+	return {
+		call: `ifBranch([${trueCall}, ${falseCall}]${configStr})`,
+		branchNames: [trueBranch.to, falseBranch.to],
+	};
+}
+
+/**
+ * Generate a switchCase() call for a Switch node.
+ * Returns the switchCase call string and case names, or null if pattern doesn't match.
+ */
+function generateSwitchCaseCall(
+	switchInfo: NodeInfo,
+	nodeInfoMap: Map<string, NodeInfo>,
+	addedNodes: Set<string>,
+): { call: string; caseNames: string[] } | null {
+	const outputs = Array.from(switchInfo.outgoingConnections.entries()).sort((a, b) => a[0] - b[0]);
+
+	// Need at least one output
+	if (outputs.length === 0) return null;
+
+	// Collect case nodes in order
+	const caseCalls: string[] = [];
+	const caseNames: string[] = [];
+	for (const [_outputIndex, targets] of outputs) {
+		if (targets.length === 0) continue;
+		const target = targets[0];
+		const targetInfo = nodeInfoMap.get(target.to);
+		if (!targetInfo) continue;
+
+		caseCalls.push(generateNodeCall(targetInfo.node, nodeInfoMap));
+		caseNames.push(target.to);
+		addedNodes.add(target.to);
+	}
+
+	if (caseCalls.length === 0) return null;
+
+	// Generate the switchCase call
+	const configParts: string[] = [];
+	// Always include version to preserve original node version
+	if (switchInfo.node.typeVersion != null) {
+		configParts.push(`version: ${switchInfo.node.typeVersion}`);
+	}
+	if (switchInfo.node.parameters && Object.keys(switchInfo.node.parameters).length > 0) {
+		configParts.push(`parameters: ${formatValue(switchInfo.node.parameters, 2)}`);
+	}
+	if (switchInfo.node.name !== 'Switch') {
+		configParts.push(`name: '${escapeString(switchInfo.node.name)}'`);
+	}
+
+	const configStr = configParts.length > 0 ? `, { ${configParts.join(', ')} }` : '';
+	return {
+		call: `switchCase([${caseCalls.join(', ')}]${configStr})`,
+		caseNames,
+	};
 }
 
 /**

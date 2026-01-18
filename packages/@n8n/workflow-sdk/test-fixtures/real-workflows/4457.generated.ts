@@ -11,10 +11,43 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 1,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1,
+					config: {
+						parameters: {
+							text: '🤖 *Help Menu*\n\nUse `/summary <link>` to summarize an article.\nUse `/img <prompt>` to generate an image.\n\n_Example:_\n/summary https://example.com\n/img a futuristic cityscape',
+							chatId: '={{$json["message"]["chat"]["id"]}}',
+							additionalFields: { parse_mode: 'Markdown' },
+						},
+						position: [380, 220],
+						name: 'Help Responder',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 1,
+					config: {
+						parameters: {
+							conditions: {
+								string: [
+									{
+										value1: '={{$json["message"]["text"]}}',
+										value2: '/summary',
+										operation: 'startsWith',
+									},
+								],
+							},
+						},
+						position: [400, 540],
+						name: 'Summary Checker',
+					},
+				}),
+			],
+			{
+				version: 1,
 				parameters: {
 					conditions: {
 						string: [
@@ -26,48 +59,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [160, 600],
 				name: 'Command Router',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1,
-			config: {
-				parameters: {
-					text: '🤖 *Help Menu*\n\nUse `/summary <link>` to summarize an article.\nUse `/img <prompt>` to generate an image.\n\n_Example:_\n/summary https://example.com\n/img a futuristic cityscape',
-					chatId: '={{$json["message"]["chat"]["id"]}}',
-					additionalFields: { parse_mode: 'Markdown' },
-				},
-				position: [380, 220],
-				name: 'Help Responder',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 1,
-			config: {
-				parameters: {
-					conditions: {
-						string: [
-							{
-								value1: '={{$json["message"]["text"]}}',
-								value2: '/summary',
-								operation: 'startsWith',
-							},
-						],
-					},
-				},
-				position: [400, 540],
-				name: 'Summary Checker',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(

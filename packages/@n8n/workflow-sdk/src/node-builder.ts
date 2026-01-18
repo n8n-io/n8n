@@ -7,6 +7,7 @@ import type {
 	TriggerInput,
 	StickyNoteConfig,
 	PlaceholderValue,
+	DeclaredConnection,
 } from './types/base';
 
 /**
@@ -48,13 +49,22 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	readonly id: string;
 	readonly name: string;
 	readonly _outputType?: TOutput;
+	private _connections: DeclaredConnection[] = [];
 
-	constructor(type: TType, version: TVersion, config: NodeConfig, id?: string, name?: string) {
+	constructor(
+		type: TType,
+		version: TVersion,
+		config: NodeConfig,
+		id?: string,
+		name?: string,
+		connections?: DeclaredConnection[],
+	) {
 		this.type = type;
 		this.version = version;
 		this.config = { ...config };
 		this.id = id ?? uuid();
 		this.name = name ?? config.name ?? generateNodeName(type);
+		this._connections = connections ?? [];
 	}
 
 	update(config: Partial<NodeConfig>): NodeInstance<TType, TVersion, TOutput> {
@@ -64,7 +74,23 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 			parameters: config.parameters ?? this.config.parameters,
 			credentials: config.credentials ?? this.config.credentials,
 		};
-		return new NodeInstanceImpl(this.type, this.version, mergedConfig, this.id, this.name);
+		return new NodeInstanceImpl(
+			this.type,
+			this.version,
+			mergedConfig,
+			this.id,
+			this.name,
+			this._connections,
+		);
+	}
+
+	then<T extends NodeInstance<string, string, unknown>>(target: T, outputIndex: number = 0): T {
+		this._connections.push({ target, outputIndex });
+		return target;
+	}
+
+	getConnections(): DeclaredConnection[] {
+		return [...this._connections];
 	}
 }
 
@@ -177,6 +203,14 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 			name: config.name ?? this.name,
 		};
 		return new StickyNoteInstance(newContent as string, newConfig);
+	}
+
+	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
+		throw new Error('Sticky notes do not support connections');
+	}
+
+	getConnections(): DeclaredConnection[] {
+		return [];
 	}
 }
 

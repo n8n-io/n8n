@@ -220,27 +220,21 @@ const wf = workflow('M7saccCy1gO4g2zr', 'Agent_Builder', { executionOrder: 'v1' 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { parameters: { options: {} }, position: [-1240, -1060] },
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: { position: [-1120, -1260], name: '10 Seconds' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.convertToFile',
-			version: 1.1,
-			config: { parameters: { options: {} }, position: [-2320, -540], name: 'Convert to File' },
-		}),
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { position: [-1120, -1260], name: '10 Seconds' },
+				}),
+				node({
+					type: 'n8n-nodes-base.convertToFile',
+					version: 1.1,
+					config: { parameters: { options: {} }, position: [-2320, -540], name: 'Convert to File' },
+				}),
+			],
+			{ version: 2.2, parameters: { options: {} }, name: 'If' },
+		),
 	)
 	.then(
 		node({

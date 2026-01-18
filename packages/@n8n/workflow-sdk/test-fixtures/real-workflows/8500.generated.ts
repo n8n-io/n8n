@@ -585,10 +585,128 @@ const wf = workflow('zcYVtmH3JmlnFoOB', 'Jarvis template', { executionOrder: 'v1
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.2,
+					config: {
+						parameters: {
+							text: '={{ $json.message.text }}\n\n{{ $json.text }}',
+							options: {
+								systemMessage:
+									'=You are Jarvis, an intelligent productivity assistant designed to help manage daily tasks, communications, and schedules efficiently. You have access to multiple tools and should use them proactively to assist the user.\n\n## Core Identity\n- You are professional, helpful, and proactive\n- Always maintain a personal assistant tone - attentive but not overly casual\n- Use "Jitesh Dugar" as the user\'s name in all communications\n- Current date and time: {{ $now }}\n- Timezone: Asia/Kolkata\n\n## Available Capabilities\n\n### Email Management (Gmail MCP)\n- Read, send, reply to, and draft emails\n- Organize emails with labels\n- Search and filter emails by various criteria\n- Always use well-formatted HTML for email composition\n- Include proper signatures with "Jitesh Dugar"\n- If you\'re asked to send an email, just use the \'Google Contacts MCP\' to get their email address first, then confirm from the user\n\n### Calendar Management (Calendar MCP)\n- Check availability and schedule conflicts\n- Create, update, reschedule, and delete events\n- Retrieve upcoming events and meetings\n- Handle meeting requests and confirmations\n\n### Task Management (Google Tasks MCP)\n- Create, update, complete, and delete tasks\n- Retrieve task lists with filtering options\n- Set due dates and add detailed notes\n- Mark tasks as completed with timestamps\n\n### Finance Tracking (Finance Manager MCP)\n- Log expenses with categories and descriptions\n- Retrieve expense reports and summaries\n- Delete or modify expense entries\n- Track spending patterns\n\n### Contact Management (Google Contacts MCP)\n- Search and retrieve contact information\n- Access email addresses and phone numbers for communications\n\n## Communication Guidelines\n\n### Email Composition\n- Use professional HTML formatting\n- Include clear subject lines\n- Structure emails with proper greetings and closings\n- Always sign emails as "Jitesh Dugar"\n- No placeholder text - ask for clarification if information is missing\n\n### Response Style\n- Be concise but complete in responses\n- Proactively suggest related actions when appropriate\n- Confirm actions taken and provide relevant details\n- If multiple steps are involved, explain what you\'re doing\n\n## Operational Rules\n\n### Data Handling\n- Always use specific, actionable parameters\n- For dates, use future dates when creating tasks/events unless specified otherwise\n- When scheduling, check for conflicts before confirming\n- Validate email addresses before sending\n\n### Error Management\n- If information is incomplete, ask specific questions\n- Don\'t use placeholders or generic text\n- Confirm understanding before executing actions\n- Provide clear feedback on completed actions\n\n### Privacy & Security\n- Handle all personal information with appropriate discretion\n- Confirm sensitive actions before executing\n- Maintain professional boundaries in all communications\n\n## Task Prioritization\n1. **Urgent**: Time-sensitive items (meetings, deadlines)\n2. **Important**: High-impact tasks and communications\n3. **Routine**: Regular maintenance and organization\n4. **Optional**: Enhancement and optimization tasks\n\n## Example Interactions\n\n**Calendar Query**: "What meetings do I have today?"\n→ Check calendar for today\'s events, provide detailed schedule with times and attendees\n\n**Email Task**: "Send a follow-up email to the marketing team about the quarterly review"\n→ Ask for specific details if needed, compose professional HTML email, confirm before sending\n\n**Task Creation**: "Add a reminder to prepare the presentation for next week"\n→ Create task with appropriate due date, ask for specific deadline if unclear\n\n**Expense Logging**: "I spent $45 on lunch at the restaurant"\n→ Log expense with date, amount, category (Food/Dining), and description\n\n## Always Remember\n- You represent Jitesh professionally in all communications\n- Double-check important details before executing actions\n- Provide clear confirmations of completed tasks\n- Be proactive in suggesting helpful follow-up actions\n- Maintain context across conversations using the memory system',
+							},
+							promptType: 'define',
+						},
+						subnodes: {
+							tools: [
+								tool({
+									type: '@n8n/n8n-nodes-langchain.toolThink',
+									version: 1.1,
+									config: { name: 'Think' },
+								}),
+								tool({
+									type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+									version: 1.1,
+									config: {
+										parameters: { endpointUrl: 'https://n8n.exildraw.com/mcp/gmail-mcp/sse' },
+										name: 'Gmail MCP',
+									},
+								}),
+								tool({
+									type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+									version: 1.1,
+									config: {
+										parameters: {
+											endpointUrl: 'https://n8n.exildraw.com/mcp/google-calendar/sse',
+										},
+										name: 'Calendar MCP',
+									},
+								}),
+								tool({
+									type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+									version: 1.1,
+									config: {
+										parameters: {
+											endpointUrl: 'https://n8n.exildraw.com/mcp/finance-manager/sse',
+										},
+										name: 'Finance Tracker',
+									},
+								}),
+								tool({
+									type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+									version: 1.1,
+									config: {
+										parameters: { endpointUrl: 'https://n8n.exildraw.com/mcp/google-contacts' },
+										name: 'Google Contacts',
+									},
+								}),
+								tool({
+									type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+									version: 1.1,
+									config: {
+										parameters: {
+											endpointUrl: 'https://n8n.exildraw.com/mcp/task-YOUR_OPENAI_KEY_HERE',
+										},
+										name: 'Google Tasks MCP',
+									},
+								}),
+							],
+							memory: memory({
+								type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+								version: 1.3,
+								config: {
+									parameters: {
+										sessionKey: "={{ $('Telegram Trigger').item.json.message.chat.username }}",
+										sessionIdType: 'customKey',
+									},
+									name: 'Simple Memory',
+								},
+							}),
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: {
+											__rl: true,
+											mode: 'list',
+											value: 'gpt-4.1-mini',
+											cachedResultName: 'gpt-4.1-mini',
+										},
+										options: {},
+									},
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'OpenAI Chat Model',
+								},
+							}),
+						},
+						position: [368, 320],
+						name: 'Jarvis',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId: '={{ $json.message.voice.file_id }}',
+							resource: 'file',
+							additionalFields: {},
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [-304, 512],
+						name: 'Get a file',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -638,113 +756,8 @@ const wf = workflow('zcYVtmH3JmlnFoOB', 'Jarvis template', { executionOrder: 'v1
 					},
 					options: {},
 				},
-				position: [-528, 416],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: '={{ $json.message.text }}\n\n{{ $json.text }}',
-					options: {
-						systemMessage:
-							'=You are Jarvis, an intelligent productivity assistant designed to help manage daily tasks, communications, and schedules efficiently. You have access to multiple tools and should use them proactively to assist the user.\n\n## Core Identity\n- You are professional, helpful, and proactive\n- Always maintain a personal assistant tone - attentive but not overly casual\n- Use "Jitesh Dugar" as the user\'s name in all communications\n- Current date and time: {{ $now }}\n- Timezone: Asia/Kolkata\n\n## Available Capabilities\n\n### Email Management (Gmail MCP)\n- Read, send, reply to, and draft emails\n- Organize emails with labels\n- Search and filter emails by various criteria\n- Always use well-formatted HTML for email composition\n- Include proper signatures with "Jitesh Dugar"\n- If you\'re asked to send an email, just use the \'Google Contacts MCP\' to get their email address first, then confirm from the user\n\n### Calendar Management (Calendar MCP)\n- Check availability and schedule conflicts\n- Create, update, reschedule, and delete events\n- Retrieve upcoming events and meetings\n- Handle meeting requests and confirmations\n\n### Task Management (Google Tasks MCP)\n- Create, update, complete, and delete tasks\n- Retrieve task lists with filtering options\n- Set due dates and add detailed notes\n- Mark tasks as completed with timestamps\n\n### Finance Tracking (Finance Manager MCP)\n- Log expenses with categories and descriptions\n- Retrieve expense reports and summaries\n- Delete or modify expense entries\n- Track spending patterns\n\n### Contact Management (Google Contacts MCP)\n- Search and retrieve contact information\n- Access email addresses and phone numbers for communications\n\n## Communication Guidelines\n\n### Email Composition\n- Use professional HTML formatting\n- Include clear subject lines\n- Structure emails with proper greetings and closings\n- Always sign emails as "Jitesh Dugar"\n- No placeholder text - ask for clarification if information is missing\n\n### Response Style\n- Be concise but complete in responses\n- Proactively suggest related actions when appropriate\n- Confirm actions taken and provide relevant details\n- If multiple steps are involved, explain what you\'re doing\n\n## Operational Rules\n\n### Data Handling\n- Always use specific, actionable parameters\n- For dates, use future dates when creating tasks/events unless specified otherwise\n- When scheduling, check for conflicts before confirming\n- Validate email addresses before sending\n\n### Error Management\n- If information is incomplete, ask specific questions\n- Don\'t use placeholders or generic text\n- Confirm understanding before executing actions\n- Provide clear feedback on completed actions\n\n### Privacy & Security\n- Handle all personal information with appropriate discretion\n- Confirm sensitive actions before executing\n- Maintain professional boundaries in all communications\n\n## Task Prioritization\n1. **Urgent**: Time-sensitive items (meetings, deadlines)\n2. **Important**: High-impact tasks and communications\n3. **Routine**: Regular maintenance and organization\n4. **Optional**: Enhancement and optimization tasks\n\n## Example Interactions\n\n**Calendar Query**: "What meetings do I have today?"\n→ Check calendar for today\'s events, provide detailed schedule with times and attendees\n\n**Email Task**: "Send a follow-up email to the marketing team about the quarterly review"\n→ Ask for specific details if needed, compose professional HTML email, confirm before sending\n\n**Task Creation**: "Add a reminder to prepare the presentation for next week"\n→ Create task with appropriate due date, ask for specific deadline if unclear\n\n**Expense Logging**: "I spent $45 on lunch at the restaurant"\n→ Log expense with date, amount, category (Food/Dining), and description\n\n## Always Remember\n- You represent Jitesh professionally in all communications\n- Double-check important details before executing actions\n- Provide clear confirmations of completed tasks\n- Be proactive in suggesting helpful follow-up actions\n- Maintain context across conversations using the memory system',
-					},
-					promptType: 'define',
-				},
-				subnodes: {
-					tools: [
-						tool({
-							type: '@n8n/n8n-nodes-langchain.toolThink',
-							version: 1.1,
-							config: { name: 'Think' },
-						}),
-						tool({
-							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-							version: 1.1,
-							config: {
-								parameters: { endpointUrl: 'https://n8n.exildraw.com/mcp/gmail-mcp/sse' },
-								name: 'Gmail MCP',
-							},
-						}),
-						tool({
-							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-							version: 1.1,
-							config: {
-								parameters: {
-									endpointUrl: 'https://n8n.exildraw.com/mcp/google-calendar/sse',
-								},
-								name: 'Calendar MCP',
-							},
-						}),
-						tool({
-							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-							version: 1.1,
-							config: {
-								parameters: {
-									endpointUrl: 'https://n8n.exildraw.com/mcp/finance-manager/sse',
-								},
-								name: 'Finance Tracker',
-							},
-						}),
-						tool({
-							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-							version: 1.1,
-							config: {
-								parameters: { endpointUrl: 'https://n8n.exildraw.com/mcp/google-contacts' },
-								name: 'Google Contacts',
-							},
-						}),
-						tool({
-							type: '@n8n/n8n-nodes-langchain.mcpClientTool',
-							version: 1.1,
-							config: {
-								parameters: {
-									endpointUrl: 'https://n8n.exildraw.com/mcp/task-YOUR_OPENAI_KEY_HERE',
-								},
-								name: 'Google Tasks MCP',
-							},
-						}),
-					],
-					memory: memory({
-						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-						version: 1.3,
-						config: {
-							parameters: {
-								sessionKey: "={{ $('Telegram Trigger').item.json.message.chat.username }}",
-								sessionIdType: 'customKey',
-							},
-							name: 'Simple Memory',
-						},
-					}),
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: {
-									__rl: true,
-									mode: 'list',
-									value: 'gpt-4.1-mini',
-									cachedResultName: 'gpt-4.1-mini',
-								},
-								options: {},
-							},
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-							},
-							name: 'OpenAI Chat Model',
-						},
-					}),
-				},
-				position: [368, 320],
-				name: 'Jarvis',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -770,10 +783,50 @@ const wf = workflow('zcYVtmH3JmlnFoOB', 'Jarvis template', { executionOrder: 'v1
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							text: "={{ $('Set Reply Message').item.json.message.replace(/[_*\\[\\]()~`>#+=\\-|{}.!\\\\]/g, '\\\\$&') }}",
+							chatId: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+							additionalFields: { parse_mode: 'MarkdownV2', appendAttribution: false },
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [1392, 128],
+						name: 'Send a text message',
+					},
+				}),
+				node({
+					type: '@elevenlabs/n8n-nodes-elevenlabs.elevenLabs',
+					version: 1,
+					config: {
+						parameters: {
+							text: "={{ $('Set Reply Message').item.json.message }}",
+							voice: {
+								__rl: true,
+								mode: 'list',
+								value: 'MF4J4IDTRo0AxOO4dpFR',
+								cachedResultName: 'Devi - Clear Hindi pronunciation',
+							},
+							resource: 'speech',
+							requestOptions: {},
+							additionalOptions: {},
+						},
+						credentials: {
+							elevenLabsApi: { id: 'credential-id', name: 'elevenLabsApi Credential' },
+						},
+						position: [1392, 368],
+						name: 'Convert text to speech',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -823,55 +876,9 @@ const wf = workflow('zcYVtmH3JmlnFoOB', 'Jarvis template', { executionOrder: 'v1
 					},
 					options: {},
 				},
-				position: [1168, 320],
 				name: 'Check Text or Audio',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					text: "={{ $('Set Reply Message').item.json.message.replace(/[_*\\[\\]()~`>#+=\\-|{}.!\\\\]/g, '\\\\$&') }}",
-					chatId: "={{ $('Telegram Trigger').item.json.message.chat.id }}",
-					additionalFields: { parse_mode: 'MarkdownV2', appendAttribution: false },
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [1392, 128],
-				name: 'Send a text message',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: '@elevenlabs/n8n-nodes-elevenlabs.elevenLabs',
-			version: 1,
-			config: {
-				parameters: {
-					text: "={{ $('Set Reply Message').item.json.message }}",
-					voice: {
-						__rl: true,
-						mode: 'list',
-						value: 'MF4J4IDTRo0AxOO4dpFR',
-						cachedResultName: 'Devi - Clear Hindi pronunciation',
-					},
-					resource: 'speech',
-					requestOptions: {},
-					additionalOptions: {},
-				},
-				credentials: {
-					elevenLabsApi: { id: 'credential-id', name: 'elevenLabsApi Credential' },
-				},
-				position: [1392, 368],
-				name: 'Convert text to speech',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -893,25 +900,6 @@ const wf = workflow('zcYVtmH3JmlnFoOB', 'Jarvis template', { executionOrder: 'v1
 				},
 				position: [1584, 320],
 				name: 'Send an audio file',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId: '={{ $json.message.voice.file_id }}',
-					resource: 'file',
-					additionalFields: {},
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [-304, 512],
-				name: 'Get a file',
 			},
 		}),
 	)

@@ -170,10 +170,41 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.emailSend',
+					version: 2.1,
+					config: {
+						parameters: {
+							options: {},
+							subject: '✅ Stock Monitor: Alert Sent Successfully',
+							toEmail: 'user@example.com',
+							fromEmail: 'user@example.com',
+						},
+						credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
+						position: [1440, 80],
+						name: 'Success Notification',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.emailSend',
+					version: 2.1,
+					config: {
+						parameters: {
+							options: {},
+							subject: '❌ Stock Monitor: Alert Failed',
+							toEmail: 'user@example.com',
+							fromEmail: 'user@example.com',
+						},
+						credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
+						position: [1440, 272],
+						name: 'Error Notification',
+					},
+				}),
+			],
+			{
+				version: 2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -193,46 +224,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [1216, 176],
 				name: 'Alert Status Check',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.emailSend',
-			version: 2.1,
-			config: {
-				parameters: {
-					options: {},
-					subject: '✅ Stock Monitor: Alert Sent Successfully',
-					toEmail: 'user@example.com',
-					fromEmail: 'user@example.com',
-				},
-				credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
-				position: [1440, 80],
-				name: 'Success Notification',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.emailSend',
-			version: 2.1,
-			config: {
-				parameters: {
-					options: {},
-					subject: '❌ Stock Monitor: Alert Failed',
-					toEmail: 'user@example.com',
-					fromEmail: 'user@example.com',
-				},
-				credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
-				position: [1440, 272],
-				name: 'Error Notification',
-			},
-		}),
+		),
 	)
 	.add(
 		sticky(

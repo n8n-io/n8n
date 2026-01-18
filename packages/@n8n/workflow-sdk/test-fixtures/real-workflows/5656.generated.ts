@@ -27,10 +27,48 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'media',
+							operation: 'mediaUrlGet',
+							mediaGetId: '={{ $json.audio.id }}',
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [160, 420],
+						name: 'WhatsApp Business Cloud',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '7453a002-ec0f-4853-a28d-5d06669cb5d0',
+										name: 'text',
+										type: 'string',
+										value: "={{ $('WhatsApp Trigger').item.json.messages[0].text.body }}",
+									},
+								],
+							},
+						},
+						position: [600, 600],
+						name: 'Edit Fields',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -80,28 +118,8 @@ const wf = workflow(
 					},
 					options: {},
 				},
-				position: [-60, 500],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'media',
-					operation: 'mediaUrlGet',
-					mediaGetId: '={{ $json.audio.id }}',
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [160, 420],
-				name: 'WhatsApp Business Cloud',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -288,30 +306,6 @@ const wf = workflow(
 				},
 				position: [1820, 500],
 				name: 'WhatsApp Business Cloud2',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '7453a002-ec0f-4853-a28d-5d06669cb5d0',
-								name: 'text',
-								type: 'string',
-								value: "={{ $('WhatsApp Trigger').item.json.messages[0].text.body }}",
-							},
-						],
-					},
-				},
-				position: [600, 600],
-				name: 'Edit Fields',
 			},
 		}),
 	)

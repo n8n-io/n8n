@@ -109,7 +109,61 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 			},
 		}),
 	)
-	.then(node({ type: 'n8n-nodes-base.merge', version: 3.1, config: { position: [-920, -700] } }))
+	.then(
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.gmail',
+					version: 2.1,
+					config: {
+						parameters: {
+							simple: false,
+							options: {},
+							messageId: '={{ $json.id }}',
+							operation: 'get',
+						},
+						credentials: {
+							gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+						},
+						position: [-1340, -640],
+						name: 'Gmail - Single Message',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: '2f466934-e257-4315-8a7f-5e3dde987430',
+										operator: {
+											name: 'filter.operator.equals',
+											type: 'string',
+											operation: 'equals',
+										},
+										leftValue: '={{ $json.labelIds[2] }}',
+										rightValue: '={{ $json.labelIds[2] }}',
+									},
+								],
+							},
+						},
+						position: [-1140, -600],
+					},
+				}),
+			],
+			{ version: 3.1 },
+		),
+	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',

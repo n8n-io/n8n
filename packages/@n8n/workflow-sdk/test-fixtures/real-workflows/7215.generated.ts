@@ -167,10 +167,36 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=Apify Actor - YouTube Transcript Ninja EndPoint URL',
+							method: 'POST',
+							options: {},
+							jsonBody:
+								'={\n    "includeTimestamps": "No",\n    "language": "English",\n    "startUrls": [\n        "{{ $json[\'URL \'] }}"\n    ]\n}',
+							sendBody: true,
+							specifyBody: 'json',
+						},
+						position: [144, 48],
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: { url: "={{ $json['URL '] }}", options: {} },
+						position: [144, 288],
+						name: 'HTTP Request1',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -197,28 +223,9 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 						],
 					},
 				},
-				position: [-64, 192],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=Apify Actor - YouTube Transcript Ninja EndPoint URL',
-					method: 'POST',
-					options: {},
-					jsonBody:
-						'={\n    "includeTimestamps": "No",\n    "language": "English",\n    "startUrls": [\n        "{{ $json[\'URL \'] }}"\n    ]\n}',
-					sendBody: true,
-					specifyBody: 'json',
-				},
-				position: [144, 48],
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -392,18 +399,6 @@ const wf = workflow('EmfC3k9BlwxWhpVL', 'Own Data Store in Google Sheet', { exec
 				},
 				position: [944, 48],
 				name: 'Append or update row in sheet2',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: { url: "={{ $json['URL '] }}", options: {} },
-				position: [144, 288],
-				name: 'HTTP Request1',
 			},
 		}),
 	)

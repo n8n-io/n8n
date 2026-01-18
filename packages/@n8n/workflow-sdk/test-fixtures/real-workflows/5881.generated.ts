@@ -56,10 +56,54 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.postgres',
+					version: 2.6,
+					config: {
+						parameters: {
+							table: { __rl: true, mode: 'name', value: 'id' },
+							schema: { __rl: true, mode: 'list', value: 'public' },
+							columns: {
+								value: {},
+								schema: [],
+								mappingMode: 'autoMapInputData',
+								matchingColumns: [],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+						},
+						credentials: {
+							postgres: { id: 'credential-id', name: 'postgres Credential' },
+						},
+						position: [636, -340],
+						name: 'Create New Table Booking',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							textBody: '={{ $json.output }}',
+							operation: 'send',
+							phoneNumberId: '550325331503475',
+							additionalFields: {},
+							recipientPhoneNumber:
+								"={{ $('Receive WhatsApp Message').item.json.contacts[0].wa_id }}",
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [636, -140],
+						name: 'Send Reply to Customer',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -84,37 +128,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [416, -240],
 				name: 'Check If Table Booking Required',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.postgres',
-			version: 2.6,
-			config: {
-				parameters: {
-					table: { __rl: true, mode: 'name', value: 'id' },
-					schema: { __rl: true, mode: 'list', value: 'public' },
-					columns: {
-						value: {},
-						schema: [],
-						mappingMode: 'autoMapInputData',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-				},
-				credentials: {
-					postgres: { id: 'credential-id', name: 'postgres Credential' },
-				},
-				position: [636, -340],
-				name: 'Create New Table Booking',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -133,27 +149,6 @@ const wf = workflow(
 				},
 				position: [856, -340],
 				name: 'Send Booking Confirmation to Customer',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					textBody: '={{ $json.output }}',
-					operation: 'send',
-					phoneNumberId: '550325331503475',
-					additionalFields: {},
-					recipientPhoneNumber: "={{ $('Receive WhatsApp Message').item.json.contacts[0].wa_id }}",
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [636, -140],
-				name: 'Send Reply to Customer',
 			},
 		}),
 	)

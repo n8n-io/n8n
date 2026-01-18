@@ -117,10 +117,85 @@ const wf = workflow('B01FguFGfZeVurIi', 'Olostep Amazon scraper', { executionOrd
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: 'dde443ff-9f08-459a-a3a2-6301cba3c9b8',
+										name: 'url',
+										type: 'string',
+										value: '=https://www.amazon.com{{ $json.url }}',
+									},
+									{
+										id: 'd895888d-ac1d-4a4e-90d6-97e2d0fbc7ed',
+										name: 'title',
+										type: 'string',
+										value: '={{ $json.title }}',
+									},
+								],
+							},
+						},
+						position: [176, 368],
+						name: 'Edit Fields1',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.dataTable',
+					version: 1,
+					config: {
+						parameters: {
+							columns: {
+								value: { url: '={{ $json.url }}', title: '={{ $json.title }}' },
+								schema: [
+									{
+										id: 'title',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'title',
+										defaultMatch: false,
+									},
+									{
+										id: 'url',
+										type: 'string',
+										display: true,
+										removed: false,
+										readOnly: false,
+										required: false,
+										displayName: 'url',
+										defaultMatch: false,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: [],
+								attemptToConvertTypes: false,
+								convertFieldsToString: false,
+							},
+							options: {},
+							dataTableId: {
+								__rl: true,
+								mode: 'list',
+								value: 'hCFSIc5S243rctOO',
+								cachedResultUrl: '/projects/V9LxWBdY4sxeqAOs/datatables/hCFSIc5S243rctOO',
+								cachedResultName: 'amazon products',
+							},
+						},
+						position: [368, 512],
+						name: 'Insert row',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -141,88 +216,9 @@ const wf = workflow('B01FguFGfZeVurIi', 'Olostep Amazon scraper', { executionOrd
 						],
 					},
 				},
-				position: [-16, 496],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: 'dde443ff-9f08-459a-a3a2-6301cba3c9b8',
-								name: 'url',
-								type: 'string',
-								value: '=https://www.amazon.com{{ $json.url }}',
-							},
-							{
-								id: 'd895888d-ac1d-4a4e-90d6-97e2d0fbc7ed',
-								name: 'title',
-								type: 'string',
-								value: '={{ $json.title }}',
-							},
-						],
-					},
-				},
-				position: [176, 368],
-				name: 'Edit Fields1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.dataTable',
-			version: 1,
-			config: {
-				parameters: {
-					columns: {
-						value: { url: '={{ $json.url }}', title: '={{ $json.title }}' },
-						schema: [
-							{
-								id: 'title',
-								type: 'string',
-								display: true,
-								removed: false,
-								readOnly: false,
-								required: false,
-								displayName: 'title',
-								defaultMatch: false,
-							},
-							{
-								id: 'url',
-								type: 'string',
-								display: true,
-								removed: false,
-								readOnly: false,
-								required: false,
-								displayName: 'url',
-								defaultMatch: false,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: false,
-					},
-					options: {},
-					dataTableId: {
-						__rl: true,
-						mode: 'list',
-						value: 'hCFSIc5S243rctOO',
-						cachedResultUrl: '/projects/V9LxWBdY4sxeqAOs/datatables/hCFSIc5S243rctOO',
-						cachedResultName: 'amazon products',
-					},
-				},
-				position: [368, 512],
-				name: 'Insert row',
-			},
-		}),
+		),
 	)
 	.then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [576, 512] } }))
 	.add(

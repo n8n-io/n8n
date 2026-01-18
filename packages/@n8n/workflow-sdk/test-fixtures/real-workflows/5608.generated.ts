@@ -69,10 +69,34 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '=https://api.klap.app/v2/projects/{{ $json.output_id }}',
+							options: {},
+							sendHeaders: true,
+							headerParameters: { parameters: [{ name: 'Authorization', value: 'YOUR_API' }] },
+						},
+						position: [240, -100],
+						name: 'List Generated Clip Ideas',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { amount: 60 },
+						position: [240, 80],
+						name: 'Wait Before Checking Status Again',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -97,27 +121,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [20, -100],
 				name: 'Is Video Processing Complete?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '=https://api.klap.app/v2/projects/{{ $json.output_id }}',
-					options: {},
-					sendHeaders: true,
-					headerParameters: { parameters: [{ name: 'Authorization', value: 'YOUR_API' }] },
-				},
-				position: [240, -100],
-				name: 'List Generated Clip Ideas',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -167,10 +173,32 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: "=https://www.youtube.com/oembed?url={{ $('Extract YouTube URL & Number of Shorts').item.json['YouTube URL'] }}&format=json ",
+							options: {},
+						},
+						position: [-760, 540],
+						name: 'Fetch YouTube Video Title',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: {
+						parameters: { amount: 60 },
+						position: [1200, 60],
+						name: 'Wait Before Rechecking Final Shorts',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -191,25 +219,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [1200, -100],
 				name: 'Ready to Schedule Shorts?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "=https://www.youtube.com/oembed?url={{ $('Extract YouTube URL & Number of Shorts').item.json['YouTube URL'] }}&format=json ",
-					options: {},
-				},
-				position: [-760, 540],
-				name: 'Fetch YouTube Video Title',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -700,30 +712,6 @@ const wf = workflow(
 				},
 				position: [560, 420],
 				name: 'Send Publication Summary to Telegram',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: {
-				parameters: { amount: 60 },
-				position: [1200, 60],
-				name: 'Wait Before Rechecking Final Shorts',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			config: {
-				parameters: { amount: 60 },
-				position: [240, 80],
-				name: 'Wait Before Checking Status Again',
 			},
 		}),
 	)

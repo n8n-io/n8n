@@ -88,10 +88,30 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: "=https://queue.fal.run/fal-ai/hunyuan3d/v2/requests/{{ $('Submit to Hunyuan3D').item.json.request_id }}",
+							options: {},
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+						position: [4240, 7264],
+						name: 'Get Final Result',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.wait',
+					version: 1.1,
+					config: { parameters: { amount: 30 }, position: [3584, 7360], name: 'Wait 30 sec' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -116,27 +136,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [4016, 7360],
 				name: 'Is Completed?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: "=https://queue.fal.run/fal-ai/hunyuan3d/v2/requests/{{ $('Submit to Hunyuan3D').item.json.request_id }}",
-					options: {},
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-				position: [4240, 7264],
-				name: 'Get Final Result',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

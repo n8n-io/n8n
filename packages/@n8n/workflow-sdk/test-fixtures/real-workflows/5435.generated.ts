@@ -269,10 +269,34 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							mode: 'raw',
+							options: {},
+							jsonOutput:
+								'={"output":"[Link to report](https://n8n.lowcoding.dev/webhook/87893585-d157-468d-a9af-7238784e814c?sql={{ $(\'When Executed by Another Workflow\').item.json.query.urlEncode() }})"}',
+						},
+						position: [1800, 200],
+						name: 'Link to Report',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: { mode: 'raw', options: {}, jsonOutput: '={{ $json }}' },
+						position: [1800, 360],
+						name: 'Return Data',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -293,39 +317,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [1600, 280],
 				name: 'If Count>100',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					mode: 'raw',
-					options: {},
-					jsonOutput:
-						'={"output":"[Link to report](https://n8n.lowcoding.dev/webhook/87893585-d157-468d-a9af-7238784e814c?sql={{ $(\'When Executed by Another Workflow\').item.json.query.urlEncode() }})"}',
-				},
-				position: [1800, 200],
-				name: 'Link to Report',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: { mode: 'raw', options: {}, jsonOutput: '={{ $json }}' },
-				position: [1800, 360],
-				name: 'Return Data',
-			},
-		}),
+		),
 	)
 	.output(1)
 	.then(

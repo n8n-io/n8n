@@ -18,10 +18,92 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.1,
+					config: {
+						parameters: {
+							text: '={{ $json.messages[0].text }}',
+							options: {},
+							promptType: 'define',
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+								version: 1,
+								config: {
+									parameters: { options: {} },
+									credentials: {
+										googlePalmApi: {
+											id: 'SuWwLWBsAfrDFgCm',
+											name: 'Google Gemini(PaLM) Api account',
+										},
+									},
+									name: 'Google Gemini LLM',
+								},
+							}),
+							tools: [
+								tool({
+									type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
+									version: 1.3,
+									config: {
+										parameters: {
+											mode: 'retrieve-as-tool',
+											options: {},
+											tableName: {
+												__rl: true,
+												mode: 'list',
+												value: 'documents',
+												cachedResultName: 'documents',
+											},
+											toolDescription: 'call this tool to reach the goal',
+										},
+										credentials: {
+											supabaseApi: { id: 'QkeJlJh5cCiuLpvg', name: 'Supabase account' },
+										},
+										subnodes: {
+											embedding: embedding({
+												type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+												version: 1.2,
+												config: {
+													parameters: { options: {} },
+													credentials: {
+														openAiApi: { id: 'GVGOwCYLGI5SaqsK', name: 'OpenAi account' },
+													},
+													name: 'Generate OpenAI Embeddings',
+												},
+											}),
+										},
+										name: 'Retrieve Context from Supabase',
+									},
+								}),
+							],
+						},
+						position: [368, 272],
+						name: 'RAG Query Agent',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'media',
+							operation: 'mediaUrlGet',
+							mediaGetId: '={{ $json.messages[0].document.id }}',
+						},
+						credentials: {
+							whatsAppApi: { id: 'LV22R0NzX9vZLEp9', name: 'whatsapp_reply' },
+						},
+						position: [288, 928],
+						name: 'Get Document URL',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -71,78 +153,9 @@ const wf = workflow(
 					},
 					options: {},
 				},
-				position: [-48, 560],
 				name: 'Check if Query or Document',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2.1,
-			config: {
-				parameters: {
-					text: '={{ $json.messages[0].text }}',
-					options: {},
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-						version: 1,
-						config: {
-							parameters: { options: {} },
-							credentials: {
-								googlePalmApi: {
-									id: 'SuWwLWBsAfrDFgCm',
-									name: 'Google Gemini(PaLM) Api account',
-								},
-							},
-							name: 'Google Gemini LLM',
-						},
-					}),
-					tools: [
-						tool({
-							type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase',
-							version: 1.3,
-							config: {
-								parameters: {
-									mode: 'retrieve-as-tool',
-									options: {},
-									tableName: {
-										__rl: true,
-										mode: 'list',
-										value: 'documents',
-										cachedResultName: 'documents',
-									},
-									toolDescription: 'call this tool to reach the goal',
-								},
-								credentials: {
-									supabaseApi: { id: 'QkeJlJh5cCiuLpvg', name: 'Supabase account' },
-								},
-								subnodes: {
-									embedding: embedding({
-										type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
-										version: 1.2,
-										config: {
-											parameters: { options: {} },
-											credentials: {
-												openAiApi: { id: 'GVGOwCYLGI5SaqsK', name: 'OpenAi account' },
-											},
-											name: 'Generate OpenAI Embeddings',
-										},
-									}),
-								},
-								name: 'Retrieve Context from Supabase',
-							},
-						}),
-					],
-				},
-				position: [368, 272],
-				name: 'RAG Query Agent',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -161,25 +174,6 @@ const wf = workflow(
 				},
 				position: [912, 272],
 				name: 'Send WhatsApp Reply',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'media',
-					operation: 'mediaUrlGet',
-					mediaGetId: '={{ $json.messages[0].document.id }}',
-				},
-				credentials: {
-					whatsAppApi: { id: 'LV22R0NzX9vZLEp9', name: 'whatsapp_reply' },
-				},
-				position: [288, 928],
-				name: 'Get Document URL',
 			},
 		}),
 	)

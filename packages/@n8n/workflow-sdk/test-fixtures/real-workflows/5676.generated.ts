@@ -17,10 +17,36 @@ const wf = workflow('lZbh3p9grft1d8dr', 'Learn Customer Onboarding Automation wi
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.hubspot',
+					version: 1,
+					config: {
+						parameters: {
+							resource: 'contact',
+							operation: 'create',
+							authentication: 'appToken',
+						},
+						credentials: {
+							hubspotAppToken: { id: 'credential-id', name: 'hubspotAppToken Credential' },
+						},
+						position: [-220, 340],
+						name: 'Create HubSpot Contact',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1,
+					config: {
+						parameters: { operation: 'send' },
+						position: [-380, 700],
+						name: 'Send Validation Error Alert',
+					},
+				}),
+			],
+			{
+				version: 2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -47,29 +73,9 @@ const wf = workflow('lZbh3p9grft1d8dr', 'Learn Customer Onboarding Automation wi
 						],
 					},
 				},
-				position: [-460, 380],
 				name: 'Validate Required Fields',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.hubspot',
-			version: 1,
-			config: {
-				parameters: {
-					resource: 'contact',
-					operation: 'create',
-					authentication: 'appToken',
-				},
-				credentials: {
-					hubspotAppToken: { id: 'credential-id', name: 'hubspotAppToken Credential' },
-				},
-				position: [-220, 340],
-				name: 'Create HubSpot Contact',
-			},
-		}),
+		),
 	)
 	.output(0)
 	.then(
@@ -199,18 +205,6 @@ const wf = workflow('lZbh3p9grft1d8dr', 'Learn Customer Onboarding Automation wi
 				parameters: { operation: 'send' },
 				position: [2400, 540],
 				name: 'Notify Team of Completion',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1,
-			config: {
-				parameters: { operation: 'send' },
-				position: [-380, 700],
-				name: 'Send Validation Error Alert',
 			},
 		}),
 	)

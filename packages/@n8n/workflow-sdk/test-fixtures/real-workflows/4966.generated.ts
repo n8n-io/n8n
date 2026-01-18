@@ -410,10 +410,36 @@ const wf = workflow('e0BX3fhHvcBuQTBU', 'whats app agent community', { execution
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"// cleanAnswer – run once per item\nlet txt = $('AI Agent').first().json.output || '';\n\n// 1. Remove bold / italic / strike markers\ntxt = txt.replace(/[*_~]+/g, '');\n\n// 2. Convert [Texto](https://url) → Texto https://url\ntxt = txt.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1 $2');\n\n// 3. Collapse 3+ blank lines\ntxt = txt.replace(/\\n{3,}/g, '\\n\\n').trim();\n\n// 4. Remove the unwanted source-reference preamble\ntxt = txt.replace(/^.*?based on the document you provided[,:]?\\s*/i, '');\n\nreturn [{ json: { answer: txt } }];\n",
+						},
+						position: [2300, 340],
+						name: 'cleanAnswer',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							template: 'hello_world|en_US',
+							phoneNumberId: '641448739058783',
+							recipientPhoneNumber: "={{ $('when message received').item.json.contacts[0].wa_id }}",
+						},
+						position: [2300, 540],
+						name: 'Send Pre-approved Template Message to Reopen the Conversation',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -434,24 +460,9 @@ const wf = workflow('e0BX3fhHvcBuQTBU', 'whats app agent community', { execution
 						],
 					},
 				},
-				position: [2080, 440],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"// cleanAnswer – run once per item\nlet txt = $('AI Agent').first().json.output || '';\n\n// 1. Remove bold / italic / strike markers\ntxt = txt.replace(/[*_~]+/g, '');\n\n// 2. Convert [Texto](https://url) → Texto https://url\ntxt = txt.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1 $2');\n\n// 3. Collapse 3+ blank lines\ntxt = txt.replace(/\\n{3,}/g, '\\n\\n').trim();\n\n// 4. Remove the unwanted source-reference preamble\ntxt = txt.replace(/^.*?based on the document you provided[,:]?\\s*/i, '');\n\nreturn [{ json: { answer: txt } }];\n",
-				},
-				position: [2300, 340],
-				name: 'cleanAnswer',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -467,22 +478,6 @@ const wf = workflow('e0BX3fhHvcBuQTBU', 'whats app agent community', { execution
 				},
 				position: [2520, 340],
 				name: "Send AI Agent's Answer",
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					template: 'hello_world|en_US',
-					phoneNumberId: '641448739058783',
-					recipientPhoneNumber: "={{ $('when message received').item.json.contacts[0].wa_id }}",
-				},
-				position: [2300, 540],
-				name: 'Send Pre-approved Template Message to Reopen the Conversation',
 			},
 		}),
 	)

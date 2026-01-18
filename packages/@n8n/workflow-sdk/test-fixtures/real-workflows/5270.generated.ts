@@ -14,10 +14,21 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [5720, 3800], name: 'Test Node (1)' },
+				}),
+				node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { position: [5700, 3960], name: 'Test Node (2)' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -42,26 +53,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [5540, 3920],
 				name: 'Test IF',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [5720, 3800], name: 'Test Node (1)' },
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.noOp',
-			version: 1,
-			config: { position: [5700, 3960], name: 'Test Node (2)' },
-		}),
+		),
 	)
 	.add(
 		trigger({

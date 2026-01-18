@@ -138,10 +138,40 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"// cleanAnswer – run once per item\nlet txt = $('AI Agent').first().json.output || '';\n\n// 1. Remove bold / italic / strike markers\ntxt = txt.replace(/[*_~]+/g, '');\n\n// 2. Convert [Texto](https://url) → Texto https://url\ntxt = txt.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1 $2');\n\n// 3. Collapse 3+ blank lines\ntxt = txt.replace(/\\n{3,}/g, '\\n\\n').trim();\n\nreturn [{ json: { answer: txt } }];\n",
+						},
+						position: [1040, 120],
+						name: 'cleanAnswer',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.whatsApp',
+					version: 1,
+					config: {
+						parameters: {
+							template: 'hello_world|en_US',
+							phoneNumberId: '679436108574898',
+							requestOptions: {},
+							recipientPhoneNumber: "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+						},
+						credentials: {
+							whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
+						},
+						position: [1060, 360],
+						name: 'Send Pre-approved Template Message to Reopen the Conversation',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -162,24 +192,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [740, 140],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"// cleanAnswer – run once per item\nlet txt = $('AI Agent').first().json.output || '';\n\n// 1. Remove bold / italic / strike markers\ntxt = txt.replace(/[*_~]+/g, '');\n\n// 2. Convert [Texto](https://url) → Texto https://url\ntxt = txt.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '$1 $2');\n\n// 3. Collapse 3+ blank lines\ntxt = txt.replace(/\\n{3,}/g, '\\n\\n').trim();\n\nreturn [{ json: { answer: txt } }];\n",
-				},
-				position: [1040, 120],
-				name: 'cleanAnswer',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -199,26 +214,6 @@ const wf = workflow(
 				},
 				position: [1260, 120],
 				name: "Send AI Agent's Answer",
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.whatsApp',
-			version: 1,
-			config: {
-				parameters: {
-					template: 'hello_world|en_US',
-					phoneNumberId: '679436108574898',
-					requestOptions: {},
-					recipientPhoneNumber: "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
-				},
-				credentials: {
-					whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' },
-				},
-				position: [1060, 360],
-				name: 'Send Pre-approved Template Message to Reopen the Conversation',
 			},
 		}),
 	)

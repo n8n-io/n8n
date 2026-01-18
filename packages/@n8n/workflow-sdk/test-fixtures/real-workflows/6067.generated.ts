@@ -137,10 +137,24 @@ const wf = workflow('OcdRRO25OfTnrILJ', 'Blog Post : Tendencias Ecosistema', {
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: {
+						parameters: {
+							url: '={{ $json.generations_by_pk.generated_images[0].url }}',
+							options: {},
+						},
+						position: [200, 760],
+						name: 'Get Leonardo Image',
+					},
+				}),
+				node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [200, 560] } }),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -161,24 +175,9 @@ const wf = workflow('OcdRRO25OfTnrILJ', 'Blog Post : Tendencias Ecosistema', {
 						],
 					},
 				},
-				position: [-20, 560],
+				name: 'If',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.httpRequest',
-			version: 4.2,
-			config: {
-				parameters: {
-					url: '={{ $json.generations_by_pk.generated_images[0].url }}',
-					options: {},
-				},
-				position: [200, 760],
-				name: 'Get Leonardo Image',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -390,8 +389,6 @@ const wf = workflow('OcdRRO25OfTnrILJ', 'Blog Post : Tendencias Ecosistema', {
 			},
 		}),
 	)
-	.output(1)
-	.then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [200, 560] } }))
 	.add(
 		sticky(
 			'## Problem in node ‘Get Title, Content, and Image FileName‘\nIf this happens, is because the Json file was not created successfully before on Perplexity. IA Models still struggles with this.',

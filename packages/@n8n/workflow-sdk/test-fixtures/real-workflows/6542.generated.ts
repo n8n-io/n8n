@@ -411,10 +411,31 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.googleDrive',
+					version: 3,
+					config: {
+						parameters: {
+							fileId: { __rl: true, mode: 'id', value: '={{ $json.fileId }}' },
+							options: {
+								googleFileConversion: {
+									conversion: {
+										docsToFormat: 'text/plain',
+										slidesToFormat: 'application/pdf',
+									},
+								},
+							},
+							operation: 'download',
+						},
+						position: [2464, 448],
+						name: 'Download File1',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -443,38 +464,70 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [2288, 448],
 				name: 'Operation',
 			},
-		}),
+		),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.googleDrive',
-			version: 3,
-			config: {
-				parameters: {
-					fileId: { __rl: true, mode: 'id', value: '={{ $json.fileId }}' },
-					options: {
-						googleFileConversion: {
-							conversion: {
-								docsToFormat: 'text/plain',
-								slidesToFormat: 'application/pdf',
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.extractFromFile',
+					version: 1,
+					config: {
+						parameters: { options: {}, operation: 'pdf' },
+						position: [2928, 160],
+						name: 'Extract from PDF',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.extractFromFile',
+					version: 1,
+					config: {
+						parameters: {
+							options: {
+								encoding: 'utf-8',
+								headerRow: false,
+								relaxQuotes: true,
+								includeEmptyCells: true,
 							},
 						},
+						position: [2928, 352],
+						name: 'Extract from CSV',
 					},
-					operation: 'download',
-				},
-				position: [2464, 448],
-				name: 'Download File1',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'gpt-4o-mini',
+								cachedResultName: 'GPT-4O-MINI',
+							},
+							options: {},
+							resource: 'image',
+							inputType: 'base64',
+							operation: 'analyze',
+						},
+						position: [2928, 528],
+						name: 'Analyse Image',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: { options: {}, resource: 'audio', operation: 'transcribe' },
+						position: [2928, 704],
+						name: 'Transcribe Audio',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -592,22 +645,9 @@ const wf = workflow('', '')
 					},
 					options: {},
 				},
-				position: [2656, 400],
 				name: 'FileType',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.extractFromFile',
-			version: 1,
-			config: {
-				parameters: { options: {}, operation: 'pdf' },
-				position: [2928, 160],
-				name: 'Extract from PDF',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -632,25 +672,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.extractFromFile',
-			version: 1,
-			config: {
-				parameters: {
-					options: {
-						encoding: 'utf-8',
-						headerRow: false,
-						relaxQuotes: true,
-						includeEmptyCells: true,
-					},
-				},
-				position: [2928, 352],
-				name: 'Extract from CSV',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.set',
@@ -672,41 +693,6 @@ const wf = workflow('', '')
 				},
 				position: [3088, 352],
 				name: 'Get CSV Response',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					modelId: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o-mini',
-						cachedResultName: 'GPT-4O-MINI',
-					},
-					options: {},
-					resource: 'image',
-					inputType: 'base64',
-					operation: 'analyze',
-				},
-				position: [2928, 528],
-				name: 'Analyse Image',
-			},
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: { options: {}, resource: 'audio', operation: 'transcribe' },
-				position: [2928, 704],
-				name: 'Transcribe Audio',
 			},
 		}),
 	)

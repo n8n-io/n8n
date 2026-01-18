@@ -8,6 +8,8 @@ import type {
 	TriggerInstance,
 	OutputSelector,
 	MergeComposite,
+	IfBranchComposite,
+	SwitchCaseComposite,
 	ConnectionTarget,
 	GraphNode,
 	SubnodeConfig,
@@ -102,19 +104,29 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrMerge: N | MergeComposite,
+		nodeOrComposite: N | MergeComposite | IfBranchComposite | SwitchCaseComposite,
 	): WorkflowBuilder {
 		// Handle merge composite
-		if ('mergeNode' in nodeOrMerge && 'branches' in nodeOrMerge) {
-			return this.handleMergeComposite(nodeOrMerge as MergeComposite);
+		if ('mergeNode' in nodeOrComposite && 'branches' in nodeOrComposite) {
+			return this.handleMergeComposite(nodeOrComposite as MergeComposite);
+		}
+
+		// Handle IF branch composite
+		if ('ifNode' in nodeOrComposite && 'trueBranch' in nodeOrComposite) {
+			return this.handleIfBranchComposite(nodeOrComposite as IfBranchComposite);
+		}
+
+		// Handle Switch case composite
+		if ('switchNode' in nodeOrComposite && 'cases' in nodeOrComposite) {
+			return this.handleSwitchCaseComposite(nodeOrComposite as SwitchCaseComposite);
 		}
 
 		// Handle split in batches builder
-		if (this.isSplitInBatchesBuilder(nodeOrMerge)) {
-			return this.handleSplitInBatches(nodeOrMerge);
+		if (this.isSplitInBatchesBuilder(nodeOrComposite)) {
+			return this.handleSplitInBatches(nodeOrComposite);
 		}
 
-		const node = nodeOrMerge as N;
+		const node = nodeOrComposite as N;
 		const newNodes = new Map(this._nodes);
 
 		// Add the new node and its subnodes
@@ -200,6 +212,25 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Calculate positions for nodes without explicit positions
 		const nodePositions = this.calculatePositions();
+
+		// Collect connections declared on nodes via .then()
+		for (const graphNode of this._nodes.values()) {
+			// Only process if the node instance has getConnections() (nodes from builder, not fromJSON)
+			if (typeof graphNode.instance.getConnections === 'function') {
+				const nodeConns = graphNode.instance.getConnections();
+				for (const { target, outputIndex } of nodeConns) {
+					const mainConns = graphNode.connections.get('main') || new Map();
+					const outputConns = mainConns.get(outputIndex) || [];
+					// Avoid duplicates
+					const alreadyExists = outputConns.some((c: ConnectionTarget) => c.node === target.name);
+					if (!alreadyExists) {
+						outputConns.push({ node: target.name, type: 'main', index: 0 });
+						mainConns.set(outputIndex, outputConns);
+						graphNode.connections.set('main', mainConns);
+					}
+				}
+			}
+		}
 
 		// Convert nodes
 		for (const [mapKey, graphNode] of this._nodes) {
@@ -491,9 +522,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 */
 	private handleMergeComposite(mergeComposite: MergeComposite): WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
+		const branches = mergeComposite.branches as NodeInstance<string, string, unknown>[];
 
-		// Add all branch nodes
-		for (const branchNode of mergeComposite.branches as NodeInstance<string, string, unknown>[]) {
+		// Add all branch nodes with correct input index connections
+		branches.forEach((branchNode, branchIndex) => {
 			const branchConns = new Map<string, Map<number, ConnectionTarget[]>>();
 			branchConns.set('main', new Map());
 			newNodes.set(branchNode.name, {
@@ -515,12 +547,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				}
 			}
 
-			// Connect each branch to the merge node
+			// Connect each branch to the merge node at the correct INPUT INDEX
 			const branchGraphNode = newNodes.get(branchNode.name)!;
 			const branchMainConns = branchGraphNode.connections.get('main') || new Map();
-			branchMainConns.set(0, [{ node: mergeComposite.mergeNode.name, type: 'main', index: 0 }]);
+			branchMainConns.set(0, [
+				{ node: mergeComposite.mergeNode.name, type: 'main', index: branchIndex },
+			]);
 			branchGraphNode.connections.set('main', branchMainConns);
-		}
+		});
 
 		// Add the merge node
 		const mergeConns = new Map<string, Map<number, ConnectionTarget[]>>();
@@ -533,6 +567,107 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return this.clone({
 			nodes: newNodes,
 			currentNode: mergeComposite.mergeNode.name,
+			currentOutput: 0,
+		});
+	}
+
+	/**
+	 * Handle IF branch composite - creates IF node with true/false branches
+	 */
+	private handleIfBranchComposite(composite: IfBranchComposite): WorkflowBuilder {
+		const newNodes = new Map(this._nodes);
+
+		// Add true branch node
+		const trueConns = new Map<string, Map<number, ConnectionTarget[]>>();
+		trueConns.set('main', new Map());
+		newNodes.set(composite.trueBranch.name, {
+			instance: composite.trueBranch,
+			connections: trueConns,
+		});
+
+		// Add false branch node
+		const falseConns = new Map<string, Map<number, ConnectionTarget[]>>();
+		falseConns.set('main', new Map());
+		newNodes.set(composite.falseBranch.name, {
+			instance: composite.falseBranch,
+			connections: falseConns,
+		});
+
+		// Add IF node with connections to both branches
+		const ifConns = new Map<string, Map<number, ConnectionTarget[]>>();
+		ifConns.set(
+			'main',
+			new Map([
+				[0, [{ node: composite.trueBranch.name, type: 'main', index: 0 }]],
+				[1, [{ node: composite.falseBranch.name, type: 'main', index: 0 }]],
+			]),
+		);
+		newNodes.set(composite.ifNode.name, {
+			instance: composite.ifNode,
+			connections: ifConns,
+		});
+
+		// Connect current node to IF node
+		if (this._currentNode) {
+			const currentGraphNode = newNodes.get(this._currentNode);
+			if (currentGraphNode) {
+				const mainConns = currentGraphNode.connections.get('main') || new Map();
+				const outputConns = mainConns.get(this._currentOutput) || [];
+				outputConns.push({ node: composite.ifNode.name, type: 'main', index: 0 });
+				mainConns.set(this._currentOutput, outputConns);
+				currentGraphNode.connections.set('main', mainConns);
+			}
+		}
+
+		// Return with IF node as current (allows chaining after both branches complete)
+		return this.clone({
+			nodes: newNodes,
+			currentNode: composite.ifNode.name,
+			currentOutput: 0,
+		});
+	}
+
+	/**
+	 * Handle Switch case composite - creates Switch node with case outputs
+	 */
+	private handleSwitchCaseComposite(composite: SwitchCaseComposite): WorkflowBuilder {
+		const newNodes = new Map(this._nodes);
+		const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
+		const mainConns = new Map<number, ConnectionTarget[]>();
+
+		// Add each case node and connect from switch at correct output index
+		composite.cases.forEach((caseNode, index) => {
+			const caseConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			caseConns.set('main', new Map());
+			newNodes.set(caseNode.name, {
+				instance: caseNode,
+				connections: caseConns,
+			});
+			mainConns.set(index, [{ node: caseNode.name, type: 'main', index: 0 }]);
+		});
+
+		// Add Switch node with all case connections
+		switchConns.set('main', mainConns);
+		newNodes.set(composite.switchNode.name, {
+			instance: composite.switchNode,
+			connections: switchConns,
+		});
+
+		// Connect current node to Switch node
+		if (this._currentNode) {
+			const currentGraphNode = newNodes.get(this._currentNode);
+			if (currentGraphNode) {
+				const currMainConns = currentGraphNode.connections.get('main') || new Map();
+				const outputConns = currMainConns.get(this._currentOutput) || [];
+				outputConns.push({ node: composite.switchNode.name, type: 'main', index: 0 });
+				currMainConns.set(this._currentOutput, outputConns);
+				currentGraphNode.connections.set('main', currMainConns);
+			}
+		}
+
+		return this.clone({
+			nodes: newNodes,
+			currentNode: composite.switchNode.name,
 			currentOutput: 0,
 		});
 	}
@@ -762,6 +897,14 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 					...this,
 					config: { ...this.config, ...config },
 				};
+			},
+			then: function () {
+				throw new Error(
+					'Nodes from fromJSON() do not support then() - use workflow builder methods',
+				);
+			},
+			getConnections: function () {
+				return [];
 			},
 		};
 

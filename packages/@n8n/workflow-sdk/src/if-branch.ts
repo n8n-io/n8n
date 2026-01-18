@@ -1,0 +1,92 @@
+import { v4 as uuid } from 'uuid';
+import type { IfBranchComposite, NodeInstance, NodeConfig, DeclaredConnection } from './types/base';
+import type { IfV23Params } from './types/generated/nodes/n8n-nodes-base/if';
+
+/**
+ * Extended config for IF branch that includes version and id
+ */
+export interface IfBranchConfig extends NodeConfig<IfV23Params> {
+	/** Node version (defaults to 2.3) */
+	version?: number | string;
+	/** Node ID (auto-generated if omitted) */
+	id?: string;
+}
+
+/**
+ * Internal IF node implementation
+ */
+class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknown> {
+	readonly type = 'n8n-nodes-base.if' as const;
+	readonly version: string;
+	readonly config: NodeConfig;
+	readonly id: string;
+	readonly name: string;
+
+	constructor(config?: IfBranchConfig) {
+		this.version = config?.version != null ? String(config.version) : '2.3';
+		this.id = config?.id ?? uuid();
+		this.name = config?.name ?? 'IF';
+		this.config = {
+			...config,
+			parameters: config?.parameters as NodeConfig['parameters'],
+		};
+	}
+
+	update(config: Partial<NodeConfig>): NodeInstance<'n8n-nodes-base.if', string, unknown> {
+		return new IfNodeInstance({ ...this.config, ...config } as NodeConfig<IfV23Params>);
+	}
+
+	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
+		throw new Error('IF node connections are managed by IfBranchComposite');
+	}
+
+	getConnections(): DeclaredConnection[] {
+		return [];
+	}
+}
+
+/**
+ * Internal IF branch composite implementation
+ */
+class IfBranchCompositeImpl implements IfBranchComposite {
+	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
+	readonly trueBranch: NodeInstance<string, string, unknown>;
+	readonly falseBranch: NodeInstance<string, string, unknown>;
+
+	constructor(
+		branches: [NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>],
+		config?: IfBranchConfig,
+	) {
+		this.ifNode = new IfNodeInstance(config);
+		this.trueBranch = branches[0]; // Output 0 = true
+		this.falseBranch = branches[1]; // Output 1 = false
+	}
+}
+
+/**
+ * Create an IF branching composite for conditional execution
+ *
+ * @param branches - Tuple of [trueBranch, falseBranch] nodes (output 0 and 1)
+ * @param config - Full IF node config including optional version and id
+ *
+ * @example
+ * ```typescript
+ * workflow('id', 'Test')
+ *   .add(trigger)
+ *   .then(ifBranch([truePath, falsePath], {
+ *     name: 'Check Value',
+ *     version: 2.2,
+ *     parameters: {
+ *       conditions: { conditions: [...] },
+ *       looseTypeValidation: false,
+ *     },
+ *   }))
+ *   .toJSON();
+ * ```
+ */
+export function ifBranch(
+	branches: [NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>],
+	config?: IfBranchConfig,
+): IfBranchComposite {
+	return new IfBranchCompositeImpl(branches, config);
+}

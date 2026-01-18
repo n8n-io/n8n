@@ -18,10 +18,66 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.2,
-			config: {
+		switchCase(
+			[
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							fileId: '={{ $json.message.voice.file_id }}',
+							resource: 'file',
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [760, -280],
+						name: 'Get Voice Message',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										name: 'text',
+										type: 'string',
+										value: '={{ $json.message.text }}',
+									},
+								],
+							},
+						},
+						position: [980, -80],
+						name: 'Set User Input',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										name: 'Error',
+										type: 'string',
+										value: 'An error has occurred',
+									},
+								],
+							},
+						},
+						position: [760, 120],
+						name: 'Set Error Message',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					rules: {
 						values: [
@@ -89,28 +145,9 @@ const wf = workflow(
 					},
 					options: {},
 				},
-				position: [540, -80],
 				name: 'Route by Input Type',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					fileId: '={{ $json.message.voice.file_id }}',
-					resource: 'file',
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [760, -280],
-				name: 'Get Voice Message',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -266,52 +303,6 @@ const wf = workflow(
 				},
 				position: [1640, -180],
 				name: 'Send Scenario to Telegram',
-			},
-		}),
-	)
-	.output(1)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								name: 'text',
-								type: 'string',
-								value: '={{ $json.message.text }}',
-							},
-						],
-					},
-				},
-				position: [980, -80],
-				name: 'Set User Input',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								name: 'Error',
-								type: 'string',
-								value: 'An error has occurred',
-							},
-						],
-					},
-				},
-				position: [760, 120],
-				name: 'Set Error Message',
 			},
 		}),
 	)

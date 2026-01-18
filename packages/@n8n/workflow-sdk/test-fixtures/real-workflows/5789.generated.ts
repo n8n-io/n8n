@@ -48,19 +48,194 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.1,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '6d582588-255e-4113-9811-3046c8f9861c',
+										name: 'discord_channel',
+										type: 'string',
+										value: '=1234567891',
+									},
+									{
+										id: 'f69cbf07-eb5c-4987-bdb1-bc7e851ac68b',
+										name: 'email',
+										type: 'string',
+										value: 'user@example.com',
+									},
+								],
+							},
+						},
+						position: [0, 2140],
+						name: 'medium4',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '6d582588-255e-4113-9811-3046c8f9861c',
+										name: 'discord_channel',
+										type: 'string',
+										value: '=1234567892',
+									},
+									{
+										id: 'f69cbf07-eb5c-4987-bdb1-bc7e851ac68b',
+										name: 'email',
+										type: 'string',
+										value: 'user@example.com',
+									},
+								],
+							},
+						},
+						position: [0, 2400],
+						name: 'medium5',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '6d582588-255e-4113-9811-3046c8f9861c',
+										name: 'discord_channel',
+										type: 'string',
+										value: '=1234567893',
+									},
+									{
+										id: 'f69cbf07-eb5c-4987-bdb1-bc7e851ac68b',
+										name: 'email',
+										type: 'string',
+										value: 'user@example.com',
+									},
+								],
+							},
+						},
+						position: [-20, 1860],
+						name: 'medium6',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: {
+						parameters: {
+							options: {},
+							assignments: {
+								assignments: [
+									{
+										id: '6d582588-255e-4113-9811-3046c8f9861c',
+										name: 'discord_channel',
+										type: 'string',
+										value: '=1234567894',
+									},
+									{
+										id: 'f69cbf07-eb5c-4987-bdb1-bc7e851ac68b',
+										name: 'email',
+										type: 'string',
+										value: 'user@example.com',
+									},
+								],
+							},
+						},
+						position: [-20, 1560],
+						name: 'medium7',
+					},
+				}),
+				trigger({
+					type: 'n8n-nodes-base.gmailTrigger',
+					version: 1.2,
+					config: {
+						parameters: {
+							simple: false,
+							filters: {},
+							options: {},
+							pollTimes: { item: [{ mode: 'everyMinute' }] },
+						},
+						credentials: {
+							gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+						},
+						position: [-220, 1560],
+					},
+				}),
+				trigger({
+					type: 'n8n-nodes-base.gmailTrigger',
+					version: 1.2,
+					config: {
+						parameters: {
+							simple: false,
+							filters: {},
+							options: {},
+							pollTimes: { item: [{ mode: 'everyMinute' }] },
+						},
+						credentials: {
+							gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+						},
+						position: [-200, 1860],
+						name: 'Gmail Trigger1',
+					},
+				}),
+				trigger({
+					type: 'n8n-nodes-base.gmailTrigger',
+					version: 1.2,
+					config: {
+						parameters: {
+							simple: false,
+							filters: {},
+							options: {},
+							pollTimes: { item: [{ mode: 'everyMinute' }] },
+						},
+						credentials: {
+							gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+						},
+						position: [-200, 2400],
+						name: 'Gmail Trigger2',
+					},
+				}),
+				trigger({
+					type: 'n8n-nodes-base.gmailTrigger',
+					version: 1.2,
+					config: {
+						parameters: {
+							simple: false,
+							filters: {},
+							options: {},
+							pollTimes: { item: [{ mode: 'everyMinute' }] },
+						},
+						credentials: {
+							gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+						},
+						position: [-200, 2140],
+						name: 'Gmail Trigger3',
+					},
+				}),
+			],
+			{
+				version: 3.1,
 				parameters: {
 					mode: 'combine',
 					options: {},
 					combineBy: 'combineByPosition',
 				},
-				position: [380, 1600],
 				name: 'Merge4',
 			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -239,36 +414,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '6d582588-255e-4113-9811-3046c8f9861c',
-								name: 'discord_channel',
-								type: 'string',
-								value: '=1234567893',
-							},
-							{
-								id: 'f69cbf07-eb5c-4987-bdb1-bc7e851ac68b',
-								name: 'email',
-								type: 'string',
-								value: 'user@example.com',
-							},
-						],
-					},
-				},
-				position: [-20, 1860],
-				name: 'medium6',
-			},
-		}),
-	)
 	.add(
 		trigger({
 			type: 'n8n-nodes-base.gmailTrigger',
@@ -288,36 +433,6 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '6d582588-255e-4113-9811-3046c8f9861c',
-								name: 'discord_channel',
-								type: 'string',
-								value: '=1234567892',
-							},
-							{
-								id: 'f69cbf07-eb5c-4987-bdb1-bc7e851ac68b',
-								name: 'email',
-								type: 'string',
-								value: 'user@example.com',
-							},
-						],
-					},
-				},
-				position: [0, 2400],
-				name: 'medium5',
-			},
-		}),
-	)
 	.add(
 		trigger({
 			type: 'n8n-nodes-base.gmailTrigger',
@@ -334,36 +449,6 @@ const wf = workflow('', '')
 				},
 				position: [-200, 2140],
 				name: 'Gmail Trigger3',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			config: {
-				parameters: {
-					options: {},
-					assignments: {
-						assignments: [
-							{
-								id: '6d582588-255e-4113-9811-3046c8f9861c',
-								name: 'discord_channel',
-								type: 'string',
-								value: '=1234567891',
-							},
-							{
-								id: 'f69cbf07-eb5c-4987-bdb1-bc7e851ac68b',
-								name: 'email',
-								type: 'string',
-								value: 'user@example.com',
-							},
-						],
-					},
-				},
-				position: [0, 2140],
-				name: 'medium4',
 			},
 		}),
 	)

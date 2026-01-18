@@ -95,27 +95,71 @@ const wf = workflow('', 'LinkedIn AI Content Automation - Agentic Vibe', { execu
 			},
 		}),
 	)
-	.output(0)
 	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					prompt:
-						"=Generate an image for a linkedin post this is the description: {{ $json.output['image description'] }} .The images should be realistic for linkedin.",
-					options: {},
-					resource: 'image',
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [420, 460],
-				name: 'OpenAI',
-			},
-		}),
+		merge(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							prompt:
+								"=Generate an image for a linkedin post this is the description: {{ $json.output['image description'] }} .The images should be realistic for linkedin.",
+							options: {},
+							resource: 'image',
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [420, 460],
+						name: 'OpenAI',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2,
+					config: {
+						parameters: {
+							text: "=You are an SEO specialist for LinkedIn. Your task is to generate highly relevant and effective hashtags for the following post. Consider the post's content, target audience, and current LinkedIn trends to maximize visibility and engagement.\n\n<post_title>{{ $json.output['post title'] }}</post_title>\n<post_content>{{ $json.output['post content'] }}</post_content>\n\nPlease generate:\n1. **3-5 broad, high-volume hashtags** (e.g., #AI, #Marketing, #Business)\n2. **3-5 niche-specific hashtags** that are directly relevant to the post's core topic (e.g., #SocialMediaAutomation, #ContentCreationAI, #LinkedInMarketingTips)\n3. **1-2 trending/topical hashtags** if applicable (e.g., #FutureOfWork, #DigitalTransformation)\n\nPresent them as a comma-separated list.",
+							options: {},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
+										options: {},
+									},
+									credentials: {
+										openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+									},
+									name: 'OpenAI Chat Model2',
+								},
+							}),
+							outputParser: outputParser({
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								version: 1.2,
+								config: {
+									parameters: {
+										jsonSchemaExample:
+											'{\n  "post title": "Exciting New Feature Launch 🚀",\n  "post content": "After months of collaboration, testing, and fine-tuning, we\'re thrilled to introduce our latest product feature: Smart Insights. It helps users uncover meaningful patterns in their data with just a few clicks. This wouldn\'t have been possible without our incredible team and supportive community. We\'re excited for what\'s next — and we\'d love your feedback!",\n  "image description": "A laptop screen showcasing the new Smart Insights dashboard with colorful charts and graphs, surrounded by a team clapping in the background.",\n"Hashtags":["#AI","#Automation"]\n}',
+									},
+									name: 'Structured Output Parser2',
+								},
+							}),
+						},
+						position: [420, 900],
+						name: 'Hashtag generator /SEO',
+					},
+				}),
+			],
+			{ version: 3.2 },
+		),
 	)
-	.then(node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [780, 640] } }))
 	.then(
 		node({
 			type: 'n8n-nodes-base.linkedIn',
@@ -131,50 +175,6 @@ const wf = workflow('', 'LinkedIn AI Content Automation - Agentic Vibe', { execu
 				},
 				position: [1060, 620],
 				name: 'LinkedIn',
-			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2,
-			config: {
-				parameters: {
-					text: "=You are an SEO specialist for LinkedIn. Your task is to generate highly relevant and effective hashtags for the following post. Consider the post's content, target audience, and current LinkedIn trends to maximize visibility and engagement.\n\n<post_title>{{ $json.output['post title'] }}</post_title>\n<post_content>{{ $json.output['post content'] }}</post_content>\n\nPlease generate:\n1. **3-5 broad, high-volume hashtags** (e.g., #AI, #Marketing, #Business)\n2. **3-5 niche-specific hashtags** that are directly relevant to the post's core topic (e.g., #SocialMediaAutomation, #ContentCreationAI, #LinkedInMarketingTips)\n3. **1-2 trending/topical hashtags** if applicable (e.g., #FutureOfWork, #DigitalTransformation)\n\nPresent them as a comma-separated list.",
-					options: {},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.2,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' },
-								options: {},
-							},
-							credentials: {
-								openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-							},
-							name: 'OpenAI Chat Model2',
-						},
-					}),
-					outputParser: outputParser({
-						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-						version: 1.2,
-						config: {
-							parameters: {
-								jsonSchemaExample:
-									'{\n  "post title": "Exciting New Feature Launch 🚀",\n  "post content": "After months of collaboration, testing, and fine-tuning, we\'re thrilled to introduce our latest product feature: Smart Insights. It helps users uncover meaningful patterns in their data with just a few clicks. This wouldn\'t have been possible without our incredible team and supportive community. We\'re excited for what\'s next — and we\'d love your feedback!",\n  "image description": "A laptop screen showcasing the new Smart Insights dashboard with colorful charts and graphs, surrounded by a team clapping in the background.",\n"Hashtags":["#AI","#Automation"]\n}',
-							},
-							name: 'Structured Output Parser2',
-						},
-					}),
-				},
-				position: [420, 900],
-				name: 'Hashtag generator /SEO',
 			},
 		}),
 	);

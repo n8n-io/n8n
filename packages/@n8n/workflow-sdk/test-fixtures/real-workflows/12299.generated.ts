@@ -63,10 +63,161 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.switch',
-			version: 3.4,
-			config: {
+		switchCase(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 1.7,
+					config: {
+						parameters: {
+							text: '=You are explaining ANY topic to a 5-year-old child using simple stories and fun examples.\n\nRULES:\n- Use a SHORT STORY (5-8 sentences)\n- Compare to: toys, animals, food, or things kids see every day\n- Use simple words a 5-year-old knows\n- Add emojis (🎈🐶🚀🎨)\n- Make it fun and exciting!\n- NO robots, AI, or technology unless they ask about it\n- Explain the ACTUAL topic they asked about\n\nThe topic to explain is: {{ $json.query }}\n\nTell a fun story that explains this topic!',
+							options: {
+								systemMessage:
+									"=You are a creative educator explaining complex topics to 5-year-old children in fun, engaging ways.\n\nYOUR MISSION: Take ANY concept and make it magical for young minds!\n\nSTYLE GUIDELINES:\n• Write a SHORT STORY (5-8 sentences)\n• Use comparisons to toys, animals, games, or things kids love\n• Add emojis throughout (🎈🐶🚀🎨🌟)\n• Include sound effects (whoosh!, zoom!, beep boop!)\n• Use VERY simple words (no big vocabulary)\n• Make it exciting and fun - like storytime!\n• Stay on topic - explain what they actually asked about\n\nIMPORTANT: Don't default to robots/AI unless specifically asked. If they ask about:\n- Medicine → Use body/health analogies\n- Nature → Use animals/plants analogies  \n- Technology → Use toys/games analogies\n- Science → Use magic/wonder analogies\n\nFORMATTING:\n- Use plain text (no ** or ### or markdown)\n- Use line breaks for paragraphs\n- Use emojis for visual interest\n\nQuestion to explain: {{ $json.query }}\n\nCreate a memorable, kid-friendly explanation! ✨\n",
+							},
+							promptType: 'define',
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.3,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+										options: {},
+										builtInTools: {},
+									},
+									name: 'OpenAI Chat Model',
+								},
+							}),
+						},
+						position: [1696, 304],
+						name: '5-Year-Old Story Mode',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 1.7,
+					config: {
+						parameters: {
+							text: '={{ $json.query }}',
+							options: {
+								systemMessage:
+									'=You are explaining concepts to teenagers (ages 13-17) in a relatable, engaging way.\n\nYOUR MISSION: Make ANY topic relevant to teen life and interests!\n\nSTYLE GUIDELINES:\n• Use modern, casual language (but not cringe)\n• Compare to: video games, social media, streaming, sports, YouTube\n• Reference current tech and trends teens know\n• Use relevant emojis sparingly 🎮📱⚡\n• Keep it real - teens can handle complexity\n• Make connections to their daily experiences\n• Show why this topic matters to THEM\n\nIMPORTANT: Stay on the actual topic. If they ask about:\n- Science → Connect to phones, games, or daily tech\n- History → Connect to movies, shows, or current events\n- Health → Connect to sports, fitness, or mental health\n- Business → Connect to social media, creators, or money\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for clarity\n- Use emojis sparingly 🎮📱\n\nQuestion to explain: {{ $json.query }}\n\nBe authentic and relatable - avoid being "teachy"!\n',
+							},
+							promptType: 'define',
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.3,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+										options: {},
+										builtInTools: {},
+									},
+									name: 'OpenAI Chat Model',
+								},
+							}),
+						},
+						position: [1696, 512],
+						name: 'Teenager Level',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 1.7,
+					config: {
+						parameters: {
+							text: '={{ $json.query }}',
+							options: {
+								systemMessage:
+									'=You are explaining concepts to college graduates with solid educational backgrounds.\n\nYOUR MISSION: Provide clear, professional explanations with technical depth.\n\nSTYLE GUIDELINES:\n• Use proper terminology and academic language\n• Include real-world applications and examples\n• Reference relevant frameworks, theories, or principles\n• Provide concrete data or evidence where applicable\n• Balance technical accuracy with accessibility\n• Assume strong general knowledge but not deep expertise\n• Connect to practical implications\n\nCOVERAGE:\n• Define key terms precisely\n• Explain mechanisms or processes\n• Discuss current applications\n• Mention related concepts or fields\n• Provide enough depth for understanding\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for sections\n- Be professional and clear\n\nQuestion to explain: {{ $json.query }}\n\nBe informative, accurate, and professionally thorough.\n',
+							},
+							promptType: 'define',
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.3,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+										options: {},
+										builtInTools: {},
+									},
+									name: 'OpenAI Chat Model',
+								},
+							}),
+						},
+						position: [1696, 720],
+						name: 'Graduate Level',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 1.7,
+					config: {
+						parameters: {
+							text: '={{ $json.query }}',
+							options: {
+								systemMessage:
+									'=You are explaining concepts to PhD-level researchers and domain experts.\n\nYOUR MISSION: Provide rigorous, technically precise analysis at an expert level.\n\nSTYLE GUIDELINES:\n• Use precise technical terminology without simplification\n• Reference current research, methodologies, and literature\n• Discuss theoretical frameworks and foundations\n• Explore edge cases, limitations, and open questions\n• Include mathematical formulations where relevant\n• Assume deep domain expertise\n• Address controversies or competing theories\n\nCOVERAGE:\n• Formal definitions and mathematical representations\n• Current state of research and recent developments\n• Methodological considerations\n• Theoretical implications\n• Research gaps and future directions\n• Critical analysis of approaches\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for structure\n- Be rigorous and detailed\n\nQuestion to explain: {{ $json.query }}\n\nProvide expert-level academic rigor and depth.\n',
+							},
+							promptType: 'define',
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.3,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+										options: {},
+										builtInTools: {},
+									},
+									name: 'OpenAI Chat Model',
+								},
+							}),
+						},
+						position: [1712, 928],
+						name: 'PhD Research Level',
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 1.7,
+					config: {
+						parameters: {
+							text: "={{ $('Extract Query Data').item.json.userQuery }}",
+							options: {
+								systemMessage:
+									'=You are explaining concepts to business executives and senior leaders.\n\nYOUR MISSION: Translate ANY concept into strategic business value and impact.\n\nSTYLE GUIDELINES:\n• Focus on practical business applications and ROI\n• Use business terminology (metrics, KPIs, strategy)\n• Include real-world case studies or examples\n• Discuss implementation challenges and solutions\n• Address risks, opportunities, and competitive advantage\n• Be concise - executives value efficiency\n• Connect to bottom-line impact\n\nCOVERAGE:\n• Business applications and use cases\n• Market implications and trends\n• Implementation considerations (cost, timeline, resources)\n• ROI and value proposition\n• Strategic advantages or risks\n• Competitive landscape\n• Decision-making framework\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for key points\n- Be concise and actionable\n\nQuestion to explain: {{ $json.query }}\n\nBe strategic, actionable, and focused on business outcomes.',
+							},
+							promptType: 'define',
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.3,
+								config: {
+									parameters: {
+										model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+										options: {},
+										builtInTools: {},
+									},
+									name: 'OpenAI Chat Model',
+								},
+							}),
+						},
+						position: [1728, 1136],
+						name: 'Business Executive Level',
+					},
+				}),
+			],
+			{
+				version: 3.4,
 				parameters: {
 					rules: {
 						values: [
@@ -195,42 +346,8 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 					},
 					options: {},
 				},
-				position: [1424, 736],
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 1.7,
-			config: {
-				parameters: {
-					text: '=You are explaining ANY topic to a 5-year-old child using simple stories and fun examples.\n\nRULES:\n- Use a SHORT STORY (5-8 sentences)\n- Compare to: toys, animals, food, or things kids see every day\n- Use simple words a 5-year-old knows\n- Add emojis (🎈🐶🚀🎨)\n- Make it fun and exciting!\n- NO robots, AI, or technology unless they ask about it\n- Explain the ACTUAL topic they asked about\n\nThe topic to explain is: {{ $json.query }}\n\nTell a fun story that explains this topic!',
-					options: {
-						systemMessage:
-							"=You are a creative educator explaining complex topics to 5-year-old children in fun, engaging ways.\n\nYOUR MISSION: Take ANY concept and make it magical for young minds!\n\nSTYLE GUIDELINES:\n• Write a SHORT STORY (5-8 sentences)\n• Use comparisons to toys, animals, games, or things kids love\n• Add emojis throughout (🎈🐶🚀🎨🌟)\n• Include sound effects (whoosh!, zoom!, beep boop!)\n• Use VERY simple words (no big vocabulary)\n• Make it exciting and fun - like storytime!\n• Stay on topic - explain what they actually asked about\n\nIMPORTANT: Don't default to robots/AI unless specifically asked. If they ask about:\n- Medicine → Use body/health analogies\n- Nature → Use animals/plants analogies  \n- Technology → Use toys/games analogies\n- Science → Use magic/wonder analogies\n\nFORMATTING:\n- Use plain text (no ** or ### or markdown)\n- Use line breaks for paragraphs\n- Use emojis for visual interest\n\nQuestion to explain: {{ $json.query }}\n\nCreate a memorable, kid-friendly explanation! ✨\n",
-					},
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.3,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-								options: {},
-								builtInTools: {},
-							},
-							name: 'OpenAI Chat Model',
-						},
-					}),
-				},
-				position: [1696, 304],
-				name: '5-Year-Old Story Mode',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -247,25 +364,76 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 2.1,
-			config: { position: [2368, 528], name: 'Child + Teen' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								'// Error Handler - Simple Content Extraction\nconst responseItem = $input.first().json;\n\n// Get original data\nconst originalItem = $("Route to Appropriate Level").all().find(item => \n  item.json.level === "5-year-old"\n);\n\nconst chatId = originalItem?.json.chatId || "unknown";\nconst query = originalItem?.json.query || "unknown";\nconst timestamp = originalItem?.json.timestamp || new Date().toISOString();\n\n// Extract content\nconst content = responseItem.output || \n                responseItem.text || \n                responseItem.message?.content || \n                "No response generated";\n\nconsole.log(\'5-year-old - Content extracted, length:\', content.length);\n\nreturn [{\n  json: {\n    level: "5-year-old",\n    emoji: "🧒",\n    title: "For a 5 Year Old",\n    content: content,\n    chatId: chatId,\n    query: query,\n    timestamp: timestamp\n  }\n}];',
+						},
+						position: [2048, 336],
+						name: '5-Year-Old',
+					},
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								'// Error Handler - Simple Content Extraction\nconst responseItem = $input.first().json;\n\n// Get original data\nconst originalItem = $("Route to Appropriate Level").all().find(item => \n  item.json.level === "teenager"\n);\n\nconst chatId = originalItem?.json.chatId || "unknown";\nconst query = originalItem?.json.query || "unknown";\nconst timestamp = originalItem?.json.timestamp || new Date().toISOString();\n\n// Extract content\nconst content = responseItem.output || \n                responseItem.text || \n                responseItem.message?.content || \n                "No response generated";\n\nconsole.log(\'teenager - Content extracted, length:\', content.length);\n\nreturn [{\n  json: {\n    level: "teenager",\n    emoji: "🎮",\n    title: "For a Teenager",\n    content: content,\n    chatId: chatId,\n    query: query,\n    timestamp: timestamp\n  }\n}];',
+						},
+						position: [2048, 544],
+						name: 'Teenager',
+					},
+				}),
+			],
+			{ version: 2.1, name: 'Child + Teen' },
+		),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 2.1,
-			config: { position: [2624, 704], name: 'First 4 Levels' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 2.1,
+					config: { position: [2368, 528], name: 'Child + Teen' },
+				}),
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 2.1,
+					config: { position: [2368, 880], name: 'Grad + PhD' },
+				}),
+			],
+			{ version: 2.1, name: 'First 4 Levels' },
+		),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 2.1,
-			config: { position: [2784, 896], name: 'All 5 Levels' },
-		}),
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.merge',
+					version: 2.1,
+					config: { position: [2624, 704], name: 'First 4 Levels' },
+				}),
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								'// Error Handler - Simple Content Extraction\nconst responseItem = $input.first().json;\n\n// Get original data\nconst originalItem = $("Route to Appropriate Level").all().find(item => \n  item.json.level === "business"\n);\n\nconst chatId = originalItem?.json.chatId || "unknown";\nconst query = originalItem?.json.query || "unknown";\nconst timestamp = originalItem?.json.timestamp || new Date().toISOString();\n\n// Extract content\nconst content = responseItem.output || \n                responseItem.text || \n                responseItem.message?.content || \n                "No response generated";\n\nconsole.log(\'business - Content extracted, length:\', content.length);\n\nreturn [{\n  json: {\n    level: "business",\n    emoji: "💼",\n    title: "Real-time Business Case",\n    content: content,\n    chatId: chatId,\n    query: query,\n    timestamp: timestamp\n  }\n}];',
+						},
+						position: [2048, 1168],
+						name: 'Business',
+					},
+				}),
+			],
+			{ version: 2.1, name: 'All 5 Levels' },
+		),
 	)
 	.then(
 		node({
@@ -343,86 +511,6 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 			},
 		}),
 	)
-	.output(1)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 1.7,
-			config: {
-				parameters: {
-					text: '={{ $json.query }}',
-					options: {
-						systemMessage:
-							'=You are explaining concepts to teenagers (ages 13-17) in a relatable, engaging way.\n\nYOUR MISSION: Make ANY topic relevant to teen life and interests!\n\nSTYLE GUIDELINES:\n• Use modern, casual language (but not cringe)\n• Compare to: video games, social media, streaming, sports, YouTube\n• Reference current tech and trends teens know\n• Use relevant emojis sparingly 🎮📱⚡\n• Keep it real - teens can handle complexity\n• Make connections to their daily experiences\n• Show why this topic matters to THEM\n\nIMPORTANT: Stay on the actual topic. If they ask about:\n- Science → Connect to phones, games, or daily tech\n- History → Connect to movies, shows, or current events\n- Health → Connect to sports, fitness, or mental health\n- Business → Connect to social media, creators, or money\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for clarity\n- Use emojis sparingly 🎮📱\n\nQuestion to explain: {{ $json.query }}\n\nBe authentic and relatable - avoid being "teachy"!\n',
-					},
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.3,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-								options: {},
-								builtInTools: {},
-							},
-							name: 'OpenAI Chat Model',
-						},
-					}),
-				},
-				position: [1696, 512],
-				name: 'Teenager Level',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						'// Error Handler - Simple Content Extraction\nconst responseItem = $input.first().json;\n\n// Get original data\nconst originalItem = $("Route to Appropriate Level").all().find(item => \n  item.json.level === "teenager"\n);\n\nconst chatId = originalItem?.json.chatId || "unknown";\nconst query = originalItem?.json.query || "unknown";\nconst timestamp = originalItem?.json.timestamp || new Date().toISOString();\n\n// Extract content\nconst content = responseItem.output || \n                responseItem.text || \n                responseItem.message?.content || \n                "No response generated";\n\nconsole.log(\'teenager - Content extracted, length:\', content.length);\n\nreturn [{\n  json: {\n    level: "teenager",\n    emoji: "🎮",\n    title: "For a Teenager",\n    content: content,\n    chatId: chatId,\n    query: query,\n    timestamp: timestamp\n  }\n}];',
-				},
-				position: [2048, 544],
-				name: 'Teenager',
-			},
-		}),
-	)
-	.output(2)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 1.7,
-			config: {
-				parameters: {
-					text: '={{ $json.query }}',
-					options: {
-						systemMessage:
-							'=You are explaining concepts to college graduates with solid educational backgrounds.\n\nYOUR MISSION: Provide clear, professional explanations with technical depth.\n\nSTYLE GUIDELINES:\n• Use proper terminology and academic language\n• Include real-world applications and examples\n• Reference relevant frameworks, theories, or principles\n• Provide concrete data or evidence where applicable\n• Balance technical accuracy with accessibility\n• Assume strong general knowledge but not deep expertise\n• Connect to practical implications\n\nCOVERAGE:\n• Define key terms precisely\n• Explain mechanisms or processes\n• Discuss current applications\n• Mention related concepts or fields\n• Provide enough depth for understanding\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for sections\n- Be professional and clear\n\nQuestion to explain: {{ $json.query }}\n\nBe informative, accurate, and professionally thorough.\n',
-					},
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.3,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-								options: {},
-								builtInTools: {},
-							},
-							name: 'OpenAI Chat Model',
-						},
-					}),
-				},
-				position: [1696, 720],
-				name: 'Graduate Level',
-			},
-		}),
-	)
 	.then(
 		node({
 			type: 'n8n-nodes-base.code',
@@ -439,46 +527,6 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 	)
 	.then(
 		node({
-			type: 'n8n-nodes-base.merge',
-			version: 2.1,
-			config: { position: [2368, 880], name: 'Grad + PhD' },
-		}),
-	)
-	.output(3)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 1.7,
-			config: {
-				parameters: {
-					text: '={{ $json.query }}',
-					options: {
-						systemMessage:
-							'=You are explaining concepts to PhD-level researchers and domain experts.\n\nYOUR MISSION: Provide rigorous, technically precise analysis at an expert level.\n\nSTYLE GUIDELINES:\n• Use precise technical terminology without simplification\n• Reference current research, methodologies, and literature\n• Discuss theoretical frameworks and foundations\n• Explore edge cases, limitations, and open questions\n• Include mathematical formulations where relevant\n• Assume deep domain expertise\n• Address controversies or competing theories\n\nCOVERAGE:\n• Formal definitions and mathematical representations\n• Current state of research and recent developments\n• Methodological considerations\n• Theoretical implications\n• Research gaps and future directions\n• Critical analysis of approaches\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for structure\n- Be rigorous and detailed\n\nQuestion to explain: {{ $json.query }}\n\nProvide expert-level academic rigor and depth.\n',
-					},
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.3,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-								options: {},
-								builtInTools: {},
-							},
-							name: 'OpenAI Chat Model',
-						},
-					}),
-				},
-				position: [1712, 928],
-				name: 'PhD Research Level',
-			},
-		}),
-	)
-	.then(
-		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
 			config: {
@@ -488,53 +536,6 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 				},
 				position: [2048, 960],
 				name: 'PhD',
-			},
-		}),
-	)
-	.output(4)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 1.7,
-			config: {
-				parameters: {
-					text: "={{ $('Extract Query Data').item.json.userQuery }}",
-					options: {
-						systemMessage:
-							'=You are explaining concepts to business executives and senior leaders.\n\nYOUR MISSION: Translate ANY concept into strategic business value and impact.\n\nSTYLE GUIDELINES:\n• Focus on practical business applications and ROI\n• Use business terminology (metrics, KPIs, strategy)\n• Include real-world case studies or examples\n• Discuss implementation challenges and solutions\n• Address risks, opportunities, and competitive advantage\n• Be concise - executives value efficiency\n• Connect to bottom-line impact\n\nCOVERAGE:\n• Business applications and use cases\n• Market implications and trends\n• Implementation considerations (cost, timeline, resources)\n• ROI and value proposition\n• Strategic advantages or risks\n• Competitive landscape\n• Decision-making framework\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for key points\n- Be concise and actionable\n\nQuestion to explain: {{ $json.query }}\n\nBe strategic, actionable, and focused on business outcomes.',
-					},
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-						version: 1.3,
-						config: {
-							parameters: {
-								model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
-								options: {},
-								builtInTools: {},
-							},
-							name: 'OpenAI Chat Model',
-						},
-					}),
-				},
-				position: [1728, 1136],
-				name: 'Business Executive Level',
-			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						'// Error Handler - Simple Content Extraction\nconst responseItem = $input.first().json;\n\n// Get original data\nconst originalItem = $("Route to Appropriate Level").all().find(item => \n  item.json.level === "business"\n);\n\nconst chatId = originalItem?.json.chatId || "unknown";\nconst query = originalItem?.json.query || "unknown";\nconst timestamp = originalItem?.json.timestamp || new Date().toISOString();\n\n// Extract content\nconst content = responseItem.output || \n                responseItem.text || \n                responseItem.message?.content || \n                "No response generated";\n\nconsole.log(\'business - Content extracted, length:\', content.length);\n\nreturn [{\n  json: {\n    level: "business",\n    emoji: "💼",\n    title: "Real-time Business Case",\n    content: content,\n    chatId: chatId,\n    query: query,\n    timestamp: timestamp\n  }\n}];',
-				},
-				position: [2048, 1168],
-				name: 'Business',
 			},
 		}),
 	)

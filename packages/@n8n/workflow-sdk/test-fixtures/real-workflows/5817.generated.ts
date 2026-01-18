@@ -186,18 +186,81 @@ const wf = workflow('sgcKe5gsmJFdEAe3', 'ai-trend-email-alerter-weaviate', { exe
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.merge',
-			version: 3.2,
-			config: {
+		merge(
+			[
+				node({
+					type: 'n8n-nodes-base.removeDuplicates',
+					version: 2,
+					config: {
+						parameters: { compare: '={{ $json.id }}', options: {} },
+						position: [1424, 752],
+					},
+				}),
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2,
+					config: {
+						parameters: {
+							text: '=Classify the following arXiv papers:\n\n```json\nTitle: {{ $json.title }}\nAbstract: {{ $json.summary }}',
+							options: {
+								systemMessage:
+									'=You are an expert AI agent designed to classify academic research papers. Your task is to analyze the provided arXiv paper data and categorize it based on its content.\n\nInput Data Schema:\nThe input data will be a JSON object with the following structure:\n\n{\n  "title": "string",\n  "summary": "string"\n}\n\nYou MUST respond with a JSON object containing the following fields:\n\n"primary_category": (string) The single most relevant primary category for the paper. You MUST choose one category from the following predefined list. Do NOT use any category not on this list.\n\n"secondary_categories": (array of strings) Up to two additional relevant secondary categories. These are optional; if no secondary categories apply, provide an empty array []. If chosen, they MUST also be from the predefined list.\n\n"potential_impact": (integer) An integer score from 1 to 5, judging the paper\'s potential impact based on these criteria:\n\n1: Papers with no new existing information or limited results.\n\n2: Papers with minor incremental contributions or limited novelty.\n\n3: Papers with solid contributions, good results, and clear utility, but not groundbreaking.\n\n4: Papers with significant advancements, novel approaches, or strong potential to influence the field.\n\n5: Papers that are potential game-changers, representing paradigm shifts, or opening entirely new research directions.\n\nPredefined Categories and Definitions:\n\nFoundation Models: Models trained on broad data at scale, designed to be adaptable to a wide range of downstream tasks (e.g., large language models, large vision models, multi-modal models).\n\nLLM Fine-tuning: Techniques and methodologies for adapting pre-trained Large Language Models (LLMs) to specific tasks or datasets.\n\nParameter-Efficient Fine-tuning (PEFT): Methods that enable efficient adaptation of large pre-trained models to new tasks with minimal computational cost, by updating only a small subset of parameters (e.g., LoRA, Prompt Tuning).\n\nRetrieval-Augmented Generation (RAG): Architectures or systems that combine generative models (like LLMs) with information retrieval mechanisms to enhance the factual accuracy and relevance of generated outputs by referencing external knowledge bases.\n\nModel Quantization: Techniques for reducing the precision of model parameters (e.g., from float32 to int8) to decrease model size, memory footprint, and computational requirements, often for efficient deployment on edge devices.\n\nAgentic AI / AI Agents: Systems designed for autonomous decision-making, planning, and action in dynamic environments, often involving reasoning, memory, and tool use.\n\nMultimodality: Models capable of processing, understanding, and generating content across multiple data types or modalities (e.g., text and images, audio and video).\n\nReinforcement Learning: A paradigm where an agent learns to make decisions by performing actions in an environment to maximize a cumulative reward, often through trial and error.\n\nComputer Vision (Specific Techniques): Papers focusing on particular computer vision tasks or methodologies that are not primarily about foundation models (e.g., 3D reconstruction, object detection, image segmentation, pose estimation).\n\nNatural Language Processing (Specific Techniques): Papers focusing on particular NLP tasks or methodologies that are not primarily about foundation models or LLM fine-tuning (e.g., text summarization, machine translation, sentiment analysis, named entity recognition).\n\nEthical AI / AI Safety: Research addressing the societal implications of AI, including fairness, bias detection and mitigation, interpretability, transparency, privacy, and alignment with human values.\n\nEfficient AI / AI Optimization: Techniques aimed at improving the computational efficiency, speed, or resource usage of AI models beyond just quantization, including architecture search, inference optimization, and hardware-aware design.\n\nData-centric AI: Approaches that prioritize improving the quality, quantity, and organization of data used to train AI models, rather than solely focusing on model architecture improvements.\n\nOther: A catch-all category for articles that don\'t fall into one of the classes mentioned above.\n\nFocus solely on the content of the paper\'s title, summary, and categories to make your classification. Do NOT include any conversational text or explanations in your response, only the JSON object.',
+							},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+								version: 1,
+								config: {
+									parameters: { model: 'anthropic/claude-3.7-sonnet', options: {} },
+									credentials: {
+										openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+									},
+									name: 'OpenRouter Chat Model1',
+								},
+							}),
+							outputParser: outputParser({
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								version: 1.3,
+								config: {
+									parameters: {
+										autoFix: true,
+										jsonSchemaExample:
+											'{\n	"primary_category": "LLM Fine-tuning",\n	"secondary_categories": ["Parameter-Efficient Fine-tuning (PEFT)", "Data-centric AI"],\n    "potential_impact": 1\n}',
+									},
+									subnodes: {
+										model: languageModel({
+											type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+											version: 1,
+											config: {
+												parameters: { model: 'anthropic/claude-3.7-sonnet', options: {} },
+												credentials: {
+													openRouterApi: { id: 'credential-id', name: 'openRouterApi Credential' },
+												},
+												name: 'OpenRouter Chat Model2',
+											},
+										}),
+									},
+									name: 'Structured Output Parser1',
+								},
+							}),
+						},
+						position: [1984, 752],
+						name: 'Enrich Articles with Topic Classification',
+					},
+				}),
+			],
+			{
+				version: 3.2,
 				parameters: {
 					mode: 'combine',
 					options: {},
 					combineBy: 'combineByPosition',
 				},
-				position: [2704, 752],
 			},
-		}),
+		),
 	)
 	.then(
 		node({
