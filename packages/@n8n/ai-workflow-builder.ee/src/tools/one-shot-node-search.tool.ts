@@ -27,12 +27,12 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 				return `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Description: ${node.description}`;
 			});
 
-			return `Found ${results.length} nodes matching "${input.query}":\n\n${resultLines.join('\n\n')}`;
+			return `Found ${results.length} nodes matching "${input.query}":\n\n${resultLines.join('\n\n')}\n\nUse get_node to see the full TypeScript type definition for any of these nodes.`;
 		},
 		{
 			name: 'search_node',
 			description:
-				'Search for n8n nodes by name or service. Returns a list of node IDs matching the query. Use this when you need to find nodes for a specific integration or service (e.g., "salesforce", "gmail", "http").',
+				'Search for n8n nodes by name or service. Returns a list of node IDs matching the query. Use this when you need to find nodes for a specific integration or service (e.g., "salesforce", "http", "gmail").',
 			schema: z.object({
 				query: z.string().describe('Search query (e.g., "salesforce", "http", "gmail")'),
 			}),

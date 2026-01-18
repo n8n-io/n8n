@@ -115,8 +115,9 @@ export class OneShotWorkflowCodeAgent {
 
 			const prompt = this.buildPrompt(currentWorkflowCode);
 
-			// Bind tools to LLM
-			const llmWithTools = this.bindTools(this.llm);
+			// Bind tools to LLM and structure the output
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const llmWithTools = this.bindTools(this.llm) as any;
 
 			// Structure the output
 			const structuredLlm =
@@ -208,9 +209,9 @@ export class OneShotWorkflowCodeAgent {
 	/**
 	 * Bind search and get tools to the LLM
 	 */
-	private bindTools(llm: BaseChatModel): any {
+	private bindTools(llm: BaseChatModel): unknown {
 		const searchTool = createOneShotNodeSearchTool(this.nodeTypeParser);
-		const getTool = createOneShotNodeGetTool(this.nodeTypeParser);
+		const getTool = createOneShotNodeGetTool();
 
 		// bindTools returns a Runnable, not BaseChatModel
 		// Check if bindTools exists (it should for ChatAnthropic)
