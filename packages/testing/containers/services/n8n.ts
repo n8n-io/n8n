@@ -210,6 +210,12 @@ export async function createN8NInstances(
 		})),
 	];
 
+	// Service-only mode: no n8n containers needed
+	if (instances.length === 0) {
+		log('No n8n instances requested (service-only mode)');
+		return { containers, environment };
+	}
+
 	// Start main 1 first (handles DB migrations/setup)
 	const [main1, ...remaining] = instances;
 	log(`Starting main 1: ${main1.name} (DB setup)`);
