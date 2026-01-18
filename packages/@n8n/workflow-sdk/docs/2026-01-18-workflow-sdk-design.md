@@ -185,7 +185,7 @@ node<OutputType>(type, version, {
 | `notes` | `string` | - | Node documentation |
 | `notesInFlow` | `boolean` | `false` | Display notes on canvas |
 
-**Error output branch:** When `onError: 'continueErrorOutput'`, the node has two outputs:
+**Error output branch:** When `onError: 'continueErrorOutput'` is set, the node gets a second output:
 
 ```typescript
 const agent = node('n8n-nodes-langchain.agent', 'v3', {
@@ -195,8 +195,8 @@ const agent = node('n8n-nodes-langchain.agent', 'v3', {
 
 wf.add(trigger(...))
   .then(agent)
-  .output(0).then(successHandler)   // Success branch
-  .output(1).then(errorHandler);    // Error branch
+  .output(0).then(successHandler)   // Success output
+  .output(1).then(errorHandler);    // Error output
 ```
 
 Output typing is provided via the generic parameter `<OutputType>` rather than a schema property. This is simpler for LLM authorship and sufficient since n8n doesn't validate outputs at runtime (except for agent structured output which requires a schema - see below).
