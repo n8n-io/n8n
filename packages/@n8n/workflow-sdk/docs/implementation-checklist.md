@@ -17,12 +17,12 @@
 ## Public API (`src/index.ts`)
 
 - [ ] Export `workflow(id, name, settings?)` function
-- [ ] Export `node(type, version, config)` function
-- [ ] Export `trigger(type, version, config)` function
+- [x] Export `node(type, version, config)` function
+- [x] Export `trigger(type, version, config)` function
 - [ ] Export `merge(branches, config)` function
-- [ ] Export `sticky(content, config?)` function
+- [x] Export `sticky(content, config?)` function
 - [ ] Export `splitInBatches(version, config)` function
-- [ ] Export `placeholder(hint)` function
+- [x] Export `placeholder(hint)` function
 - [ ] Export `runOnceForAllItems<T>(fn)` helper
 - [ ] Export `runOnceForEachItem<T>(fn)` helper
 
@@ -63,26 +63,26 @@
 
 ### Core Node Properties
 
-- [ ] `parameters` - node-specific configuration
-- [ ] `credentials` - credential references `{ type: { name, id } }`
+- [x] `parameters` - node-specific configuration
+- [x] `credentials` - credential references `{ type: { name, id } }`
 - [ ] `subnodes` - for AI nodes (model, memory, tools, outputParser)
-- [ ] `name` - custom node name (auto-generate if omitted)
-- [ ] `position` - canvas position `[x, y]`
-- [ ] `disabled` - whether node is disabled
-- [ ] `notes` - node documentation
-- [ ] `notesInFlow` - show notes on canvas
+- [x] `name` - custom node name (auto-generate if omitted)
+- [x] `position` - canvas position `[x, y]`
+- [x] `disabled` - whether node is disabled
+- [x] `notes` - node documentation
+- [x] `notesInFlow` - show notes on canvas
 
 ### Execution Behavior Properties
 
-- [ ] `executeOnce` - execute only once (not per item)
-- [ ] `retryOnFail` - retry on failure
-- [ ] `alwaysOutputData` - output data even if empty
-- [ ] `onError` - error handling ('stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput')
-- [ ] `pinData` - pinned output data for testing
+- [x] `executeOnce` - execute only once (not per item)
+- [x] `retryOnFail` - retry on failure
+- [x] `alwaysOutputData` - output data even if empty
+- [x] `onError` - error handling ('stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput')
+- [x] `pinData` - pinned output data for testing
 
 ### Generic Output Type
 
-- [ ] Support `node<OutputType>(...)` for type inference
+- [x] Support `node<OutputType>(...)` for type inference
 - [ ] Downstream nodes receive typed `$.json` from generic
 
 ---
@@ -103,15 +103,15 @@
 
 ## Sticky Notes (`src/sticky.ts`)
 
-- [ ] `sticky(content, config?)` function
-- [ ] Support `color` (1-7)
-- [ ] Support `position` `[x, y]`
-- [ ] Support `width` / `height`
-- [ ] Support `name`
+- [x] `sticky(content, config?)` function
+- [x] Support `color` (1-7)
+- [x] Support `position` `[x, y]`
+- [x] Support `width` / `height`
+- [x] Support `name`
 - [ ] Support `nodes` array for auto-positioning
 - [ ] Calculate bounding box from node positions
 - [ ] Add padding around wrapped nodes
-- [ ] Sticky notes don't participate in node chain
+- [x] Sticky notes don't participate in node chain
 
 ---
 
@@ -127,8 +127,8 @@
 
 ## Placeholder (`src/placeholder.ts`)
 
-- [ ] `placeholder(hint)` function
-- [ ] Serializes to `<__PLACEHOLDER_VALUE__hint__>`
+- [x] `placeholder(hint)` function
+- [x] Serializes to `<__PLACEHOLDER_VALUE__hint__>`
 - [ ] Parse placeholders on JSON import
 
 ---

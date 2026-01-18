@@ -36,20 +36,14 @@ export type {
 // Workflow builder (to be implemented)
 // export { workflow } from './workflow-builder';
 
-// Node builders (to be implemented)
-// export { node, trigger } from './node-builder';
+// Node builders
+export { node, trigger, sticky, placeholder } from './node-builder';
 
 // Merge composite (to be implemented)
 // export { merge } from './merge';
 
-// Sticky notes (to be implemented)
-// export { sticky } from './sticky';
-
 // Split in batches (to be implemented)
 // export { splitInBatches } from './split-in-batches';
-
-// Placeholder (to be implemented)
-// export { placeholder } from './placeholder';
 
 // Code helpers (to be implemented)
 // export { runOnceForAllItems, runOnceForEachItem } from './code-helpers';
