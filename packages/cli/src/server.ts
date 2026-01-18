@@ -61,6 +61,7 @@ import '@/evaluation.ee/test-runs.controller.ee';
 import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/webhooks/webhooks.controller';
+import '@/security-audit/security-audit.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';

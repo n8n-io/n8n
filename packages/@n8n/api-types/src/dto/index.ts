@@ -116,3 +116,5 @@ export {
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
+
+export { RunSecurityAuditRequestDto } from './security-audit/run-security-audit.dto';

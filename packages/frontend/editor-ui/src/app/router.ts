@@ -771,6 +771,28 @@ export const routes: RouteRecordRaw[] = [
 					},
 				},
 			},
+			{
+				path: 'security-audit',
+				name: VIEWS.SECURITY_AUDIT,
+				component: async () =>
+					await import('@/features/settings/securityAudit/views/SettingsSecurityAuditView.vue'),
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'securityAudit:generate',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security-audit',
+							};
+						},
+					},
+				},
+			},
 		],
 	},
 	{
