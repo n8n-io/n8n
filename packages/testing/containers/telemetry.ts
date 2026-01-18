@@ -1,3 +1,4 @@
+import { spawn } from 'child_process';
 import * as os from 'os';
 
 import type { StackConfig } from './services/types';
@@ -171,7 +172,7 @@ export class TelemetryRecorder {
 	 * Flush telemetry - outputs based on environment configuration
 	 *
 	 * Output modes:
-	 * - CONTAINER_TELEMETRY_WEBHOOK: Send to webhook (fire and forget)
+	 * - CONTAINER_TELEMETRY_WEBHOOK: Send via detached process (non-blocking, survives parent exit)
 	 * - CONTAINER_TELEMETRY_VERBOSE=1: Full breakdown + elapsed logs (via utils.ts)
 	 * - Default: One-liner summary only
 	 */
@@ -182,7 +183,7 @@ export class TelemetryRecorder {
 		const webhookUrl = process.env.CONTAINER_TELEMETRY_WEBHOOK;
 
 		if (webhookUrl) {
-			void this.sendToWebhook(record, webhookUrl);
+			this.sendToWebhook(record, webhookUrl);
 		}
 
 		if (isVerbose) {
@@ -205,12 +206,26 @@ export class TelemetryRecorder {
 		}
 	}
 
+	/**
+	 * Send telemetry via a detached child process.
+	 * The process runs independently and survives parent exit, ensuring delivery
+	 * even when the main process throws/exits immediately after flush().
+	 */
 	private sendToWebhook(record: StackTelemetryRecord, webhookUrl: string): void {
-		fetch(webhookUrl, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(record),
-		}).catch(() => {});
+		const payload = JSON.stringify(record);
+		const script = `
+			fetch(process.argv[1], {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: process.argv[2]
+			}).catch(() => process.exit(1));
+		`;
+
+		const child = spawn(process.execPath, ['-e', script, webhookUrl, payload], {
+			detached: true,
+			stdio: 'ignore',
+		});
+		child.unref();
 	}
 
 	private formatMs(ms: number): string {
