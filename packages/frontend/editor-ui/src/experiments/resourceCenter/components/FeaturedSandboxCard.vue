@@ -1,8 +1,27 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/app/stores/ui.store';
 import { N8nButton, N8nIcon } from '@n8n/design-system';
 import type { QuickStartWorkflow } from '../data/quickStartWorkflows';
+
+// Static workflow preview images - light mode
+import chatLight from '../workflow-previews/chat.png';
+import summarizeLight from '../workflow-previews/summarize.png';
+
+// Static workflow preview images - dark mode
+import chatDark from '../workflow-previews/chat-dark.png';
+import summarizeDark from '../workflow-previews/summarize-dark.png';
+
+const previewImagesLight: Record<string, string> = {
+	'chat-with-the-news': chatLight,
+	'summarize-the-news': summarizeLight,
+};
+
+const previewImagesDark: Record<string, string> = {
+	'chat-with-the-news': chatDark,
+	'summarize-the-news': summarizeDark,
+};
 
 const props = defineProps<{
 	workflow: QuickStartWorkflow;
@@ -13,9 +32,17 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const uiStore = useUIStore();
+
+const isDarkMode = computed(() => uiStore.appliedTheme === 'dark');
 
 const nodeCount = computed(() => {
 	return props.workflow.nodeCount ?? props.workflow.workflow.nodes?.length ?? 0;
+});
+
+const previewImage = computed(() => {
+	const images = isDarkMode.value ? previewImagesDark : previewImagesLight;
+	return images[props.workflow.id] ?? props.workflow.previewImageUrl ?? null;
 });
 
 const handleClick = () => {
@@ -26,12 +53,7 @@ const handleClick = () => {
 <template>
 	<div :class="$style.card" @click="handleClick">
 		<div :class="$style.imageContainer">
-			<img
-				v-if="workflow.previewImageUrl"
-				:src="workflow.previewImageUrl"
-				:alt="workflow.name"
-				:class="$style.image"
-			/>
+			<img v-if="previewImage" :src="previewImage" :alt="workflow.name" :class="$style.image" />
 			<div v-else :class="$style.imagePlaceholder" />
 		</div>
 		<div :class="$style.content">
