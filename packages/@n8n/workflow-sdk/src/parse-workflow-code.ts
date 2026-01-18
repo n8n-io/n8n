@@ -37,27 +37,38 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 	const executableCode = code;
 
 	// Create a function that takes our SDK functions and returns the workflow
-	// eslint-disable-next-line @typescript-eslint/no-implied-eval
-	const factory = new Function(
-		'workflow',
-		'node',
-		'trigger',
-		'sticky',
-		'languageModel',
-		'memory',
-		'tool',
-		'outputParser',
-		'embedding',
-		'vectorStore',
-		'retriever',
-		'documentLoader',
-		'textSplitter',
-		'merge',
-		'ifBranch',
-		'switchCase',
-		'splitInBatches',
-		executableCode,
-	);
+	let factory: ReturnType<typeof Function>;
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		factory = new Function(
+			'workflow',
+			'node',
+			'trigger',
+			'sticky',
+			'languageModel',
+			'memory',
+			'tool',
+			'outputParser',
+			'embedding',
+			'vectorStore',
+			'retriever',
+			'documentLoader',
+			'textSplitter',
+			'merge',
+			'ifBranch',
+			'switchCase',
+			'splitInBatches',
+			executableCode,
+		);
+	} catch (error) {
+		if (error instanceof SyntaxError) {
+			throw new SyntaxError(
+				`Failed to parse workflow code due to syntax error: ${error.message}. ` +
+					`Common causes include unclosed template literals, missing commas, or unbalanced brackets.`,
+			);
+		}
+		throw error;
+	}
 
 	// Execute with our SDK functions (including subnode factories and composites)
 	const wf = factory(
