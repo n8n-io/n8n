@@ -156,14 +156,36 @@ All node configuration is passed as a single object:
 
 ```typescript
 node<OutputType>(type, version, {
+  // Core
   parameters: { ... },      // Node-specific parameters
   subnodes?: { ... },       // For AI nodes with subnode inputs
   credentials?: { ... },    // Credential references
+
+  // Display
+  name?: string,            // Custom node name (auto-generated if omitted)
   position?: [x, y],        // Canvas position
   disabled?: boolean,       // Whether node is disabled
-  name?: string,            // Custom node name (auto-generated if omitted)
+  notes?: string,           // Node notes/documentation
+  notesInFlow?: boolean,    // Show notes on canvas
+
+  // Execution behavior
+  executeOnce?: boolean,    // Execute only once (not per item)
+  retryOnFail?: boolean,    // Retry on failure
+  alwaysOutputData?: boolean, // Output data even if empty
+  onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput',
 });
 ```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `executeOnce` | `boolean` | `false` | Execute only once instead of per item |
+| `retryOnFail` | `boolean` | `false` | Retry execution on failure |
+| `alwaysOutputData` | `boolean` | `false` | Output data even when empty |
+| `onError` | `string` | `'stopWorkflow'` | Error handling: stop, continue, or create error output |
+| `notes` | `string` | - | Node documentation |
+| `notesInFlow` | `boolean` | `false` | Display notes on canvas |
+
+**Note:** `onError: 'continueErrorOutput'` creates a second error output branch for the node.
 
 Output typing is provided via the generic parameter `<OutputType>` rather than a schema property. This is simpler for LLM authorship and sufficient since n8n doesn't validate outputs at runtime (except for agent structured output which requires a schema - see below).
 
