@@ -202,21 +202,37 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			});
 		}
 
+		// Check for the known LangChain Gemini reduce error
+		// This occurs when Gemini returns a response with undefined 'parts' in the candidate content
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		const isGeminiReduceError = errorMessage.includes(
+			"Cannot read properties of undefined (reading 'reduce')",
+		);
+
 		if (error instanceof NodeError) {
 			if (this.options.errorDescriptionMapper) {
 				error.description = this.options.errorDescriptionMapper(error);
+			} else if (isGeminiReduceError && !error.description) {
+				error.description =
+					'The model returned a malformed response. This is an intermittent issue - please try running your workflow again.';
 			}
 
 			this.executionFunctions.addOutputData(this.connectionType, runDetails.index, error);
 		} else {
 			// If the error is not a NodeError, we wrap it in a NodeOperationError
-			this.executionFunctions.addOutputData(
-				this.connectionType,
-				runDetails.index,
-				new NodeOperationError(this.executionFunctions.getNode(), error as JsonObject, {
+			const nodeError = new NodeOperationError(
+				this.executionFunctions.getNode(),
+				error as JsonObject,
+				{
 					functionality: 'configuration-node',
-				}),
+					...(isGeminiReduceError && {
+						message: 'Model returned a malformed response',
+						description:
+							'This is an intermittent issue with the model - please try running your workflow again. If the problem persists, try simplifying your prompt.',
+					}),
+				},
 			);
+			this.executionFunctions.addOutputData(this.connectionType, runDetails.index, nodeError);
 		}
 
 		logAiEvent(this.executionFunctions, 'ai-llm-errored', {
