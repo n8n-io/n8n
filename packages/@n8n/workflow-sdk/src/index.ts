@@ -50,3 +50,13 @@ export { serializeExpression, parseExpression, isExpression, expr } from './expr
 
 // Code helpers
 export { runOnceForAllItems, runOnceForEachItem } from './code-helpers';
+
+// Validation
+export {
+	validateWorkflow,
+	ValidationError,
+	ValidationWarning,
+	type ValidationResult,
+	type ValidationOptions,
+	type ValidationErrorCode,
+} from './validation';

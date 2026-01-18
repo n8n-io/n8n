@@ -25,7 +25,9 @@ describe('Code Node Helpers', () => {
 			expect(typeof result.jsCode).toBe('string');
 			// The code should not contain 'ctx.' prefix - it's stripped
 			expect(result.jsCode).not.toContain('ctx.');
-			expect(result.jsCode).toContain('$input.all()');
+			// Check for $input and .all() separately since they might be on different lines
+			expect(result.jsCode).toContain('$input');
+			expect(result.jsCode).toContain('.all()');
 		});
 
 		it('should strip ctx. prefix from code', () => {

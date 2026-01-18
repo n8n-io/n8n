@@ -271,12 +271,12 @@
 
 ### Schema Validation (`schema.ts`)
 
-- [ ] Validate workflow structure before export
-- [ ] Validate required node parameters
+- [x] Validate workflow structure before export
+- [x] Validate required node parameters (strict mode)
 - [ ] Validate credential references
 - [ ] Validate connection integrity
 - [ ] Validate expression syntax
-- [ ] Surface clear error messages
+- [x] Surface clear error messages
 
 ---
 
