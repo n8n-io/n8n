@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util';
 import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
+import type { CloudflaredResult } from './services/cloudflared';
 import type { KeycloakResult } from './services/keycloak';
 import type { TracingResult } from './services/tracing';
 import type { ServiceName } from './services/types';
@@ -47,6 +48,7 @@ ${colors.yellow}Options:${colors.reset}
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
   --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
   --tracing         Enable tracing stack (n8n-tracer + Jaeger) for workflow visualization
+  --tunnel          Enable Cloudflare Tunnel for public URL (via trycloudflare.com)
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -87,6 +89,9 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# With tracing stack (Jaeger UI for workflow execution visualization)${colors.reset}
   npm run stack --queue --tracing
 
+  ${colors.bright}# With public tunnel (webhooks accessible from internet)${colors.reset}
+  npm run stack --tunnel
+
   ${colors.bright}# Custom scaling${colors.reset}
   npm run stack --queue --mains 3 --workers 5
 
@@ -123,6 +128,7 @@ async function main() {
 			oidc: { type: 'boolean' },
 			observability: { type: 'boolean' },
 			tracing: { type: 'boolean' },
+			tunnel: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -144,6 +150,7 @@ async function main() {
 	if (values.oidc) services.push('keycloak');
 	if (values.observability) services.push('victoriaLogs', 'victoriaMetrics', 'vector');
 	if (values.tracing) services.push('tracing');
+	if (values.tunnel) services.push('cloudflared');
 
 	// Build configuration
 	const config: N8NConfig = {
@@ -276,6 +283,14 @@ async function main() {
 			log.info(`Jaeger UI: ${colors.cyan}${tracingResult.meta.jaeger.uiUrl}${colors.reset}`);
 		}
 
+		const cloudflaredResult = stack.serviceResults.cloudflared as CloudflaredResult | undefined;
+		if (cloudflaredResult) {
+			console.log('');
+			log.header('Cloudflare Tunnel');
+			log.info(`Public URL: ${colors.cyan}${cloudflaredResult.meta.publicUrl}${colors.reset}`);
+			log.info('Webhooks are accessible from the internet via this URL');
+		}
+
 		console.log('');
 		log.info('Containers are running in the background');
 		log.info('Cleanup with: pnpm stack:clean:all (stops containers and removes networks)');
@@ -345,6 +360,13 @@ function displayConfig(config: N8NConfig) {
 		log.info('Tracing: enabled (n8n-tracer + Jaeger)');
 	} else {
 		log.info('Tracing: disabled');
+	}
+
+	// Display tunnel status
+	if (services.includes('cloudflared')) {
+		log.info('Tunnel: enabled (Cloudflare Quick Tunnel)');
+	} else {
+		log.info('Tunnel: disabled');
 	}
 
 	if (config.resourceQuota) {
