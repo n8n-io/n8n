@@ -90,12 +90,30 @@ const schedule = trigger('n8n-nodes-base.scheduleTrigger', 'v1.1', {
 
 Creates a sticky note for annotating workflows. Sticky notes have no inputs/outputs and don't connect to other nodes.
 
+**Basic usage:**
+
 ```typescript
 const note = sticky('## API Integration\nThis section handles the **external API** calls.', {
   color: 4,
-  position: [80, -176]
+  position: [80, -176],
+  width: 300,
+  height: 200
 });
 ```
+
+**Wrapping nodes:** Pass nodes to automatically calculate position/dimensions to cover them:
+
+```typescript
+const httpNode = node('n8n-nodes-base.httpRequest', 'v4.2', { ... });
+const transformNode = node('n8n-nodes-base.set', 'v3.4', { ... });
+
+const note = sticky('## Data Fetching\nThese nodes handle API calls.', {
+  color: 3,
+  nodes: [httpNode, transformNode]  // Auto-calculates position/size
+});
+```
+
+The SDK calculates bounding box from node positions (top-left corner, 40x40px per node) and adds padding.
 
 **Parameters:**
 
@@ -103,8 +121,13 @@ const note = sticky('## API Integration\nThis section handles the **external API
 |----------|------|----------|-------------|
 | `content` | `string` | Yes | Markdown content |
 | `color` | `1-7` | No | Color theme (default: 1) |
-| `position` | `[x, y]` | No | Canvas position |
+| `position` | `[x, y]` | No | Canvas position (top-left) |
+| `width` | `number` | No | Width in pixels |
+| `height` | `number` | No | Height in pixels |
+| `nodes` | `Node[]` | No | Nodes to wrap (auto-calculates position/size) |
 | `name` | `string` | No | Custom name |
+
+**Note:** If `nodes` is provided, `position`/`width`/`height` are calculated automatically and any manual values are ignored.
 
 **Colors:** 1-7 map to n8n's sticky note color palette.
 
