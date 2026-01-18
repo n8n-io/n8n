@@ -274,6 +274,8 @@ export interface SplitInBatchesDoneChain<TOutput> {
 	then<N extends NodeInstance<string, string, unknown>>(
 		node: N,
 	): SplitInBatchesDoneChain<N extends NodeInstance<string, string, infer O> ? O : unknown>;
+	/** Chain to .each() from the done chain */
+	each(): SplitInBatchesEachChain<unknown>;
 }
 
 /**
@@ -283,8 +285,8 @@ export interface SplitInBatchesEachChain<TOutput> {
 	then<N extends NodeInstance<string, string, unknown>>(
 		node: N,
 	): SplitInBatchesEachChain<N extends NodeInstance<string, string, infer O> ? O : unknown>;
-	/** Connect back to the split in batches node */
-	loop(): void;
+	/** Connect back to the split in batches node and return the builder */
+	loop(): SplitInBatchesBuilder<TOutput>;
 }
 
 /**

@@ -39,11 +39,11 @@ export { workflow } from './workflow-builder';
 // Node builders
 export { node, trigger, sticky, placeholder } from './node-builder';
 
-// Merge composite (to be implemented)
-// export { merge } from './merge';
+// Merge composite
+export { merge } from './merge';
 
-// Split in batches (to be implemented)
-// export { splitInBatches } from './split-in-batches';
+// Split in batches
+export { splitInBatches } from './split-in-batches';
 
 // Code helpers (to be implemented)
 // export { runOnceForAllItems, runOnceForEachItem } from './code-helpers';

@@ -19,9 +19,9 @@
 - [x] Export `workflow(id, name, settings?)` function
 - [x] Export `node(type, version, config)` function
 - [x] Export `trigger(type, version, config)` function
-- [ ] Export `merge(branches, config)` function
+- [x] Export `merge(branches, config)` function
 - [x] Export `sticky(content, config?)` function
-- [ ] Export `splitInBatches(version, config)` function
+- [x] Export `splitInBatches(version, config)` function
 - [x] Export `placeholder(hint)` function
 - [ ] Export `runOnceForAllItems<T>(fn)` helper
 - [ ] Export `runOnceForEachItem<T>(fn)` helper
@@ -89,15 +89,15 @@
 
 ## Merge Composite (`src/merge.ts`)
 
-- [ ] `merge(branches, config)` function
-- [ ] Returns `MergeComposite<T>` type
-- [ ] `branches` array determines input positions
-- [ ] Support `mode: 'append'`
-- [ ] Support `mode: 'combine'`
-- [ ] Support `mode: 'multiplex'`
-- [ ] Support `mode: 'chooseBranch'`
+- [x] `merge(branches, config)` function
+- [x] Returns `MergeComposite<T>` type
+- [x] `branches` array determines input positions
+- [x] Support `mode: 'append'`
+- [x] Support `mode: 'combine'`
+- [x] Support `mode: 'multiplex'`
+- [x] Support `mode: 'chooseBranch'`
 - [ ] Branches can be `.then()` chains (not just single nodes)
-- [ ] `WorkflowBuilder.then(MergeComposite)` fans out from previous node
+- [x] `WorkflowBuilder.then(MergeComposite)` fans out from previous node
 
 ---
 
@@ -117,10 +117,10 @@
 
 ## Split In Batches (`src/split-in-batches.ts`)
 
-- [ ] `splitInBatches(version, config)` function
-- [ ] `.done()` - chain from output 0 (all items processed)
-- [ ] `.each()` - chain from output 1 (current batch)
-- [ ] `.loop()` - connects back to splitInBatches node
+- [x] `splitInBatches(version, config)` function
+- [x] `.done()` - chain from output 0 (all items processed)
+- [x] `.each()` - chain from output 1 (current batch)
+- [x] `.loop()` - connects back to splitInBatches node
 - [ ] Support `executeOnce` within loop chain
 
 ---

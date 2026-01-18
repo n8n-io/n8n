@@ -110,8 +110,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	): WorkflowBuilder {
 		// Handle merge composite
 		if ('mergeNode' in nodeOrMerge && 'branches' in nodeOrMerge) {
-			// This will be implemented in merge.ts
-			throw new Error('Merge composite not yet implemented');
+			return this.handleMergeComposite(nodeOrMerge as MergeComposite);
+		}
+
+		// Handle split in batches builder
+		if (this.isSplitInBatchesBuilder(nodeOrMerge)) {
+			return this.handleSplitInBatches(nodeOrMerge);
 		}
 
 		const node = nodeOrMerge as N;
@@ -265,6 +269,149 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 	toString(): string {
 		return JSON.stringify(this.toJSON(), null, 2);
+	}
+
+	/**
+	 * Check if value is a SplitInBatchesBuilder
+	 */
+	private isSplitInBatchesBuilder(value: unknown): boolean {
+		return (
+			value !== null &&
+			typeof value === 'object' &&
+			'sibNode' in value &&
+			'_doneNodes' in value &&
+			'_eachNodes' in value
+		);
+	}
+
+	/**
+	 * Handle merge composite - creates parallel branches that merge
+	 */
+	private handleMergeComposite(mergeComposite: MergeComposite): WorkflowBuilder {
+		const newNodes = new Map(this._nodes);
+
+		// Add all branch nodes
+		for (const branchNode of mergeComposite.branches as NodeInstance<string, string, unknown>[]) {
+			newNodes.set(branchNode.name, {
+				instance: branchNode,
+				connections: new Map(),
+			});
+
+			// Connect from current node to each branch
+			if (this._currentNode) {
+				const currentGraphNode = newNodes.get(this._currentNode);
+				if (currentGraphNode) {
+					const outputConnections = currentGraphNode.connections.get(this._currentOutput) || [];
+					currentGraphNode.connections.set(this._currentOutput, [
+						...outputConnections,
+						branchNode.name,
+					]);
+				}
+			}
+
+			// Connect each branch to the merge node
+			const branchGraphNode = newNodes.get(branchNode.name)!;
+			branchGraphNode.connections.set(0, [mergeComposite.mergeNode.name]);
+		}
+
+		// Add the merge node
+		newNodes.set(mergeComposite.mergeNode.name, {
+			instance: mergeComposite.mergeNode,
+			connections: new Map(),
+		});
+
+		return this.clone({
+			nodes: newNodes,
+			currentNode: mergeComposite.mergeNode.name,
+			currentOutput: 0,
+		});
+	}
+
+	/**
+	 * Handle split in batches builder
+	 */
+	private handleSplitInBatches(sibBuilder: unknown): WorkflowBuilder {
+		// Cast to access internal properties
+		const builder = sibBuilder as {
+			sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
+			_doneNodes: NodeInstance<string, string, unknown>[];
+			_eachNodes: NodeInstance<string, string, unknown>[];
+			_hasLoop: boolean;
+		};
+
+		const newNodes = new Map(this._nodes);
+
+		// Add the split in batches node
+		newNodes.set(builder.sibNode.name, {
+			instance: builder.sibNode,
+			connections: new Map(),
+		});
+
+		// Connect from current node to split in batches
+		if (this._currentNode) {
+			const currentGraphNode = newNodes.get(this._currentNode);
+			if (currentGraphNode) {
+				const outputConnections = currentGraphNode.connections.get(this._currentOutput) || [];
+				currentGraphNode.connections.set(this._currentOutput, [
+					...outputConnections,
+					builder.sibNode.name,
+				]);
+			}
+		}
+
+		const sibGraphNode = newNodes.get(builder.sibNode.name)!;
+
+		// Add done chain nodes (output 0)
+		let prevDoneNode: string | null = null;
+		for (const doneNode of builder._doneNodes) {
+			newNodes.set(doneNode.name, {
+				instance: doneNode,
+				connections: new Map(),
+			});
+
+			if (prevDoneNode === null) {
+				// First done node connects to output 0 of split in batches
+				const output0 = sibGraphNode.connections.get(0) || [];
+				sibGraphNode.connections.set(0, [...output0, doneNode.name]);
+			} else {
+				// Chain subsequent done nodes
+				const prevGraphNode = newNodes.get(prevDoneNode)!;
+				prevGraphNode.connections.set(0, [doneNode.name]);
+			}
+			prevDoneNode = doneNode.name;
+		}
+
+		// Add each chain nodes (output 1)
+		let prevEachNode: string | null = null;
+		for (const eachNode of builder._eachNodes) {
+			newNodes.set(eachNode.name, {
+				instance: eachNode,
+				connections: new Map(),
+			});
+
+			if (prevEachNode === null) {
+				// First each node connects to output 1 of split in batches
+				const output1 = sibGraphNode.connections.get(1) || [];
+				sibGraphNode.connections.set(1, [...output1, eachNode.name]);
+			} else {
+				// Chain subsequent each nodes
+				const prevGraphNode = newNodes.get(prevEachNode)!;
+				prevGraphNode.connections.set(0, [eachNode.name]);
+			}
+			prevEachNode = eachNode.name;
+		}
+
+		// Handle loop - connect last each node back to split in batches
+		if (builder._hasLoop && prevEachNode) {
+			const lastEachGraphNode = newNodes.get(prevEachNode)!;
+			lastEachGraphNode.connections.set(0, [builder.sibNode.name]);
+		}
+
+		return this.clone({
+			nodes: newNodes,
+			currentNode: builder.sibNode.name,
+			currentOutput: 0,
+		});
 	}
 
 	/**
