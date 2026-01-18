@@ -173,6 +173,9 @@ node<OutputType>(type, version, {
   retryOnFail?: boolean,    // Retry on failure
   alwaysOutputData?: boolean, // Output data even if empty
   onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput',
+
+  // Testing
+  pinData?: object[],       // Pinned output data for testing
 });
 ```
 
@@ -184,6 +187,21 @@ node<OutputType>(type, version, {
 | `onError` | `string` | `'stopWorkflow'` | Error handling: stop, continue, or create error output |
 | `notes` | `string` | - | Node documentation |
 | `notesInFlow` | `boolean` | `false` | Display notes on canvas |
+| `pinData` | `object[]` | - | Pinned output data for testing |
+
+**Pinned data:** Use `pinData` to mock node output during testing:
+
+```typescript
+node('n8n-nodes-base.httpRequest', 'v4.2', {
+  parameters: { url: 'https://api.example.com/users' },
+  pinData: [
+    { json: { id: 1, name: 'Alice' } },
+    { json: { id: 2, name: 'Bob' } }
+  ]
+})
+```
+
+When pinData is set, the node returns the pinned data instead of executing.
 
 **Error output branch:** When `onError: 'continueErrorOutput'` is set, the node gets a second output:
 
