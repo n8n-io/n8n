@@ -365,19 +365,19 @@
 
 ## Testing
 
-- [ ] Unit tests for workflow builder
-- [ ] Unit tests for node builder
-- [ ] Unit tests for merge composite
-- [ ] Unit tests for sticky notes
-- [ ] Unit tests for split in batches
-- [ ] Unit tests for expression parser
-- [ ] Unit tests for expression serializer
-- [ ] Unit tests for JSON export
-- [ ] Unit tests for JSON import (round-trip)
-- [ ] Unit tests for auto-layout
-- [ ] Unit tests for validation
+- [x] Unit tests for workflow builder
+- [x] Unit tests for node builder
+- [x] Unit tests for merge composite
+- [x] Unit tests for sticky notes
+- [x] Unit tests for split in batches
+- [x] Unit tests for expression parser
+- [x] Unit tests for expression serializer
+- [x] Unit tests for JSON export
+- [x] Unit tests for JSON import (round-trip)
+- [x] Unit tests for auto-layout
+- [x] Unit tests for validation
 - [ ] Unit tests for type generation script
-- [ ] Integration test: complete workflow example from design doc
+- [x] Real workflow round-trip tests (n8n.io templates)
 
 ---
 

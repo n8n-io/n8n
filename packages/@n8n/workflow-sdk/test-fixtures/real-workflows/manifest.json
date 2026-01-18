@@ -1,0 +1,45 @@
+{
+	"fetchedAt": "2026-01-18T10:42:44.268Z",
+	"workflows": [
+		{
+			"id": 1954,
+			"name": "AI agent chat",
+			"success": true
+		},
+		{
+			"id": 2043,
+			"name": "Crypto market alert system with Binance and Telegram integration",
+			"success": true
+		},
+		{
+			"id": 5786,
+			"name": "Scrape public email addresses from any website using Firecrawl",
+			"success": true
+		},
+		{
+			"id": 5779,
+			"name": "Generate natural voices with Google Text-to-Speech, Drive & Airtable",
+			"success": true
+		},
+		{
+			"id": 2286,
+			"name": "Unknown",
+			"success": false
+		},
+		{
+			"id": 5789,
+			"name": "Multi-account email classifier with AI, Gmail, Discord & Google Sheets",
+			"success": true
+		},
+		{
+			"id": 1864,
+			"name": "Unknown",
+			"success": false
+		},
+		{
+			"id": 6897,
+			"name": "Automate CV screening & analysis with Telegram, Gemini AI & Google Workspace",
+			"success": true
+		}
+	]
+}

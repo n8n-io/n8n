@@ -1,0 +1,868 @@
+{
+	"id": "yNlNZi8P0wL4Tj5u",
+	"meta": {
+		"instanceId": "df45e36346609887ad727e4340e992b711071baf718198c766e859ac499d59bf"
+	},
+	"name": "Google Text-to-Speech Generator",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "2eb04401-8f1d-40c9-a832-aee4b71ed051",
+			"name": "Upload file",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [420, 40],
+			"parameters": {
+				"name": "={{ $binary.data.fileName }}",
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1Kmvt_nPFDbAO7y6zu95c5_snNC9A1P1n",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/1Kmvt_nPFDbAO7y6zu95c5_snNC9A1P1n",
+					"cachedResultName": "Content Engine Storage"
+				},
+				"inputDataFieldName": "=data"
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "07d8710d-bbb3-4cf7-8e9e-5601a27bee00",
+			"name": "Create a record",
+			"type": "n8n-nodes-base.airtable",
+			"position": [1360, 20],
+			"parameters": {
+				"base": {
+					"__rl": true,
+					"mode": "list",
+					"value": "appMBgjXji9DQtbY2",
+					"cachedResultUrl": "https://airtable.com/appMBgjXji9DQtbY2",
+					"cachedResultName": "Content Engine"
+				},
+				"table": {
+					"__rl": true,
+					"mode": "list",
+					"value": "tblj8qQXJKjjRqaTq",
+					"cachedResultUrl": "https://airtable.com/appMBgjXji9DQtbY2/tblj8qQXJKjjRqaTq",
+					"cachedResultName": "Assets"
+				},
+				"columns": {
+					"value": {
+						"URL": "={{ $('Upload file').item.json.webContentLink }}",
+						"Duration": "={{ $json.media.duration }}",
+						"Asset Name": "=Voiceover Audio File",
+						"Description": "=Script: {{ $('On form submission2').item.json.Script }}",
+						"WebView URL": "={{ $('Upload file').item.json.webViewLink }}",
+						"Content Type": "Audio"
+					},
+					"schema": [
+						{
+							"id": "Asset Name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Asset Name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Description",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Status",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "Active",
+									"value": "Active"
+								},
+								{
+									"name": "Inactive",
+									"value": "Inactive"
+								},
+								{
+									"name": "Under Maintenance",
+									"value": "Under Maintenance"
+								}
+							],
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Status",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Linked Content",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Linked Content",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Content Type",
+							"type": "options",
+							"display": true,
+							"options": [
+								{
+									"name": "Video",
+									"value": "Video"
+								},
+								{
+									"name": "Audio",
+									"value": "Audio"
+								},
+								{
+									"name": "Image",
+									"value": "Image"
+								}
+							],
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Content Type",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "URL",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Width (px)",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Width (px)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Height (px)",
+							"type": "number",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Height (px)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Aspect Ratio",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Aspect Ratio",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Duration",
+							"type": "number",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Duration",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Content",
+							"type": "array",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Content",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "WebView URL",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": false,
+							"required": false,
+							"displayName": "WebView URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Content 2",
+							"type": "array",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Content 2",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Content 3",
+							"type": "array",
+							"display": true,
+							"removed": true,
+							"readOnly": false,
+							"required": false,
+							"displayName": "Content 3",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "create"
+			},
+			"credentials": {
+				"airtableTokenApi": {
+					"id": "credential-id",
+					"name": "airtableTokenApi Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "58e6cfb8-06f4-4a76-b425-c5c351fb29d7",
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"position": [220, 40],
+			"parameters": {
+				"options": {},
+				"operation": "toBinary",
+				"sourceProperty": "audioContent"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "6d3aed5e-4770-4cc3-a3b1-91c9c0e3f453",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-880, -460],
+			"parameters": {
+				"width": 460,
+				"height": 1160,
+				"content": "## Try It Out! 🗣️\n### This n8n template shows you how to use Google's AI to turn text into natural-sounding speech. Experiment with all of the Chirp 3 HD voices.\n\n## The uses are endless! Try creating voiceovers for your videos, generating audio versions of your articles, or building interactive voice responses for your applications.\n\n\n### How it works ⚙️\n* The workflow is kicked off by a **Form Trigger** where you input your script, and choose a voice and language.\n* We then use the **HTTP Request** node to send your text to Google's Text-to-Speech API.\n* Google's AI processes the text and sends back the audio data in base64 format.\n* A **Convert to File** node transforms this base64 data into a binary audio file.\n* This audio file is then uploaded to **Google Drive**.\n* We then use another **HTTP Request** to a `fal.ai` endpoint to get the duration of the audio file.\n* An **If** node checks to see if the duration was successfully retrieved.\n* Finally, a **Airtable** node creates a new record with the audio file's details, including the script, Google Drive link, and duration.\n\n\n### How to use it 🚀\n* The **Form Trigger** node is a great way to start, but you can swap it out for a Webhook, a new row in a spreadsheet, or any other trigger that suits your needs.\n* You can easily customize the available voices and languages in the **Form Trigger** node.\n\n---\n\n### Requirements 📋\n* A **Google Cloud oAuth2 Client** with the Text-to-Speech API enabled.\n* A **Google Drive** account for storing the generated audio files.\n* A `fal.ai` account for the ffmpeg API to get the audio duration.\n* An **Airtable** account to log the generated audio files. You must create a new table with same fields as the Airtable node.\n\n---\n\n### Need Help? 🙋\nAsk in the [Forum](https://community.n8n.io/)!\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5a80d6b6-236b-48d2-bd52-97b361e7d2d6",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-360, 280],
+			"parameters": {
+				"color": 5,
+				"width": 460,
+				"height": 140,
+				"content": "### Geo Restrictions!\nPlease note at time of writing, Google TTS is restricted to certain countries and regions."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "91db268c-9c73-4d22-a680-0cf155d173a8",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-360, -320],
+			"parameters": {
+				"color": 7,
+				"width": 320,
+				"height": 320,
+				"content": "## 1. Input Your Script, Select the Language and Voice\n[Scripting and Prompting Tips](https://cloud.google.com/text-to-speech/docs/chirp3-hd#scripting-and-prompting-tips)\n\nThe Chirp 3 HD voices observe punctuation and can use Pause Control with these tags: [pause short], [pause long], and [pause]."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "df31181c-5b54-4b8d-a1a5-3bbf92160d02",
+			"name": "On form submission2",
+			"type": "n8n-nodes-base.formTrigger",
+			"position": [-340, 40],
+			"webhookId": "a2a32ec1-9470-4ed6-85fc-7d4745216f8f",
+			"parameters": {
+				"options": {},
+				"formTitle": "Generate Text-to-Speech",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Script",
+							"placeholder": "The mystery of life isn't a problem to solve, but a reality to experience.",
+							"requiredField": true
+						},
+						{
+							"fieldType": "dropdown",
+							"fieldLabel": "Voice",
+							"fieldOptions": {
+								"values": [
+									{
+										"option": "Aoede"
+									},
+									{
+										"option": "Puck"
+									},
+									{
+										"option": "Charon"
+									},
+									{
+										"option": "Kore"
+									},
+									{
+										"option": "Fenrir"
+									},
+									{
+										"option": "Leda"
+									},
+									{
+										"option": "Orus"
+									},
+									{
+										"option": "Zephyr"
+									},
+									{
+										"option": "Achird"
+									},
+									{
+										"option": "Algenib"
+									},
+									{
+										"option": "Algieba"
+									},
+									{
+										"option": "Alnilam"
+									},
+									{
+										"option": "Autonoe"
+									},
+									{
+										"option": "Callirrhoe"
+									},
+									{
+										"option": "Despina"
+									},
+									{
+										"option": "Enceladus"
+									},
+									{
+										"option": "Erinome"
+									},
+									{
+										"option": "Gacrux"
+									},
+									{
+										"option": "Iapetus"
+									},
+									{
+										"option": "Laomedeia"
+									},
+									{
+										"option": "Pulcherrima"
+									},
+									{
+										"option": "Rasalgethi"
+									},
+									{
+										"option": "Sadachbia"
+									},
+									{
+										"option": "Sadaltager"
+									},
+									{
+										"option": "Schedar"
+									},
+									{
+										"option": "Sulafat"
+									},
+									{
+										"option": "Umbriel"
+									},
+									{
+										"option": "Vindemiatrix"
+									},
+									{
+										"option": "Zubenelgenubi"
+									},
+									{
+										"option": "Achernar"
+									}
+								]
+							},
+							"requiredField": true
+						},
+						{
+							"fieldType": "dropdown",
+							"fieldLabel": "Langauge",
+							"fieldOptions": {
+								"values": [
+									{
+										"option": "en-US"
+									},
+									{
+										"option": "en-AU"
+									},
+									{
+										"option": "en-GB"
+									},
+									{
+										"option": "en-IN"
+									},
+									{
+										"option": "es-US"
+									},
+									{
+										"option": "de-DE"
+									},
+									{
+										"option": "fr-FR"
+									},
+									{
+										"option": "hi-IN"
+									},
+									{
+										"option": "pt-BR"
+									},
+									{
+										"option": "ar-XA"
+									},
+									{
+										"option": "es-ES"
+									},
+									{
+										"option": "fr-CA"
+									},
+									{
+										"option": "id-ID"
+									},
+									{
+										"option": "it-IT"
+									},
+									{
+										"option": "ja-JP"
+									},
+									{
+										"option": "tr-TR"
+									},
+									{
+										"option": "vi-VN"
+									},
+									{
+										"option": "bn-IN"
+									},
+									{
+										"option": "gu-IN"
+									},
+									{
+										"option": "kn-IN"
+									},
+									{
+										"option": "ml-IN"
+									},
+									{
+										"option": "mr-IN"
+									},
+									{
+										"option": "ta-IN"
+									},
+									{
+										"option": "te-IN"
+									},
+									{
+										"option": "nl-BE"
+									},
+									{
+										"option": "nl-NL"
+									},
+									{
+										"option": "ko-KR"
+									},
+									{
+										"option": "cmn-CN"
+									},
+									{
+										"option": "pl-PL"
+									},
+									{
+										"option": "ru-RU"
+									},
+									{
+										"option": "sw-KE"
+									},
+									{
+										"option": "th-TH"
+									},
+									{
+										"option": "ur-IN"
+									},
+									{
+										"option": "uk-UA"
+									}
+								]
+							},
+							"requiredField": true
+						}
+					]
+				},
+				"formDescription": "Add your text you want generated and select a voice."
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "96e92471-78e8-4a3d-bb86-3034876fef53",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [-160, 40],
+			"parameters": {
+				"mode": "raw",
+				"options": {},
+				"jsonOutput": "={\n  \"script\": \"{{ $json.Script }}\",\n  \"voice\": \"{{ $json.Langauge }}-Chirp3-HD-{{ $json.Voice }}\"\n}"
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "3232d9e3-a1ff-407b-8aa0-121c420121f9",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [1000, 40],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "35b5c3da-9b1e-47ac-9f8e-cae257b54db4",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.status }}",
+							"rightValue": "COMPLETED"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "5feb467f-73c6-49de-bbeb-d946ab041f24",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [1180, 180],
+			"webhookId": "7e197a7f-a920-4c18-aa08-69c6619772fc",
+			"parameters": {
+				"amount": 1
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "591bfd72-ba48-49da-b374-f071ad451574",
+			"name": "Get Status",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [820, 40],
+			"parameters": {
+				"url": "={{ $json.status_url }}",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "126d1809-86cd-447e-b8d3-5a33cd993a76",
+			"name": "Request TTS ",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [20, 40],
+			"parameters": {
+				"url": "https://texttospeech.googleapis.com/v1/text:synthesize",
+				"method": "POST",
+				"options": {
+					"response": {
+						"response": {}
+					}
+				},
+				"jsonBody": "={\n  \"input\": {\n    \"markup\": \"{{ $json.script }}\"\n  },\n  \"voice\": {\n    \"languageCode\": \"{{ $('On form submission2').item.json.Langauge }}\",\n    \"name\": \"{{ $json.voice }}\"\n  },\n  \"audio_config\": {\n    \"audio_encoding\": \"LINEAR16\",\n    \"speaking_rate\": 1.0\n  }\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "predefinedCredentialType",
+				"headerParameters": {
+					"parameters": [{}]
+				},
+				"nodeCredentialType": "googleOAuth2Api"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				},
+				"googleOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "069111f8-b712-424d-9428-2baa8a9d8b1b",
+			"name": "Request Duration",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [600, 40],
+			"parameters": {
+				"url": "https://queue.fal.run/fal-ai/ffmpeg-api/metadata",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"media_url\": \"{{ $json.webContentLink }}\"\n}",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "c6a310e0-ab35-4e70-b0e8-49cd59380dd6",
+			"name": "Get Duration",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1180, 20],
+			"parameters": {
+				"url": "={{ $json.response_url }}",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "943bfe16-c82a-4de2-b56b-df4cfeb756e7",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [20, -320],
+			"parameters": {
+				"color": 7,
+				"width": 500,
+				"height": 320,
+				"content": "## 2. Request and Return the TTS Audio. Convert the Base64 String into an Audio File.\n[Read more about the Convert to File node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/)\n\nThe Google TTS API returns a base64 string. It must be converted to a file before it can be used. For example, the Google Drive node needs the base64 string converted to a file for the upload to work correctly."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7e231d99-67b9-434d-ad92-4c2e6c3b817a",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [600, -320],
+			"parameters": {
+				"color": 7,
+				"width": 680,
+				"height": 320,
+				"content": "## 3. Find the Duration of the Audio File\n[Read more about Looping in n8n](https://docs.n8n.io/flow-logic/looping/)\n\nWe can use the fal.ai API to get metadata about our media files. This API uses a queue system so we must request the status of the job till it completes then make a final request to retrieve the metadata. Here we use a simple If node to monitor the job status."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3da2e908-ee34-4114-ad72-c580d30ef7e5",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1360, -320],
+			"parameters": {
+				"color": 7,
+				"width": 320,
+				"height": 320,
+				"content": "## 4. Update our Database with Our New Audio File\n[Airtable](https://www.airtable.com)\n\nWe can keep track of our media assets in a database to make it easier to use those assets to create content."
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "835bce29-cde5-40d5-8358-cf23271a66c0",
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Get Duration",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Get Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Status": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Request TTS ",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload file": {
+			"main": [
+				[
+					{
+						"node": "Request Duration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Duration": {
+			"main": [
+				[
+					{
+						"node": "Create a record",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Request TTS ": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "Upload file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create a record": {
+			"main": [[]]
+		},
+		"Request Duration": {
+			"main": [
+				[
+					{
+						"node": "Get Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"On form submission2": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

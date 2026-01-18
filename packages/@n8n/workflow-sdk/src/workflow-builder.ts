@@ -40,11 +40,21 @@ function parseVersion(version: string): number {
 }
 
 /**
+ * Connection target with type information
+ */
+interface ConnectionTarget {
+	node: string;
+	type: string; // 'main', 'ai_tool', 'ai_memory', 'ai_languageModel', etc.
+	index: number; // input index on target node
+}
+
+/**
  * Internal representation of a node in the graph
  */
 interface GraphNode {
 	instance: NodeInstance<string, string, unknown>;
-	connections: Map<number, string[]>; // outputIndex -> nodeNames
+	// connectionType -> outputIndex -> targets
+	connections: Map<string, Map<number, ConnectionTarget[]>>;
 }
 
 /**
@@ -94,9 +104,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		node: N,
 	): WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
+		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
+		connectionsMap.set('main', new Map());
 		newNodes.set(node.name, {
 			instance: node,
-			connections: new Map(),
+			connections: connectionsMap,
 		});
 		return this.clone({
 			nodes: newNodes,
@@ -122,17 +134,24 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
 
 		// Add the new node
+		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
+		connectionsMap.set('main', new Map());
 		newNodes.set(node.name, {
 			instance: node,
-			connections: new Map(),
+			connections: connectionsMap,
 		});
 
 		// Connect from current node if exists
 		if (this._currentNode) {
 			const currentGraphNode = newNodes.get(this._currentNode);
 			if (currentGraphNode) {
-				const outputConnections = currentGraphNode.connections.get(this._currentOutput) || [];
-				currentGraphNode.connections.set(this._currentOutput, [...outputConnections, node.name]);
+				const mainConns = currentGraphNode.connections.get('main') || new Map();
+				const outputConnections = mainConns.get(this._currentOutput) || [];
+				mainConns.set(this._currentOutput, [
+					...outputConnections,
+					{ node: node.name, type: 'main', index: 0 },
+				]);
+				currentGraphNode.connections.set('main', mainConns);
 			}
 		}
 
@@ -150,17 +169,24 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				const newNodes = new Map(self._nodes);
 
 				// Add the new node
+				const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
+				connectionsMap.set('main', new Map());
 				newNodes.set(node.name, {
 					instance: node,
-					connections: new Map(),
+					connections: connectionsMap,
 				});
 
 				// Connect from current node at specified output
 				if (self._currentNode) {
 					const currentGraphNode = newNodes.get(self._currentNode);
 					if (currentGraphNode) {
-						const outputConnections = currentGraphNode.connections.get(index) || [];
-						currentGraphNode.connections.set(index, [...outputConnections, node.name]);
+						const mainConns = currentGraphNode.connections.get('main') || new Map();
+						const outputConnections = mainConns.get(index) || [];
+						mainConns.set(index, [
+							...outputConnections,
+							{ node: node.name, type: 'main', index: 0 },
+						]);
+						currentGraphNode.connections.set('main', mainConns);
 					}
 				}
 
@@ -234,22 +260,40 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 			nodes.push(n8nNode);
 
-			// Convert connections
-			if (graphNode.connections.size > 0) {
-				const nodeConnections: IConnections[string] = { main: [] };
+			// Convert connections - handle all connection types
+			let hasConnections = false;
+			for (const typeConns of graphNode.connections.values()) {
+				if (typeConns.size > 0) {
+					hasConnections = true;
+					break;
+				}
+			}
 
-				// Get max output index to ensure array is properly sized
-				const maxOutput = Math.max(...graphNode.connections.keys());
-				for (let i = 0; i <= maxOutput; i++) {
-					const targets = graphNode.connections.get(i) || [];
-					nodeConnections.main[i] = targets.map((targetName) => ({
-						node: targetName,
-						type: 'main' as const,
-						index: 0,
-					}));
+			if (hasConnections) {
+				const nodeConnections: IConnections[string] = {};
+
+				for (const [connType, outputMap] of graphNode.connections) {
+					if (outputMap.size === 0) continue;
+
+					// Get max output index to ensure array is properly sized
+					const maxOutput = Math.max(...outputMap.keys());
+					const outputArray: Array<Array<{ node: string; type: string; index: number }>> = [];
+
+					for (let i = 0; i <= maxOutput; i++) {
+						const targets = outputMap.get(i) || [];
+						outputArray[i] = targets.map((target) => ({
+							node: target.node,
+							type: target.type,
+							index: target.index,
+						}));
+					}
+
+					nodeConnections[connType] = outputArray;
 				}
 
-				connections[nodeName] = nodeConnections;
+				if (Object.keys(nodeConnections).length > 0) {
+					connections[nodeName] = nodeConnections;
+				}
 			}
 		}
 
@@ -292,32 +336,40 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Add all branch nodes
 		for (const branchNode of mergeComposite.branches as NodeInstance<string, string, unknown>[]) {
+			const branchConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			branchConns.set('main', new Map());
 			newNodes.set(branchNode.name, {
 				instance: branchNode,
-				connections: new Map(),
+				connections: branchConns,
 			});
 
 			// Connect from current node to each branch
 			if (this._currentNode) {
 				const currentGraphNode = newNodes.get(this._currentNode);
 				if (currentGraphNode) {
-					const outputConnections = currentGraphNode.connections.get(this._currentOutput) || [];
-					currentGraphNode.connections.set(this._currentOutput, [
+					const mainConns = currentGraphNode.connections.get('main') || new Map();
+					const outputConnections = mainConns.get(this._currentOutput) || [];
+					mainConns.set(this._currentOutput, [
 						...outputConnections,
-						branchNode.name,
+						{ node: branchNode.name, type: 'main', index: 0 },
 					]);
+					currentGraphNode.connections.set('main', mainConns);
 				}
 			}
 
 			// Connect each branch to the merge node
 			const branchGraphNode = newNodes.get(branchNode.name)!;
-			branchGraphNode.connections.set(0, [mergeComposite.mergeNode.name]);
+			const branchMainConns = branchGraphNode.connections.get('main') || new Map();
+			branchMainConns.set(0, [{ node: mergeComposite.mergeNode.name, type: 'main', index: 0 }]);
+			branchGraphNode.connections.set('main', branchMainConns);
 		}
 
 		// Add the merge node
+		const mergeConns = new Map<string, Map<number, ConnectionTarget[]>>();
+		mergeConns.set('main', new Map());
 		newNodes.set(mergeComposite.mergeNode.name, {
 			instance: mergeComposite.mergeNode,
-			connections: new Map(),
+			connections: mergeConns,
 		});
 
 		return this.clone({
@@ -342,41 +394,50 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
 
 		// Add the split in batches node
+		const sibConns = new Map<string, Map<number, ConnectionTarget[]>>();
+		sibConns.set('main', new Map());
 		newNodes.set(builder.sibNode.name, {
 			instance: builder.sibNode,
-			connections: new Map(),
+			connections: sibConns,
 		});
 
 		// Connect from current node to split in batches
 		if (this._currentNode) {
 			const currentGraphNode = newNodes.get(this._currentNode);
 			if (currentGraphNode) {
-				const outputConnections = currentGraphNode.connections.get(this._currentOutput) || [];
-				currentGraphNode.connections.set(this._currentOutput, [
+				const mainConns = currentGraphNode.connections.get('main') || new Map();
+				const outputConnections = mainConns.get(this._currentOutput) || [];
+				mainConns.set(this._currentOutput, [
 					...outputConnections,
-					builder.sibNode.name,
+					{ node: builder.sibNode.name, type: 'main', index: 0 },
 				]);
+				currentGraphNode.connections.set('main', mainConns);
 			}
 		}
 
 		const sibGraphNode = newNodes.get(builder.sibNode.name)!;
+		const sibMainConns = sibGraphNode.connections.get('main') || new Map();
 
 		// Add done chain nodes (output 0)
 		let prevDoneNode: string | null = null;
 		for (const doneNode of builder._doneNodes) {
+			const doneConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			doneConns.set('main', new Map());
 			newNodes.set(doneNode.name, {
 				instance: doneNode,
-				connections: new Map(),
+				connections: doneConns,
 			});
 
 			if (prevDoneNode === null) {
 				// First done node connects to output 0 of split in batches
-				const output0 = sibGraphNode.connections.get(0) || [];
-				sibGraphNode.connections.set(0, [...output0, doneNode.name]);
+				const output0 = sibMainConns.get(0) || [];
+				sibMainConns.set(0, [...output0, { node: doneNode.name, type: 'main', index: 0 }]);
 			} else {
 				// Chain subsequent done nodes
 				const prevGraphNode = newNodes.get(prevDoneNode)!;
-				prevGraphNode.connections.set(0, [doneNode.name]);
+				const prevMainConns = prevGraphNode.connections.get('main') || new Map();
+				prevMainConns.set(0, [{ node: doneNode.name, type: 'main', index: 0 }]);
+				prevGraphNode.connections.set('main', prevMainConns);
 			}
 			prevDoneNode = doneNode.name;
 		}
@@ -384,27 +445,35 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Add each chain nodes (output 1)
 		let prevEachNode: string | null = null;
 		for (const eachNode of builder._eachNodes) {
+			const eachConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			eachConns.set('main', new Map());
 			newNodes.set(eachNode.name, {
 				instance: eachNode,
-				connections: new Map(),
+				connections: eachConns,
 			});
 
 			if (prevEachNode === null) {
 				// First each node connects to output 1 of split in batches
-				const output1 = sibGraphNode.connections.get(1) || [];
-				sibGraphNode.connections.set(1, [...output1, eachNode.name]);
+				const output1 = sibMainConns.get(1) || [];
+				sibMainConns.set(1, [...output1, { node: eachNode.name, type: 'main', index: 0 }]);
 			} else {
 				// Chain subsequent each nodes
 				const prevGraphNode = newNodes.get(prevEachNode)!;
-				prevGraphNode.connections.set(0, [eachNode.name]);
+				const prevMainConns = prevGraphNode.connections.get('main') || new Map();
+				prevMainConns.set(0, [{ node: eachNode.name, type: 'main', index: 0 }]);
+				prevGraphNode.connections.set('main', prevMainConns);
 			}
 			prevEachNode = eachNode.name;
 		}
 
+		sibGraphNode.connections.set('main', sibMainConns);
+
 		// Handle loop - connect last each node back to split in batches
 		if (builder._hasLoop && prevEachNode) {
 			const lastEachGraphNode = newNodes.get(prevEachNode)!;
-			lastEachGraphNode.connections.set(0, [builder.sibNode.name]);
+			const lastMainConns = lastEachGraphNode.connections.get('main') || new Map();
+			lastMainConns.set(0, [{ node: builder.sibNode.name, type: 'main', index: 0 }]);
+			lastEachGraphNode.connections.set('main', lastMainConns);
 		}
 
 		return this.clone({
@@ -423,9 +492,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Find root nodes (nodes with no incoming connections)
 		const hasIncoming = new Set<string>();
 		for (const graphNode of this._nodes.values()) {
-			for (const targets of graphNode.connections.values()) {
-				for (const target of targets) {
-					hasIncoming.add(target);
+			for (const typeConns of graphNode.connections.values()) {
+				for (const targets of typeConns.values()) {
+					for (const target of targets) {
+						hasIncoming.add(target.node);
+					}
 				}
 			}
 		}
@@ -458,15 +529,17 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Queue connected nodes
 			if (node) {
 				let branchOffset = 0;
-				for (const [outputIndex, targets] of node.connections) {
-					for (const target of targets) {
-						if (!visited.has(target)) {
-							queue.push({
-								name: target,
-								x: x + NODE_SPACING_X,
-								y: nodeY + branchOffset * 150,
-							});
-							branchOffset++;
+				for (const typeConns of node.connections.values()) {
+					for (const targets of typeConns.values()) {
+						for (const target of targets) {
+							if (!visited.has(target.node)) {
+								queue.push({
+									name: target.node,
+									x: x + NODE_SPACING_X,
+									y: nodeY + branchOffset * 150,
+								});
+								branchOffset++;
+							}
 						}
 					}
 				}
@@ -511,6 +584,7 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 			id: n8nNode.id,
 			name: n8nNode.name,
 			config: {
+				name: n8nNode.name, // Include name in config for consistency
 				parameters: n8nNode.parameters as IDataObject,
 				credentials,
 				position: n8nNode.position,
@@ -530,26 +604,43 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 			},
 		};
 
+		// Initialize connections map with all connection types
+		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
+
 		nodes.set(n8nNode.name, {
 			instance,
-			connections: new Map(),
+			connections: connectionsMap,
 		});
 	}
 
-	// Rebuild connections
+	// Rebuild connections - handle all connection types
 	if (json.connections) {
 		for (const [sourceName, nodeConns] of Object.entries(json.connections)) {
 			const graphNode = nodes.get(sourceName);
-			if (graphNode && nodeConns.main) {
-				for (let outputIndex = 0; outputIndex < nodeConns.main.length; outputIndex++) {
-					const targets = nodeConns.main[outputIndex];
+			if (!graphNode) continue;
+
+			// Iterate over all connection types (main, ai_tool, ai_memory, etc.)
+			for (const [connType, outputs] of Object.entries(nodeConns)) {
+				if (!outputs || !Array.isArray(outputs)) continue;
+
+				const typeMap =
+					graphNode.connections.get(connType) || new Map<number, ConnectionTarget[]>();
+
+				for (let outputIndex = 0; outputIndex < outputs.length; outputIndex++) {
+					const targets = outputs[outputIndex];
 					if (targets && targets.length > 0) {
-						graphNode.connections.set(
+						typeMap.set(
 							outputIndex,
-							targets.map((conn) => conn.node),
+							targets.map((conn: { node: string; type: string; index: number }) => ({
+								node: conn.node,
+								type: conn.type,
+								index: conn.index,
+							})),
 						);
 					}
 				}
+
+				graphNode.connections.set(connType, typeMap);
 			}
 		}
 	}

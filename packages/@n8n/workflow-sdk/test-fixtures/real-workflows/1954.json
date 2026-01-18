@@ -1,0 +1,121 @@
+{
+	"meta": {
+		"instanceId": "408f9fb9940c3cb18ffdef0e0150fe342d6e655c3a9fac21f0f644e8bedabcd9",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "ef4c6982-f746-4d48-944b-449f8bdbb69f",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-180, -380],
+			"webhookId": "53c136fe-3e77-4709-a143-fe82746dd8b6",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "e6183978-5077-4252-9718-6b36b6a7cd74",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [160, -160],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "1719e956-f9c8-48f5-9744-ee62345a9f7d",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [20, -160],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f0815af7-da61-4863-9cfa-b35be836b59c",
+			"name": "SerpAPI",
+			"type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+			"position": [300, -160],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"serpApi": {
+					"id": "credential-id",
+					"name": "serpApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2d3b4012-bd5f-46d5-be6d-af1ede6c155b",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [60, -380],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.8
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"SerpAPI": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,156 @@
+{
+	"meta": {
+		"instanceId": "dbd43d88d26a9e30d8aadc002c9e77f1400c683dd34efe3778d43d27250dde50"
+	},
+	"nodes": [
+		{
+			"id": "f305e08e-d4b4-4ec6-be74-5edb7a3711e5",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [520, 1279],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "abac20ef-6319-40e3-8d30-806d7499a427",
+			"name": "Send Telegram Message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1360, 1279],
+			"parameters": {
+				"text": "={{ $json.data.replaceAll(/(Last Price: \\S+)$/gm,\"$1\\n\").slice(0,1000) }}",
+				"chatId": "123456789",
+				"additionalFields": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d23c3277-62ca-4e1f-ad5d-48c07e0d6b94",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"notes": "Combine all items",
+			"position": [1020, 1279],
+			"parameters": {
+				"options": {},
+				"aggregate": "aggregateAllItemData"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "ba174e7f-4377-46dc-aca8-30adf81e5d61",
+			"name": "Binance 24h Price Change",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "Get data of changed price coins in last 24h",
+			"position": [680, 1279],
+			"parameters": {
+				"url": "https://api.binance.com/api/v1/ticker/24hr",
+				"options": {}
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "575563d5-3fb5-40f3-8017-d015cc822d5f",
+			"name": "Filter by 10% Change rate",
+			"type": "n8n-nodes-base.function",
+			"notes": "Filter by 10% Up & Down",
+			"position": [860, 1279],
+			"parameters": {
+				"functionCode": "// Iterate over all coins and check for 10% price change\nconst significantChanges = [];\nfor (const coin of items[0].json) {\n  const priceChangePercent = parseFloat(coin.priceChangePercent);\n  if (Math.abs(priceChangePercent) >= 15) {\n    significantChanges.push({ \n      symbol: coin.symbol, \n      priceChangePercent, \n      lastPrice: coin.lastPrice \n    });\n  }\n}\n\n// Sort the items by percent rate from high to low\nsignificantChanges.sort((a, b) => b.priceChangePercent - a.priceChangePercent);\n\n// Format the sorted data for output\nconst sortedOutput = significantChanges.map(change => ({\n  json: { message: `\\`\\`\\`${change.symbol} Price changed by ${change.priceChangePercent}% \\n Last Price: ${change.lastPrice}\\`\\`\\`` }\n}));\n\nreturn sortedOutput;\n"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "dcfeae2e-bcdd-472d-98e4-8c1772ccdf1b",
+			"name": "Split By 1K chars",
+			"type": "n8n-nodes-base.code",
+			"notes": "Split them for telegram message limit",
+			"position": [1180, 1279],
+			"parameters": {
+				"jsCode": "// Function to split the data into chunks of approximately 1000 characters\nfunction splitDataIntoChunks(data) {\n    const chunks = [];\n    let currentChunk = \"\";\n\n    data.forEach(item => {\n        // Ensure that each item has a 'message' property\n        if (item && item.message) {\n            const message = item.message + \"\\n\"; // Adding a newline for separation\n            // Check if adding this message to the current chunk would exceed the 1000 characters limit\n            if (currentChunk.length + message.length > 1000) {\n                // If so, push the current chunk to the chunks array and start a new chunk\n                chunks.push({ json: { data: currentChunk } });\n                currentChunk = message;\n            } else {\n                // Otherwise, add the message to the current chunk\n                currentChunk += message;\n            }\n        }\n    });\n\n    // Add the last chunk if it's not empty\n    if (currentChunk) {\n        chunks.push({ json: { data: currentChunk } });\n    }\n\n    return chunks;\n}\n\n// The input data is passed from the previous node\nconst inputData = items[0].json.data; // Accessing the 'data' property\n\n// Process the data\nconst result = splitDataIntoChunks(inputData);\n\n// Output the result\nreturn result;\n"
+			},
+			"notesInFlow": true,
+			"typeVersion": 2
+		},
+		{
+			"id": "40e25c71-641a-4b69-afec-b8a93d5d6448",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [483.54457851446114, 1040],
+			"parameters": {
+				"color": 5,
+				"width": 1040.928205084989,
+				"height": 183.94838465674636,
+				"content": "### Workflow Setup Steps:\n1. Ensure the **_Schedule Trigger_** is active to desired cron time (Default 5 minutes).\n2. [_Optional_] Configure the **_Binance 24h Price Change_** node with your API details (Default one is Free Public API Call - Free).\n3. Set up your **Telegram bot** token in the **Telegram node credentials**.\n4. Update the **_Chat ID_** in the **_Send Telegram Message_** node.\n5. Test the workflow to ensure everything is set up correctly.\n* **Notes**: Detailed telegram bot setup instructions are available in the [workflow's n8n page](https://n8n.io/workflows/2043-crypto-market-alert-system-with-binance-and-telegram-integration)."
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "Split By 1K chars",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Binance 24h Price Change",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split By 1K chars": {
+			"main": [
+				[
+					{
+						"node": "Send Telegram Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Binance 24h Price Change": {
+			"main": [
+				[
+					{
+						"node": "Filter by 10% Change rate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter by 10% Change rate": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -14,7 +14,9 @@
 		"watch": "tsc -p tsconfig.build.json --watch",
 		"test": "jest",
 		"test:unit": "jest",
-		"test:dev": "jest --watch"
+		"test:dev": "jest --watch",
+		"generate-types": "npx tsx scripts/generate-types.ts",
+		"fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts"
 	},
 	"main": "dist/index.js",
 	"module": "src/index.ts",

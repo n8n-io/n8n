@@ -1,0 +1,598 @@
+{
+	"id": "[WORKFLOW_ID_REMOVED]",
+	"meta": {
+		"instanceId": "[INSTANCE_ID_REMOVED]"
+	},
+	"name": "HR CVs Filter",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "cbc5c20a-7d3e-49b9-8c05-9e5657cb7ecf",
+			"name": "Message Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [-1232, 352],
+			"webhookId": "[WEBHOOK_ID_REMOVED]",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "dcd295a9-1f02-40e3-8cdc-ecba77eb5a86",
+			"name": "File Validation",
+			"type": "n8n-nodes-base.if",
+			"position": [-944, 352],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "ff01b24f-92a6-4e95-9349-5f78a7ff1e74",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.message.document.mime_type === 'application/pdf' }}",
+							"rightValue": ""
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "ab833633-da0d-4977-ab62-329b94a9a6eb",
+			"name": "Download CV File",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-624, 256],
+			"parameters": {
+				"url": "=https://api.telegram.org/bot[YOUR_BOT_TOKEN]/getFile?file_id={{ $json.message.document.file_id }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "a4d42d7f-dcc8-4fc0-8ffd-e8113d7b74b7",
+			"name": "Download Actual File",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [-384, 256],
+			"parameters": {
+				"url": "=https://api.telegram.org/file/bot[YOUR_BOT_TOKEN]/{{ $json.result.file_path }}",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "bfc4232c-670f-4f0b-95a6-ae980cdc1f00",
+			"name": "Google Gemini Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+			"position": [192, 496],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"googlePalmApi": {
+					"id": "credential-id",
+					"name": "googlePalmApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e91d4847-c1f0-4600-94d1-2ff61da3e68f",
+			"name": "Extract cv content",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [0, 256],
+			"parameters": {
+				"options": {},
+				"operation": "pdf"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "84a28f1c-27f5-4aa1-9f71-1c3464e213d2",
+			"name": "Qualify CV Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [192, 256],
+			"parameters": {
+				"text": "=You are an expert HR assistant specializing in CV analysis and candidate qualification.From {{ $json.text }} Your task is to extract key information from CV content and categorize candidates based on their experience level.\nInstructions:\nAnalyze the provided CV text and extract the following information with high accuracy:\n\nFull Name: Extract the candidate's complete name (first and last name)\nPhone Number: Find and format phone numbers (include country code if available without + )\nEmail Address: Extract the primary email address\nJob Title: Identify the current or most recent job title/position\nExperience Analysis: Calculate total years of professional experience and categorize\n\nExperience Categorization Rules:\n\nJunior: 0-3 years of professional experience\nSenior: 3-6 years of professional experience\nExpert: 6+ years of professional experience\n\nExperience Calculation Guidelines:\n\nCount only professional work experience (internships count as 0.5x)\nCalculate total duration from all positions\nIf less than 12 months, express in months\nIf 12+ months, express in years (round to 1 decimal place)\nOverlapping positions should not be double-counted\nConsider career gaps but focus on actual work experience\n\n\nOutput Format:\nReturn ONLY a valid JSON object in this exact format:\n\n{\n  \"name\": \"Full Name Here\",\n  \"phone_number\": \"+1234567890 or Not Found\",\n  \"email\": \"email@example.com or Not Found\",\n  \"job_title\": \"Current/Recent Job Title or Not Found\",\n  \"experience\": [\"Category: X.X years\"]\n}",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "b4721c8b-26b4-4d16-a028-4bba586de195",
+			"name": "PDF Request",
+			"type": "n8n-nodes-base.telegram",
+			"position": [-928, 688],
+			"webhookId": "[WEBHOOK_ID_REMOVED]",
+			"parameters": {
+				"text": "Please send your CV in PDF format only",
+				"chatId": "={{ $json.message.chat.id }}",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "299bf1d9-da18-422b-86fc-88e3ced3a966",
+			"name": "Store CV",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [0, 0],
+			"parameters": {
+				"name": "={{ $('Message Trigger').item.json.message.document.file_name }}",
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "[YOUR_FOLDER_ID]",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/[YOUR_FOLDER_ID]",
+					"cachedResultName": "HR-CVs"
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDriveOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "9a11470f-8693-4305-a747-589e10883227",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [0, 544],
+			"parameters": {
+				"mode": "chooseBranch",
+				"useDataOfInput": 2
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "d1e8219e-1a93-4d2b-9b95-2788c46f20b8",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1280, 272],
+			"parameters": {
+				"color": 3,
+				"width": 192,
+				"height": 224,
+				"content": "Captures incoming CV PDFs from candidates"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f54b90e6-6f6e-47cb-ba08-5bb30a19c56b",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-992, 272],
+			"parameters": {
+				"color": 4,
+				"width": 192,
+				"height": 224,
+				"content": "Filters out non-PDF submissions"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8a4f5f7e-4629-442d-a615-ec316dab9107",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-672, 176],
+			"parameters": {
+				"color": 5,
+				"width": 192,
+				"height": 208,
+				"content": " Gets the file download link from Telegram"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dbffccb2-9d00-41ca-b72a-77552d4bef79",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-432, 176],
+			"parameters": {
+				"color": 4,
+				"width": 192,
+				"height": 208,
+				"content": "Downloads the actual PDF file"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cda722d0-a7c3-4ced-bb09-158eea9007d3",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-960, 576],
+			"parameters": {
+				"color": 5,
+				"width": 176,
+				"height": 256,
+				"content": " Sends a message asking the user to resend the CV in PDF format if validation fails."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "83aad1ce-0738-483d-a0df-9d04324d26cf",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-48, -64],
+			"parameters": {
+				"color": 5,
+				"width": 192,
+				"height": 208,
+				"content": "Uploads the downloaded PDF file to Google Drive."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7d5e134a-cc84-43b0-9e43-f258e1cc28b3",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-48, 448],
+			"parameters": {
+				"color": 5,
+				"width": 192,
+				"height": 240,
+				"content": "Combines the file storage and download paths to pass data forward to extraction."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8cf9d727-a25c-48e9-a65f-e621c0ea7ff2",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-48, 192],
+			"parameters": {
+				"color": 4,
+				"width": 176,
+				"height": 224,
+				"content": "Extracts text content from the uploaded PDF file for analysis."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "dc51feca-11d5-4f83-8b50-82d45929d2d1",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [208, 160],
+			"parameters": {
+				"color": 6,
+				"height": 240,
+				"content": "Analyzes CV text and extracts structured data like name, phone number, email, experience, and job title."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b9cfbd21-df7c-4d25-ad4a-c02c1ff3e533",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [544, 160],
+			"parameters": {
+				"color": 5,
+				"width": 192,
+				"height": 256,
+				"content": " Cleans and maps the structured JSON AI output into individual fields for use in Google Sheets"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "59bbda91-ff07-437d-a384-1e513faeaa3a",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [768, 144],
+			"parameters": {
+				"color": 4,
+				"width": 224,
+				"height": 272,
+				"content": "Saves the extracted candidate information and CV link into a Google Sheet, updating existing entries if needed."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ad464c7a-8b69-47ad-9b9f-8ba57af6d728",
+			"name": "Clean & Map Extracted Data",
+			"type": "n8n-nodes-base.set",
+			"position": [608, 256],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "91323867-f4bf-4bcc-a696-6524795e082f",
+							"name": "full name",
+							"type": "string",
+							"value": "={{ JSON.parse($json[\"output\"].replace(/```json|```/g, \"\").trim()).name }}\n"
+						},
+						{
+							"id": "33d44685-8463-4730-8bb4-c1f006f6a466",
+							"name": "phone number",
+							"type": "string",
+							"value": "={{ JSON.parse($json[\"output\"].replace(/```json|```/g, \"\").trim()).phone_number }}\n"
+						},
+						{
+							"id": "915dec92-ad74-423a-a81e-30b027100eb1",
+							"name": "experiene",
+							"type": "string",
+							"value": "={{ JSON.parse($json[\"output\"].replace(/```json|```/g, \"\").trim()).experience }}"
+						},
+						{
+							"id": "5c7cbab9-8090-436e-962f-6626f6855393",
+							"name": "job title",
+							"type": "string",
+							"value": "={{ JSON.parse($json[\"output\"].replace(/```json|```/g, \"\").trim()).job_title }}\n"
+						},
+						{
+							"id": "27984293-5bcd-4b43-9316-95ae05200018",
+							"name": "email",
+							"type": "string",
+							"value": "={{ JSON.parse($json[\"output\"].replace(/```json|```/g, \"\").trim()).email }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "f0c044fa-2d29-4db6-b723-a735f799aef7",
+			"name": "Save Candidate Info to Sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [800, 256],
+			"parameters": {
+				"columns": {
+					"value": {
+						"CV": "=\"CV\": \"=https://drive.google.com/file/d/{{ $node['Store CV'].json.id }}/view\"",
+						"Name": "={{ $json[\"full name\"] }}",
+						"Email": "={{ $json.email }}",
+						"Job Title": "={{ $json['job title'] }}",
+						"Experience": "={{ $json.experiene }}",
+						"Phone Number": "={{ $json[\"phone number\"] }}"
+					},
+					"schema": [
+						{
+							"id": "Name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Experience",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Experience",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Email",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Email",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Phone Number",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Phone Number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "CV",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "CV",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Job Title",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Job Title",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Name"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/[YOUR_SPREADSHEET_ID]/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "[YOUR_SPREADSHEET_ID]",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/[YOUR_SPREADSHEET_ID]/edit",
+					"cachedResultName": "HR CV Filter"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "[VERSION_ID_REMOVED]",
+	"connections": {
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Extract cv content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Store CV": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"File Validation": {
+			"main": [
+				[
+					{
+						"node": "Download CV File",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "PDF Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Message Trigger": {
+			"main": [
+				[
+					{
+						"node": "File Validation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download CV File": {
+			"main": [
+				[
+					{
+						"node": "Download Actual File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Qualify CV Agent": {
+			"main": [
+				[
+					{
+						"node": "Clean & Map Extracted Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract cv content": {
+			"main": [
+				[
+					{
+						"node": "Qualify CV Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download Actual File": {
+			"main": [
+				[
+					{
+						"node": "Store CV",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Google Gemini Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Qualify CV Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clean & Map Extracted Data": {
+			"main": [
+				[
+					{
+						"node": "Save Candidate Info to Sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
