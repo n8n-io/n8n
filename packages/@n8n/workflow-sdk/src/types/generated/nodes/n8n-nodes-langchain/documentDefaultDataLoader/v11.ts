@@ -44,7 +44,7 @@ export interface LcDocumentDefaultDataLoaderV11Params {
 
 export type LcDocumentDefaultDataLoaderV11Node = {
 	type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<LcDocumentDefaultDataLoaderV11Params>;
 	credentials?: Record<string, never>;
 };

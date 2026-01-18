@@ -158,9 +158,15 @@ function getNodeFilePath(nodeId: string, version?: string): string | null {
 		debugLog('Using latest version', { nodeId, version: targetVersion });
 	}
 
-	// Ensure version has 'v' prefix
+	// Convert version to file format:
+	// - "3.1" -> "v31"
+	// - "31" -> "v31"
+	// - "v31" -> "v31"
+	// - "v3.1" -> "v31"
 	if (!targetVersion.startsWith('v')) {
-		targetVersion = `v${targetVersion}`;
+		targetVersion = `v${targetVersion.replace('.', '')}`;
+	} else {
+		targetVersion = `v${targetVersion.slice(1).replace('.', '')}`;
 	}
 
 	const filePath = join(nodeDir, `${targetVersion}.ts`);

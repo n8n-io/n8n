@@ -94,10 +94,8 @@ export type TodoistV22TaskMoveConfig = {
 /**
  * Section to which you want move the task. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  * @displayOptions.show { resource: ["task"], operation: ["move"] }
- * @displayOptions.hide { @version: [{"_cnd":{"gte":2.1}}] }
  */
 		section?: string | Expression<string>;
-	options?: Record<string, unknown>;
 };
 
 /** Task resource */
@@ -457,7 +455,7 @@ export interface TodoistV22Credentials {
 
 export type TodoistV22Node = {
 	type: 'n8n-nodes-base.todoist';
-	version: 2 | 2.1 | 2.2;
+	version: 2.2;
 	config: NodeConfig<TodoistV22Params>;
 	credentials?: TodoistV22Credentials;
 };

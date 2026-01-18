@@ -67,7 +67,7 @@ export interface SetV2Params {
 
 export type SetV2Node = {
 	type: 'n8n-nodes-base.set';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<SetV2Params>;
 	credentials?: Record<string, never>;
 };

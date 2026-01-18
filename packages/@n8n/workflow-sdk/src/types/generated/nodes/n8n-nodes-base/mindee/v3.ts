@@ -16,8 +16,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 export interface MindeeV3Params {
 /**
  * Which Mindee API Version to use
- * @displayOptions.show { @version: [1] }
- * @default 1
+ * @default 4
  */
 		apiVersion?: 1 | 3 | 4 | Expression<number>;
 	resource?: 'invoice' | 'receipt' | Expression<string>;
@@ -45,7 +44,7 @@ export interface MindeeV3Credentials {
 
 export type MindeeV3Node = {
 	type: 'n8n-nodes-base.mindee';
-	version: 1 | 2 | 3;
+	version: 3;
 	config: NodeConfig<MindeeV3Params>;
 	credentials?: MindeeV3Credentials;
 };

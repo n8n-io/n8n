@@ -253,7 +253,7 @@ export interface GoogleFirebaseCloudFirestoreV11Credentials {
 
 export type GoogleFirebaseCloudFirestoreV11Node = {
 	type: 'n8n-nodes-base.googleFirebaseCloudFirestore';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<GoogleFirebaseCloudFirestoreV11Params>;
 	credentials?: GoogleFirebaseCloudFirestoreV11Credentials;
 };

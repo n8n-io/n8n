@@ -19,8 +19,6 @@ export type LcAgentV22AutoConfig = {
 	aiAgentStarterCallout?: unknown;
 	text: string | Expression<string>;
 	hasOutputParser?: boolean | Expression<boolean>;
-	needsFallback?: boolean | Expression<boolean>;
-	options?: Record<string, unknown>;
 };
 
 /** Looks for an input field called 'guardrailsInput' that is coming from a directly connected Guardrails Node */
@@ -29,8 +27,6 @@ export type LcAgentV22GuardrailsConfig = {
 	aiAgentStarterCallout?: unknown;
 	text: string | Expression<string>;
 	hasOutputParser?: boolean | Expression<boolean>;
-	needsFallback?: boolean | Expression<boolean>;
-	options?: Record<string, unknown>;
 };
 
 /** Use an expression to reference data in previous nodes or enter static text */
@@ -39,8 +35,6 @@ export type LcAgentV22DefineConfig = {
 	aiAgentStarterCallout?: unknown;
 	text: string | Expression<string>;
 	hasOutputParser?: boolean | Expression<boolean>;
-	needsFallback?: boolean | Expression<boolean>;
-	options?: Record<string, unknown>;
 };
 
 export type LcAgentV22Params =
@@ -59,7 +53,7 @@ export type LcAgentV22Params =
 
 export type LcAgentV22Node = {
 	type: '@n8n/n8n-nodes-langchain.agent';
-	version: 2 | 2.1 | 2.2;
+	version: 2.2;
 	config: NodeConfig<LcAgentV22Params>;
 	credentials?: Record<string, never>;
 };

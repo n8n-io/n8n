@@ -14,8 +14,6 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // ===========================================================================
 
 export interface LcMemoryXataV14Params {
-	sessionId: string | Expression<string>;
-	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
 /**
  * The key to use to store session ID in the memory
  * @displayOptions.show { sessionIdType: ["customKey"] }
@@ -38,7 +36,7 @@ export interface LcMemoryXataV14Credentials {
 
 export type LcMemoryXataV14Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryXata';
-	version: 1 | 1.1 | 1.2 | 1.3 | 1.4;
+	version: 1.4;
 	config: NodeConfig<LcMemoryXataV14Params>;
 	credentials?: LcMemoryXataV14Credentials;
 	isTrigger: true;

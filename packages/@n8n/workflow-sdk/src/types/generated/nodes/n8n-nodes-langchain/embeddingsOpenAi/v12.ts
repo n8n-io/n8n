@@ -16,8 +16,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 export interface LcEmbeddingsOpenAiV12Params {
 /**
  * The model which will generate the embeddings. &lt;a href="https://platform.openai.com/docs/models/overview"&gt;Learn more&lt;/a&gt;.
- * @displayOptions.show { @version: [1] }
- * @default text-embedding-ada-002
+ * @default text-embedding-3-small
  */
 		model?: string | Expression<string>;
 /**
@@ -41,7 +40,7 @@ export interface LcEmbeddingsOpenAiV12Credentials {
 
 export type LcEmbeddingsOpenAiV12Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi';
-	version: 1 | 1.1 | 1.2;
+	version: 1.2;
 	config: NodeConfig<LcEmbeddingsOpenAiV12Params>;
 	credentials?: LcEmbeddingsOpenAiV12Credentials;
 	isTrigger: true;

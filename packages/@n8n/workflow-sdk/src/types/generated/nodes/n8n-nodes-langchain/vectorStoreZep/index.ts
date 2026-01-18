@@ -7,8 +7,14 @@
  */
 
 import type { LcVectorStoreZepV13Node } from './v13';
+import type { LcVectorStoreZepV12Node } from './v12';
+import type { LcVectorStoreZepV11Node } from './v11';
+import type { LcVectorStoreZepV1Node } from './v1';
 
 export * from './v13';
+export * from './v12';
+export * from './v11';
+export * from './v1';
 
 // Combined union type for all versions
-export type LcVectorStoreZepNode = LcVectorStoreZepV13Node;
+export type LcVectorStoreZepNode = LcVectorStoreZepV13Node | LcVectorStoreZepV12Node | LcVectorStoreZepV11Node | LcVectorStoreZepV1Node;

@@ -151,7 +151,7 @@ export interface GoogleSlidesV2Credentials {
 
 export type GoogleSlidesV2Node = {
 	type: 'n8n-nodes-base.googleSlides';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<GoogleSlidesV2Params>;
 	credentials?: GoogleSlidesV2Credentials;
 };

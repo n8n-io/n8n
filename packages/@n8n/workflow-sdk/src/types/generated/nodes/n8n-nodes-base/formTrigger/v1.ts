@@ -29,22 +29,19 @@ export interface FormTriggerV1Params {
 	formFields?: {
 		values?: Array<{
 			/** The name of the field, used in input attributes and referenced by the workflow
-			 * @displayOptions.show { @version: [2.4] }
 			 * @displayOptions.hide { fieldType: ["html"] }
 			 */
 			fieldName?: string | Expression<string>;
 			/** Label that appears above the input field
-			 * @displayOptions.show { @version: [{"_cnd":{"gte":2.4}}] }
 			 * @displayOptions.hide { fieldType: ["hiddenField", "html"] }
 			 */
 			fieldLabel?: string | Expression<string>;
 			/** Label that appears above the input field
-			 * @displayOptions.show { @version: [{"_cnd":{"lt":2.4}}] }
 			 * @displayOptions.hide { fieldType: ["hiddenField", "html"] }
 			 */
 			fieldLabel?: string | Expression<string>;
 			/** The name of the field, used in input attributes and referenced by the workflow
-			 * @displayOptions.show { fieldType: ["hiddenField"], @version: [{"_cnd":{"lt":2.4}}] }
+			 * @displayOptions.show { fieldType: ["hiddenField"] }
 			 */
 			fieldName?: string | Expression<string>;
 			/** The type of field to add to the form
@@ -56,7 +53,6 @@ export interface FormTriggerV1Params {
 			 */
 			elementName?: string | Expression<string>;
 			/** The name of the field, used in input attributes and referenced by the workflow
-			 * @displayOptions.show { @version: [{"_cnd":{"gte":2.5}}] }
 			 * @displayOptions.hide { fieldType: ["html"] }
 			 */
 			fieldName?: string | Expression<string>;
@@ -118,7 +114,7 @@ export interface FormTriggerV1Params {
 		}>;
 	};
 			/** Whether to allow the user to select multiple options from the dropdown list
-			 * @displayOptions.show { fieldType: ["dropdown"], @version: [{"_cnd":{"lt":2.3}}] }
+			 * @displayOptions.show { fieldType: ["dropdown"] }
 			 * @default false
 			 */
 			multiselect?: boolean | Expression<boolean>;

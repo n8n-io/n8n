@@ -15,11 +15,6 @@ import type { IDataObject } from '../../../../base';
 // ===========================================================================
 
 export interface LcToolWorkflowV22Params {
-/**
- * The name of the function to be called, could contain letters, numbers, and underscores only
- * @displayOptions.show { @version: [{"_cnd":{"lte":2.1}}] }
- */
-		name?: string | Expression<string>;
 	description?: string | Expression<string>;
 /**
  * Where to get the workflow to execute from
@@ -55,7 +50,7 @@ export interface LcToolWorkflowV22Params {
 
 export type LcToolWorkflowV22Node = {
 	type: '@n8n/n8n-nodes-langchain.toolWorkflow';
-	version: 2 | 2.1 | 2.2;
+	version: 2.2;
 	config: NodeConfig<LcToolWorkflowV22Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;

@@ -16,8 +16,6 @@ import type { Expression, NodeConfig } from '../../../../base';
 /** Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger */
 export type LcChainLlmV19AutoConfig = {
 	promptType: 'auto';
-	prompt: string | Expression<string>;
-	text: string | Expression<string>;
 	messages?: {
 		messageValues?: Array<{
 			/** Type Name or ID
@@ -49,19 +47,11 @@ export type LcChainLlmV19AutoConfig = {
 			message?: string | Expression<string>;
 		}>;
 	};
-/**
- * Batch processing options for rate limiting
- * @displayOptions.show { @version: [{"_cnd":{"gte":1.7}}] }
- * @default {}
- */
-		batching?: Record<string, unknown>;
 };
 
 /** Looks for an input field called 'guardrailsInput' that is coming from a directly connected Guardrails Node */
 export type LcChainLlmV19GuardrailsConfig = {
 	promptType: 'guardrails';
-	prompt: string | Expression<string>;
-	text: string | Expression<string>;
 	messages?: {
 		messageValues?: Array<{
 			/** Type Name or ID
@@ -93,18 +83,11 @@ export type LcChainLlmV19GuardrailsConfig = {
 			message?: string | Expression<string>;
 		}>;
 	};
-/**
- * Batch processing options for rate limiting
- * @displayOptions.show { @version: [{"_cnd":{"gte":1.7}}] }
- * @default {}
- */
-		batching?: Record<string, unknown>;
 };
 
 /** Use an expression to reference data in previous nodes or enter static text */
 export type LcChainLlmV19DefineConfig = {
 	promptType: 'define';
-	prompt: string | Expression<string>;
 	text: string | Expression<string>;
 	messages?: {
 		messageValues?: Array<{
@@ -137,12 +120,6 @@ export type LcChainLlmV19DefineConfig = {
 			message?: string | Expression<string>;
 		}>;
 	};
-/**
- * Batch processing options for rate limiting
- * @displayOptions.show { @version: [{"_cnd":{"gte":1.7}}] }
- * @default {}
- */
-		batching?: Record<string, unknown>;
 };
 
 export type LcChainLlmV19Params =
@@ -161,7 +138,7 @@ export type LcChainLlmV19Params =
 
 export type LcChainLlmV19Node = {
 	type: '@n8n/n8n-nodes-langchain.chainLlm';
-	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.7 | 1.8 | 1.9;
+	version: 1.9;
 	config: NodeConfig<LcChainLlmV19Params>;
 	credentials?: Record<string, never>;
 };

@@ -14,9 +14,11 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // ===========================================================================
 
 export interface LcMemoryMotorheadV13Params {
-	sessionId: string | Expression<string>;
-	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
-	sessionKey?: string | Expression<string>;
+/**
+ * The key to use to store session ID in the memory
+ * @displayOptions.show { sessionIdType: ["customKey"] }
+ */
+		sessionKey?: string | Expression<string>;
 }
 
 // ===========================================================================
@@ -33,7 +35,7 @@ export interface LcMemoryMotorheadV13Credentials {
 
 export type LcMemoryMotorheadV13Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryMotorhead';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<LcMemoryMotorheadV13Params>;
 	credentials?: LcMemoryMotorheadV13Credentials;
 	isTrigger: true;

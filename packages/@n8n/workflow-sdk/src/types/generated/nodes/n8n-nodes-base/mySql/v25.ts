@@ -133,7 +133,7 @@ export interface MySqlV25Credentials {
 
 export type MySqlV25Node = {
 	type: 'n8n-nodes-base.mySql';
-	version: 2 | 2.1 | 2.2 | 2.3 | 2.4 | 2.5;
+	version: 2.5;
 	config: NodeConfig<MySqlV25Params>;
 	credentials?: MySqlV25Credentials;
 };

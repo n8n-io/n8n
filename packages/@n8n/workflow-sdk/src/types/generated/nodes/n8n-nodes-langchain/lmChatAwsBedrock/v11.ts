@@ -15,12 +15,6 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 
 export interface LcLmChatAwsBedrockV11Params {
 /**
- * Choose between on-demand foundation models or inference profiles
- * @displayOptions.show { @version: [{"_cnd":{"gte":1.1}}] }
- * @default onDemand
- */
-		modelSource?: 'onDemand' | 'inferenceProfile' | Expression<string>;
-/**
  * The model which will generate the completion. &lt;a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html"&gt;Learn more&lt;/a&gt;.
  * @displayOptions.hide { modelSource: ["inferenceProfile"] }
  */
@@ -46,7 +40,7 @@ export interface LcLmChatAwsBedrockV11Credentials {
 
 export type LcLmChatAwsBedrockV11Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatAwsBedrock';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<LcLmChatAwsBedrockV11Params>;
 	credentials?: LcLmChatAwsBedrockV11Credentials;
 	isTrigger: true;

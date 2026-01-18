@@ -16,12 +16,6 @@ import type { IDataObject } from '../../../../base';
 
 export interface LcOutputParserStructuredV13Params {
 /**
- * How to specify the schema for the function
- * @displayOptions.show { @version: [{"_cnd":{"gte":1.2}}] }
- * @default fromJson
- */
-		schemaType?: 'fromJson' | 'manual' | Expression<string>;
-/**
  * Example JSON object to use to generate the schema
  * @displayOptions.show { schemaType: ["fromJson"] }
  * @default {
@@ -50,25 +44,6 @@ export interface LcOutputParserStructuredV13Params {
 }
  */
 		inputSchema?: IDataObject | string | Expression<string>;
-/**
- * JSON Schema to structure and validate the output against
- * @displayOptions.show { @version: [{"_cnd":{"lte":1.1}}] }
- * @default {
-  "type": "object",
-  "properties": {
-    "state": {
-      "type": "string"
-    },
-    "cities": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    }
-  }
-}
- */
-		jsonSchema: IDataObject | string | Expression<string>;
 /**
  * Whether to automatically fix the output when it is not in the correct format. Will cause another LLM call.
  * @default false
@@ -114,7 +89,7 @@ Please try again. Please only respond with an answer that satisfies the constrai
 
 export type LcOutputParserStructuredV13Node = {
 	type: '@n8n/n8n-nodes-langchain.outputParserStructured';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<LcOutputParserStructuredV13Params>;
 	credentials?: Record<string, never>;
 };

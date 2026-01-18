@@ -32,12 +32,6 @@ export type SwitchV34RulesConfig = {
 			outputKey?: string | Expression<string>;
 		}>;
 	};
-/**
- * If the type of an expression doesn't match the type of the comparison, n8n will try to cast the expression to the required type. E.g. for booleans &lt;code&gt;"false"&lt;/code&gt; or &lt;code&gt;0&lt;/code&gt; will be cast to &lt;code&gt;false&lt;/code&gt;
- * @displayOptions.show { @version: [{"_cnd":{"gte":3.1}}] }
- * @default false
- */
-		looseTypeValidation?: boolean | Expression<boolean>;
 	options?: Record<string, unknown>;
 };
 
@@ -45,24 +39,12 @@ export type SwitchV34RulesConfig = {
 export type SwitchV34ExpressionConfig = {
 	mode: 'expression';
 /**
- * How many outputs to create
- * @displayOptions.show { mode: ["expression"], @version: [{"_cnd":{"gte":3.3}}] }
- * @default 4
- */
-		numberOutputs?: number | Expression<number>;
-/**
  * The output index to send the input item to. Use an expression to calculate which input item should be routed to which output. The expression must return a number.
  * @hint The index to route the item to, starts at 0
  * @displayOptions.show { mode: ["expression"] }
  * @default ={{}}
  */
 		output?: number | Expression<number>;
-/**
- * If the type of an expression doesn't match the type of the comparison, n8n will try to cast the expression to the required type. E.g. for booleans &lt;code&gt;"false"&lt;/code&gt; or &lt;code&gt;0&lt;/code&gt; will be cast to &lt;code&gt;false&lt;/code&gt;
- * @displayOptions.show { @version: [{"_cnd":{"gte":3.1}}] }
- * @default false
- */
-		looseTypeValidation?: boolean | Expression<boolean>;
 };
 
 export type SwitchV34Params =
@@ -80,7 +62,7 @@ export type SwitchV34Params =
 
 export type SwitchV34Node = {
 	type: 'n8n-nodes-base.switch';
-	version: 3 | 3.1 | 3.2 | 3.3 | 3.4;
+	version: 3.4;
 	config: NodeConfig<SwitchV34Params>;
 	credentials?: Record<string, never>;
 };

@@ -49,7 +49,7 @@ export interface BitbucketTriggerV11Credentials {
 
 export type BitbucketTriggerV11Node = {
 	type: 'n8n-nodes-base.bitbucketTrigger';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<BitbucketTriggerV11Params>;
 	credentials?: BitbucketTriggerV11Credentials;
 	isTrigger: true;

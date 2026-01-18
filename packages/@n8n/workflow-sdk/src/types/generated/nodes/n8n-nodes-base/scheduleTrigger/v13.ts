@@ -94,7 +94,7 @@ export interface ScheduleTriggerV13Params {
 
 export type ScheduleTriggerV13Node = {
 	type: 'n8n-nodes-base.scheduleTrigger';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<ScheduleTriggerV13Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;

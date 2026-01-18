@@ -111,7 +111,6 @@ export type LcOpenAiV21TextClassifyConfig = {
  * @default false
  */
 		simplify?: boolean | Expression<boolean>;
-	options?: Record<string, unknown>;
 };
 
 /** Take in images and answer questions about them */
@@ -425,7 +424,7 @@ export interface LcOpenAiV21Credentials {
 
 export type LcOpenAiV21Node = {
 	type: '@n8n/n8n-nodes-langchain.openAi';
-	version: 2 | 2.1;
+	version: 2.1;
 	config: NodeConfig<LcOpenAiV21Params>;
 	credentials?: LcOpenAiV21Credentials;
 };

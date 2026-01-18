@@ -75,25 +75,6 @@ export interface PostgresV26Params {
  */
 		query: string | Expression<string>;
 /**
- * Whether to map node input properties and the table data automatically or manually
- * @displayOptions.show { @version: [2, 2.1], resource: ["database"], operation: ["insert"] }
- * @displayOptions.hide { table: [""] }
- * @default autoMapInputData
- */
-		dataMode?: 'autoMapInputData' | 'defineBelow' | Expression<string>;
-	valuesToSend?: {
-		values?: Array<{
-			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/" target="_blank"&gt;expression&lt;/a&gt;
-			 * @default []
-			 */
-			column?: string | Expression<string>;
-			/** Value
-			 */
-			value?: string | Expression<string>;
-		}>;
-	};
-	columns: string | Expression<string>;
-/**
  * Whether to return all results or only up to a given limit
  * @displayOptions.show { resource: ["database"], operation: ["select"] }
  * @displayOptions.hide { table: [""] }
@@ -118,19 +99,6 @@ export interface PostgresV26Params {
 			direction?: 'ASC' | 'DESC' | Expression<string>;
 		}>;
 	};
-/**
- * The column to compare when finding the rows to update. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/" target="_blank"&gt;expression&lt;/a&gt;.
- * @hint The column to use when matching rows in Postgres to the input items of this node. Usually an ID.
- * @displayOptions.show { @version: [2, 2.1], resource: ["database"], operation: ["update"] }
- * @displayOptions.hide { table: [""] }
- */
-		columnToMatchOn: string | Expression<string>;
-/**
- * Rows with a value in the specified "Column to Match On" that corresponds to the value in this field will be updated
- * @displayOptions.show { dataMode: ["defineBelow"], @version: [2, 2.1], resource: ["database"], operation: ["update"] }
- * @displayOptions.hide { table: [""] }
- */
-		valueToMatchOn?: string | Expression<string>;
 }
 
 // ===========================================================================
@@ -147,7 +115,7 @@ export interface PostgresV26Credentials {
 
 export type PostgresV26Node = {
 	type: 'n8n-nodes-base.postgres';
-	version: 2 | 2.1 | 2.2 | 2.3 | 2.4 | 2.5 | 2.6;
+	version: 2.6;
 	config: NodeConfig<PostgresV26Params>;
 	credentials?: PostgresV26Credentials;
 };

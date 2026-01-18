@@ -23,14 +23,8 @@ export type StravaV11ActivityCreateConfig = {
  */
 		name: string | Expression<string>;
 /**
- * Type of activity. For example - Run, Ride etc.
- * @displayOptions.show { resource: ["activity"], operation: ["create"], @version: [1] }
- */
-		type: string | Expression<string>;
-/**
  * Type of sport
  * @displayOptions.show { resource: ["activity"], operation: ["create"] }
- * @displayOptions.hide { @version: [1] }
  * @default Run
  */
 		sport_type?: 'AlpineSki' | 'BackcountrySki' | 'Badminton' | 'Canoeing' | 'Crossfit' | 'EBikeRide' | 'Elliptical' | 'EMountainBikeRide' | 'Golf' | 'GravelRide' | 'Handcycle' | 'HighIntensityIntervalTraining' | 'Hike' | 'IceSkate' | 'InlineSkate' | 'Kayaking' | 'Kitesurf' | 'MountainBikeRide' | 'NordicSki' | 'Pickleball' | 'Pilates' | 'Racquetball' | 'Ride' | 'RockClimbing' | 'RollerSki' | 'Rowing' | 'Run' | 'Sail' | 'Skateboard' | 'Snowboard' | 'Snowshoe' | 'Soccer' | 'Squash' | 'StairStepper' | 'StandUpPaddling' | 'Surfing' | 'Swim' | 'TableTennis' | 'Tennis' | 'TrailRun' | 'Velomobile' | 'VirtualRide' | 'VirtualRow' | 'VirtualRun' | 'Walk' | 'WeightTraining' | 'Wheelchair' | 'Windsurf' | 'Workout' | 'Yoga' | Expression<string>;
@@ -224,7 +218,7 @@ export interface StravaV11Credentials {
 
 export type StravaV11Node = {
 	type: 'n8n-nodes-base.strava';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<StravaV11Params>;
 	credentials?: StravaV11Credentials;
 };

@@ -24,7 +24,8 @@ export interface CompressionV11Params {
 		binaryPropertyName: string | Expression<string>;
 /**
  * Format of the output
- * @displayOptions.show { operation: ["compress"], @version: [1] }
+ * @displayOptions.show { operation: ["compress"] }
+ * @default zip
  */
 		outputFormat?: 'gzip' | 'zip' | Expression<string>;
 /**
@@ -34,9 +35,9 @@ export interface CompressionV11Params {
 		fileName: string | Expression<string>;
 	binaryPropertyOutput?: string | Expression<string>;
 /**
- * Prefix to add to the gzip file
- * @displayOptions.show { operation: ["compress"], outputFormat: ["gzip"], @version: [1] }
- * @default data
+ * Prefix to add to the decompressed files
+ * @displayOptions.show { operation: ["decompress"] }
+ * @default file_
  */
 		outputPrefix: string | Expression<string>;
 }
@@ -51,7 +52,7 @@ export interface CompressionV11Params {
 
 export type CompressionV11Node = {
 	type: 'n8n-nodes-base.compression';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<CompressionV11Params>;
 	credentials?: Record<string, never>;
 };

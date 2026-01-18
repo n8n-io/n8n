@@ -7,8 +7,10 @@
  */
 
 import type { TheHiveTriggerV2Node } from './v2';
+import type { TheHiveTriggerV1Node } from './v1';
 
 export * from './v2';
+export * from './v1';
 
 // Combined union type for all versions
-export type TheHiveTriggerNode = TheHiveTriggerV2Node;
+export type TheHiveTriggerNode = TheHiveTriggerV2Node | TheHiveTriggerV1Node;

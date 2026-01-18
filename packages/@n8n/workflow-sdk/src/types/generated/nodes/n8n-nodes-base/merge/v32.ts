@@ -133,7 +133,7 @@ export type MergeV32Params =
 
 export type MergeV32Node = {
 	type: 'n8n-nodes-base.merge';
-	version: 3 | 3.1 | 3.2;
+	version: 3.2;
 	config: NodeConfig<MergeV32Params>;
 	credentials?: Record<string, never>;
 };

@@ -52,36 +52,6 @@ export type GoogleSheetsV47SheetAppendOrUpdateConfig = {
 	operation: 'appendOrUpdate';
 	documentId: ResourceLocatorValue;
 	sheetName: string | Expression<string>;
-/**
- * Whether to insert the input data this node receives in the new row
- * @displayOptions.show { resource: ["sheet"], operation: ["appendOrUpdate"], @version: [3] }
- * @displayOptions.hide { sheetName: [""] }
- * @default defineBelow
- */
-		dataMode?: 'autoMapInputData' | 'defineBelow' | 'nothing' | Expression<string>;
-/**
- * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
- * @hint Used to find the correct row to update. Doesn't get changed.
- * @displayOptions.show { resource: ["sheet"], operation: ["appendOrUpdate"], @version: [3] }
- * @displayOptions.hide { sheetName: [""] }
- */
-		columnToMatchOn?: string | Expression<string>;
-	valueToMatchOn?: string | Expression<string>;
-	fieldsUi?: {
-		values?: Array<{
-			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
-			 */
-			column?: string | Expression<string>;
-			/** Column Name
-			 * @displayOptions.show { column: ["newColumn"] }
-			 */
-			columnName?: string | Expression<string>;
-			/** Value
-			 */
-			fieldValue?: string | Expression<string>;
-		}>;
-	};
-	columns: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
 
@@ -91,24 +61,6 @@ export type GoogleSheetsV47SheetAppendConfig = {
 	operation: 'append';
 	documentId: ResourceLocatorValue;
 	sheetName: string | Expression<string>;
-/**
- * Whether to insert the input data this node receives in the new row
- * @displayOptions.show { resource: ["sheet"], operation: ["append"], @version: [3] }
- * @displayOptions.hide { sheetName: [""] }
- * @default defineBelow
- */
-		dataMode?: 'autoMapInputData' | 'defineBelow' | 'nothing' | Expression<string>;
-	fieldsUi?: {
-		fieldValues?: Array<{
-			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
-			 */
-			fieldId?: string | Expression<string>;
-			/** Field Value
-			 */
-			fieldValue?: string | Expression<string>;
-		}>;
-	};
-	columns: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
 
@@ -206,13 +158,6 @@ export type GoogleSheetsV47SheetReadConfig = {
 			lookupValue?: string | Expression<string>;
 		}>;
 	};
-/**
- * How to combine the conditions defined in "Filters": AND requires all conditions to be true, OR requires at least one condition to be true
- * @displayOptions.show { @version: [{"_cnd":{"lt":4.3}}], resource: ["sheet"], operation: ["read"] }
- * @displayOptions.hide { sheetName: [""] }
- * @default OR
- */
-		combineFilters?: 'AND' | 'OR' | Expression<string>;
 	options?: Record<string, unknown>;
 };
 
@@ -222,36 +167,6 @@ export type GoogleSheetsV47SheetUpdateConfig = {
 	operation: 'update';
 	documentId: ResourceLocatorValue;
 	sheetName: string | Expression<string>;
-/**
- * Whether to insert the input data this node receives in the new row
- * @displayOptions.show { resource: ["sheet"], operation: ["update"], @version: [3] }
- * @displayOptions.hide { sheetName: [""] }
- * @default defineBelow
- */
-		dataMode?: 'autoMapInputData' | 'defineBelow' | 'nothing' | Expression<string>;
-/**
- * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
- * @hint Used to find the correct row to update. Doesn't get changed.
- * @displayOptions.show { resource: ["sheet"], operation: ["update"], @version: [3] }
- * @displayOptions.hide { sheetName: [""] }
- */
-		columnToMatchOn?: string | Expression<string>;
-	valueToMatchOn?: string | Expression<string>;
-	fieldsUi?: {
-		values?: Array<{
-			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
-			 */
-			column?: string | Expression<string>;
-			/** Column Name
-			 * @displayOptions.show { column: ["newColumn"] }
-			 */
-			columnName?: string | Expression<string>;
-			/** Value
-			 */
-			fieldValue?: string | Expression<string>;
-		}>;
-	};
-	columns: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
 
@@ -283,7 +198,7 @@ export interface GoogleSheetsV47Credentials {
 
 export type GoogleSheetsV47Node = {
 	type: 'n8n-nodes-base.googleSheets';
-	version: 3 | 4 | 4.1 | 4.2 | 4.3 | 4.4 | 4.5 | 4.6 | 4.7;
+	version: 4.7;
 	config: NodeConfig<GoogleSheetsV47Params>;
 	credentials?: GoogleSheetsV47Credentials;
 };

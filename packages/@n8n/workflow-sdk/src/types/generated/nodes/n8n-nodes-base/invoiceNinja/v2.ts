@@ -545,7 +545,7 @@ export interface InvoiceNinjaV2Credentials {
 
 export type InvoiceNinjaV2Node = {
 	type: 'n8n-nodes-base.invoiceNinja';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<InvoiceNinjaV2Params>;
 	credentials?: InvoiceNinjaV2Credentials;
 };

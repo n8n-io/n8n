@@ -61,7 +61,7 @@ export type MergeV21Params =
 
 export type MergeV21Node = {
 	type: 'n8n-nodes-base.merge';
-	version: 2 | 2.1;
+	version: 2.1;
 	config: NodeConfig<MergeV21Params>;
 	credentials?: Record<string, never>;
 };

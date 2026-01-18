@@ -35,12 +35,6 @@ export interface GraphqlV11Params {
  */
 		allowUnauthorizedCerts?: boolean | Expression<boolean>;
 /**
- * The format for the query payload
- * @displayOptions.show { requestMethod: ["POST"], @version: [1] }
- * @default graphql
- */
-		requestFormat: 'graphql' | 'json' | Expression<string>;
-/**
  * GraphQL query
  */
 		query: string | Expression<string>;
@@ -101,7 +95,7 @@ export interface GraphqlV11Credentials {
 
 export type GraphqlV11Node = {
 	type: 'n8n-nodes-base.graphql';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<GraphqlV11Params>;
 	credentials?: GraphqlV11Credentials;
 };

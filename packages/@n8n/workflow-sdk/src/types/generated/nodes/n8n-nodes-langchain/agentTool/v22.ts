@@ -21,7 +21,6 @@ export interface LcAgentToolV22Params {
 		toolDescription: string | Expression<string>;
 	text: string | Expression<string>;
 	hasOutputParser?: boolean | Expression<boolean>;
-	needsFallback?: boolean | Expression<boolean>;
 	options?: Record<string, unknown>;
 }
 

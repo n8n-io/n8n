@@ -89,7 +89,7 @@ export type LcMemoryManagerV11Params =
 
 export type LcMemoryManagerV11Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryManager';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<LcMemoryManagerV11Params>;
 	credentials?: Record<string, never>;
 };

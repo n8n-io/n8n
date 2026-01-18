@@ -31,7 +31,7 @@ export interface LcSentimentAnalysisV11Params {
 
 export type LcSentimentAnalysisV11Node = {
 	type: '@n8n/n8n-nodes-langchain.sentimentAnalysis';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<LcSentimentAnalysisV11Params>;
 	credentials?: Record<string, never>;
 };

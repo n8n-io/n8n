@@ -19,7 +19,7 @@ export type CodeV2RunOnceForAllItemsConfig = {
 	language?: 'javaScript' | 'pythonNative' | Expression<string>;
 /**
  * JavaScript code to execute.&lt;br&gt;&lt;br&gt;Tip: You can use luxon vars like &lt;code&gt;$today&lt;/code&gt; for dates and &lt;code&gt;$jmespath&lt;/code&gt; for querying JSON structures. &lt;a href="https://docs.n8n.io/nodes/n8n-nodes-base.function"&gt;Learn more&lt;/a&gt;.
- * @displayOptions.show { @version: [1], mode: ["runOnceForAllItems"] }
+ * @displayOptions.show { language: ["javaScript"], mode: ["runOnceForAllItems"] }
  */
 		jsCode?: string | Expression<string>;
 /**
@@ -35,7 +35,7 @@ export type CodeV2RunOnceForEachItemConfig = {
 	language?: 'javaScript' | 'pythonNative' | Expression<string>;
 /**
  * JavaScript code to execute.&lt;br&gt;&lt;br&gt;Tip: You can use luxon vars like &lt;code&gt;$today&lt;/code&gt; for dates and &lt;code&gt;$jmespath&lt;/code&gt; for querying JSON structures. &lt;a href="https://docs.n8n.io/nodes/n8n-nodes-base.function"&gt;Learn more&lt;/a&gt;.
- * @displayOptions.show { @version: [1], mode: ["runOnceForEachItem"] }
+ * @displayOptions.show { language: ["javaScript"], mode: ["runOnceForEachItem"] }
  */
 		jsCode?: string | Expression<string>;
 /**
@@ -60,7 +60,7 @@ export type CodeV2Params =
 
 export type CodeV2Node = {
 	type: 'n8n-nodes-base.code';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<CodeV2Params>;
 	credentials?: Record<string, never>;
 };

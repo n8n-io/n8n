@@ -359,7 +359,7 @@ export interface GoogleDriveV2Credentials {
 
 export type GoogleDriveV2Node = {
 	type: 'n8n-nodes-base.googleDrive';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<GoogleDriveV2Params>;
 	credentials?: GoogleDriveV2Credentials;
 };

@@ -278,25 +278,35 @@ function generateNestedPropertyJSDoc(prop: NodeProperty, indent: string): string
 		lines.push(`${indent} * @hint ${safeHint}`);
 	}
 
-	// Display options
+	// Display options - filter out @version since version is implicit from the file
 	if (prop.displayOptions) {
 		if (prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) {
-			const showConditions = Object.entries(prop.displayOptions.show)
-				.map(
-					([key, values]) =>
-						`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
-				)
-				.join(', ');
-			lines.push(`${indent} * @displayOptions.show { ${showConditions} }`);
+			const filteredShow = Object.entries(prop.displayOptions.show).filter(
+				([key]) => key !== '@version',
+			);
+			if (filteredShow.length > 0) {
+				const showConditions = filteredShow
+					.map(
+						([key, values]) =>
+							`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
+					)
+					.join(', ');
+				lines.push(`${indent} * @displayOptions.show { ${showConditions} }`);
+			}
 		}
 		if (prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0) {
-			const hideConditions = Object.entries(prop.displayOptions.hide)
-				.map(
-					([key, values]) =>
-						`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
-				)
-				.join(', ');
-			lines.push(`${indent} * @displayOptions.hide { ${hideConditions} }`);
+			const filteredHide = Object.entries(prop.displayOptions.hide).filter(
+				([key]) => key !== '@version',
+			);
+			if (filteredHide.length > 0) {
+				const hideConditions = filteredHide
+					.map(
+						([key, values]) =>
+							`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
+					)
+					.join(', ');
+				lines.push(`${indent} * @displayOptions.hide { ${hideConditions} }`);
+			}
 		}
 	}
 
@@ -587,6 +597,50 @@ export function getPropertiesForCombination(
 }
 
 /**
+ * Check if a property applies to a specific version based on displayOptions
+ * @param prop The property to check
+ * @param version The specific version number to check for
+ * @returns true if the property applies to this version
+ */
+export function propertyAppliesToVersion(prop: NodeProperty, version: number): boolean {
+	// If no displayOptions, property applies to all versions
+	if (!prop.displayOptions) {
+		return true;
+	}
+
+	// Check show conditions for @version
+	if (prop.displayOptions.show?.['@version']) {
+		const allowedVersions = prop.displayOptions.show['@version'] as number[];
+		if (!allowedVersions.includes(version)) {
+			return false;
+		}
+	}
+
+	// Check hide conditions for @version
+	if (prop.displayOptions.hide?.['@version']) {
+		const hiddenVersions = prop.displayOptions.hide['@version'] as number[];
+		if (hiddenVersions.includes(version)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Filter node properties to only include those that apply to a specific version
+ * @param properties The full list of node properties
+ * @param version The specific version to filter for
+ * @returns Properties that apply to the given version
+ */
+export function filterPropertiesForVersion(
+	properties: NodeProperty[],
+	version: number,
+): NodeProperty[] {
+	return properties.filter((prop) => propertyAppliesToVersion(prop, version));
+}
+
+/**
  * Generate discriminated union types for a node
  */
 export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
@@ -717,24 +771,35 @@ export function generatePropertyJSDoc(prop: NodeProperty): string {
 	}
 
 	// Display options - conditions for when this property is shown/hidden
+	// Filter out @version since version is implicit from the file
 	if (prop.displayOptions) {
 		if (prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) {
-			const showConditions = Object.entries(prop.displayOptions.show)
-				.map(
-					([key, values]) =>
-						`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
-				)
-				.join(', ');
-			lines.push(` * @displayOptions.show { ${showConditions} }`);
+			const filteredShow = Object.entries(prop.displayOptions.show).filter(
+				([key]) => key !== '@version',
+			);
+			if (filteredShow.length > 0) {
+				const showConditions = filteredShow
+					.map(
+						([key, values]) =>
+							`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
+					)
+					.join(', ');
+				lines.push(` * @displayOptions.show { ${showConditions} }`);
+			}
 		}
 		if (prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0) {
-			const hideConditions = Object.entries(prop.displayOptions.hide)
-				.map(
-					([key, values]) =>
-						`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
-				)
-				.join(', ');
-			lines.push(` * @displayOptions.hide { ${hideConditions} }`);
+			const filteredHide = Object.entries(prop.displayOptions.hide).filter(
+				([key]) => key !== '@version',
+			);
+			if (filteredHide.length > 0) {
+				const hideConditions = filteredHide
+					.map(
+						([key, values]) =>
+							`${key}: [${(values as unknown[]).map((v) => JSON.stringify(v)).join(', ')}]`,
+					)
+					.join(', ');
+				lines.push(` * @displayOptions.hide { ${hideConditions} }`);
+			}
 		}
 	}
 
@@ -942,21 +1007,36 @@ export function versionToFileName(version: number): string {
 }
 
 /**
- * Generate type file for a single version entry of a node
- * This creates files like v34.ts, v2.ts containing only that version's types
+ * Generate type file for a single specific version of a node
+ * This creates files like v3.ts, v31.ts, v34.ts containing only that version's types
+ * Properties are filtered to only include those that apply to the specific version
+ * @param node The node type description
+ * @param specificVersion The specific version number to generate for
  */
-export function generateSingleVersionTypeFile(node: NodeTypeDescription): string {
+export function generateSingleVersionTypeFile(
+	node: NodeTypeDescription,
+	specificVersion: number,
+): string {
 	const prefix = getPackagePrefix(node.name);
 	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
 	const isTrigger = isTriggerNode(node);
-	const version = getHighestVersion(node.version);
-	const versionSuffix = versionToTypeName(version);
+	const versionSuffix = versionToTypeName(specificVersion);
+
+	// Filter properties to only include those that apply to this specific version
+	const filteredProperties = filterPropertiesForVersion(node.properties, specificVersion);
+
+	// Create a filtered node description for use in type generation
+	const filteredNode: NodeTypeDescription = {
+		...node,
+		properties: filteredProperties,
+		version: specificVersion, // Single version for this file
+	};
 
 	const lines: string[] = [];
 
 	// Header with JSDoc
 	lines.push('/**');
-	lines.push(` * ${node.displayName} Node - Version ${version}`);
+	lines.push(` * ${node.displayName} Node - Version ${specificVersion}`);
 	if (node.description) {
 		lines.push(` * ${node.description}`);
 	}
@@ -975,12 +1055,12 @@ export function generateSingleVersionTypeFile(node: NodeTypeDescription): string
 		return ['string', 'number', 'boolean', 'options', 'json', 'dateTime', 'color'].includes(p.type);
 	};
 
-	// Check properties that will actually be output
-	const outputProps = node.properties.filter(
+	// Check filtered properties that will actually be output
+	const outputProps = filteredProperties.filter(
 		(p) => !['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(p.type),
 	);
 
-	// Determine which imports are needed
+	// Determine which imports are needed based on filtered properties
 	const needsExpression = outputProps.some(propNeedsExpression);
 	const needsCredentialReference = node.credentials && node.credentials.length > 0;
 	const needsIDataObject = outputProps.some((p) => p.type === 'json');
@@ -997,7 +1077,7 @@ export function generateSingleVersionTypeFile(node: NodeTypeDescription): string
 	}
 	lines.push('');
 
-	// Helper types (if needed)
+	// Helper types (if needed) based on filtered properties
 	const needsResourceLocator = outputProps.some((p) => p.type === 'resourceLocator');
 	const needsFilter = outputProps.some((p) => p.type === 'filter');
 	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
@@ -1028,7 +1108,8 @@ export function generateSingleVersionTypeFile(node: NodeTypeDescription): string
 	lines.push('// ' + '='.repeat(75));
 	lines.push('');
 
-	lines.push(generateDiscriminatedUnionForEntry(node, nodeName, versionSuffix));
+	// Use filtered node for discriminated union generation
+	lines.push(generateDiscriminatedUnionForEntry(filteredNode, nodeName, versionSuffix));
 	lines.push('');
 
 	// Credentials section
@@ -1050,17 +1131,11 @@ export function generateSingleVersionTypeFile(node: NodeTypeDescription): string
 		lines.push('');
 	}
 
-	// Node type section
+	// Node type section - single version only
 	lines.push('// ' + '='.repeat(75));
 	lines.push('// Node Type');
 	lines.push('// ' + '='.repeat(75));
 	lines.push('');
-
-	const versions = Array.isArray(node.version) ? node.version : [node.version];
-	const versionUnion = versions
-		.sort((a, b) => a - b)
-		.map((v) => String(v))
-		.join(' | ');
 
 	const nodeTypeName = `${nodeName}${versionSuffix}Node`;
 	const credType =
@@ -1070,7 +1145,7 @@ export function generateSingleVersionTypeFile(node: NodeTypeDescription): string
 
 	lines.push(`export type ${nodeTypeName} = {`);
 	lines.push(`\ttype: '${node.name}';`);
-	lines.push(`\tversion: ${versionUnion};`);
+	lines.push(`\tversion: ${specificVersion};`);
 	lines.push(`\tconfig: NodeConfig<${nodeName}${versionSuffix}Params>;`);
 	lines.push(`\tcredentials?: ${credType};`);
 
@@ -1084,28 +1159,25 @@ export function generateSingleVersionTypeFile(node: NodeTypeDescription): string
 }
 
 /**
- * Generate index file for a node directory that re-exports all versions
- * Creates files like set/index.ts that exports from v34.ts, v2.ts and creates union type
+ * Generate index file for a node directory that re-exports all individual versions
+ * Creates files like set/index.ts that exports from v3.ts, v31.ts, v34.ts and creates union type
+ * @param node A sample node description (used for display name and name)
+ * @param versions Array of individual version numbers to include
  */
 export function generateVersionIndexFile(
-	nodes: NodeTypeDescription[],
-	nodeName: string,
-	_packageName: string,
+	node: NodeTypeDescription,
+	versions: number[],
 ): string {
-	const prefix = getPackagePrefix(nodes[0].name);
-	const typeName = prefix + toPascalCase(nodeName);
+	const prefix = getPackagePrefix(node.name);
+	const typeName = prefix + toPascalCase(getNodeBaseName(node.name));
 
-	// Sort by highest version descending
-	const sortedNodes = [...nodes].sort((a, b) => {
-		const aHighest = getHighestVersion(a.version);
-		const bHighest = getHighestVersion(b.version);
-		return bHighest - aHighest;
-	});
+	// Sort by version descending (highest first)
+	const sortedVersions = [...versions].sort((a, b) => b - a);
 
 	const lines: string[] = [];
 
 	lines.push('/**');
-	lines.push(` * ${sortedNodes[0].displayName} Node Types`);
+	lines.push(` * ${node.displayName} Node Types`);
 	lines.push(' *');
 	lines.push(' * Re-exports all version-specific types and provides combined union type.');
 	lines.push(' *');
@@ -1115,8 +1187,7 @@ export function generateVersionIndexFile(
 
 	// Import node types from each version file for use in union type
 	const nodeTypeNames: string[] = [];
-	for (const node of sortedNodes) {
-		const version = getHighestVersion(node.version);
+	for (const version of sortedVersions) {
 		const fileName = versionToFileName(version);
 		const versionSuffix = versionToTypeName(version);
 		const nodeTypeName = `${typeName}${versionSuffix}Node`;
@@ -1126,8 +1197,7 @@ export function generateVersionIndexFile(
 	lines.push('');
 
 	// Re-export from each version file
-	for (const node of sortedNodes) {
-		const version = getHighestVersion(node.version);
+	for (const version of sortedVersions) {
 		const fileName = versionToFileName(version);
 		lines.push(`export * from './${fileName}';`);
 	}
@@ -1727,10 +1797,11 @@ export async function loadNodeTypes(
 /**
  * Generate version-specific type files for a package
  * Creates directory structure: nodes/{package}/{nodeName}/v{version}.ts and index.ts
+ * Each individual version gets its own file with filtered properties
  */
 async function generateVersionSpecificFiles(
 	packageDir: string,
-	packageName: string,
+	_packageName: string,
 	nodesByName: Map<string, NodeTypeDescription[]>,
 ): Promise<NodeTypeDescription[]> {
 	const allNodes: NodeTypeDescription[] = [];
@@ -1744,18 +1815,33 @@ async function generateVersionSpecificFiles(
 			await fs.promises.mkdir(nodeDir, { recursive: true });
 			generatedDirs++;
 
-			// Generate version-specific files for each version entry
+			// Collect all individual versions from all node entries and map them to their source node
+			// This allows us to generate a file per individual version (e.g., v3, v31, v32, v33, v34)
+			const versionToNode = new Map<number, NodeTypeDescription>();
+			const allVersions: number[] = [];
+
 			for (const node of nodes) {
-				const version = getHighestVersion(node.version);
+				const versions = Array.isArray(node.version) ? node.version : [node.version];
+				for (const version of versions) {
+					if (!versionToNode.has(version)) {
+						versionToNode.set(version, node);
+						allVersions.push(version);
+					}
+				}
+			}
+
+			// Generate a file for each individual version
+			for (const version of allVersions) {
+				const sourceNode = versionToNode.get(version)!;
 				const fileName = versionToFileName(version);
-				const content = generateSingleVersionTypeFile(node);
+				const content = generateSingleVersionTypeFile(sourceNode, version);
 				const filePath = path.join(nodeDir, `${fileName}.ts`);
 				await fs.promises.writeFile(filePath, content);
 				generatedFiles++;
 			}
 
-			// Generate index.ts that re-exports all versions
-			const indexContent = generateVersionIndexFile(nodes, nodeName, packageName);
+			// Generate index.ts that re-exports all individual versions
+			const indexContent = generateVersionIndexFile(nodes[0], allVersions);
 			await fs.promises.writeFile(path.join(nodeDir, 'index.ts'), indexContent);
 
 			// Add first node to allNodes for main index generation

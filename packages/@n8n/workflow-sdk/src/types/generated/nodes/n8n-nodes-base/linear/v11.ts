@@ -108,7 +108,7 @@ export interface LinearV11Credentials {
 
 export type LinearV11Node = {
 	type: 'n8n-nodes-base.linear';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<LinearV11Params>;
 	credentials?: LinearV11Credentials;
 };

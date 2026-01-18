@@ -409,7 +409,7 @@ export interface MicrosoftExcelV22Credentials {
 
 export type MicrosoftExcelV22Node = {
 	type: 'n8n-nodes-base.microsoftExcel';
-	version: 2 | 2.1 | 2.2;
+	version: 2.2;
 	config: NodeConfig<MicrosoftExcelV22Params>;
 	credentials?: MicrosoftExcelV22Credentials;
 };

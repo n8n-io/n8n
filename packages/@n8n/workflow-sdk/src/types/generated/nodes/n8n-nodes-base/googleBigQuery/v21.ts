@@ -68,7 +68,7 @@ export interface GoogleBigQueryV21Credentials {
 
 export type GoogleBigQueryV21Node = {
 	type: 'n8n-nodes-base.googleBigQuery';
-	version: 2 | 2.1;
+	version: 2.1;
 	config: NodeConfig<GoogleBigQueryV21Params>;
 	credentials?: GoogleBigQueryV21Credentials;
 };

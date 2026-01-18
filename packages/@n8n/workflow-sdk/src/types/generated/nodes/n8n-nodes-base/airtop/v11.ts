@@ -779,7 +779,7 @@ export interface AirtopV11Credentials {
 
 export type AirtopV11Node = {
 	type: 'n8n-nodes-base.airtop';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<AirtopV11Params>;
 	credentials?: AirtopV11Credentials;
 };

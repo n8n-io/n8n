@@ -343,7 +343,7 @@ export interface MicrosoftTeamsV11Credentials {
 
 export type MicrosoftTeamsV11Node = {
 	type: 'n8n-nodes-base.microsoftTeams';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<MicrosoftTeamsV11Params>;
 	credentials?: MicrosoftTeamsV11Credentials;
 };

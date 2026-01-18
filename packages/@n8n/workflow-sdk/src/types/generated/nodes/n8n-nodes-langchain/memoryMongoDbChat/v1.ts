@@ -15,7 +15,11 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 
 export interface LcMemoryMongoDbChatV1Params {
 	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
-	sessionKey?: string | Expression<string>;
+/**
+ * The key to use to store session ID in the memory
+ * @displayOptions.show { sessionIdType: ["customKey"] }
+ */
+		sessionKey?: string | Expression<string>;
 /**
  * The collection name to store the chat history in. If collection does not exist, it will be created.
  * @default n8n_chat_histories

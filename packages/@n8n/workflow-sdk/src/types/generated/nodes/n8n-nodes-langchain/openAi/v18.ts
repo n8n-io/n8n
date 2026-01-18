@@ -95,13 +95,6 @@ export type LcOpenAiV18AssistantMessageConfig = {
 		assistantId: ResourceLocatorValue;
 	prompt?: 'auto' | 'guardrails' | 'define' | Expression<string>;
 	text?: string | Expression<string>;
-	memory?: 'connector' | 'threadId' | Expression<string>;
-/**
- * The ID of the thread to continue, a new thread will be created if not specified
- * @hint If the thread ID is empty or undefined a new thread will be created and included in the response
- * @displayOptions.show { @version: [{"_cnd":{"gte":1.6}}], memory: ["threadId"], operation: ["message"], resource: ["assistant"] }
- */
-		threadId?: string | Expression<string>;
 /**
  * Additional options to add
  * @displayOptions.show { operation: ["message"], resource: ["assistant"] }
@@ -151,7 +144,6 @@ export type LcOpenAiV18TextMessageConfig = {
  * @default false
  */
 		jsonOutput?: boolean | Expression<boolean>;
-	hideTools?: unknown;
 	options?: Record<string, unknown>;
 };
 
@@ -177,7 +169,6 @@ export type LcOpenAiV18TextClassifyConfig = {
 export type LcOpenAiV18ImageAnalyzeConfig = {
 	resource: 'image';
 	operation: 'analyze';
-	modelId: ResourceLocatorValue;
 	text?: string | Expression<string>;
 	inputType?: 'url' | 'base64' | Expression<string>;
 /**
@@ -326,7 +317,7 @@ export interface LcOpenAiV18Credentials {
 
 export type LcOpenAiV18Node = {
 	type: '@n8n/n8n-nodes-langchain.openAi';
-	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.7 | 1.8;
+	version: 1.8;
 	config: NodeConfig<LcOpenAiV18Params>;
 	credentials?: LcOpenAiV18Credentials;
 };

@@ -15,19 +15,12 @@ import type { IDataObject } from '../../../../base';
 // ===========================================================================
 
 export interface LcToolWorkflowV13Params {
-	name?: string | Expression<string>;
 	description?: string | Expression<string>;
 /**
  * Where to get the workflow to execute from
  * @default database
  */
 		source?: 'database' | 'parameter' | Expression<string>;
-/**
- * The workflow to execute
- * @hint Can be found in the URL of the workflow
- * @displayOptions.show { source: ["database"], @version: [{"_cnd":{"lte":1.1}}] }
- */
-		workflowId: string | Expression<string>;
 /**
  * The workflow JSON code to execute
  * @displayOptions.show { source: ["parameter"] }
@@ -43,13 +36,6 @@ export interface LcToolWorkflowV13Params {
 
  */
 		workflowJson: IDataObject | string | Expression<string>;
-/**
- * Where to find the data that this tool should return. n8n will look in the output of the last-executed node of the workflow for a field with this name, and return its value.
- * @hint The field in the last-executed node of the workflow that contains the response
- * @displayOptions.show { @version: [{"_cnd":{"lt":1.3}}] }
- * @default response
- */
-		responsePropertyName: string | Expression<string>;
 /**
  * These will be output by the 'execute workflow' trigger of the workflow being called
  * @default {}
@@ -133,7 +119,7 @@ export interface LcToolWorkflowV13Params {
 
 export type LcToolWorkflowV13Node = {
 	type: '@n8n/n8n-nodes-langchain.toolWorkflow';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<LcToolWorkflowV13Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;

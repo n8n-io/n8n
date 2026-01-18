@@ -22,19 +22,16 @@ export interface PipedriveTriggerV11Params {
 		incomingAuthentication?: 'basicAuth' | 'none' | Expression<string>;
 /**
  * Type of action to receive notifications about
- * @displayOptions.hide { @version: [{"_cnd":{"gte":1.1}}] }
  * @default *
  */
 		action?: 'added' | '*' | 'deleted' | 'merged' | 'updated' | Expression<string>;
 /**
  * Type of object to receive notifications about
- * @displayOptions.hide { @version: [{"_cnd":{"lte":1}}] }
  * @default *
  */
 		entity?: 'activity' | 'activityType' | '*' | 'deal' | 'note' | 'organization' | 'person' | 'pipeline' | 'product' | 'stage' | 'user' | Expression<string>;
 /**
  * Type of object to receive notifications about
- * @displayOptions.hide { @version: [{"_cnd":{"gte":1.1}}] }
  * @default *
  */
 		object?: 'activity' | 'activityType' | '*' | 'deal' | 'note' | 'organization' | 'person' | 'pipeline' | 'product' | 'stage' | 'user' | Expression<string>;
@@ -56,7 +53,7 @@ export interface PipedriveTriggerV11Credentials {
 
 export type PipedriveTriggerV11Node = {
 	type: 'n8n-nodes-base.pipedriveTrigger';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<PipedriveTriggerV11Params>;
 	credentials?: PipedriveTriggerV11Credentials;
 	isTrigger: true;

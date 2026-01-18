@@ -15,7 +15,6 @@ import type { IDataObject } from '../../../../base';
 // ===========================================================================
 
 export interface LcToolCodeV13Params {
-	name?: string | Expression<string>;
 	description?: string | Expression<string>;
 	language?: 'javaScript' | 'python' | Expression<string>;
 /**
@@ -80,7 +79,7 @@ return _query.upper()
 
 export type LcToolCodeV13Node = {
 	type: '@n8n/n8n-nodes-langchain.toolCode';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<LcToolCodeV13Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;

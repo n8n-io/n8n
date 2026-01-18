@@ -71,7 +71,7 @@ export interface SummarizeV11Params {
 
 export type SummarizeV11Node = {
 	type: 'n8n-nodes-base.summarize';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<SummarizeV11Params>;
 	credentials?: Record<string, never>;
 };

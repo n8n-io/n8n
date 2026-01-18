@@ -32,11 +32,6 @@ export interface GitV11Params {
  */
 		pathsToAdd: string | Expression<string>;
 /**
- * Name of the key to set
- * @displayOptions.show { operation: ["addConfig"], @version: [{"_cnd":{"gte":1.1}}] }
- */
-		key: 'user.email' | 'user.name' | 'remote.origin.url' | Expression<string>;
-/**
  * Value of the key to set
  * @displayOptions.show { operation: ["addConfig"] }
  */
@@ -90,7 +85,7 @@ export interface GitV11Credentials {
 
 export type GitV11Node = {
 	type: 'n8n-nodes-base.git';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<GitV11Params>;
 	credentials?: GitV11Credentials;
 };

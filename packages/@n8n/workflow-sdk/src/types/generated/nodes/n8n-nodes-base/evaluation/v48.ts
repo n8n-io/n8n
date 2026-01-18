@@ -19,12 +19,6 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 
 export interface EvaluationV48Params {
 	operation?: 'setInputs' | 'setOutputs' | 'setMetrics' | 'checkIfEvaluating' | Expression<string>;
-/**
- * Where to get the test dataset from
- * @displayOptions.show { @version: [{"_cnd":{"gte":4.8}}], operation: ["setOutputs"] }
- * @default dataTable
- */
-		source?: 'dataTable' | 'googleSheets' | Expression<string>;
 	authentication?: 'serviceAccount' | 'oAuth2' | Expression<string>;
 	inputs?: {
 		values?: Array<{
@@ -49,7 +43,6 @@ export interface EvaluationV48Params {
 			outputValue?: string | Expression<string>;
 		}>;
 	};
-	metric?: unknown;
 /**
  * The expected output defined in your evaluation dataset, used as ground truth
  * @displayOptions.show { operation: ["setMetrics"], metric: ["correctness", "stringSimilarity", "categorization"] }
@@ -165,7 +158,7 @@ export interface EvaluationV48Credentials {
 
 export type EvaluationV48Node = {
 	type: 'n8n-nodes-base.evaluation';
-	version: 4.6 | 4.7 | 4.8;
+	version: 4.8;
 	config: NodeConfig<EvaluationV48Params>;
 	credentials?: EvaluationV48Credentials;
 };

@@ -15,12 +15,10 @@ import type { Expression, NodeConfig } from '../../../../base';
 
 export interface LcMemoryBufferWindowV13Params {
 /**
- * The key to use to store the memory in the workflow data
- * @displayOptions.show { @version: [1] }
- * @default chat_history
+ * The key to use to store session ID in the memory
+ * @displayOptions.show { sessionIdType: ["customKey"] }
  */
 		sessionKey?: string | Expression<string>;
-	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
 	contextWindowLength?: number | Expression<number>;
 }
 
@@ -34,7 +32,7 @@ export interface LcMemoryBufferWindowV13Params {
 
 export type LcMemoryBufferWindowV13Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryBufferWindow';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<LcMemoryBufferWindowV13Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;

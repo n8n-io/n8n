@@ -423,7 +423,7 @@ export interface HttpRequestV43Credentials {
 
 export type HttpRequestV43Node = {
 	type: 'n8n-nodes-base.httpRequest';
-	version: 3 | 4 | 4.1 | 4.2 | 4.3;
+	version: 4.3;
 	config: NodeConfig<HttpRequestV43Params>;
 	credentials?: HttpRequestV43Credentials;
 };

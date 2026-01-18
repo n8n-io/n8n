@@ -7,8 +7,10 @@
  */
 
 import type { CodaV11Node } from './v11';
+import type { CodaV1Node } from './v1';
 
 export * from './v11';
+export * from './v1';
 
 // Combined union type for all versions
-export type CodaNode = CodaV11Node;
+export type CodaNode = CodaV11Node | CodaV1Node;

@@ -21,11 +21,6 @@ export interface LcRetrieverWorkflowV11Params {
  */
 		source?: 'database' | 'parameter' | Expression<string>;
 /**
- * The workflow to execute
- * @displayOptions.show { source: ["database"], @version: [{"_cnd":{"eq":1}}] }
- */
-		workflowId: string | Expression<string>;
-/**
  * The workflow JSON code to execute
  * @displayOptions.show { source: ["parameter"] }
  * @default 
@@ -83,7 +78,7 @@ export interface LcRetrieverWorkflowV11Params {
 
 export type LcRetrieverWorkflowV11Node = {
 	type: '@n8n/n8n-nodes-langchain.retrieverWorkflow';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<LcRetrieverWorkflowV11Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;

@@ -32,7 +32,7 @@ export interface InvoiceNinjaTriggerV2Credentials {
 
 export type InvoiceNinjaTriggerV2Node = {
 	type: 'n8n-nodes-base.invoiceNinjaTrigger';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<InvoiceNinjaTriggerV2Params>;
 	credentials?: InvoiceNinjaTriggerV2Credentials;
 	isTrigger: true;

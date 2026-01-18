@@ -7,10 +7,12 @@
  */
 
 import type { LcChainSummarizationV21Node } from './v21';
+import type { LcChainSummarizationV2Node } from './v2';
 import type { LcChainSummarizationV1Node } from './v1';
 
 export * from './v21';
+export * from './v2';
 export * from './v1';
 
 // Combined union type for all versions
-export type LcChainSummarizationNode = LcChainSummarizationV21Node | LcChainSummarizationV1Node;
+export type LcChainSummarizationNode = LcChainSummarizationV21Node | LcChainSummarizationV2Node | LcChainSummarizationV1Node;

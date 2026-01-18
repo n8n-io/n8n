@@ -7,8 +7,10 @@
  */
 
 import type { GoogleBooksV2Node } from './v2';
+import type { GoogleBooksV1Node } from './v1';
 
 export * from './v2';
+export * from './v1';
 
 // Combined union type for all versions
-export type GoogleBooksNode = GoogleBooksV2Node;
+export type GoogleBooksNode = GoogleBooksV2Node | GoogleBooksV1Node;

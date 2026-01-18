@@ -51,12 +51,6 @@ export type LcVectorStoreMilvusV13InsertConfig = {
 	mode: 'insert';
 	ragStarterCallout?: unknown;
 	milvusCollection: ResourceLocatorValue;
-/**
- * Number of documents to embed in a single batch
- * @displayOptions.show { mode: ["insert"], @version: [{"_cnd":{"gte":1.1}}] }
- * @default 200
- */
-		embeddingBatchSize?: number | Expression<number>;
 	options?: Record<string, unknown>;
 };
 
@@ -77,11 +71,6 @@ export type LcVectorStoreMilvusV13RetrieveConfig = {
 export type LcVectorStoreMilvusV13RetrieveAsToolConfig = {
 	mode: 'retrieve-as-tool';
 	ragStarterCallout?: unknown;
-/**
- * Name of the vector store
- * @displayOptions.show { @version: [{"_cnd":{"lte":1.2}}], mode: ["retrieve-as-tool"] }
- */
-		toolName: string | Expression<string>;
 /**
  * Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often
  * @displayOptions.show { mode: ["retrieve-as-tool"] }
@@ -129,7 +118,7 @@ export interface LcVectorStoreMilvusV13Credentials {
 
 export type LcVectorStoreMilvusV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreMilvus';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<LcVectorStoreMilvusV13Params>;
 	credentials?: LcVectorStoreMilvusV13Credentials;
 };

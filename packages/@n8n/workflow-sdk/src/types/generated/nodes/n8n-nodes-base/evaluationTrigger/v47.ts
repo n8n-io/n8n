@@ -17,12 +17,6 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // ===========================================================================
 
 export interface EvaluationTriggerV47Params {
-/**
- * Where to get the test dataset from
- * @displayOptions.show { @version: [{"_cnd":{"gte":4.7}}] }
- * @default dataTable
- */
-		source?: 'dataTable' | 'googleSheets' | Expression<string>;
 	authentication?: 'serviceAccount' | 'oAuth2' | Expression<string>;
 	documentId: ResourceLocatorValue;
 	sheetName: string | Expression<string>;
@@ -94,7 +88,7 @@ export interface EvaluationTriggerV47Credentials {
 
 export type EvaluationTriggerV47Node = {
 	type: 'n8n-nodes-base.evaluationTrigger';
-	version: 4.6 | 4.7;
+	version: 4.7;
 	config: NodeConfig<EvaluationTriggerV47Params>;
 	credentials?: EvaluationTriggerV47Credentials;
 	isTrigger: true;

@@ -84,7 +84,7 @@ export interface LcInformationExtractorV12Params {
 
 export type LcInformationExtractorV12Node = {
 	type: '@n8n/n8n-nodes-langchain.informationExtractor';
-	version: 1 | 1.1 | 1.2;
+	version: 1.2;
 	config: NodeConfig<LcInformationExtractorV12Params>;
 	credentials?: Record<string, never>;
 };

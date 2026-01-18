@@ -457,7 +457,7 @@ export interface GoogleSheetsV2Credentials {
 
 export type GoogleSheetsV2Node = {
 	type: 'n8n-nodes-base.googleSheets';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<GoogleSheetsV2Params>;
 	credentials?: GoogleSheetsV2Credentials;
 };

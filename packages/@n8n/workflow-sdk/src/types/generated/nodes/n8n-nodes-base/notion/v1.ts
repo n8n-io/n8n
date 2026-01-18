@@ -23,7 +23,6 @@ export type NotionV1BlockAppendConfig = {
 /**
  * The Notion Block to append blocks to
  * @displayOptions.show { resource: ["block"], operation: ["append"] }
- * @displayOptions.hide { @version: [{"_cnd":{"gte":2.2}}] }
  * @default {"mode":"url","value":""}
  */
 		blockId: ResourceLocatorValue;
@@ -665,7 +664,6 @@ export type NotionV1BlockGetAllConfig = {
 /**
  * The Notion Block to get all children from
  * @displayOptions.show { resource: ["block"], operation: ["getAll"] }
- * @displayOptions.hide { @version: [{"_cnd":{"gte":2.2}}] }
  * @default {"mode":"url","value":""}
  */
 		blockId: ResourceLocatorValue;
@@ -682,7 +680,6 @@ export type NotionV1BlockGetAllConfig = {
  */
 		limit?: number | Expression<number>;
 	fetchNestedBlocks?: boolean | Expression<boolean>;
-	simplifyOutput?: boolean | Expression<boolean>;
 };
 
 /** Get a database */
@@ -695,13 +692,6 @@ export type NotionV1DatabaseGetConfig = {
  * @default {"mode":"list","value":""}
  */
 		databaseId: ResourceLocatorValue;
-/**
- * Whether to return a simplified version of the response instead of the raw data
- * @displayOptions.show { resource: ["database"], operation: ["getAll", "get"] }
- * @displayOptions.hide { @version: [1] }
- * @default true
- */
-		simple?: boolean | Expression<boolean>;
 };
 
 /** Get many child blocks */
@@ -720,46 +710,9 @@ export type NotionV1DatabaseGetAllConfig = {
  * @default 50
  */
 		limit?: number | Expression<number>;
-/**
- * Whether to return a simplified version of the response instead of the raw data
- * @displayOptions.show { resource: ["database"], operation: ["getAll", "get"] }
- * @displayOptions.hide { @version: [1] }
- * @default true
- */
-		simple?: boolean | Expression<boolean>;
 };
 
-/** Search databases using text search */
-export type NotionV1DatabaseSearchConfig = {
-	resource: 'database';
-	operation: 'search';
-/**
- * The text to search for
- * @displayOptions.show { resource: ["database"], operation: ["search"] }
- */
-		text?: string | Expression<string>;
-/**
- * Whether to return all results or only up to a given limit
- * @displayOptions.show { resource: ["database"], operation: ["search"] }
- * @default false
- */
-		returnAll?: boolean | Expression<boolean>;
-/**
- * Max number of results to return
- * @displayOptions.show { resource: ["database"], operation: ["search"], returnAll: [false] }
- * @default 50
- */
-		limit?: number | Expression<number>;
-/**
- * Whether to return a simplified version of the response instead of the raw data
- * @displayOptions.show { resource: ["database"], operation: ["search"] }
- * @default true
- */
-		simple?: boolean | Expression<boolean>;
-	options?: Record<string, unknown>;
-};
-
-/** Create a page in a database */
+/** Create a pages in a database */
 export type NotionV1DatabasePageCreateConfig = {
 	resource: 'databasePage';
 	operation: 'create';
@@ -769,12 +722,6 @@ export type NotionV1DatabasePageCreateConfig = {
  * @default {"mode":"list","value":""}
  */
 		databaseId: ResourceLocatorValue;
-/**
- * Page title. Appears at the top of the page and can be found via Quick Find.
- * @displayOptions.show { resource: ["databasePage"], operation: ["create"] }
- * @displayOptions.hide { @version: [1] }
- */
-		title?: string | Expression<string>;
 /**
  * Whether to return a simplified version of the response instead of the raw data
  * @displayOptions.show { resource: ["databasePage"], operation: ["create"] }
@@ -949,7 +896,6 @@ export type NotionV1DatabasePageCreateConfig = {
 			timezone?: string | Expression<string>;
 			/** File URLs
 			 * @displayOptions.show { type: ["files"] }
-			 * @displayOptions.hide { @version: [1] }
 			 * @default {}
 			 */
 			fileUrls?: {
@@ -1596,26 +1542,6 @@ export type NotionV1DatabasePageCreateConfig = {
 	options?: Record<string, unknown>;
 };
 
-/** Get a database */
-export type NotionV1DatabasePageGetConfig = {
-	resource: 'databasePage';
-	operation: 'get';
-/**
- * The Notion Database Page to get
- * @displayOptions.show { resource: ["databasePage"], operation: ["get"] }
- * @displayOptions.hide { @version: [1] }
- * @default {"mode":"url","value":""}
- */
-		pageId: ResourceLocatorValue;
-/**
- * Whether to return a simplified version of the response instead of the raw data
- * @displayOptions.show { resource: ["databasePage"], operation: ["get"] }
- * @displayOptions.hide { @version: [1] }
- * @default true
- */
-		simple?: boolean | Expression<boolean>;
-};
-
 /** Get many child blocks */
 export type NotionV1DatabasePageGetAllConfig = {
 	resource: 'databasePage';
@@ -1644,219 +1570,6 @@ export type NotionV1DatabasePageGetAllConfig = {
  * @default true
  */
 		simple?: boolean | Expression<boolean>;
-	filterType?: 'none' | 'manual' | 'json' | Expression<string>;
-	matchType?: 'anyFilter' | 'allFilters' | Expression<string>;
-	filters?: {
-		conditions?: Array<{
-			/** The name of the property to filter by. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
-			 */
-			key?: string | Expression<string>;
-			/** Type
-			 * @default ={{$parameter["&key"].split("|")[1]}}
-			 */
-			type?: unknown;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["title"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | 'contains' | 'does_not_contain' | 'starts_with' | 'ends_with' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["rich_text"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | 'contains' | 'does_not_contain' | 'starts_with' | 'ends_with' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["number"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | 'greater_than' | 'less_than' | 'greater_than_or_equal_to' | 'less_than_or_equal_to' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["checkbox"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["select"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["multi_select"] }
-			 */
-			condition?: 'contains' | 'does_not_equal' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["status"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["date"] }
-			 */
-			condition?: 'equals' | 'before' | 'after' | 'on_or_before' | 'is_empty' | 'is_not_empty' | 'on_or_after' | 'past_week' | 'past_month' | 'past_year' | 'next_week' | 'next_month' | 'next_year' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["people"] }
-			 */
-			condition?: 'contains' | 'does_not_contain' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["files"] }
-			 */
-			condition?: 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["url"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | 'contains' | 'does_not_contain' | 'starts_with' | 'ends_with' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["email"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | 'contains' | 'does_not_contain' | 'starts_with' | 'ends_with' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["phone_number"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | 'contains' | 'does_not_contain' | 'starts_with' | 'ends_with' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["relation"] }
-			 */
-			condition?: 'contains' | 'does_not_contain' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["created_by"] }
-			 */
-			condition?: 'contains' | 'does_not_contain' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["created_time"] }
-			 */
-			condition?: 'equals' | 'before' | 'after' | 'on_or_before' | 'is_empty' | 'is_not_empty' | 'on_or_after' | 'past_week' | 'past_month' | 'past_year' | 'next_week' | 'next_month' | 'next_year' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["last_edited_by"] }
-			 */
-			condition?: 'contains' | 'does_not_contain' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["last_edited_time"] }
-			 */
-			condition?: 'equals' | 'before' | 'after' | 'on_or_before' | 'is_empty' | 'is_not_empty' | 'on_or_after' | 'past_week' | 'past_month' | 'past_year' | 'next_week' | 'next_month' | 'next_year' | Expression<string>;
-			/** The formula return type
-			 * @displayOptions.show { type: ["formula"] }
-			 */
-			returnType?: 'text' | 'checkbox' | 'number' | 'date' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["formula"], returnType: ["text"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | 'contains' | 'does_not_contain' | 'starts_with' | 'ends_with' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["formula"], returnType: ["checkbox"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["formula"], returnType: ["number"] }
-			 */
-			condition?: 'equals' | 'does_not_equal' | 'greater_than' | 'less_than' | 'greater_than_or_equal_to' | 'less_than_or_equal_to' | 'is_empty' | 'is_not_empty' | Expression<string>;
-			/** The value of the property to filter by
-			 * @displayOptions.show { type: ["formula"], returnType: ["date"] }
-			 */
-			condition?: 'equals' | 'before' | 'after' | 'on_or_before' | 'is_empty' | 'is_not_empty' | 'on_or_after' | 'past_week' | 'past_month' | 'past_year' | 'next_week' | 'next_month' | 'next_year' | Expression<string>;
-			/** Title
-			 * @displayOptions.show { type: ["title"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			titleValue?: string | Expression<string>;
-			/** Text
-			 * @displayOptions.show { type: ["rich_text"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			richTextValue?: string | Expression<string>;
-			/** Phone number. No structure is enforced.
-			 * @displayOptions.show { type: ["phone_number"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			phoneNumberValue?: string | Expression<string>;
-			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
-			 * @displayOptions.show { type: ["multi_select"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 * @default []
-			 */
-			multiSelectValue?: string | Expression<string>;
-			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
-			 * @displayOptions.show { type: ["select"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			selectValue?: string | Expression<string>;
-			/** Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
-			 * @displayOptions.show { type: ["status"] }
-			 */
-			statusValue?: string | Expression<string>;
-			/** Email
-			 * @displayOptions.show { type: ["email"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			emailValue?: string | Expression<string>;
-			/** URL
-			 * @displayOptions.show { type: ["url"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			urlValue?: string | Expression<string>;
-			/** List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
-			 * @displayOptions.show { type: ["people"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			peopleValue?: string | Expression<string>;
-			/** List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
-			 * @displayOptions.show { type: ["created_by"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			createdByValue?: string | Expression<string>;
-			/** List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
-			 * @displayOptions.show { type: ["last_edited_by"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			lastEditedByValue?: string | Expression<string>;
-			/** Relation ID
-			 * @displayOptions.show { type: ["relation"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			relationValue?: string | Expression<string>;
-			/** Whether or not the checkbox is checked. &lt;code&gt;true&lt;/code&gt; represents checked. &lt;code&gt;false&lt;/code&gt; represents unchecked
-			 * @displayOptions.show { type: ["checkbox"] }
-			 * @default false
-			 */
-			checkboxValue?: boolean | Expression<boolean>;
-			/** Number value
-			 * @displayOptions.show { type: ["number"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 * @default 0
-			 */
-			numberValue?: number | Expression<number>;
-			/** An ISO 8601 format date, with optional time
-			 * @displayOptions.show { type: ["date"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty", "past_week", "past_month", "past_year", "next_week", "next_month", "next_year"] }
-			 */
-			date?: string | Expression<string>;
-			/** An ISO 8601 format date, with optional time
-			 * @displayOptions.show { type: ["created_time"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty", "past_week", "past_month", "past_year", "next_week", "next_month", "next_year"] }
-			 */
-			createdTimeValue?: string | Expression<string>;
-			/** An ISO 8601 format date, with optional time
-			 * @displayOptions.show { type: ["last_edited_time"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty", "past_week", "past_month", "past_year", "next_week", "next_month", "next_year"] }
-			 */
-			lastEditedTime?: string | Expression<string>;
-			/** Number value
-			 * @displayOptions.show { type: ["formula"], returnType: ["number"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 * @default 0
-			 */
-			numberValue?: number | Expression<number>;
-			/** Text
-			 * @displayOptions.show { type: ["formula"], returnType: ["text"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty"] }
-			 */
-			textValue?: string | Expression<string>;
-			/** Whether or not the checkbox is checked. &lt;code&gt;true&lt;/code&gt; represents checked. &lt;code&gt;false&lt;/code&gt; represents unchecked
-			 * @displayOptions.show { type: ["formula"], returnType: ["checkbox"] }
-			 * @default false
-			 */
-			checkboxValue?: boolean | Expression<boolean>;
-			/** An ISO 8601 format date, with optional time
-			 * @displayOptions.show { type: ["formula"], returnType: ["date"] }
-			 * @displayOptions.hide { condition: ["is_empty", "is_not_empty", "past_week", "past_month", "past_year", "next_week", "next_month", "next_year"] }
-			 */
-			dateValue?: string | Expression<string>;
-		}>;
-	};
-	filterJson?: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
 
@@ -2044,7 +1757,6 @@ export type NotionV1DatabasePageUpdateConfig = {
 			timezone?: string | Expression<string>;
 			/** File URLs
 			 * @displayOptions.show { type: ["files"] }
-			 * @displayOptions.hide { @version: [1] }
 			 * @default {}
 			 */
 			fileUrls?: {
@@ -2062,7 +1774,7 @@ export type NotionV1DatabasePageUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-/** Create a page in a database */
+/** Create a pages in a database */
 export type NotionV1PageCreateConfig = {
 	resource: 'page';
 	operation: 'create';
@@ -2721,18 +2433,18 @@ export type NotionV1PageGetConfig = {
 	operation: 'get';
 /**
  * The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)
- * @displayOptions.show { @version: [1], resource: ["page"], operation: ["get"] }
+ * @displayOptions.show { resource: ["page"], operation: ["get"] }
  */
 		pageId: string | Expression<string>;
 /**
  * Whether to return a simplified version of the response instead of the raw data
- * @displayOptions.show { @version: [1], resource: ["page"], operation: ["get"] }
+ * @displayOptions.show { resource: ["page"], operation: ["get"] }
  * @default true
  */
 		simple?: boolean | Expression<boolean>;
 };
 
-/** Search databases using text search */
+/** Text search of pages */
 export type NotionV1PageSearchConfig = {
 	resource: 'page';
 	operation: 'search';
@@ -2792,9 +2504,7 @@ export type NotionV1Params =
 	| NotionV1BlockGetAllConfig
 	| NotionV1DatabaseGetConfig
 	| NotionV1DatabaseGetAllConfig
-	| NotionV1DatabaseSearchConfig
 	| NotionV1DatabasePageCreateConfig
-	| NotionV1DatabasePageGetConfig
 	| NotionV1DatabasePageGetAllConfig
 	| NotionV1DatabasePageUpdateConfig
 	| NotionV1PageCreateConfig

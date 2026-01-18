@@ -40,7 +40,7 @@ export interface LcMcpTriggerV2Credentials {
 
 export type LcMcpTriggerV2Node = {
 	type: '@n8n/n8n-nodes-langchain.mcpTrigger';
-	version: 1 | 1.1 | 2;
+	version: 2;
 	config: NodeConfig<LcMcpTriggerV2Params>;
 	credentials?: LcMcpTriggerV2Credentials;
 	isTrigger: true;

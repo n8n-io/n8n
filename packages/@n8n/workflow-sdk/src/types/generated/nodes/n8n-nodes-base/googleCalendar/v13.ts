@@ -26,16 +26,6 @@ export type GoogleCalendarV13CalendarAvailabilityConfig = {
  * @default {"mode":"list","value":""}
  */
 		calendar: ResourceLocatorValue;
-/**
- * Start of the interval
- * @displayOptions.show { operation: ["availability"], resource: ["calendar"], @version: [{"_cnd":{"lt":1.3}}] }
- */
-		timeMin: string | Expression<string>;
-/**
- * End of the interval
- * @displayOptions.show { operation: ["availability"], resource: ["calendar"], @version: [{"_cnd":{"lt":1.3}}] }
- */
-		timeMax: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
 
@@ -49,16 +39,6 @@ export type GoogleCalendarV13EventCreateConfig = {
  * @default {"mode":"list","value":""}
  */
 		calendar: ResourceLocatorValue;
-/**
- * Start time of the event
- * @displayOptions.show { operation: ["create"], resource: ["event"], @version: [{"_cnd":{"lt":1.3}}] }
- */
-		start: string | Expression<string>;
-/**
- * End time of the event
- * @displayOptions.show { operation: ["create"], resource: ["event"], @version: [{"_cnd":{"lt":1.3}}] }
- */
-		end: string | Expression<string>;
 	useDefaultReminders?: boolean | Expression<boolean>;
 	additionalFields?: Record<string, unknown>;
 /**
@@ -129,18 +109,6 @@ export type GoogleCalendarV13EventGetAllConfig = {
  * @default 50
  */
 		limit?: number | Expression<number>;
-/**
- * At least some part of the event must be after this time, use &lt;a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank"&gt;expression&lt;/a&gt; to set a date, or switch to fixed mode to choose date from widget
- * @displayOptions.show { @version: [{"_cnd":{"gte":1.3}}], operation: ["getAll"], resource: ["event"] }
- * @default ={{ $now }}
- */
-		timeMin?: string | Expression<string>;
-/**
- * At least some part of the event must be before this time, use &lt;a href="https://docs.n8n.io/code/cookbook/luxon/" target="_blank"&gt;expression&lt;/a&gt; to set a date, or switch to fixed mode to choose date from widget
- * @displayOptions.show { @version: [{"_cnd":{"gte":1.3}}], operation: ["getAll"], resource: ["event"] }
- * @default ={{ $now.plus({ week: 1 }) }}
- */
-		timeMax?: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
 
@@ -155,7 +123,6 @@ export type GoogleCalendarV13EventUpdateConfig = {
  */
 		calendar: ResourceLocatorValue;
 	eventId: string | Expression<string>;
-	modifyTarget?: 'instance' | 'event' | Expression<string>;
 	useDefaultReminders?: boolean | Expression<boolean>;
 	updateFields?: Record<string, unknown>;
 /**
@@ -199,7 +166,7 @@ export interface GoogleCalendarV13Credentials {
 
 export type GoogleCalendarV13Node = {
 	type: 'n8n-nodes-base.googleCalendar';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<GoogleCalendarV13Params>;
 	credentials?: GoogleCalendarV13Credentials;
 };

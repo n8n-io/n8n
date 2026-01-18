@@ -287,7 +287,6 @@ export type LcGoogleGeminiV11TextMessageConfig = {
  * @default false
  */
 		jsonOutput?: boolean | Expression<boolean>;
-	builtInTools?: Record<string, unknown>;
 	options?: Record<string, unknown>;
 };
 
@@ -382,7 +381,7 @@ export interface LcGoogleGeminiV11Credentials {
 
 export type LcGoogleGeminiV11Node = {
 	type: '@n8n/n8n-nodes-langchain.googleGemini';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<LcGoogleGeminiV11Params>;
 	credentials?: LcGoogleGeminiV11Credentials;
 };

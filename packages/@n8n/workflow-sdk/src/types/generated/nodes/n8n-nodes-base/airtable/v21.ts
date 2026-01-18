@@ -183,7 +183,7 @@ export interface AirtableV21Credentials {
 
 export type AirtableV21Node = {
 	type: 'n8n-nodes-base.airtable';
-	version: 2 | 2.1;
+	version: 2.1;
 	config: NodeConfig<AirtableV21Params>;
 	credentials?: AirtableV21Credentials;
 };

@@ -49,7 +49,7 @@ export interface KafkaTriggerV11Credentials {
 
 export type KafkaTriggerV11Node = {
 	type: 'n8n-nodes-base.kafkaTrigger';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<KafkaTriggerV11Params>;
 	credentials?: KafkaTriggerV11Credentials;
 	isTrigger: true;

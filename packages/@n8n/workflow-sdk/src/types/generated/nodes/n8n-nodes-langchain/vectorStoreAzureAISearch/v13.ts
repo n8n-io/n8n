@@ -57,12 +57,6 @@ export type LcVectorStoreAzureAISearchV13InsertConfig = {
  * @default n8n-vectorstore
  */
 		indexName: string | Expression<string>;
-/**
- * Number of documents to embed in a single batch
- * @displayOptions.show { mode: ["insert"], @version: [{"_cnd":{"gte":1.1}}] }
- * @default 200
- */
-		embeddingBatchSize?: number | Expression<number>;
 	options?: Record<string, unknown>;
 };
 
@@ -88,11 +82,6 @@ export type LcVectorStoreAzureAISearchV13RetrieveConfig = {
 export type LcVectorStoreAzureAISearchV13RetrieveAsToolConfig = {
 	mode: 'retrieve-as-tool';
 	ragStarterCallout?: unknown;
-/**
- * Name of the vector store
- * @displayOptions.show { @version: [{"_cnd":{"lte":1.2}}], mode: ["retrieve-as-tool"] }
- */
-		toolName: string | Expression<string>;
 /**
  * Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often
  * @displayOptions.show { mode: ["retrieve-as-tool"] }
@@ -162,7 +151,7 @@ export interface LcVectorStoreAzureAISearchV13Credentials {
 
 export type LcVectorStoreAzureAISearchV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreAzureAISearch';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<LcVectorStoreAzureAISearchV13Params>;
 	credentials?: LcVectorStoreAzureAISearchV13Credentials;
 };

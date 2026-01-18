@@ -35,7 +35,7 @@ export interface ExtractFromFileV11Params {
 
 export type ExtractFromFileV11Node = {
 	type: 'n8n-nodes-base.extractFromFile';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<ExtractFromFileV11Params>;
 	credentials?: Record<string, never>;
 };

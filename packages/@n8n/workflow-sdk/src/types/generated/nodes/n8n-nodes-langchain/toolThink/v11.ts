@@ -31,7 +31,7 @@ export interface LcToolThinkV11Params {
 
 export type LcToolThinkV11Node = {
 	type: '@n8n/n8n-nodes-langchain.toolThink';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<LcToolThinkV11Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;

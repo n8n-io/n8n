@@ -50,7 +50,7 @@ export interface LcChainSummarizationV21Params {
 
 export type LcChainSummarizationV21Node = {
 	type: '@n8n/n8n-nodes-langchain.chainSummarization';
-	version: 2 | 2.1;
+	version: 2.1;
 	config: NodeConfig<LcChainSummarizationV21Params>;
 	credentials?: Record<string, never>;
 };

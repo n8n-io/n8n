@@ -37,7 +37,7 @@ export interface ExecutionDataV11Params {
 
 export type ExecutionDataV11Node = {
 	type: 'n8n-nodes-base.executionData';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<ExecutionDataV11Params>;
 	credentials?: Record<string, never>;
 };

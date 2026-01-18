@@ -391,11 +391,6 @@ export type HubspotV22EngagementCreateConfig = {
 	resource: 'engagement';
 	operation: 'create';
 	type: 'call' | 'email' | 'meeting' | 'task' | Expression<string>;
-/**
- * The due date for the task
- * @displayOptions.show { resource: ["engagement"], operation: ["create"], type: ["task"], @version: [{"_cnd":{"gte":2.2}}] }
- */
-		dueDate: string | Expression<string>;
 	metadata?: Record<string, unknown>;
 	additionalFields?: Record<string, unknown>;
 };
@@ -542,7 +537,7 @@ export interface HubspotV22Credentials {
 
 export type HubspotV22Node = {
 	type: 'n8n-nodes-base.hubspot';
-	version: 2 | 2.1 | 2.2;
+	version: 2.2;
 	config: NodeConfig<HubspotV22Params>;
 	credentials?: HubspotV22Credentials;
 };

@@ -15,7 +15,11 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 
 export interface LcMemoryPostgresChatV13Params {
 	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
-	sessionKey?: string | Expression<string>;
+/**
+ * The key to use to store session ID in the memory
+ * @displayOptions.show { sessionIdType: ["customKey"] }
+ */
+		sessionKey?: string | Expression<string>;
 /**
  * The table name to store the chat history in. If table does not exist, it will be created.
  * @default n8n_chat_histories
@@ -38,7 +42,7 @@ export interface LcMemoryPostgresChatV13Credentials {
 
 export type LcMemoryPostgresChatV13Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryPostgresChat';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<LcMemoryPostgresChatV13Params>;
 	credentials?: LcMemoryPostgresChatV13Credentials;
 	isTrigger: true;

@@ -31,7 +31,7 @@ export interface RssFeedReadV12Params {
 
 export type RssFeedReadV12Node = {
 	type: 'n8n-nodes-base.rssFeedRead';
-	version: 1 | 1.1 | 1.2;
+	version: 1.2;
 	config: NodeConfig<RssFeedReadV12Params>;
 	credentials?: Record<string, never>;
 };

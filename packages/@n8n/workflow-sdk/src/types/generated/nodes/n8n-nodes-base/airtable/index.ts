@@ -7,10 +7,12 @@
  */
 
 import type { AirtableV21Node } from './v21';
+import type { AirtableV2Node } from './v2';
 import type { AirtableV1Node } from './v1';
 
 export * from './v21';
+export * from './v2';
 export * from './v1';
 
 // Combined union type for all versions
-export type AirtableNode = AirtableV21Node | AirtableV1Node;
+export type AirtableNode = AirtableV21Node | AirtableV2Node | AirtableV1Node;

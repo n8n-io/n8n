@@ -23,7 +23,6 @@ export type NotionV22BlockAppendConfig = {
 /**
  * The Notion Block to append blocks to
  * @displayOptions.show { resource: ["block"], operation: ["append"] }
- * @displayOptions.hide { @version: [{"_cnd":{"gte":2.2}}] }
  * @default {"mode":"url","value":""}
  */
 		blockId: ResourceLocatorValue;
@@ -665,7 +664,6 @@ export type NotionV22BlockGetAllConfig = {
 /**
  * The Notion Block to get all children from
  * @displayOptions.show { resource: ["block"], operation: ["getAll"] }
- * @displayOptions.hide { @version: [{"_cnd":{"gte":2.2}}] }
  * @default {"mode":"url","value":""}
  */
 		blockId: ResourceLocatorValue;
@@ -698,7 +696,6 @@ export type NotionV22DatabaseGetConfig = {
 /**
  * Whether to return a simplified version of the response instead of the raw data
  * @displayOptions.show { resource: ["database"], operation: ["getAll", "get"] }
- * @displayOptions.hide { @version: [1] }
  * @default true
  */
 		simple?: boolean | Expression<boolean>;
@@ -723,7 +720,6 @@ export type NotionV22DatabaseGetAllConfig = {
 /**
  * Whether to return a simplified version of the response instead of the raw data
  * @displayOptions.show { resource: ["database"], operation: ["getAll", "get"] }
- * @displayOptions.hide { @version: [1] }
  * @default true
  */
 		simple?: boolean | Expression<boolean>;
@@ -772,7 +768,6 @@ export type NotionV22DatabasePageCreateConfig = {
 /**
  * Page title. Appears at the top of the page and can be found via Quick Find.
  * @displayOptions.show { resource: ["databasePage"], operation: ["create"] }
- * @displayOptions.hide { @version: [1] }
  */
 		title?: string | Expression<string>;
 /**
@@ -949,7 +944,6 @@ export type NotionV22DatabasePageCreateConfig = {
 			timezone?: string | Expression<string>;
 			/** File URLs
 			 * @displayOptions.show { type: ["files"] }
-			 * @displayOptions.hide { @version: [1] }
 			 * @default {}
 			 */
 			fileUrls?: {
@@ -1603,14 +1597,12 @@ export type NotionV22DatabasePageGetConfig = {
 /**
  * The Notion Database Page to get
  * @displayOptions.show { resource: ["databasePage"], operation: ["get"] }
- * @displayOptions.hide { @version: [1] }
  * @default {"mode":"url","value":""}
  */
 		pageId: ResourceLocatorValue;
 /**
  * Whether to return a simplified version of the response instead of the raw data
  * @displayOptions.show { resource: ["databasePage"], operation: ["get"] }
- * @displayOptions.hide { @version: [1] }
  * @default true
  */
 		simple?: boolean | Expression<boolean>;
@@ -2044,7 +2036,6 @@ export type NotionV22DatabasePageUpdateConfig = {
 			timezone?: string | Expression<string>;
 			/** File URLs
 			 * @displayOptions.show { type: ["files"] }
-			 * @displayOptions.hide { @version: [1] }
 			 * @default {}
 			 */
 			fileUrls?: {
@@ -2060,6 +2051,24 @@ export type NotionV22DatabasePageUpdateConfig = {
 		}>;
 	};
 	options?: Record<string, unknown>;
+};
+
+/** Archive a page */
+export type NotionV22PageArchiveConfig = {
+	resource: 'page';
+	operation: 'archive';
+/**
+ * The Notion Page to archive
+ * @displayOptions.show { resource: ["page"], operation: ["archive"] }
+ * @default {"mode":"url","value":""}
+ */
+		pageId: ResourceLocatorValue;
+/**
+ * Whether to return a simplified version of the response instead of the raw data
+ * @displayOptions.show { resource: ["page"], operation: ["archive"] }
+ * @default true
+ */
+		simple?: boolean | Expression<boolean>;
 };
 
 /** Create a page in a database */
@@ -2715,23 +2724,6 @@ export type NotionV22PageCreateConfig = {
 	options?: Record<string, unknown>;
 };
 
-/** Get a database */
-export type NotionV22PageGetConfig = {
-	resource: 'page';
-	operation: 'get';
-/**
- * The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)
- * @displayOptions.show { @version: [1], resource: ["page"], operation: ["get"] }
- */
-		pageId: string | Expression<string>;
-/**
- * Whether to return a simplified version of the response instead of the raw data
- * @displayOptions.show { @version: [1], resource: ["page"], operation: ["get"] }
- * @default true
- */
-		simple?: boolean | Expression<boolean>;
-};
-
 /** Search databases using text search */
 export type NotionV22PageSearchConfig = {
 	resource: 'page';
@@ -2797,8 +2789,8 @@ export type NotionV22Params =
 	| NotionV22DatabasePageGetConfig
 	| NotionV22DatabasePageGetAllConfig
 	| NotionV22DatabasePageUpdateConfig
+	| NotionV22PageArchiveConfig
 	| NotionV22PageCreateConfig
-	| NotionV22PageGetConfig
 	| NotionV22PageSearchConfig
 	| NotionV22UserGetConfig
 	| NotionV22UserGetAllConfig
@@ -2818,7 +2810,7 @@ export interface NotionV22Credentials {
 
 export type NotionV22Node = {
 	type: 'n8n-nodes-base.notion';
-	version: 2 | 2.1 | 2.2;
+	version: 2.2;
 	config: NodeConfig<NotionV22Params>;
 	credentials?: NotionV22Credentials;
 };

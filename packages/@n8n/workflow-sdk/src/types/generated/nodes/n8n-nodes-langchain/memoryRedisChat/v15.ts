@@ -15,12 +15,10 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 
 export interface LcMemoryRedisChatV15Params {
 /**
- * The key to use to store the memory in the workflow data
- * @displayOptions.show { @version: [1] }
- * @default chat_history
+ * The key to use to store session ID in the memory
+ * @displayOptions.show { sessionIdType: ["customKey"] }
  */
 		sessionKey?: string | Expression<string>;
-	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
 /**
  * For how long the session should be stored in seconds. If set to 0 it will not expire.
  * @default 0
@@ -43,7 +41,7 @@ export interface LcMemoryRedisChatV15Credentials {
 
 export type LcMemoryRedisChatV15Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryRedisChat';
-	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5;
+	version: 1.5;
 	config: NodeConfig<LcMemoryRedisChatV15Params>;
 	credentials?: LcMemoryRedisChatV15Credentials;
 	isTrigger: true;

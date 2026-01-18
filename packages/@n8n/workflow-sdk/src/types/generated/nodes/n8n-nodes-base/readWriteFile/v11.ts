@@ -40,7 +40,7 @@ export interface ReadWriteFileV11Params {
 
 export type ReadWriteFileV11Node = {
 	type: 'n8n-nodes-base.readWriteFile';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<ReadWriteFileV11Params>;
 	credentials?: Record<string, never>;
 };

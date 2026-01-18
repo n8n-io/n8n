@@ -9,9 +9,6 @@
 
 import type { Expression, NodeConfig } from '../../../../base';
 
-// Helper types for special n8n fields
-type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };
-
 // ===========================================================================
 // Parameters
 // ===========================================================================
@@ -20,12 +17,6 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 export type LcVectorStoreInMemoryV13LoadConfig = {
 	mode: 'load';
 	ragStarterCallout?: unknown;
-/**
- * The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions.
- * @displayOptions.show { @version: [{"_cnd":{"lte":1.1}}] }
- * @default vector_store_key
- */
-		memoryKey?: string | Expression<string>;
 /**
  * Search prompt to retrieve matching documents from the vector store using similarity-based ranking
  * @displayOptions.show { mode: ["load"] }
@@ -56,18 +47,6 @@ export type LcVectorStoreInMemoryV13InsertConfig = {
 	mode: 'insert';
 	ragStarterCallout?: unknown;
 /**
- * The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions.
- * @displayOptions.show { @version: [{"_cnd":{"lte":1.1}}] }
- * @default vector_store_key
- */
-		memoryKey?: string | Expression<string>;
-/**
- * Number of documents to embed in a single batch
- * @displayOptions.show { mode: ["insert"], @version: [{"_cnd":{"gte":1.1}}] }
- * @default 200
- */
-		embeddingBatchSize?: number | Expression<number>;
-/**
  * Whether to clear the store before inserting new data
  * @displayOptions.show { mode: ["insert"] }
  * @default false
@@ -79,12 +58,6 @@ export type LcVectorStoreInMemoryV13InsertConfig = {
 export type LcVectorStoreInMemoryV13RetrieveConfig = {
 	mode: 'retrieve';
 	ragStarterCallout?: unknown;
-/**
- * The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions.
- * @displayOptions.show { @version: [{"_cnd":{"lte":1.1}}] }
- * @default vector_store_key
- */
-		memoryKey?: string | Expression<string>;
 /**
  * Whether or not to rerank results
  * @displayOptions.show { mode: ["load", "retrieve", "retrieve-as-tool"] }
@@ -98,21 +71,10 @@ export type LcVectorStoreInMemoryV13RetrieveAsToolConfig = {
 	mode: 'retrieve-as-tool';
 	ragStarterCallout?: unknown;
 /**
- * Name of the vector store
- * @displayOptions.show { @version: [{"_cnd":{"lte":1.2}}], mode: ["retrieve-as-tool"] }
- */
-		toolName: string | Expression<string>;
-/**
  * Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often
  * @displayOptions.show { mode: ["retrieve-as-tool"] }
  */
 		toolDescription: string | Expression<string>;
-/**
- * The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions.
- * @displayOptions.show { @version: [{"_cnd":{"lte":1.1}}] }
- * @default vector_store_key
- */
-		memoryKey?: string | Expression<string>;
 /**
  * Number of top results to fetch from vector store
  * @displayOptions.show { mode: ["load", "retrieve-as-tool"] }
@@ -150,7 +112,7 @@ export type LcVectorStoreInMemoryV13Params =
 
 export type LcVectorStoreInMemoryV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory';
-	version: 1 | 1.1 | 1.2 | 1.3;
+	version: 1.3;
 	config: NodeConfig<LcVectorStoreInMemoryV13Params>;
 	credentials?: Record<string, never>;
 };

@@ -54,7 +54,7 @@ export interface EmailReadImapV21Credentials {
 
 export type EmailReadImapV21Node = {
 	type: 'n8n-nodes-base.emailReadImap';
-	version: 2 | 2.1;
+	version: 2.1;
 	config: NodeConfig<EmailReadImapV21Params>;
 	credentials?: EmailReadImapV21Credentials;
 	isTrigger: true;

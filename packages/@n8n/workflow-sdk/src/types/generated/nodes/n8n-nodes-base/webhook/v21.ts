@@ -36,17 +36,9 @@ export interface WebhookV21Params {
 		authentication?: 'basicAuth' | 'headerAuth' | 'jwtAuth' | 'none' | Expression<string>;
 /**
  * When and how to respond to the webhook
- * @displayOptions.show { @version: [1, 1.1, 2] }
  * @default onReceived
  */
-		responseMode?: 'onReceived' | 'lastNode' | 'responseNode' | Expression<string>;
-/**
- * The HTTP Response code to return
- * @displayOptions.show { @version: [1, 1.1] }
- * @displayOptions.hide { responseMode: ["responseNode"] }
- * @default 200
- */
-		responseCode?: number | Expression<number>;
+		responseMode?: 'onReceived' | 'lastNode' | 'responseNode' | 'streaming' | Expression<string>;
 /**
  * What data should be returned. If it should return all items as an array or only the first item as object.
  * @displayOptions.show { responseMode: ["lastNode"] }
@@ -78,7 +70,7 @@ export interface WebhookV21Credentials {
 
 export type WebhookV21Node = {
 	type: 'n8n-nodes-base.webhook';
-	version: 1 | 1.1 | 2 | 2.1;
+	version: 2.1;
 	config: NodeConfig<WebhookV21Params>;
 	credentials?: WebhookV21Credentials;
 	isTrigger: true;

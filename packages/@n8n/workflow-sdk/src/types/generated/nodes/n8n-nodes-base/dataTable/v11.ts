@@ -123,7 +123,6 @@ export type DataTableV11RowRowExistsConfig = {
 			 */
 			keyName?: string | Expression<string>;
 			/** Condition
-			 * @displayOptions.show { @version: [{"_cnd":{"lt":0}}] }
 			 * @default eq
 			 */
 			condition?: string | Expression<string>;
@@ -153,7 +152,6 @@ export type DataTableV11RowRowNotExistsConfig = {
 			 */
 			keyName?: string | Expression<string>;
 			/** Condition
-			 * @displayOptions.show { @version: [{"_cnd":{"lt":0}}] }
 			 * @default eq
 			 */
 			condition?: string | Expression<string>;
@@ -326,7 +324,7 @@ export type DataTableV11Params =
 
 export type DataTableV11Node = {
 	type: 'n8n-nodes-base.dataTable';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<DataTableV11Params>;
 	credentials?: Record<string, never>;
 };

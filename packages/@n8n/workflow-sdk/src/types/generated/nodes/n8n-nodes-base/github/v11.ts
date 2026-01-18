@@ -580,12 +580,6 @@ export type GithubV11WorkflowDispatchConfig = {
  */
 		workflowId: ResourceLocatorValue;
 /**
- * The git reference for the workflow dispatch (branch or tag name)
- * @displayOptions.show { resource: ["workflow"], operation: ["dispatch", "dispatchAndWait"], @version: [{"_cnd":{"lte":1}}] }
- * @default main
- */
-		ref: string | Expression<string>;
-/**
  * JSON object with input parameters for the workflow
  * @displayOptions.show { resource: ["workflow"], operation: ["dispatch", "dispatchAndWait"] }
  * @default {}
@@ -603,12 +597,6 @@ export type GithubV11WorkflowDispatchAndWaitConfig = {
  * @default {"mode":"list","value":""}
  */
 		workflowId: ResourceLocatorValue;
-/**
- * The git reference for the workflow dispatch (branch or tag name)
- * @displayOptions.show { resource: ["workflow"], operation: ["dispatch", "dispatchAndWait"], @version: [{"_cnd":{"lte":1}}] }
- * @default main
- */
-		ref: string | Expression<string>;
 /**
  * JSON object with input parameters for the workflow
  * @displayOptions.show { resource: ["workflow"], operation: ["dispatch", "dispatchAndWait"] }
@@ -714,7 +702,7 @@ export interface GithubV11Credentials {
 
 export type GithubV11Node = {
 	type: 'n8n-nodes-base.github';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<GithubV11Params>;
 	credentials?: GithubV11Credentials;
 };

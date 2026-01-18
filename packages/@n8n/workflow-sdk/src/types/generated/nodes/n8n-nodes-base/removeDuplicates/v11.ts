@@ -42,7 +42,7 @@ export interface RemoveDuplicatesV11Params {
 
 export type RemoveDuplicatesV11Node = {
 	type: 'n8n-nodes-base.removeDuplicates';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<RemoveDuplicatesV11Params>;
 	credentials?: Record<string, never>;
 };

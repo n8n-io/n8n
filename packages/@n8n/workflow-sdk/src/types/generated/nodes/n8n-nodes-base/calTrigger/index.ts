@@ -7,8 +7,10 @@
  */
 
 import type { CalTriggerV2Node } from './v2';
+import type { CalTriggerV1Node } from './v1';
 
 export * from './v2';
+export * from './v1';
 
 // Combined union type for all versions
-export type CalTriggerNode = CalTriggerV2Node;
+export type CalTriggerNode = CalTriggerV2Node | CalTriggerV1Node;

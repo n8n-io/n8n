@@ -16,23 +16,18 @@ import type { Expression, NodeConfig } from '../../../../base';
 /** Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger */
 export type LcChainRetrievalQaV17AutoConfig = {
 	promptType: 'auto';
-	query: string | Expression<string>;
-	text: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
 
 /** Looks for an input field called 'guardrailsInput' that is coming from a directly connected Guardrails Node */
 export type LcChainRetrievalQaV17GuardrailsConfig = {
 	promptType: 'guardrails';
-	query: string | Expression<string>;
-	text: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
 
 /** Use an expression to reference data in previous nodes or enter static text */
 export type LcChainRetrievalQaV17DefineConfig = {
 	promptType: 'define';
-	query: string | Expression<string>;
 	text: string | Expression<string>;
 	options?: Record<string, unknown>;
 };
@@ -53,7 +48,7 @@ export type LcChainRetrievalQaV17Params =
 
 export type LcChainRetrievalQaV17Node = {
 	type: '@n8n/n8n-nodes-langchain.chainRetrievalQa';
-	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.7;
+	version: 1.7;
 	config: NodeConfig<LcChainRetrievalQaV17Params>;
 	credentials?: Record<string, never>;
 };

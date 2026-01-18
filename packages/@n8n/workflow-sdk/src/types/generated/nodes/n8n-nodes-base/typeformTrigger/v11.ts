@@ -46,7 +46,7 @@ export interface TypeformTriggerV11Credentials {
 
 export type TypeformTriggerV11Node = {
 	type: 'n8n-nodes-base.typeformTrigger';
-	version: 1 | 1.1;
+	version: 1.1;
 	config: NodeConfig<TypeformTriggerV11Params>;
 	credentials?: TypeformTriggerV11Credentials;
 	isTrigger: true;
