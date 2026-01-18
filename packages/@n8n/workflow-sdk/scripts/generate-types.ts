@@ -767,12 +767,6 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 		lines.push(` * @subnodeType ${subnodeType}`);
 	}
 
-	// Documentation URL
-	const docUrl =
-		node.documentationUrl ??
-		`https://docs.n8n.io/integrations/builtin/app-nodes/${getNodeBaseName(node.name).toLowerCase()}/`;
-	lines.push(` * @see ${docUrl}`);
-
 	lines.push(' *');
 	lines.push(' * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.');
 	lines.push(' */');
@@ -941,7 +935,214 @@ function isTriggerNode(node: NodeTypeDescription): boolean {
 }
 
 /**
+ * Convert version number to valid filename (lowercase)
+ */
+export function versionToFileName(version: number): string {
+	return `v${String(version).replace('.', '')}`;
+}
+
+/**
+ * Generate type file for a single version entry of a node
+ * This creates files like v34.ts, v2.ts containing only that version's types
+ */
+export function generateSingleVersionTypeFile(node: NodeTypeDescription): string {
+	const prefix = getPackagePrefix(node.name);
+	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
+	const isTrigger = isTriggerNode(node);
+	const version = getHighestVersion(node.version);
+	const versionSuffix = versionToTypeName(version);
+
+	const lines: string[] = [];
+
+	// Header with JSDoc
+	lines.push('/**');
+	lines.push(` * ${node.displayName} Node - Version ${version}`);
+	if (node.description) {
+		lines.push(` * ${node.description}`);
+	}
+	lines.push(' *');
+	lines.push(' * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.');
+	lines.push(' */');
+	lines.push('');
+	lines.push('// @ts-nocheck - Generated file may have unused imports');
+	lines.push('');
+
+	// Helper function to check if a property type needs Expression import
+	const propNeedsExpression = (p: NodeProperty): boolean => {
+		if (p.type === 'fixedCollection' || p.type === 'collection') {
+			return false;
+		}
+		return ['string', 'number', 'boolean', 'options', 'json', 'dateTime', 'color'].includes(p.type);
+	};
+
+	// Check properties that will actually be output
+	const outputProps = node.properties.filter(
+		(p) => !['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(p.type),
+	);
+
+	// Determine which imports are needed
+	const needsExpression = outputProps.some(propNeedsExpression);
+	const needsCredentialReference = node.credentials && node.credentials.length > 0;
+	const needsIDataObject = outputProps.some((p) => p.type === 'json');
+
+	// Build imports
+	const baseImports: string[] = ['NodeConfig'];
+	if (needsExpression) baseImports.unshift('Expression');
+	if (needsCredentialReference)
+		baseImports.splice(baseImports.length - 1, 0, 'CredentialReference');
+
+	lines.push(`import type { ${baseImports.join(', ')} } from '../../../../base';`);
+	if (needsIDataObject) {
+		lines.push("import type { IDataObject } from '../../../../base';");
+	}
+	lines.push('');
+
+	// Helper types (if needed)
+	const needsResourceLocator = outputProps.some((p) => p.type === 'resourceLocator');
+	const needsFilter = outputProps.some((p) => p.type === 'filter');
+	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+
+	if (needsResourceLocator || needsFilter || needsAssignment) {
+		lines.push('// Helper types for special n8n fields');
+		if (needsResourceLocator) {
+			lines.push(
+				'type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
+			);
+		}
+		if (needsFilter) {
+			lines.push(
+				'type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',
+			);
+		}
+		if (needsAssignment) {
+			lines.push(
+				'type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: string }> };',
+			);
+		}
+		lines.push('');
+	}
+
+	// Parameters section
+	lines.push('// ' + '='.repeat(75));
+	lines.push('// Parameters');
+	lines.push('// ' + '='.repeat(75));
+	lines.push('');
+
+	lines.push(generateDiscriminatedUnionForEntry(node, nodeName, versionSuffix));
+	lines.push('');
+
+	// Credentials section
+	lines.push('// ' + '='.repeat(75));
+	lines.push('// Credentials');
+	lines.push('// ' + '='.repeat(75));
+	lines.push('');
+
+	if (node.credentials && node.credentials.length > 0) {
+		lines.push(`export interface ${nodeName}${versionSuffix}Credentials {`);
+		const seenCreds = new Set<string>();
+		for (const cred of node.credentials) {
+			if (seenCreds.has(cred.name)) continue;
+			seenCreds.add(cred.name);
+			const optional = !cred.required ? '?' : '';
+			lines.push(`\t${cred.name}${optional}: CredentialReference;`);
+		}
+		lines.push('}');
+		lines.push('');
+	}
+
+	// Node type section
+	lines.push('// ' + '='.repeat(75));
+	lines.push('// Node Type');
+	lines.push('// ' + '='.repeat(75));
+	lines.push('');
+
+	const versions = Array.isArray(node.version) ? node.version : [node.version];
+	const versionUnion = versions
+		.sort((a, b) => a - b)
+		.map((v) => String(v))
+		.join(' | ');
+
+	const nodeTypeName = `${nodeName}${versionSuffix}Node`;
+	const credType =
+		node.credentials && node.credentials.length > 0
+			? `${nodeName}${versionSuffix}Credentials`
+			: 'Record<string, never>';
+
+	lines.push(`export type ${nodeTypeName} = {`);
+	lines.push(`\ttype: '${node.name}';`);
+	lines.push(`\tversion: ${versionUnion};`);
+	lines.push(`\tconfig: NodeConfig<${nodeName}${versionSuffix}Params>;`);
+	lines.push(`\tcredentials?: ${credType};`);
+
+	if (isTrigger) {
+		lines.push('\tisTrigger: true;');
+	}
+
+	lines.push('};');
+
+	return lines.join('\n');
+}
+
+/**
+ * Generate index file for a node directory that re-exports all versions
+ * Creates files like set/index.ts that exports from v34.ts, v2.ts and creates union type
+ */
+export function generateVersionIndexFile(
+	nodes: NodeTypeDescription[],
+	nodeName: string,
+	_packageName: string,
+): string {
+	const prefix = getPackagePrefix(nodes[0].name);
+	const typeName = prefix + toPascalCase(nodeName);
+
+	// Sort by highest version descending
+	const sortedNodes = [...nodes].sort((a, b) => {
+		const aHighest = getHighestVersion(a.version);
+		const bHighest = getHighestVersion(b.version);
+		return bHighest - aHighest;
+	});
+
+	const lines: string[] = [];
+
+	lines.push('/**');
+	lines.push(` * ${sortedNodes[0].displayName} Node Types`);
+	lines.push(' *');
+	lines.push(' * Re-exports all version-specific types and provides combined union type.');
+	lines.push(' *');
+	lines.push(' * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.');
+	lines.push(' */');
+	lines.push('');
+
+	// Import node types from each version file for use in union type
+	const nodeTypeNames: string[] = [];
+	for (const node of sortedNodes) {
+		const version = getHighestVersion(node.version);
+		const fileName = versionToFileName(version);
+		const versionSuffix = versionToTypeName(version);
+		const nodeTypeName = `${typeName}${versionSuffix}Node`;
+		nodeTypeNames.push(nodeTypeName);
+		lines.push(`import type { ${nodeTypeName} } from './${fileName}';`);
+	}
+	lines.push('');
+
+	// Re-export from each version file
+	for (const node of sortedNodes) {
+		const version = getHighestVersion(node.version);
+		const fileName = versionToFileName(version);
+		lines.push(`export * from './${fileName}';`);
+	}
+	lines.push('');
+
+	// Generate combined union type
+	lines.push('// Combined union type for all versions');
+	lines.push(`export type ${typeName}Node = ${nodeTypeNames.join(' | ')};`);
+
+	return lines.join('\n');
+}
+
+/**
  * Generate complete type file for a single node (or multiple version entries of the same node)
+ * @deprecated Use generateSingleVersionTypeFile and generateVersionIndexFile instead
  */
 export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescription[]): string {
 	// Handle single node for backwards compatibility
@@ -1524,6 +1725,51 @@ export async function loadNodeTypes(
 // =============================================================================
 
 /**
+ * Generate version-specific type files for a package
+ * Creates directory structure: nodes/{package}/{nodeName}/v{version}.ts and index.ts
+ */
+async function generateVersionSpecificFiles(
+	packageDir: string,
+	packageName: string,
+	nodesByName: Map<string, NodeTypeDescription[]>,
+): Promise<NodeTypeDescription[]> {
+	const allNodes: NodeTypeDescription[] = [];
+	let generatedFiles = 0;
+	let generatedDirs = 0;
+
+	for (const [nodeName, nodes] of nodesByName) {
+		try {
+			// Create directory for this node
+			const nodeDir = path.join(packageDir, nodeName);
+			await fs.promises.mkdir(nodeDir, { recursive: true });
+			generatedDirs++;
+
+			// Generate version-specific files for each version entry
+			for (const node of nodes) {
+				const version = getHighestVersion(node.version);
+				const fileName = versionToFileName(version);
+				const content = generateSingleVersionTypeFile(node);
+				const filePath = path.join(nodeDir, `${fileName}.ts`);
+				await fs.promises.writeFile(filePath, content);
+				generatedFiles++;
+			}
+
+			// Generate index.ts that re-exports all versions
+			const indexContent = generateVersionIndexFile(nodes, nodeName, packageName);
+			await fs.promises.writeFile(path.join(nodeDir, 'index.ts'), indexContent);
+
+			// Add first node to allNodes for main index generation
+			allNodes.push(nodes[0]);
+		} catch (error) {
+			console.error(`  Error generating ${nodeName}:`, error);
+		}
+	}
+
+	console.log(`  Generated ${generatedDirs} node directories with ${generatedFiles} version files`);
+	return allNodes;
+}
+
+/**
  * Generate all types
  */
 export async function generateTypes(): Promise<void> {
@@ -1556,21 +1802,13 @@ export async function generateTypes(): Promise<void> {
 		}
 		console.log(`  Grouped into ${nodesByName.size} unique nodes`);
 
-		// Generate individual files (grouping multiple version entries together)
-		let generated = 0;
-		for (const [fileName, nodes] of nodesByName) {
-			try {
-				const content = generateNodeTypeFile(nodes);
-				const filePath = path.join(nodesBaseDir, `${fileName}.ts`);
-				await fs.promises.writeFile(filePath, content);
-				// Add first node to allNodes for index generation
-				allNodes.push(nodes[0]);
-				generated++;
-			} catch (error) {
-				console.error(`  Error generating ${fileName}:`, error);
-			}
-		}
-		console.log(`  Generated ${generated} type files`);
+		// Generate version-specific files
+		const baseNodes = await generateVersionSpecificFiles(
+			nodesBaseDir,
+			'n8n-nodes-base',
+			nodesByName,
+		);
+		allNodes.push(...baseNodes);
 	} else {
 		console.log(`Warning: ${NODES_BASE_TYPES} not found. Run 'pnpm build' in nodes-base first.`);
 	}
@@ -1593,21 +1831,13 @@ export async function generateTypes(): Promise<void> {
 		}
 		console.log(`  Grouped into ${nodesByName.size} unique nodes`);
 
-		// Generate individual files (grouping multiple version entries together)
-		let generated = 0;
-		for (const [fileName, nodes] of nodesByName) {
-			try {
-				const content = generateNodeTypeFile(nodes);
-				const filePath = path.join(nodesLangchainDir, `${fileName}.ts`);
-				await fs.promises.writeFile(filePath, content);
-				// Add first node to allNodes for index generation
-				allNodes.push(nodes[0]);
-				generated++;
-			} catch (error) {
-				console.error(`  Error generating ${fileName}:`, error);
-			}
-		}
-		console.log(`  Generated ${generated} type files`);
+		// Generate version-specific files
+		const langchainNodes = await generateVersionSpecificFiles(
+			nodesLangchainDir,
+			'n8n-nodes-langchain',
+			nodesByName,
+		);
+		allNodes.push(...langchainNodes);
 	} else {
 		console.log(
 			`Warning: ${NODES_LANGCHAIN_TYPES} not found. Run 'pnpm build' in nodes-langchain first.`,

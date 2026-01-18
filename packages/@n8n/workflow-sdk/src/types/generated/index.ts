@@ -1529,7 +1529,8 @@ export type KnownNodeType =
 	| '@n8n/n8n-nodes-langchain.vectorStoreWeaviate'
 	| '@n8n/n8n-nodes-langchain.vectorStoreZep'
 	| '@n8n/n8n-nodes-langchain.modelSelector'
-	| '@n8n/n8n-nodes-langchain.guardrails';
+	| '@n8n/n8n-nodes-langchain.guardrails'
+	;
 
 // Union of all node input types for type-safe node() function
 export type AllNodeTypes =
@@ -2036,4 +2037,5 @@ export type AllNodeTypes =
 	| ZendeskTriggerNode
 	| ZohoCrmNode
 	| ZoomNode
-	| ZulipNode;
+	| ZulipNode
+	;

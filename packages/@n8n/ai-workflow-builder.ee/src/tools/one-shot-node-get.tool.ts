@@ -7,7 +7,7 @@
  * POC with extensive debug logging for development.
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { inspect } from 'node:util';
 import { tool } from '@langchain/core/tools';
@@ -84,9 +84,53 @@ function parseNodeId(nodeId: string): { packageName: string; nodeName: string } 
 }
 
 /**
- * Get the file path for a node ID
+ * Get available versions for a node
+ * Returns array of version strings like ['v34', 'v2'] sorted by version descending
  */
-function getNodeFilePath(nodeId: string): string | null {
+function getNodeVersions(nodeId: string): string[] {
+	const parsed = parseNodeId(nodeId);
+	if (!parsed) {
+		debugLog('Could not get versions - parsing failed', { nodeId });
+		return [];
+	}
+
+	const nodesPath = getGeneratedNodesPath();
+	const nodeDir = join(nodesPath, parsed.packageName, parsed.nodeName);
+
+	if (!existsSync(nodeDir)) {
+		debugLog('Node directory does not exist', { nodeDir });
+		return [];
+	}
+
+	try {
+		const files = readdirSync(nodeDir);
+		const versionFiles = files
+			.filter((f) => f.startsWith('v') && f.endsWith('.ts') && f !== 'index.ts')
+			.map((f) => f.replace('.ts', ''));
+
+		// Sort by numeric version descending
+		versionFiles.sort((a, b) => {
+			const aNum = parseInt(a.slice(1), 10);
+			const bNum = parseInt(b.slice(1), 10);
+			return bNum - aNum;
+		});
+
+		debugLog('Found versions', { nodeId, versions: versionFiles });
+		return versionFiles;
+	} catch (error) {
+		debugLog('Error reading node directory', {
+			nodeDir,
+			error: error instanceof Error ? error.message : 'Unknown error',
+		});
+		return [];
+	}
+}
+
+/**
+ * Get the file path for a node ID, optionally for a specific version
+ * If no version specified, returns the latest version
+ */
+function getNodeFilePath(nodeId: string, version?: string): string | null {
 	const parsed = parseNodeId(nodeId);
 	if (!parsed) {
 		debugLog('Could not get file path - parsing failed', { nodeId });
@@ -94,9 +138,34 @@ function getNodeFilePath(nodeId: string): string | null {
 	}
 
 	const nodesPath = getGeneratedNodesPath();
-	const filePath = join(nodesPath, parsed.packageName, `${parsed.nodeName}.ts`);
+	const nodeDir = join(nodesPath, parsed.packageName, parsed.nodeName);
 
-	debugLog('Checking file path', { nodeId, filePath, exists: existsSync(filePath) });
+	if (!existsSync(nodeDir)) {
+		debugLog('Node directory does not exist', { nodeDir });
+		return null;
+	}
+
+	let targetVersion = version;
+
+	// If no version specified, find the latest version
+	if (!targetVersion) {
+		const versions = getNodeVersions(nodeId);
+		if (versions.length === 0) {
+			debugLog('No versions found for node', { nodeId });
+			return null;
+		}
+		targetVersion = versions[0]; // Latest version (sorted descending)
+		debugLog('Using latest version', { nodeId, version: targetVersion });
+	}
+
+	// Ensure version has 'v' prefix
+	if (!targetVersion.startsWith('v')) {
+		targetVersion = `v${targetVersion}`;
+	}
+
+	const filePath = join(nodeDir, `${targetVersion}.ts`);
+
+	debugLog('Checking file path', { nodeId, version: targetVersion, filePath, exists: existsSync(filePath) });
 
 	if (!existsSync(filePath)) {
 		debugLog('File does not exist', { filePath });
@@ -107,18 +176,33 @@ function getNodeFilePath(nodeId: string): string | null {
 }
 
 /**
- * Get the type definition for a single node ID
+ * Get the type definition for a single node ID, optionally for a specific version
  */
-function getNodeTypeDefinition(nodeId: string): {
+function getNodeTypeDefinition(
+	nodeId: string,
+	version?: string,
+): {
 	nodeId: string;
+	version?: string;
 	content: string;
+	availableVersions?: string[];
 	error?: string;
 } {
-	debugLog('Getting type definition for node', { nodeId });
+	debugLog('Getting type definition for node', { nodeId, version });
 
-	const filePath = getNodeFilePath(nodeId);
+	const filePath = getNodeFilePath(nodeId, version);
 
 	if (!filePath) {
+		const availableVersions = getNodeVersions(nodeId);
+		if (availableVersions.length > 0) {
+			return {
+				nodeId,
+				version,
+				content: '',
+				availableVersions,
+				error: `Version '${version}' not found for node '${nodeId}'. Available versions: ${availableVersions.join(', ')}`,
+			};
+		}
 		return {
 			nodeId,
 			content: '',
@@ -131,14 +215,18 @@ function getNodeTypeDefinition(nodeId: string): {
 		const content = readFileSync(filePath, 'utf-8');
 		const readDuration = Date.now() - readStartTime;
 
+		// Extract version from file path
+		const actualVersion = filePath.match(/\/(v\d+)\.ts$/)?.[1];
+
 		debugLog('File read successfully', {
 			nodeId,
+			version: actualVersion,
 			filePath,
 			readDurationMs: readDuration,
 			contentLength: content.length,
 		});
 
-		return { nodeId, content };
+		return { nodeId, version: actualVersion, content };
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		debugLog('Error reading file', {
@@ -154,27 +242,35 @@ function getNodeTypeDefinition(nodeId: string): {
 	}
 }
 
+/** Node request can be a simple string or an object with optional version */
+type NodeRequest = string | { nodeId: string; version?: string };
+
 /**
  * Create the simplified node get tool for one-shot agent
- * Accepts a list of node IDs and returns all type definitions in a single call
+ * Accepts a list of node IDs (with optional versions) and returns all type definitions in a single call
  */
 export function createOneShotNodeGetTool() {
 	debugLog('Creating get_nodes tool');
 
 	return tool(
-		async (input: { nodeIds: string[] }) => {
+		async (input: { nodeIds: NodeRequest[] }) => {
 			debugLog('========== GET_NODES TOOL INVOKED ==========');
 			debugLog('Input', { nodeIds: input.nodeIds, count: input.nodeIds.length });
 
 			const results: string[] = [];
 			const errors: string[] = [];
 
-			for (const nodeId of input.nodeIds) {
-				const result = getNodeTypeDefinition(nodeId);
+			for (const nodeRequest of input.nodeIds) {
+				// Support both string and object formats
+				const nodeId = typeof nodeRequest === 'string' ? nodeRequest : nodeRequest.nodeId;
+				const version = typeof nodeRequest === 'string' ? undefined : nodeRequest.version;
+
+				const result = getNodeTypeDefinition(nodeId, version);
 				if (result.error) {
 					errors.push(result.error);
 				} else {
-					results.push(`## ${nodeId}\n\n\`\`\`typescript\n${result.content}\n\`\`\``);
+					const versionLabel = result.version ? ` (${result.version})` : '';
+					results.push(`## ${nodeId}${versionLabel}\n\n\`\`\`typescript\n${result.content}\n\`\`\``);
 				}
 			}
 
@@ -200,12 +296,23 @@ export function createOneShotNodeGetTool() {
 		{
 			name: 'get_nodes',
 			description:
-				'Get the full TypeScript type definitions for one or more nodes. Returns the complete type information including parameters, credentials, and node type variants. ALWAYS call this with ALL node types you plan to use BEFORE generating workflow code.',
+				'Get the full TypeScript type definitions for one or more nodes. Returns the complete type information including parameters, credentials, and node type variants. By default returns the latest version. ALWAYS call this with ALL node types you plan to use BEFORE generating workflow code.',
 			schema: z.object({
 				nodeIds: z
-					.array(z.string())
+					.array(
+						z.union([
+							z.string(),
+							z.object({
+								nodeId: z.string().describe('The node ID (e.g., "n8n-nodes-base.httpRequest")'),
+								version: z
+									.string()
+									.optional()
+									.describe('Optional version (e.g., "34" for v34). Omit for latest version.'),
+							}),
+						]),
+					)
 					.describe(
-						'Array of node IDs to get definitions for (e.g., ["n8n-nodes-base.httpRequest", "n8n-nodes-base.set"])',
+						'Array of nodes to fetch. Can be simple strings (e.g., ["n8n-nodes-base.httpRequest"]) or objects with optional version (e.g., [{ nodeId: "n8n-nodes-base.set", version: "2" }]). Defaults to latest version when not specified.',
 					),
 			}),
 		},

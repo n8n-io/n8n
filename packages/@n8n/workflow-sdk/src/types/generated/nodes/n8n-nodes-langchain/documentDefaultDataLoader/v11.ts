@@ -1,0 +1,50 @@
+/**
+ * Default Data Loader Node - Version 1.1
+ * Load data from previous step in the workflow
+ *
+ * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
+ */
+
+// @ts-nocheck - Generated file may have unused imports
+
+import type { Expression, NodeConfig } from '../../../../base';
+
+// ===========================================================================
+// Parameters
+// ===========================================================================
+
+export interface LcDocumentDefaultDataLoaderV11Params {
+	dataType: 'json' | 'binary' | Expression<string>;
+	jsonMode: 'allInputData' | 'expressionData' | Expression<string>;
+	binaryMode: 'allInputData' | 'specificField' | Expression<string>;
+	loader: 'auto' | 'csvLoader' | 'docxLoader' | 'epubLoader' | 'jsonLoader' | 'pdfLoader' | 'textLoader' | Expression<string>;
+/**
+ * Drag and drop fields from the input pane, or use an expression
+ * @displayOptions.show { dataType: ["json"], jsonMode: ["expressionData"] }
+ */
+		jsonData: string | Expression<string>;
+/**
+ * The name of the field in the agent or chain’s input that contains the binary file to be processed
+ * @displayOptions.show { dataType: ["binary"] }
+ * @displayOptions.hide { binaryMode: ["allInputData"] }
+ * @default data
+ */
+		binaryDataKey: string | Expression<string>;
+	textSplittingMode: 'simple' | 'custom' | Expression<string>;
+	options?: Record<string, unknown>;
+}
+
+// ===========================================================================
+// Credentials
+// ===========================================================================
+
+// ===========================================================================
+// Node Type
+// ===========================================================================
+
+export type LcDocumentDefaultDataLoaderV11Node = {
+	type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
+	version: 1 | 1.1;
+	config: NodeConfig<LcDocumentDefaultDataLoaderV11Params>;
+	credentials?: Record<string, never>;
+};
