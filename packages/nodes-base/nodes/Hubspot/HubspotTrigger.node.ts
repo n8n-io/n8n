@@ -195,6 +195,24 @@ export class HubspotTrigger implements INodeType {
 								description:
 									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
+									loadOptionsDependsOn: ['ticket.propertyChange'],
+									loadOptionsMethod: 'getTicketProperties',
+								},
+								displayOptions: {
+									show: {
+										name: ['ticket.propertyChange'],
+									},
+								},
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'Property Name or ID',
+								name: 'property',
+								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+								typeOptions: {
 									loadOptionsDependsOn: ['company.propertyChange'],
 									loadOptionsMethod: 'getCompanyProperties',
 								},
@@ -288,6 +306,22 @@ export class HubspotTrigger implements INodeType {
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const endpoint = '/properties/v2/deals/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
+					returnData.push({
+						name: propertyName,
+						value: propertyId,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available ticket properties to display them to user so that they can
+			// select them easily
+			async getTicketProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/tickets/properties';
 				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				for (const property of properties) {
 					const propertyName = property.label;
