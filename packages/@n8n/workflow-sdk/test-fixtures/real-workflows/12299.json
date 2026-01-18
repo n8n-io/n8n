@@ -1,0 +1,955 @@
+{
+	"name": "Generate 5-level AI explanations from Telegram to Google Docs",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "8b93ecad-b3ef-4924-94e0-d2b99f9cfd91",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"position": [1424, 736],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "0",
+							"conditions": {
+								"options": {
+									"version": 3,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "b53dfd46-4b76-43f5-8958-f5e83639f5eb",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.level }}",
+										"rightValue": "5-year-old"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "1",
+							"conditions": {
+								"options": {
+									"version": 3,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "676acc92-0fb6-43fb-86d0-d9f114a966a3",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.level }}",
+										"rightValue": "teenager"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "2",
+							"conditions": {
+								"options": {
+									"version": 3,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "87121421-66e1-4792-84eb-779da0ac01d6",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.level }}",
+										"rightValue": "graduate"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "3",
+							"conditions": {
+								"options": {
+									"version": 3,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "6ca49aab-a4d0-49f6-a9e4-8eec1b031713",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.level }}",
+										"rightValue": "phd"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "4",
+							"conditions": {
+								"options": {
+									"version": 3,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "9874f1a3-459a-4fe2-9ff5-c9fb4058ef27",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.level }}",
+										"rightValue": "business"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "30be649e-efdb-4896-8366-98ee858eb3cd",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [1488, 1072],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"options": {},
+				"builtInTools": {}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "1e6eb2c0-e20a-483c-a0b8-2a77e828ac35",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [784, 560],
+			"parameters": {
+				"color": 7,
+				"width": 576,
+				"height": 448,
+				"content": "## Input Layer\n\n**1. Telegram receives your question**\n**2. Extracts your chat ID and question**\n**3. Creates 5 copies (one per level)**\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "35270e52-112b-4917-8fc1-37b95a7b4881",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1616, 272],
+			"parameters": {
+				"color": 5,
+				"width": 640,
+				"height": 208,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "da79c52a-29f3-4f60-b2f2-502b848aeb63",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2288, 496],
+			"parameters": {
+				"color": 7,
+				"height": 240,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8bfcc178-4926-42fb-abfa-5fef7a85442e",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3200, 416],
+			"parameters": {
+				"color": 7,
+				"width": 480,
+				"height": 416,
+				"content": "## Telegram Output\n\n**Sends you 6 messages:**\n\n**1. Header (your question + date)**\n**2-6. Five explanations**\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fdb1b23a-266c-46af-a93a-6173e133f09e",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3200, 912],
+			"parameters": {
+				"color": 7,
+				"width": 480,
+				"height": 416,
+				"content": "## Google Doc Output  (for reference)\n\n**Sends you the final output with 5 variations:**\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1ff218fb-feb9-4f68-b435-1538b3ec1a1c",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [80, 112],
+			"parameters": {
+				"width": 672,
+				"height": 1200,
+				"content": "\n\n# 🚀 Try It Out\n\nSend a message to your Telegram bot with any question (e.g., \"What is machine learning?\"). Within seconds, you'll receive 6 messages: a header plus 5 AI-generated explanations tailored for different audiences.\n\n\n# 📖 Overview\n\nThe AI Knowledge Spectrum transforms complex topics into 5 comprehension levels: child-friendly stories (5-year-old), relatable teen explanations, college graduate depth, PhD-level analysis, and business-focused insights. Perfect for educators, content creators, and anyone making knowledge accessible.\n\n\n# ⚙️ How It Works\n\n1. Input: Telegram receives question → Extract chatId, query, timestamp\n2. Route: Create 5 items → Switch routes each to AI agent\n3. Process: 5 AI agents run in parallel (5YO, teen, grad, PhD, business)\n4. Handle: Error handlers ensure all responses complete\n5. Merge: Binary tree (4 merges) → Combines all 5 reliably\n6. Aggregate: Sort by level → Structure output\n7. Format: Create 6 messages (header + 5 levels) with HTML\n8. Send: Deliver to Telegram chat\n9. Archive: Append to Google Docs\n\n\n# 🔧 Setup Requirements\n\n\n1. Add Telegram bot token\n2. Add OpenAI API key  \n3. Connect Google account\n4. Create Google doc\n5. Configure Workflow \n6. Activate & Test\n\n   \n\n\n# ❓ Need Help?\n\nFor detailed notes and implementation, please leverage the README document at \nhttps://drive.google.com/file/d/19Fx-FoihL70qpOi4CnEwQ6Sud2dbUnE_/view?usp=sharing\n\nJoin the n8n community forum (https://community.n8n.io/) for support\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**Creates 5 parallel paths.**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1f4811cd-1459-4b31-b79f-3b664d956a87",
+			"name": "Receive User Question",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [816, 800],
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "81c6f41e-6a59-4710-8fb3-d2b6e71d62f2",
+			"name": "Extract Query Data",
+			"type": "n8n-nodes-base.set",
+			"position": [1040, 800],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "userQuery",
+							"name": "userQuery",
+							"type": "string",
+							"value": "={{ $json.message.text }}"
+						},
+						{
+							"id": "chatId",
+							"name": "chatId",
+							"type": "string",
+							"value": "={{ $json.message.chat.id }}"
+						},
+						{
+							"id": "timestamp",
+							"name": "timestamp",
+							"type": "string",
+							"value": "={{ $now.toISO() }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.3
+		},
+		{
+			"id": "35ba1d00-43cc-49c6-a21e-65257f184e42",
+			"name": "Route to Appropriate Level",
+			"type": "n8n-nodes-base.code",
+			"position": [1232, 800],
+			"parameters": {
+				"jsCode": "// Create 5 items for parallel processing\nconst input = $input.first().json;\nconst query = input.userQuery;\nconst chatId = input.chatId;\nconst timestamp = input.timestamp;\n\nconst levels = [\n  {\n    level: \"5-year-old\",\n    emoji: \"🧒\",\n    title: \"Level 1: For a 5-Year-Old\",\n    systemPrompt: \"You are a creative educator explaining complex topics to 5-year-old children in fun, engaging ways.\\n\\nYOUR MISSION: Take ANY concept and make it magical for young minds!\\n\\nSTYLE GUIDELINES:\\n• Write a SHORT STORY (5-8 sentences)\\n• Use comparisons to toys, animals, games, or things kids love\\n• Add emojis throughout (🎈🐶🚀🎨🌟)\\n• Include sound effects (whoosh!, zoom!, beep boop!)\\n• Use VERY simple words (no big vocabulary)\\n• Make it exciting and fun - like storytime!\\n• Stay on topic - explain what they actually asked about\\n\\nIMPORTANT: Don't default to robots/AI unless specifically asked. If they ask about:\\n- Medicine → Use body/health analogies\\n- Nature → Use animals/plants analogies\\n- Technology → Use toys/games analogies\\n- Science → Use magic/wonder analogies\"\n  },\n  {\n    level: \"teenager\",\n    emoji: \"🎮\",\n    title: \"Level 2: For a Teenager\",\n    systemPrompt: \"You are explaining concepts to teenagers (ages 13-17) in a relatable, engaging way.\\n\\nYOUR MISSION: Make ANY topic relevant to teen life and interests!\\n\\nSTYLE GUIDELINES:\\n• Use modern, casual language (but not cringe)\\n• Compare to: video games, social media, streaming, sports, YouTube\\n• Reference current tech and trends teens know\\n• Use relevant emojis sparingly 🎮📱⚡\\n• Keep it real - teens can handle complexity\\n• Make connections to their daily experiences\\n• Show why this topic matters to THEM\\n\\nIMPORTANT: Stay on the actual topic. If they ask about:\\n- Science → Connect to phones, games, or daily tech\\n- History → Connect to movies, shows, or current events\\n- Health → Connect to sports, fitness, or mental health\\n- Business → Connect to social media, creators, or money\"\n  },\n  {\n    level: \"graduate\",\n    emoji: \"🎓\",\n    title: \"Level 3: For a Graduate Student\",\n    systemPrompt: \"You are explaining concepts to college graduates with solid educational backgrounds.\\n\\nYOUR MISSION: Provide clear, professional explanations with technical depth.\\n\\nSTYLE GUIDELINES:\\n• Use proper terminology and academic language\\n• Include real-world applications and examples\\n• Reference relevant frameworks, theories, or principles\\n• Provide concrete data or evidence where applicable\\n• Balance technical accuracy with accessibility\\n• Assume strong general knowledge but not deep expertise\\n• Connect to practical implications\\n\\nCOVERAGE:\\n• Define key terms precisely\\n• Explain mechanisms or processes\\n• Discuss current applications\\n• Mention related concepts or fields\\n• Provide enough depth for understanding\"\n  },\n  {\n    level: \"phd\",\n    emoji: \"🔬\",\n    title: \"Level 4: For a PhD Researcher\",\n    systemPrompt: \"You are explaining concepts to PhD-level researchers and domain experts.\\n\\nYOUR MISSION: Provide rigorous, technically precise analysis at an expert level.\\n\\nSTYLE GUIDELINES:\\n• Use precise technical terminology without simplification\\n• Reference current research, methodologies, and literature\\n• Discuss theoretical frameworks and foundations\\n• Explore edge cases, limitations, and open questions\\n• Include mathematical formulations where relevant\\n• Assume deep domain expertise\\n• Address controversies or competing theories\\n\\nCOVERAGE:\\n• Formal definitions and mathematical representations\\n• Current state of research and recent developments\\n• Methodological considerations\\n• Theoretical implications\\n• Research gaps and future directions\\n• Critical analysis of approaches\"\n  },\n  {\n    level: \"business\",\n    emoji: \"💼\",\n    title: \"Level 5: Real-World Business Use Case\",\n    systemPrompt: \"You are explaining concepts to business executives and senior leaders.\\n\\nYOUR MISSION: Translate ANY concept into strategic business value and impact.\\n\\nSTYLE GUIDELINES:\\n• Focus on practical business applications and ROI\\n• Use business terminology (metrics, KPIs, strategy)\\n• Include real-world case studies or examples\\n• Discuss implementation challenges and solutions\\n• Address risks, opportunities, and competitive advantage\\n• Be concise - executives value efficiency\\n• Connect to bottom-line impact\\n\\nCOVERAGE:\\n• Business applications and use cases\\n• Market implications and trends\\n• Implementation considerations (cost, timeline, resources)\\n• ROI and value proposition\\n• Strategic advantages or risks\\n• Competitive landscape\\n• Decision-making framework\"\n  }\n];\n\n// Create 5 items with the query\nreturn levels.map(level => ({\n  json: {\n    level: level.level,\n    emoji: level.emoji,\n    title: level.title,\n    systemPrompt: level.systemPrompt,\n    query: query,\n    chatId: chatId,\n    timestamp: timestamp\n  }\n}));"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "ce91dbad-36dd-4746-827e-1961b89492cc",
+			"name": "5-Year-Old Story Mode",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1696, 304],
+			"parameters": {
+				"text": "=You are explaining ANY topic to a 5-year-old child using simple stories and fun examples.\n\nRULES:\n- Use a SHORT STORY (5-8 sentences)\n- Compare to: toys, animals, food, or things kids see every day\n- Use simple words a 5-year-old knows\n- Add emojis (🎈🐶🚀🎨)\n- Make it fun and exciting!\n- NO robots, AI, or technology unless they ask about it\n- Explain the ACTUAL topic they asked about\n\nThe topic to explain is: {{ $json.query }}\n\nTell a fun story that explains this topic!",
+				"options": {
+					"systemMessage": "=You are a creative educator explaining complex topics to 5-year-old children in fun, engaging ways.\n\nYOUR MISSION: Take ANY concept and make it magical for young minds!\n\nSTYLE GUIDELINES:\n• Write a SHORT STORY (5-8 sentences)\n• Use comparisons to toys, animals, games, or things kids love\n• Add emojis throughout (🎈🐶🚀🎨🌟)\n• Include sound effects (whoosh!, zoom!, beep boop!)\n• Use VERY simple words (no big vocabulary)\n• Make it exciting and fun - like storytime!\n• Stay on topic - explain what they actually asked about\n\nIMPORTANT: Don't default to robots/AI unless specifically asked. If they ask about:\n- Medicine → Use body/health analogies\n- Nature → Use animals/plants analogies  \n- Technology → Use toys/games analogies\n- Science → Use magic/wonder analogies\n\nFORMATTING:\n- Use plain text (no ** or ### or markdown)\n- Use line breaks for paragraphs\n- Use emojis for visual interest\n\nQuestion to explain: {{ $json.query }}\n\nCreate a memorable, kid-friendly explanation! ✨\n"
+				},
+				"promptType": "define"
+			},
+			"executeOnce": false,
+			"typeVersion": 1.7
+		},
+		{
+			"id": "4b51c586-9893-48fe-98da-62ec9acbfcc9",
+			"name": "Teenager Level",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1696, 512],
+			"parameters": {
+				"text": "={{ $json.query }}",
+				"options": {
+					"systemMessage": "=You are explaining concepts to teenagers (ages 13-17) in a relatable, engaging way.\n\nYOUR MISSION: Make ANY topic relevant to teen life and interests!\n\nSTYLE GUIDELINES:\n• Use modern, casual language (but not cringe)\n• Compare to: video games, social media, streaming, sports, YouTube\n• Reference current tech and trends teens know\n• Use relevant emojis sparingly 🎮📱⚡\n• Keep it real - teens can handle complexity\n• Make connections to their daily experiences\n• Show why this topic matters to THEM\n\nIMPORTANT: Stay on the actual topic. If they ask about:\n- Science → Connect to phones, games, or daily tech\n- History → Connect to movies, shows, or current events\n- Health → Connect to sports, fitness, or mental health\n- Business → Connect to social media, creators, or money\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for clarity\n- Use emojis sparingly 🎮📱\n\nQuestion to explain: {{ $json.query }}\n\nBe authentic and relatable - avoid being \"teachy\"!\n"
+				},
+				"promptType": "define"
+			},
+			"executeOnce": false,
+			"typeVersion": 1.7
+		},
+		{
+			"id": "c5a6b36c-0bae-4d17-adfc-f11953f62945",
+			"name": "Graduate Level",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1696, 720],
+			"parameters": {
+				"text": "={{ $json.query }}",
+				"options": {
+					"systemMessage": "=You are explaining concepts to college graduates with solid educational backgrounds.\n\nYOUR MISSION: Provide clear, professional explanations with technical depth.\n\nSTYLE GUIDELINES:\n• Use proper terminology and academic language\n• Include real-world applications and examples\n• Reference relevant frameworks, theories, or principles\n• Provide concrete data or evidence where applicable\n• Balance technical accuracy with accessibility\n• Assume strong general knowledge but not deep expertise\n• Connect to practical implications\n\nCOVERAGE:\n• Define key terms precisely\n• Explain mechanisms or processes\n• Discuss current applications\n• Mention related concepts or fields\n• Provide enough depth for understanding\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for sections\n- Be professional and clear\n\nQuestion to explain: {{ $json.query }}\n\nBe informative, accurate, and professionally thorough.\n"
+				},
+				"promptType": "define"
+			},
+			"executeOnce": false,
+			"typeVersion": 1.7
+		},
+		{
+			"id": "e6ad337a-3862-4f4d-b245-5bdf2924c484",
+			"name": "PhD Research Level",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1712, 928],
+			"parameters": {
+				"text": "={{ $json.query }}",
+				"options": {
+					"systemMessage": "=You are explaining concepts to PhD-level researchers and domain experts.\n\nYOUR MISSION: Provide rigorous, technically precise analysis at an expert level.\n\nSTYLE GUIDELINES:\n• Use precise technical terminology without simplification\n• Reference current research, methodologies, and literature\n• Discuss theoretical frameworks and foundations\n• Explore edge cases, limitations, and open questions\n• Include mathematical formulations where relevant\n• Assume deep domain expertise\n• Address controversies or competing theories\n\nCOVERAGE:\n• Formal definitions and mathematical representations\n• Current state of research and recent developments\n• Methodological considerations\n• Theoretical implications\n• Research gaps and future directions\n• Critical analysis of approaches\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for structure\n- Be rigorous and detailed\n\nQuestion to explain: {{ $json.query }}\n\nProvide expert-level academic rigor and depth.\n"
+				},
+				"promptType": "define"
+			},
+			"executeOnce": false,
+			"typeVersion": 1.7
+		},
+		{
+			"id": "99d9b095-cc42-460c-9be5-5056ce21c999",
+			"name": "Business Executive Level",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1728, 1136],
+			"parameters": {
+				"text": "={{ $('Extract Query Data').item.json.userQuery }}",
+				"options": {
+					"systemMessage": "=You are explaining concepts to business executives and senior leaders.\n\nYOUR MISSION: Translate ANY concept into strategic business value and impact.\n\nSTYLE GUIDELINES:\n• Focus on practical business applications and ROI\n• Use business terminology (metrics, KPIs, strategy)\n• Include real-world case studies or examples\n• Discuss implementation challenges and solutions\n• Address risks, opportunities, and competitive advantage\n• Be concise - executives value efficiency\n• Connect to bottom-line impact\n\nCOVERAGE:\n• Business applications and use cases\n• Market implications and trends\n• Implementation considerations (cost, timeline, resources)\n• ROI and value proposition\n• Strategic advantages or risks\n• Competitive landscape\n• Decision-making framework\n\nFORMATTING:\n- Use plain text (no markdown)\n- Use line breaks for key points\n- Be concise and actionable\n\nQuestion to explain: {{ $json.query }}\n\nBe strategic, actionable, and focused on business outcomes."
+				},
+				"promptType": "define"
+			},
+			"executeOnce": false,
+			"typeVersion": 1.7
+		},
+		{
+			"id": "cb4d5199-4769-40fd-a7c7-55a39e7f8c4b",
+			"name": "5-Year-Old",
+			"type": "n8n-nodes-base.code",
+			"position": [2048, 336],
+			"parameters": {
+				"jsCode": "// Error Handler - Simple Content Extraction\nconst responseItem = $input.first().json;\n\n// Get original data\nconst originalItem = $(\"Route to Appropriate Level\").all().find(item => \n  item.json.level === \"5-year-old\"\n);\n\nconst chatId = originalItem?.json.chatId || \"unknown\";\nconst query = originalItem?.json.query || \"unknown\";\nconst timestamp = originalItem?.json.timestamp || new Date().toISOString();\n\n// Extract content\nconst content = responseItem.output || \n                responseItem.text || \n                responseItem.message?.content || \n                \"No response generated\";\n\nconsole.log('5-year-old - Content extracted, length:', content.length);\n\nreturn [{\n  json: {\n    level: \"5-year-old\",\n    emoji: \"🧒\",\n    title: \"For a 5 Year Old\",\n    content: content,\n    chatId: chatId,\n    query: query,\n    timestamp: timestamp\n  }\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "e9684534-4078-4033-b7b6-1acd12a88b70",
+			"name": "Teenager",
+			"type": "n8n-nodes-base.code",
+			"position": [2048, 544],
+			"parameters": {
+				"jsCode": "// Error Handler - Simple Content Extraction\nconst responseItem = $input.first().json;\n\n// Get original data\nconst originalItem = $(\"Route to Appropriate Level\").all().find(item => \n  item.json.level === \"teenager\"\n);\n\nconst chatId = originalItem?.json.chatId || \"unknown\";\nconst query = originalItem?.json.query || \"unknown\";\nconst timestamp = originalItem?.json.timestamp || new Date().toISOString();\n\n// Extract content\nconst content = responseItem.output || \n                responseItem.text || \n                responseItem.message?.content || \n                \"No response generated\";\n\nconsole.log('teenager - Content extracted, length:', content.length);\n\nreturn [{\n  json: {\n    level: \"teenager\",\n    emoji: \"🎮\",\n    title: \"For a Teenager\",\n    content: content,\n    chatId: chatId,\n    query: query,\n    timestamp: timestamp\n  }\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "e2ba26a1-859e-4bbc-9dd6-40afa71b9d9b",
+			"name": "Graduate",
+			"type": "n8n-nodes-base.code",
+			"position": [2048, 752],
+			"parameters": {
+				"jsCode": "// Error Handler - Simple Content Extraction\nconst responseItem = $input.first().json;\n\n// Get original data\nconst originalItem = $(\"Route to Appropriate Level\").all().find(item => \n  item.json.level === \"graduate\"\n);\n\nconst chatId = originalItem?.json.chatId || \"unknown\";\nconst query = originalItem?.json.query || \"unknown\";\nconst timestamp = originalItem?.json.timestamp || new Date().toISOString();\n\n// Extract content\nconst content = responseItem.output || \n                responseItem.text || \n                responseItem.message?.content || \n                \"No response generated\";\n\nconsole.log('graduate - Content extracted, length:', content.length);\n\nreturn [{\n  json: {\n    level: \"graduate\",\n    emoji: \"🎓\",\n    title: \"For a Graduate\",\n    content: content,\n    chatId: chatId,\n    query: query,\n    timestamp: timestamp\n  }\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "a28b4b39-88fb-4b3b-8211-5dd9c8a8b9de",
+			"name": "PhD",
+			"type": "n8n-nodes-base.code",
+			"position": [2048, 960],
+			"parameters": {
+				"jsCode": "// Error Handler - Simple Content Extraction\nconst responseItem = $input.first().json;\n\n// Get original data\nconst originalItem = $(\"Route to Appropriate Level\").all().find(item => \n  item.json.level === \"phd\"\n);\n\nconst chatId = originalItem?.json.chatId || \"unknown\";\nconst query = originalItem?.json.query || \"unknown\";\nconst timestamp = originalItem?.json.timestamp || new Date().toISOString();\n\n// Extract content\nconst content = responseItem.output || \n                responseItem.text || \n                responseItem.message?.content || \n                \"No response generated\";\n\nconsole.log('phd - Content extracted, length:', content.length);\n\nreturn [{\n  json: {\n    level: \"phd\",\n    emoji: \"🔬\",\n    title: \"For a Ph.D Holder\",\n    content: content,\n    chatId: chatId,\n    query: query,\n    timestamp: timestamp\n  }\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "ac1ec456-e305-4995-beb0-1ad49a82bd35",
+			"name": "Business",
+			"type": "n8n-nodes-base.code",
+			"position": [2048, 1168],
+			"parameters": {
+				"jsCode": "// Error Handler - Simple Content Extraction\nconst responseItem = $input.first().json;\n\n// Get original data\nconst originalItem = $(\"Route to Appropriate Level\").all().find(item => \n  item.json.level === \"business\"\n);\n\nconst chatId = originalItem?.json.chatId || \"unknown\";\nconst query = originalItem?.json.query || \"unknown\";\nconst timestamp = originalItem?.json.timestamp || new Date().toISOString();\n\n// Extract content\nconst content = responseItem.output || \n                responseItem.text || \n                responseItem.message?.content || \n                \"No response generated\";\n\nconsole.log('business - Content extracted, length:', content.length);\n\nreturn [{\n  json: {\n    level: \"business\",\n    emoji: \"💼\",\n    title: \"Real-time Business Case\",\n    content: content,\n    chatId: chatId,\n    query: query,\n    timestamp: timestamp\n  }\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "98fcd21e-8228-4719-9bbc-bc9738d5a74e",
+			"name": "Child + Teen",
+			"type": "n8n-nodes-base.merge",
+			"position": [2368, 528],
+			"parameters": {},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "0a8663b5-2df4-49c8-baee-a43320389ccf",
+			"name": "Grad + PhD",
+			"type": "n8n-nodes-base.merge",
+			"position": [2368, 880],
+			"parameters": {},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "eba46176-6eb4-4a75-9e59-30504e6bf636",
+			"name": "First 4 Levels",
+			"type": "n8n-nodes-base.merge",
+			"position": [2624, 704],
+			"parameters": {},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "b0430533-079a-49f8-9fed-43c193cad0c4",
+			"name": "All 5 Levels",
+			"type": "n8n-nodes-base.merge",
+			"position": [2784, 896],
+			"parameters": {},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "7e1d783b-27b3-4a5f-a62c-01f32f5bcdc0",
+			"name": "Aggregate & Structure All Responses",
+			"type": "n8n-nodes-base.code",
+			"position": [3008, 896],
+			"parameters": {
+				"jsCode": "// Aggregate - Simple Version (No Token Tracking)\nconst items = $input.all();\n\nconsole.log('=== AGGREGATE ===');\nconsole.log('Total items received:', items.length);\n\nconst allItems = items.filter(item => item.json).map(item => item.json);\n\nif (allItems.length !== 5) {\n  throw new Error(`Expected 5 items, got ${allItems.length}`);\n}\n\n// Sort in correct order\nconst order = [\"5-year-old\", \"teenager\", \"graduate\", \"phd\", \"business\"];\nconst sortedItems = allItems.sort((a, b) => \n  order.indexOf(a.level) - order.indexOf(b.level)\n);\n\nconsole.log('Sorted items:', sortedItems.map(i => i.level));\n\nreturn [{\n  json: {\n    responses: sortedItems,\n    chatId: sortedItems[0].chatId,\n    query: sortedItems[0].query,\n    timestamp: sortedItems[0].timestamp\n  }\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "37e5c3c8-442a-4e05-96f8-99c48f0b37e0",
+			"name": "Format 6 Messages for Telegram",
+			"type": "n8n-nodes-base.code",
+			"position": [3248, 656],
+			"parameters": {
+				"jsCode": "// Format for Telegram - NO TRUNCATION (Let Telegram handle it)\nconst input = $input.first().json;\n\nconst responses = input.responses;\nconst query = input.query;\nconst chatId = input.chatId;\nconst timestamp = input.timestamp;\n\n// Telegram's ACTUAL limit is 4096, but we'll be safer\nconst MAX_MESSAGE_LENGTH = 4000;\n\n// Clean markdown for Telegram HTML\nfunction cleanMarkdown(text) {\n  if (!text) return '';\n  \n  // Remove markdown formatting that Telegram HTML doesn't support\n  text = text.replace(/\\*\\*\\*(.+?)\\*\\*\\*/g, '<b>$1</b>'); // ***bold italic*** → bold\n  text = text.replace(/\\*\\*(.+?)\\*\\*/g, '<b>$1</b>');     // **bold** → <b>bold</b>\n  text = text.replace(/\\*(.+?)\\*/g, '<i>$1</i>');         // *italic* → <i>italic</i>\n  text = text.replace(/###\\s+(.+?)$/gm, '<b>$1</b>');     // ### Header → <b>Header</b>\n  text = text.replace(/##\\s+(.+?)$/gm, '<b>$1</b>');      // ## Header → <b>Header</b>\n  text = text.replace(/#\\s+(.+?)$/gm, '<b>$1</b>');       // # Header → <b>Header</b>\n  text = text.replace(/\\n-\\s+/g, '\\n• ');                 // - item → • item\n  \n  return text;\n}\n\n// Escape HTML special characters\nfunction escapeHtml(text) {\n  if (!text) return '';\n  return text.toString()\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;');\n}\n\n// Smart truncate - cut at last complete sentence\nfunction smartTruncate(text, maxLength) {\n  if (!text || text.length <= maxLength) return text;\n  \n  // Try to cut at last period before limit\n  const cutPoint = text.lastIndexOf('.', maxLength);\n  if (cutPoint > maxLength - 200) { // Only if reasonably close\n    return text.substring(0, cutPoint + 1) + '\\n\\n(Message truncated due to length)';\n  }\n  \n  // Otherwise cut at last space\n  const spacePoint = text.lastIndexOf(' ', maxLength);\n  return text.substring(0, spacePoint) + '...\\n\\n(Truncated)';\n}\n\nconst escapedQuery = escapeHtml(query);\n\n// Create header message\nconst headerText = `📊 <b>Knowledge Ladder Results</b>\\n\\n` +\n  `❓ <b>Question:</b> ${escapedQuery}\\n` +\n  `📅 <b>Date:</b> ${new Date(timestamp).toLocaleString()}\\n\\n` +\n  `━━━━━━━━━━━━━━━━━━━━━━━━━\\n` +\n  `Sending 5 responses...`;\n\nconst outputs = [];\n\n// Header\noutputs.push({\n  json: {\n    chatId: chatId,\n    text: headerText,\n    messageNumber: 1\n  }\n});\n\n// 5 Responses with markdown cleaning\nresponses.forEach((r, index) => {\n  const title = r.title || 'Unknown';\n  const emoji = r.emoji || '❓';\n  let content = r.content || 'No content';\n  \n  // Clean markdown FIRST\n  content = cleanMarkdown(content);\n  \n  // Then smart truncate if needed\n  const availableLength = MAX_MESSAGE_LENGTH - (title.length + emoji.length + 20);\n  content = smartTruncate(content, availableLength);\n  \n  // Escape HTML (AFTER markdown cleaning)\n  const escapedContent = escapeHtml(content);\n  const escapedTitle = escapeHtml(title);\n  \n  const messageText = `${emoji} <b>${escapedTitle}</b>\\n\\n${escapedContent}`;\n  \n  console.log(`Message ${index + 2}: ${messageText.length} chars`);\n  \n  outputs.push({\n    json: {\n      chatId: chatId,\n      text: messageText,\n      messageNumber: index + 2\n    }\n  });\n});\n\nconsole.log(`✅ Created ${outputs.length} messages`);\n\nreturn outputs;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "2350c71f-bebe-46fc-bd94-17273e8687d5",
+			"name": "Send to User via Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"position": [3472, 656],
+			"parameters": {
+				"text": "={{ $json.text }}",
+				"chatId": "={{ $json.chatId }}",
+				"additionalFields": {
+					"parse_mode": "HTML",
+					"appendAttribution": false
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "9dd4ca28-da2a-4949-a4bf-79a5cc64925d",
+			"name": "Format Plain Text for Docs",
+			"type": "n8n-nodes-base.code",
+			"position": [3280, 1088],
+			"parameters": {
+				"jsCode": "// Format for Google Docs - Clean Text Format\nconst input = $input.first().json;\n\nconst responses = input.responses;\nconst query = input.query;\nconst timestamp = input.timestamp;\n\n// Create clean formatted text for Google Docs\nconst dateStr = new Date(timestamp).toLocaleString();\n\nlet docsContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n`;\ndocsContent += `📊 AI KNOWLEDGE LADDER RESULTS\\n`;\ndocsContent += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n\\n`;\ndocsContent += `❓ Question: ${query}\\n`;\ndocsContent += `📅 Date: ${dateStr}\\n\\n`;\ndocsContent += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n\\n`;\n\n// Add each response with clean formatting\nresponses.forEach((r, index) => {\n  const emoji = r.emoji || '❓';\n  const title = r.title || 'Unknown';\n  const content = r.content || 'No content';\n  \n  docsContent += `${emoji} ${title.toUpperCase()}\\n`;\n  docsContent += `${'─'.repeat(50)}\\n\\n`;\n  docsContent += `${content}\\n\\n`;\n  \n  if (index < responses.length - 1) {\n    docsContent += `\\n`;\n  }\n});\n\ndocsContent += `\\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n`;\ndocsContent += `End of Response\\n`;\ndocsContent += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\n\\n\\n`;\n\nreturn [{\n  json: {\n    docsContent: docsContent\n  }\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "848cb28d-000a-4608-96b6-2e3bf759c542",
+			"name": "Archive to Google Docs",
+			"type": "n8n-nodes-base.googleDocs",
+			"position": [3488, 1088],
+			"parameters": {
+				"actionsUi": {
+					"actionFields": [
+						{
+							"text": "={{ $json.docsContent }}",
+							"action": "insert"
+						}
+					]
+				},
+				"operation": "update",
+				"documentURL": "REPLACE_WITH_YOUR_GOOGLE_DOC_URL"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "9a7c6a52-c6d8-4b6f-a9d4-37cf6fc87fd6",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1376, 544],
+			"parameters": {
+				"color": 7,
+				"width": 208,
+				"height": 464,
+				"content": "## Routing\n\n**Routes items to AI agents by understanding level.**\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "bfff2891-8123-44d8-8d02-6abf13aafc60",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1616, 496],
+			"parameters": {
+				"color": 5,
+				"width": 640,
+				"height": 192,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0c3d251b-6ce6-4ca1-971f-78f52c0da336",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1616, 704],
+			"parameters": {
+				"color": 5,
+				"width": 640,
+				"height": 192,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "669325bd-3ba2-4ee4-a705-c3e8606c03d5",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1616, 912],
+			"parameters": {
+				"color": 5,
+				"width": 640,
+				"height": 176,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "63e13142-b299-40f4-a376-30caf8e87c1a",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1616, 1120],
+			"parameters": {
+				"color": 5,
+				"width": 640,
+				"height": 192,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "026ccc65-e7b0-4ade-9659-f03a2084ccd2",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2288, 816],
+			"parameters": {
+				"color": 7,
+				"height": 256,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "74b4fc56-645b-4f84-b93b-91a23b7f48f7",
+			"name": "Sticky Note13",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2560, 640],
+			"parameters": {
+				"color": 7,
+				"width": 208,
+				"height": 240,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c9e44c4d-244a-4f98-9de9-8ce61eb5a7b7",
+			"name": "Sticky Note14",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2768, 864],
+			"parameters": {
+				"color": 7,
+				"width": 160,
+				"height": 224,
+				"content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "60da89e6-5be0-4ab5-8169-5512ba5e12c2",
+			"name": "Sticky Note15",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2960, 544],
+			"parameters": {
+				"color": 5,
+				"width": 224,
+				"height": 560,
+				"content": "## Collection of responses  & Formatting\n\n\n**Combines all five responses into a single result**\n\n**Organizes the data & formats it for final output**"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e9e1eb15-6f76-4d6c-a958-84a4c4a04fff",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2272, 272],
+			"parameters": {
+				"color": 7,
+				"width": 672,
+				"height": 1040,
+				"content": "\n## Merge Strategy\n\n**Combines responses 2 at a time:**\n**1+2 → 3+4 → Combine → Add 5th**\n\n**Why not merge all 5 at once?**\n**More reliable. Never loses responses.**\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9c03b5a4-7abc-4fce-969b-2994fff4d1fd",
+			"name": "Sticky Note16",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1728, 176],
+			"parameters": {
+				"color": 5,
+				"width": 368,
+				"height": 80,
+				"content": "\n## AI Processing & Error Handling"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"availableInMCP": false,
+		"executionOrder": "v1"
+	},
+	"connections": {
+		"PhD": {
+			"main": [
+				[
+					{
+						"node": "Grad + PhD",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "5-Year-Old Story Mode",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Teenager Level",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Graduate Level",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "PhD Research Level",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Business Executive Level",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Business": {
+			"main": [
+				[
+					{
+						"node": "All 5 Levels",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Graduate": {
+			"main": [
+				[
+					{
+						"node": "Grad + PhD",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Teenager": {
+			"main": [
+				[
+					{
+						"node": "Child + Teen",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"5-Year-Old": {
+			"main": [
+				[
+					{
+						"node": "Child + Teen",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Grad + PhD": {
+			"main": [
+				[
+					{
+						"node": "First 4 Levels",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"All 5 Levels": {
+			"main": [
+				[
+					{
+						"node": "Aggregate & Structure All Responses",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Child + Teen": {
+			"main": [
+				[
+					{
+						"node": "First 4 Levels",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"First 4 Levels": {
+			"main": [
+				[
+					{
+						"node": "All 5 Levels",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Graduate Level": {
+			"main": [
+				[
+					{
+						"node": "Graduate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Teenager Level": {
+			"main": [
+				[
+					{
+						"node": "Teenager",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "5-Year-Old Story Mode",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "Teenager Level",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "Graduate Level",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "PhD Research Level",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "Business Executive Level",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Query Data": {
+			"main": [
+				[
+					{
+						"node": "Route to Appropriate Level",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"PhD Research Level": {
+			"main": [
+				[
+					{
+						"node": "PhD",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"5-Year-Old Story Mode": {
+			"main": [
+				[
+					{
+						"node": "5-Year-Old",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Receive User Question": {
+			"main": [
+				[
+					{
+						"node": "Extract Query Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Business Executive Level": {
+			"main": [
+				[
+					{
+						"node": "Business",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format Plain Text for Docs": {
+			"main": [
+				[
+					{
+						"node": "Archive to Google Docs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Route to Appropriate Level": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format 6 Messages for Telegram": {
+			"main": [
+				[
+					{
+						"node": "Send to User via Telegram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate & Structure All Responses": {
+			"main": [
+				[
+					{
+						"node": "Format 6 Messages for Telegram",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Format Plain Text for Docs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

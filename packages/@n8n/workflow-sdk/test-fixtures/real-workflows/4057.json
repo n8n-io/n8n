@@ -1,0 +1,293 @@
+{
+	"id": "uQTqLH5At9PZOy2g",
+	"meta": {
+		"instanceId": "a1ae5c8dc6c65e674f9c3947d083abcc749ef2546dff9f4ff01de4d6a36ebfe6",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Auto-Respond to Gmail Enquiries using GPT-4o, Dumpling AI & LangChain Agent",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "149c7dd9-9f5f-4c5b-8342-7c907eb52402",
+			"name": "Watch Gmail for New Incoming Emails",
+			"type": "n8n-nodes-base.gmailTrigger",
+			"position": [-2300, -340],
+			"parameters": {
+				"filters": {},
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8a0de384-9028-47e3-86e5-b5bf6476ae0c",
+			"name": "Classify Email Type with GPT-4o",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [-2080, -340],
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "GPT-4O"
+				},
+				"options": {},
+				"messages": {
+					"values": [
+						{
+							"content": "=Classify the following email content. Determine if it is an enquiry.\nIf it is an enquiry, return only this word: enquiry\nIf it is not an enquiry, return only this word: false\nDo not explain or add any other text. Only return the result.\nHere is the email body: {{ $json.snippet }}"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "57756cd3-9009-4189-8cba-e2edba87554f",
+			"name": " Only Proceed if Email is an Enquiry",
+			"type": "n8n-nodes-base.filter",
+			"position": [-1704, -340],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "e6019006-0980-4cd6-8e5d-3f618fbca13a",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.message.content }}",
+							"rightValue": "enquiry"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "64e851b8-7ff1-4b4c-9828-7c764594f1ea",
+			"name": "GPT-4o Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-1484, -120],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "2957c6ad-5e7b-4692-a96f-5c4fb5b8203c",
+			"name": "Memory Buffer (Past 10 Interactions)",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-1364, -120],
+			"parameters": {
+				"contextWindowLength": 10
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "9e8617f1-cd89-4de5-9d44-ded155779745",
+			"name": "Dumpling AI Agent – Search for Relevant Info",
+			"type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+			"position": [-1244, -120],
+			"parameters": {
+				"url": "https://app.dumplingai.com/api/v1/agents/generate-completion",
+				"method": "POST",
+				"jsonBody": "={\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\":\"{{ $('Watch Gmail for New Incoming Emails').item.json.snippet }}\"\n    }\n  ],\n  \"agentId\": \"a88a9b6c-1578-4da2-800b-561327367713\",\n  \"parseJson\": \"True\"\n  }",
+				"sendBody": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "da474406-a6e3-427d-b21b-3e7e00ebe910",
+			"name": "Send Email Response via Gmail",
+			"type": "n8n-nodes-base.gmailTool",
+			"position": [-1124, -120],
+			"webhookId": "b39f740b-77d1-426a-a07a-186a9ff0c1af",
+			"parameters": {
+				"sendTo": "",
+				"message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+				"options": {},
+				"subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}"
+			},
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "credential-id",
+					"name": "gmailOAuth2 Credential"
+				}
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "03882650-9272-43c3-b1bc-15adae456881",
+			"name": "LangChain Agent Handles Reply Logic",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-1392, -340],
+			"parameters": {
+				"text": "={{ $('Watch Gmail for New Incoming Emails').item.json.snippet }}",
+				"options": {
+					"systemMessage": "You are a helpful assistant, use the search for information tool to search for users information.\n\nuse Gmail tool to send email"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "52bb3b65-0b7f-4206-87c9-1f91997a44dd",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1500, -560],
+			"parameters": {
+				"width": 480,
+				"height": 240,
+				"content": "### ✉️ Sticky Note 2: Website Scraping, Email Generation, and Sending\n\nFor leads with complete data, Dumpling AI scrapes the content of the lead’s company website. This content, combined with scraped details, is structured into a prompt using the Set node. GPT-4o processes the prompt and generates a personalized cold email. The email is then sent to the lead using Gmail. This automates targeted cold outreach using scraped insights and AI-generated messaging.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3a6df2e9-1d1a-4cab-889c-c323f876b98f",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-2320, -540],
+			"parameters": {
+				"width": 540,
+				"height": 220,
+				"content": "### Sticky Note 1: Apollo Link Sourcing & Contact Scraping\n\nThis section begins the workflow manually. The Apollo lead URLs are pulled from a Google Sheet. Each link is passed to Apify which scrapes key lead details such as name, email, company website, and other contact data. After scraping, a filter checks that both an email and website were found for the lead before moving forward. This ensures only complete lead data is used for outreach.\n\n"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "0f1d6a0b-eb13-4e1a-be9e-3f22eb17e66e",
+	"connections": {
+		"GPT-4o Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "LangChain Agent Handles Reply Logic",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Email Response via Gmail": {
+			"ai_tool": [
+				[
+					{
+						"node": "LangChain Agent Handles Reply Logic",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Classify Email Type with GPT-4o": {
+			"main": [
+				[
+					{
+						"node": " Only Proceed if Email is an Enquiry",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LangChain Agent Handles Reply Logic": {
+			"main": [[]]
+		},
+		"Watch Gmail for New Incoming Emails": {
+			"main": [
+				[
+					{
+						"node": "Classify Email Type with GPT-4o",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		" Only Proceed if Email is an Enquiry": {
+			"main": [
+				[
+					{
+						"node": "LangChain Agent Handles Reply Logic",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Memory Buffer (Past 10 Interactions)": {
+			"ai_memory": [
+				[
+					{
+						"node": "LangChain Agent Handles Reply Logic",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Dumpling AI Agent – Search for Relevant Info": {
+			"ai_tool": [
+				[
+					{
+						"node": "LangChain Agent Handles Reply Logic",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

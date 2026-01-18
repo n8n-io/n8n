@@ -1,0 +1,281 @@
+{
+	"id": "vMvm0kfL6V7u4bPO",
+	"meta": {
+		"instanceId": "089a426694e95c86fd56db3433ae1586d34120d3ffcad01bcaa9ff768b7f5853",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Client Responder IG/TG",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "be329d21-b0fb-49a4-92ed-651f2297890c",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-340, 220],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-3.5-turbo",
+					"cachedResultName": "gpt-3.5-turbo"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "aadcdcde-c6b2-4815-8088-4f310f4d0065",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [780, 200],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4",
+					"cachedResultName": "gpt-4"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "760e2d6c-b121-4de8-bcf9-b117d2a771bc",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-700, -340],
+			"parameters": {
+				"color": 3,
+				"width": 2060,
+				"height": 860,
+				"content": "Workflow Node Descriptions:\nReceive Request: \"📥 Incoming customer message\"\nParse Request AI: \"🤖 Extract brand/model/size from text\"\nExtract Data: \"📊 Process JSON output\"\nProduct Database: \"📋 Load all products from inventory\"\nFilter Products: \"🔍 Find matching items only\"\nAI Manager: \"💬 Generate friendly response\"\nSend Response: \"📤 Deliver result to customer\""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e89e72bb-c8ad-406c-a9a5-1297ae4974c9",
+			"name": "Receive Request",
+			"type": "n8n-nodes-base.webhook",
+			"position": [-600, 0],
+			"webhookId": "753f3fe9-b17b-4431-81c2-a011044768d0",
+			"parameters": {
+				"path": "/shoe-orders",
+				"options": {},
+				"httpMethod": "POST",
+				"responseMode": "responseNode"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "f0ee0564-5a40-4174-a80f-8c74d2d7e878",
+			"name": "Parse Request AI",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [-360, 0],
+			"parameters": {
+				"text": "={{ $('Receive Request').first().json.body.message }}",
+				"batching": {},
+				"messages": {
+					"messageValues": [
+						{
+							"type": "=SystemMessagePromptTemplate",
+							"message": "=Extract shoe details from customer inquiry: brand name, model name, size, and color. Return only valid JSON format: {\"brand\": \"\", \"model\": \"\", \"size\": \"\", \"color\": \"\"}\n\nExamples:\n- \"Do you have Nike Air Max size 40?\" → {\"brand\": \"Nike\", \"model\": \"Air Max\", \"size\": \"40\", \"color\": \"\"}\n- \"Looking for white Adidas size 38\" → {\"brand\": \"Adidas\", \"model\": \"\", \"size\": \"38\", \"color\": \"white\"}\n\nCustomer message: {{ $json.message }}"
+						}
+					]
+				},
+				"promptType": "define",
+				"hasOutputParser": true
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "8805f637-67ed-40e7-97c2-02bb84da2f2d",
+			"name": "Extract Data",
+			"type": "n8n-nodes-base.code",
+			"position": [80, 0],
+			"parameters": {
+				"jsCode": "const input = $input.first().json;\nconst parsedData = JSON.parse(input.text);\n\nreturn [{\n  json: {\n    brand: parsedData.brand || \"\",\n    model: parsedData.model || \"\",\n    size: parsedData.size || \"\",\n    color: parsedData.color || \"\"\n  }\n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "690c3190-4732-475a-8fad-00faa6897bf9",
+			"name": "Product Database",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [300, 0],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1AczF58510i-QEppNi_UnzgqqfX0ickNJZjFW2Bu-6mI/edit#gid=0",
+					"cachedResultName": "Лист1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1AczF58510i-QEppNi_UnzgqqfX0ickNJZjFW2Bu-6mI",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1AczF58510i-QEppNi_UnzgqqfX0ickNJZjFW2Bu-6mI/edit?usp=drivesdk",
+					"cachedResultName": "In Stock"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "3da1277f-e726-4818-8ff6-e7e888d353ab",
+			"name": "Filter Products",
+			"type": "n8n-nodes-base.code",
+			"position": [540, 0],
+			"parameters": {
+				"jsCode": "const allItems = $input.all();\nconst search = $('Extract Data').first().json;\n\nconst filtered = allItems.filter(item => {\n  const brandMatch = item.json.Brand?.toString()?.toLowerCase() === search.brand?.toLowerCase();\n  const modelMatch = search.model ? item.json.Model?.toString()?.toLowerCase().includes(search.model?.toLowerCase()) : true;\n  const sizeMatch = item.json.Size?.toString() === search.size;\n  const colorMatch = search.color ? item.json.Color?.toString()?.toLowerCase().includes(search.color?.toLowerCase()) : true;\n  \n  return brandMatch && modelMatch && sizeMatch && colorMatch;\n});\n\nreturn filtered;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "37324505-d063-4d2a-9c2e-d195b54357eb",
+			"name": "AI Manager",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [740, 0],
+			"parameters": {
+				"text": "={{ $('Receive Request').first().json.body.message }}",
+				"batching": {},
+				"messages": {
+					"messageValues": [
+						{
+							"type": "=SystemMessagePromptTemplate",
+							"message": "=You are a friendly shoe store assistant. Based on the product data below, generate a helpful response about availability, pricing, and stock.\n\nProduct data: {{ JSON.stringify($input.all()) }}\n\nResponse style: Friendly, helpful, and informative. Include price, stock quantity, and suggest alternatives if item is out of stock."
+						}
+					]
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "d2e5c074-c68a-489c-8503-51cbda2bc267",
+			"name": "Send Response",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"position": [1140, 0],
+			"parameters": {
+				"options": {},
+				"respondWith": "text",
+				"responseBody": "={{ $json.text }}"
+			},
+			"typeVersion": 1.3
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "aa3fd2f1-d011-4c19-ab53-b2e3405a1c5c",
+	"connections": {
+		"AI Manager": {
+			"main": [
+				[
+					{
+						"node": "Send Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Data": {
+			"main": [
+				[
+					{
+						"node": "Product Database",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter Products": {
+			"main": [
+				[
+					{
+						"node": "AI Manager",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Receive Request": {
+			"main": [
+				[
+					{
+						"node": "Parse Request AI",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse Request AI": {
+			"main": [
+				[
+					{
+						"node": "Extract Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Product Database": {
+			"main": [
+				[
+					{
+						"node": "Filter Products",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Parse Request AI",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Manager",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

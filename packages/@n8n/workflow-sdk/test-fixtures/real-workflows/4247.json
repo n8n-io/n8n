@@ -1,0 +1,975 @@
+{
+	"meta": {
+		"instanceId": "761a3dddae2bb21eb8973ffca0ba97d5b4f499405873760164a536f547546882",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "0d426dc6-d9ff-44cd-82f0-9d87bda8821a",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-200, 405],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "2722d720-22e9-488b-9b39-4273fe88257c",
+			"name": "OpenRouter Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+			"position": [548, 625],
+			"parameters": {
+				"model": "deepseek/deepseek-chat-v3-0324",
+				"options": {}
+			},
+			"credentials": {
+				"openRouterApi": {
+					"id": "credential-id",
+					"name": "openRouterApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6992dfda-d65e-4694-8261-2328a7d0bc09",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [1276, 280],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "line_items"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "06e91f54-fbc3-4161-949c-779ecd7924b9",
+			"name": "Post-Processing",
+			"type": "n8n-nodes-base.code",
+			"position": [880, 380],
+			"parameters": {
+				"jsCode": "const output = $input.first().json.output;\nlet raw = output.result || output.completion || output.text || JSON.stringify(output);\n\n// Step 1: Remove backticks if present\nraw = raw.trim();\nif (raw.startsWith(\"```json\")) {\n  raw = raw.replace(/^```json\\s*/, '').replace(/```$/, '').trim();\n} else if (raw.startsWith(\"```\")) {\n  raw = raw.replace(/^```\\s*/, '').replace(/```$/, '').trim();\n}\n\n// Step 2: Find full JSON block from first { to last }\nconst start = raw.indexOf('{');\nconst end = raw.lastIndexOf('}');\nif (start === -1 || end === -1 || end <= start) {\n  return [{\n    json: {\n      error: \"No valid JSON block found\",\n      raw_output: raw\n    }\n  }];\n}\n\nlet jsonCandidate = raw.substring(start, end + 1).trim();\n\n// Step 3: Unescape characters\njsonCandidate = jsonCandidate\n  .replace(/\\\\n/g, '')\n  .replace(/\\\\t/g, '')\n  .replace(/\\\\\"/g, '\"')\n  .replace(/\\\\'/g, \"'\")\n  .replace(/\\\\\\\\/g, '\\\\');\n\n// Step 4: Parse JSON safely\ntry {\n  let parsed = JSON.parse(jsonCandidate);\n\n  // Only double-parse if it looks like stringified JSON\n  if (typeof parsed === \"string\" && parsed.trim().startsWith('{') && parsed.trim().endsWith('}')) {\n    parsed = JSON.parse(parsed);\n  }\n\n  return [{ json: parsed }];\n} catch (e) {\n  return [{\n    json: {\n      error: \"JSON parsing failed\",\n      raw_output: raw,\n      attempted_extraction: jsonCandidate,\n      message: e.message\n    }\n  }];\n}\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "34f5988b-9c83-4828-a13d-1ff33615e509",
+			"name": "Text Extractor",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [460, 420],
+			"parameters": {
+				"text": "=- You must respond ONLY with valid raw rendered JSON.\n- Do NOT include the word \"json\".\n- Do NOT include the word \"```json\".\n- Do NOT use triple backticks or markdown formatting.\n- Do NOT wrap the response in any key like \"output\".\n- Do NOT write anything starting at output directly start with valid root-level JSON.\n- Only respond with a valid, root-level JSON object.\n- Do NOT skip any line item. Continue extracting all line items until the sum of all line_total values exactly equals the total sale amount extracted from the invoice. This verification ensures that all items are fully extracted and no entries are missed. If the totals do not match, keep parsing and extracting additional line items until they do. Only then stop.\n\nText to convert: {{ $json.text }}",
+				"options": {
+					"systemMessage": "=You are a document parsing assistant designed to extract structured data from invoice PDFs for automated uploading and validation in a financial system.\n\nExtract the following fields from the invoice text:\n\ninvoice_number: Extract from the 'Invoice No' field.\n\nvendor_name: Company name issuing the invoice.\n\ninvoice_date: Format as DD/MM/YYYY.\n\npo_number: Extract the PO number or return null if not found.\n\npo_date: Extract the PO date in DD/MM/YYYY format or return null if not found.\n\ntotal_amount: Extract the invoice total as a float.\n\ntax_details: Include total CGST, total SGST.\n\nline_items: List of all items in the invoice. For each item, extract:\n\n  Serial No.: Item Serial No. In invoice.\n\n  code: The TWW word and its postfix only (e.g., TWW, TWW-Cover, TWW-HPCN). Do not include HSN code or numbers. This field must always be present.\n\n  description: Item description, never include HSN code of product in product description.\n\n  last character: This is a single word/character string found just after or around the line item, typically at the end of the price line or just on the next line. It will never be a number, HSN code, GST %, or unit (like PCS). Examples: G, C, S, 5C, .C If nothing is present (only digits or blank), return \"\". Check the next 1–2 lines after each item if it's not found on the same line.\n\n  quantity: Quantity value.\n\n  unit_price: Price per unit.\n\n  line_total: Total price for the line.\n\n  hsn_code: HSN code of the item.\n\n  cgst: Only extract the CGST percentage (e.g., 9%, 6%) as written in the invoice. Do not calculate based on line total.\n\n  sgst: Only extract the SGST percentage (e.g., 9%, 6%) as written in the invoice. Do not calculate based on line total.\n\nImportant: Double-check that all line items are extracted without omission.\n\nDo NOT skip any line item. Continue extracting all line items until the sum of all line_total values exactly equals the total_amount extracted from the invoice. This verification ensures that all items are fully extracted and no entries are missed. If the totals do not match, keep parsing and extracting additional line items until they do. Only then stop."
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "3446d02e-2c94-4575-9062-455dbd71ecd8",
+			"name": "Read/Write Files from Disk",
+			"type": "n8n-nodes-base.readWriteFile",
+			"position": [20, 405],
+			"parameters": {
+				"options": {},
+				"fileSelector": "=E:/SentIImenta AI/SentIImenta AI Website/White Willow/Invoice Validator/May Invoices/Jumax TWW Daily PO Invoices 05_05_2025/661.pdf"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "95e99fb0-a12f-40e6-9126-d84cf2b0c493",
+			"name": "Extract from File",
+			"type": "n8n-nodes-base.extractFromFile",
+			"position": [240, 405],
+			"parameters": {
+				"options": {},
+				"operation": "pdf"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ce0a9035-c99f-4cc3-9ec3-b2be2158623e",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [1100, 340],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "e73c23b4-39e9-4719-8a72-53808eefe607",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.error }}",
+							"rightValue": "JSON parsing failed"
+						},
+						{
+							"id": "b3b7d3d4-c709-40fe-8782-ffd34180ba8b",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.error }}",
+							"rightValue": "No valid JSON block found"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "6675d752-7230-4335-9c68-387396728e7f",
+			"name": "Send Raw Text Again",
+			"type": "n8n-nodes-base.set",
+			"position": [1340, 520],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "18f61f00-03e8-4fd4-b305-f3742bb32d17",
+							"name": "text",
+							"type": "string",
+							"value": "={{ $('Extract from File').item.json.text }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "7706b71b-25dc-4f61-b975-51322d7b9d32",
+			"name": "Validation",
+			"type": "n8n-nodes-base.code",
+			"position": [2156, 280],
+			"parameters": {
+				"jsCode": "// --- Helper: Levenshtein Distance ---\nfunction levenshtein(a, b) {\n  const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);\n  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;\n\n  for (let i = 1; i <= b.length; i++) {\n    for (let j = 1; j <= a.length; j++) {\n      const cost = a[j - 1] === b[i - 1] ? 0 : 1;\n      matrix[i][j] = Math.min(\n        matrix[i - 1][j] + 1,\n        matrix[i][j - 1] + 1,\n        matrix[i - 1][j - 1] + cost\n      );\n    }\n  }\n  return matrix[b.length][a.length];\n}\n\n// --- Helper: Clean String ---\nfunction cleanString(str) {\n  if (str && typeof str === 'string') {\n    return str\n      .replace(/(^\"|\"$|\\[|\\])/g, '') // remove unwanted chars\n      .replace(/\\s{2,}/g, ' ')       // replace multiple spaces with one\n      .toLowerCase()\n      .trim();\n  }\n  return '';\n}\n\n// --- 1. Get all SKUs from \"Split Out\" and corresponding Unique Keys ---\nconst splitOutItems = $items('Split Out');\nconst uniqueKeyItems = $items('Generate Unique Key');\n\nconst inputSKUs = splitOutItems.map((item, index) => {\n  const uniqueKeyItem = uniqueKeyItems[index];\n\n  const code = cleanString(item.json.code);\n  const description = cleanString(item.json.description);\n  // handle both possible keys for last character\n  const lastCharacter = cleanString(item.json['last_character'] ?? item.json['last character'] ?? '');\n\n  let sku = `${code} ${description}`;\n\n  if (lastCharacter) {\n    if (/^[a-z0-9]+$/i.test(lastCharacter)) {\n      // Append directly without space if alphanumeric postfix\n      sku += lastCharacter;\n    } else {\n      // Otherwise, add a space\n      sku += ` ${lastCharacter}`;\n    }\n  }\n  \n  sku = sku.trim().replace(/\\s{2,}/g, ' ');\n\n  return {\n    Unique_Key: uniqueKeyItem ? uniqueKeyItem.json['Unique Key'] || uniqueKeyItem.json.Unique_Key || '' : '',\n    serial_no: item.json['Serial No.'] ?? item.json['Serial_No.'] ?? '',\n    sku,\n    quantity: item.json.quantity,\n    unit_price: item.json.unit_price,\n    line_total: item.json.line_total,\n    hsn_code: item.json.hsn_code,\n    cgst: item.json.cgst,\n    sgst: item.json.sgst\n  };\n});\n\n// --- 2. Get all rows from \"Google Sheets\" ---\nconst sheetRows = $items('Fetch Master Data').map(i => i.json);\n\n// --- 3. Set Levenshtein match threshold ---\nconst threshold = 5;\nconst results = [];\n\nfor (const inputSKU of inputSKUs) {\n  let bestMatch = null;\n  let lowestDistance = Infinity;\n\n  for (const row of sheetRows) {\n    const descriptionRaw = row['Jumax PDF Description'] || '';\n    const description = cleanString(descriptionRaw);\n    if (!description) continue;\n\n    const distance = levenshtein(inputSKU.sku, description);\n\n    if (distance < lowestDistance) {\n      lowestDistance = distance;\n      bestMatch = row;\n    }\n  }\n\n  if (bestMatch && lowestDistance <= threshold) {\n    const jumaxASIN = cleanString(bestMatch['ASIN']);\n    const tASIN = cleanString(bestMatch['TWW ASIN']);\n    const cost = Number(bestMatch['Cost '] || bestMatch['Cost'] || bestMatch['Rate']);\n    const unitPrice = Number(inputSKU.unit_price);\n\n    const asinMatch = jumaxASIN === tASIN;\n    const costMatch = cost === unitPrice;\n    const allConditionsMet = asinMatch && costMatch;\n\n    results.push({\n      json: {\n        Unique_Key: inputSKU.Unique_Key,\n        serial_no: inputSKU.serial_no,\n        matchedSKU: inputSKU.sku,\n        matchedRow: bestMatch,\n        distance: lowestDistance,\n        Jumax_ASIN: jumaxASIN,\n        T_ASIN: tASIN,\n        asinMatch,\n        costMatch,\n        quantity: inputSKU.quantity,\n        unit_price: inputSKU.unit_price,\n        costFromSheet: cost,\n        line_total: inputSKU.line_total,\n        hsn_code: inputSKU.hsn_code,\n        cgst: inputSKU.cgst,\n        sgst: inputSKU.sgst,\n        message: allConditionsMet\n          ? '✅ Match found, ASINs match, and Cost matches Unit Price'\n          : asinMatch\n            ? '⚠️ ASINs match but Cost does not match Unit Price'\n            : '❌ Match found but ASINs do not match',\n        All_Conditions_Met: allConditionsMet\n      }\n    });\n  } else {\n    results.push({\n      json: {\n        Unique_Key: inputSKU.Unique_Key,\n        serial_no: inputSKU.serial_no,\n        matchedSKU: inputSKU.sku,\n        matchedRow: null,\n        message: `❌ No match found for SKU: ${inputSKU.sku}`,\n        closestDistance: lowestDistance,\n        quantity: inputSKU.quantity,\n        unit_price: inputSKU.unit_price,\n        line_total: inputSKU.line_total,\n        hsn_code: inputSKU.hsn_code,\n        cgst: inputSKU.cgst,\n        sgst: inputSKU.sgst,\n        All_Conditions_Met: false\n      }\n    });\n  }\n}\n\n// --- 4. Return final results ---\nreturn results;\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "34e482d2-9658-496b-ad2f-fc376f3490ff",
+			"name": "Send Invoice Data",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1716, 280],
+			"parameters": {
+				"columns": {
+					"value": {
+						"HSN": "={{ $('Split Out').item.json.hsn_code }}",
+						"Qty": "={{ $('Split Out').item.json.quantity }}",
+						"CGST%": "={{ $('Split Out').item.json.cgst }}",
+						"SGST%": "={{ $('Split Out').item.json.sgst }}",
+						"SR No.": "={{ $('Split Out').item.json['serial_no'] }}",
+						"PO Date": "={{ $('Post-Processing').item.json.po_date }}",
+						"PO Number": "={{ $('Post-Processing').item.json.po_number }}",
+						"Unique Key": "={{ $json['Unique Key'] }}",
+						"Invoice No.": "={{ $('Post-Processing').item.json.invoice_number }}",
+						"Sale Amount": "={{ $('Split Out').item.json.line_total }}",
+						"Invoice Date": "={{ $('Post-Processing').item.json.invoice_date }}",
+						"Rate (Vendor)": "={{ $('Split Out').item.json.unit_price }}",
+						"TWW Description": "={{ \n  $node[\"Split Out\"].json[\"code\"] + \" \" + \n  $node[\"Split Out\"].json[\"description\"] + \" \" + \n  ($node[\"Split Out\"].json[\"last character\"] ?? $node[\"Split Out\"].json[\"last_character\"] ?? \"\") \n}}"
+					},
+					"schema": [
+						{
+							"id": "SR No.",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "SR No.",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Invoice No.",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Invoice No.",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Unique Key",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Unique Key",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Invoice Date",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Invoice Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "PO Number",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "PO Number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "PO Date",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "PO Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "TWW Description",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "TWW Description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "HSN",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "HSN",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Qty",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Qty",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Rate (Vendor)",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Rate (Vendor)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Sale Amount",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Sale Amount",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "CGST%",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "CGST%",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "SGST%",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "SGST%",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Matched Cost (Actual Price)",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Matched Cost (Actual Price)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Matched Unit Price (Vendor Price)",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Matched Unit Price (Vendor Price)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Price Difference (₹)",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Price Difference (₹)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Total Loss/Gain (₹)",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Total Loss/Gain (₹)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Mismatch Note",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Mismatch Note",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "SKU Matched",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "SKU Matched",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "ASIN",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "ASIN",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Taxable Amount",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Taxable Amount",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Invoice Amount",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Invoice Amount",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Total Quantity",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Total Quantity",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1L2DN1aGp1uhLhNm7TrI54tC0Yuk4ER9y2DU-jbHrSrk/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1L2DN1aGp1uhLhNm7TrI54tC0Yuk4ER9y2DU-jbHrSrk",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1L2DN1aGp1uhLhNm7TrI54tC0Yuk4ER9y2DU-jbHrSrk/edit?usp=drivesdk",
+					"cachedResultName": "Invoice Validation"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "3e30f4f1-15e1-41d9-a7f3-bf49d6273c02",
+			"name": "Fetch Master Data",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1980, 280],
+			"parameters": {
+				"options": {},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 305288444,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZBODB_mwa17Amtxnme5l8MxyEcWHYy9SSjQ6atPJXhc/edit#gid=305288444",
+					"cachedResultName": "Cost-Priority sheet-GPT"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1ZBODB_mwa17Amtxnme5l8MxyEcWHYy9SSjQ6atPJXhc",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ZBODB_mwa17Amtxnme5l8MxyEcWHYy9SSjQ6atPJXhc/edit?usp=drivesdk",
+					"cachedResultName": "Mapping Sheet Final"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"executeOnce": true,
+			"typeVersion": 4.5
+		},
+		{
+			"id": "7a46cfd3-3e2f-4818-80cd-e2776d0303a5",
+			"name": "Update Results",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [2460, 280],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Unique Key": "={{ $json.Unique_Key }}",
+						"Mismatch Note": "={{ $('Validation').item.json.message }}",
+						"Total Loss/Gain (₹)": "={{ ($json.unit_price - $json.costFromSheet) * $json.quantity}}",
+						"Price Difference (₹)": "={{ $json.unit_price - $json.costFromSheet }}",
+						"Matched Cost (Actual Price)": "={{ $json.costFromSheet }}",
+						"Matched Unit Price (Vendor Price)": "={{ $('Validation').item.json.unit_price }}"
+					},
+					"schema": [
+						{
+							"id": "SR No.",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "SR No.",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Invoice No.",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Invoice No.",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Unique Key",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Unique Key",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Invoice Date",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Invoice Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "PO Number",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "PO Number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "PO Date",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "PO Date",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "TWW Description",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "TWW Description",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "HSN",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "HSN",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Qty",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Qty",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Rate (Vendor)",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Rate (Vendor)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Sale Amount",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "Sale Amount",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "CGST%",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "CGST%",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "SGST%",
+							"type": "string",
+							"display": true,
+							"removed": true,
+							"required": false,
+							"displayName": "SGST%",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Matched Cost (Actual Price)",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Matched Cost (Actual Price)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Matched Unit Price (Vendor Price)",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Matched Unit Price (Vendor Price)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Price Difference (₹)",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Price Difference (₹)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Total Loss/Gain (₹)",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Total Loss/Gain (₹)",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Mismatch Note",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Mismatch Note",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Unique Key"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1L2DN1aGp1uhLhNm7TrI54tC0Yuk4ER9y2DU-jbHrSrk/edit#gid=0",
+					"cachedResultName": "Sheet1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1L2DN1aGp1uhLhNm7TrI54tC0Yuk4ER9y2DU-jbHrSrk",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1L2DN1aGp1uhLhNm7TrI54tC0Yuk4ER9y2DU-jbHrSrk/edit?usp=drivesdk",
+					"cachedResultName": "Invoice Validation"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "d9752205-2712-46d0-9058-86857f28e470",
+			"name": "Generate Unique Key",
+			"type": "n8n-nodes-base.set",
+			"position": [1496, 280],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "1907451f-cc09-45d7-a04f-113f8f94d918",
+							"name": "Unique Key",
+							"type": "string",
+							"value": "={{ $('If').item.json.invoice_number + \"-\" + $itemIndex }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "52a2b54a-69e8-4a83-9861-5931a51a7162",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-240, 320],
+			"parameters": {
+				"color": 7,
+				"width": 620,
+				"height": 280,
+				"content": "## Reading Invoice's PDF File Locally"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "67d04fa9-3ad7-4613-89f0-511f9ee32f1d",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [400, 320],
+			"parameters": {
+				"color": 7,
+				"width": 380,
+				"height": 280,
+				"content": "## Extracting Details From Invoice PDF"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4465dff2-ea51-4392-8aa7-8a780a73c33e",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [800, 320],
+			"parameters": {
+				"color": 7,
+				"height": 220,
+				"content": "## Processing Output"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c4ed886e-3e16-451b-b554-badb5f130623",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1280, 460],
+			"parameters": {
+				"color": 7,
+				"width": 220,
+				"height": 220,
+				"content": "## Fallback On Error"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "159dd4d1-f052-4401-a426-0621af19d300",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1240, 220],
+			"parameters": {
+				"color": 7,
+				"width": 400,
+				"height": 220,
+				"content": "## Extracting Line Items"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b90a3aba-a18a-4846-a22d-cbd72aac8e6d",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1660, 200],
+			"parameters": {
+				"color": 7,
+				"width": 220,
+				"height": 240,
+				"content": "## Sending Data To G-Sheet"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "69e4f146-394f-4dc2-ab70-22337a3031e9",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1900, 200],
+			"parameters": {
+				"color": 7,
+				"width": 440,
+				"height": 240,
+				"content": "## Fetch Master Data & Validating Invoice Extracted Data"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "23c130e3-1727-48a2-b050-a4fdc07749f1",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2360, 200],
+			"parameters": {
+				"color": 7,
+				"width": 300,
+				"height": 240,
+				"content": "## Update Validation Result"
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Send Raw Text Again",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Generate Unique Key",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Validation": {
+			"main": [
+				[
+					{
+						"node": "Update Results",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Text Extractor": {
+			"main": [
+				[
+					{
+						"node": "Post-Processing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post-Processing": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract from File": {
+			"main": [
+				[
+					{
+						"node": "Text Extractor",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Master Data": {
+			"main": [
+				[
+					{
+						"node": "Validation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Invoice Data": {
+			"main": [
+				[
+					{
+						"node": "Fetch Master Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Unique Key": {
+			"main": [
+				[
+					{
+						"node": "Send Invoice Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Raw Text Again": {
+			"main": [
+				[
+					{
+						"node": "Text Extractor",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenRouter Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Text Extractor",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read/Write Files from Disk": {
+			"main": [
+				[
+					{
+						"node": "Extract from File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Read/Write Files from Disk",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

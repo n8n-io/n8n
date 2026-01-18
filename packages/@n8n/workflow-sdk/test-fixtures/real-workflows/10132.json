@@ -1,0 +1,1025 @@
+{
+	"meta": {
+		"instanceId": "b8bca2081b6c394c24ae4b81e9aa6d613d549c27564693b18550c263bcbb0c03",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "a17d72e8-0d05-46ee-a707-7dcb244d0ec4",
+			"name": "Schedule Trigger1",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-592, 80],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "a38f893f-01a4-4eaa-965e-fa5fa903492a",
+			"name": "Get items in a folder1",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"position": [-176, 192],
+			"parameters": {},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "8b617469-c119-4863-990e-c95cea1d013e",
+			"name": "Get items in a folder2",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"position": [-176, 400],
+			"parameters": {},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "731e572e-ebfb-42b2-aed5-824da404bbb1",
+			"name": "Get items in a folder3",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"position": [-176, 608],
+			"parameters": {},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "607f556b-e2de-410b-a400-ef08d6e4260a",
+			"name": "Get items in a folder4",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"position": [-176, 816],
+			"parameters": {},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "408b5856-801f-44cb-8c86-bfe0a4284d79",
+			"name": "Get items in a folder5",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"position": [-176, 1024],
+			"parameters": {},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "5b32fd3c-8674-4854-905d-28be28059662",
+			"name": "Get items in a folder6",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"position": [-176, 1232],
+			"parameters": {},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "71988653-97ca-4c13-85a4-d2aa51e948ef",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [304, 896],
+			"parameters": {},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "cad996c1-1ee6-414d-a540-a4b58e3c35ad",
+			"name": "Get items in a folder7",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"position": [-176, 1440],
+			"parameters": {},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "657b804a-cfe3-48d0-9723-0e6be0a471b6",
+			"name": "2nd Loop Over Items1",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [1264, 912],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "0db144f8-279b-44b3-a167-4a73d566aaff",
+			"name": "Mistral Cloud Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+			"position": [1584, 1696],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "381956a5-e6b7-41be-8709-0c3ee1400366",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [2400, 1296],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "d381fec2-6f61-47fd-9e09-b8996a2a96c4",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [1952, 1552],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "2701fdb3-c7d8-4abe-8e52-9a3db0bd560d",
+			"name": "Loop Over Items",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [480, 544],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "18bb65f5-7399-4866-ae90-c5d7e433e2e9",
+			"name": "Insert row",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [2304, 1488],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b99346ac-2ea4-41ef-8ea4-d292351511df",
+			"name": "Get row(s)",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [192, 80],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "ac02bc82-a384-4beb-a7e0-8f986a73dfb4",
+			"name": "Search for Main Folder",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"position": [-384, 192],
+			"parameters": {},
+			"retryOnFail": true,
+			"typeVersion": 1,
+			"alwaysOutputData": false
+		},
+		{
+			"id": "54298130-0355-4c3d-a22e-0824e1dc1c75",
+			"name": "Get items in a folder9",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"position": [-176, 1648],
+			"parameters": {},
+			"retryOnFail": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "162571b7-9c66-4bec-bac4-de55f617c1db",
+			"name": "If PDF 1",
+			"type": "n8n-nodes-base.if",
+			"position": [0, 192],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "1421ded4-6a08-49d3-a06d-0e21a2cda728",
+			"name": "If PDF 2",
+			"type": "n8n-nodes-base.if",
+			"position": [0, 400],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "ec6c2bd6-18e5-41aa-80be-948182362c24",
+			"name": "If PDF 3",
+			"type": "n8n-nodes-base.if",
+			"position": [0, 608],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "2aa698ab-c799-487f-8e8f-5fa55deca7ae",
+			"name": "If PDF 4",
+			"type": "n8n-nodes-base.if",
+			"position": [0, 816],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "8869decf-5cac-4683-b2ee-88e0bffe02f6",
+			"name": "If PDF 5",
+			"type": "n8n-nodes-base.if",
+			"position": [0, 1024],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "26a2739a-c931-4049-bcca-dda3361873a5",
+			"name": "If PDF 6",
+			"type": "n8n-nodes-base.if",
+			"position": [0, 1232],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "5d50a0f8-5912-4ae8-805f-2fc175dc5eaf",
+			"name": "If PDF 7",
+			"type": "n8n-nodes-base.if",
+			"position": [0, 1440],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "cb6a45af-7e22-402e-8e2e-c324ed025696",
+			"name": "If PDF 8",
+			"type": "n8n-nodes-base.if",
+			"position": [0, 1648],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "84ffc2d4-02cd-40c1-92ef-a5b1dbe20b3c",
+			"name": "If Size",
+			"type": "n8n-nodes-base.if",
+			"position": [480, 992],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "a29b3dd3-a159-41a4-92ff-f1f1224cbac9",
+			"name": "Set File ID 3",
+			"type": "n8n-nodes-base.set",
+			"position": [1024, 1136],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "24cd7238-c40f-4433-9899-ce0aa4c9f342",
+			"name": "Set File ID 2",
+			"type": "n8n-nodes-base.set",
+			"position": [496, 1376],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "0632d859-4223-409d-a87c-1b6fcb3ac331",
+			"name": "Set File ID 1",
+			"type": "n8n-nodes-base.set",
+			"position": [496, 752],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "8962b77e-8d95-4dc1-a041-7099e108d9a1",
+			"name": "Compare Datasets",
+			"type": "n8n-nodes-base.compareDatasets",
+			"position": [768, 848],
+			"parameters": {},
+			"typeVersion": 2.3
+		},
+		{
+			"id": "86be3baf-5752-40ce-b944-9e801ae3b8a3",
+			"name": "Loop Over Items 3",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [1008, 928],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "442d99b1-5ca0-4a2a-98f7-78b6cc8109a8",
+			"name": "Loop Over Items 2",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [480, 1168],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "2a5bcbb0-43e4-4c59-b923-520a9167e227",
+			"name": "Download file",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"onError": "continueErrorOutput",
+			"position": [1280, 1136],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "4b2039fd-240b-489c-b030-971ea5769490",
+			"name": "Extract PDF Text",
+			"type": "n8n-nodes-base.extractFromFile",
+			"onError": "continueErrorOutput",
+			"position": [1280, 1360],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "55ad6863-4219-43c2-8894-460f345093f2",
+			"name": "Overview",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"onError": "continueErrorOutput",
+			"position": [1584, 1104],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "edc79a90-bbc6-4506-a33c-604259094441",
+			"name": "Structured Output Parser1",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [1952, 1264],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "e7d050d7-c35a-4868-9958-987c177e58ec",
+			"name": "Overview LLM Chain",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"onError": "continueErrorOutput",
+			"position": [1904, 1104],
+			"parameters": {},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "d20141f3-de8c-4d45-b15f-6313602ad3bb",
+			"name": "Document Information",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"onError": "continueErrorOutput",
+			"position": [1584, 1392],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "cd8872bd-55f9-429a-bf06-240cc369a100",
+			"name": "Document LLM Chain",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"onError": "continueErrorOutput",
+			"position": [1904, 1392],
+			"parameters": {},
+			"typeVersion": 1.7,
+			"alwaysOutputData": false
+		},
+		{
+			"id": "7dc9f511-4cc0-484c-ae31-546775c24f2d",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-240, 144],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "70a62f2c-f2db-4722-85a8-7c422f0ddeb0",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-784, 240],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cbb484a7-2fbe-4de9-b2e3-9bf574ab9b93",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2464, 1504],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c46d4b80-a286-440c-84ab-899ca69a518c",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1488, 1040],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "47daa16c-7406-4814-8ab5-c0f2d2cce40a",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [416, 112],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f1b6fd82-5109-48a4-b7d7-f1d1600ac91d",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1472, 752],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a11874c3-ca3c-4eda-aa7b-242667111ad0",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [208, 1632],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "403708eb-b24a-4081-8374-6a22500165ee",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1760, 1680],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "13258f27-6b62-4c88-8cbf-035cce396871",
+			"name": "Merge1",
+			"type": "n8n-nodes-base.merge",
+			"position": [2400, 1104],
+			"parameters": {},
+			"typeVersion": 3.1
+		},
+		{
+			"id": "ac9f2749-d4a1-4687-950f-c9b91099c6ed",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1328, 304],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "If Size",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge1": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If Size": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If PDF 1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Get items in a folder2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If PDF 2": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				],
+				[
+					{
+						"node": "Get items in a folder3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If PDF 3": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 2
+					}
+				],
+				[
+					{
+						"node": "Get items in a folder4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If PDF 4": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 3
+					}
+				],
+				[
+					{
+						"node": "Get items in a folder5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If PDF 5": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 4
+					}
+				],
+				[
+					{
+						"node": "Get items in a folder6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If PDF 6": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 5
+					}
+				],
+				[
+					{
+						"node": "Get items in a folder7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If PDF 7": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 6
+					}
+				],
+				[
+					{
+						"node": "Get items in a folder9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If PDF 8": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 7
+					}
+				],
+				[]
+			]
+		},
+		"Overview": {
+			"main": [
+				[
+					{
+						"node": "Overview LLM Chain",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "Insert row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get row(s)": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Insert row": {
+			"main": [
+				[
+					{
+						"node": "2nd Loop Over Items1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download file": {
+			"main": [
+				[
+					{
+						"node": "Extract PDF Text",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "2nd Loop Over Items1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set File ID 1": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set File ID 2": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set File ID 3": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Set File ID 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets": {
+			"main": [
+				[],
+				[],
+				[],
+				[
+					{
+						"node": "Loop Over Items 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract PDF Text": {
+			"main": [
+				[
+					{
+						"node": "Document Information",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Overview",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "2nd Loop Over Items1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items 2": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets",
+						"type": "main",
+						"index": 1
+					}
+				],
+				[
+					{
+						"node": "Set File ID 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items 3": {
+			"main": [
+				[
+					{
+						"node": "2nd Loop Over Items1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Set File ID 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger1": {
+			"main": [
+				[
+					{
+						"node": "Search for Main Folder",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get row(s)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Document LLM Chain": {
+			"main": [
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					}
+				],
+				[]
+			]
+		},
+		"Overview LLM Chain": {
+			"main": [
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"2nd Loop Over Items1": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Download file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Document Information": {
+			"main": [
+				[
+					{
+						"node": "Document LLM Chain",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[]
+			]
+		},
+		"Get items in a folder1": {
+			"main": [
+				[
+					{
+						"node": "If PDF 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get items in a folder2": {
+			"main": [
+				[
+					{
+						"node": "If PDF 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get items in a folder3": {
+			"main": [
+				[
+					{
+						"node": "If PDF 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get items in a folder4": {
+			"main": [
+				[
+					{
+						"node": "If PDF 4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get items in a folder5": {
+			"main": [
+				[
+					{
+						"node": "If PDF 5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get items in a folder6": {
+			"main": [
+				[
+					{
+						"node": "If PDF 6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get items in a folder7": {
+			"main": [
+				[
+					{
+						"node": "If PDF 7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get items in a folder9": {
+			"main": [
+				[
+					{
+						"node": "If PDF 8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search for Main Folder": {
+			"main": [
+				[
+					{
+						"node": "Get items in a folder1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mistral Cloud Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Document Information",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "Document LLM Chain",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "Overview",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "Overview LLM Chain",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "Structured Output Parser1",
+						"type": "ai_languageModel",
+						"index": 0
+					},
+					{
+						"node": "Structured Output Parser",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Document LLM Chain",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser1": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Overview LLM Chain",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

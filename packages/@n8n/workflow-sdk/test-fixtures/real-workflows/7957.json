@@ -1,0 +1,972 @@
+{
+	"meta": {
+		"instanceId": "7eb33f3b90daa426f859ca3ba78306e8f7bedb062192407b5811dc8aa23756f7",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "881efba9-1edc-4ec6-ab4e-5ac67ddb27fc",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-384, -96],
+			"webhookId": "71ca0160-ea8f-4037-a9a0-c83a3391d0bf",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "a8e434db-570a-40e0-9b9f-dbca06e6fd76",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [88, -96],
+			"parameters": {
+				"options": {
+					"systemMessage": "=You are a helpful Meta ads assistant.\n\nCurrent date is: {{ $today.format('yyyy-MM-dd') }}"
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "bd6f4433-634a-4313-a4fc-f76290eedab2",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-160, 128],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-5-mini",
+					"cachedResultName": "gpt-5-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f46356dc-c1c8-4798-aacc-f059dbc85b23",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [-32, 128],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "d88a8ce8-4d31-4cdc-ad84-20d7162aaa34",
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [-384, 504],
+			"parameters": {
+				"workflowInputs": {
+					"values": [
+						{
+							"name": "command"
+						},
+						{
+							"name": "id"
+						},
+						{
+							"name": "since"
+						},
+						{
+							"name": "until"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "8e7b6270-e895-448c-83fa-f00d2f4f7f54",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"position": [64, 488],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "list_accounts",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "6890448a-74f3-497b-8996-0edc456ef140",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.command }}",
+										"rightValue": "list_accounts"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "account",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "e8c7ff7a-abae-4a60-996f-b57322c513f2",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.command }}",
+										"rightValue": "account"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "list_ads",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "dc723584-5403-443b-b770-820f561e801b",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.command }}",
+										"rightValue": "list_ads"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "49b75fbb-06e6-4451-b4a2-31410d03bbbf",
+			"name": "list accounts",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [96, 128],
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "UXdblREvbkvy3WSs",
+					"cachedResultName": "Meta Ads Agent"
+				},
+				"description": "List ad accounts",
+				"workflowInputs": {
+					"value": {
+						"command": "list_accounts"
+					},
+					"schema": [
+						{
+							"id": "command",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "command",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "id",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "since",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "since",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "until",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "until",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["command"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "3f322a2e-324d-42e3-a657-2880cd893aea",
+			"name": "account details",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [224, 128],
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "UXdblREvbkvy3WSs",
+					"cachedResultName": "Meta Ads Agent"
+				},
+				"description": "List ad accounts",
+				"workflowInputs": {
+					"value": {
+						"id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id', `Account id (regexp act_\\\\d+)`, 'string') }}",
+						"since": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('since', `Starting date (YYYY-MM-DD)`, 'string') }}",
+						"until": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('until', `End date (YYYY-MM-DD)`, 'string') }}",
+						"command": "account"
+					},
+					"schema": [
+						{
+							"id": "command",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "command",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "id",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "since",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "since",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "until",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "until",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["command"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "ffa7f3ac-b8f7-4b5b-9764-11319699bb0d",
+			"name": "graph: adaccounts",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [288, 312],
+			"parameters": {
+				"edge": "adaccounts",
+				"node": "me",
+				"options": {
+					"fields": {
+						"field": [
+							{
+								"name": "name"
+							}
+						]
+					}
+				},
+				"graphApiVersion": "v23.0"
+			},
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "credential-id",
+					"name": "facebookGraphApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5e63ad12-607f-4d54-859e-d57d8688057e",
+			"name": "account: campaigns",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [736, 232],
+			"parameters": {
+				"edge": "campaigns",
+				"node": "={{ $json.id }}",
+				"options": {
+					"fields": {
+						"field": [
+							{
+								"name": "id,name,status"
+							}
+						]
+					},
+					"queryParameters": {
+						"parameter": [
+							{
+								"name": "effective_status",
+								"value": "=[\"ACTIVE\"]"
+							}
+						]
+					}
+				},
+				"graphApiVersion": "v23.0"
+			},
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "credential-id",
+					"name": "facebookGraphApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "5252e239-fb20-43a4-8a41-7b4cf1c9ab01",
+			"name": "account: adsets",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [736, 424],
+			"parameters": {
+				"edge": "adsets",
+				"node": "={{ $json.id }}",
+				"options": {
+					"fields": {
+						"field": [
+							{
+								"name": "id,name,status,campaign"
+							}
+						]
+					},
+					"queryParameters": {
+						"parameter": [
+							{
+								"name": "effective_status",
+								"value": "=[\"ACTIVE\"]"
+							}
+						]
+					}
+				},
+				"graphApiVersion": "v23.0"
+			},
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "credential-id",
+					"name": "facebookGraphApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "798a573c-707e-4a6b-9093-7b9f8aa61cb0",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [960, 584],
+			"parameters": {
+				"mode": "combine",
+				"options": {
+					"includeUnpaired": true
+				},
+				"combineBy": "combineByPosition",
+				"numberInputs": 4
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "01f68eb7-c747-4134-971e-bf18822d6009",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"position": [1184, 616],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return {\n  campaigns: $('account: campaigns').item.json.data,\n  adsets: $('account: adsets').item.json.data,\n  ads:   $('account: ads').item.json.data,\n  account_insights: $('account insights').item.json.data\n}"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "2da3e999-12e7-4370-ac21-3f447b6b3289",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"position": [512, 504],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "fb4d9260-92bb-45cf-9055-a746f1aace7b",
+			"name": "account: ads",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [736, 616],
+			"parameters": {
+				"edge": "ads",
+				"node": "={{ $json.id }}",
+				"options": {
+					"fields": {
+						"field": [
+							{
+								"name": "id,name,status,campaign{id,name},adset{id,name}"
+							}
+						]
+					},
+					"queryParameters": {
+						"parameter": [
+							{
+								"name": "effective_status",
+								"value": "=[\"ACTIVE\"]"
+							}
+						]
+					}
+				},
+				"graphApiVersion": "v23.0"
+			},
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "credential-id",
+					"name": "facebookGraphApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f6f46492-052c-4e7d-8f1e-d5c42b84450c",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [288, 1000],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "481319e1-d562-415d-aa04-4063421bc9b1",
+							"name": "id",
+							"type": "string",
+							"value": "={{ $json.id.startsWith('act') ? $json.id : 'act_'+$json.id }}"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "03766677-b021-48d7-8b44-9fe278c415c6",
+			"name": "since, until",
+			"type": "n8n-nodes-base.set",
+			"position": [-160, 504],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ff699971-c2bb-4e24-96c1-a246cdd3f87b",
+							"name": "since",
+							"type": "string",
+							"value": "={{ $json.since ?? $today.startOf('month') }}"
+						},
+						{
+							"id": "76e8ddf3-e35c-4f4a-bcd6-db751d4443e2",
+							"name": "until",
+							"type": "string",
+							"value": "={{ $json.until ?? $today.endOf('month') }}"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "d3ed3c25-a702-44e5-be77-3303960ed0fb",
+			"name": "fix missing act_",
+			"type": "n8n-nodes-base.set",
+			"position": [288, 504],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "481319e1-d562-415d-aa04-4063421bc9b1",
+							"name": "id",
+							"type": "string",
+							"value": "={{ $json.id.startsWith('act') ? $json.id : 'act_'+$json.id }}"
+						}
+					]
+				},
+				"includeOtherFields": true
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "12c8ba0e-e1e4-49f8-aadb-9d8a9c40b0e5",
+			"name": "No Operation, do nothing1",
+			"type": "n8n-nodes-base.noOp",
+			"position": [512, 1000],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "629df03e-4091-487a-b0ec-32e366b9b008",
+			"name": "account insights",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [736, 808],
+			"parameters": {
+				"edge": "insights",
+				"node": "={{ $json.id }}",
+				"options": {
+					"fields": {
+						"field": [
+							{
+								"name": "attribution_setting,conversion_values,conversions,cost_per_conversion,cpc,cpm,ctr,frequency,impressions,inline_post_engagement,purchase_roas,reach,result_rate,results,spend"
+							}
+						]
+					},
+					"queryParameters": {
+						"parameter": [
+							{
+								"name": "time_range[since]",
+								"value": "={{ $json.since.replace(/T.*/,'') }}"
+							},
+							{
+								"name": "time_range[until]",
+								"value": "={{ $json.until.replace(/T.*/,'') }}"
+							}
+						]
+					}
+				},
+				"graphApiVersion": "v23.0"
+			},
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "credential-id",
+					"name": "facebookGraphApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c8e86105-8551-4777-b36b-8870ac20e09b",
+			"name": "ads: insights",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [736, 1000],
+			"parameters": {
+				"edge": "=",
+				"node": "={{ $json.id }}",
+				"options": {
+					"fields": {
+						"field": [
+							{
+								"name": "=ads{id,status,name,insights{clicks,impressions,purchase_roas,conversion_values,conversions},campaign{id,name},adset{id,name}}"
+							}
+						]
+					},
+					"queryParameters": {
+						"parameter": [
+							{
+								"name": "effective_status",
+								"value": "=[\"ACTIVE\"]"
+							}
+						]
+					}
+				},
+				"graphApiVersion": "v23.0"
+			},
+			"credentials": {
+				"facebookGraphApi": {
+					"id": "credential-id",
+					"name": "facebookGraphApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ed5b25f1-ccc1-4ca4-80f7-12f2e5f44020",
+			"name": "ad details",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [352, 128],
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "UXdblREvbkvy3WSs",
+					"cachedResultName": "Meta Ads Agent"
+				},
+				"description": "List ad details for a given ad account. Use account id (regexp act_\\d+) instead of account name.",
+				"workflowInputs": {
+					"value": {
+						"id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('id', `Account id (regexp act_\\\\d+)`, 'string') }}",
+						"since": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('since', ``, 'string') }}",
+						"until": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('until', ``, 'string') }}",
+						"command": "list_ads"
+					},
+					"schema": [
+						{
+							"id": "command",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "command",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "id",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "id",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "since",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "since",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "until",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "until",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["command"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "f6a1df1a-3f2d-497a-ac3a-ceba3f043cb3",
+			"name": "Calculator",
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"position": [480, 128],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "763f01ad-0888-4434-b9c4-c47e9880b7cb",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"position": [960, 1000],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return {\n  ads:   $('ads: insights').item.json.ads.data,\n}"
+			},
+			"typeVersion": 2
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "graph: adaccounts",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "fix missing act_",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ad details": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"account: ads": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"since, until": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"ads: insights": {
+			"main": [
+				[
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"list accounts": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"account details": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"account: adsets": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"account insights": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"fix missing act_": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"graph: adaccounts": {
+			"main": [[]]
+		},
+		"account: campaigns": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"No Operation, do nothing": {
+			"main": [
+				[
+					{
+						"node": "account: campaigns",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "account: adsets",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "account: ads",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "account insights",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"No Operation, do nothing1": {
+			"main": [
+				[
+					{
+						"node": "ads: insights",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "since, until",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

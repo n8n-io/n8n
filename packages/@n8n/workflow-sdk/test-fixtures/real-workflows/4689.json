@@ -1,0 +1,744 @@
+{
+	"meta": {
+		"instanceId": "074f90e2bb5206c5f405a8aac6551497c72005283a5405fb08207b1b3a78c2b8",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "e39a0b25-53ce-4ac0-9c93-7750b8e6105b",
+			"name": "Knowledge Base Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [220, 0],
+			"parameters": {
+				"text": "={{ $json.message.text }}",
+				"options": {
+					"systemMessage": "You are the AI assistant for a company specializing in advanced technology solutions. Your task is to help internal users by consulting the official product documentation for the company’s platforms.\n\nAvailable References:\n\nproductDocs: Step-by-step guides, technical configurations, and official manuals from the developer documentation.\n\nfeedbackPositive: Previous responses rated positively by users, useful as examples for generating high-quality answers.\n\nfeedbackNegative: Previous responses rated negatively by users. Use this tool to avoid making similar mistakes in your replies.\n\nCurrently, there are no use cases or update history documented in the available materials.\n\nBehavior Rules\n\nSearch & Response:\n\nAlways consult the official documentation first using the productDocs tool.\n\nAlso search feedbackPositive for highly rated previous responses to similar questions.\n\nCheck feedbackNegative to see if similar answers were poorly rated, and avoid repeating those mistakes.\n\nIf multiple tools return relevant results, combine the information to provide the best answer. If only one tool returns relevant content, use that as your source.\n\nRespond directly and clearly, explaining exactly how to perform the requested task.\n\nDo not filter by category unless the user explicitly asks.\n\nLanguage (Strict Per-Message Rule):\n\nDetect the language of each incoming message individually.\n\nRespond in the same language as the most recent message.\n\nDo not use the language of previous messages or conversation history to decide the language.\n\nLinks (Not Allowed):\n\nNever provide links, even if the user requests them.\n\nIf a user asks for a link, respond with:\n“I cannot provide links. If you need specific information, let me know and I will help with the details.”\n\nResponse Style:\n\nUse a professional, direct, and human tone.\n\nKeep responses between 2 and 4 lines unless the user asks for more detail.\n\nDo not make up information that isn’t in MongoDB.\n\nIf your answer contains numbered steps or lists, always number them sequentially (1, 2, 3...) without skipping or repeating numbers, even if the original content uses a different numbering style."
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "775b7991-88f3-4959-a068-3fb2b667567e",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [200, 180],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "4c2e0ea6-f5d0-4d5b-a065-606b2dc2cff5",
+			"name": "Embeddings OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [440, 460],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "2f813af6-3432-4201-93d0-ff503013642e",
+			"name": "Document Section Loader",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"position": [580, -340],
+			"parameters": {
+				"options": {
+					"metadata": {
+						"metadataValues": [
+							{
+								"name": "doc_id",
+								"value": "={{ $json.documentId }}"
+							}
+						]
+					}
+				},
+				"jsonData": "={{ $json.content }}",
+				"jsonMode": "expressionData"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c6386d7b-f3cb-4884-9477-a69e9743e6c6",
+			"name": "Document Chunker",
+			"type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+			"position": [560, -220],
+			"parameters": {
+				"options": {
+					"splitCode": "markdown"
+				},
+				"chunkSize": 3000,
+				"chunkOverlap": 200
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4ff1a843-5e1c-4a23-bdf3-2fdc91ba7032",
+			"name": "OpenAI Embeddings Generator",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [440, -340],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "64624ed6-cbb2-43c1-b348-df92f26d8efe",
+			"name": "Google Docs Importer",
+			"type": "n8n-nodes-base.googleDocs",
+			"position": [220, -520],
+			"parameters": {
+				"operation": "get",
+				"documentURL": "https://docs.google.com/document/d/1gvgp71e9edob8WLqFIYCdzC7kUq3pLO37VKb-a-vVW4/edit?tab=t.0"
+			},
+			"credentials": {
+				"googleDocsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleDocsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "09c262ab-ba89-429c-b8a8-41c3ae79d97c",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-420, -500],
+			"parameters": {
+				"color": 5,
+				"content": "Run this workflow manually to import and index Google Docs product documentation into MongoDB with vector embeddings for fast search."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f309ff4a-194f-413a-b8f5-d8210cb5e0c6",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-420, 40],
+			"parameters": {
+				"color": 4,
+				"height": 180,
+				"content": "This workflow uses retrieval-augmented generation (RAG) to answer user questions by searching the MongoDB vector store and generating AI responses enhanced with Telegram-based RLHF feedback."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "caf481b3-7a19-40df-b5fb-52e74a8edd73",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1800, -480],
+			"parameters": {
+				"width": 520,
+				"height": 1040,
+				"content": "Documentation Search Index\n\n{\n  \"mappings\": {\n    \"dynamic\": false,\n    \"fields\": {\n      \"_id\": {\n        \"type\": \"string\"\n      },\n      \"text\": {\n        \"type\": \"string\"\n      },\n      \"embedding\": {\n        \"type\": \"knnVector\",\n        \"dimensions\": 1536,\n        \"similarity\": \"cosine\"\n      },\n      \"source\": {\n        \"type\": \"string\"\n      },\n      \"doc_id\": {\n        \"type\": \"string\"\n      }\n    }\n  }\n}\n\n\nFeedback Search Index\n\n{\n  \"mappings\": {\n    \"dynamic\": false,\n    \"fields\": {\n      \"prompt\": {\n        \"type\": \"string\"\n      },\n      \"response\": {\n        \"type\": \"string\"\n      },\n      \"text\": {\n        \"type\": \"string\"\n      },\n      \"embedding\": {\n        \"type\": \"knnVector\",\n        \"dimensions\": 1536,\n        \"similarity\": \"cosine\"\n      },\n      \"feedback\": {\n        \"type\": \"token\"\n      }\n    }\n  }\n}\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8a3abf9e-6f3f-47cf-b9ec-bb9da9835e5c",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [0, -520],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "4235ba8c-d671-40b8-b3a4-d7cccac36d54",
+			"name": "MongoDB Chat Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryMongoDbChat",
+			"position": [320, 180],
+			"parameters": {
+				"sessionKey": "={{ $('Receive Message on Telegram').item.json.message.chat.id }}",
+				"sessionIdType": "customKey",
+				"collectionName": "n8n-template-chat-history"
+			},
+			"credentials": {
+				"mongoDb": {
+					"id": "credential-id",
+					"name": "mongoDb Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "000e272a-3f19-4c17-86b5-07505eba2c3b",
+			"name": "Embeddings OpenAI1",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [160, 440],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "dca02c04-2921-4982-83a3-6b2f6fb32663",
+			"name": "Default Data Loader",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"position": [1400, 180],
+			"parameters": {
+				"options": {
+					"metadata": {
+						"metadataValues": [
+							{
+								"name": "prompt",
+								"value": "={{ $json.prompt }}"
+							},
+							{
+								"name": "response",
+								"value": "={{ $json.response }}"
+							},
+							{
+								"name": "feedback",
+								"value": "={{ $json.feedback }}"
+							}
+						]
+					}
+				},
+				"jsonData": "={{ $json.text }}",
+				"jsonMode": "expressionData"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "757073e3-f8b5-42b5-ab02-d310d5f6e8a4",
+			"name": "Recursive Character Text Splitter",
+			"type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+			"position": [1380, 300],
+			"parameters": {
+				"options": {},
+				"chunkSize": 4000
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "588ef94b-9723-440a-ac13-d97d744ae26d",
+			"name": "Embeddings OpenAI3",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [320, 720],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "355654d8-95e2-4337-9b1f-af2a08573f08",
+			"name": "Search Positive Interactions",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
+			"position": [160, 320],
+			"parameters": {
+				"mode": "retrieve-as-tool",
+				"options": {
+					"metadata": {
+						"metadataValues": [
+							{
+								"name": "feedback",
+								"value": "positive"
+							}
+						]
+					}
+				},
+				"toolName": "feedbackPositive",
+				"mongoCollection": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8n-template-feedback",
+					"cachedResultName": "n8n-template-feedback"
+				},
+				"toolDescription": "Retrieve previous examples of similar questions that were rated positively by users. Use this tool before responding to improve your answer based on those approved examples.",
+				"vectorIndexName": "template-feedback-search"
+			},
+			"credentials": {
+				"mongoDb": {
+					"id": "credential-id",
+					"name": "mongoDb Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "84a95dfb-6cc4-4a18-be40-6fa201073750",
+			"name": "Search Documentation",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
+			"position": [440, 320],
+			"parameters": {
+				"mode": "retrieve-as-tool",
+				"options": {},
+				"toolName": "productDocs",
+				"mongoCollection": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8n-template",
+					"cachedResultName": "n8n-template"
+				},
+				"toolDescription": "retreive documentation",
+				"vectorIndexName": "data_index"
+			},
+			"credentials": {
+				"mongoDb": {
+					"id": "credential-id",
+					"name": "mongoDb Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "f2001c81-081b-4417-8349-3db459c0f191",
+			"name": "Search Negative Interactions",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
+			"position": [240, 580],
+			"parameters": {
+				"mode": "retrieve-as-tool",
+				"options": {
+					"metadata": {
+						"metadataValues": [
+							{
+								"name": "feedback",
+								"value": "negative"
+							}
+						]
+					}
+				},
+				"toolName": "feedbackNegative",
+				"mongoCollection": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8n-template-feedback",
+					"cachedResultName": "n8n-template-feedback"
+				},
+				"toolDescription": "Retrieve previous examples of similar questions that were rated negatively by users. Use this tool before responding to avoid generating answers similar to those that did not work well in the past.",
+				"vectorIndexName": "template-feedback-search"
+			},
+			"credentials": {
+				"mongoDb": {
+					"id": "credential-id",
+					"name": "mongoDb Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "1a0de194-3508-4d21-b1a2-35c3b4a998c1",
+			"name": "Receive Message on Telegram",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [0, 0],
+			"webhookId": "fff1b90c-59ce-406b-a7f0-08953c90c0ce",
+			"parameters": {
+				"updates": ["message"],
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "92458560-feb5-40df-b52a-ec1c5156829d",
+			"name": "Send Message on Telegram, Wait for Feedback",
+			"type": "n8n-nodes-base.telegram",
+			"position": [600, 0],
+			"webhookId": "ed8fc221-70ad-47df-b70e-6667c580553b",
+			"parameters": {
+				"chatId": "={{ $('Receive Message on Telegram').item.json.message.chat.id }}",
+				"message": "={{ $json.output }}",
+				"options": {
+					"appendAttribution": false
+				},
+				"operation": "sendAndWait",
+				"approvalOptions": {
+					"values": {
+						"approvalType": "double"
+					}
+				}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ef40200d-5f19-4199-8ae3-9f2e0f52ac1b",
+			"name": "Map feedback data",
+			"type": "n8n-nodes-base.code",
+			"position": [820, 0],
+			"parameters": {
+				"jsCode": "let response;\n\nif ($input.first().json.data.approved) {\n  response = \"positive\"\n} \nelse {\n  response = \"negative\"\n}\n\nreturn {\n  feedback: response\n}\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "d688073c-9a97-4b39-9640-c368cccf3491",
+			"name": "Set feedback fields for collection storage",
+			"type": "n8n-nodes-base.set",
+			"position": [1040, 0],
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "prompt",
+							"value": "={{ $('Receive Message on Telegram').item.json.message.text }}"
+						},
+						{
+							"name": "response",
+							"value": "={{ $('Knowledge Base Agent').item.json.output }}"
+						},
+						{
+							"name": "text",
+							"value": "=Prompt: {{ $('Receive Message on Telegram').item.json.message.text }}. Completion: {{ $('Knowledge Base Agent').item.json.output }}"
+						},
+						{
+							"name": "feedback",
+							"value": "={{ $json.feedback }}"
+						}
+					]
+				},
+				"options": {},
+				"keepOnlySet": true
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9907480f-3e5d-4240-adbb-790be2d68496",
+			"name": "Submit embedded chat feedback",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
+			"position": [1260, 0],
+			"parameters": {
+				"mode": "insert",
+				"options": {},
+				"mongoCollection": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8n-template-feedback",
+					"cachedResultName": "n8n-template-feedback"
+				},
+				"vectorIndexName": "template-feedback-search",
+				"embeddingBatchSize": 1
+			},
+			"credentials": {
+				"mongoDb": {
+					"id": "credential-id",
+					"name": "mongoDb Credential"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "1a470ad3-845a-4890-b103-65a21b1940de",
+			"name": "OpenAI Embeddings Generator1",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [1260, 180],
+			"parameters": {
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "fdc22256-f014-4ed0-8781-1abb20134b1a",
+			"name": "MongoDB Documentation Inserter",
+			"type": "@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas",
+			"position": [440, -520],
+			"parameters": {
+				"mode": "insert",
+				"options": {},
+				"mongoCollection": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8n-template",
+					"cachedResultName": "n8n-template"
+				},
+				"vectorIndexName": "data_index"
+			},
+			"credentials": {
+				"mongoDb": {
+					"id": "credential-id",
+					"name": "mongoDb Credential"
+				}
+			},
+			"typeVersion": 1.1
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Document Chunker": {
+			"ai_textSplitter": [
+				[
+					{
+						"node": "Document Section Loader",
+						"type": "ai_textSplitter",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Search Documentation",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Map feedback data": {
+			"main": [
+				[
+					{
+						"node": "Set feedback fields for collection storage",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Knowledge Base Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI1": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Search Positive Interactions",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI3": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Search Negative Interactions",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Default Data Loader": {
+			"ai_document": [
+				[
+					{
+						"node": "Submit embedded chat feedback",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MongoDB Chat Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "Knowledge Base Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Docs Importer": {
+			"main": [
+				[
+					{
+						"node": "MongoDB Documentation Inserter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Knowledge Base Agent": {
+			"main": [
+				[
+					{
+						"node": "Send Message on Telegram, Wait for Feedback",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search Documentation": {
+			"ai_tool": [
+				[
+					{
+						"node": "Knowledge Base Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Document Section Loader": {
+			"ai_document": [
+				[
+					{
+						"node": "MongoDB Documentation Inserter",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Embeddings Generator": {
+			"ai_embedding": [
+				[
+					{
+						"node": "MongoDB Documentation Inserter",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Receive Message on Telegram": {
+			"main": [
+				[
+					{
+						"node": "Knowledge Base Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Embeddings Generator1": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Submit embedded chat feedback",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search Negative Interactions": {
+			"ai_tool": [
+				[
+					{
+						"node": "Knowledge Base Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Search Positive Interactions": {
+			"ai_tool": [
+				[
+					{
+						"node": "Knowledge Base Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"MongoDB Documentation Inserter": {
+			"main": [[]]
+		},
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Google Docs Importer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Recursive Character Text Splitter": {
+			"ai_textSplitter": [
+				[
+					{
+						"node": "Default Data Loader",
+						"type": "ai_textSplitter",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set feedback fields for collection storage": {
+			"main": [
+				[
+					{
+						"node": "Submit embedded chat feedback",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Message on Telegram, Wait for Feedback": {
+			"main": [
+				[
+					{
+						"node": "Map feedback data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,814 @@
+{
+	"id": "CuCtsuECkQ1SRUFe",
+	"meta": {
+		"instanceId": "f6e8ad6763839b50a3ab3bea5512dc60976f81a6273178925f946fc7a00549a8",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "YouTube Shorts VEO Automation",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "057eacc9-2afb-450a-88ea-3b47faaef11b",
+			"name": "Generate a video1",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1744, 1568],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "57d4438a-1ea6-4c6f-9eeb-4defabd857ad",
+			"name": "Telegram Trigger",
+			"type": "n8n-nodes-base.telegramTrigger",
+			"position": [272, 1904],
+			"webhookId": "ee4a93a8-91a5-496d-8e41-815c8e182f56",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8140ce5e-4aa1-4105-a0a9-79407f09c89c",
+			"name": "Generate a video2",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1744, 1952],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "edf176d7-e6cd-4a76-a237-c9add4a006c8",
+			"name": "Upload video1",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1968, 1568],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "b2e5a98b-0959-4610-ba4b-3000dbc883b8",
+			"name": "Label URL 1",
+			"type": "n8n-nodes-base.set",
+			"position": [2192, 1568],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "af3f7a6d-550b-4cb8-82c6-2322e5b90402",
+			"name": "Label URL 2",
+			"type": "n8n-nodes-base.set",
+			"position": [2192, 1952],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "e4ec1103-4841-48a3-b1d7-73745c06cc16",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [2416, 2272],
+			"parameters": {},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "758d3bc7-bfd5-4e05-b914-76b22309383a",
+			"name": "Generate a video3",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1744, 2336],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "16b3777b-c547-4e58-8baf-d47efe80cdfa",
+			"name": "Label URL 3",
+			"type": "n8n-nodes-base.set",
+			"position": [2192, 2336],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "1b927ddc-1b55-403c-af23-8d3ba89a8eb8",
+			"name": "Upload video4",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1968, 2720],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "63bd0aa4-d328-4844-ba04-af224473a84c",
+			"name": "Label URL 4",
+			"type": "n8n-nodes-base.set",
+			"position": [2192, 2720],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "565b9274-b7bb-49b8-bdf0-dc28285916ca",
+			"name": "Generate a video4",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [1744, 2720],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "ebc8d05f-42f1-4473-afb1-fd5fb75b0ea3",
+			"name": "Upload video",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1968, 1952],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "44565cb1-e431-4ca8-bd24-405250698f3d",
+			"name": "Upload video3",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [1968, 2336],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "cb3a6dfe-1e4b-4cfc-b5fe-a32bb4013414",
+			"name": "Wait5",
+			"type": "n8n-nodes-base.wait",
+			"position": [1520, 2336],
+			"webhookId": "b01bc54d-f00a-498b-a39c-cee3bc1b1287",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "8f90bccb-4e23-4680-a5d3-8ff2ff8790f8",
+			"name": "Send a text message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1968, 1376],
+			"webhookId": "29693bc4-bde9-4f99-810e-b3f1dfb76fd1",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ad9e632f-8288-4f5d-8000-dac576aafda2",
+			"name": "Send a text message2",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1968, 1760],
+			"webhookId": "29693bc4-bde9-4f99-810e-b3f1dfb76fd1",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "a66953cd-0233-4d68-af0d-da9feaef2753",
+			"name": "Send a text message3",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1968, 2144],
+			"webhookId": "29693bc4-bde9-4f99-810e-b3f1dfb76fd1",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8028f1f9-29f9-41c1-a2d3-d1a6af73fb9b",
+			"name": "Send a text message4",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1968, 2528],
+			"webhookId": "29693bc4-bde9-4f99-810e-b3f1dfb76fd1",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e1b7843f-c221-4076-b31d-57e5ebc085a7",
+			"name": "Send a text message8",
+			"type": "n8n-nodes-base.telegram",
+			"position": [784, 1760],
+			"webhookId": "29693bc4-bde9-4f99-810e-b3f1dfb76fd1",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "0a834dba-4cb9-41ec-baf3-c09b0abf9527",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [720, 2048],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "d59988a2-43d8-43cf-bc82-e45dc9cb7363",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [864, 2272],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "1b214506-c88b-4c1b-b66d-a0caabe1e0b7",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [736, 2272],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "a5ab25f7-487d-4e85-8719-a4374f002fa5",
+			"name": "If1",
+			"type": "n8n-nodes-base.if",
+			"position": [1296, 2048],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "59ae3aab-272c-4d70-a5df-4a73f2473de6",
+			"name": "Send message and wait for response",
+			"type": "n8n-nodes-base.telegram",
+			"position": [1072, 2048],
+			"webhookId": "1860c648-509c-4f3b-bf80-7b7b6eb2e5c6",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "851d78df-1ea7-4da4-944f-49b3beb2fd34",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2640, 2304],
+			"parameters": {},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "0bd8d217-156a-493b-88ee-c05069984b3e",
+			"name": "HTTP Request1",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2864, 2304],
+			"parameters": {},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "eed55f48-292e-4982-8c4e-60c64464dfb2",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"position": [3088, 2224],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "ac346b7a-5958-49ec-9949-111ea3da6f4c",
+			"name": "HTTP Request2",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3312, 2176],
+			"parameters": {},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "19776e41-7402-45c4-a733-0ebed0d4c2a4",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"position": [3312, 2400],
+			"webhookId": "b01bc54d-f00a-498b-a39c-cee3bc1b1287",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "4a40d04f-cd58-41de-a749-24ede6b6433f",
+			"name": "If2",
+			"type": "n8n-nodes-base.if",
+			"position": [496, 1904],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "1205295a-eeab-4936-a93c-dc84d696647f",
+			"name": "Send a video",
+			"type": "n8n-nodes-base.telegram",
+			"position": [4208, 2176],
+			"webhookId": "955e1fc2-52a4-428c-97d5-83e032da8779",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "59afca5f-c936-4b7f-924e-cb9d34506208",
+			"name": "Send message and wait for response1",
+			"type": "n8n-nodes-base.telegram",
+			"position": [4432, 2176],
+			"webhookId": "1860c648-509c-4f3b-bf80-7b7b6eb2e5c6",
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "894db2c5-7cf8-40bf-bfdc-231931c81b11",
+			"name": "If3",
+			"type": "n8n-nodes-base.if",
+			"position": [4656, 2176],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "a0d60bc0-3ac9-4514-b278-1b24acd706c5",
+			"name": "Upload a video",
+			"type": "n8n-nodes-base.youTube",
+			"disabled": true,
+			"position": [5104, 2176],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b13fcee6-4ff0-4cef-a600-a76447ea4fe1",
+			"name": "Upload video2",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [3760, 2176],
+			"parameters": {},
+			"typeVersion": 3
+		},
+		{
+			"id": "de0389a4-98d2-49e2-9436-55362e76fac4",
+			"name": "Download a video",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [3536, 2176],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "b45be85a-7fb3-463a-8ae0-5a0aabcbcfab",
+			"name": "Label URL ",
+			"type": "n8n-nodes-base.set",
+			"position": [3984, 2176],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "7e5597f4-8a05-4306-9def-8bb1ca374e4b",
+			"name": "Download a video1",
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"position": [4880, 2176],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "9c50f63d-6802-4433-9af5-666891662e2a",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2192, 1344],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "eb761e29-0888-45a6-b23a-a31906e0ac8c",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2560, 2112],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3d7eccd8-fc0d-41b5-9794-83d86883e605",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [112, 1648],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "21649a31-9567-4d60-86c8-bfa8a61b4410",
+			"name": "Sticky Note10",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1392, 1216],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2a3ee353-d1dc-4870-985a-b3dc2678ab8f",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3488, 1968],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e63ae448-e4a6-4ec6-9201-52d0242625de",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-464, 1632],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "0913ecab-a227-406c-97f1-478e8b60cf50",
+	"connections": {
+		"If": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If1": {
+			"main": [
+				[
+					{
+						"node": "Generate a video1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Generate a video2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Wait5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Generate a video4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If2": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Send a text message8",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If3": {
+			"main": [
+				[
+					{
+						"node": "Download a video1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait5": {
+			"main": [
+				[
+					{
+						"node": "Generate a video3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Send message and wait for response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Label URL ": {
+			"main": [
+				[
+					{
+						"node": "Send a video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Label URL 1": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Label URL 2": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Label URL 3": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Label URL 4": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send a video": {
+			"main": [
+				[
+					{
+						"node": "Send message and wait for response1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload video": {
+			"main": [
+				[
+					{
+						"node": "Label URL 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request1": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"HTTP Request2": {
+			"main": [
+				[
+					{
+						"node": "Download a video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload video1": {
+			"main": [
+				[
+					{
+						"node": "Label URL 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload video2": {
+			"main": [
+				[
+					{
+						"node": "Label URL ",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload video3": {
+			"main": [
+				[
+					{
+						"node": "Label URL 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload video4": {
+			"main": [
+				[
+					{
+						"node": "Label URL 4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download a video": {
+			"main": [
+				[
+					{
+						"node": "Upload video2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Telegram Trigger": {
+			"main": [
+				[
+					{
+						"node": "If2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Download a video1": {
+			"main": [
+				[
+					{
+						"node": "Upload a video",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate a video1": {
+			"main": [
+				[
+					{
+						"node": "Upload video1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send a text message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate a video2": {
+			"main": [
+				[
+					{
+						"node": "Upload video",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send a text message2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate a video3": {
+			"main": [
+				[
+					{
+						"node": "Upload video3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send a text message3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate a video4": {
+			"main": [
+				[
+					{
+						"node": "Upload video4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send a text message4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send message and wait for response": {
+			"main": [
+				[
+					{
+						"node": "If1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send message and wait for response1": {
+			"main": [
+				[
+					{
+						"node": "If3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

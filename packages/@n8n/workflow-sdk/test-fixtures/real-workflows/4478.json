@@ -1,0 +1,336 @@
+{
+	"id": "kPBvBnjidCFr5v69",
+	"meta": {
+		"instanceId": "2c6d3d38af8a4c0f79fb39f43818e6004a0dbcc85be9dad124fc43e13d64847f",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Youtube to Instagram_Facebook",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "workflow-overview-social",
+			"name": "Workflow Overview",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1300, -320],
+			"parameters": {
+				"color": 2,
+				"width": 350,
+				"height": 380,
+				"content": "# 📱 YouTube to Social Media Automation\n\n**Purpose:** Auto-publish YouTube videos to Facebook & Instagram\n\n**Schedule:** Checks for new videos every hour\n\n**Required Setup:**\n1. YouTube channel RSS feed\n2. OpenAI API key (GPT-4o-mini)\n3. Meta App with permissions\n4. Long-lived access token\n\n## Workflow Steps:\n1. **Monitor** - RSS feed for new videos\n2. **Generate** - AI creates social caption\n3. **Publish** - Posts to FB & Instagram\n\n💡 Update all `<Access_Token>` and `<Facebook_PageID>` placeholders"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "rss-trigger-note",
+			"name": "RSS Trigger Info",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1040, -320],
+			"parameters": {
+				"color": 3,
+				"width": 280,
+				"height": 220,
+				"content": "## 🎥 YouTube RSS Trigger\n\n**Monitors your YouTube channel:**\n- Checks every hour for new uploads\n- Uses YouTube RSS feed format\n\n**To find your channel ID:**\n1. Go to your YouTube channel\n2. View page source\n3. Search for \"channelId\"\n\n⚠️ Replace channel_id in RSS URL"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ai-caption-note",
+			"name": "AI Caption Generation",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-740, -320],
+			"parameters": {
+				"color": 5,
+				"width": 280,
+				"height": 200,
+				"content": "## 🤖 AI Caption Generation\n\n**OpenAI GPT-4o-mini:**\n- Generates engaging social media captions\n- Includes emojis automatically\n- Adds call-to-action\n\n**Customize the prompt to:**\n- Match your brand voice\n- Include specific hashtags\n- Target your audience"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "facebook-post-note",
+			"name": "Facebook Publishing",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-390, -440],
+			"parameters": {
+				"color": 4,
+				"width": 250,
+				"height": 180,
+				"content": "## 📘 Facebook Publishing\n\n**Direct post to Facebook Page**\n\n⚠️ **Required updates:**\n- Replace `<Facebook_PageID>`\n- Replace `<Access_Token>`\n\n**Note:** Uses error handling to continue workflow even if Facebook fails"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "instagram-flow-note",
+			"name": "Instagram Publishing Flow",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-120, -180],
+			"parameters": {
+				"color": 6,
+				"width": 300,
+				"height": 220,
+				"content": "## 📸 Instagram Publishing Flow\n\n**3-step process:**\n1. Get Business Account ID\n2. Create media container with thumbnail\n3. Publish the post\n\n**Automatic thumbnail:**\nPulls YouTube video thumbnail as Instagram image\n\n⚠️ Requires Instagram Business Account linked to Facebook Page"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "api-requirements-note",
+			"name": "API Requirements",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-440, 280],
+			"parameters": {
+				"color": 1,
+				"width": 250,
+				"height": 200,
+				"content": "⚠️ **Meta API Requirements**\n\n**Required Permissions:**\n- pages_manage_posts\n- pages_read_engagement\n- pages_show_list\n- instagram_content_publish\n- instagram_basic\n\n**Token Type:** Long-lived access token\n**API Version:** v22.0"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "cda123c2-21a3-421d-918e-5a6973002aa3",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"notes": "Formats post caption using video metadata. Customize prompt for your brand voice and hashtags",
+			"position": [-740, -80],
+			"parameters": {
+				"text": "=Write a short, engaging social media post about this new YouTube video:\n\nTitle: {{ $json.title }}\nURL: {{ $json.link }}\n\nInclude emojis and a call to action.",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "d215f6c3-f9d7-4103-8c26-419f468cf74b",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"notes": "Uses GPT-4o-mini to generate the caption text",
+			"position": [-740, 160],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "fbf6f102-1f8d-4e22-a850-1f5f163b94d5",
+			"name": "Post on Facebook",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "Publishes the caption using Facebook Graph API. Replace <Facebook_PageID> and <Access_Token>",
+			"onError": "continueErrorOutput",
+			"position": [-340, -240],
+			"parameters": {
+				"url": "=https://graph.facebook.com/v22.0/<Facebook_PageID>/feed\n",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "form-urlencoded",
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "message",
+							"value": "={{ $json.output }}"
+						},
+						{
+							"name": "access_token",
+							"value": "<Access_Token>"
+						}
+					]
+				},
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "credential-id",
+					"name": "httpHeaderAuth Credential"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "000891de-e3e2-4de8-8742-ad45a2a958db",
+			"name": "Publish Post On Instagram",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "Publishes post to Instagram feed using the media container ID",
+			"position": [180, 60],
+			"parameters": {
+				"url": "=https://graph.facebook.com/v22.0/{{ $('Get IG Business Account ID').item.json.instagram_business_account.id }}/media_publish\n",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "form-urlencoded",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "creation_id",
+							"value": "={{ $json.id }}"
+						},
+						{
+							"name": "access_token",
+							"value": "<Access_Token>"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "2e65dd2e-7f9e-4abd-b6c7-e811b3a86349",
+			"name": "Get IG Business Account ID",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "Retrieves Instagram Business account ID linked to Facebook Page",
+			"onError": "continueErrorOutput",
+			"position": [-340, 80],
+			"parameters": {
+				"url": "https://graph.facebook.com/v22.0/<Facebook_PageID>",
+				"options": {},
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "fields",
+							"value": "instagram_business_account"
+						},
+						{
+							"name": "access_token",
+							"value": "<Access_Token>"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "c2d089b9-754c-49fe-aa4d-976072340a0e",
+			"name": "Create Media Container",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "Uploads YouTube thumbnail as Instagram image with AI-generated caption",
+			"position": [-80, 60],
+			"parameters": {
+				"url": "=https://graph.facebook.com/v22.0/{{ $json.instagram_business_account.id }}/media",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "form-urlencoded",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "image_url",
+							"value": "=https://img.youtube.com/vi/{{ $('Pull Youtube Video From Channel').item.json.link.split(\"=\")[1] }}/maxresdefault.jpg"
+						},
+						{
+							"name": "caption",
+							"value": "={{ $('AI Agent').item.json.output }}"
+						},
+						{
+							"name": "access_token",
+							"value": "<Access_Token>"
+						}
+					]
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "29656ae1-d60e-4f4d-9326-17801ddcbb65",
+			"name": "Pull Youtube Video From Channel",
+			"type": "n8n-nodes-base.rssFeedReadTrigger",
+			"notes": "Monitors new uploads from your YouTube channel. Replace channel_id in RSS URL",
+			"position": [-1000, -80],
+			"parameters": {
+				"feedUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC2Tf8MGUzFX-GPkuBEBSKMg",
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyHour"
+						}
+					]
+				}
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "a459b777-6ecf-46d2-9543-061a888393a6",
+	"connections": {
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Get IG Business Account ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Post on Facebook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post on Facebook": {
+			"main": [[]]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Media Container": {
+			"main": [
+				[
+					{
+						"node": "Publish Post On Instagram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Publish Post On Instagram": {
+			"main": [[]]
+		},
+		"Get IG Business Account ID": {
+			"main": [
+				[
+					{
+						"node": "Create Media Container",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pull Youtube Video From Channel": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

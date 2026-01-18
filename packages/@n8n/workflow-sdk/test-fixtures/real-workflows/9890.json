@@ -1,0 +1,396 @@
+{
+	"id": "xD9CDu3GF1TNqfBQ",
+	"meta": {
+		"instanceId": "88804d8e264d231c18413147cc92e4245b20ae7b97d774bad847556f645c8192",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Automated B2B Lead Generation from Google Maps to Google Sheets using BrowserAct",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "cad3e086-dac4-4ca5-80a3-e492c6368940",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-16, 208],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "9c04e503-f939-4c28-89bc-2cc22776cd0d",
+			"name": "Run a workflow task",
+			"type": "n8n-nodes-browseract-workflows.browserAct",
+			"position": [128, 208],
+			"parameters": {
+				"workflowId": "56755932300135031",
+				"inputParameters": {
+					"parameters": [
+						{
+							"name": "Location",
+							"value": "Brooklyn"
+						},
+						{
+							"name": "Bussines_Category",
+							"value": "Baby Care "
+						},
+						{
+							"name": "Extracted_Data",
+							"value": "15"
+						}
+					]
+				},
+				"additionalFields": {}
+			},
+			"credentials": {
+				"browserActApi": {
+					"id": "credential-id",
+					"name": "browserActApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2a2affd0-5b77-455e-a9e5-c08ec7d4b726",
+			"name": "Get details of a workflow task",
+			"type": "n8n-nodes-browseract-workflows.browserAct",
+			"position": [288, 208],
+			"parameters": {
+				"taskId": "={{ $json.id }}",
+				"operation": "getTask",
+				"maxWaitTime": 600,
+				"waitForFinish": true,
+				"pollingInterval": 30
+			},
+			"credentials": {
+				"browserActApi": {
+					"id": "credential-id",
+					"name": "browserActApi Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f509147d-1705-4a59-b043-0465a776fda9",
+			"name": "Code in JavaScript",
+			"type": "n8n-nodes-base.code",
+			"position": [528, 208],
+			"parameters": {
+				"jsCode": "// Get the JSON string using the exact path provided by the user.\nconst jsonString = $input.first().json.output.string;\n\nlet parsedData;\n\n// Check if the string exists before attempting to parse\nif (!jsonString) {\n    // Return an empty array or throw an error if no string is found\n    // Throwing an error is usually better to stop the workflow if data is missing.\n    throw new Error(\"Input string is empty or missing at the specified path: $input.first().json.output.string\");\n}\n\ntry {\n    // 1. Parse the JSON string into a JavaScript array of objects\n    parsedData = JSON.parse(jsonString);\n} catch (error) {\n    // Handle JSON parsing errors (e.g., if the string is malformed)\n    throw new Error(`Failed to parse JSON string: ${error.message}`);\n}\n\n// 2. Ensure the parsed data is an array\nif (!Array.isArray(parsedData)) {\n    throw new Error('Parsed data is not an array. It cannot be split into multiple items.');\n}\n\n// 3. Map the array of objects into the n8n item format { json: object }\n// Each element in this array will be treated as a new item by n8n, achieving the split.\nconst outputItems = parsedData.map(item => ({\n    json: item,\n}));\n\n// 4. Return the new array of items\nreturn outputItems;"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "dfed60e0-2757-4b52-9c0c-7d7e776c47d7",
+			"name": "Append or update row in sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [784, 208],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Url": "={{ $json.Url }}",
+						"Name": "={{ $json.Name }}",
+						"Phone": "={{ $json.Phone }}",
+						"Rating": "={{ $json.Rating }}",
+						"Address": "={{ $json.Address }}",
+						"Category": "={{ $json.Category}}",
+						"LastSummary": "={{ $json.LastSummary }}"
+					},
+					"schema": [
+						{
+							"id": "Name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Phone",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Phone",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Category",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Category",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Rating",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Rating",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Address",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Address",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Url",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Url",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "LastSummary",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "LastSummary",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Name"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 1084488211,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/18sw7io0yJOTDzvcknGmjBBqtK154CLk3k0FoWJZbfI0/edit#gid=1084488211",
+					"cachedResultName": "Google Maps Local Lead Finder"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "18sw7io0yJOTDzvcknGmjBBqtK154CLk3k0FoWJZbfI0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/18sw7io0yJOTDzvcknGmjBBqtK154CLk3k0FoWJZbfI0/edit?usp=drivesdk",
+					"cachedResultName": "Test For BrowserAct"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "d497ae80-0325-4b81-86cf-c7138340471a",
+			"name": "Send a text message",
+			"type": "n8n-nodes-base.telegram",
+			"position": [944, 208],
+			"webhookId": "7757ea9c-2858-4c7d-9c9d-ed42690743d0",
+			"parameters": {
+				"text": "={{ $('Code in JavaScript').item.json.Name }}\n{{ $('Code in JavaScript').item.json.Address }}\n{{ $('Code in JavaScript').item.json.LastSummary }}\n{{ $('Code in JavaScript').item.json.Rating }}\n{{ $('Code in JavaScript').item.json.Url }}\n{{ $('Code in JavaScript').item.json.Category }}",
+				"chatId": "@shoaywbs",
+				"additionalFields": {}
+			},
+			"credentials": {
+				"telegramApi": {
+					"id": "credential-id",
+					"name": "telegramApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "f61586d9-57b9-4834-9ad6-9111f66bbb8c",
+			"name": "Sticky Note - Intro",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-640, -16],
+			"parameters": {
+				"width": 592,
+				"height": 450,
+				"content": "## Try It Out!\n### This n8n template automates lead generation by scraping Google Maps for local businesses and notifying you in real-time.\n\n### How it works\n* The workflow is triggered **manually**. You can replace this with a **Cron** node to run searches on a schedule.\n* A **BrowserAct** node starts a scraping task on Google Maps with your specified inputs (e.g., 'Baby Care' in 'Brooklyn').\n* A second **BrowserAct** node waits for the scraping job to finish completely.\n* A **Code** node intelligently parses the raw scraped data, splitting the list of businesses into individual items for processing.\n* The structured leads are then saved to a **Google Sheet**, automatically avoiding duplicates.\n* Finally, a **Telegram** message is sent for each new lead, providing instant notification.\n\n### Requirements\n* **BrowserAct** API account for web scraping.\n* **Google Sheets** credentials for saving leads.\n* **Telegram** credentials for sending notifications.\n* Using BrowserAct template **“Google Maps Local Lead Finder”** in your BrowserAct account.\n\n### Need Help?\nJoin the [Discord](https://discord.com/invite/UpnCKd7GaU) or Visit Our [Blog](https://www.browseract.com/blog)!\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "23ee6098-c6ee-4b34-b0be-7961e1e0e91b",
+			"name": "Sticky Note - How to Use",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-640, 448],
+			"parameters": {
+				"width": 592,
+				"height": 192,
+				"content": "## How to use\n\n1.  **Set up Credentials:** Add your credentials for **BrowserAct**, **Google Sheets**, and **Telegram** to the workflow.\n2.  **Set up BrowserAct Template:** Ensure you have the **“Google Maps Local Lead Finder”** template set up in your BrowserAct account.\n3.  **Customize Your Search:** In the **Run a workflow task** node, change the `Location`, `Bussines_Category`, and `Extracted_Data` values to find the leads you need.\n4.  **Activate Workflow:** Manually trigger the workflow by clicking 'Execute Workflow' to test. For automation, replace the trigger with a `Cron` node and activate the workflow."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b378f720-cd97-49ee-ba44-7d0ba5def18c",
+			"name": "Sticky Note - Need Help",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-32, 448],
+			"parameters": {
+				"width": 592,
+				"height": 184,
+				"content": "### Need Help?\n* #### [How to Find Your BrowseAct API Key & Workflow ID](https://www.youtube.com/watch?v=pDjoZWEsZlE)\n\n* #### [How to Connect n8n to Browseract](https://www.youtube.com/watch?v=RoYMdJaRdcQ)\n\n* #### [How to Use & Customize BrowserAct Templates](https://www.youtube.com/watch?v=CPZHFUASncY)\n\n* #### [How to Use the BrowserAct N8N Community Node](https://youtu.be/j0Nlba2pRLU)\n\n* #### [AUTOMATE Local Lead Generation: Google Maps to Sheets & Telegram with n8n](https://youtu.be/--hqPhb83kg)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1a151165-a2a8-449e-b86a-ba9041276cb8",
+			"name": "Sticky Note - Scraping Stage",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [96, -16],
+			"parameters": {
+				"color": 5,
+				"width": 336,
+				"height": 184,
+				"content": "### 🌐 1. Scrape & Wait\n\n* **Run a workflow task:** This node starts your Google Maps scraper. This is where you define your search criteria. You can easily change the `Location`, `Bussines_Category`, and the number of leads to extract (`Extracted_Data`).\n\n* **Get details...:** This node pauses the workflow until the scraping is 100% complete."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0b656160-6845-465a-9214-8d42af212d07",
+			"name": "Sticky Note - Processing Stage",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [448, -16],
+			"parameters": {
+				"color": 6,
+				"width": 272,
+				"height": 180,
+				"content": "### 🧹 2. Parse & Split Data\n\nThis **Code** node is a crucial step. Scrapers often return a list of businesses as a single block of text.\n\nThis code takes that text, parses it, and correctly splits it into individual n8n items. This allows the following nodes to handle each business one by one."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "bdf3eaa7-ce2d-4016-a42e-b23d500044a5",
+			"name": "Sticky Note - Output Stage",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [736, 400],
+			"parameters": {
+				"color": 3,
+				"width": 384,
+				"height": 152,
+				"content": "### 💾 3. Save & Notify\n\n* **Google Sheets:** This node adds each lead to your spreadsheet. The `appendOrUpdate` operation smartly prevents duplicate entries based on the business name.\n* **Telegram:** This node sends a real-time notification to your specified chat ID for every new lead that is successfully saved. Be sure to update the `Chat ID` parameter with your own."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "11f15220-b2db-45fe-b267-d430b45152da",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [96, 176],
+			"parameters": {
+				"color": 5,
+				"width": 336,
+				"height": 192,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e1330d28-8edb-45ae-8609-45d93cc7ad3d",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [448, 176],
+			"parameters": {
+				"color": 6,
+				"width": 272,
+				"height": 192,
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "4ac8d392-6e06-4b7a-bef3-1db2db27988c",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [736, 192],
+			"parameters": {
+				"color": 3,
+				"width": 384,
+				"height": 192,
+				"content": ""
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "a8ab25ec-e003-404c-ab7e-f41dc7dec543",
+	"connections": {
+		"Code in JavaScript": {
+			"main": [
+				[
+					{
+						"node": "Append or update row in sheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Run a workflow task": {
+			"main": [
+				[
+					{
+						"node": "Get details of a workflow task",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Append or update row in sheet": {
+			"main": [
+				[
+					{
+						"node": "Send a text message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get details of a workflow task": {
+			"main": [
+				[
+					{
+						"node": "Code in JavaScript",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Run a workflow task",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

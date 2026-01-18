@@ -1,0 +1,994 @@
+{
+	"id": "E6zaQoe1afHzQBOb",
+	"meta": {
+		"instanceId": "c87a766eb8ed4a39121cf119a5038250a8ca0a11ed90cdd244f6beb7336758b3",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "VOC Data into Blogs",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "5b9da2a1-7d77-4e17-ab04-cd7a34305dda",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [0, 0],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "4b4d05f4-7494-4f3f-8e33-4b09a4920996",
+			"name": "Reddit",
+			"type": "n8n-nodes-base.reddit",
+			"position": [220, 0],
+			"parameters": {
+				"limit": 30,
+				"filters": {
+					"category": "new"
+				},
+				"operation": "getAll",
+				"subreddit": "n8n"
+			},
+			"credentials": {
+				"redditOAuth2Api": {
+					"id": "credential-id",
+					"name": "redditOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3da806b8-d52a-470b-a280-a31b0d9d1c55",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"position": [440, 0],
+			"parameters": {
+				"jsCode": "const questionWords = ['who', 'what', 'when', 'where', 'why', 'how', 'can', 'does', 'is', 'should', 'do', 'are', 'could', 'would'];\n\nreturn $input.all().filter(item => {\n  const rawTitle = item.json.title;\n  if (!rawTitle) return false;\n\n  const title = rawTitle.trim().toLowerCase();\n\n  const isQuestion =\n    title.endsWith('?') ||\n    questionWords.some(word =>\n      title.startsWith(word + ' ') ||\n      title.includes(' ' + word + ' ')\n    );\n\n  // 🪵 Debug log goes here:\n  if (isQuestion) console.log('✅ Question found:', title);\n\n  return isQuestion;\n});\n"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "c9df91c8-d370-45a4-bfc9-e682ce677f78",
+			"name": "Google Sheets",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [660, 0],
+			"parameters": {
+				"columns": {
+					"value": {
+						"Query": "={{ $json.selftext }}",
+						"Title": "={{ $json.title }}"
+					},
+					"schema": [
+						{
+							"id": "Query",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Query",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Title",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "Title",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["Query"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fIk66lycsodCwVWY_3Jz8ReQBeo0_nOHaFuv427pzKQ/edit#gid=0",
+					"cachedResultName": "Queries"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1fIk66lycsodCwVWY_3Jz8ReQBeo0_nOHaFuv427pzKQ",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fIk66lycsodCwVWY_3Jz8ReQBeo0_nOHaFuv427pzKQ/edit?usp=drivesdk",
+					"cachedResultName": "VOC to blog"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "60e828fb-90aa-42f9-ac75-d59ff732b706",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [1140, 20],
+			"parameters": {
+				"text": "=Here is a question:  {{ $json.Title }}\n\nRephrase it without changing the meaning. Keep it as a question.\n\nI just need the question as the output nothing else",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "ae951b39-5394-4f3e-bd28-e08dab4abe8e",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [1160, 160],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "381cc813-a2e7-4da3-958e-15c916df5661",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [1300, 160],
+			"parameters": {
+				"sessionKey": "={{ $json.Title }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "3a8b3d6e-6f14-4c52-bab1-47a71c321534",
+			"name": "Google Sheets1",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1780, 20],
+			"parameters": {
+				"columns": {
+					"value": {
+						"name": "={{ $json.name }}"
+					},
+					"schema": [
+						{
+							"id": "name",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "slug",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "slug",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Intro",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Intro",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Steps",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Steps",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Conclusion",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Conclusion",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["name"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "appendOrUpdate",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 1732850028,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fIk66lycsodCwVWY_3Jz8ReQBeo0_nOHaFuv427pzKQ/edit#gid=1732850028",
+					"cachedResultName": "Blog"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1fIk66lycsodCwVWY_3Jz8ReQBeo0_nOHaFuv427pzKQ",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fIk66lycsodCwVWY_3Jz8ReQBeo0_nOHaFuv427pzKQ/edit?usp=drivesdk",
+					"cachedResultName": "VOC to blog"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "ddf4c5cd-3668-413e-ba80-0644f663b47e",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [2200, -200],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "84eaa3ce-4eba-4c97-98c4-b2fa5d39b002",
+			"name": "Simple Memory1",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [2340, -200],
+			"parameters": {
+				"sessionKey": "={{ $json.name }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "57ab383f-0279-4d4a-977c-bbe8dd9953f3",
+			"name": "Loop Over Items",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [880, 0],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "74f3d988-82eb-4722-9796-a9594cd563c7",
+			"name": "OpenAI Chat Model2",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [2200, 60],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "4583f24f-8199-4725-bfc2-23eb04fb0c2d",
+			"name": "Simple Memory2",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [2360, 60],
+			"parameters": {
+				"sessionKey": "={{ $('Google Sheets1').item.json.name }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "8e529c7f-764f-46a8-8010-49e5f801012c",
+			"name": "OpenAI Chat Model3",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [2200, 360],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "bfb7a49b-5688-4dbd-a5f2-5505d3445ef8",
+			"name": "Simple Memory3",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [2360, 360],
+			"parameters": {
+				"sessionKey": "={{ $('Google Sheets1').item.json.name }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "e747447f-1f00-470c-bb1c-2e588fcd3a47",
+			"name": "OpenAI Chat Model4",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [2200, 660],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "53623375-a153-49fc-b3cd-24b4a7df4486",
+			"name": "Simple Memory4",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [2360, 660],
+			"parameters": {
+				"sessionKey": "={{ $('Google Sheets1').item.json.name }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "fb62267e-2601-49ea-ac1f-b4cfa3d2466d",
+			"name": "Google Sheets2",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [3420, 820],
+			"parameters": {
+				"columns": {
+					"value": {
+						"name": "={{ $json.name }}",
+						"slug": "={{ $json.slug }}",
+						"Intro": "={{ $json.Intro }}",
+						"Steps": "={{ $json.Steps }}",
+						"Conclusion": "={{ $json.Conclusion }}"
+					},
+					"schema": [
+						{
+							"id": "name",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "name",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "slug",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "slug",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Intro",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Intro",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Steps",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Steps",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "Conclusion",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "Conclusion",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "append",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": 1732850028,
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fIk66lycsodCwVWY_3Jz8ReQBeo0_nOHaFuv427pzKQ/edit#gid=1732850028",
+					"cachedResultName": "Blog"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1fIk66lycsodCwVWY_3Jz8ReQBeo0_nOHaFuv427pzKQ",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fIk66lycsodCwVWY_3Jz8ReQBeo0_nOHaFuv427pzKQ/edit?usp=drivesdk",
+					"cachedResultName": "VOC to blog"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "credential-id",
+					"name": "googleSheetsOAuth2Api Credential"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "d2e1f412-c24f-4341-b3e4-1392b37617c1",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [2560, -320],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "d07c915b-b5c9-454c-8d4b-cdc91f31696c",
+							"name": "slug",
+							"type": "string",
+							"value": "={{ $json.output }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "5fe4ac5d-1eb0-41eb-b9b4-b2b12df9dfa0",
+			"name": "Edit Fields1",
+			"type": "n8n-nodes-base.set",
+			"position": [2560, -80],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "89c11812-98e8-45fc-993e-9938b772051b",
+							"name": "Intro",
+							"type": "string",
+							"value": "={{ $json.output }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "35aebbc3-a15a-43a5-92e3-1834c406e37f",
+			"name": "Edit Fields2",
+			"type": "n8n-nodes-base.set",
+			"position": [2560, 220],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "db117030-0614-4d4b-9779-a2128eb08c84",
+							"name": "Steps",
+							"type": "string",
+							"value": "={{ $json.output }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "b971d073-8336-4de5-9de5-88d6bf4397e8",
+			"name": "Intro",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2200, -80],
+			"parameters": {
+				"text": "=Write a short intro for a blog post titled:  {{ $json.name }}\n\nMake it easy to read, with easy vocabulary\n\nJust give me the intro as the output",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "bf226067-d9fc-4234-8bfd-20d57bb67d71",
+			"name": "Steps",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2200, 220],
+			"parameters": {
+				"text": "=Write a 'step by step guide' section for a blog post titled:  {{ $json.name }}\n\nMake it easy to read, with easy vocabulary\nBut make it very detailed\n\nJust give me the output",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "7b9bf3b5-d34f-438c-bb1a-14b14ba08ca0",
+			"name": "Conclusion",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2200, 520],
+			"parameters": {
+				"text": "=Write a short conclusion for a blog post titled:  {{ $json.name }}\n\nMake it easy to read, with easy vocabulary\n\nJust give me the conclusion as the output",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "10b9d9f6-cd23-4503-b854-7cebdf63abb1",
+			"name": "Edit Fields3",
+			"type": "n8n-nodes-base.set",
+			"position": [2560, 520],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "86fc0fde-f55c-445c-8ebd-828c505a730e",
+							"name": "Conclusion",
+							"type": "string",
+							"value": "={{ $json.output }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "74ba76b2-7994-4be2-b2a7-fed168aed7b3",
+			"name": "slug",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2200, -320],
+			"parameters": {
+				"text": "=Based on {{ $json.name }}\n\nCreate a website slug for it. For example: best-website-builder\n\nJust give me the slug as output nothing else",
+				"options": {},
+				"promptType": "define"
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "43a92b74-e779-4b45-9801-e4fe62eebd1f",
+			"name": "Edit Fields4",
+			"type": "n8n-nodes-base.set",
+			"position": [1500, 20],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "a8a698ac-11ee-4623-8cce-8a9900d2ba08",
+							"name": "name",
+							"type": "string",
+							"value": "={{ $json.output }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "2007fdc6-1fed-4aad-b2e9-28f73e162336",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-80, -80],
+			"parameters": {
+				"color": 3,
+				"width": 460,
+				"height": 280,
+				"content": "# Send data"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2d6c5238-cfda-43cb-97c2-5e3cdb95c1cc",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2100, -440],
+			"parameters": {
+				"width": 600,
+				"height": 1280,
+				"content": "# Article factory"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "fef9e95f-59db-4104-b4bd-c12c1f4b7052",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1060, -80],
+			"parameters": {
+				"width": 780,
+				"height": 440,
+				"content": "# Enhancer"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3509ee41-42a8-4280-a91e-018931912fc9",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [400, -80],
+			"parameters": {
+				"color": 3,
+				"width": 400,
+				"height": 280,
+				"content": "# Data cleaner"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "5fa01ad7-779c-4497-8cbd-df31b42ffc1e",
+	"connections": {
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"slug": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Intro": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Steps": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Reddit": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Conclusion": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields2": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields3": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields4": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets1": {
+			"main": [
+				[
+					{
+						"node": "Intro",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Steps",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Conclusion",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "slug",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Sheets2": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory1": {
+			"ai_memory": [
+				[
+					{
+						"node": "slug",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory2": {
+			"ai_memory": [
+				[
+					{
+						"node": "Intro",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory3": {
+			"ai_memory": [
+				[
+					{
+						"node": "Steps",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory4": {
+			"ai_memory": [
+				[
+					{
+						"node": "Conclusion",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[],
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "slug",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model2": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Intro",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model3": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Steps",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model4": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Conclusion",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Reddit",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

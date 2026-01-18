@@ -1,5 +1,5 @@
 {
-	"fetchedAt": "2026-01-18T11:05:11.136Z",
+	"fetchedAt": "2026-01-18T11:13:40.599Z",
 	"workflows": [
 		{
 			"id": 6270,
@@ -1130,6 +1130,246 @@
 			"id": 4366,
 			"name": "Automate email & calendar management with Gmail, Google Calendar & GPT-4o AI",
 			"success": true
+		},
+		{
+			"id": 12299,
+			"name": "Generate 5-level AI explanations for different audiences from Telegram to Google Docs with GPT-4.1-mini",
+			"success": true,
+			"app": "Merge"
+		},
+		{
+			"id": 4637,
+			"name": "Automate social media content with AI for Instagram, Facebook, LinkedIn & X",
+			"success": true,
+			"app": "Merge"
+		},
+		{
+			"id": 7957,
+			"name": "Conversational Meta ads reporting & management with GPT-5",
+			"success": true,
+			"app": "Merge"
+		},
+		{
+			"id": 11617,
+			"name": "Automate YouTube Shorts creation from Telegram prompts using Gemini and VEO",
+			"success": true,
+			"app": "Merge"
+		},
+		{
+			"id": 6993,
+			"name": "Scrape Google Maps by area & generate outreach messages for lead generation",
+			"success": true,
+			"app": "Merge"
+		},
+		{
+			"id": 6272,
+			"name": "Track top social media trends with Reddit, Twitter, and GPT-4o to SP/Drive",
+			"success": true,
+			"app": "Merge"
+		},
+		{
+			"id": 5453,
+			"name": "Resume screening & evaluation system with Gemini AI, Google Sheets & Drive for HR",
+			"success": true,
+			"app": "Merge"
+		},
+		{
+			"id": 5045,
+			"name": "Ai prompt generator workflow",
+			"success": true,
+			"app": "Merge"
+		},
+		{
+			"id": 10132,
+			"name": "Nested PDF analysis with Mistral AI & OneDrive for document summarization",
+			"success": true,
+			"app": "Merge"
+		},
+		{
+			"id": 4868,
+			"name": "Extract invoice data from Google Drive to Sheets with Mistral OCR and Gemini",
+			"success": true,
+			"app": "Merge"
+		},
+		{
+			"id": 5002,
+			"name": "Generate AI-Powered LinkedIn Posts with Google Gemini and Gen-Imager",
+			"success": true,
+			"searchTerm": "Code"
+		},
+		{
+			"id": 9890,
+			"name": "Automated B2B lead generation: Google Maps to Sheets with BrowserAct & Telegram",
+			"success": true,
+			"searchTerm": "Code"
+		},
+		{
+			"id": 5731,
+			"name": "Learn JavaScript coding with an interactive RPG-style tutorial game",
+			"success": true,
+			"searchTerm": "Code"
+		},
+		{
+			"id": 5809,
+			"name": "Automated product inquiry responder with GPT-4 and Google Sheets",
+			"success": true,
+			"searchTerm": "Code"
+		},
+		{
+			"id": 4247,
+			"name": "Invoice processor & validator with OCR, AI & Google Sheets",
+			"success": true,
+			"searchTerm": "Code"
+		},
+		{
+			"id": 6027,
+			"name": "AI-powered lead generation system with email personalization and LinkedIn",
+			"success": true,
+			"searchTerm": "Code"
+		},
+		{
+			"id": 5842,
+			"name": "Transform Reddit questions into SEO blog posts with OpenAI and Google Sheets",
+			"success": true,
+			"searchTerm": "Code"
+		},
+		{
+			"id": 5258,
+			"name": "Enrich LinkedIn profiles in NocoDB CRM with Apify scraper",
+			"success": true,
+			"searchTerm": "Code"
+		},
+		{
+			"id": 4365,
+			"name": "🤖💬 Conversational AI Chatbot with Google Gemini for Text & Image | Telegram",
+			"success": true,
+			"searchTerm": "Code"
+		},
+		{
+			"id": 10214,
+			"name": "Hotel receptionist with WhatsApp, Gemini model-switching, Redis & Google Sheets",
+			"success": true,
+			"searchTerm": "Code"
+		},
+		{
+			"id": 5820,
+			"name": "Automatic Gmail categorization and labeling with AI",
+			"success": true,
+			"nodeType": "agent"
+		},
+		{
+			"id": 5757,
+			"name": "Personalized email automation using Google Docs, Pinecone, GPT-4o and Gmail",
+			"success": true,
+			"nodeType": "agent"
+		},
+		{
+			"id": 4689,
+			"name": "Build a chatbot with Reinforced Learning Human Feedback (RLHF) and RAG",
+			"success": true,
+			"nodeType": "agent"
+		},
+		{
+			"id": 4478,
+			"name": "Auto-publish YouTube videos to Facebook & Instagram with AI-generated captions",
+			"success": true,
+			"nodeType": "agent"
+		},
+		{
+			"id": 4399,
+			"name": "Anthropic AI agent: Claude Sonnet 4 and Opus 4 with Think and Web Search tool",
+			"success": true,
+			"nodeType": "agent"
+		},
+		{
+			"id": 7601,
+			"name": "Instagram carousel posts from Google Drive via Cloudinary with Telegram alerts",
+			"success": true,
+			"nodeType": "splitInBatches"
+		},
+		{
+			"id": 5656,
+			"name": "Auto-generate WhatsApp proposals from voice or text using GPT & APITemplate",
+			"success": true,
+			"nodeType": "agent"
+		},
+		{
+			"id": 5617,
+			"name": "Generating SEO-optimized product descriptions for Shopify and Google Shopping using AI",
+			"success": true,
+			"nodeType": "splitInBatches"
+		},
+		{
+			"id": 5435,
+			"name": "AI agent to chat with Snowflake database",
+			"success": true,
+			"nodeType": "agent"
+		},
+		{
+			"id": 4678,
+			"name": "Intelligent AI digest for security, privacy, and compliance feeds",
+			"success": true,
+			"nodeType": "agent"
+		},
+		{
+			"id": 4057,
+			"name": "Auto-respond to Gmail enquiries using GPT-4o, Dumpling AI & LangChain agent",
+			"success": true,
+			"nodeType": "agent"
+		},
+		{
+			"id": 7215,
+			"name": "Personal knowledgebase AI agent",
+			"success": true,
+			"nodeType": "agent"
+		},
+		{
+			"id": 6150,
+			"name": "Auto Germany apartment search & apply with Immobilienscout24 & Google Services",
+			"success": true,
+			"nodeType": "splitInBatches"
+		},
+		{
+			"id": 5851,
+			"name": "Daily workflow backups to GitHub with Slack notifications",
+			"success": true,
+			"nodeType": "splitInBatches"
+		},
+		{
+			"id": 4833,
+			"name": "Multiple websites monitoring with notifications including phone calls",
+			"success": true,
+			"nodeType": "splitInBatches"
+		},
+		{
+			"id": 5682,
+			"name": "Simulate debates between AI agents using Mistral to optimize answers",
+			"success": true,
+			"nodeType": "splitInBatches"
+		},
+		{
+			"id": 5375,
+			"name": "Generate content strategy reports analyzing Reddit, YouTube & X with Gemini",
+			"success": true,
+			"nodeType": "splitInBatches"
+		},
+		{
+			"id": 2896,
+			"name": "N8N for beginners: looping over items",
+			"success": true,
+			"nodeType": "splitInBatches"
+		},
+		{
+			"id": 2878,
+			"name": "Host your own AI deep research agent with n8n, Apify and OpenAI o3",
+			"success": true,
+			"nodeType": "splitInBatches"
+		},
+		{
+			"id": 12536,
+			"name": "Create AI Viral Selfie videos 🎬 with celebrities 😎 using Google Veo 3.1",
+			"success": true,
+			"nodeType": "splitInBatches"
 		}
 	]
 }

@@ -1,0 +1,288 @@
+{
+	"id": "qjLD1os0l5ISHRFO",
+	"meta": {
+		"instanceId": "a4bfc93e975ca233ac45ed7c9227d84cf5a2329310525917adaf3312e10d5462",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Agent AI Anthropic Opus 4 and Sonnet 4",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "4f01cd9b-16b6-4b6a-a55b-64531e867dcc",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [20, 60],
+			"webhookId": "a0032740-26d8-491b-93f9-2250906d0e17",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "c0a5e6b1-9c43-4f92-884e-95b1e91ff54a",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [420, 280],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"prompt\": {\n\t\t\t\"type\": \"string\"\n\t\t},\n\t\t\"model\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t}\n}"
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "e46a6a64-8875-44f0-830e-febebaa10dd7",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [20, -180],
+			"parameters": {
+				"width": 840,
+				"height": 180,
+				"content": "## Dynamic Model Selector for Optimal AI Responses\n\nThe **New Anthropic Agent Decisioner** is a dynamic, AI-powered routing system that automatically selects the most appropriate large language model (Anthropic Sonnet 4 or Opus 4) to respond to a user's query based on the query’s content and purpose.\n\nThis workflow ensures **dynamic, optimized AI responses** by intelligently routing queries to the best-suited model."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0f4208aa-c4f5-44aa-ba43-4c3143751a79",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [600, 60],
+			"parameters": {
+				"text": "={{ $json.output.prompt }}",
+				"options": {
+					"systemMessage": "=You have access to a web_search tool that allows you to browse the internet for up-to-date information. Here's how you should operate:\n\n1. Website Information:\nFamiliarize yourself with this information about the website you're assisting. Use this as context for user interactions.\n\n2. Web Search Tool:\nYou have access to a web_search tool that can browse the internet. To use it, write the variable {web_search_question}. The tool will return relevant search results. Set the variable {model} to {{ $json.output.model }}.\n\n3. Handling User Queries:\nWhen a user asks a question, follow these steps:\na) Analyze the query to determine if it's related to the website or requires external information.\nb) If the query is about the website, use the provided website information to answer.\nc) If external information is needed, use the web_search tool to find relevant data.\n\n4. Using web_search:\n- Use web_search for factual, current information that isn't provided in the website info.\n- Formulate clear, concise search queries.\n- If the first search doesn't yield useful results, refine your query and search again.\n- Limit searches to a maximum of three per user query to maintain efficiency.\n\n5. Using Think:\n- Using Think tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning or some cache memory is needed.\n\n6. Formulating Responses:\n- Begin with information from the website if relevant.\n- Incorporate web search results to provide up-to-date, accurate information.\n- Summarize findings concisely and coherently.\n- If you're unsure or can't find reliable information, be honest about limitations.\n\n7. Ethical Considerations:\n- Respect user privacy. Don't ask for or store personal information.\n- Provide factual information. Avoid speculation or unverified claims.\n- If asked about controversial topics, strive for a balanced, neutral response.\n- Don't engage in or encourage illegal activities.\n\n8. Output Format:\nDo not include your thought process, web searches, or any other tags in the final output.\n"
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "0e08600f-f35c-408a-9b8a-f886aeea37d6",
+			"name": "Think",
+			"type": "@n8n/n8n-nodes-langchain.toolThink",
+			"position": [800, 280],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "5adf09be-e278-49f0-bb66-d7e3d265b120",
+			"name": "Calculator",
+			"type": "@n8n/n8n-nodes-langchain.toolCalculator",
+			"position": [900, 280],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "d5fa04bf-e40b-41d7-9d48-c71cd7ced93f",
+			"name": "Anthropic Routing Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [240, 60],
+			"parameters": {
+				"options": {
+					"systemMessage": "=You are a **Routing Agent**.\n\nYour task is to analyze user queries and determine the most appropriate model to handle each specific use case.\n\n## Available Models\n\nYou have access to the following models:\n\n1. **claude-sonnet-4-20250514**\n2. **claude-opus-4-20250514**\n\n## Model Strengths\n\n### 1. claude-sonnet-4-20250514\n- Standard decision-making tasks\n- Real-time workflow routing\n- Data validation and processing\n- Pattern recognition in structured data\n- Routine business logic evaluation\n\n### 2. claude-sonnet-4-20250514\n- Complex multi-factor decision scenarios\n- Advanced data analysis requiring deep reasoning\n- Critical business decisions with high impact\n- Complex pattern recognition in unstructured data\n- Strategic workflow optimization\n\n## Output Format\n\nYour output must always be a valid JSON object in the following format:\n\n```json\n{\n  \"prompt\": \"user query goes here\",\n  \"model\": \"selected-model-name\"\n}\n```\n\n- The **\"prompt\"** field should contain the exact query to be sent to the selected model.\n- The **\"model\"** field should contain the model name (one of: claude-sonnet-4-20250514, claude-opus-4-20250514).\n\n**Important:** Only return the JSON object. Do not include any explanations or additional text."
+				},
+				"hasOutputParser": true
+			},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "0f358356-37d4-4693-a694-382a8bc1b20f",
+			"name": "Sonnet 4 or Opus 4",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"position": [600, 280],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $json.output.model }}"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"anthropicApi": {
+					"id": "credential-id",
+					"name": "anthropicApi Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "c92104a6-9aa4-4a55-84b1-484df25f83ac",
+			"name": "Sonnet 3.7",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"position": [220, 280],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-3-7-sonnet-20250219",
+					"cachedResultName": "Claude Sonnet 3.7"
+				},
+				"options": {
+					"maxTokensToSample": 1024
+				}
+			},
+			"credentials": {
+				"anthropicApi": {
+					"id": "credential-id",
+					"name": "anthropicApi Credential"
+				}
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "513642ef-b4d6-46fc-8542-319dd54271f8",
+			"name": "Simple Memory1",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [720, 280],
+			"parameters": {
+				"sessionKey": "={{ $('When chat message received').item.json.sessionId }}",
+				"sessionIdType": "customKey"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "6c81dcd9-7faf-4b34-8e78-a471de80fa1e",
+			"name": "web_search",
+			"type": "n8n-nodes-base.httpRequestTool",
+			"position": [1020, 280],
+			"parameters": {
+				"url": "https://api.anthropic.com/v1/messages",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('JSON', `{\n  \"model\": \"{model}\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{web_search_question}\"\n    }\n  ],\n  \"tools\": [\n    {\n      \"type\": \"web_search_20250305\",\n      \"name\": \"web_search\",\n      \"max_uses\": 5\n    }\n  ]\n}\n`, 'json') }}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "predefinedCredentialType",
+				"toolDescription": "Use this tool to search on the web",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "anthropic-version",
+							"value": "=2023-06-01"
+						},
+						{
+							"name": "content-type",
+							"value": "application/json"
+						}
+					]
+				},
+				"nodeCredentialType": "anthropicApi"
+			},
+			"credentials": {
+				"anthropicApi": {
+					"id": "credential-id",
+					"name": "anthropicApi Credential"
+				}
+			},
+			"typeVersion": 4.2
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "c0947a41-be77-4ac0-89e2-eb8cf04b7c48",
+	"connections": {
+		"Think": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Calculator": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sonnet 3.7": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Anthropic Routing Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"web_search": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory1": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sonnet 4 or Opus 4": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Anthropic Routing Agent": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Anthropic Routing Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Anthropic Routing Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

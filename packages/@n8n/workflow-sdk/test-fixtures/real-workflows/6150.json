@@ -1,0 +1,529 @@
+{
+	"id": "B4JKMX91miMTZt31",
+	"meta": {
+		"instanceId": "44301a12f71c117c805e1976ee93a10c8b4e9be88024aeb8050031c5f8204c37"
+	},
+	"name": "Auto Germany Apartment Search & Apply with Immobilienscout24 & Google Services",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "00c983ef-7af4-4dd6-a401-ca768a55e06f",
+			"name": "Cron Trigger",
+			"type": "n8n-nodes-base.cron",
+			"notes": "Runs workflow every day at 8 AM Berlin time.",
+			"position": [-1600, 160],
+			"parameters": {
+				"triggerTimes": {
+					"item": [
+						{
+							"hour": 8
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "3d947c93-e2e3-4743-b3ae-28ca3f9863c5",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"notes": "Manual trigger for testing the workflow on demand.",
+			"position": [-1600, 60],
+			"parameters": {},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "da8dbdd8-9eee-403b-9e31-d2ffe87e7ce6",
+			"name": "Set Config",
+			"type": "n8n-nodes-base.set",
+			"notes": "Configure search parameters and personal info here.",
+			"position": [-1400, 100],
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "CITY",
+							"value": "Berlin"
+						},
+						{
+							"name": "MAX_RENT",
+							"value": "1200"
+						},
+						{
+							"name": "ROOMS",
+							"value": "2"
+						},
+						{
+							"name": "MY_EMAIL",
+							"value": "user@example.com"
+						},
+						{
+							"name": "MY_NAME",
+							"value": "Max Mustermann"
+						},
+						{
+							"name": "GDRIVE_SCHUFA_FILE_ID",
+							"value": "your-schufa-file-id"
+						},
+						{
+							"name": "GDRIVE_SALARY_FILE_ID",
+							"value": "your-salary-file-id"
+						},
+						{
+							"name": "GOOGLE_SHEET_ID",
+							"value": "your-google-sheet-id"
+						}
+					]
+				},
+				"options": {}
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "c2e503b7-d028-407f-886c-3ef883c88dfc",
+			"name": "GeoID Lookup",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "Fetch the geoId for the city configured in Set Config node.",
+			"position": [-1200, 100],
+			"parameters": {
+				"url": "https://rest.immobilienscout24.de/restapi/api/search/v1.0/region",
+				"options": {},
+				"authentication": "oAuth2",
+				"queryParametersUi": {
+					"parameter": [
+						{
+							"name": "q",
+							"value": "={{$json[\"CITY\"]}}"
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "43d968b8-fbe2-4df2-8c64-ba8c0220508f",
+			"name": "Extract GeoID",
+			"type": "n8n-nodes-base.function",
+			"notes": "Extract geoId from region data for next API call.",
+			"position": [-1000, 100],
+			"parameters": {
+				"functionCode": "const cityData = items[0].json;\nif (!cityData.regions || cityData.regions.length === 0) {\n  throw new Error('No regions found for the given city');\n}\n// Find the region matching city name (case-insensitive)\nconst region = cityData.regions.find(r => r.name.toLowerCase() === $json[\"CITY\"].toLowerCase()) || cityData.regions[0];\nreturn [{ json: { geoId: region.geoId, CITY: $json[\"CITY\"], MAX_RENT: $json[\"MAX_RENT\"], ROOMS: $json[\"ROOMS\"], MY_EMAIL: $json[\"MY_EMAIL\"], MY_NAME: $json[\"MY_NAME\"], GDRIVE_SCHUFA_FILE_ID: $json[\"GDRIVE_SCHUFA_FILE_ID\"], GDRIVE_SALARY_FILE_ID: $json[\"GDRIVE_SALARY_FILE_ID\"], GOOGLE_SHEET_ID: $json[\"GOOGLE_SHEET_ID\"] }}];"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "eff8bc4c-94a2-467a-9707-c5fc3cd6008b",
+			"name": "Extract Listings",
+			"type": "n8n-nodes-base.function",
+			"notes": "Extract and flatten listings array for processing.",
+			"position": [-600, 100],
+			"parameters": {
+				"functionCode": "return items.flatMap(item => {\n  if (!item.json.resultList || !item.json.resultList.result) return [];\n  return item.json.resultList.result.map(res => ({ json: res.realEstate }));\n});"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "6205f414-714d-4b70-899c-8e61fdc995e4",
+			"name": "Filter Results",
+			"type": "n8n-nodes-base.function",
+			"notes": "Filter apartments by max rent and minimum rooms.",
+			"position": [-400, 100],
+			"parameters": {
+				"functionCode": "return items.filter(item => {\n  const price = item.json.price?.value || 0;\n  const rooms = item.json.numberOfRooms || 0;\n  return price <= parseFloat($json[\"MAX_RENT\"]) && rooms >= parseInt($json[\"ROOMS\"]);\n});"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "79093c3e-55c0-4171-abf0-0458166edd59",
+			"name": "Fetch Schufa (Google Drive)",
+			"type": "n8n-nodes-base.googleDrive",
+			"notes": "Download Schufa report for attaching in application email.",
+			"position": [0, 0],
+			"parameters": {
+				"options": {},
+				"authentication": "oAuth2"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "f7adabf8-9209-452f-9932-c4448b88e040",
+			"name": "Fetch Salary Slips (Google Drive)",
+			"type": "n8n-nodes-base.googleDrive",
+			"notes": "Download salary slips for attaching in application email.",
+			"position": [0, 200],
+			"parameters": {
+				"options": {},
+				"authentication": "oAuth2"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "080fa809-ebd7-4d26-a700-62809eadb711",
+			"name": "Generate Cover Letter",
+			"type": "n8n-nodes-base.function",
+			"notes": "Generate personalized cover letter including expose link.",
+			"position": [200, 100],
+			"parameters": {
+				"functionCode": "return [{\n  json: {\n    coverLetter: `Sehr geehrte Damen und Herren,\\n\\nich interessiere mich sehr für die Wohnung mit der Exposé-ID ${$json[\"exposeId\"]} (${ $json[\"price\"].value } EUR, ${ $json[\"numberOfRooms\"] } Zimmer).\\n\\nIm Anhang finden Sie meine Schufa-Auskunft und aktuelle Gehaltsabrechnungen.\\n\\nVielen Dank für Ihre Zeit und ich freue mich auf Ihre Rückmeldung.\\n\\nMit freundlichen Grüßen,\\n${$json[\"MY_NAME\"]}\\n\\nLink zum Exposé: https://www.immobilienscout24.de/expose/${$json[\"exposeId\"]}`\n  },\n  binary: {}\n}];"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "e3f70e05-6af1-4828-bbd3-95b2bfa0a209",
+			"name": "Send Application Email",
+			"type": "n8n-nodes-base.emailSend",
+			"notes": "Send application email with attachments to landlord or agent.",
+			"position": [400, 100],
+			"parameters": {
+				"text": "={{$json[\"coverLetter\"]}}",
+				"options": {},
+				"subject": "Wohnungsbewerbung – Interesse an Exposé-ID {{$json[\"exposeId\"]}}",
+				"toEmail": "={{$json[\"contactEmail\"]}}",
+				"fromEmail": "={{$json[\"MY_EMAIL\"]}}",
+				"attachments": [
+					{
+						"binaryPropertyName": "schufa"
+					},
+					{
+						"binaryPropertyName": "salary"
+					}
+				]
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "44249cb7-1807-4659-90c7-6ba58f587500",
+			"name": "Log to Google Sheet",
+			"type": "n8n-nodes-base.googleSheets",
+			"notes": "Log applied apartment details with expose ID and timestamp.",
+			"position": [600, 100],
+			"parameters": {
+				"range": "A:E",
+				"options": {},
+				"sheetId": "={{$json[\"GOOGLE_SHEET_ID\"]}}",
+				"authentication": "oAuth2"
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "421df40a-53b4-40d1-9f22-cb310ef836ae",
+			"name": "Sticky: Cron Trigger",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1720, -60],
+			"parameters": {
+				"content": "Triggers the workflow every day at 8 AM Berlin time."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0ce39af0-c398-4aa4-ba96-7b36d4eace9e",
+			"name": "Sticky: Set Config",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1460, -60],
+			"parameters": {
+				"content": "Set your configuration: city, max rent, rooms, email, file IDs etc."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7499bb85-296b-4f80-9ddd-c0901a80d5bf",
+			"name": "Sticky: GeoID Lookup",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1140, -60],
+			"parameters": {
+				"content": "Convert city name to GeoID needed by ImmobilienScout24 API."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1046f60d-d23b-41d7-b5df-12c8ecf204bd",
+			"name": "Sticky: Fetch Listings From immobilienscout24",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-760, -40],
+			"parameters": {
+				"content": "Fetch apartment listings from ImmobilienScout24 with filters applied."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0a420d8a-ee43-405d-8494-737747e67b24",
+			"name": "Sticky: Process Apartments One-by-One",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-400, -40],
+			"parameters": {
+				"content": "Process apartments one by one to send applications."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "42e8231e-96e0-448f-a8f8-2be53940bc15",
+			"name": "Sticky: Fetch Salary Slips",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-40, 380],
+			"parameters": {
+				"content": "Fetch latest salary slips from Google Drive for application."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8e0dbdeb-f7cb-4838-b126-62b243e8b4b1",
+			"name": "Sticky: Fetch Schufa",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-80, -160],
+			"parameters": {
+				"content": "Fetch Schufa report from Google Drive to attach in application."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7137f4c9-1d71-45ef-9f7f-af7a29eab8a5",
+			"name": "Sticky: Generate Cover Letter",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [140, -40],
+			"parameters": {
+				"content": "Generate a personalized cover letter with expose ID and applicant name."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "f18bda50-b7d3-4c09-8cd5-110a1aec113c",
+			"name": "Sticky: Send Application Email",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [380, -40],
+			"parameters": {
+				"content": "Send the apartment application email with attachments."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7e26a2a5-6b06-41a2-8ce5-c0ac65220f59",
+			"name": "Sticky: Log to Google Sheet",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [640, 40],
+			"parameters": {
+				"content": "Log applied apartments in Google Sheets for tracking."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6cbae05f-922a-457e-a679-e781d92ece08",
+			"name": "Process Apartments One-by-One",
+			"type": "n8n-nodes-base.splitInBatches",
+			"notes": "Process each apartment one by one to send application.",
+			"position": [-200, 100],
+			"parameters": {
+				"options": {},
+				"batchSize": 1
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		},
+		{
+			"id": "7cdefc5c-0d65-4b3e-b2d6-9cee1cb14895",
+			"name": "Fetch Listings From immobilienscout24",
+			"type": "n8n-nodes-base.httpRequest",
+			"notes": "Fetch apartment listings from ImmobilienScout24 API using geoId and filters.",
+			"position": [-800, 100],
+			"parameters": {
+				"url": "https://rest.immobilienscout24.de/restapi/api/search/v1.0/search/region",
+				"options": {},
+				"authentication": "oAuth2",
+				"queryParametersUi": {
+					"parameter": [
+						{
+							"name": "realestatetype",
+							"value": "apartmentrent"
+						},
+						{
+							"name": "geoid",
+							"value": "={{$json[\"geoId\"]}}"
+						},
+						{
+							"name": "price",
+							"value": "max:={{$json[\"MAX_RENT\"]}}"
+						},
+						{
+							"name": "numberofrooms",
+							"value": "min:={{$json[\"ROOMS\"]}}"
+						}
+					]
+				}
+			},
+			"notesInFlow": true,
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "45e69285-a751-43fd-afea-a3622407f9df",
+	"connections": {
+		"Set Config": {
+			"main": [
+				[
+					{
+						"node": "GeoID Lookup",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Cron Trigger": {
+			"main": [
+				[
+					{
+						"node": "Set Config",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"GeoID Lookup": {
+			"main": [
+				[
+					{
+						"node": "Extract GeoID",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract GeoID": {
+			"main": [
+				[
+					{
+						"node": "Fetch Listings From immobilienscout24",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter Results": {
+			"main": [
+				[
+					{
+						"node": "Process Apartments One-by-One",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Set Config",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Listings": {
+			"main": [
+				[
+					{
+						"node": "Filter Results",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Cover Letter": {
+			"main": [
+				[
+					{
+						"node": "Send Application Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Application Email": {
+			"main": [
+				[
+					{
+						"node": "Log to Google Sheet",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Process Apartments One-by-One",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Schufa (Google Drive)": {
+			"main": [
+				[
+					{
+						"node": "Generate Cover Letter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Process Apartments One-by-One": {
+			"main": [
+				[
+					{
+						"node": "Fetch Schufa (Google Drive)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Fetch Salary Slips (Google Drive)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Salary Slips (Google Drive)": {
+			"main": [
+				[
+					{
+						"node": "Generate Cover Letter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch Listings From immobilienscout24": {
+			"main": [
+				[
+					{
+						"node": "Extract Listings",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

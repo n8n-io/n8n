@@ -1,0 +1,1101 @@
+{
+	"id": "ksAl8KwMcTo0Pq5S",
+	"meta": {
+		"instanceId": "a4bfc93e975ca233ac45ed7c9227d84cf5a2329310525917adaf3312e10d5462",
+		"templateCredsSetupCompleted": true
+	},
+	"name": "Create Viral Selfie Videos With Celebrities Using Veo 3.1",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "d42314f7-87cd-45e3-b604-232ca73e71ba",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [208, 496],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "6e0746ba-f5bc-4b4a-8a53-e2dbb3bf246f",
+			"name": "Wait 60 sec.",
+			"type": "n8n-nodes-base.wait",
+			"position": [1984, 752],
+			"webhookId": "893b822f-fd8f-460b-a685-7c06b6a4393b",
+			"parameters": {
+				"amount": 60
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "33d8642a-8521-42c3-ad2a-bdf362a31add",
+			"name": "Completed?",
+			"type": "n8n-nodes-base.if",
+			"position": [2352, 752],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "383d112e-2cc6-4dd4-8985-f09ce0bd1781",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.status }}",
+							"rightValue": "COMPLETED"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "a8a11f61-a5a3-4bdf-86bf-9bd5d75c074b",
+			"name": "Loop Over Items",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [640, 496],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "0a0dfdef-af99-40d3-885f-524eacd2985d",
+			"name": "Get status2",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2160, 192],
+			"parameters": {
+				"url": "=https://queue.fal.run/fal-ai/ffmpeg-api/requests/{{ $('Merge Videos').item.json.request_id }}/status ",
+				"options": {},
+				"sendQuery": true,
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "daOZafXpRXLtoLUV",
+					"name": "Fal.run API"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "4dcffb39-1f81-445b-8801-47af38794b13",
+			"name": "Completed?2",
+			"type": "n8n-nodes-base.if",
+			"position": [2336, 192],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"leftValue": "",
+						"caseSensitive": true,
+						"typeValidation": "strict"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "383d112e-2cc6-4dd4-8985-f09ce0bd1781",
+							"operator": {
+								"name": "filter.operator.equals",
+								"type": "string",
+								"operation": "equals"
+							},
+							"leftValue": "={{ $json.status }}",
+							"rightValue": "COMPLETED"
+						}
+					]
+				}
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "0450a28d-fb45-4366-a549-be3c1366d1b4",
+			"name": "Upload Video",
+			"type": "n8n-nodes-base.googleDrive",
+			"position": [3264, -64],
+			"parameters": {
+				"name": "={{ $now.format('yyyyLLddHHmmss') }}-{{ $('Get Clip Url').item.json.video.file_name }}",
+				"driveId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "My Drive"
+				},
+				"options": {},
+				"folderId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1aHRwLWyrqfzoVC8HoB-YMrBvQ4tLC-NZ",
+					"cachedResultUrl": "https://drive.google.com/drive/folders/1aHRwLWyrqfzoVC8HoB-YMrBvQ4tLC-NZ",
+					"cachedResultName": "Fal.run"
+				}
+			},
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "HEy5EuZkgPZVEa9w",
+					"name": "Google Drive account (n3w.it)"
+				}
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "24154120-815a-4305-b0f9-b918d7beb953",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3232, 112],
+			"parameters": {
+				"color": 7,
+				"width": 468,
+				"height": 200,
+				"content": "Set YOUR_USERNAME and TITLE for [Upload-Post]((https://www.upload-post.com/?linkId=lp_144414&sourceId=n3witalia&tenantId=upload-post-app))"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ed4c91ae-1178-44c9-83f4-8c7476e5265b",
+			"name": "Get prompts",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [432, 496],
+			"parameters": {
+				"options": {},
+				"filtersUI": {
+					"values": [
+						{
+							"lookupColumn": "MERGE"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg/edit#gid=0",
+					"cachedResultName": "Foglio1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg/edit?usp=drivesdk",
+					"cachedResultName": "Create, Extend and merge video"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "JYR6a64Qecd6t8Hb",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "ebc715d6-7b98-4a87-aa73-44033615ddfe",
+			"name": "Get prompt",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [992, 752],
+			"parameters": {
+				"options": {},
+				"filtersUI": {
+					"values": [
+						{
+							"lookupColumn": "VIDEO URL"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg/edit#gid=0",
+					"cachedResultName": "Foglio1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg/edit?usp=drivesdk",
+					"cachedResultName": "Create, Extend and merge video"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "JYR6a64Qecd6t8Hb",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "4fcfb5d1-88e8-4329-9494-5c367ac5fcd9",
+			"name": "Set params",
+			"type": "n8n-nodes-base.set",
+			"position": [1296, 752],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "c713d31f-9abd-496a-ac79-e8e2efe60aa0",
+							"name": "prompt",
+							"type": "string",
+							"value": "={{ $json.PROMPT }}"
+						},
+						{
+							"id": "e8592b0f-4e8a-4922-a02a-d8d3cfb77ac8",
+							"name": "duration",
+							"type": "string",
+							"value": "={{ $json.DURATION }}"
+						},
+						{
+							"id": "f44b3427-aaf1-405c-b79c-ba3e0f60955f",
+							"name": "first_image",
+							"type": "string",
+							"value": "={{ $json.START}}"
+						},
+						{
+							"id": "d5c1a666-c47e-49c8-9b77-d8b4c3e2550e",
+							"name": "last_image",
+							"type": "string",
+							"value": "={{ $json.LAST}}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "fa13d84d-6dbd-4a18-affc-010602754993",
+			"name": "Generate clip",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1744, 752],
+			"parameters": {
+				"url": "https://queue.fal.run/fal-ai/veo3.1/fast/first-last-frame-to-video",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n    \"prompt\": \"{{ $json.prompt }}\",\n    \"aspect_ratio\": \"auto\",\n    \"duration\": \"{{ $json.duration }}s\",\n    \"resolution\": \"720p\",\n    \"generate_audio\": false,\n    \"first_frame_url\": \"{{ $json.first_image }}\",\n    \"last_frame_url\": \"{{ $json.last_image }}\"\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "u75HwwBnJXHF7gx6",
+					"name": "Runpods"
+				},
+				"httpHeaderAuth": {
+					"id": "daOZafXpRXLtoLUV",
+					"name": "Fal.run API"
+				}
+			},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "daea484e-f46e-4eed-8e5a-de2699e82c29",
+			"name": "Get status clip",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2176, 752],
+			"parameters": {
+				"url": "=https://queue.fal.run/fal-ai/veo3.1/requests/{{ $('Generate clip').item.json.request_id }}/status",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "u75HwwBnJXHF7gx6",
+					"name": "Runpods"
+				},
+				"httpHeaderAuth": {
+					"id": "daOZafXpRXLtoLUV",
+					"name": "Fal.run API"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "588c4651-8034-47f4-be16-ec3d48ae2b05",
+			"name": "Get Clip Url",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2624, 736],
+			"parameters": {
+				"url": "=https://queue.fal.run/fal-ai/veo3.1/requests/{{ $('Generate clip').item.json.request_id }}",
+				"options": {},
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpBearerAuth": {
+					"id": "u75HwwBnJXHF7gx6",
+					"name": "Runpods"
+				},
+				"httpHeaderAuth": {
+					"id": "daOZafXpRXLtoLUV",
+					"name": "Fal.run API"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "c700d218-441d-41eb-b667-ce6d639bf2ab",
+			"name": "Update video url",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1456, 1200],
+			"parameters": {
+				"columns": {
+					"value": {
+						"MERGE": "x",
+						"VIDEO URL": "={{ $('Completed?').item.json.video.url }}",
+						"row_number": "={{ $('Loop Over Items').item.json.row_number }}"
+					},
+					"schema": [
+						{
+							"id": "START",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "START",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "LAST",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "LAST",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "PROMPT",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "PROMPT",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "DURATION",
+							"type": "string",
+							"display": true,
+							"removed": false,
+							"required": false,
+							"displayName": "DURATION",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "VIDEO URL",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "VIDEO URL",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "MERGE",
+							"type": "string",
+							"display": true,
+							"required": false,
+							"displayName": "MERGE",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "row_number",
+							"type": "number",
+							"display": true,
+							"removed": false,
+							"readOnly": true,
+							"required": false,
+							"displayName": "row_number",
+							"defaultMatch": false,
+							"canBeUsedToMatch": true
+						}
+					],
+					"mappingMode": "defineBelow",
+					"matchingColumns": ["row_number"],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"options": {},
+				"operation": "update",
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1MisBkHc1RmsYit1ndaPS7oOvSQV1VBMW7nyehTuiRQs/edit#gid=0",
+					"cachedResultName": "Foglio1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg/edit?usp=drivesdk",
+					"cachedResultName": "Create, Extend and merge video"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "JYR6a64Qecd6t8Hb",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "454add15-b35d-4e69-b6b7-8f6e635db63c",
+			"name": "Get Video Url to merge",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [1024, 208],
+			"parameters": {
+				"options": {},
+				"filtersUI": {
+					"values": [
+						{
+							"lookupValue": "x",
+							"lookupColumn": "MERGE"
+						}
+					]
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gid=0",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg/edit#gid=0",
+					"cachedResultName": "Foglio1"
+				},
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg",
+					"cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg/edit?usp=drivesdk",
+					"cachedResultName": "Create, Extend and merge video"
+				}
+			},
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "JYR6a64Qecd6t8Hb",
+					"name": "Google Sheets account"
+				}
+			},
+			"typeVersion": 4.7
+		},
+		{
+			"id": "9e785761-9beb-4742-9471-cbc8d48c7e72",
+			"name": "Set VideoUrls Json",
+			"type": "n8n-nodes-base.code",
+			"position": [1312, 208],
+			"parameters": {
+				"jsCode": "// Estrai tutti i VIDEO URL dall'input\nconst videoUrls = $input.all().map(item => item.json[\"VIDEO URL\"]);\n\n// Restituisci l'array correttamente incapsulato\nreturn [{ \n  json: { \n    videos: videoUrls \n  } \n}];"
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "247925e3-9cba-4dfb-9294-a4b9fd230baf",
+			"name": "Merge Videos",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [1648, 208],
+			"parameters": {
+				"url": "https://queue.fal.run/fal-ai/ffmpeg-api/merge-videos",
+				"method": "POST",
+				"options": {},
+				"jsonBody": "={\n  \"video_urls\": {{ JSON.stringify($json.videos) }},\n  \"target_fps\": 24\n}",
+				"sendBody": true,
+				"sendHeaders": true,
+				"specifyBody": "json",
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "daOZafXpRXLtoLUV",
+					"name": "Fal.run API"
+				}
+			},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "5fb8fb51-4e13-4c87-8fda-19df0b0a8b7c",
+			"name": "Wait 30 sec.",
+			"type": "n8n-nodes-base.wait",
+			"position": [1968, 192],
+			"webhookId": "c72a85bd-c06e-4235-b0bb-7f9736783ebd",
+			"parameters": {
+				"amount": 30
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "fae2b0c5-bf03-455b-8726-bcda2cc72a4c",
+			"name": "Get final video url",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2608, 176],
+			"parameters": {
+				"url": "=https://queue.fal.run/fal-ai/ffmpeg-api/requests/{{ $json.request_id }}",
+				"options": {},
+				"sendHeaders": true,
+				"authentication": "genericCredentialType",
+				"genericAuthType": "httpHeaderAuth",
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "Content-Type",
+							"value": "application/json"
+						}
+					]
+				}
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "daOZafXpRXLtoLUV",
+					"name": "Fal.run API"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "98d1064a-9b2e-48aa-b082-9bba619d6039",
+			"name": "Get final video file",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [2912, 176],
+			"parameters": {
+				"url": "={{ $json.video.url }}",
+				"options": {}
+			},
+			"typeVersion": 4.3
+		},
+		{
+			"id": "28cea9fc-6b54-4674-95da-a956efb17714",
+			"name": "Upload to Youtube",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3264, 176],
+			"parameters": {
+				"url": "https://api.upload-post.com/api/upload",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "title",
+							"value": "=XXX"
+						},
+						{
+							"name": "user",
+							"value": "YOUR_USERNAME"
+						},
+						{
+							"name": "platform[]",
+							"value": "youtube"
+						},
+						{
+							"name": "video",
+							"parameterType": "formBinaryData",
+							"inputDataFieldName": "data"
+						}
+					]
+				},
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "RfHIslxMFRjQZ043",
+					"name": "Youtube Transcript Extractor API 1"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "610fe9fa-e0d4-4170-9ac8-fd5232582e8f",
+			"name": "Upload to Postiz",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3280, 400],
+			"parameters": {
+				"url": "https://api.postiz.com/public/v1/upload",
+				"method": "POST",
+				"options": {},
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"authentication": "genericCredentialType",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "file",
+							"parameterType": "formBinaryData",
+							"inputDataFieldName": "data"
+						}
+					]
+				},
+				"genericAuthType": "httpHeaderAuth"
+			},
+			"credentials": {
+				"httpHeaderAuth": {
+					"id": "GIEq2Y2xhJSgjqyG",
+					"name": "Postiz"
+				}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "22946484-88e3-48e6-83c0-b7a4123391c3",
+			"name": "Upload to Social",
+			"type": "n8n-nodes-postiz.postiz",
+			"position": [3520, 400],
+			"parameters": {
+				"date": "={{ $now.format('yyyy-LL-dd') }}T{{ $now.format('HH:ii:ss') }}",
+				"posts": {
+					"post": [
+						{
+							"value": {
+								"contentItem": [
+									{
+										"image": {
+											"imageItem": [
+												{
+													"id": "={{ $json.id }}",
+													"path": "={{ $json.path }}"
+												}
+											]
+										},
+										"content": "=XXX"
+									}
+								]
+							},
+							"integrationId": "XXX"
+						}
+					]
+				},
+				"shortLink": true
+			},
+			"credentials": {
+				"postizApi": {
+					"id": "c8iQxqMcfCXPbUHc",
+					"name": "Postiz account"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "38ee4936-0c2d-47cd-8673-b9cd1b300531",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3232, 336],
+			"parameters": {
+				"color": 7,
+				"width": 468,
+				"height": 200,
+				"content": "Set Channel_ID and TITLE for [Postiz](https://affiliate.postiz.com/n3witalia) (TikTok, Instagram, Facebook, X, Youtube)"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a0e87d2f-1b13-4398-b291-b85dca86f865",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3232, -112],
+			"parameters": {
+				"color": 7,
+				"width": 468,
+				"height": 200,
+				"content": "Upload final video to Google Drive"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c012a049-15d5-4b69-bf10-8747b1abec4c",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [944, -624],
+			"parameters": {
+				"width": 1120,
+				"height": 592,
+				"content": "## Create Viral Selfie Videos With Celebrities Using Veo 3.1 & Share Everywhere\n\nhis workflow demonstrates how to create **viral AI-generated selfie videos featuring famous characters** using a fully automated and platform-independent approach.\n\nThe process is designed to replicate the kind of celebrity selfie videos that are currently going viral on social media and YouTube, where a **realistic selfie-style video** appears to show the creator together with a well-known **public figure**.\n\nInstead of relying on a proprietary or closed platform, the workflow explains how to build the entire pipeline using direct access to **Google Veo 3.1** APIs, giving full control over generation, orchestration, and distribution.\n\n### **How it works:**\n\nThis workflow automates the end-to-end process of generating AI-based selfie-style videos featuring public figures. It begins by reading prompts and image data from a Google Sheet, then uses the **fal.ai VEO 3.1 API** to create individual video clips asynchronously. Each video’s completion status and URL are automatically updated back to the sheet. Once all clips are ready, they are merged into a single final video using the **fal.ai FFmpeg API**, and the completed file is optionally uploaded to platforms like Google Drive, YouTube, or Postiz for distribution. The workflow includes built-in polling, error handling, and content moderation checks to ensure reliable processing.\n\n\n\n### **Setup steps:**\n\nPrepare a Google Sheet with specific columns (`START`, `LAST`, `PROMPT`, `DURATION`, `VIDEO URL`, `MERGE`) and connect it to n8n via OAuth2. Configure **fal.ai API** access with a valid API key and set up HTTP Header authentication. Optionally, connect upload services like **Google Drive**, **YouTube/upload-post.com**, and **Postiz** with their respective credentials. Enable upload nodes once authentication is complete, and fine-tune wait intervals for video generation and merging. Finally, manually trigger the workflow and monitor execution, verifying video URLs and merge results directly in the Google Sheet.\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0a52a32e-aee2-4d2c-a276-69c9bd4720e3",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [368, 256],
+			"parameters": {
+				"color": 7,
+				"width": 448,
+				"height": 464,
+				"content": "## STEP 1 - Prepare the Sheet\n- Clone [this sheet](https://docs.google.com/spreadsheets/d/1QLZmenUJ-vQAw2UzCe-zKTeWU9ybC1aVfi4ThVq3aUg/edit?usp=sharing) and fill the columns START, LAST, PROMPT and DURATION as in the current sheet\n\n**VERY IMPORTANT:** the image in the **LAST** column must be the same as the image in the **START** column of the following row!\n"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1d00df58-146c-4e2f-a964-413b22378cf4",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [944, 544],
+			"parameters": {
+				"color": 7,
+				"width": 1888,
+				"height": 464,
+				"content": "## STEP 2 - Generate videos based on the provided prompt\nFor each row in the sheet, the workflow calls the fal.ai VEO 3.1 API to generate a video clip based on the provided prompt, start image, end image, and duration. The clip is created asynchronously, so the workflow polls the API for status until completion.\n\nCreate an account [here](https://fal.ai/) and obtain API KEY.\nIn the HTTP's nodes set \"Header Auth\" and set:\n- Name: \"Authorization\"\n- Value: \"Key YOURAPIKEY\""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a7dd0284-ca9b-430a-8514-4bd4d88a2af3",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [944, 1040],
+			"parameters": {
+				"color": 7,
+				"width": 1888,
+				"height": 384,
+				"content": "## STEP 3 - Update Sheet\nUpdate sheet with the generated video url"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "67a94e91-1c05-4671-a75a-355d4976b544",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [944, 16],
+			"parameters": {
+				"color": 7,
+				"width": 1888,
+				"height": 496,
+				"content": "## STEP 4 - Merge videos\nMerge the individual clips into a single, linear video using Fal AI’s ffmpeg API.\n\nIn the HTTP's nodes set \"Header Auth\" and set:\n- Name: \"Authorization\"\n- Value: \"Key YOURAPIKEY\""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ac917714-1a2c-4c21-a029-967f22a3f20a",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3200, -208],
+			"parameters": {
+				"color": 7,
+				"width": 528,
+				"height": 784,
+				"content": "## STEP 5 - Upload video\nUpload video to Google Drive and social media platforms"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8f030a75-2899-43ee-89ee-6c97b7943a79",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [2096, -768],
+			"parameters": {
+				"color": 7,
+				"width": 736,
+				"height": 736,
+				"content": "## MY NEW YOUTUBE CHANNEL\n👉 [Subscribe to my new **YouTube channel**](https://youtube.com/@n3witalia). Here I’ll share videos and Shorts with practical tutorials and **FREE templates for n8n**.\n\n[![image](https://n3wstorage.b-cdn.net/n3witalia/youtube-n8n-cover.jpg)](https://youtube.com/@n3witalia)"
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "20c87a49-cbcb-4666-bd26-899766afb10a",
+	"connections": {
+		"Completed?": {
+			"main": [
+				[
+					{
+						"node": "Get Clip Url",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait 60 sec.",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get prompt": {
+			"main": [
+				[
+					{
+						"node": "Set params",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set params": {
+			"main": [
+				[
+					{
+						"node": "Generate clip",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Completed?2": {
+			"main": [
+				[
+					{
+						"node": "Get final video url",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Wait 30 sec.",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get prompts": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get status2": {
+			"main": [
+				[
+					{
+						"node": "Completed?2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Clip Url": {
+			"main": [
+				[
+					{
+						"node": "Update video url",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge Videos": {
+			"main": [
+				[
+					{
+						"node": "Wait 30 sec.",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload Video": {
+			"main": [[]]
+		},
+		"Wait 30 sec.": {
+			"main": [
+				[
+					{
+						"node": "Get status2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait 60 sec.": {
+			"main": [
+				[
+					{
+						"node": "Get status clip",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate clip": {
+			"main": [
+				[
+					{
+						"node": "Wait 60 sec.",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get status clip": {
+			"main": [
+				[
+					{
+						"node": "Completed?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Get Video Url to merge",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Get prompt",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update video url": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload to Postiz": {
+			"main": [
+				[
+					{
+						"node": "Upload to Social",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload to Youtube": {
+			"main": [[]]
+		},
+		"Set VideoUrls Json": {
+			"main": [
+				[
+					{
+						"node": "Merge Videos",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get final video url": {
+			"main": [
+				[
+					{
+						"node": "Get final video file",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get final video file": {
+			"main": [
+				[
+					{
+						"node": "Upload Video",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upload to Youtube",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upload to Postiz",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Video Url to merge": {
+			"main": [
+				[
+					{
+						"node": "Set VideoUrls Json",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get prompts",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

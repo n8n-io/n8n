@@ -1,0 +1,1204 @@
+{
+	"id": "ieuaDljDSKnZW1CR",
+	"meta": {
+		"instanceId": "740c1df6d3b1b6ea8a9d2223701f6904173f9e3cf7381cd181644b043420ba09"
+	},
+	"name": "Social media cross posting",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "b3a52a5d-7bfe-4fda-8ab7-9d74de088a53",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [2060, 820],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "15542640-1d00-41b9-82c5-d5a4ebcfb75e",
+			"name": "Get_Brand_Brief",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [2340, 820],
+			"parameters": {},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "e321a191-70dc-40c4-856c-eda6e539fa81",
+			"name": "AI Content creator",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [2220, 560],
+			"parameters": {},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "131f3368-653b-468d-9323-b74c4f86a515",
+			"name": "Get Brief",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"position": [-800, 560],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "8fd73c02-63b3-471e-b44f-c1f0c5e29d54",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [1440, 560],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "49e958ff-a1e4-4e2c-9fbb-e16840bcc997",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [-400, 780],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "9e7f7e6e-b7f8-4457-84eb-fc24354cb666",
+			"name": "Idea creator",
+			"type": "@n8n/n8n-nodes-langchain.chainLlm",
+			"position": [-580, 560],
+			"parameters": {},
+			"typeVersion": 1.6
+		},
+		{
+			"id": "2ee53b83-7ab2-4018-805b-9d4dbb235ae6",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-1320, 640],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "3c262ffa-b8c7-4477-a825-92b70e0eb4e4",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-940, 300],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "709ecf38-4467-4c9a-821d-b6933d83d215",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1880, 300],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "253f5e80-cb8f-4647-aea9-f23286f7b948",
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [340, 2080],
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "1d6e201b-fcad-4319-aa4e-5d5914c4635b",
+			"name": "Notion",
+			"type": "n8n-nodes-base.notion",
+			"position": [560, 2080],
+			"parameters": {},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "b6274635-b94d-453d-9e8c-6cefe2074e3d",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [780, 2080],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "f8a72627-9e29-4d76-ac5d-1d159d9775a0",
+			"name": "Edit Fields1",
+			"type": "n8n-nodes-base.set",
+			"position": [1000, 2080],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "c6977d95-7cb3-43dc-910b-f34aee49e34c",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-40, 1860],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a531aba0-1796-498b-aaaf-f89a7f78d1f6",
+			"name": "OpenAI Chat Model2",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-580, 800],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "adb2943b-019d-4b42-b270-fbf57b25ff03",
+			"name": "Upload media to Instagram",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [5140, 420],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "e34f8e99-636e-44c9-afc2-51ebe17a77c4",
+			"name": "Publish Post on IG",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"position": [5420, 420],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "97222747-0fa5-4ee4-ba11-7b09ad8e1690",
+			"name": "Sticky Note11",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [5020, 320],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7c9703ab-0948-4d80-bbb1-42620a0cc7e6",
+			"name": "Merge3",
+			"type": "n8n-nodes-base.merge",
+			"position": [4700, 420],
+			"parameters": {},
+			"typeVersion": 3.1
+		},
+		{
+			"id": "f4a526cf-d3c4-4584-a686-7444c7ed9f9b",
+			"name": "Merge4",
+			"type": "n8n-nodes-base.merge",
+			"position": [4700, 1160],
+			"parameters": {},
+			"typeVersion": 3.1
+		},
+		{
+			"id": "ac9900d4-c48e-41c5-a318-7fbaeb5664e6",
+			"name": "X",
+			"type": "n8n-nodes-base.twitter",
+			"onError": "continueRegularOutput",
+			"position": [5300, 1860],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "feb929f6-032f-47ca-aa79-b9cdbdb631be",
+			"name": "Sticky Note16",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3280, 300],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e0b2322b-a3da-42e7-9afe-b011e456b4f5",
+			"name": "Sticky Note17",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3140, 120],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "99b486e7-11c5-47e2-a6cb-3a9728627303",
+			"name": "Edit Fields4",
+			"type": "n8n-nodes-base.set",
+			"position": [4520, 260],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "efd21c27-e0f3-43e6-966d-4ccecebdc39e",
+			"name": "Edit Fields5",
+			"type": "n8n-nodes-base.set",
+			"position": [4540, 1000],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "7309c9ae-8cd2-4aaa-931d-14e4ff8c1894",
+			"name": "LinkedIn",
+			"type": "n8n-nodes-base.linkedIn",
+			"onError": "continueRegularOutput",
+			"position": [5280, 2580],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "13e5becb-e793-45c3-a1d4-acd65bcad6aa",
+			"name": "Merge5",
+			"type": "n8n-nodes-base.merge",
+			"position": [4760, 2580],
+			"parameters": {},
+			"typeVersion": 3.1
+		},
+		{
+			"id": "d738c947-3dd3-48dc-9d6d-6624a545402f",
+			"name": "Edit Fields6",
+			"type": "n8n-nodes-base.set",
+			"position": [4580, 2420],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "61673acb-2ece-46a7-ac08-15d3aec3924d",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-1320, 840],
+			"webhookId": "cc6818c6-10a1-400b-9a17-7773ff0b891f",
+			"parameters": {},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "40926adb-faca-458c-b433-eb74a26c33d2",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [280, 560],
+			"parameters": {},
+			"typeVersion": 1.9
+		},
+		{
+			"id": "5bb9b6bb-1e8f-482c-89cb-4d6601413d2a",
+			"name": "OpenAI Chat Model3",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [220, 840],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "b1485e4d-d5fc-450f-ae24-465ff08d479e",
+			"name": "Google Sheets",
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"position": [640, 840],
+			"parameters": {},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "19518d54-18a6-4f9f-9385-9b0205274a0f",
+			"name": "Get_Brand_Brief1",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [440, 840],
+			"parameters": {},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "9b69b348-9e52-4cb6-bde8-67fa1acb83fd",
+			"name": "Check Examples1",
+			"type": "n8n-nodes-base.googleSheetsTool",
+			"position": [2500, 820],
+			"parameters": {},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "81ca8c02-a438-4516-8ef8-4e16f9c84d13",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [2200, 820],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "531c20c8-85a4-47ee-9e4d-4e2c315019a6",
+			"name": "Social Media Content1",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [2660, 820],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "90c9e8dd-504d-4a50-9002-9b65d08f6bdc",
+			"name": "IG Image generator",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [3520, 400],
+			"parameters": {},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "3e51e978-3dd7-4c10-a797-b2e3a1acd7bc",
+			"name": "FB Image generator",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [3540, 1140],
+			"parameters": {},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "0a0b7cc9-27e4-467f-98d3-373df678bb81",
+			"name": "LinkedIn Image generator",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [3560, 2580],
+			"parameters": {},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "2e0a79ba-b65e-4715-962b-37160983266b",
+			"name": "Facebook Post",
+			"type": "n8n-nodes-base.facebookGraphApi",
+			"onError": "continueRegularOutput",
+			"position": [5320, 1160],
+			"parameters": {},
+			"typeVersion": 1,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "fc70dceb-2700-4ad3-979d-aa35e715a5f4",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"position": [6720, 2540],
+			"parameters": {},
+			"typeVersion": 3.1
+		},
+		{
+			"id": "aafcb369-d1f0-492b-bb17-213da72e170e",
+			"name": "Gmail",
+			"type": "n8n-nodes-base.gmail",
+			"position": [7360, 2560],
+			"webhookId": "531c4f73-015d-4ef7-8436-36c333ecdd71",
+			"parameters": {},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "e60b7d5e-21c0-4bbe-8db6-8ec61acbf6c8",
+			"name": "Aggregate1",
+			"type": "n8n-nodes-base.aggregate",
+			"position": [6980, 2560],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "5098abdf-7705-49d1-baa9-f377af07376a",
+			"name": "Sticky Note21",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [6500, 2200],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "20c6758f-3ee7-4ecd-aca3-8d41ebbfddcb",
+			"name": "Add to History",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [780, 560],
+			"parameters": {},
+			"typeVersion": 4.6
+		},
+		{
+			"id": "d2c08180-bb7a-4eaf-b84d-ca5bb101caf1",
+			"name": "Sticky Note22",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3140, 840],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "31ae2efd-9c71-4e7a-8dad-681e7a9b0b6e",
+			"name": "Sticky Note19",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3300, 1040],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "01d9be7a-8b24-4d3d-8203-564c5f8e1959",
+			"name": "Sticky Note12",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [5020, 1040],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "b3936140-1db2-43db-8631-4bb2d3fbd409",
+			"name": "Sticky Note25",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3140, 1540],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2de31058-e1e3-4939-8b64-31c232cda880",
+			"name": "Sticky Note26",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3300, 1740],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "01ee1db0-6142-4353-b25e-8640559c1d81",
+			"name": "Merge6",
+			"type": "n8n-nodes-base.merge",
+			"position": [4420, 1860],
+			"parameters": {},
+			"typeVersion": 3.1
+		},
+		{
+			"id": "8dd0b5e3-8e8d-42d3-a98e-8c121958d9cd",
+			"name": "Edit Fields7",
+			"type": "n8n-nodes-base.set",
+			"position": [4260, 1700],
+			"parameters": {},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "4c27e97c-d714-4ed2-8687-ecd5d0432eba",
+			"name": "Sticky Note27",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3140, 2260],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "2b8fdbdf-626c-48f7-b773-0329cafcb2e3",
+			"name": "Sticky Note28",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [3300, 2460],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "322e6be4-4354-4ef8-bdb8-2227ff6480d1",
+			"name": "Sticky Note14",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [5020, 2480],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "6cf82d22-7c92-4a60-b77a-f7d5dd26d7a0",
+			"name": "X Image generator",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"position": [3540, 1840],
+			"parameters": {},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "721cf0a1-a1f8-41e8-92cb-dd923d503ad8",
+			"name": "Sticky Note15",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [5040, 1740],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d7f1d581-f19d-4846-a718-22fd9c10451b",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [4560, 1640],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "768dbb8a-7732-408a-9239-5bf1e0d05374",
+			"name": "Add Examples",
+			"type": "n8n-nodes-base.googleSheets",
+			"position": [4360, 3100],
+			"parameters": {},
+			"typeVersion": 4.5
+		},
+		{
+			"id": "56789045-4ea7-4089-97a9-62c2c8d3fec6",
+			"name": "Google Docs",
+			"type": "n8n-nodes-base.googleDocs",
+			"disabled": true,
+			"position": [560, 2460],
+			"parameters": {},
+			"typeVersion": 2
+		},
+		{
+			"id": "eb01b4e0-d696-44e0-9b40-12c6e2fad559",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [400, 2340],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "8bf1b32c-cec0-4ec3-b454-189a1b0f1958",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [4120, 2940],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "60f46c2a-8a8d-46bd-a345-e4a7e5999cd1",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [60, 300],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "df0707e8-aeaa-4b7b-9412-cc4fba36a4d0",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [1140, 300],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "e840dc65-069b-44b9-93e2-17c343670600",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [4020, 2580],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "1428375a-be0d-457d-88f3-313694546394",
+			"name": "Post image Cloudianry IG",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3820, 400],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "044f8b91-1766-4183-a012-36e28287f2eb",
+			"name": "Post image Cloudianry FB",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3860, 1140],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "e93929b2-9cbc-4826-9e7a-6e3bd651848e",
+			"name": "Post image Cloudianry X",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3820, 1840],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "898e761d-abfa-4ea5-a5ef-40c2b67c87bf",
+			"name": "Post image Cloudianry LIn",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [3800, 2580],
+			"parameters": {},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "6ffdea4c-1f03-4cf4-913f-653019f0965c",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-1320, 440],
+			"parameters": {},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "ceeb4aee-6c35-4ac1-84df-3ed36147a0f2",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1460, 300],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "9b18e14c-ead6-42c1-aaa7-918383acab18",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [6400, 160],
+			"parameters": {
+				"content": ""
+			},
+			"typeVersion": 1
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "881c0ae7-8264-44d8-85a7-70206c98186a",
+	"connections": {
+		"X": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Aggregate1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge3": {
+			"main": [
+				[
+					{
+						"node": "Upload media to Instagram",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge4": {
+			"main": [
+				[
+					{
+						"node": "Facebook Post",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge5": {
+			"main": [
+				[
+					{
+						"node": "LinkedIn",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge6": {
+			"main": [
+				[
+					{
+						"node": "X",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notion": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Add to History",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LinkedIn": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 3
+					}
+				]
+			]
+		},
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Brief": {
+			"main": [
+				[
+					{
+						"node": "Idea creator",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate1": {
+			"main": [
+				[
+					{
+						"node": "Gmail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "AI Content creator",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add Examples": {
+			"main": [[]]
+		},
+		"Edit Fields4": {
+			"main": [
+				[
+					{
+						"node": "Merge3",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Edit Fields5": {
+			"main": [
+				[
+					{
+						"node": "Merge4",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Edit Fields6": {
+			"main": [
+				[
+					{
+						"node": "Merge5",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Edit Fields7": {
+			"main": [
+				[
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"HTTP Request": {
+			"main": [
+				[
+					{
+						"node": "Merge5",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Idea creator": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Facebook Post": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Google Sheets": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Content creator",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add to History": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Examples1": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Content creator",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get_Brand_Brief": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Content creator",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get_Brand_Brief1": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Get Brief",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Content creator",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"X Image generator": {
+			"main": [
+				[
+					{
+						"node": "Post image Cloudianry X",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Content creator": {
+			"main": [
+				[
+					{
+						"node": "LinkedIn Image generator",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IG Image generator",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "FB Image generator",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "X Image generator",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields7",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields6",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add Examples",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"FB Image generator": {
+			"main": [
+				[
+					{
+						"node": "Post image Cloudianry FB",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IG Image generator": {
+			"main": [
+				[
+					{
+						"node": "Post image Cloudianry IG",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model2": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Idea creator",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model3": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Publish Post on IG": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Social Media Content1": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "AI Content creator",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post image Cloudianry X": {
+			"main": [
+				[
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LinkedIn Image generator": {
+			"main": [
+				[
+					{
+						"node": "Post image Cloudianry LIn",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post image Cloudianry FB": {
+			"main": [
+				[
+					{
+						"node": "Merge4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post image Cloudianry IG": {
+			"main": [
+				[
+					{
+						"node": "Merge3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Idea creator",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Post image Cloudianry LIn": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload media to Instagram": {
+			"main": [
+				[
+					{
+						"node": "Publish Post on IG",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "Notion",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Brief",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

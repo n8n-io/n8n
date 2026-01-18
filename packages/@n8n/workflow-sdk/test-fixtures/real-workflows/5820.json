@@ -1,0 +1,486 @@
+{
+	"name": "AI Gmail: Prioritize What You Should Read",
+	"nodes": [
+		{
+			"id": "9f0e4edb-32cc-45bf-96d8-91d76506b9e7",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"position": [-816, 0],
+			"parameters": {
+				"options": {},
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e8fecc44-bfcf-42cd-a82d-b2963d8f4c94",
+							"name": "id",
+							"type": "string",
+							"value": "={{ $json.id }}"
+						},
+						{
+							"id": "4967158d-b4ee-41b4-a945-d19462d08886",
+							"name": "text",
+							"type": "string",
+							"value": "={{ $json.text ? $json.text : $json.html}}"
+						},
+						{
+							"id": "48cf009c-69ea-48aa-9de8-d53039aca4a5",
+							"name": "from",
+							"type": "string",
+							"value": "={{ $json.from.value[0].name }}"
+						},
+						{
+							"id": "cfd63044-5e92-44c3-ad28-16118c1b83cb",
+							"name": "threadId",
+							"type": "string",
+							"value": "={{ $json.threadId }}"
+						}
+					]
+				}
+			},
+			"typeVersion": 3.4
+		},
+		{
+			"id": "90c625c4-8b88-40a0-8ff1-293b5950aa85",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"onError": "continueRegularOutput",
+			"position": [-592, 0],
+			"parameters": {
+				"text": "=You are a strict JSON generator.\n\nAnalyze the following email content and classify it into one of the following categories:\n\n- \"Action\" → bills, inquiries, reply needed, or require my attention.\n- \"Informational\" → updates, shipping, delivery alerts, social media updates or messages. \n- \"Spam\" → promotional or marketing emails.\n- \"Receipt\" → receipts of purchases or subscriptions.\n\nSummary: Extract the most important information of the email into 1 sentence, not more than 4000 characters. \n\nReturn your response in a JSON object, **only using** this exact format (this is an example — follow this structure exactly):\n{ \"label\": \"<one of the 4 categories>\", \"summary\": \"<Summary>\", \"id\": {{ $json.id }}, \"threadId\": {{ $json.threadId }} }\n\nExample output (follow this exact style):\n{ \"label\": \"Informational\", \"summary\": \"Your Apple Magic Keyboard has shipped and will arrive June 28.\", \"id\": \"abc123\" }\n\nRules:\n- Do NOT return markdown (no triple backticks, no ```json)\n- Use double quotes for keys and string values\n- Do NOT include explanations, extra text, or formatting\n- Return ONLY the one-line function call above, replacing values as needed and using the exact format above.\n\nReview your response to ensure you meet the rules before you generate the output. \n\n\nid: {{ $json.id }}\nthreadId: {{ $json.threadId }}\n\nEmail content:\n{{ $json.text }}\n",
+				"options": {},
+				"promptType": "define"
+			},
+			"retryOnFail": true,
+			"typeVersion": 2,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "75af6c6b-9706-42ed-985a-a763ea3e3473",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"position": [-336, 224],
+			"parameters": {
+				"schemaType": "manual",
+				"inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"label\": { \"type\": \"string\" },\n    \"summary\": { \"type\": \"string\" },\n    \"id\": { \"type\": \"string\" },\n    \"threadId\": { \"type\": \"string\" }\n  },\n  \"required\": [\"label\", \"id\"]\n}\n"
+			},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "d6d8026a-1b11-40e4-8d30-94d4a7287848",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-1264, 0],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours"
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "464eae52-c683-43ff-8a4f-25d3acba5a93",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-592, 224],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "gpt-4o"
+				},
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "954ce5bb-495c-459c-981c-3bcdb0066308",
+			"name": "Get All Unread Messages",
+			"type": "n8n-nodes-base.gmail",
+			"position": [-1040, 0],
+			"webhookId": "59626731-064c-469a-ab85-a95df2480031",
+			"parameters": {
+				"simple": false,
+				"filters": {
+					"readStatus": "unread"
+				},
+				"options": {},
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "f71f88be-77aa-4dbb-bbdc-607ebfc3ddc7",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"position": [-128, -32],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"outputKey": "Action",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "7822ad3b-3f0a-4e7e-8f3c-96641f2e2d4a",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.output.label }}",
+										"rightValue": "Action"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Informational",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "a076e618-a956-4ea7-a253-67e90a008495",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.output.label }}",
+										"rightValue": "Informational"
+									}
+								]
+							},
+							"renameOutput": true
+						},
+						{
+							"outputKey": "Receipt",
+							"conditions": {
+								"options": {
+									"version": 2,
+									"leftValue": "",
+									"caseSensitive": true,
+									"typeValidation": "strict"
+								},
+								"combinator": "and",
+								"conditions": [
+									{
+										"id": "873953c5-db09-450c-b5ed-59f695bfc9af",
+										"operator": {
+											"name": "filter.operator.equals",
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.output.label }}",
+										"rightValue": "Receipt"
+									}
+								]
+							},
+							"renameOutput": true
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra"
+				}
+			},
+			"typeVersion": 3.2
+		},
+		{
+			"id": "16c60f51-2387-4f43-92d5-ada08840b97e",
+			"name": "OpenAI Fall Back Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-464, 224],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-3.5-turbo",
+					"cachedResultName": "gpt-3.5-turbo"
+				},
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "29f90ac4-d629-493c-a825-98c72bd77399",
+			"name": "Delete email",
+			"type": "n8n-nodes-base.gmail",
+			"onError": "continueRegularOutput",
+			"position": [96, 288],
+			"webhookId": "3466588b-86a6-4072-8879-11997f48e1d4",
+			"parameters": {
+				"resource": "thread",
+				"threadId": "={{ $json.output.threadId }}",
+				"operation": "delete"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "90629ef6-75ba-499b-a27d-b47bde3deadb",
+			"name": "Mark email as read",
+			"type": "n8n-nodes-base.gmail",
+			"position": [432, -64],
+			"webhookId": "f3131e67-dfdb-40d8-9199-bb79069b0c33",
+			"parameters": {
+				"messageId": "={{ $json.id }}",
+				"operation": "markAsRead"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "8ed659e1-293c-49d2-ad24-0bb8d0fe30ec",
+			"name": "Add label \"Receipt\" to email",
+			"type": "n8n-nodes-base.gmail",
+			"position": [96, 96],
+			"webhookId": "89f06cdb-8ae8-4e84-93ec-00c48d2cecfe",
+			"parameters": {
+				"labelIds": ["Label_3361902760602362460"],
+				"messageId": "={{ $json.output.id }}",
+				"operation": "addLabels"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "42fa8db1-b003-415b-bf06-9f18b9823faa",
+			"name": "Add label \"Action\" to email",
+			"type": "n8n-nodes-base.gmail",
+			"position": [96, -288],
+			"webhookId": "d3bf8de1-aa15-47d2-9c7b-6be8d3b4468f",
+			"parameters": {
+				"labelIds": ["Label_4190586288433010009", "IMPORTANT"],
+				"messageId": "={{ $json.output.id }}",
+				"operation": "addLabels"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "690d7e73-c97e-467b-aafe-e4acb552f188",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1320, -144],
+			"parameters": {
+				"color": 5,
+				"width": 208,
+				"height": 304,
+				"content": "### 💡 Schedule Trigger\nThis runs every hour. You can change the interval here depending on how often you want your Gmail to be processed."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "967d2796-e9ce-4dfa-90cb-948d1b573185",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-1312, 256],
+			"parameters": {
+				"width": 304,
+				"height": 224,
+				"content": "### ⚠️ Setup Required\n- Connect your Gmail account using OAuth2. \n- Add your OpenAI API Key under “API Credentials”.\n- Create these labels in your Gmail: Action, Informational, Spam and Receipt"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "06f7f246-155b-4b2d-86c0-0ecb86e84d3c",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-640, -160],
+			"parameters": {
+				"color": 5,
+				"width": 432,
+				"height": 320,
+				"content": "### 💡 Customize Classification Logic\nYou can change the prompt to match your context. For example, tell the AI to detect more labels like `Meeting`, `Newsletter`, etc."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "61d814b5-f734-43a1-a588-c4722a0fd60c",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-200, -160],
+			"parameters": {
+				"color": 5,
+				"height": 352,
+				"content": "### 💡 Add More Labels\nWant to detect  `Meeting`, `Newsletter`, etc?\nAdd more conditions here and route them to different Gmail actions."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "011af85b-feb4-495d-8382-c42fdc5ff7c4",
+			"name": "Add label \"Informational\" to email",
+			"type": "n8n-nodes-base.gmail",
+			"position": [96, -96],
+			"webhookId": "d3bf8de1-aa15-47d2-9c7b-6be8d3b4468f",
+			"parameters": {
+				"labelIds": ["Label_4104611383523107189"],
+				"messageId": "={{ $json.output.id }}",
+				"operation": "addLabels"
+			},
+			"typeVersion": 2.1
+		}
+	],
+	"connections": {
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Add label \"Action\" to email",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Add label \"Informational\" to email",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Add label \"Receipt\" to email",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Delete email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete email": {
+			"main": [[]]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Get All Unread Messages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Fall Back Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Get All Unread Messages": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add label \"Action\" to email": {
+			"main": [
+				[
+					{
+						"node": "Mark email as read",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add label \"Receipt\" to email": {
+			"main": [
+				[
+					{
+						"node": "Mark email as read",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add label \"Informational\" to email": {
+			"main": [
+				[
+					{
+						"node": "Mark email as read",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

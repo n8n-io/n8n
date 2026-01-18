@@ -1,0 +1,463 @@
+{
+	"id": "1AeBTEXwiwxSvJ37",
+	"meta": {
+		"instanceId": "82cad572864ecfae931ea0fa4a2122d5ad401b8f2cb25fb3ff144b553e0d676d"
+	},
+	"name": "AI-Powered Email Automation",
+	"tags": [],
+	"nodes": [
+		{
+			"id": "c3066810-8dd0-4b1c-8daa-ea5892551d7d",
+			"name": "When clicking ‘Test workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [-140, -860],
+			"parameters": {},
+			"typeVersion": 1
+		},
+		{
+			"id": "8b6c598a-547a-485a-a294-68c562ef86be",
+			"name": "Pinecone Vector Store",
+			"type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+			"position": [340, -860],
+			"parameters": {
+				"mode": "insert",
+				"options": {
+					"pineconeNamespace": "docsmail"
+				},
+				"pineconeIndex": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8ndocs",
+					"cachedResultName": "n8ndocs"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "7c86d348-875a-4b57-94c2-ad37c10a24cf",
+			"name": "Embeddings OpenAI",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [200, -660],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "70d44b68-e1f6-4794-9114-a20dcfe9fa7d",
+			"name": "Default Data Loader",
+			"type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+			"position": [360, -640],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "d8e2ae43-88ae-4bc4-818a-e46fea4968fb",
+			"name": "Recursive Character Text Splitter",
+			"type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+			"position": [400, -480],
+			"parameters": {
+				"options": {},
+				"chunkSize": 200,
+				"chunkOverlap": 50
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "1e43f542-5498-4626-981a-076c2748553f",
+			"name": "When Executed by Another Workflow",
+			"type": "n8n-nodes-base.executeWorkflowTrigger",
+			"position": [20, 600],
+			"parameters": {
+				"inputSource": "passthrough"
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "4c0907b1-32b4-498b-838b-d8c1377930a1",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [240, 600],
+			"parameters": {
+				"text": "={{ $json.query }}",
+				"options": {
+					"systemMessage": "You are a helpful assistant to send mails."
+				},
+				"promptType": "define"
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "6603a4d8-52c3-49cb-a3ad-32ccb6f1427c",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [200, 860],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "79342d85-a9d0-459a-8b2b-ae60a2d09006",
+			"name": "Gmail",
+			"type": "n8n-nodes-base.gmailTool",
+			"position": [500, 860],
+			"webhookId": "0efa4972-e3dc-4c40-a6cd-ebf1acbb1ead",
+			"parameters": {
+				"sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+				"message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+				"options": {},
+				"subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}"
+			},
+			"typeVersion": 2.1
+		},
+		{
+			"id": "65054e26-803c-4cbf-89f9-be90411ee1ad",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [0, -200],
+			"webhookId": "e3978e41-4d95-4d3a-a2a1-b1f9f8c222bb",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "772f7733-5d42-4add-977e-a6f398adb683",
+			"name": "Vectorstore Mails",
+			"type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+			"position": [180, 40],
+			"parameters": {
+				"name": "Vectorstore_mails",
+				"description": "Use this Tool to get Email Information, you find all relevant mail adresses, you also give mail adresses."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "c8087076-86c2-4600-ba2e-54ca42441fad",
+			"name": "OpenAI Chat Model1",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [420, 220],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "gpt-4o"
+				},
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "1567e58b-ae16-49f8-8913-3222bb870a9d",
+			"name": "send_mail",
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"position": [540, 60],
+			"parameters": {
+				"name": "send_mail",
+				"workflowId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "GLkrSkyYtlep3P6e",
+					"cachedResultName": "Send Mails Pinecone"
+				},
+				"description": "Use this tool to send mails.",
+				"workflowInputs": {
+					"value": {},
+					"schema": [],
+					"mappingMode": "defineBelow",
+					"matchingColumns": [],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				}
+			},
+			"typeVersion": 2
+		},
+		{
+			"id": "cda619f9-9e41-4559-8580-2830b675fe7a",
+			"name": "AI Agent1",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [220, -200],
+			"parameters": {
+				"options": {
+					"systemMessage": "=# Role:  \nYou are an intelligent email agent that automatically sends personalized emails to recipients. Your task is to generate and send a clear, professional, and accurate email based on the provided names, email addresses, and desired content.  \n\n## Rules & Behavior:  \n\n# You have 2 Tools and need to use them correctly, you always use both tools, first the Vectorstore_mails after that the send_mail\n\n## Vectorstore_mails \nUse this tool to get Email adresses, you can get all mail adresses from pinecone.\nwinter test = winterIsComming@gmail.com\n\n## send_mail\nUse this tool to send mails.\n\n### Email Format:  \n- The email must include a **subject line**.  \n- It should begin with an appropriate **salutation** (e.g., \"Hello [Name]\" or \"Dear [Name]\").  \n- The **main content** should be clear, concise, and friendly.  \n- The email should end with a **suitable closing phrase** (e.g., \"Best regards, Arnie\").  \n\n### Dynamic Personalization:  \n- Automatically replace the placeholder **[Name]** with the recipient’s actual name.  \n- If the name is missing, use a general salutation such as **\"Hello, dear team\"**.  \n\n### Review & Optimization:   \n- Avoid unnecessary **repetitions or vague wording**.  \n- If the message is **too long or unstructured, summarize it clearly**.  \n\n## Email Types (Adaptable Based on Context):  \n- Standard information email  \n- Reminder or follow-up  \n- Offer or marketing email  \n- Support or customer service request  \n\n---\n\n### Example of a Generated Email:  \n\n**Subject:** Important Information for You, [Name]  \n\n**Text:**  \nHello [Name],  \n\nI hope you are doing well. I wanted to quickly inform you about [Topic]. If you have any questions or need further information, feel free to reach out.  \n\nBest regards,  \nSender Name  \n"
+				}
+			},
+			"typeVersion": 1.7
+		},
+		{
+			"id": "e8a2fbef-5534-423c-bcc0-c007a67ad83e",
+			"name": "OpenAI Chat Model2",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [20, 60],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o",
+					"cachedResultName": "gpt-4o"
+				},
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "79c33b28-a1f8-4b25-a1f4-c9110929aa0a",
+			"name": "Pinecone Vector Store1",
+			"type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+			"position": [60, 220],
+			"parameters": {
+				"options": {
+					"pineconeNamespace": "docsmail"
+				},
+				"pineconeIndex": {
+					"__rl": true,
+					"mode": "list",
+					"value": "n8ndocs",
+					"cachedResultName": "n8ndocs"
+				}
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "bc1ddbcc-52aa-4f05-9c16-2b5cc42cc1b1",
+			"name": "Embeddings OpenAI1",
+			"type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+			"position": [120, 360],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "6e44ad97-d77c-434f-b869-3101c1046ced",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-860, -860],
+			"parameters": {
+				"width": 660,
+				"height": 360,
+				"content": "#### **First Step**\n* Add list of contact Email from Google Docs to vector store \"Pinecone\"\n\n  * **Read Google Docs Data:** Use the n8n Google Docs node to access and retrieve the list of contact emails from your specified document.\n\n  * **Prepare Data for Vectorization:** Process the extracted emails (and any other relevant fields) using n8n's data manipulation nodes (e.g., Code, Set, Split In Batches) to format them for vectorization.\n\n  * **Generate Embeddings:** Integrate an n8n node using \"Embeddings OpenAI\" to an embedding service, to convert the email data into vector embeddings.\n\n  * **Upsert to Pinecone:** Use the n8n Pinecone node to connect to the Pinecone index and efficiently upload the generated vectors, along with unique IDs and metadata."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "ec252e7d-44e1-47f3-a7bd-104615e7eb82",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-860, -120],
+			"parameters": {
+				"color": 6,
+				"width": 760,
+				"height": 420,
+				"content": "#### **Second Step**\n* Retrieve email addresses from Pinecone and generate personalized emails, then uses a separate workflow to send them, all triggered by a chat message.\n\n   * **AI Agent (Core Logic):** An AI Agent (configured with gpt-4o) uses a detailed system message to act as an intelligent email sender. Its rules dictate it must always use two tools: Vectorstore_mails and send_mail.\n\n   * **Vectorstore Mails (Tool):** This tool, connected to a Pinecone Vector Store (n8ndocs index, docsmail namespace) and an OpenAI Embeddings model, allows the AI Agent to retrieve email addresses based on user queries (e.g., \"winter test\" returns \"winterIsBack@gmail.com\").\n\n   * **Send Mail (Tool):** This tool is a reference to another n8n workflow  named \"Send Mails Pinecone\" that handles the actual email sending. The AI Agent will dynamically construct the email content and recipient details to pass to this tool.\n\n   * **Email Generation:** The AI Agent is responsible for generating personalized, clear, and professional emails, dynamically replacing placeholders like [Name] and ensuring proper formatting (subject, salutation, content, closing)."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "0de864f4-6b36-41d2-a4b0-5e51a7ad961c",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-840, 580],
+			"parameters": {
+				"color": 5,
+				"width": 800,
+				"height": 340,
+				"content": "#### **Third Step**\n* Triggered by second workflow, uses an AI Agent to dynamically compose and send emails via Gmail, extracting recipient, subject, and message content from the incoming data.\n\n  * Triggered by another workflow: This workflow starts when called by the \"Mail Agend Pinecone\" workflow, receiving the email details as input.\n\n  * AI Agent (Email Generation): An AI Agent (using gpt-4o-mini) acts as a helpful assistant to process the incoming request and prepare the specific To, Subject, and Message content for the email.\n\n  * Send Email via Gmail: The prepared email details are then passed to the Gmail node, which sends the email to the designated recipient."
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "a44c0e8e-34c0-4ff1-888e-0a841e5434d2",
+			"name": "Get a document",
+			"type": "n8n-nodes-base.googleDocs",
+			"position": [80, -860],
+			"parameters": {
+				"operation": "get",
+				"documentURL": "https://docs.google.com/document/*********"
+			},
+			"typeVersion": 2
+		}
+	],
+	"active": false,
+	"pinData": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "9b5962d2-17e0-4471-92c8-548dec3af37b",
+	"connections": {
+		"Gmail": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"send_mail": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get a document": {
+			"main": [
+				[
+					{
+						"node": "Pinecone Vector Store",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Pinecone Vector Store",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Vectorstore Mails": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Embeddings OpenAI1": {
+			"ai_embedding": [
+				[
+					{
+						"node": "Pinecone Vector Store1",
+						"type": "ai_embedding",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model1": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Vectorstore Mails",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model2": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Default Data Loader": {
+			"ai_document": [
+				[
+					{
+						"node": "Pinecone Vector Store",
+						"type": "ai_document",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pinecone Vector Store1": {
+			"ai_vectorStore": [
+				[
+					{
+						"node": "Vectorstore Mails",
+						"type": "ai_vectorStore",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Recursive Character Text Splitter": {
+			"ai_textSplitter": [
+				[
+					{
+						"node": "Default Data Loader",
+						"type": "ai_textSplitter",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When Executed by Another Workflow": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking ‘Test workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get a document",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
