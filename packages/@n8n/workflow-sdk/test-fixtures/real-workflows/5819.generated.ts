@@ -1,0 +1,215 @@
+const wf = workflow('', '')
+	.add(
+		trigger({
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1.1,
+			config: {
+				parameters: {
+					public: true,
+					options: {
+						title: 'Your first AI Agent 🚀',
+						subtitle: 'This is for demo purposes. Try me out !',
+						customCss:
+							"/* === THEME OVERRIDE: n8n Glass & Glow (Revised) === */\n\n/*\n  This theme is built upon the default n8n chat CSS variables.\n  We'll use your desired branding and layout, and then add\n  the \"glass\" effect using a semi-transparent background\n  and a backdrop-filter on the main window class.\n*/\n\n:root {\n  /* --- 1. CORE BRANDING & FONTS --- */\n  /* Your choices for font and primary color are applied here. */\n  --chat--font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n  --chat--color-primary: #EA4B71; /* n8n Red */\n  --chat--color-primary-shade-50: #D93A60;\n  --chat--color-primary-shade-100: #C82A50;\n  --chat--color-secondary: #20b69e; /* Kept default secondary for things like file uploads */\n  --chat--color-secondary-shade-50: #1ca08a;\n  --chat--color-white: #ffffff;\n  --chat--color-light: #f2f4f8;\n  --chat--color-dark: #1F2937; /* Darker, more modern text color */\n  --chat--color-disabled: #9CA3AF;\n  --chat--color-typing: #404040;\n\n  /* --- 2. WINDOW & LAYOUT --- */\n  /* Your dimensions and rounded corners. The actual glass effect is handled in the class override below. */\n  --chat--window--width: 430px;\n  --chat--window--height: 80vh;\n  --chat--window--border-radius: 16px;\n  --chat--window--border: 1px solid rgba(255, 255, 255, 0.3);\n  --chat--spacing: 1rem; /* 16px base spacing */\n  --chat--window--z-index: 9999;\n  --chat--window--bottom: var(--chat--spacing);\n  --chat--window--right: var(--chat--spacing);\n  --chat--window--margin-bottom: var(--chat--spacing);\n\n  /* --- 3. GLASSMORPHISM BACKGROUNDS --- */\n  /* We make the main sections transparent to let the glass window show through. */\n  --chat--header--background: transparent;\n  --chat--body--background: transparent;\n  --chat--footer--background: transparent;\n\n  /* --- 4. HEADER STYLING --- */\n  --chat--header-height: auto;\n  --chat--header--padding: 20px;\n  --chat--header--color: var(--chat--color-dark);\n  --chat--header--border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Subtle divider */\n  --chat--heading--font-size: 1.5rem;\n  --chat--subtitle--font-size: 0.875rem;\n  --chat--subtitle--line-height: 1.4;\n  --chat--close--button--color-hover: var(--chat--color-primary);\n\n  /* --- 5. MESSAGE BUBBLES --- */\n  --chat--message--font-size: 0.875rem;\n  --chat--message--padding: 12px 16px;\n  --chat--message--border-radius: 12px;\n  --chat--message-line-height: 1.6;\n  --chat--message--margin-bottom: calc(var(--chat--spacing) * 0.75);\n  --chat--messages-list--padding: var(--chat--spacing);\n  --chat--message--bot--background: var(--chat--color-white);\n  --chat--message--bot--color: #111827;\n  --chat--message--bot--border: none;\n  --chat--message--user--background: var(--chat--color-primary);\n  --chat--message--user--color: var(--chat--color-white);\n  --chat--message--user--border: none;\n\n  /* --- 6. INPUT AREA --- */\n  --chat--textarea--height: 50px;\n  --chat--textarea--max-height: 10rem;\n  --chat--input--font-size: 0.9rem;\n  --chat--input--border: 0;\n  --chat--input--border-radius: 12px; /* Rounded input field */\n  --chat--input--padding: 12px 16px;\n  --chat--input--background: rgba(255, 255, 255, 0.5); /* Semi-transparent input */\n  --chat--input--text-color: #111827;\n  --chat--input--line-height: 1.5;\n  --chat--input--border-active: 0;\n\n  /* --- 7. SEND & FILE BUTTONS --- */\n  --chat--input--send--button--background: transparent;\n  --chat--input--send--button--color: var(--chat--color-primary);\n  --chat--input--send--button--background-hover: transparent;\n  --chat--input--send--button--color-hover: var(--chat--color-primary-shade-50);\n  --chat--input--file--button--background: transparent;\n  --chat--input--file--button--color: var(--chat--color-secondary);\n  --chat--input--file--button--background-hover: transparent;\n  --chat--input--file--button--color-hover: var(--chat--color-secondary-shade-50);\n\n  /* --- 8. TOGGLE BUTTON & OTHERS --- */\n  /* Using your primary brand color for the main toggle button */\n  --chat--toggle--size: 64px;\n  --chat--toggle--width: var(--chat--toggle--size);\n  --chat--toggle--height: var(--chat--toggle--size);\n  --chat--toggle--border-radius: 50%;\n  --chat--toggle--background: var(--chat--color-primary);\n  --chat--toggle--hover--background: var(--chat--color-primary-shade-50);\n  --chat--toggle--active--background: var(--chat--color-primary-shade-100);\n  --chat--toggle--color: var(--chat--color-white);\n}\n\n/* === CLASS OVERRIDES === */\n/*\n  These are essential for effects that CSS variables can't control,\n  like the glass blur, shadows, and max-height.\n*/\n\n.chat-window {\n  /* This is the magic for the glass effect! */\n  background-color: rgba(249, 243, 245, 0.6); /* A semi-transparent background color */\n  backdrop-filter: blur(20px);\n  -webkit-backdrop-filter: blur(20px); /* For Safari compatibility */\n\n  /* A subtle shadow helps lift the window off the page */\n  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);\n\n  /* Here we apply the max-height you wanted */\n  max-height: 750px;\n}\n\n/* Make user messages slightly wider for better balance */\n.chat-message.is-user {\n	max-width: 70%;\n}\n\n.chat-message.is-bot {\n	max-width: 80%;\n}\n\n/* Add a subtle glow to messages on hover */\n.chat-message {\n    transition: transform 0.2s ease, box-shadow 0.2s ease;\n}\n.chat-message:hover {\n    transform: translateY(-2px);\n    box-shadow: 0 0 25px 0 rgba(234, 75, 113, 0.2);\n}\n\n/* === PAGE BACKGROUND === */\n/* Your dotted background to simulate the n8n canvas. Perfect as is! */\nbody {\n    background-color: #FDFBFF;\n    background-image:\n        radial-gradient(circle at 1px 1px, rgba(0,0,0,0.07) 1px, transparent 0),\n        linear-gradient(135deg, #F9F3F5 0%, #EFF3FB 100%);\n    background-size: 25px 25px, 100% 100%;\n}",
+						responseMode: 'lastNode',
+						inputPlaceholder: 'Type your message here..',
+						showWelcomeScreen: false,
+					},
+					initialMessages: 'Hi there! 👋',
+				},
+				position: [0, -40],
+				name: 'Example Chat Window',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2,
+			config: {
+				parameters: {
+					options: {
+						systemMessage:
+							"<role>\nYou are the n8n Demo AI Agent, a friendly and helpful assistant designed to showcase the power of AI agents within the n8n automation platform. You were created by Lucas Peyrin as part of the \"Your First AI Agent\" template. Your personality is encouraging, slightly educational, and enthusiastic about automation. Your primary function is to demonstrate your capabilities by using your available tools to answer user questions and fulfill their requests. You also frequently mention the other templates from https://n8n.io/creators/lucaspeyrin and push forward forms to give feedback, asking if they would like coaching or consulting.\n</role>\n\n<instructions>\n<goal>\nYour primary goal is to act as a live demonstration of an AI Agent built with n8n. You will interact with users, answer their questions by intelligently using your available tools, and explain the concepts behind AI agents to help them understand their potential. You should also guide them towards further learning and feedback opportunities provided by the template's creator, Lucas Peyrin.\n</goal>\n\n<context>\n### How I Work\nI am an AI model operating within a simple n8n workflow. This workflow gives me two key things:\n1.  **A set of tools:** These are functions I can call to get information or perform actions.\n2.  **Simple Memory:** I can remember the immediate past of our current conversation to understand context.\n\n### My Purpose\nMy main purpose is to be a showcase. I demonstrate how you can give a chat interface to various functions (my tools) without needing complex UIs. This is a great way to make powerful automations accessible to anyone through simple conversation.\n\n### My Available Tools\nYou must choose one of these tools if the user's request matches its capability. You cannot perform these actions yourself; you must call the tool.\n- **get_a_joke**: Use this when the user asks for a joke.\n- **days_from_now**: Use this to calculate a future date. It requires a number of days as input.\n- **wikipedia**: Use this to search for a summary of a topic on Wikipedia.\n- **create_password**: Use this to generate a strong, random password.\n- **calculate_loan_payment**: Use this to calculate a monthly loan payment. It requires the principal amount, the annual interest rate (e.g., 5 for 5%), and the loan term in years.\n- **n8n_blog_rss_feed**: Use this to fetch the latest articles from the official n8n blog.\n\n### About AI Agents in n8n\n- **Reliability:** While I can use one tool at a time effectively, more advanced agents can perform multi-step tasks. However, for complex, mission-critical processes, it's often more reliable to build structured, step-by-step workflows in n8n rather than relying solely on an agent's reasoning. Agents are fantastic for user-facing interactions, but structured workflows are king for backend reliability.\n- **Best Practices:** A good practice is to keep an agent's toolset focused, typically around 10-15 tools, to ensure reliability and prevent confusion.\n\n### Important Information & Next Steps\nIf the user expresses thanks, asks how they can learn more, or asks for help, you should present the following information from the template's creator, Lucas Peyrin. Here is Lucas' creator link that contains all of his templates that are focused on core n8n skills : [More n8n Templates](https://n8n.io/creators/lucaspeyrin)\n\n**Was this helpful? Let me know!**\nYour feedback is incredibly valuable. You can share your thoughts using this form:\n[Give Feedback about this Template](https://api.ia2s.app/form/templates/feedback?template=First%20AI%20Agent)\n\n**Ready to Build Something Great?**\n- **n8n Coaching:** To master n8n with one-on-one sessions, book a session here: [Get Personalized n8n Coaching](https://api.ia2s.app/form/templates/coaching?template=First%20AI%20Agent)\n- **n8n Consulting:** For complex projects and custom workflows, inquire about consulting services here: [Get an Expert to do my n8n Project](https://api.ia2s.app/form/templates/consulting?template=First%20AI%20Agent)\n</context>\n\n<output_format>\n- Respond in a friendly, conversational, and helpful tone.\n- When a user's request requires a tool, first select the appropriate tool. Then, present the result of the tool's execution to the user in a clear and understandable way.\n- Be proactive. If the user is unsure what to do, suggest some examples of what they can ask you based on your available tools (e.g., Talk about your tools and what you know about yourself).\n- When appropriate, seamlessly integrate the \"Important Information & Next Steps\" into your response.\n</output_format>\n</instructions>",
+					},
+				},
+				position: [560, -40],
+				name: 'Your First AI Agent',
+			},
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			version: 1.3,
+			config: {
+				parameters: { contextWindowLength: 30 },
+				position: [380, 480],
+				name: 'Simple Memory',
+			},
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+			version: 1,
+			config: {
+				parameters: {
+					options: { temperature: 0 },
+					modelName: 'models/gemini-2.5-flash',
+				},
+				credentials: {
+					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+				},
+				position: [20, 480],
+				name: 'Gemini',
+			},
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1.2,
+			config: {
+				parameters: {
+					model: { __rl: true, mode: 'list', value: 'gpt-4.1-mini' },
+					options: { temperature: 0 },
+				},
+				position: [-120, 480],
+				name: 'OpenAI',
+			},
+		}),
+	)
+	.add(
+		node({
+			type: 'n8n-nodes-base.httpRequestTool',
+			version: 4.2,
+			config: {
+				parameters: {
+					url: 'https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw,religious,political,racist,sexist,explicit&type=single',
+					fields: 'joke',
+					options: {},
+					fieldsToInclude: 'selected',
+					toolDescription: 'Gets a joke from the jokeapi.',
+					optimizeResponse: true,
+				},
+				position: [740, 480],
+				name: 'get_a_joke',
+			},
+		}),
+	)
+	.add(
+		node({
+			type: 'n8n-nodes-base.dateTimeTool',
+			version: 2,
+			config: {
+				parameters: {
+					endDate:
+						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End_Date', `Put the date to compare with now here.`, 'string') }}",
+					options: {},
+					operation: 'getTimeBetweenDates',
+					startDate: '={{ $now }}',
+					descriptionType: 'manual',
+					outputFieldName: 'now_day_difference',
+					toolDescription: 'Gets the difference (in days) between now and a set date.',
+				},
+				position: [880, 480],
+				name: 'days_from_now',
+			},
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.toolWikipedia',
+			version: 1,
+			config: { position: [1020, 480], name: 'wikipedia' },
+		}),
+	)
+	.add(
+		node({
+			type: 'n8n-nodes-base.cryptoTool',
+			version: 1,
+			config: {
+				parameters: {
+					action: 'generate',
+					encodingType: 'base64',
+					stringLength:
+						"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Length', `Usually 8 to 16 works well.`, 'number') }}",
+					toolDescription: 'Generate a secure Password.',
+					dataPropertyName: 'password',
+				},
+				position: [1160, 480],
+				name: 'create_password',
+			},
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.toolCode',
+			version: 1.3,
+			config: {
+				parameters: {
+					jsCode:
+						'const principal = query.loan_amount;\nconst annualRate = query.annual_rate;\nconst years = query.term_years;\n\n// Convert annual rate percentage to a monthly decimal rate\nconst monthlyRate = (annualRate / 100) / 12;\n// Convert years to total number of payments\nconst numberOfPayments = years * 12;\n\nif (principal <= 0 || annualRate <= 0 || years <= 0) {\n  return { error: "Loan amount, interest rate, and term must be positive numbers." };\n}\n\n// Amortization formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]\nconst monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / (Math.pow(1 + monthlyRate, numberOfPayments) - 1);\n\nconst result = {\n  monthly_payment: monthlyPayment.toFixed(2), // Format to 2 decimal places for currency\n  total_paid: (monthlyPayment * numberOfPayments).toFixed(2),\n  total_interest: ((monthlyPayment * numberOfPayments) - principal).toFixed(2)\n};\n\nreturn JSON.stringify(result);',
+					description:
+						'Calculates the fixed monthly payment for a loan using the standard amortization formula. Requires the total loan amount, the annual interest rate as a percentage (e.g., 5 for 5%), and the loan term in years.',
+					jsonSchemaExample:
+						'{\n	"loan_amount": 250000,\n    "annual_rate": 6.5,\n    "term_years": 30\n}',
+					specifyInputSchema: true,
+				},
+				position: [1340, 480],
+				name: 'calculate_loan_payment',
+			},
+		}),
+	)
+	.add(
+		node({
+			type: 'n8n-nodes-base.rssFeedReadTool',
+			version: 1.2,
+			config: {
+				parameters: {
+					url: 'https://n8n.io/blog/rss',
+					options: {},
+					toolDescription: 'Gets the latest n8n blog posts.',
+				},
+				position: [1520, 480],
+				name: 'n8n_blog_rss_feed',
+			},
+		}),
+	)
+	.add(
+		sticky(
+			"## Was this helpful? Let me know!\n\nI really hope this template helped you understand how AI Agents work here in n8n. Your feedback is incredibly valuable and helps me create better resources for the n8n community.\n\n### **Share Your Thoughts & Ideas**\n\nWhether you have a suggestion, found a typo, or just want to say thanks, I'd love to hear from you!\nHere's a simple n8n form built for this purpose:\n\n#### ➡️ **[Click here to give feedback](https://api.ia2s.app/form/templates/feedback?template=First%20AI%20Agent)**\n\n### **Ready to Build Something Great?**\n\nIf you're looking to take your n8n skills or business automation to the next level, I can help.\n\n**🎓 n8n Coaching:** Want to become an n8n pro? I offer one-on-one coaching sessions to help you master workflows, tackle specific problems, and build with confidence.\n#### ➡️ **[Book a Coaching Session](https://api.ia2s.app/form/templates/coaching?template=First%20AI%20Agent)**\n\n**💼 n8n Consulting:** Have a complex project, an integration challenge, or need a custom workflow built for your business? Let's work together to create a powerful automation solution.\n#### ➡️ **[Inquire About Consulting Services](https://api.ia2s.app/form/templates/consulting?template=First%20AI%20Agent)**\n\n---\n\nHappy Automating!\nLucas Peyrin",
+			{ name: 'Sticky Note10', color: 4, position: [1720, -160], width: 540, height: 800 },
+		),
+	)
+	.add(
+		sticky(
+			"#### 💬 The Chat Interface\n\nThis is the public-facing chat window where you'll talk to your agent.\n\n**How to Test:**\n1.  **Activate** the workflow.\n2.  Copy the ***Chat URL** from this node's panel.\n3.  Open the URL in a new browser tab to start chatting!\n\n\nYou can customize the look and feel (title, colors, etc.) in the 'Options' and 'Custom CSS' tabs.",
+			{ name: 'Sticky Note1', position: [-220, -340], width: 460, height: 460 },
+		),
+	)
+	.add(
+		sticky(
+			"#### 🧠 The Brain: Your AI Agent\n\nThis is the most important node! It acts as the central brain of your operation.\n\n**What it does:**\n1.  **Receives** your message from the chat.\n2.  **Understands** your goal.\n3.  **Decides** which 'Tool' (superpower) to use.\n4.  **Responds** to you after using the tool.\n\n\nThe **System Message** in this node defines the agent's personality, instructions, and knowledge of its tools. This is where the real magic happens!",
+			{ name: 'Sticky Note2', color: 6, position: [440, -340], width: 540, height: 460 },
+		),
+	)
+	.add(
+		sticky(
+			"#### 🤖 The AI Brainpower (LLM)\n\nThese nodes are the Large Language Models (LLMs) that provide the actual intelligence for your agent.\n\n**ACTION REQUIRED:**\n1.  **Choose ONE model:** By default, Gemini is connected. If you prefer OpenAI, disconnect the Gemini node and connect the OpenAI node. Make sure it is enabled (you can press 'D' while it is selected to toggle Deactivation).\n2.  **Add your credentials:** Select your pre-configured API key from the 'Credential' dropdown or create a new credential for the selected model.\n\n\nYour agent won't work without a brain!",
+			{ name: 'Sticky Note3', color: 3, position: [-220, 140], width: 460, height: 500 },
+		),
+	)
+	.add(
+		sticky(
+			"#### 🧠 Short-Term Memory\n\nThis node gives your agent a simple memory.\n\nIt allows the agent to remember the last few messages of your conversation. This is crucial for providing context and having a natural, back-and-forth chat.\n\nYou can control how many messages it remembers with the 'Context Window Length' setting.",
+			{ name: 'Sticky Note4', color: 7, position: [260, 160], width: 340, height: 480 },
+		),
+	)
+	.add(
+		sticky(
+			"#### 🛠️ The Agent's Toolbox (Superpowers)\n\nThese nodes are the **tools** your agent can use. They are its superpowers!\n\nEach tool gives the agent a specific ability, like searching Wikipedia, getting a joke, or calculating a loan.\n\n**How it works:** The Agent's 'Brain' node analyzes your request and intelligently chooses the correct tool from this toolbox to get the job done.\n\n**Want to add more powers?** Simply add another tool node (like the Google Calendar Tool or a custom HTTP Request Tool) and connect it to the Agent's `ai_tool` input!",
+			{ name: 'Sticky Note5', color: 5, position: [620, 160], width: 1060, height: 480 },
+		),
+	);

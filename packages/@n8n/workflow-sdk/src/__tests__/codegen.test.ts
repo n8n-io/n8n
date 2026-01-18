@@ -41,20 +41,17 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		// Should have imports
-		expect(code).toContain("import { workflow, node, trigger, sticky } from '@n8n/workflow-sdk'");
-
 		// Should have workflow declaration
 		expect(code).toContain("workflow('test-123', 'My Test Workflow'");
 
 		// Should have settings
 		expect(code).toContain("timezone: 'America/New_York'");
 
-		// Should have trigger node
-		expect(code).toContain("trigger('n8n-nodes-base.scheduleTrigger', 1.1");
+		// Should have trigger node with object format
+		expect(code).toContain("trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.1");
 
-		// Should have regular node
-		expect(code).toContain("node('n8n-nodes-base.httpRequest', 4.2");
+		// Should have regular node with object format
+		expect(code).toContain("node({ type: 'n8n-nodes-base.httpRequest', version: 4.2");
 
 		// Should have connection chain
 		expect(code).toContain('.add(');

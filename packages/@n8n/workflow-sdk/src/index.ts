@@ -93,3 +93,7 @@ export {
 	type ValidationOptions,
 	type ValidationErrorCode,
 } from './validation';
+
+// Code generation
+export { generateWorkflowCode } from './codegen';
+export { parseWorkflowCode } from './parse-workflow-code';

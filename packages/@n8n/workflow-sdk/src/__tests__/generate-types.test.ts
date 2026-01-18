@@ -759,10 +759,10 @@ describe('generate-types', () => {
 			// Should have @generated marker
 			expect(result).toContain('@generated');
 
-			// Should have KnownNodeType union
-			expect(result).toContain('KnownNodeType');
-			expect(result).toContain("'n8n-nodes-base.httpRequest'");
-			expect(result).toContain("'n8n-nodes-base.gmail'");
+			// Should have AllNodeTypes union
+			expect(result).toContain('AllNodeTypes');
+			expect(result).toContain('HttpRequestNode');
+			expect(result).toContain('GmailNode');
 		});
 	});
 

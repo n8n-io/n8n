@@ -1,0 +1,108 @@
+const wf = workflow('KzoygRKiA5FU2t6W', 'interactive code tutorial', { executionOrder: 'v1' })
+	.add(
+		trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { position: [240, 280], name: '🎯 Start Game' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: {
+				parameters: {
+					jsCode:
+						'// 🎮 Game Initialization\n// Create player profile and game state\n\nconst player = {\n  name: "n8n Apprentice",\n  level: 1,\n  xp: 0,\n  health: 100,\n  inventory: [],\n  achievements: []\n};\n\nconst gameState = {\n  currentLevel: 1,\n  totalLevels: 3,\n  startTime: new Date().toISOString(),\n  challenges: [\n    {\n      id: 1,\n      name: "Data Warrior Challenge",\n      description: "Deduplicate the corrupted database",\n      difficulty: "Beginner",\n      xpReward: 100,\n      powerUp: "Data Shield 🛡️"\n    },\n    {\n      id: 2,\n      name: "API Ninja Challenge",\n      description: "Transform and validate API responses",\n      difficulty: "Intermediate",\n      xpReward: 200,\n      powerUp: "Speed Boost ⚡"\n    },\n    {\n      id: 3,\n      name: "Automation Master Boss",\n      description: "Build a complete workflow system",\n      difficulty: "Expert",\n      xpReward: 500,\n      powerUp: "Master Badge 🏅"\n    }\n  ]\n};\n\n// Game introduction\nconst gameIntro = {\n  title: "🎮 Welcome to Code Challenge Adventure!",\n  story: "The n8n kingdom is under attack by chaotic data! As a brave code warrior, you must complete challenges to restore order and become the ultimate Automation Master!",\n  objective: "Complete all 3 levels to save the kingdom!"\n};\n\nreturn [{\n  json: {\n    ...gameIntro,\n    player,\n    gameState,\n    message: "Game initialized! Ready to start your adventure?"\n  }\n}];',
+				},
+				position: [460, 280],
+				name: 'Initialize Game',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: {
+				parameters: {
+					jsCode:
+						'// 🎲 Level 1: Data Warrior Challenge\n// Challenge: Deduplicate corrupted user database\n\nconst gameData = items[0].json;\nconst player = gameData.player;\n\n// Corrupted database with duplicates (the challenge data)\nconst corruptedUsers = [\n  { id: 1, name: "Knight Arthur", email: "user@example.com", class: "Warrior" },\n  { id: 2, name: "Wizard Merlin", email: "user@example.com", class: "Mage" },\n  { id: 3, name: "Knight Arthur", email: "user@example.com", class: "Warrior" }, // Duplicate\n  { id: 4, name: "Archer Robin", email: "user@example.com", class: "Ranger" },\n  { id: 5, name: "Rogue Shadow", email: "user@example.com", class: "Assassin" },\n  { id: 6, name: "Wizard Merlin", email: "user@example.com", class: "Mage" }, // Duplicate\n  { id: 7, name: "Paladin Grace", email: "user@example.com", class: "Healer" },\n  { id: 8, name: "Archer Robin", email: "user@example.com", class: "Ranger" } // Duplicate\n];\n\n// THE CHALLENGE: Deduplicate based on email (player must implement this logic)\n// This is the solution - in a real game, the player would need to write this\nconst cleanedUsers = corruptedUsers.filter(\n  (user, index, self) => \n    index === self.findIndex(u => u.email === user.email)\n);\n\n// Calculate challenge results\nconst originalCount = corruptedUsers.length;\nconst cleanedCount = cleanedUsers.length;\nconst duplicatesRemoved = originalCount - cleanedCount;\n\n// Determine success and rewards\nconst isSuccess = duplicatesRemoved > 0;\nconst xpGained = isSuccess ? 100 : 0;\nconst powerUp = isSuccess ? "Data Shield 🛡️" : null;\n\n// Update player stats\nif (isSuccess) {\n  player.xp += xpGained;\n  player.level = Math.floor(player.xp / 100) + 1;\n  if (powerUp) player.inventory.push(powerUp);\n  player.achievements.push("Data Warrior");\n}\n\nconst challengeResult = {\n  level: 1,\n  challengeName: "Data Warrior Challenge",\n  success: isSuccess,\n  stats: {\n    originalRecords: originalCount,\n    cleanedRecords: cleanedCount,\n    duplicatesRemoved: duplicatesRemoved\n  },\n  rewards: {\n    xp: xpGained,\n    powerUp: powerUp\n  },\n  message: isSuccess ? \n    `🎉 SUCCESS! You\'ve cleaned the corrupted database and earned ${xpGained} XP!` :\n    "💀 FAILED! The database is still corrupted. Try again!"\n};\n\nreturn [{\n  json: {\n    ...challengeResult,\n    player,\n    cleanedData: cleanedUsers,\n    nextLevel: isSuccess ? 2 : 1\n  }\n}];',
+				},
+				position: [620, 280],
+				name: '🎲 Level 1: Data Warrior',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: {
+				parameters: {
+					jsCode:
+						'// ⚔️ Level 2: API Ninja Challenge\n// Challenge: Transform and validate API responses\n\nconst gameData = items[0].json;\nconst player = gameData.player;\n\n// Mock API response with messy data (the challenge)\nconst apiResponse = {\n  users: [\n    { id: "1", full_name: "  John Doe  ", email_address: "user@example.com", age: "25", status: "active" },\n    { id: "2", full_name: "jane smith", email_address: "user@example.com", age: "invalid", status: "INACTIVE" },\n    { id: "3", full_name: "Bob Johnson", email_address: "user@example.com", age: "30", status: "active" },\n    { id: "4", full_name: "", email_address: "user@example.com", age: "22", status: "pending" },\n    { id: "5", full_name: "Alice Brown", email_address: "user@example.com", age: "28", status: "active" }\n  ]\n};\n\n// THE CHALLENGE: Transform and validate the data\n// This is the solution - in a real game, player would implement this\nconst transformedUsers = apiResponse.users.map(user => {\n  const transformed = {\n    id: parseInt(user.id),\n    name: user.full_name.trim(),\n    email: user.email_address.toLowerCase(),\n    age: parseInt(user.age) || 0,\n    status: user.status.toLowerCase(),\n    isValid: true\n  };\n  \n  // Validation rules\n  if (!transformed.name || transformed.name.length < 2) {\n    transformed.isValid = false;\n    transformed.errors = (transformed.errors || []).concat([\'Invalid name\']);\n  }\n  \n  if (!transformed.email.includes(\'@\')) {\n    transformed.isValid = false;\n    transformed.errors = (transformed.errors || []).concat([\'Invalid email\']);\n  }\n  \n  if (transformed.age < 18 || transformed.age > 120) {\n    transformed.isValid = false;\n    transformed.errors = (transformed.errors || []).concat([\'Invalid age\']);\n  }\n  \n  return transformed;\n});\n\n// Calculate challenge results\nconst validUsers = transformedUsers.filter(user => user.isValid);\nconst invalidUsers = transformedUsers.filter(user => !user.isValid);\n\nconst isSuccess = validUsers.length >= 3; // Need at least 3 valid users to pass\nconst xpGained = isSuccess ? 200 : 0;\nconst powerUp = isSuccess ? "Speed Boost ⚡" : null;\n\n// Update player stats\nif (isSuccess) {\n  player.xp += xpGained;\n  player.level = Math.floor(player.xp / 100) + 1;\n  if (powerUp) player.inventory.push(powerUp);\n  player.achievements.push("API Ninja");\n}\n\nconst challengeResult = {\n  level: 2,\n  challengeName: "API Ninja Challenge",\n  success: isSuccess,\n  stats: {\n    totalUsers: transformedUsers.length,\n    validUsers: validUsers.length,\n    invalidUsers: invalidUsers.length,\n    transformationAccuracy: Math.round((validUsers.length / transformedUsers.length) * 100)\n  },\n  rewards: {\n    xp: xpGained,\n    powerUp: powerUp\n  },\n  message: isSuccess ? \n    `⚡ SUCCESS! You\'ve mastered data transformation and earned ${xpGained} XP!` :\n    "🥷 FAILED! Your ninja skills need more practice. Try again!"\n};\n\nreturn [{\n  json: {\n    ...challengeResult,\n    player,\n    validUsers,\n    invalidUsers,\n    nextLevel: isSuccess ? 3 : 2\n  }\n}];',
+				},
+				position: [900, 280],
+				name: '⚔️ Level 2: API Ninja',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: {
+				parameters: {
+					jsCode:
+						'// 🏆 Final Boss: Automation Master Challenge\n// Challenge: Build a complete workflow system\n\nconst gameData = items[0].json;\nconst player = gameData.player;\n\n// Complex workflow challenge data\nconst workflowChallenge = {\n  tasks: [\n    { id: 1, name: "Data Ingestion", status: "pending", priority: "high", assignee: "system" },\n    { id: 2, name: "Data Validation", status: "pending", priority: "high", assignee: "validator" },\n    { id: 3, name: "Data Transformation", status: "pending", priority: "medium", assignee: "transformer" },\n    { id: 4, name: "Error Handling", status: "pending", priority: "high", assignee: "error_handler" },\n    { id: 5, name: "Data Output", status: "pending", priority: "low", assignee: "output" },\n    { id: 6, name: "Notification", status: "pending", priority: "medium", assignee: "notifier" }\n  ],\n  workflow: {\n    name: "Master Automation Pipeline",\n    steps: 6,\n    complexity: "Expert",\n    timeLimit: "5 minutes"\n  }\n};\n\n// THE FINAL CHALLENGE: Process tasks in correct order with error handling\n// This is the solution - the ultimate test of n8n skills\nconst processWorkflow = (tasks) => {\n  const results = [];\n  const errors = [];\n  \n  try {\n    // Step 1: Sort by priority (high -> medium -> low)\n    const priorityOrder = { \'high\': 3, \'medium\': 2, \'low\': 1 };\n    const sortedTasks = tasks.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);\n    \n    // Step 2: Process each task with error handling\n    sortedTasks.forEach(task => {\n      try {\n        // Simulate processing\n        const processed = {\n          ...task,\n          status: \'completed\',\n          completedAt: new Date().toISOString(),\n          processingTime: Math.random() * 1000 + 500 // Random processing time\n        };\n        \n        // Add some business logic\n        if (task.name.includes(\'Error\')) {\n          processed.errorHandlingActive = true;\n        }\n        \n        if (task.priority === \'high\') {\n          processed.fastTrack = true;\n        }\n        \n        results.push(processed);\n      } catch (error) {\n        errors.push({\n          taskId: task.id,\n          error: error.message,\n          timestamp: new Date().toISOString()\n        });\n      }\n    });\n    \n    // Step 3: Generate workflow summary\n    const summary = {\n      totalTasks: tasks.length,\n      completedTasks: results.length,\n      failedTasks: errors.length,\n      highPriorityTasks: results.filter(t => t.priority === \'high\').length,\n      averageProcessingTime: Math.round(results.reduce((sum, t) => sum + t.processingTime, 0) / results.length),\n      workflowEfficiency: Math.round((results.length / tasks.length) * 100)\n    };\n    \n    return { results, errors, summary };\n  } catch (error) {\n    return { results: [], errors: [{ general: error.message }], summary: null };\n  }\n};\n\n// Execute the workflow\nconst workflowResult = processWorkflow(workflowChallenge.tasks);\n\n// Determine success (need 100% completion and efficiency > 80%)\nconst isSuccess = workflowResult.summary && \n                  workflowResult.summary.completedTasks === workflowChallenge.tasks.length &&\n                  workflowResult.summary.workflowEfficiency >= 80;\n\nconst xpGained = isSuccess ? 500 : 0;\nconst powerUp = isSuccess ? "Master Badge 🏅" : null;\nconst finalTitle = isSuccess ? "🏆 AUTOMATION MASTER" : "🎯 Aspiring Automator";\n\n// Update player stats for final time\nif (isSuccess) {\n  player.xp += xpGained;\n  player.level = Math.floor(player.xp / 100) + 1;\n  if (powerUp) player.inventory.push(powerUp);\n  player.achievements.push("Automation Master");\n  player.title = finalTitle;\n}\n\n// Calculate final game score\nconst finalScore = player.xp + (player.achievements.length * 50);\n\nconst bossResult = {\n  level: 3,\n  challengeName: "Automation Master Boss Battle",\n  success: isSuccess,\n  workflowResult,\n  rewards: {\n    xp: xpGained,\n    powerUp: powerUp,\n    title: finalTitle\n  },\n  finalStats: {\n    totalXP: player.xp,\n    finalLevel: player.level,\n    achievements: player.achievements.length,\n    finalScore: finalScore,\n    inventory: player.inventory\n  },\n  message: isSuccess ? \n    `🎉 VICTORY! You\'ve become the ultimate Automation Master with ${finalScore} points!` :\n    "⚔️ The boss was too powerful! Train more and try again!"\n};\n\nreturn [{\n  json: {\n    ...bossResult,\n    player,\n    gameComplete: isSuccess,\n    playAgain: "Click \'Start Game\' to play again!"\n  }\n}];',
+				},
+				position: [1200, 280],
+				name: '🏆 Final Boss: Automation Master',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: {
+				parameters: {
+					jsCode:
+						'// 🎊 Game Over Screen\n// Display final results and achievements\n\nconst gameData = items[0].json;\nconst player = gameData.player;\n\n// Create achievement showcase\nconst achievementShowcase = {\n  playerName: player.name,\n  finalTitle: player.title || "n8n Apprentice",\n  totalXP: player.xp,\n  finalLevel: player.level,\n  achievements: player.achievements,\n  inventory: player.inventory,\n  gameComplete: gameData.gameComplete\n};\n\n// Generate performance report\nconst performanceReport = {\n  levelsCompleted: player.achievements.length,\n  totalChallenges: 3,\n  completionRate: Math.round((player.achievements.length / 3) * 100),\n  skillsLearned: [\n    "Data Deduplication",\n    "API Response Transformation",\n    "Workflow Automation",\n    "Error Handling",\n    "JavaScript Array Methods",\n    "n8n Code Node Mastery"\n  ],\n  nextSteps: [\n    "Explore advanced n8n nodes",\n    "Build real-world automations",\n    "Learn webhook integrations",\n    "Master database operations",\n    "Implement error handling patterns"\n  ]\n};\n\n// Create motivational message based on performance\nlet motivationalMessage = "";\nif (gameData.gameComplete) {\n  motivationalMessage = `🌟 Congratulations! You\'ve mastered the art of automation and proven yourself worthy of the title \'${player.title}\'. Your journey in n8n has just begun!`;\n} else {\n  motivationalMessage = `🎯 Great effort! You\'ve learned valuable skills and earned ${player.xp} XP. Keep practicing to become the ultimate Automation Master!`;\n}\n\n// Special rewards based on performance\nconst specialRewards = [];\nif (player.xp >= 800) specialRewards.push("🏆 Perfect Score Bonus");\nif (player.achievements.includes("Data Warrior")) specialRewards.push("🛡️ Data Protection Expert");\nif (player.achievements.includes("API Ninja")) specialRewards.push("⚡ Speed Optimization Master");\nif (player.achievements.includes("Automation Master")) specialRewards.push("🎖️ Workflow Architect");\n\n// Create final game summary\nconst gameSummary = {\n  title: "🎮 Code Challenge Adventure - Game Over!",\n  subtitle: `Final Score: ${gameData.finalStats ? gameData.finalStats.finalScore : player.xp} Points`,\n  achievementShowcase,\n  performanceReport,\n  specialRewards,\n  motivationalMessage,\n  coachingOffer: {\n    message: "Want to level up your n8n skills in real life?",\n    coaching: "👉 Book a coaching session: user@example.com",\n    consulting: "📩 Get custom automation help: user@example.com"\n  },\n  playAgain: "🔄 Ready for another adventure? Click \'Start Game\' to play again!"\n};\n\nreturn [{\n  json: gameSummary\n}];',
+				},
+				position: [1500, 280],
+				name: '🎊 Game Over Screen',
+			},
+		}),
+	)
+	.add(
+		sticky(
+			'#  Code Challenge Adventure\n\n**Author:** David Olusola\n\n## 🎯 Game Rules\n1. Complete coding challenges to earn points\n2. Each level teaches different n8n concepts\n3. Collect power-ups and achievements\n4. Beat the final boss with your coding skills!\n\n## 🚀 n8n Coaching\nLevel up your n8n skills with personalized coaching!\n👉 [Book Session](mailto:david@daexai.com?subject=n8n%20Coaching%20Request)\n\n## 🔧 n8n Consulting\nNeed custom automation solutions?\n📩 [Get Consulting](mailto:david@daexai.com?subject=n8n%20Consultation%20Request)',
+			{ name: 'Game Header', position: [-40, -60], width: 400, height: 580 },
+		),
+	)
+	.add(
+		sticky(
+			'## 🎲 Level 1: Data Warrior\n\n**Challenge:** Deduplicate the corrupted user database!\n\n**Skills Learned:**\n- Array filtering\n- Data deduplication\n- JSON manipulation\n\n**Reward:** 100 XP + Data Shield 🛡️',
+			{ name: 'Level 1 Info', position: [260, 500], width: 250, height: 330 },
+		),
+	)
+	.add(
+		sticky(
+			'## ⚔️ Level 2: API Ninja\n\n**Challenge:** Transform and validate API responses!\n\n**Skills Learned:**\n- Data transformation\n- Validation logic\n- Error handling\n\n**Reward:** 200 XP + Speed Boost ⚡',
+			{ name: 'Level 2 Info', position: [560, 500], width: 250, height: 290 },
+		),
+	)
+	.add(
+		sticky(
+			'## 🏆 Final Boss: Automation Master\n\n**Challenge:** Build a complete workflow system!\n\n**Skills Learned:**\n- Complex logic\n- Error handling\n- Performance optimization\n\n**Reward:** 500 XP + Master Badge 🏅',
+			{ name: 'Boss Info', position: [860, 380], width: 250, height: 330 },
+		),
+	)
+	.add(
+		sticky(
+			'## Game Features\n\n**🎯 3 Challenging Levels**\n- Progressive difficulty\n- Real n8n scenarios\n- Practical coding challenges\n\n**🏆 Reward System**\n- XP and level progression\n- Power-ups and achievements\n- Performance tracking\n\n**📚 Learning Outcomes**\n- Data deduplication\n- API transformation\n- Error handling\n- Workflow design\n\n**🎪 Fun Elements**\n- RPG-style progression\n- Story-driven challenges\n- Achievement badges\n- Leaderboard scoring',
+			{ name: 'Game Features', position: [920, -220], width: 460, height: 540 },
+		),
+	);

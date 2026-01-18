@@ -1,0 +1,383 @@
+const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executionOrder: 'v1' })
+	.add(
+		trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { position: [-1320, 640], name: 'When clicking ‘Test workflow’' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.executeWorkflow',
+			version: 1.2,
+			config: { position: [-800, 560], name: 'Get Brief' },
+		}),
+	)
+	.then(
+		node({
+			type: '@n8n/n8n-nodes-langchain.chainLlm',
+			version: 1.6,
+			config: { position: [-580, 560], name: 'Idea creator' },
+		}),
+	)
+	.then(
+		node({
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 1.9,
+			config: { position: [280, 560], name: 'AI Agent' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.googleSheets',
+			version: 4.6,
+			config: { position: [780, 560], name: 'Add to History' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { position: [1440, 560], name: 'Edit Fields' },
+		}),
+	)
+	.then(
+		node({
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 1.8,
+			config: { position: [2220, 560], name: 'AI Content creator' },
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: '@n8n/n8n-nodes-langchain.openAi',
+			version: 1.8,
+			config: { position: [3560, 2580], name: 'LinkedIn Image generator' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.httpRequest',
+			version: 4.2,
+			config: { position: [3800, 2580], name: 'Post image Cloudianry LIn' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.httpRequest',
+			version: 4.2,
+			config: { position: [4020, 2580], name: 'HTTP Request' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.merge',
+			version: 3.1,
+			config: { position: [4760, 2580], name: 'Merge5' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.linkedIn',
+			version: 1,
+			config: { position: [5280, 2580], name: 'LinkedIn' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.merge',
+			version: 3.1,
+			config: { position: [6720, 2540], name: 'Merge' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.aggregate',
+			version: 1,
+			config: { position: [6980, 2560], name: 'Aggregate1' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.gmail',
+			version: 2.1,
+			config: { position: [7360, 2560], name: 'Gmail' },
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: '@n8n/n8n-nodes-langchain.openAi',
+			version: 1.8,
+			config: { position: [3520, 400], name: 'IG Image generator' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.httpRequest',
+			version: 4.2,
+			config: { position: [3820, 400], name: 'Post image Cloudianry IG' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.merge',
+			version: 3.1,
+			config: { position: [4700, 420], name: 'Merge3' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.facebookGraphApi',
+			version: 1,
+			config: { position: [5140, 420], name: 'Upload media to Instagram' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.facebookGraphApi',
+			version: 1,
+			config: { position: [5420, 420], name: 'Publish Post on IG' },
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { position: [4520, 260], name: 'Edit Fields4' },
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: '@n8n/n8n-nodes-langchain.openAi',
+			version: 1.8,
+			config: { position: [3540, 1140], name: 'FB Image generator' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.httpRequest',
+			version: 4.2,
+			config: { position: [3860, 1140], name: 'Post image Cloudianry FB' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.merge',
+			version: 3.1,
+			config: { position: [4700, 1160], name: 'Merge4' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.facebookGraphApi',
+			version: 1,
+			config: { position: [5320, 1160], name: 'Facebook Post' },
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { position: [4540, 1000], name: 'Edit Fields5' },
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: '@n8n/n8n-nodes-langchain.openAi',
+			version: 1.8,
+			config: { position: [3540, 1840], name: 'X Image generator' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.httpRequest',
+			version: 4.2,
+			config: { position: [3820, 1840], name: 'Post image Cloudianry X' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.merge',
+			version: 3.1,
+			config: { position: [4420, 1860], name: 'Merge6' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.twitter',
+			version: 2,
+			config: { position: [5300, 1860], name: 'X' },
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { position: [4260, 1700], name: 'Edit Fields7' },
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { position: [4580, 2420], name: 'Edit Fields6' },
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: 'n8n-nodes-base.googleSheets',
+			version: 4.5,
+			config: { position: [4360, 3100], name: 'Add Examples' },
+		}),
+	)
+	.add(
+		trigger({
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+			version: 1.1,
+			config: { position: [340, 2080], name: 'When Executed by Another Workflow' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.notion',
+			version: 2.2,
+			config: { position: [560, 2080], name: 'Notion' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.aggregate',
+			version: 1,
+			config: { position: [780, 2080], name: 'Aggregate' },
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: { position: [1000, 2080], name: 'Edit Fields1' },
+		}),
+	)
+	.add(
+		trigger({
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1.1,
+			config: { position: [-1320, 840], name: 'When chat message received' },
+		}),
+	)
+	.add(
+		trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { position: [-1320, 440], name: 'Schedule Trigger' },
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1.2,
+			config: { position: [2060, 820], name: 'OpenAI Chat Model' },
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+			version: 2.1,
+			config: { position: [2340, 820], name: 'Get_Brand_Brief' },
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+			version: 1.2,
+			config: { position: [-400, 780], name: 'Structured Output Parser' },
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1.2,
+			config: { position: [-580, 800], name: 'OpenAI Chat Model2' },
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1.2,
+			config: { position: [220, 840], name: 'OpenAI Chat Model3' },
+		}),
+	)
+	.add(
+		node({
+			type: 'n8n-nodes-base.googleSheetsTool',
+			version: 4.6,
+			config: { position: [640, 840], name: 'Google Sheets' },
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+			version: 2.1,
+			config: { position: [440, 840], name: 'Get_Brand_Brief1' },
+		}),
+	)
+	.add(
+		node({
+			type: 'n8n-nodes-base.googleSheetsTool',
+			version: 4.5,
+			config: { position: [2500, 820], name: 'Check Examples1' },
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			version: 1.3,
+			config: { position: [2200, 820], name: 'Simple Memory' },
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+			version: 1.2,
+			config: { position: [2660, 820], name: 'Social Media Content1' },
+		}),
+	)
+	.add(
+		node({
+			type: 'n8n-nodes-base.googleDocs',
+			version: 2,
+			config: { position: [560, 2460], name: 'Google Docs' },
+		}),
+	)
+	.add(sticky('', { position: [-940, 300] }))
+	.add(sticky('', { name: 'Sticky Note1', position: [1880, 300] }))
+	.add(sticky('', { name: 'Sticky Note7', position: [-40, 1860] }))
+	.add(sticky('', { name: 'Sticky Note11', position: [5020, 320] }))
+	.add(sticky('', { name: 'Sticky Note16', position: [3280, 300] }))
+	.add(sticky('', { name: 'Sticky Note17', position: [3140, 120] }))
+	.add(sticky('', { name: 'Sticky Note21', position: [6500, 2200] }))
+	.add(sticky('', { name: 'Sticky Note22', position: [3140, 840] }))
+	.add(sticky('', { name: 'Sticky Note19', position: [3300, 1040] }))
+	.add(sticky('', { name: 'Sticky Note12', position: [5020, 1040] }))
+	.add(sticky('', { name: 'Sticky Note25', position: [3140, 1540] }))
+	.add(sticky('', { name: 'Sticky Note26', position: [3300, 1740] }))
+	.add(sticky('', { name: 'Sticky Note27', position: [3140, 2260] }))
+	.add(sticky('', { name: 'Sticky Note28', position: [3300, 2460] }))
+	.add(sticky('', { name: 'Sticky Note14', position: [5020, 2480] }))
+	.add(sticky('', { name: 'Sticky Note15', position: [5040, 1740] }))
+	.add(sticky('', { name: 'Sticky Note2', position: [4560, 1640] }))
+	.add(sticky('', { name: 'Sticky Note3', position: [400, 2340] }))
+	.add(sticky('', { name: 'Sticky Note4', position: [4120, 2940] }))
+	.add(sticky('', { name: 'Sticky Note5', position: [60, 300] }))
+	.add(sticky('', { name: 'Sticky Note6', position: [1140, 300] }))
+	.add(sticky('', { name: 'Sticky Note9', position: [-1460, 300] }))
+	.add(sticky('', { name: 'Sticky Note8', position: [6400, 160] }));

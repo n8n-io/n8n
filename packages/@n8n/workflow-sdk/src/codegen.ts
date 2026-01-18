@@ -88,10 +88,6 @@ interface NodeInfo {
 export function generateWorkflowCode(json: WorkflowJSON): string {
 	const lines: string[] = [];
 
-	// Imports
-	lines.push("import { workflow, node, trigger, sticky } from '@n8n/workflow-sdk';");
-	lines.push('');
-
 	// Build node info map
 	const nodeInfoMap = new Map<string, NodeInfo>();
 	const nodesByName = new Map<string, NodeJSON>();
@@ -197,9 +193,6 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 
 	// Close workflow declaration
 	lines.push(';');
-	lines.push('');
-	lines.push('export default wf;');
-	lines.push('');
 
 	return lines.join('\n');
 }
@@ -264,33 +257,33 @@ function generateChain(
  * Generates a node() or trigger() call for a node.
  */
 function generateNodeCall(nodeJson: NodeJSON): string {
-	const parts: string[] = [];
+	const configParts: string[] = [];
 
 	// Parameters
 	if (nodeJson.parameters && Object.keys(nodeJson.parameters).length > 0) {
-		parts.push(`parameters: ${formatValue(nodeJson.parameters, 2)}`);
+		configParts.push(`parameters: ${formatValue(nodeJson.parameters, 2)}`);
 	}
 
 	// Credentials
 	if (nodeJson.credentials && Object.keys(nodeJson.credentials).length > 0) {
-		parts.push(`credentials: ${formatValue(nodeJson.credentials, 2)}`);
+		configParts.push(`credentials: ${formatValue(nodeJson.credentials, 2)}`);
 	}
 
 	// Position (only if non-zero)
 	if (nodeJson.position && (nodeJson.position[0] !== 0 || nodeJson.position[1] !== 0)) {
-		parts.push(`position: [${nodeJson.position[0]}, ${nodeJson.position[1]}]`);
+		configParts.push(`position: [${nodeJson.position[0]}, ${nodeJson.position[1]}]`);
 	}
 
 	// Name (if different from type)
 	const defaultName = nodeJson.type.split('.').pop() ?? nodeJson.type;
 	if (nodeJson.name !== defaultName) {
-		parts.push(`name: '${escapeString(nodeJson.name)}'`);
+		configParts.push(`name: '${escapeString(nodeJson.name)}'`);
 	}
 
-	const config = parts.length > 0 ? `, { ${parts.join(', ')} }` : '';
 	const fn = isTriggerNode(nodeJson) ? 'trigger' : 'node';
+	const configStr = configParts.length > 0 ? `{ ${configParts.join(', ')} }` : '{}';
 
-	return `${fn}('${escapeString(nodeJson.type)}', ${nodeJson.typeVersion}${config})`;
+	return `${fn}({ type: '${escapeString(nodeJson.type)}', version: ${nodeJson.typeVersion}, config: ${configStr} })`;
 }
 
 /**
@@ -300,6 +293,10 @@ function generateStickyCall(nodeJson: NodeJSON): string {
 	const content = (nodeJson.parameters?.content as string) ?? '';
 	const options: string[] = [];
 
+	// Name (if different from default 'Sticky Note')
+	if (nodeJson.name && nodeJson.name !== 'Sticky Note') {
+		options.push(`name: '${escapeString(nodeJson.name)}'`);
+	}
 	if (nodeJson.parameters?.color !== undefined) {
 		options.push(`color: ${nodeJson.parameters.color}`);
 	}

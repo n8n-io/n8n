@@ -1,0 +1,397 @@
+const wf = workflow('AJch0Bi1L5u67nRO', 'Fathom Meeting Summary & Actions AI Agent', {
+	callerPolicy: 'workflowsFromSameOwner',
+	errorWorkflow: 'NrO9p0iGYkywEkTP',
+	executionOrder: 'v1',
+})
+	.add(
+		trigger({
+			type: 'n8n-nodes-base.webhook',
+			version: 2.1,
+			config: {
+				parameters: {
+					path: '2fab6c8f-ade4-49ba-b160-7cf6aa11cb15',
+					options: { rawBody: true, binaryPropertyName: 'data' },
+					httpMethod: 'POST',
+				},
+				position: [-560, -96],
+				name: 'Get Fathom Meeting',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: {
+				parameters: {
+					jsCode:
+						"// Minimal formatter: merged transcript turns with per-line timestamps\n\nconst b = $json.body ?? $json ?? {};\nconst toStr = (v) => (typeof v === 'string' ? v.trim() : (v ?? '') + '');\nconst tsToSec = (ts) => {\n  const m = typeof ts === 'string' && ts.match(/^(\\d{2}):(\\d{2}):(\\d{2})$/);\n  if (!m) return 0;\n  const [, hh, mm, ss] = m;\n  return (+hh) * 3600 + (+mm) * 60 + (+ss);\n};\nconst uniqBy = (arr, keyFn) => {\n  const seen = new Set();\n  return arr.filter(x => {\n    const key = keyFn(x);\n    if (seen.has(key)) return false;\n    seen.add(key);\n    return true;\n  });\n};\n\n// ---- Attendees (optional) ----\nconst invitees = Array.isArray(b.calendar_invitees) ? b.calendar_invitees : [];\nconst attendeesRaw = [\n  ...invitees.map(i => ({\n    name: toStr(i.name) || toStr(i.matched_speaker_display_name) || 'Unknown',\n    email: toStr(i.email) || null,\n    role: 'Attendee',\n  })),\n  ...(b.recorded_by ? [{\n    name: toStr(b.recorded_by.name) || 'Unknown',\n    email: toStr(b.recorded_by.email) || null,\n    role: 'Host',\n  }] : []),\n];\nconst attendees = uniqBy(attendeesRaw, a => a.email ? `e:${a.email.toLowerCase()}` : `n:${a.name.toLowerCase()}`);\n\n// ---- Per-line → normalize + sort ----\nconst tItems = Array.isArray(b.transcript) ? b.transcript : [];\nconst lines = tItems\n  .map(i => ({\n    timestamp: toStr(i?.timestamp) || '00:00:00',\n    seconds: tsToSec(toStr(i?.timestamp)),\n    speaker: toStr(i?.speaker?.display_name) || 'Unknown',\n    email: toStr(i?.speaker?.matched_calendar_invitee_email) || null,\n    text: toStr(i?.text),\n  }))\n  .filter(x => x.text)\n  .sort((a, c) => a.seconds - c.seconds)\n  .map(({ seconds, ...rest }) => rest);\n\n// ---- Merge consecutive lines by the same person, but keep per-line timestamps ----\nconst norm = s => (s || '').trim().replace(/\\s+/g, ' ').toLowerCase();\nconst samePerson = (a, b) => {\n  const ae = (a.email || '').toLowerCase();\n  const be = (b.email || '').toLowerCase();\n  if (ae && be) return ae === be;\n  const an = norm(a.speaker);\n  const bn = norm(b.speaker);\n  if (!ae && !be && (an === 'unknown' || bn === 'unknown')) return false;\n  return an === bn;\n};\n\nconst transcript_merged = [];\nfor (const line of lines) {\n  const last = transcript_merged[transcript_merged.length - 1];\n  const entry = { ts: line.timestamp, text: line.text.trim() };\n\n  if (last && samePerson(last, line)) {\n    last.lines.push(entry);                 // keep per-line timestamps\n    last.texts.push(entry.text);            // backwards-compat (array of strings)\n    last.end_timestamp = line.timestamp;\n  } else {\n    transcript_merged.push({\n      speaker: line.speaker,\n      email: line.email || null,\n      start_timestamp: line.timestamp,\n      end_timestamp: line.timestamp,\n      start_seconds: tsToSec(line.timestamp),\n      lines: [entry],                       // <-- preferred for HTML rendering\n      texts: [entry.text],                  // <-- legacy compatibility\n    });\n  }\n}\n\n// ---- Pretty text (one line per turn; keeps the start ts for the turn) ----\nconst SENTENCE_SEP = '  ';\nconst transcript_text = transcript_merged\n  .map(m => `[${m.start_timestamp}] ${m.speaker}${m.email ? ` <${m.email}>` : ''}: ${m.lines.map(x => x.text).join(SENTENCE_SEP)}`)\n  .join('\\n');\n\n// ---- Output ----\nreturn {\n  json: {\n    meeting_title: toStr(b.meeting_title) || toStr(b.title) || null,\n    attendees,\n    scheduled_start_time: toStr(b.scheduled_start_time) || null,\n    scheduled_end_time: toStr(b.scheduled_end_time) || null,\n    recording_start_time: toStr(b.recording_start_time) || null,\n    recording_end_time: toStr(b.recording_end_time) || null,\n    recording_url: toStr(b.share_url) || toStr(b.url) || null,\n    transcript_merged,          // now includes lines[{ts,text}] + texts[]\n    transcript_text,            // still available if you need it\n    // summary_markdown: toStr(b?.default_summary?.markdown_formatted) || null, // optional\n  }\n};\n",
+				},
+				position: [-368, -96],
+				name: 'Format Key Parts',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.if',
+			version: 2.2,
+			config: {
+				parameters: {
+					options: {},
+					conditions: {
+						options: {
+							version: 2,
+							leftValue: '',
+							caseSensitive: true,
+							typeValidation: 'strict',
+						},
+						combinator: 'and',
+						conditions: [
+							{
+								id: 'validation-check-1',
+								operator: { type: 'string', operation: 'notEmpty', singleValue: true },
+								leftValue: '={{ JSON.stringify($json.transcript_merged) }}',
+								rightValue: '',
+							},
+							{
+								id: 'validation-check-2',
+								operator: { type: 'number', operation: 'gte' },
+								leftValue: '={{ $json.transcript_merged.length }}',
+								rightValue: 3,
+							},
+						],
+					},
+				},
+				position: [-176, -96],
+				name: 'Transcript Present?',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: '@n8n/n8n-nodes-langchain.chainLlm',
+			version: 1.7,
+			config: {
+				parameters: {
+					text: "=For the meeting transcript provided at the bottom, please follow the below template to write your reviewing comments about the meeting.\nNote that if there are sections below that you cannot identify in the transcript, then simply mention \"None identified in the transcript\"\n\n---\n\nMeeting:\nHeader line, nicely formatted and using the information exactly as provided.\nUse the official meeting title here (if provided): '{{ $json.meeting_title }}'\nOr, if there is no meeting title provided, create a title based on your analysis of the raw transcript provided at the end.\n\nRecording URL:\n{{ $json.recording_url }}\n\nScheduled Start Date/Time and End Time:\nFormatted as 'DD-MM-YYYY - HH:MM to HH:MM': {{ $json.scheduled_start_time }} - {{ $json.scheduled_end_time }} \n\nRecording Start Date/Time and End Time:\nFormatted as 'DD-MM-YYYY - HH:MM to HH:MM': {{ $json.recording_start_time }} - {{ $json.recording_end_time }}\n\n---\n\nAttendees:\n- names and email addresses, where available\nAttendee official list:{{ JSON.stringify($json.attendees) }}\nAlso check the transcript to identify additional speakers where possible\n\n\nExecutive Summary:\n- {1–5 sentences, no fluff. What’s the meeting about, key outcome(s), and immediate next step(s)?} \n\nKey Points:\n- {Concise point}.\n- {Another concise point}.\n(8 bullets max, but less is fine if more effective)\n\nAction Items:\n- List of each action item with any mentioned Owner, Due Date, Priority, and Source\n\nKey Decisions Made:\n- Decision:** {What was decided}. (By {who}, if stated) \n(6 bullets max, but less is fine if more effective)\n\n\nKey Risks / Concerns:\n- {Risk/issue}: {Context or impact in 1 line}\n(6 items maximum, but less is fine if more effective)\n\nOpen Questions:\n- {Question asked or unresolved point}\n- {Any missing info needed to proceed}\n(6 items maximum, but less is fine if more effective)\n\nEntities & References (quick extract):\n- People: {names}  \n- Organizations/Places: {entities}  \n- Numbers & Dates Mentioned (with brief context of why any numbers and dates are provided): {normalize money, dates, durations if present}\n\n\n**For Key Points, Action Items, Decisions, Risks/Concerns, Open Questions: return a single string. If items exist, output them as newline-separated lines (no bullets/numbers). If none, return the exact string “None identified in the transcript”.**\n\n---\n\n*** HERE IS THE TRANSCRIPT: ***\n\n{{ JSON.stringify($json.transcript_merged) }}",
+					batching: {},
+					messages: {
+						messageValues: [
+							{
+								message:
+									'You are an expert meeting analyst. Produce a concise, executive-quality report from the transcript. Be precise, non-fluffy, and focus on important takeaways and outcomes from the meeting.',
+							},
+						],
+					},
+					promptType: 'define',
+					hasOutputParser: true,
+				},
+				position: [96, -144],
+				name: 'AI Meeting Analysis',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.set',
+			version: 3.4,
+			config: {
+				parameters: {
+					options: {},
+					assignments: {
+						assignments: [
+							{
+								id: '180a6cda-50cc-4533-91a8-0736d1a9cd1f',
+								name: "output['Meeting Title']",
+								type: 'string',
+								value:
+									'={{ $json.output["Meeting Title"] + " - " + $json.output["Scheduled Date/Time"].replace(/:/g, "-") }}',
+							},
+							{
+								id: '957ef493-cd8b-4359-bb67-25206ac2a6f1',
+								name: "output['Recording URL']",
+								type: 'string',
+								value: "={{ $json.output['Recording URL'] }}",
+							},
+							{
+								id: '38301e62-074a-4206-824a-64b37da4dd91',
+								name: "output['Scheduled Time']",
+								type: 'string',
+								value: "={{ $json.output['Scheduled Date/Time'] }}",
+							},
+							{
+								id: '9b4fa931-0fce-4882-91b2-0af0523005ae',
+								name: "output['Recording Time']",
+								type: 'string',
+								value: "={{ $json.output['Recording Date/Time'] }}",
+							},
+							{
+								id: '38605fc1-6c2d-4d4a-b2a5-597197dc3bd1',
+								name: 'output.Attendees',
+								type: 'string',
+								value: '={{ $json.output.Attendees }}',
+							},
+							{
+								id: 'bd1f7948-0e94-4834-9066-bb92901a3867',
+								name: "output['Executive Summary']",
+								type: 'string',
+								value: "={{ $json.output['Executive Summary'] }}",
+							},
+							{
+								id: '2757b576-8558-4089-9c6b-9782a42c32ca',
+								name: "output['Key Points']",
+								type: 'string',
+								value: "={{ $json.output['Key Points'] }}",
+							},
+							{
+								id: '38b5bebe-b7ad-4e03-bbb9-64818b18cde6',
+								name: "output['Action Items']",
+								type: 'string',
+								value: "={{ $json.output['Action Items'] }}",
+							},
+							{
+								id: 'd07cb155-8799-4110-a244-f052471614e5',
+								name: 'output.Decisions',
+								type: 'string',
+								value: '={{ $json.output.Decisions }}',
+							},
+							{
+								id: '7a63e1ae-209e-4d6b-a042-3e59b7f1fe1d',
+								name: "output['Risks/Concerns']",
+								type: 'string',
+								value: "={{ $json.output['Risks/Concerns'] }}",
+							},
+							{
+								id: '4ea08434-1d26-4a05-95d8-12bf2270a4a3',
+								name: "output['Open Questions']",
+								type: 'string',
+								value: "={{ $json.output['Open Questions'] }}",
+							},
+							{
+								id: '20424379-7edc-4f43-b304-814dff3e713e',
+								name: "output['Entities — People']",
+								type: 'string',
+								value: "={{ $json.output['Entities — People'] }}",
+							},
+							{
+								id: 'd7eb163b-2de3-4dc7-bc8a-70b2bbef2ea1',
+								name: "output['Entities — Orgs/Places']",
+								type: 'string',
+								value: "={{ $json.output['Entities — Orgs/Places'] }}",
+							},
+							{
+								id: 'a8b13e21-867c-49c1-a920-237317be64d9',
+								name: "output['Entities — Numbers/Dates']",
+								type: 'string',
+								value: "={{ $json.output['Entities — Numbers/Dates'] }}",
+							},
+							{
+								id: 'e7438bd6-dec3-4162-a66a-fe7fa5e17056',
+								name: 'transcript_merged',
+								type: 'array',
+								value: "={{ $('Format Key Parts').item.json.transcript_merged }}",
+							},
+						],
+					},
+				},
+				position: [432, -112],
+				name: 'Set Fields',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: {
+				parameters: {
+					jsCode:
+						'// --- helpers ---\nconst esc = (s=\'\') => s.replace(/[&<>]/g, c => ({\'&\':\'&amp;\',\'<\':\'&lt;\',\'>\':\'&gt;\'}[c]));\nconst nl2li = s => s.split(\'\\n\').map(x=>`<li>${esc(x.replace(/^-+\\s?/, \'\'))}</li>`).join(\'\');\nconst chunk = (arr, n=3) => arr.reduce((a,_,i)=>(i%n?a[a.length-1].push(arr[i]):a.push([arr[i]]),a),[]);\n\n// --- inputs ---\nconst o = $json.output; // summary sections\nconst turns = ($node["Set Fields"]?.json?.transcript_merged) || $json.transcript_merged || [];\n\n// --- transcript (speaker change + every 3 sentences; timestamp from first sentence in chunk) ---\nlet transcriptHtml = \'—\';\nif (Array.isArray(turns) && turns.length) {\n  transcriptHtml = turns.map(t => {\n    const parts = chunk((t.lines || []).filter(x => x && x.text), 3);\n    return parts.map(group => {\n      const stamp = group[0]?.ts || t.start_timestamp;\n      const text = group.map(x => (x.text || \'\').trim()).join(\' \');\n      // email intentionally omitted\n      return `<strong>[${esc(stamp)}] ${esc(t.speaker)}:</strong> ${esc(text)}<br>`;\n    }).join(\'\');\n  }).join(\'\\n\');\n}\n\n// --- HTML (H2/H3/H4; compact, readable) ---\nconst html = `\n  <h2>${esc(o["Meeting Title"])}</h2><br>\n\n  <h3>Scheduled Time</h3><p>${esc(o["Scheduled Time"])}</p><br>\n  <h3>Recording Time</h3><p>${esc(o["Recording Time"])}</p><br>\n  <h3>Recording URL</h3><p>${o["Recording URL"] === "None identified in the transcript" ? "—" : `<a href="${esc(o["Recording URL"])}">${esc(o["Recording URL"])}</a>`}</p><br>\n\n  <h3>Attendees</h3><ul>${nl2li(o["Attendees"])}</ul><br>\n  <h3>Executive Summary</h3><p>${esc(o["Executive Summary"])}</p><br>\n  <h3>Key Points</h3><ul>${nl2li(o["Key Points"])}</ul><br>\n  <h3>Action Items</h3><ul>${nl2li(o["Action Items"])}</ul><br>\n  <h3>Decisions</h3><ul>${nl2li(o["Decisions"])}</ul><br>\n  <h3>Risks/Concerns</h3><ul>${nl2li(o["Risks/Concerns"])}</ul><br>\n  <h3>Open Questions</h3><ul>${nl2li(o["Open Questions"])}</ul><br>\n\n  <h3>Entities</h3>\n  <h4>People</h4><ul>${nl2li(o["Entities — People"])}</ul>\n  <h4>Orgs/Places</h4><ul>${nl2li(o["Entities — Orgs/Places"])}</ul>\n  <h4>Numbers/Dates</h4><ul>${nl2li(o["Entities — Numbers/Dates"])}</ul><br>\n\n  <br><br><hr><br>\n  <h3>Full Transcript</h3>\n  ${transcriptHtml}\n`.trim();\n\n// -> Binary for Drive Upload (Convert to Google Doc = ON)\nconst filename = `${o["Meeting Title"]} - Meeting Notes.html`;\nconst buf = Buffer.from(html, \'utf8\');\nconst data = await this.helpers.prepareBinaryData(buf, filename, \'text/html\');\nreturn [{ json: { filename }, binary: { data } }];\n',
+				},
+				position: [704, -112],
+				name: 'Create as HTML',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.googleDrive',
+			version: 3,
+			config: {
+				parameters: {
+					name: '={{ $json.filename }}',
+					driveId: { __rl: true, mode: 'list', value: 'My Drive' },
+					options: {},
+					folderId: {
+						__rl: true,
+						mode: 'list',
+						value: 'root',
+						cachedResultUrl: 'https://drive.google.com/drive',
+						cachedResultName: '/ (Root folder)',
+					},
+				},
+				credentials: {
+					googleDriveOAuth2Api: {
+						id: 'credential-id',
+						name: 'googleDriveOAuth2Api Credential',
+					},
+				},
+				position: [912, -112],
+				name: 'Upload File as HTML',
+			},
+		}),
+	)
+	.then(
+		node({
+			type: 'n8n-nodes-base.httpRequest',
+			version: 4.2,
+			config: {
+				parameters: {
+					url: '=https://www.googleapis.com/drive/v3/files/{{ $json.id }}/copy',
+					method: 'POST',
+					options: {},
+					jsonBody:
+						'={\n    "name": "{{ $json.name.replace(\'.html\', \'\') }}",\n    "mimeType": "application/vnd.google-apps.document"\n  }',
+					sendBody: true,
+					sendHeaders: true,
+					specifyBody: 'json',
+					authentication: 'predefinedCredentialType',
+					headerParameters: {
+						parameters: [{ name: 'Content-Type', value: 'application/json' }],
+					},
+					nodeCredentialType: 'googleDriveOAuth2Api',
+				},
+				credentials: {
+					googleDriveOAuth2Api: {
+						id: 'credential-id',
+						name: 'googleDriveOAuth2Api Credential',
+					},
+				},
+				position: [1120, -112],
+				name: 'Convert to Google Doc',
+			},
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: 'n8n-nodes-base.googleDrive',
+			version: 3,
+			config: {
+				parameters: {
+					fileId: {
+						__rl: true,
+						mode: 'id',
+						value: "={{ $('Upload File as HTML').item.json.id }}",
+					},
+					options: { deletePermanently: true },
+					operation: 'deleteFile',
+				},
+				credentials: {
+					googleDriveOAuth2Api: {
+						id: 'credential-id',
+						name: 'googleDriveOAuth2Api Credential',
+					},
+				},
+				position: [1344, 16],
+				name: 'Delete HTML File',
+			},
+		}),
+	)
+	.output(0)
+	.then(
+		node({
+			type: 'n8n-nodes-base.httpRequest',
+			version: 4.2,
+			config: {
+				parameters: {
+					url: '=https://docs.googleapis.com/v1/documents/{{$node["Convert to Google Doc"].json.id}}:batchUpdate',
+					method: 'POST',
+					options: {},
+					jsonBody:
+						'{\n  "requests": [\n    {\n      "updateDocumentStyle": {\n        "documentStyle": {\n          "marginTop":    {"magnitude": 36, "unit": "PT"},\n          "marginBottom": {"magnitude": 36, "unit": "PT"},\n          "marginLeft":   {"magnitude": 36, "unit": "PT"},\n          "marginRight":  {"magnitude": 36, "unit": "PT"}\n        },\n        "fields": "marginTop,marginBottom,marginLeft,marginRight"\n      }\n    }\n  ]\n}\n',
+					sendBody: true,
+					sendHeaders: true,
+					specifyBody: 'json',
+					authentication: 'predefinedCredentialType',
+					headerParameters: {
+						parameters: [{ name: 'Content-Type', value: 'application/json' }],
+					},
+					nodeCredentialType: 'googleDriveOAuth2Api',
+				},
+				credentials: {
+					googleDriveOAuth2Api: {
+						id: 'credential-id',
+						name: 'googleDriveOAuth2Api Credential',
+					},
+				},
+				position: [1344, -160],
+				name: 'Improve Page Layout',
+			},
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+			version: 1,
+			config: {
+				parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
+				credentials: {
+					googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+				},
+				position: [96, 16],
+				name: 'Google Gemini Chat Model',
+			},
+		}),
+	)
+	.add(
+		node({
+			type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+			version: 1.3,
+			config: {
+				parameters: {
+					jsonSchemaExample:
+						'{\n  "Meeting Title": "Test call",\n  "Recording URL": "https://fathom.video/share/745cvtcxSXKb7YyfDMiyzMChZ3AsoGad",\n  "Scheduled Date/Time": "30-01-2025, 12:15 to 12:30",\n  "Recording Date/Time": "30-01-2025, 12:16 to 12:16",\n  "Attendees": "John Doe <user@example.com> (Attendee)",\n  "Executive Summary": "Single-speaker intro explaining that Fathom auto-records meetings, captures key moments and action items, and allows manual highlights. No concrete decisions or actions were stated.",\n  "Key Points": "Fathom auto-records and captures important moments and action items.\\nPost-meeting summaries are delivered quickly.\\nManual highlight button available for special moments.",\n  "Action Items": "Send John 2-3 specific YouTube video links.\\nGet automation engineer to review Sheets integration Mon-Tue.",\n  "Decisions": "Emmily to update feature on the contact page.\\nJohn will speak to Jess about product development roadmap.",\n  "Risks/Concerns": "John mentioned development pace is slow in January meaning a late release date is likely.",\n  "Open Questions": "What\'s the status of the Hubspot implementation?\\nNone identified in the transcript.",\n  "Entities — People": "Emmily Bowman; John Doe",\n  "Entities — Orgs/Places": "Fathom",\n  "Entities — Numbers/Dates": "30 seconds"\n}\n',
+				},
+				position: [272, 16],
+				name: 'Structured Output Parser',
+			},
+		}),
+	)
+	.add(
+		sticky(
+			"## Capture Meeting and Validate\nGet all Fathom meeting data, extract + format relevant contents, and validate there's transcript data before triggering the Gemini API request.",
+			{ position: [-624, -272], width: 640, height: 464 },
+		),
+	)
+	.add(
+		sticky(
+			'## Perform Meeting Analysis (AI)\nConduct full analysis of the meeting transcript and associated data, and create the meeting notes (summary, actions, etc.).',
+			{ name: 'Sticky Note1', color: 6, position: [32, -272], width: 576, height: 464 },
+		),
+	)
+	.add(
+		sticky(
+			'## Convert to HTML Output and Upload to Google Drive\nGet all the meeting data + the newly generated meeting notes (from Gemini), create in HTML format (with correct MIME type for HTML rendering), create as Google Doc, and delete HTML file.',
+			{ name: 'Sticky Note2', color: 3, position: [624, -272], width: 944, height: 464 },
+		),
+	)
+	.add(
+		sticky(
+			'# **Fathom Meeting Summary & Actions AI Agent**\n  *Transcript → Analysis → Formatted Doc, automatically*\n\nThis workflow automatically converts Fathom meeting transcripts into beautifully formatted Google Docs with AI-generated summaries, key points, decisions, and action items.\n\n  **Good to know**\n  - Works fully with Fathom free account\n  - Webhook responds immediately to prevent Fathom timeout and duplicate triggers\n  - Validates transcript quality (3+ conversation turns) before AI processing to save costs\n  - Uses Google Gemini API (generous free tier and rate limits, typically enough to avoid paying for API requests, but check latest pricing at [Google AI Pricing](https://ai.google.dev/pricing))\n  - Creates temporary HTML file that\'s auto-deleted after conversion\n\n  ## Who\'s it for\n  Individuals or teams using Fathom for meetings who want more control and flexibility with their AI meeting analysis and storage independently of Fathom, as well as automatic, formatted documentation without manual note-taking. Perfect for recurring syncs, client meetings, or interview debriefs.\n\n  ## How it works\n  1. Fathom webhook triggers when meeting ends and sends transcript data\n  2. Validates transcript has meaningful conversation (3+ turns)\n  3. Google Gemini AI analyzes transcript and generates structured summary (key points, decisions, actions, next steps)\n  4. Creates formatted HTML with proper styling\n  5. Uploads to Google Drive and converts to native Google Doc\n  6. Reduces page margins for readability and deletes temporary HTML file\n\n  ## Requirements\n  - Fathom account with API webhook access (available on free tier)\n  - Google Drive account (OAuth2)\n  - Google Docs account (OAuth2)\n  - Google Gemini API key ([Get free key here](https://makersuite.google.com/app/apikey))\n\n  ## How to set up\n  1. Add credentials: Google Drive OAuth2, Google Docs OAuth2, Google Gemini API\n  2. Copy the webhook URL from the Get Fathom Meeting webhook node (Test URL first, change to Production URL when ready)\n  3. In Fathom: Settings → API Access → Add → Add webhook URL and select all events including "Transcript"\n  4. Test with a short meeting, verify Google Doc appears in Drive\n  5. Activate workflow\n\n  ## Customizing this workflow\n  - **Change save location**: Edit "Upload File as HTML" node → update "Parent Folder"\n  - **Modify AI output**: Edit "AI Meeting Analysis" node → customize the prompt to add/remove sections (e.g., risks, follow-ups, sentiment, etc)\n  - **Adjust document margins**: Edit "Reduce Page Margins" node → change margin pixel values\n  - **Add notifications**: E.g. add Slack/Email node after "Convert to Google Doc" to notify team when summary is ready',
+			{ name: 'Sticky Note3', color: 7, position: [-1472, -736], width: 816, height: 1168 },
+		),
+	)
+	.add(
+		sticky(
+			'  ## **Quick Troubleshooting**\n  * **"Transcript Present?" fails**: Fathom must send `transcript_merged` with 3+ conversation turns (i.e. only send to Gemini for analysis if there\'s a genuine transcript)\n  * **HTML as plain text**: Check "Convert to Google Doc" uses POST to `/copy` endpoint\n  * **401/403 errors**: Re-authorize Google credentials\n  * **Inadequate meeting notes**: Edit prompts in "AI Meeting Analysis" node',
+			{ name: 'Sticky Note7', color: 7, position: [224, -496], width: 640, height: 192 },
+		),
+	)
+	.add(
+		sticky(
+			'## Sample File and Storage Output\n- [Google Doc meeting notes - sample](https://docs.google.com/document/d/1tCC90dIpgb8NtuOJ_jSTCPn4MxORB-XcvwdeljYzC9w/edit?usp=drive_link)\n- Google Drive sample folder output:\n![](https://i.postimg.cc/MH8Vtny4/Sample-Google-Drive-Output.png)',
+			{ name: 'Sticky Note4', color: 7, position: [-624, -640], width: 816, height: 336 },
+		),
+	);
