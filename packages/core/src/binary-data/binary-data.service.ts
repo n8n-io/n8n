@@ -21,6 +21,10 @@ export class BinaryDataService {
 
 	private managers: Record<string, BinaryData.Manager> = {};
 
+	private managerLoaders: Record<string, BinaryData.ManagerLoader> = {};
+
+	private loadingPromises: Map<string, Promise<BinaryData.Manager>> = new Map();
+
 	constructor(
 		private readonly config: BinaryDataConfig,
 		private readonly errorReporter: ErrorReporter,
@@ -31,17 +35,29 @@ export class BinaryDataService {
 		this.managers[mode] = manager;
 	}
 
+	registerLoader(mode: string, loader: BinaryData.ManagerLoader) {
+		this.managerLoaders[mode] = loader;
+	}
+
 	async init() {
 		const { config } = this;
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
-		const { FileSystemManager } = await import('./file-system.manager');
-		this.managers.filesystem = new FileSystemManager(config.localStoragePath, this.errorReporter);
-		this.managers['filesystem-v2'] = this.managers.filesystem;
-		await this.managers.filesystem.init();
+		this.registerLoader('filesystem', async () => {
+			const { FileSystemManager } = await import('./file-system.manager');
+			return new FileSystemManager(config.localStoragePath, this.errorReporter);
+		});
 
-		// DB and S3 managers are set via `setManager()` from `cli`
+		// Eagerly load only the configured write mode (filesystem-v2)
+		if (this.mode === 'filesystem-v2') {
+			const loader = this.managerLoaders['filesystem'];
+			if (loader) {
+				await this.loadManager('filesystem', loader);
+			}
+		}
+
+		// DB and S3 loaders will be registered from cli package
 	}
 
 	createSignedToken(binaryData: IBinaryData, expiresIn: TimeUnitValue = '1 day') {
@@ -127,30 +143,34 @@ export class BinaryDataService {
 
 	async getAsStream(binaryDataId: string, chunkSize?: number) {
 		const [mode, fileId] = binaryDataId.split(':');
+		const manager = await this.getManager(mode);
 
-		return await this.getManager(mode).getAsStream(fileId, chunkSize);
+		return await manager.getAsStream(fileId, chunkSize);
 	}
 
 	async getAsBuffer(binaryData: IBinaryData) {
 		if (binaryData.id) {
 			const [mode, fileId] = binaryData.id.split(':');
+			const manager = await this.getManager(mode);
 
-			return await this.getManager(mode).getAsBuffer(fileId);
+			return await manager.getAsBuffer(fileId);
 		}
 
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
-	getPath(binaryDataId: string) {
+	async getPath(binaryDataId: string): Promise<string> {
 		const [mode, fileId] = binaryDataId.split(':');
+		const manager = await this.getManager(mode);
 
-		return this.getManager(mode).getPath(fileId);
+		return manager.getPath(fileId);
 	}
 
 	async getMetadata(binaryDataId: string) {
 		const [mode, fileId] = binaryDataId.split(':');
+		const manager = await this.getManager(mode);
 
-		return await this.getManager(mode).getMetadata(fileId);
+		return await manager.getMetadata(fileId);
 	}
 
 	async deleteMany(locations: BinaryData.FileLocation[]) {
@@ -220,7 +240,7 @@ export class BinaryDataService {
 	}
 
 	async rename(oldFileId: string, newFileId: string) {
-		const manager = this.getManager(this.mode);
+		const manager = await this.getManager(this.mode);
 
 		if (!manager) return;
 
@@ -275,11 +295,49 @@ export class BinaryDataService {
 		return executionData;
 	}
 
-	private getManager(mode: string) {
-		const manager = this.managers[mode];
+	async getManager(mode: string): Promise<BinaryData.Manager> {
+		if (this.managers[mode]) return this.managers[mode];
 
-		if (manager) return manager;
+		const loadingPromise = this.loadingPromises.get(mode);
+		if (loadingPromise) return await loadingPromise;
 
-		throw new InvalidManagerError(mode);
+		const loaderMode = mode === 'filesystem-v2' ? 'filesystem' : mode;
+		const loader = this.managerLoaders[loaderMode];
+		if (!loader) {
+			throw new InvalidManagerError(mode);
+		}
+
+		const promise = this.loadManager(loaderMode, loader);
+		this.loadingPromises.set(mode, promise);
+
+		try {
+			const manager = await promise;
+			return manager;
+		} finally {
+			this.loadingPromises.delete(mode);
+		}
+	}
+
+	private async loadManager(
+		mode: string,
+		loader: BinaryData.ManagerLoader,
+	): Promise<BinaryData.Manager> {
+		try {
+			this.logger.debug(`Lazy-loading binary data manager for mode: ${mode}`);
+			const manager = await loader();
+			await manager.init();
+			this.managers[mode] = manager;
+
+			// Handle filesystem-v2 alias
+			if (mode === 'filesystem') {
+				this.managers['filesystem-v2'] = manager;
+			}
+
+			this.logger.debug(`Successfully loaded binary data manager for mode: ${mode}`);
+			return manager;
+		} catch (error) {
+			this.logger.warn(`Failed to load binary data manager for mode ${mode}`, { error });
+			throw error;
+		}
 	}
 }
