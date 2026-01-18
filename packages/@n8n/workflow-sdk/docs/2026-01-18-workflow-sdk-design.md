@@ -31,6 +31,7 @@ import {
   node,
   trigger,
   sticky,
+  placeholder,
   runOnceForAllItems,
   runOnceForEachItem
 } from '@n8n/workflow-sdk';
@@ -221,7 +222,7 @@ Output typing is provided via the generic parameter `<OutputType>` rather than a
 
 ### Parameters
 
-Parameters accept either literal values or expression functions:
+Parameters accept literal values, expression functions, or placeholders:
 
 ```typescript
 node('n8n-nodes-base.httpRequest', 'v4.2', {
@@ -237,6 +238,29 @@ node('n8n-nodes-base.httpRequest', 'v4.2', {
   }
 });
 ```
+
+### Placeholders
+
+Use `placeholder()` for template values that users must fill in:
+
+```typescript
+node('n8n-nodes-base.slack', 'v2.2', {
+  parameters: {
+    channel: placeholder('Enter Channel'),
+    text: placeholder('Enter Message')
+  }
+});
+```
+
+Serializes to:
+```json
+{
+  "channel": "<__PLACEHOLDER_VALUE__Enter Channel__>",
+  "text": "<__PLACEHOLDER_VALUE__Enter Message__>"
+}
+```
+
+Useful for workflow templates where certain values need user input.
 
 ### Credentials
 
