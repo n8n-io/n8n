@@ -245,7 +245,11 @@ export class RoutingNode {
 				const error = responseData.reason;
 
 				if (itemContext[itemIndex].thisArgs?.continueOnFail()) {
-					returnData.push({ json: {}, error: error as NodeApiError });
+					returnData.push({
+						json: {},
+						error: error as NodeApiError,
+						pairedItem: { item: itemIndex },
+					});
 					continue;
 				}
 
@@ -267,6 +271,12 @@ export class RoutingNode {
 			if (itemContext[itemIndex].requestData.maxResults) {
 				// Remove not needed items in case APIs return to many
 				responseData.value.splice(itemContext[itemIndex].requestData.maxResults as number);
+			}
+
+			// Add pairedItem to each successful response item for data lineage tracking
+			// Only set if not already defined (postReceive actions may set custom pairing)
+			for (const item of responseData.value) {
+				item.pairedItem ??= { item: itemIndex };
 			}
 
 			returnData.push(...responseData.value);
