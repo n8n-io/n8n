@@ -530,13 +530,27 @@ export interface TodoistV22Credentials {
 	todoistOAuth2Api: CredentialReference;
 }
 
+export interface TodoistV1Credentials {
+	todoistApi: CredentialReference;
+	todoistOAuth2Api: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TodoistNode = {
+export type TodoistV22Node = {
 	type: 'n8n-nodes-base.todoist';
-	version: 1 | 2 | 2.1 | 2.2;
+	version: 2 | 2.1 | 2.2;
 	config: NodeConfig<TodoistV22Params>;
 	credentials?: TodoistV22Credentials;
 };
+
+export type TodoistV1Node = {
+	type: 'n8n-nodes-base.todoist';
+	version: 1;
+	config: NodeConfig<TodoistV1Params>;
+	credentials?: TodoistV1Credentials;
+};
+
+export type TodoistNode = TodoistV22Node | TodoistV1Node;

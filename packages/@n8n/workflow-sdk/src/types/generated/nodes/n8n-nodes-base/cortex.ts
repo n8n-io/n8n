@@ -96,12 +96,14 @@ export interface CortexV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CortexNode = {
+export type CortexV1Node = {
 	type: 'n8n-nodes-base.cortex';
 	version: 1;
 	config: NodeConfig<CortexV1Params>;
 	credentials?: CortexV1Credentials;
 };
+
+export type CortexNode = CortexV1Node;

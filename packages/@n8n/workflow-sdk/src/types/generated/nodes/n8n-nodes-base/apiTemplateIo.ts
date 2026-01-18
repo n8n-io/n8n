@@ -73,12 +73,14 @@ export interface ApiTemplateIoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ApiTemplateIoNode = {
+export type ApiTemplateIoV1Node = {
 	type: 'n8n-nodes-base.apiTemplateIo';
 	version: 1;
 	config: NodeConfig<ApiTemplateIoV1Params>;
 	credentials?: ApiTemplateIoV1Credentials;
 };
+
+export type ApiTemplateIoNode = ApiTemplateIoV1Node;

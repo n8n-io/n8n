@@ -28,13 +28,15 @@ export interface LcToolSearXngV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcToolSearXngNode = {
+export type LcToolSearXngV1Node = {
 	type: '@n8n/n8n-nodes-langchain.toolSearXng';
 	version: 1;
 	config: NodeConfig<LcToolSearXngV1Params>;
 	credentials?: LcToolSearXngV1Credentials;
 	isTrigger: true;
 };
+
+export type LcToolSearXngNode = LcToolSearXngV1Node;

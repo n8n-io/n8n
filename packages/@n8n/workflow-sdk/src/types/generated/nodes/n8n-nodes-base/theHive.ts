@@ -91,12 +91,14 @@ export interface TheHiveV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TheHiveNode = {
+export type TheHiveV1Node = {
 	type: 'n8n-nodes-base.theHive';
 	version: 1;
 	config: NodeConfig<TheHiveV1Params>;
 	credentials?: TheHiveV1Credentials;
 };
+
+export type TheHiveNode = TheHiveV1Node;

@@ -32,12 +32,18 @@ export interface E2eTestV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type E2eTestNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type E2eTestV1Node = {
 	type: 'n8n-nodes-base.e2eTest';
 	version: 1;
 	config: NodeConfig<E2eTestV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type E2eTestNode = E2eTestV1Node;

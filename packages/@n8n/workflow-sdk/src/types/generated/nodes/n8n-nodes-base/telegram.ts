@@ -832,12 +832,14 @@ export interface TelegramV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TelegramNode = {
+export type TelegramV12Node = {
 	type: 'n8n-nodes-base.telegram';
 	version: 1 | 1.1 | 1.2;
 	config: NodeConfig<TelegramV12Params>;
 	credentials?: TelegramV12Credentials;
 };
+
+export type TelegramNode = TelegramV12Node;

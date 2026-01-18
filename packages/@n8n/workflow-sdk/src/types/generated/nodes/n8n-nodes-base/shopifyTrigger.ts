@@ -91,13 +91,15 @@ export interface ShopifyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ShopifyTriggerNode = {
+export type ShopifyTriggerV1Node = {
 	type: 'n8n-nodes-base.shopifyTrigger';
 	version: 1;
 	config: NodeConfig<ShopifyTriggerV1Params>;
 	credentials?: ShopifyTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type ShopifyTriggerNode = ShopifyTriggerV1Node;

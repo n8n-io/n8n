@@ -65,13 +65,15 @@ export interface CustomerIoTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CustomerIoTriggerNode = {
+export type CustomerIoTriggerV1Node = {
 	type: 'n8n-nodes-base.customerIoTrigger';
 	version: 1;
 	config: NodeConfig<CustomerIoTriggerV1Params>;
 	credentials?: CustomerIoTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type CustomerIoTriggerNode = CustomerIoTriggerV1Node;

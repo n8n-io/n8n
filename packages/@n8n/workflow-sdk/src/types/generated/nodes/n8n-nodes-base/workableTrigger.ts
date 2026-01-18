@@ -29,13 +29,15 @@ export interface WorkableTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WorkableTriggerNode = {
+export type WorkableTriggerV1Node = {
 	type: 'n8n-nodes-base.workableTrigger';
 	version: 1;
 	config: NodeConfig<WorkableTriggerV1Params>;
 	credentials?: WorkableTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type WorkableTriggerNode = WorkableTriggerV1Node;

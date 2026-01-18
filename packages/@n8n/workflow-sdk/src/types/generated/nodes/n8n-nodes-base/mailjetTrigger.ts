@@ -32,13 +32,15 @@ export interface MailjetTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailjetTriggerNode = {
+export type MailjetTriggerV1Node = {
 	type: 'n8n-nodes-base.mailjetTrigger';
 	version: 1;
 	config: NodeConfig<MailjetTriggerV1Params>;
 	credentials?: MailjetTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type MailjetTriggerNode = MailjetTriggerV1Node;

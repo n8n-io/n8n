@@ -343,12 +343,14 @@ export interface MondayComV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MondayComNode = {
+export type MondayComV1Node = {
 	type: 'n8n-nodes-base.mondayCom';
 	version: 1;
 	config: NodeConfig<MondayComV1Params>;
 	credentials?: MondayComV1Credentials;
 };
+
+export type MondayComNode = MondayComV1Node;

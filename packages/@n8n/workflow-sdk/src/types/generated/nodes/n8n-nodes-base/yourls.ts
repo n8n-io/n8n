@@ -60,12 +60,14 @@ export interface YourlsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type YourlsNode = {
+export type YourlsV1Node = {
 	type: 'n8n-nodes-base.yourls';
 	version: 1;
 	config: NodeConfig<YourlsV1Params>;
 	credentials?: YourlsV1Credentials;
 };
+
+export type YourlsNode = YourlsV1Node;

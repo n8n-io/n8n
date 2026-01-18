@@ -479,16 +479,28 @@ export type HighLevelV1Params =
 
 export interface HighLevelV2Credentials {
 	highLevelOAuth2Api: CredentialReference;
+}
+
+export interface HighLevelV1Credentials {
 	highLevelApi: CredentialReference;
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HighLevelNode = {
+export type HighLevelV2Node = {
 	type: 'n8n-nodes-base.highLevel';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<HighLevelV2Params>;
 	credentials?: HighLevelV2Credentials;
 };
+
+export type HighLevelV1Node = {
+	type: 'n8n-nodes-base.highLevel';
+	version: 1;
+	config: NodeConfig<HighLevelV1Params>;
+	credentials?: HighLevelV1Credentials;
+};
+
+export type HighLevelNode = HighLevelV2Node | HighLevelV1Node;

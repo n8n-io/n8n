@@ -94,12 +94,14 @@ export interface GetResponseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GetResponseNode = {
+export type GetResponseV1Node = {
 	type: 'n8n-nodes-base.getResponse';
 	version: 1;
 	config: NodeConfig<GetResponseV1Params>;
 	credentials?: GetResponseV1Credentials;
 };
+
+export type GetResponseNode = GetResponseV1Node;

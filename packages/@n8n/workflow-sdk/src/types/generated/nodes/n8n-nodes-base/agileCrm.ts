@@ -276,12 +276,14 @@ export interface AgileCrmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AgileCrmNode = {
+export type AgileCrmV1Node = {
 	type: 'n8n-nodes-base.agileCrm';
 	version: 1;
 	config: NodeConfig<AgileCrmV1Params>;
 	credentials?: AgileCrmV1Credentials;
 };
+
+export type AgileCrmNode = AgileCrmV1Node;

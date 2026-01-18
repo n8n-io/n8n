@@ -213,12 +213,14 @@ export interface HelpScoutV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HelpScoutNode = {
+export type HelpScoutV1Node = {
 	type: 'n8n-nodes-base.helpScout';
 	version: 1;
 	config: NodeConfig<HelpScoutV1Params>;
 	credentials?: HelpScoutV1Credentials;
 };
+
+export type HelpScoutNode = HelpScoutV1Node;

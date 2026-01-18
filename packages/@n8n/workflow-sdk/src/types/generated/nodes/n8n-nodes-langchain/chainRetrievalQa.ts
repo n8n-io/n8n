@@ -45,12 +45,18 @@ export type LcChainRetrievalQaV17Params =
 	| LcChainRetrievalQaV17DefineConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcChainRetrievalQaNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcChainRetrievalQaV17Node = {
 	type: '@n8n/n8n-nodes-langchain.chainRetrievalQa';
 	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.7;
 	config: NodeConfig<LcChainRetrievalQaV17Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcChainRetrievalQaNode = LcChainRetrievalQaV17Node;

@@ -23,13 +23,19 @@ export interface StickyNoteV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type StickyNoteNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type StickyNoteV1Node = {
 	type: 'n8n-nodes-base.stickyNote';
 	version: 1;
 	config: NodeConfig<StickyNoteV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type StickyNoteNode = StickyNoteV1Node;

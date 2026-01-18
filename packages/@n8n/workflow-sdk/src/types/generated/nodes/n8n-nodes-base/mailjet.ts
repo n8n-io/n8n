@@ -111,12 +111,14 @@ export interface MailjetV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailjetNode = {
+export type MailjetV1Node = {
 	type: 'n8n-nodes-base.mailjet';
 	version: 1;
 	config: NodeConfig<MailjetV1Params>;
 	credentials?: MailjetV1Credentials;
 };
+
+export type MailjetNode = MailjetV1Node;

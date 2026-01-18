@@ -94,12 +94,14 @@ export interface TravisCiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TravisCiNode = {
+export type TravisCiV1Node = {
 	type: 'n8n-nodes-base.travisCi';
 	version: 1;
 	config: NodeConfig<TravisCiV1Params>;
 	credentials?: TravisCiV1Credentials;
 };
+
+export type TravisCiNode = TravisCiV1Node;

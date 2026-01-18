@@ -37,13 +37,15 @@ export interface LcLmChatOpenRouterV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatOpenRouterNode = {
+export type LcLmChatOpenRouterV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter';
 	version: 1;
 	config: NodeConfig<LcLmChatOpenRouterV1Params>;
 	credentials?: LcLmChatOpenRouterV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatOpenRouterNode = LcLmChatOpenRouterV1Node;

@@ -320,12 +320,14 @@ export interface LcGoogleGeminiV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcGoogleGeminiNode = {
+export type LcGoogleGeminiV11Node = {
 	type: '@n8n/n8n-nodes-langchain.googleGemini';
 	version: 1 | 1.1;
 	config: NodeConfig<LcGoogleGeminiV11Params>;
 	credentials?: LcGoogleGeminiV11Credentials;
 };
+
+export type LcGoogleGeminiNode = LcGoogleGeminiV11Node;

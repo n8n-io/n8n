@@ -78,12 +78,18 @@ console.log("Hello World!");
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type HtmlNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type HtmlV12Node = {
 	type: 'n8n-nodes-base.html';
 	version: 1 | 1.1 | 1.2;
 	config: NodeConfig<HtmlV12Params>;
 	credentials?: Record<string, never>;
 };
+
+export type HtmlNode = HtmlV12Node;

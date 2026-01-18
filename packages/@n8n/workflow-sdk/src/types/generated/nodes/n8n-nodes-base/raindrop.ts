@@ -195,12 +195,14 @@ export interface RaindropV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RaindropNode = {
+export type RaindropV1Node = {
 	type: 'n8n-nodes-base.raindrop';
 	version: 1;
 	config: NodeConfig<RaindropV1Params>;
 	credentials?: RaindropV1Credentials;
 };
+
+export type RaindropNode = RaindropV1Node;

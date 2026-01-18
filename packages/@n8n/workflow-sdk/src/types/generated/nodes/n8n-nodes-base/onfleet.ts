@@ -600,12 +600,14 @@ export interface OnfleetV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OnfleetNode = {
+export type OnfleetV1Node = {
 	type: 'n8n-nodes-base.onfleet';
 	version: 1;
 	config: NodeConfig<OnfleetV1Params>;
 	credentials?: OnfleetV1Credentials;
 };
+
+export type OnfleetNode = OnfleetV1Node;

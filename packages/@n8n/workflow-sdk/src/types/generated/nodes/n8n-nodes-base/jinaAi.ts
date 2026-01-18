@@ -77,12 +77,14 @@ export interface JinaAiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JinaAiNode = {
+export type JinaAiV1Node = {
 	type: 'n8n-nodes-base.jinaAi';
 	version: 1;
 	config: NodeConfig<JinaAiV1Params>;
 	credentials?: JinaAiV1Credentials;
 };
+
+export type JinaAiNode = JinaAiV1Node;

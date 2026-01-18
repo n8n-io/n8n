@@ -79,12 +79,14 @@ export interface GoogleDocsV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleDocsNode = {
+export type GoogleDocsV2Node = {
 	type: 'n8n-nodes-base.googleDocs';
 	version: 1 | 2;
 	config: NodeConfig<GoogleDocsV2Params>;
 	credentials?: GoogleDocsV2Credentials;
 };
+
+export type GoogleDocsNode = GoogleDocsV2Node;

@@ -125,12 +125,18 @@ export interface CryptoV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type CryptoNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type CryptoV1Node = {
 	type: 'n8n-nodes-base.crypto';
 	version: 1;
 	config: NodeConfig<CryptoV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type CryptoNode = CryptoV1Node;

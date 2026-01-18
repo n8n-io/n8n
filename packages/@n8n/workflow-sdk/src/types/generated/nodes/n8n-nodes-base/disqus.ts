@@ -104,12 +104,14 @@ export interface DisqusV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DisqusNode = {
+export type DisqusV1Node = {
 	type: 'n8n-nodes-base.disqus';
 	version: 1;
 	config: NodeConfig<DisqusV1Params>;
 	credentials?: DisqusV1Credentials;
 };
+
+export type DisqusNode = DisqusV1Node;

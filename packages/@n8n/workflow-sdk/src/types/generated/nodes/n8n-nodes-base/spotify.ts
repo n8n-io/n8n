@@ -465,12 +465,14 @@ export interface SpotifyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SpotifyNode = {
+export type SpotifyV1Node = {
 	type: 'n8n-nodes-base.spotify';
 	version: 1;
 	config: NodeConfig<SpotifyV1Params>;
 	credentials?: SpotifyV1Credentials;
 };
+
+export type SpotifyNode = SpotifyV1Node;

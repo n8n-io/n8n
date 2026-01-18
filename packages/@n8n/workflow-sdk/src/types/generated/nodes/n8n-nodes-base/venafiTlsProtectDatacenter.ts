@@ -122,12 +122,14 @@ export interface VenafiTlsProtectDatacenterV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type VenafiTlsProtectDatacenterNode = {
+export type VenafiTlsProtectDatacenterV1Node = {
 	type: 'n8n-nodes-base.venafiTlsProtectDatacenter';
 	version: 1;
 	config: NodeConfig<VenafiTlsProtectDatacenterV1Params>;
 	credentials?: VenafiTlsProtectDatacenterV1Credentials;
 };
+
+export type VenafiTlsProtectDatacenterNode = VenafiTlsProtectDatacenterV1Node;

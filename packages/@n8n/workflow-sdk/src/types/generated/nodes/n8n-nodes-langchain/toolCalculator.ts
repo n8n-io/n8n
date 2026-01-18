@@ -18,13 +18,19 @@ import type { NodeConfig } from '../../../base';
 export interface LcToolCalculatorV1Params {}
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcToolCalculatorNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcToolCalculatorV1Node = {
 	type: '@n8n/n8n-nodes-langchain.toolCalculator';
 	version: 1;
 	config: NodeConfig<LcToolCalculatorV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcToolCalculatorNode = LcToolCalculatorV1Node;

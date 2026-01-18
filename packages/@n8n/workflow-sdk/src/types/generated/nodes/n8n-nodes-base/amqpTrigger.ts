@@ -40,13 +40,15 @@ export interface AmqpTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AmqpTriggerNode = {
+export type AmqpTriggerV1Node = {
 	type: 'n8n-nodes-base.amqpTrigger';
 	version: 1;
 	config: NodeConfig<AmqpTriggerV1Params>;
 	credentials?: AmqpTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type AmqpTriggerNode = AmqpTriggerV1Node;

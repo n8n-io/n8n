@@ -223,12 +223,18 @@ export type CoinGeckoV1Params =
 	| CoinGeckoV1EventGetAllConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type CoinGeckoNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type CoinGeckoV1Node = {
 	type: 'n8n-nodes-base.coinGecko';
 	version: 1;
 	config: NodeConfig<CoinGeckoV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type CoinGeckoNode = CoinGeckoV1Node;

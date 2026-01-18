@@ -92,12 +92,14 @@ export interface LcChatTriggerV14Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChatTriggerNode = {
+export type LcChatTriggerV14Node = {
 	type: '@n8n/n8n-nodes-langchain.chatTrigger';
 	version: 1 | 1.1 | 1.2 | 1.3 | 1.4;
 	config: NodeConfig<LcChatTriggerV14Params>;
 	credentials?: LcChatTriggerV14Credentials;
 };
+
+export type LcChatTriggerNode = LcChatTriggerV14Node;

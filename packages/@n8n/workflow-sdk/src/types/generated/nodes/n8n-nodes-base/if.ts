@@ -48,12 +48,25 @@ export interface IfV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type IfNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type IfV23Node = {
 	type: 'n8n-nodes-base.if';
-	version: 1 | 2 | 2.1 | 2.2 | 2.3;
+	version: 2 | 2.1 | 2.2 | 2.3;
 	config: NodeConfig<IfV23Params>;
 	credentials?: Record<string, never>;
 };
+
+export type IfV1Node = {
+	type: 'n8n-nodes-base.if';
+	version: 1;
+	config: NodeConfig<IfV1Params>;
+	credentials?: Record<string, never>;
+};
+
+export type IfNode = IfV23Node | IfV1Node;

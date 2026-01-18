@@ -245,12 +245,14 @@ export interface AzureCosmosDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AzureCosmosDbNode = {
+export type AzureCosmosDbV1Node = {
 	type: 'n8n-nodes-base.azureCosmosDb';
 	version: 1;
 	config: NodeConfig<AzureCosmosDbV1Params>;
 	credentials?: AzureCosmosDbV1Credentials;
 };
+
+export type AzureCosmosDbNode = AzureCosmosDbV1Node;

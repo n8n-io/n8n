@@ -32,13 +32,15 @@ export interface LcEmbeddingsOllamaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsOllamaNode = {
+export type LcEmbeddingsOllamaV1Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsOllama';
 	version: 1;
 	config: NodeConfig<LcEmbeddingsOllamaV1Params>;
 	credentials?: LcEmbeddingsOllamaV1Credentials;
 	isTrigger: true;
 };
+
+export type LcEmbeddingsOllamaNode = LcEmbeddingsOllamaV1Node;

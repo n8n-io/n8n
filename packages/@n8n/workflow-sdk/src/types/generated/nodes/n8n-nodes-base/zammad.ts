@@ -276,12 +276,14 @@ export interface ZammadV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ZammadNode = {
+export type ZammadV1Node = {
 	type: 'n8n-nodes-base.zammad';
 	version: 1;
 	config: NodeConfig<ZammadV1Params>;
 	credentials?: ZammadV1Credentials;
 };
+
+export type ZammadNode = ZammadV1Node;

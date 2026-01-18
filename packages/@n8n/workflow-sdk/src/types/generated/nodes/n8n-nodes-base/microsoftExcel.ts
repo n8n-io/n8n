@@ -556,13 +556,26 @@ export interface MicrosoftExcelV22Credentials {
 	microsoftExcelOAuth2Api: CredentialReference;
 }
 
+export interface MicrosoftExcelV1Credentials {
+	microsoftExcelOAuth2Api: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftExcelNode = {
+export type MicrosoftExcelV22Node = {
 	type: 'n8n-nodes-base.microsoftExcel';
-	version: 1 | 2 | 2.1 | 2.2;
+	version: 2 | 2.1 | 2.2;
 	config: NodeConfig<MicrosoftExcelV22Params>;
 	credentials?: MicrosoftExcelV22Credentials;
 };
+
+export type MicrosoftExcelV1Node = {
+	type: 'n8n-nodes-base.microsoftExcel';
+	version: 1;
+	config: NodeConfig<MicrosoftExcelV1Params>;
+	credentials?: MicrosoftExcelV1Credentials;
+};
+
+export type MicrosoftExcelNode = MicrosoftExcelV22Node | MicrosoftExcelV1Node;

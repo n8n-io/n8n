@@ -34,12 +34,18 @@ export interface LcChatV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcChatNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcChatV11Node = {
 	type: '@n8n/n8n-nodes-langchain.chat';
 	version: 1 | 1.1;
 	config: NodeConfig<LcChatV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcChatNode = LcChatV11Node;

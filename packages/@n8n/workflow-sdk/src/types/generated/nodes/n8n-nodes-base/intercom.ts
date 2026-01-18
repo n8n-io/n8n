@@ -317,12 +317,14 @@ export interface IntercomV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type IntercomNode = {
+export type IntercomV1Node = {
 	type: 'n8n-nodes-base.intercom';
 	version: 1;
 	config: NodeConfig<IntercomV1Params>;
 	credentials?: IntercomV1Credentials;
 };
+
+export type IntercomNode = IntercomV1Node;

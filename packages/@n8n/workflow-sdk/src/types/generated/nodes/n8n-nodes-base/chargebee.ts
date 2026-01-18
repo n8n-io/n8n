@@ -93,12 +93,14 @@ export interface ChargebeeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ChargebeeNode = {
+export type ChargebeeV1Node = {
 	type: 'n8n-nodes-base.chargebee';
 	version: 1;
 	config: NodeConfig<ChargebeeV1Params>;
 	credentials?: ChargebeeV1Credentials;
 };
+
+export type ChargebeeNode = ChargebeeV1Node;

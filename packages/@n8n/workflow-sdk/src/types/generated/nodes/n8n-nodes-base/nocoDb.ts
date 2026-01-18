@@ -197,12 +197,14 @@ export interface NocoDbV3Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NocoDbNode = {
+export type NocoDbV3Node = {
 	type: 'n8n-nodes-base.nocoDb';
 	version: 1 | 2 | 3;
 	config: NodeConfig<NocoDbV3Params>;
 	credentials?: NocoDbV3Credentials;
 };
+
+export type NocoDbNode = NocoDbV3Node;

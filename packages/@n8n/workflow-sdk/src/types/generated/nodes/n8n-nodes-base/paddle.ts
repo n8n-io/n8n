@@ -245,12 +245,14 @@ export interface PaddleV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PaddleNode = {
+export type PaddleV1Node = {
 	type: 'n8n-nodes-base.paddle';
 	version: 1;
 	config: NodeConfig<PaddleV1Params>;
 	credentials?: PaddleV1Credentials;
 };
+
+export type PaddleNode = PaddleV1Node;

@@ -649,6 +649,18 @@ export interface HttpRequestV1Params {
 
 export interface HttpRequestV43Credentials {
 	httpSslAuth: CredentialReference;
+}
+
+export interface HttpRequestV2Credentials {
+	httpBasicAuth: CredentialReference;
+	httpDigestAuth: CredentialReference;
+	httpHeaderAuth: CredentialReference;
+	httpQueryAuth: CredentialReference;
+	oAuth1Api: CredentialReference;
+	oAuth2Api: CredentialReference;
+}
+
+export interface HttpRequestV1Credentials {
 	httpBasicAuth: CredentialReference;
 	httpDigestAuth: CredentialReference;
 	httpHeaderAuth: CredentialReference;
@@ -658,12 +670,28 @@ export interface HttpRequestV43Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HttpRequestNode = {
+export type HttpRequestV43Node = {
 	type: 'n8n-nodes-base.httpRequest';
-	version: 1 | 2 | 3 | 4 | 4.1 | 4.2 | 4.3;
+	version: 3 | 4 | 4.1 | 4.2 | 4.3;
 	config: NodeConfig<HttpRequestV43Params>;
 	credentials?: HttpRequestV43Credentials;
 };
+
+export type HttpRequestV2Node = {
+	type: 'n8n-nodes-base.httpRequest';
+	version: 2;
+	config: NodeConfig<HttpRequestV2Params>;
+	credentials?: HttpRequestV2Credentials;
+};
+
+export type HttpRequestV1Node = {
+	type: 'n8n-nodes-base.httpRequest';
+	version: 1;
+	config: NodeConfig<HttpRequestV1Params>;
+	credentials?: HttpRequestV1Credentials;
+};
+
+export type HttpRequestNode = HttpRequestV43Node | HttpRequestV2Node | HttpRequestV1Node;

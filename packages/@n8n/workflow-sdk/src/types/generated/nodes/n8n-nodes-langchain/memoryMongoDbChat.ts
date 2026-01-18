@@ -39,13 +39,15 @@ export interface LcMemoryMongoDbChatV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryMongoDbChatNode = {
+export type LcMemoryMongoDbChatV1Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryMongoDbChat';
 	version: 1;
 	config: NodeConfig<LcMemoryMongoDbChatV1Params>;
 	credentials?: LcMemoryMongoDbChatV1Credentials;
 	isTrigger: true;
 };
+
+export type LcMemoryMongoDbChatNode = LcMemoryMongoDbChatV1Node;

@@ -33,13 +33,15 @@ export interface LcLmOpenHuggingFaceInferenceV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmOpenHuggingFaceInferenceNode = {
+export type LcLmOpenHuggingFaceInferenceV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference';
 	version: 1;
 	config: NodeConfig<LcLmOpenHuggingFaceInferenceV1Params>;
 	credentials?: LcLmOpenHuggingFaceInferenceV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmOpenHuggingFaceInferenceNode = LcLmOpenHuggingFaceInferenceV1Node;

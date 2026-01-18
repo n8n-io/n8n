@@ -554,12 +554,14 @@ export interface WekanV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WekanNode = {
+export type WekanV1Node = {
 	type: 'n8n-nodes-base.wekan';
 	version: 1;
 	config: NodeConfig<WekanV1Params>;
 	credentials?: WekanV1Credentials;
 };
+
+export type WekanNode = WekanV1Node;

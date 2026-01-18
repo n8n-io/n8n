@@ -30,12 +30,18 @@ export interface ReadWriteFileV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ReadWriteFileNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ReadWriteFileV11Node = {
 	type: 'n8n-nodes-base.readWriteFile';
 	version: 1 | 1.1;
 	config: NodeConfig<ReadWriteFileV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type ReadWriteFileNode = ReadWriteFileV11Node;

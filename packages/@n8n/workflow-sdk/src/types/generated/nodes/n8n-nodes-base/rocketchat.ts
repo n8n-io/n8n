@@ -45,12 +45,14 @@ export interface RocketchatV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RocketchatNode = {
+export type RocketchatV1Node = {
 	type: 'n8n-nodes-base.rocketchat';
 	version: 1;
 	config: NodeConfig<RocketchatV1Params>;
 	credentials?: RocketchatV1Credentials;
 };
+
+export type RocketchatNode = RocketchatV1Node;

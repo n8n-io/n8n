@@ -92,12 +92,14 @@ export interface GitV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GitNode = {
+export type GitV11Node = {
 	type: 'n8n-nodes-base.git';
 	version: 1 | 1.1;
 	config: NodeConfig<GitV11Params>;
 	credentials?: GitV11Credentials;
 };
+
+export type GitNode = GitV11Node;

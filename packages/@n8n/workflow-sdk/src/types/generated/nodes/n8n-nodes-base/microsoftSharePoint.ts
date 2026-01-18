@@ -295,12 +295,14 @@ export interface MicrosoftSharePointV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftSharePointNode = {
+export type MicrosoftSharePointV1Node = {
 	type: 'n8n-nodes-base.microsoftSharePoint';
 	version: 1;
 	config: NodeConfig<MicrosoftSharePointV1Params>;
 	credentials?: MicrosoftSharePointV1Credentials;
 };
+
+export type MicrosoftSharePointNode = MicrosoftSharePointV1Node;

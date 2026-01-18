@@ -952,12 +952,14 @@ export interface FreshserviceV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FreshserviceNode = {
+export type FreshserviceV1Node = {
 	type: 'n8n-nodes-base.freshservice';
 	version: 1;
 	config: NodeConfig<FreshserviceV1Params>;
 	credentials?: FreshserviceV1Credentials;
 };
+
+export type FreshserviceNode = FreshserviceV1Node;

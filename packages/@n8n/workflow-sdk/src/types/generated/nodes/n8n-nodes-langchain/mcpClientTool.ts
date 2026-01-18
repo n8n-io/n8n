@@ -143,13 +143,15 @@ export interface LcMcpClientToolV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMcpClientToolNode = {
+export type LcMcpClientToolV12Node = {
 	type: '@n8n/n8n-nodes-langchain.mcpClientTool';
 	version: 1 | 1.1 | 1.2;
 	config: NodeConfig<LcMcpClientToolV12Params>;
 	credentials?: LcMcpClientToolV12Credentials;
 	isTrigger: true;
 };
+
+export type LcMcpClientToolNode = LcMcpClientToolV12Node;

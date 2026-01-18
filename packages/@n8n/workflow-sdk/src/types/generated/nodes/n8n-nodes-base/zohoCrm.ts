@@ -815,12 +815,14 @@ export interface ZohoCrmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ZohoCrmNode = {
+export type ZohoCrmV1Node = {
 	type: 'n8n-nodes-base.zohoCrm';
 	version: 1;
 	config: NodeConfig<ZohoCrmV1Params>;
 	credentials?: ZohoCrmV1Credentials;
 };
+
+export type ZohoCrmNode = ZohoCrmV1Node;

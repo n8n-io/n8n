@@ -298,12 +298,14 @@ export interface HaloPSAV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HaloPSANode = {
+export type HaloPSAV1Node = {
 	type: 'n8n-nodes-base.haloPSA';
 	version: 1;
 	config: NodeConfig<HaloPSAV1Params>;
 	credentials?: HaloPSAV1Credentials;
 };
+
+export type HaloPSANode = HaloPSAV1Node;

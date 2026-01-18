@@ -170,12 +170,14 @@ export interface AwsDynamoDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsDynamoDbNode = {
+export type AwsDynamoDbV1Node = {
 	type: 'n8n-nodes-base.awsDynamoDb';
 	version: 1;
 	config: NodeConfig<AwsDynamoDbV1Params>;
 	credentials?: AwsDynamoDbV1Credentials;
 };
+
+export type AwsDynamoDbNode = AwsDynamoDbV1Node;

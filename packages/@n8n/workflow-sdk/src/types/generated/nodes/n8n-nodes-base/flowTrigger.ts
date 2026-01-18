@@ -39,13 +39,15 @@ export interface FlowTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FlowTriggerNode = {
+export type FlowTriggerV1Node = {
 	type: 'n8n-nodes-base.flowTrigger';
 	version: 1;
 	config: NodeConfig<FlowTriggerV1Params>;
 	credentials?: FlowTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type FlowTriggerNode = FlowTriggerV1Node;

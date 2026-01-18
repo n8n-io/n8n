@@ -88,13 +88,15 @@ export interface JiraTriggerV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JiraTriggerNode = {
+export type JiraTriggerV11Node = {
 	type: 'n8n-nodes-base.jiraTrigger';
 	version: 1 | 1.1;
 	config: NodeConfig<JiraTriggerV11Params>;
 	credentials?: JiraTriggerV11Credentials;
 	isTrigger: true;
 };
+
+export type JiraTriggerNode = JiraTriggerV11Node;

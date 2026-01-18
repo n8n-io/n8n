@@ -46,13 +46,15 @@ export interface LcLmChatOpenAiV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatOpenAiNode = {
+export type LcLmChatOpenAiV13Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatOpenAi';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcLmChatOpenAiV13Params>;
 	credentials?: LcLmChatOpenAiV13Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatOpenAiNode = LcLmChatOpenAiV13Node;

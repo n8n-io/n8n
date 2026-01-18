@@ -39,13 +39,15 @@ export interface LcMemoryRedisChatV15Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryRedisChatNode = {
+export type LcMemoryRedisChatV15Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryRedisChat';
 	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5;
 	config: NodeConfig<LcMemoryRedisChatV15Params>;
 	credentials?: LcMemoryRedisChatV15Credentials;
 	isTrigger: true;
 };
+
+export type LcMemoryRedisChatNode = LcMemoryRedisChatV15Node;

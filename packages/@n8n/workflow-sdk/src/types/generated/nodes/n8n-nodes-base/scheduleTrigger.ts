@@ -20,13 +20,19 @@ export interface ScheduleTriggerV13Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ScheduleTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ScheduleTriggerV13Node = {
 	type: 'n8n-nodes-base.scheduleTrigger';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<ScheduleTriggerV13Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type ScheduleTriggerNode = ScheduleTriggerV13Node;

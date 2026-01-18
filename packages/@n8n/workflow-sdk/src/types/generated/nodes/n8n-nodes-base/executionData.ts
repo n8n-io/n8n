@@ -21,12 +21,18 @@ export interface ExecutionDataV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ExecutionDataNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ExecutionDataV11Node = {
 	type: 'n8n-nodes-base.executionData';
 	version: 1 | 1.1;
 	config: NodeConfig<ExecutionDataV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type ExecutionDataNode = ExecutionDataV11Node;

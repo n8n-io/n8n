@@ -40,13 +40,15 @@ export interface PostgresTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostgresTriggerNode = {
+export type PostgresTriggerV1Node = {
 	type: 'n8n-nodes-base.postgresTrigger';
 	version: 1;
 	config: NodeConfig<PostgresTriggerV1Params>;
 	credentials?: PostgresTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type PostgresTriggerNode = PostgresTriggerV1Node;

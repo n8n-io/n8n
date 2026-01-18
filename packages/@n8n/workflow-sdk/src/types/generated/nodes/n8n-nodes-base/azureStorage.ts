@@ -179,12 +179,14 @@ export interface AzureStorageV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AzureStorageNode = {
+export type AzureStorageV1Node = {
 	type: 'n8n-nodes-base.azureStorage';
 	version: 1;
 	config: NodeConfig<AzureStorageV1Params>;
 	credentials?: AzureStorageV1Credentials;
 };
+
+export type AzureStorageNode = AzureStorageV1Node;

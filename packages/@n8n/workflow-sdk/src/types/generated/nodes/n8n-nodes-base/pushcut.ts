@@ -37,12 +37,14 @@ export interface PushcutV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PushcutNode = {
+export type PushcutV1Node = {
 	type: 'n8n-nodes-base.pushcut';
 	version: 1;
 	config: NodeConfig<PushcutV1Params>;
 	credentials?: PushcutV1Credentials;
 };
+
+export type PushcutNode = PushcutV1Node;

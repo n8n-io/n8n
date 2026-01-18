@@ -38,12 +38,14 @@ export interface RundeckV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RundeckNode = {
+export type RundeckV1Node = {
 	type: 'n8n-nodes-base.rundeck';
 	version: 1;
 	config: NodeConfig<RundeckV1Params>;
 	credentials?: RundeckV1Credentials;
 };
+
+export type RundeckNode = RundeckV1Node;

@@ -357,12 +357,14 @@ export interface SecurityScorecardV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SecurityScorecardNode = {
+export type SecurityScorecardV1Node = {
 	type: 'n8n-nodes-base.securityScorecard';
 	version: 1;
 	config: NodeConfig<SecurityScorecardV1Params>;
 	credentials?: SecurityScorecardV1Credentials;
 };
+
+export type SecurityScorecardNode = SecurityScorecardV1Node;

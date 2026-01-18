@@ -268,12 +268,14 @@ export interface BeeminderV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BeeminderNode = {
+export type BeeminderV1Node = {
 	type: 'n8n-nodes-base.beeminder';
 	version: 1;
 	config: NodeConfig<BeeminderV1Params>;
 	credentials?: BeeminderV1Credentials;
 };
+
+export type BeeminderNode = BeeminderV1Node;

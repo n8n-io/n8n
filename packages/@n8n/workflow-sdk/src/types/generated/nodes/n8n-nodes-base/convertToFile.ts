@@ -53,12 +53,18 @@ export interface ConvertToFileV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ConvertToFileNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ConvertToFileV11Node = {
 	type: 'n8n-nodes-base.convertToFile';
 	version: 1 | 1.1;
 	config: NodeConfig<ConvertToFileV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type ConvertToFileNode = ConvertToFileV11Node;

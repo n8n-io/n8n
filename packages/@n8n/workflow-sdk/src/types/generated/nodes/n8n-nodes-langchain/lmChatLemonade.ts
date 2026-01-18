@@ -36,13 +36,15 @@ export interface LcLmChatLemonadeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatLemonadeNode = {
+export type LcLmChatLemonadeV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatLemonade';
 	version: 1;
 	config: NodeConfig<LcLmChatLemonadeV1Params>;
 	credentials?: LcLmChatLemonadeV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatLemonadeNode = LcLmChatLemonadeV1Node;

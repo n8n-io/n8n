@@ -257,12 +257,14 @@ export interface WiseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WiseNode = {
+export type WiseV1Node = {
 	type: 'n8n-nodes-base.wise';
 	version: 1;
 	config: NodeConfig<WiseV1Params>;
 	credentials?: WiseV1Credentials;
 };
+
+export type WiseNode = WiseV1Node;

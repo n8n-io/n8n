@@ -99,12 +99,18 @@ Please try again. Please only respond with an answer that satisfies the constrai
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcOutputParserStructuredNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcOutputParserStructuredV13Node = {
 	type: '@n8n/n8n-nodes-langchain.outputParserStructured';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcOutputParserStructuredV13Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcOutputParserStructuredNode = LcOutputParserStructuredV13Node;

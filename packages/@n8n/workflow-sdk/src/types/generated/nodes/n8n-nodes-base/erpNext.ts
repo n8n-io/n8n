@@ -110,12 +110,14 @@ export interface ErpNextV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ErpNextNode = {
+export type ErpNextV1Node = {
 	type: 'n8n-nodes-base.erpNext';
 	version: 1;
 	config: NodeConfig<ErpNextV1Params>;
 	credentials?: ErpNextV1Credentials;
 };
+
+export type ErpNextNode = ErpNextV1Node;

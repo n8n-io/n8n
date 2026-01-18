@@ -329,12 +329,14 @@ export interface KoBoToolboxV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KoBoToolboxNode = {
+export type KoBoToolboxV1Node = {
 	type: 'n8n-nodes-base.koBoToolbox';
 	version: 1;
 	config: NodeConfig<KoBoToolboxV1Params>;
 	credentials?: KoBoToolboxV1Credentials;
 };
+
+export type KoBoToolboxNode = KoBoToolboxV1Node;

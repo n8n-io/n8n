@@ -324,12 +324,14 @@ export interface UptimeRobotV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UptimeRobotNode = {
+export type UptimeRobotV1Node = {
 	type: 'n8n-nodes-base.uptimeRobot';
 	version: 1;
 	config: NodeConfig<UptimeRobotV1Params>;
 	credentials?: UptimeRobotV1Credentials;
 };
+
+export type UptimeRobotNode = UptimeRobotV1Node;

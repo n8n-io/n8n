@@ -234,16 +234,28 @@ export type TwitterV1Params =
 
 export interface TwitterV2Credentials {
 	twitterOAuth2Api: CredentialReference;
+}
+
+export interface TwitterV1Credentials {
 	twitterOAuth1Api: CredentialReference;
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwitterNode = {
+export type TwitterV2Node = {
 	type: 'n8n-nodes-base.twitter';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<TwitterV2Params>;
 	credentials?: TwitterV2Credentials;
 };
+
+export type TwitterV1Node = {
+	type: 'n8n-nodes-base.twitter';
+	version: 1;
+	config: NodeConfig<TwitterV1Params>;
+	credentials?: TwitterV1Credentials;
+};
+
+export type TwitterNode = TwitterV2Node | TwitterV1Node;

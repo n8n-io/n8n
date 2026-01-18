@@ -91,12 +91,18 @@ export type PostBinV1Params =
 	| PostBinV1RequestSendConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type PostBinNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type PostBinV1Node = {
 	type: 'n8n-nodes-base.postBin';
 	version: 1;
 	config: NodeConfig<PostBinV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type PostBinNode = PostBinV1Node;

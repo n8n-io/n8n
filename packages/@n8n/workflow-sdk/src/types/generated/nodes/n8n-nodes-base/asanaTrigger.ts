@@ -37,13 +37,15 @@ export interface AsanaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AsanaTriggerNode = {
+export type AsanaTriggerV1Node = {
 	type: 'n8n-nodes-base.asanaTrigger';
 	version: 1;
 	config: NodeConfig<AsanaTriggerV1Params>;
 	credentials?: AsanaTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type AsanaTriggerNode = AsanaTriggerV1Node;

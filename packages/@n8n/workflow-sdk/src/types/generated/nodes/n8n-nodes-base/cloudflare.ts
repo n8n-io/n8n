@@ -88,12 +88,14 @@ export interface CloudflareV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CloudflareNode = {
+export type CloudflareV1Node = {
 	type: 'n8n-nodes-base.cloudflare';
 	version: 1;
 	config: NodeConfig<CloudflareV1Params>;
 	credentials?: CloudflareV1Credentials;
 };
+
+export type CloudflareNode = CloudflareV1Node;

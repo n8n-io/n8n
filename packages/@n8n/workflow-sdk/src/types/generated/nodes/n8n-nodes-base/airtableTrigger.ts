@@ -58,13 +58,15 @@ export interface AirtableTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AirtableTriggerNode = {
+export type AirtableTriggerV1Node = {
 	type: 'n8n-nodes-base.airtableTrigger';
 	version: 1;
 	config: NodeConfig<AirtableTriggerV1Params>;
 	credentials?: AirtableTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type AirtableTriggerNode = AirtableTriggerV1Node;

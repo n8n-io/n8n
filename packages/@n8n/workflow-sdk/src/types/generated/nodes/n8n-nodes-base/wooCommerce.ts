@@ -293,12 +293,14 @@ export interface WooCommerceV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WooCommerceNode = {
+export type WooCommerceV1Node = {
 	type: 'n8n-nodes-base.wooCommerce';
 	version: 1;
 	config: NodeConfig<WooCommerceV1Params>;
 	credentials?: WooCommerceV1Credentials;
 };
+
+export type WooCommerceNode = WooCommerceV1Node;

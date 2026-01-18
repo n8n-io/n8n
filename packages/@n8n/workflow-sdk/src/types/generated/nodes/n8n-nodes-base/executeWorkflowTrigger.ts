@@ -28,13 +28,19 @@ export interface ExecuteWorkflowTriggerV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ExecuteWorkflowTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ExecuteWorkflowTriggerV11Node = {
 	type: 'n8n-nodes-base.executeWorkflowTrigger';
 	version: 1 | 1.1;
 	config: NodeConfig<ExecuteWorkflowTriggerV11Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type ExecuteWorkflowTriggerNode = ExecuteWorkflowTriggerV11Node;

@@ -454,12 +454,14 @@ export interface SentryIoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SentryIoNode = {
+export type SentryIoV1Node = {
 	type: 'n8n-nodes-base.sentryIo';
 	version: 1;
 	config: NodeConfig<SentryIoV1Params>;
 	credentials?: SentryIoV1Credentials;
 };
+
+export type SentryIoNode = SentryIoV1Node;

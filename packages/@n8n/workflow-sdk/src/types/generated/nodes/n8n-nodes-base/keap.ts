@@ -399,12 +399,14 @@ export interface KeapV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KeapNode = {
+export type KeapV1Node = {
 	type: 'n8n-nodes-base.keap';
 	version: 1;
 	config: NodeConfig<KeapV1Params>;
 	credentials?: KeapV1Credentials;
 };
+
+export type KeapNode = KeapV1Node;

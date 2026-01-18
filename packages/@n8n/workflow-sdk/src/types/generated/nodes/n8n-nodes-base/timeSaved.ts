@@ -25,12 +25,18 @@ export interface TimeSavedV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type TimeSavedNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type TimeSavedV1Node = {
 	type: 'n8n-nodes-base.timeSaved';
 	version: 1;
 	config: NodeConfig<TimeSavedV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type TimeSavedNode = TimeSavedV1Node;

@@ -182,12 +182,14 @@ export interface NasaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NasaNode = {
+export type NasaV1Node = {
 	type: 'n8n-nodes-base.nasa';
 	version: 1;
 	config: NodeConfig<NasaV1Params>;
 	credentials?: NasaV1Credentials;
 };
+
+export type NasaNode = NasaV1Node;

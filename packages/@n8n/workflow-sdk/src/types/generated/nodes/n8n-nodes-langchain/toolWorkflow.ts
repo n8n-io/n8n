@@ -114,13 +114,27 @@ export interface LcToolWorkflowV13Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcToolWorkflowNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcToolWorkflowV22Node = {
 	type: '@n8n/n8n-nodes-langchain.toolWorkflow';
-	version: 1 | 1.1 | 1.2 | 1.3 | 2 | 2.1 | 2.2;
+	version: 2 | 2.1 | 2.2;
 	config: NodeConfig<LcToolWorkflowV22Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcToolWorkflowV13Node = {
+	type: '@n8n/n8n-nodes-langchain.toolWorkflow';
+	version: 1 | 1.1 | 1.2 | 1.3;
+	config: NodeConfig<LcToolWorkflowV13Params>;
+	credentials?: Record<string, never>;
+	isTrigger: true;
+};
+
+export type LcToolWorkflowNode = LcToolWorkflowV22Node | LcToolWorkflowV13Node;

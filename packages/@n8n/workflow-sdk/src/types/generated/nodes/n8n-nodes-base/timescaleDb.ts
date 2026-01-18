@@ -56,12 +56,14 @@ export interface TimescaleDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TimescaleDbNode = {
+export type TimescaleDbV1Node = {
 	type: 'n8n-nodes-base.timescaleDb';
 	version: 1;
 	config: NodeConfig<TimescaleDbV1Params>;
 	credentials?: TimescaleDbV1Credentials;
 };
+
+export type TimescaleDbNode = TimescaleDbV1Node;

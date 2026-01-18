@@ -31,12 +31,14 @@ export interface GooglePerspectiveV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GooglePerspectiveNode = {
+export type GooglePerspectiveV1Node = {
 	type: 'n8n-nodes-base.googlePerspective';
 	version: 1;
 	config: NodeConfig<GooglePerspectiveV1Params>;
 	credentials?: GooglePerspectiveV1Credentials;
 };
+
+export type GooglePerspectiveNode = GooglePerspectiveV1Node;

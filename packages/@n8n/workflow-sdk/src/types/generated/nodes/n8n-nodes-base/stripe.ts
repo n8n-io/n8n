@@ -353,12 +353,14 @@ export interface StripeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StripeNode = {
+export type StripeV1Node = {
 	type: 'n8n-nodes-base.stripe';
 	version: 1;
 	config: NodeConfig<StripeV1Params>;
 	credentials?: StripeV1Credentials;
 };
+
+export type StripeNode = StripeV1Node;

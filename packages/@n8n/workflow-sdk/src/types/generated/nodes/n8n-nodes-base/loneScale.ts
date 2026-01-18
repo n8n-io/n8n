@@ -70,12 +70,14 @@ export interface LoneScaleV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LoneScaleNode = {
+export type LoneScaleV1Node = {
 	type: 'n8n-nodes-base.loneScale';
 	version: 1;
 	config: NodeConfig<LoneScaleV1Params>;
 	credentials?: LoneScaleV1Credentials;
 };
+
+export type LoneScaleNode = LoneScaleV1Node;

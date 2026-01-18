@@ -68,12 +68,14 @@ export interface EgoiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EgoiNode = {
+export type EgoiV1Node = {
 	type: 'n8n-nodes-base.egoi';
 	version: 1;
 	config: NodeConfig<EgoiV1Params>;
 	credentials?: EgoiV1Credentials;
 };
+
+export type EgoiNode = EgoiV1Node;

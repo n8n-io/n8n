@@ -231,12 +231,14 @@ export interface ZulipV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ZulipNode = {
+export type ZulipV1Node = {
 	type: 'n8n-nodes-base.zulip';
 	version: 1;
 	config: NodeConfig<ZulipV1Params>;
 	credentials?: ZulipV1Credentials;
 };
+
+export type ZulipNode = ZulipV1Node;

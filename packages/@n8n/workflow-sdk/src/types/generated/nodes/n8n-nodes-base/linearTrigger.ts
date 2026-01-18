@@ -34,13 +34,15 @@ export interface LinearTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LinearTriggerNode = {
+export type LinearTriggerV1Node = {
 	type: 'n8n-nodes-base.linearTrigger';
 	version: 1;
 	config: NodeConfig<LinearTriggerV1Params>;
 	credentials?: LinearTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type LinearTriggerNode = LinearTriggerV1Node;

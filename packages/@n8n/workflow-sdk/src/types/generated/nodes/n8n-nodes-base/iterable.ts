@@ -129,12 +129,14 @@ export interface IterableV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type IterableNode = {
+export type IterableV1Node = {
 	type: 'n8n-nodes-base.iterable';
 	version: 1;
 	config: NodeConfig<IterableV1Params>;
 	credentials?: IterableV1Credentials;
 };
+
+export type IterableNode = IterableV1Node;

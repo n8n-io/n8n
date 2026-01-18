@@ -89,12 +89,14 @@ export interface PlivoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PlivoNode = {
+export type PlivoV1Node = {
 	type: 'n8n-nodes-base.plivo';
 	version: 1;
 	config: NodeConfig<PlivoV1Params>;
 	credentials?: PlivoV1Credentials;
 };
+
+export type PlivoNode = PlivoV1Node;

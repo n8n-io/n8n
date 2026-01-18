@@ -55,12 +55,14 @@ export interface StackbyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StackbyNode = {
+export type StackbyV1Node = {
 	type: 'n8n-nodes-base.stackby';
 	version: 1;
 	config: NodeConfig<StackbyV1Params>;
 	credentials?: StackbyV1Credentials;
 };
+
+export type StackbyNode = StackbyV1Node;

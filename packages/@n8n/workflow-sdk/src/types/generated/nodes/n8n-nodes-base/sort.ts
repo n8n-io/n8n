@@ -49,12 +49,18 @@ export interface SortV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type SortNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type SortV1Node = {
 	type: 'n8n-nodes-base.sort';
 	version: 1;
 	config: NodeConfig<SortV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type SortNode = SortV1Node;

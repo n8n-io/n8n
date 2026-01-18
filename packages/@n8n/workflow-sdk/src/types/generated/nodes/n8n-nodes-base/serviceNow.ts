@@ -437,12 +437,14 @@ export interface ServiceNowV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ServiceNowNode = {
+export type ServiceNowV1Node = {
 	type: 'n8n-nodes-base.serviceNow';
 	version: 1;
 	config: NodeConfig<ServiceNowV1Params>;
 	credentials?: ServiceNowV1Credentials;
 };
+
+export type ServiceNowNode = ServiceNowV1Node;

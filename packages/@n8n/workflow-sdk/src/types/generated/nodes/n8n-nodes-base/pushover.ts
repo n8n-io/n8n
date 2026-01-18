@@ -55,12 +55,14 @@ export interface PushoverV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PushoverNode = {
+export type PushoverV1Node = {
 	type: 'n8n-nodes-base.pushover';
 	version: 1;
 	config: NodeConfig<PushoverV1Params>;
 	credentials?: PushoverV1Credentials;
 };
+
+export type PushoverNode = PushoverV1Node;

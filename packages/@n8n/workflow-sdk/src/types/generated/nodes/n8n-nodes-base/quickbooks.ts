@@ -589,12 +589,14 @@ export interface QuickbooksV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type QuickbooksNode = {
+export type QuickbooksV1Node = {
 	type: 'n8n-nodes-base.quickbooks';
 	version: 1;
 	config: NodeConfig<QuickbooksV1Params>;
 	credentials?: QuickbooksV1Credentials;
 };
+
+export type QuickbooksNode = QuickbooksV1Node;

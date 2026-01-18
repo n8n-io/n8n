@@ -112,12 +112,14 @@ export interface NetlifyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NetlifyNode = {
+export type NetlifyV1Node = {
 	type: 'n8n-nodes-base.netlify';
 	version: 1;
 	config: NodeConfig<NetlifyV1Params>;
 	credentials?: NetlifyV1Credentials;
 };
+
+export type NetlifyNode = NetlifyV1Node;

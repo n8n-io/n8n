@@ -29,13 +29,15 @@ export interface HubspotTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HubspotTriggerNode = {
+export type HubspotTriggerV1Node = {
 	type: 'n8n-nodes-base.hubspotTrigger';
 	version: 1;
 	config: NodeConfig<HubspotTriggerV1Params>;
 	credentials?: HubspotTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type HubspotTriggerNode = HubspotTriggerV1Node;

@@ -39,12 +39,18 @@ export interface CompressionV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type CompressionNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type CompressionV11Node = {
 	type: 'n8n-nodes-base.compression';
 	version: 1 | 1.1;
 	config: NodeConfig<CompressionV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type CompressionNode = CompressionV11Node;

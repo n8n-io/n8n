@@ -199,12 +199,14 @@ export interface LcVectorStoreMongoDBAtlasV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreMongoDBAtlasNode = {
+export type LcVectorStoreMongoDBAtlasV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStoreMongoDBAtlasV13Params>;
 	credentials?: LcVectorStoreMongoDBAtlasV13Credentials;
 };
+
+export type LcVectorStoreMongoDBAtlasNode = LcVectorStoreMongoDBAtlasV13Node;

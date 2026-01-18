@@ -333,12 +333,14 @@ export interface GSuiteAdminV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GSuiteAdminNode = {
+export type GSuiteAdminV1Node = {
 	type: 'n8n-nodes-base.gSuiteAdmin';
 	version: 1;
 	config: NodeConfig<GSuiteAdminV1Params>;
 	credentials?: GSuiteAdminV1Credentials;
 };
+
+export type GSuiteAdminNode = GSuiteAdminV1Node;

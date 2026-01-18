@@ -41,13 +41,15 @@ export interface HelpScoutTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HelpScoutTriggerNode = {
+export type HelpScoutTriggerV1Node = {
 	type: 'n8n-nodes-base.helpScoutTrigger';
 	version: 1;
 	config: NodeConfig<HelpScoutTriggerV1Params>;
 	credentials?: HelpScoutTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type HelpScoutTriggerNode = HelpScoutTriggerV1Node;

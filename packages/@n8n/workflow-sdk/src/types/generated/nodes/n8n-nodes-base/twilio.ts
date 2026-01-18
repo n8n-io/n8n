@@ -70,12 +70,14 @@ export interface TwilioV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwilioNode = {
+export type TwilioV1Node = {
 	type: 'n8n-nodes-base.twilio';
 	version: 1;
 	config: NodeConfig<TwilioV1Params>;
 	credentials?: TwilioV1Credentials;
 };
+
+export type TwilioNode = TwilioV1Node;

@@ -44,12 +44,14 @@ export interface AwsSnsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsSnsNode = {
+export type AwsSnsV1Node = {
 	type: 'n8n-nodes-base.awsSns';
 	version: 1;
 	config: NodeConfig<AwsSnsV1Params>;
 	credentials?: AwsSnsV1Credentials;
 };
+
+export type AwsSnsNode = AwsSnsV1Node;

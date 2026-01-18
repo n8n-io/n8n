@@ -88,12 +88,14 @@ export interface GongV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GongNode = {
+export type GongV1Node = {
 	type: 'n8n-nodes-base.gong';
 	version: 1;
 	config: NodeConfig<GongV1Params>;
 	credentials?: GongV1Credentials;
 };
+
+export type GongNode = GongV1Node;

@@ -42,13 +42,15 @@ export interface PostmarkTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostmarkTriggerNode = {
+export type PostmarkTriggerV1Node = {
 	type: 'n8n-nodes-base.postmarkTrigger';
 	version: 1;
 	config: NodeConfig<PostmarkTriggerV1Params>;
 	credentials?: PostmarkTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type PostmarkTriggerNode = PostmarkTriggerV1Node;

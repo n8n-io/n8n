@@ -233,12 +233,14 @@ export interface MicrosoftToDoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftToDoNode = {
+export type MicrosoftToDoV1Node = {
 	type: 'n8n-nodes-base.microsoftToDo';
 	version: 1;
 	config: NodeConfig<MicrosoftToDoV1Params>;
 	credentials?: MicrosoftToDoV1Credentials;
 };
+
+export type MicrosoftToDoNode = MicrosoftToDoV1Node;

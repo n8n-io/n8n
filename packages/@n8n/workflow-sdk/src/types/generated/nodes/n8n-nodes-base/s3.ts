@@ -203,12 +203,14 @@ export interface S3V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type S3Node = {
+export type S3V1Node = {
 	type: 'n8n-nodes-base.s3';
 	version: 1;
 	config: NodeConfig<S3V1Params>;
 	credentials?: S3V1Credentials;
 };
+
+export type S3Node = S3V1Node;

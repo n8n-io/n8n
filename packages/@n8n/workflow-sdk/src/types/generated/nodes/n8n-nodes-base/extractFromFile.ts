@@ -40,12 +40,18 @@ export interface ExtractFromFileV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ExtractFromFileNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ExtractFromFileV11Node = {
 	type: 'n8n-nodes-base.extractFromFile';
 	version: 1 | 1.1;
 	config: NodeConfig<ExtractFromFileV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type ExtractFromFileNode = ExtractFromFileV11Node;

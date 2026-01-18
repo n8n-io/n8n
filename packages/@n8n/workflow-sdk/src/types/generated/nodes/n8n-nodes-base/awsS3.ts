@@ -382,13 +382,26 @@ export interface AwsS3V2Credentials {
 	awsAssumeRole: CredentialReference;
 }
 
+export interface AwsS3V1Credentials {
+	aws: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsS3Node = {
+export type AwsS3V2Node = {
 	type: 'n8n-nodes-base.awsS3';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<AwsS3V2Params>;
 	credentials?: AwsS3V2Credentials;
 };
+
+export type AwsS3V1Node = {
+	type: 'n8n-nodes-base.awsS3';
+	version: 1;
+	config: NodeConfig<AwsS3V1Params>;
+	credentials?: AwsS3V1Credentials;
+};
+
+export type AwsS3Node = AwsS3V2Node | AwsS3V1Node;

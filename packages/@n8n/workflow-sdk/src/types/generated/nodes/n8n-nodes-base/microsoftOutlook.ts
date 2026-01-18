@@ -1117,13 +1117,26 @@ export interface MicrosoftOutlookV2Credentials {
 	microsoftOutlookOAuth2Api: CredentialReference;
 }
 
+export interface MicrosoftOutlookV1Credentials {
+	microsoftOutlookOAuth2Api: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOutlookNode = {
+export type MicrosoftOutlookV2Node = {
 	type: 'n8n-nodes-base.microsoftOutlook';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<MicrosoftOutlookV2Params>;
 	credentials?: MicrosoftOutlookV2Credentials;
 };
+
+export type MicrosoftOutlookV1Node = {
+	type: 'n8n-nodes-base.microsoftOutlook';
+	version: 1;
+	config: NodeConfig<MicrosoftOutlookV1Params>;
+	credentials?: MicrosoftOutlookV1Credentials;
+};
+
+export type MicrosoftOutlookNode = MicrosoftOutlookV2Node | MicrosoftOutlookV1Node;

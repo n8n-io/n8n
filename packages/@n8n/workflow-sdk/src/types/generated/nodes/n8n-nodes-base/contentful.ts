@@ -170,12 +170,14 @@ export interface ContentfulV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ContentfulNode = {
+export type ContentfulV1Node = {
 	type: 'n8n-nodes-base.contentful';
 	version: 1;
 	config: NodeConfig<ContentfulV1Params>;
 	credentials?: ContentfulV1Credentials;
 };
+
+export type ContentfulNode = ContentfulV1Node;

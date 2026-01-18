@@ -73,14 +73,28 @@ export interface EmailReadImapV21Credentials {
 	imap: CredentialReference;
 }
 
+export interface EmailReadImapV1Credentials {
+	imap: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EmailReadImapNode = {
+export type EmailReadImapV21Node = {
 	type: 'n8n-nodes-base.emailReadImap';
-	version: 1 | 2 | 2.1;
+	version: 2 | 2.1;
 	config: NodeConfig<EmailReadImapV21Params>;
 	credentials?: EmailReadImapV21Credentials;
 	isTrigger: true;
 };
+
+export type EmailReadImapV1Node = {
+	type: 'n8n-nodes-base.emailReadImap';
+	version: 1;
+	config: NodeConfig<EmailReadImapV1Params>;
+	credentials?: EmailReadImapV1Credentials;
+	isTrigger: true;
+};
+
+export type EmailReadImapNode = EmailReadImapV21Node | EmailReadImapV1Node;

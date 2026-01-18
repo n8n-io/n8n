@@ -39,13 +39,15 @@ export interface MauticTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MauticTriggerNode = {
+export type MauticTriggerV1Node = {
 	type: 'n8n-nodes-base.mauticTrigger';
 	version: 1;
 	config: NodeConfig<MauticTriggerV1Params>;
 	credentials?: MauticTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type MauticTriggerNode = MauticTriggerV1Node;

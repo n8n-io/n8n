@@ -48,12 +48,14 @@ export interface AwsLambdaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsLambdaNode = {
+export type AwsLambdaV1Node = {
 	type: 'n8n-nodes-base.awsLambda';
 	version: 1;
 	config: NodeConfig<AwsLambdaV1Params>;
 	credentials?: AwsLambdaV1Credentials;
 };
+
+export type AwsLambdaNode = AwsLambdaV1Node;

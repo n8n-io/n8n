@@ -174,12 +174,14 @@ export interface PagerDutyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PagerDutyNode = {
+export type PagerDutyV1Node = {
 	type: 'n8n-nodes-base.pagerDuty';
 	version: 1;
 	config: NodeConfig<PagerDutyV1Params>;
 	credentials?: PagerDutyV1Credentials;
 };
+
+export type PagerDutyNode = PagerDutyV1Node;

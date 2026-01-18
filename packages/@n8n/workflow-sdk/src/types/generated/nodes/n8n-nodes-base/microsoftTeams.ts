@@ -624,13 +624,26 @@ export interface MicrosoftTeamsV2Credentials {
 	microsoftTeamsOAuth2Api: CredentialReference;
 }
 
+export interface MicrosoftTeamsV11Credentials {
+	microsoftTeamsOAuth2Api: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftTeamsNode = {
+export type MicrosoftTeamsV2Node = {
 	type: 'n8n-nodes-base.microsoftTeams';
-	version: 1 | 1.1 | 2;
+	version: 2;
 	config: NodeConfig<MicrosoftTeamsV2Params>;
 	credentials?: MicrosoftTeamsV2Credentials;
 };
+
+export type MicrosoftTeamsV11Node = {
+	type: 'n8n-nodes-base.microsoftTeams';
+	version: 1 | 1.1;
+	config: NodeConfig<MicrosoftTeamsV11Params>;
+	credentials?: MicrosoftTeamsV11Credentials;
+};
+
+export type MicrosoftTeamsNode = MicrosoftTeamsV2Node | MicrosoftTeamsV11Node;

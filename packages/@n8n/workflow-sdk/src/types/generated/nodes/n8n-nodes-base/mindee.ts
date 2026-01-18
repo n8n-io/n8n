@@ -41,12 +41,14 @@ export interface MindeeV3Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MindeeNode = {
+export type MindeeV3Node = {
 	type: 'n8n-nodes-base.mindee';
 	version: 1 | 2 | 3;
 	config: NodeConfig<MindeeV3Params>;
 	credentials?: MindeeV3Credentials;
 };
+
+export type MindeeNode = MindeeV3Node;

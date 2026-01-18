@@ -89,12 +89,14 @@ export interface DemioV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DemioNode = {
+export type DemioV1Node = {
 	type: 'n8n-nodes-base.demio';
 	version: 1;
 	config: NodeConfig<DemioV1Params>;
 	credentials?: DemioV1Credentials;
 };
+
+export type DemioNode = DemioV1Node;

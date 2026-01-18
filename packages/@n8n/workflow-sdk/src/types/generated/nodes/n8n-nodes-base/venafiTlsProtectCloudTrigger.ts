@@ -37,13 +37,15 @@ export interface VenafiTlsProtectCloudTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type VenafiTlsProtectCloudTriggerNode = {
+export type VenafiTlsProtectCloudTriggerV1Node = {
 	type: 'n8n-nodes-base.venafiTlsProtectCloudTrigger';
 	version: 1;
 	config: NodeConfig<VenafiTlsProtectCloudTriggerV1Params>;
 	credentials?: VenafiTlsProtectCloudTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type VenafiTlsProtectCloudTriggerNode = VenafiTlsProtectCloudTriggerV1Node;

@@ -87,12 +87,14 @@ export interface NpmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NpmNode = {
+export type NpmV1Node = {
 	type: 'n8n-nodes-base.npm';
 	version: 1;
 	config: NodeConfig<NpmV1Params>;
 	credentials?: NpmV1Credentials;
 };
+
+export type NpmNode = NpmV1Node;

@@ -31,13 +31,15 @@ export interface TrelloTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TrelloTriggerNode = {
+export type TrelloTriggerV1Node = {
 	type: 'n8n-nodes-base.trelloTrigger';
 	version: 1;
 	config: NodeConfig<TrelloTriggerV1Params>;
 	credentials?: TrelloTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type TrelloTriggerNode = TrelloTriggerV1Node;

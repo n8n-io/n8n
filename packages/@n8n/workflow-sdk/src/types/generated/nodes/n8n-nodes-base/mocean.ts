@@ -64,12 +64,14 @@ export interface MoceanV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MoceanNode = {
+export type MoceanV1Node = {
 	type: 'n8n-nodes-base.mocean';
 	version: 1;
 	config: NodeConfig<MoceanV1Params>;
 	credentials?: MoceanV1Credentials;
 };
+
+export type MoceanNode = MoceanV1Node;

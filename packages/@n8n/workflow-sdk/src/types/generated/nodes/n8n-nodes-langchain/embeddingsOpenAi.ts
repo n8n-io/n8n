@@ -37,13 +37,15 @@ export interface LcEmbeddingsOpenAiV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsOpenAiNode = {
+export type LcEmbeddingsOpenAiV12Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi';
 	version: 1 | 1.1 | 1.2;
 	config: NodeConfig<LcEmbeddingsOpenAiV12Params>;
 	credentials?: LcEmbeddingsOpenAiV12Credentials;
 	isTrigger: true;
 };
+
+export type LcEmbeddingsOpenAiNode = LcEmbeddingsOpenAiV12Node;

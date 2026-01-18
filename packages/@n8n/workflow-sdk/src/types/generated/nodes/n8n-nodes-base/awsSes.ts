@@ -244,12 +244,14 @@ export interface AwsSesV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsSesNode = {
+export type AwsSesV1Node = {
 	type: 'n8n-nodes-base.awsSes';
 	version: 1;
 	config: NodeConfig<AwsSesV1Params>;
 	credentials?: AwsSesV1Credentials;
 };
+
+export type AwsSesNode = AwsSesV1Node;

@@ -74,13 +74,15 @@ export interface PipedriveTriggerV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PipedriveTriggerNode = {
+export type PipedriveTriggerV11Node = {
 	type: 'n8n-nodes-base.pipedriveTrigger';
 	version: 1 | 1.1;
 	config: NodeConfig<PipedriveTriggerV11Params>;
 	credentials?: PipedriveTriggerV11Credentials;
 	isTrigger: true;
 };
+
+export type PipedriveTriggerNode = PipedriveTriggerV11Node;

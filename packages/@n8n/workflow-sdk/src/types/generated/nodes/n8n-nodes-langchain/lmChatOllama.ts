@@ -37,13 +37,15 @@ export interface LcLmChatOllamaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatOllamaNode = {
+export type LcLmChatOllamaV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatOllama';
 	version: 1;
 	config: NodeConfig<LcLmChatOllamaV1Params>;
 	credentials?: LcLmChatOllamaV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatOllamaNode = LcLmChatOllamaV1Node;

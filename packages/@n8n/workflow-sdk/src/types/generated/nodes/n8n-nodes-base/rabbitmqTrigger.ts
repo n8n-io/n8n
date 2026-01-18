@@ -32,13 +32,15 @@ export interface RabbitmqTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RabbitmqTriggerNode = {
+export type RabbitmqTriggerV1Node = {
 	type: 'n8n-nodes-base.rabbitmqTrigger';
 	version: 1;
 	config: NodeConfig<RabbitmqTriggerV1Params>;
 	credentials?: RabbitmqTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type RabbitmqTriggerNode = RabbitmqTriggerV1Node;

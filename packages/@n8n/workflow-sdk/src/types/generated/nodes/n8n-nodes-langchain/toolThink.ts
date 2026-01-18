@@ -24,13 +24,19 @@ export interface LcToolThinkV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcToolThinkNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcToolThinkV11Node = {
 	type: '@n8n/n8n-nodes-langchain.toolThink';
 	version: 1 | 1.1;
 	config: NodeConfig<LcToolThinkV11Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcToolThinkNode = LcToolThinkV11Node;

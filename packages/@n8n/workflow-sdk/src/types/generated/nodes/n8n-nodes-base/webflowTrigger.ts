@@ -56,17 +56,31 @@ export interface WebflowTriggerV1Params {
 
 export interface WebflowTriggerV2Credentials {
 	webflowOAuth2Api: CredentialReference;
+}
+
+export interface WebflowTriggerV1Credentials {
 	webflowApi: CredentialReference;
+	webflowOAuth2Api: CredentialReference;
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WebflowTriggerNode = {
+export type WebflowTriggerV2Node = {
 	type: 'n8n-nodes-base.webflowTrigger';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<WebflowTriggerV2Params>;
 	credentials?: WebflowTriggerV2Credentials;
 	isTrigger: true;
 };
+
+export type WebflowTriggerV1Node = {
+	type: 'n8n-nodes-base.webflowTrigger';
+	version: 1;
+	config: NodeConfig<WebflowTriggerV1Params>;
+	credentials?: WebflowTriggerV1Credentials;
+	isTrigger: true;
+};
+
+export type WebflowTriggerNode = WebflowTriggerV2Node | WebflowTriggerV1Node;

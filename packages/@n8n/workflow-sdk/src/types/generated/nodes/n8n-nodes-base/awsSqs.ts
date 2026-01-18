@@ -49,12 +49,14 @@ export interface AwsSqsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsSqsNode = {
+export type AwsSqsV1Node = {
 	type: 'n8n-nodes-base.awsSqs';
 	version: 1;
 	config: NodeConfig<AwsSqsV1Params>;
 	credentials?: AwsSqsV1Credentials;
 };
+
+export type AwsSqsNode = AwsSqsV1Node;

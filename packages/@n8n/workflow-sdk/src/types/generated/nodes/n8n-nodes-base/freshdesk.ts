@@ -153,12 +153,14 @@ export interface FreshdeskV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FreshdeskNode = {
+export type FreshdeskV1Node = {
 	type: 'n8n-nodes-base.freshdesk';
 	version: 1;
 	config: NodeConfig<FreshdeskV1Params>;
 	credentials?: FreshdeskV1Credentials;
 };
+
+export type FreshdeskNode = FreshdeskV1Node;

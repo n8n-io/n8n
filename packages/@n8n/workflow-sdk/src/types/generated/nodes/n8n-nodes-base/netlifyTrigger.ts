@@ -46,13 +46,15 @@ export interface NetlifyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NetlifyTriggerNode = {
+export type NetlifyTriggerV1Node = {
 	type: 'n8n-nodes-base.netlifyTrigger';
 	version: 1;
 	config: NodeConfig<NetlifyTriggerV1Params>;
 	credentials?: NetlifyTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type NetlifyTriggerNode = NetlifyTriggerV1Node;

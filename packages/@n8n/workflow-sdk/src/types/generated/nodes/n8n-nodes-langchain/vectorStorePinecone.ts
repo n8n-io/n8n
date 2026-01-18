@@ -129,12 +129,14 @@ export interface LcVectorStorePineconeV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStorePineconeNode = {
+export type LcVectorStorePineconeV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStorePinecone';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStorePineconeV13Params>;
 	credentials?: LcVectorStorePineconeV13Credentials;
 };
+
+export type LcVectorStorePineconeNode = LcVectorStorePineconeV13Node;

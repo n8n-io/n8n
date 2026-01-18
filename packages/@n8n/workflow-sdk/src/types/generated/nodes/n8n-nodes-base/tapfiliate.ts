@@ -219,12 +219,14 @@ export interface TapfiliateV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TapfiliateNode = {
+export type TapfiliateV1Node = {
 	type: 'n8n-nodes-base.tapfiliate';
 	version: 1;
 	config: NodeConfig<TapfiliateV1Params>;
 	credentials?: TapfiliateV1Credentials;
 };
+
+export type TapfiliateNode = TapfiliateV1Node;

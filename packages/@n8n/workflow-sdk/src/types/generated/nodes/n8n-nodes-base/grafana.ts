@@ -245,12 +245,14 @@ export interface GrafanaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GrafanaNode = {
+export type GrafanaV1Node = {
 	type: 'n8n-nodes-base.grafana';
 	version: 1;
 	config: NodeConfig<GrafanaV1Params>;
 	credentials?: GrafanaV1Credentials;
 };
+
+export type GrafanaNode = GrafanaV1Node;

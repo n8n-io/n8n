@@ -1380,13 +1380,27 @@ export interface SlackV24Credentials {
 	slackOAuth2Api: CredentialReference;
 }
 
+export interface SlackV1Credentials {
+	slackApi: CredentialReference;
+	slackOAuth2Api: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SlackNode = {
+export type SlackV24Node = {
 	type: 'n8n-nodes-base.slack';
-	version: 1 | 2 | 2.1 | 2.2 | 2.3 | 2.4;
+	version: 2 | 2.1 | 2.2 | 2.3 | 2.4;
 	config: NodeConfig<SlackV24Params>;
 	credentials?: SlackV24Credentials;
 };
+
+export type SlackV1Node = {
+	type: 'n8n-nodes-base.slack';
+	version: 1;
+	config: NodeConfig<SlackV1Params>;
+	credentials?: SlackV1Credentials;
+};
+
+export type SlackNode = SlackV24Node | SlackV1Node;

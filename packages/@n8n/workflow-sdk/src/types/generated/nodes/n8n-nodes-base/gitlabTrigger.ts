@@ -56,13 +56,15 @@ export interface GitlabTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GitlabTriggerNode = {
+export type GitlabTriggerV1Node = {
 	type: 'n8n-nodes-base.gitlabTrigger';
 	version: 1;
 	config: NodeConfig<GitlabTriggerV1Params>;
 	credentials?: GitlabTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type GitlabTriggerNode = GitlabTriggerV1Node;

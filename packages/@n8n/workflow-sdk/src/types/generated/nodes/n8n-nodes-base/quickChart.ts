@@ -46,12 +46,18 @@ export interface QuickChartV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type QuickChartNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type QuickChartV1Node = {
 	type: 'n8n-nodes-base.quickChart';
 	version: 1;
 	config: NodeConfig<QuickChartV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type QuickChartNode = QuickChartV1Node;

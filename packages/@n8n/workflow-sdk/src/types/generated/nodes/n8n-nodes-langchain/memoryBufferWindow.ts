@@ -26,13 +26,19 @@ export interface LcMemoryBufferWindowV13Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcMemoryBufferWindowNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcMemoryBufferWindowV13Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcMemoryBufferWindowV13Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcMemoryBufferWindowNode = LcMemoryBufferWindowV13Node;

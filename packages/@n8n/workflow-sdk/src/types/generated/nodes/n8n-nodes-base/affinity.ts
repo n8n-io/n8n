@@ -269,12 +269,14 @@ export interface AffinityV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AffinityNode = {
+export type AffinityV1Node = {
 	type: 'n8n-nodes-base.affinity';
 	version: 1;
 	config: NodeConfig<AffinityV1Params>;
 	credentials?: AffinityV1Credentials;
 };
+
+export type AffinityNode = AffinityV1Node;

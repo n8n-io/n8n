@@ -93,12 +93,14 @@ export interface ZoomV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ZoomNode = {
+export type ZoomV1Node = {
 	type: 'n8n-nodes-base.zoom';
 	version: 1;
 	config: NodeConfig<ZoomV1Params>;
 	credentials?: ZoomV1Credentials;
 };
+
+export type ZoomNode = ZoomV1Node;

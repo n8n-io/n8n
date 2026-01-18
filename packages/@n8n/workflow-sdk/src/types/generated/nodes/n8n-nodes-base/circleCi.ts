@@ -88,12 +88,14 @@ export interface CircleCiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CircleCiNode = {
+export type CircleCiV1Node = {
 	type: 'n8n-nodes-base.circleCi';
 	version: 1;
 	config: NodeConfig<CircleCiV1Params>;
 	credentials?: CircleCiV1Credentials;
 };
+
+export type CircleCiNode = CircleCiV1Node;

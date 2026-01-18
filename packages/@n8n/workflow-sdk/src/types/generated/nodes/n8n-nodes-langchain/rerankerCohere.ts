@@ -41,13 +41,15 @@ export interface LcRerankerCohereV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcRerankerCohereNode = {
+export type LcRerankerCohereV1Node = {
 	type: '@n8n/n8n-nodes-langchain.rerankerCohere';
 	version: 1;
 	config: NodeConfig<LcRerankerCohereV1Params>;
 	credentials?: LcRerankerCohereV1Credentials;
 	isTrigger: true;
 };
+
+export type LcRerankerCohereNode = LcRerankerCohereV1Node;

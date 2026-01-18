@@ -31,13 +31,15 @@ export interface GumroadTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GumroadTriggerNode = {
+export type GumroadTriggerV1Node = {
 	type: 'n8n-nodes-base.gumroadTrigger';
 	version: 1;
 	config: NodeConfig<GumroadTriggerV1Params>;
 	credentials?: GumroadTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type GumroadTriggerNode = GumroadTriggerV1Node;

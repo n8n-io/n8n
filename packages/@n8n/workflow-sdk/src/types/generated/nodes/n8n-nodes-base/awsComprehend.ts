@@ -63,12 +63,14 @@ export interface AwsComprehendV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsComprehendNode = {
+export type AwsComprehendV1Node = {
 	type: 'n8n-nodes-base.awsComprehend';
 	version: 1;
 	config: NodeConfig<AwsComprehendV1Params>;
 	credentials?: AwsComprehendV1Credentials;
 };
+
+export type AwsComprehendNode = AwsComprehendV1Node;

@@ -35,13 +35,15 @@ export interface LcMemoryPostgresChatV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryPostgresChatNode = {
+export type LcMemoryPostgresChatV13Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryPostgresChat';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcMemoryPostgresChatV13Params>;
 	credentials?: LcMemoryPostgresChatV13Credentials;
 	isTrigger: true;
 };
+
+export type LcMemoryPostgresChatNode = LcMemoryPostgresChatV13Node;

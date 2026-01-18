@@ -244,12 +244,14 @@ export interface MongoDbV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MongoDbNode = {
+export type MongoDbV12Node = {
 	type: 'n8n-nodes-base.mongoDb';
 	version: 1 | 1.1 | 1.2;
 	config: NodeConfig<MongoDbV12Params>;
 	credentials?: MongoDbV12Credentials;
 };
+
+export type MongoDbNode = MongoDbV12Node;

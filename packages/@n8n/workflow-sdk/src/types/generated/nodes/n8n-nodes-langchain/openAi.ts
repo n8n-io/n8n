@@ -565,13 +565,26 @@ export interface LcOpenAiV21Credentials {
 	openAiApi: CredentialReference;
 }
 
+export interface LcOpenAiV18Credentials {
+	openAiApi: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOpenAiNode = {
+export type LcOpenAiV21Node = {
 	type: '@n8n/n8n-nodes-langchain.openAi';
-	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.7 | 1.8 | 2 | 2.1;
+	version: 2 | 2.1;
 	config: NodeConfig<LcOpenAiV21Params>;
 	credentials?: LcOpenAiV21Credentials;
 };
+
+export type LcOpenAiV18Node = {
+	type: '@n8n/n8n-nodes-langchain.openAi';
+	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.7 | 1.8;
+	config: NodeConfig<LcOpenAiV18Params>;
+	credentials?: LcOpenAiV18Credentials;
+};
+
+export type LcOpenAiNode = LcOpenAiV21Node | LcOpenAiV18Node;

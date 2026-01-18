@@ -38,13 +38,15 @@ export interface FormstackTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FormstackTriggerNode = {
+export type FormstackTriggerV1Node = {
 	type: 'n8n-nodes-base.formstackTrigger';
 	version: 1;
 	config: NodeConfig<FormstackTriggerV1Params>;
 	credentials?: FormstackTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type FormstackTriggerNode = FormstackTriggerV1Node;

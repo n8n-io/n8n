@@ -381,12 +381,14 @@ export interface AsanaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AsanaNode = {
+export type AsanaV1Node = {
 	type: 'n8n-nodes-base.asana';
 	version: 1;
 	config: NodeConfig<AsanaV1Params>;
 	credentials?: AsanaV1Credentials;
 };
+
+export type AsanaNode = AsanaV1Node;

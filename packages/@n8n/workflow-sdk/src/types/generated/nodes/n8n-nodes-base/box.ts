@@ -279,12 +279,14 @@ export interface BoxV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BoxNode = {
+export type BoxV1Node = {
 	type: 'n8n-nodes-base.box';
 	version: 1;
 	config: NodeConfig<BoxV1Params>;
 	credentials?: BoxV1Credentials;
 };
+
+export type BoxNode = BoxV1Node;

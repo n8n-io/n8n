@@ -228,12 +228,32 @@ export type MergeV1Params =
 	| MergeV1WaitConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type MergeNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type MergeV32Node = {
 	type: 'n8n-nodes-base.merge';
-	version: 1 | 2 | 2.1 | 3 | 3.1 | 3.2;
+	version: 3 | 3.1 | 3.2;
 	config: NodeConfig<MergeV32Params>;
 	credentials?: Record<string, never>;
 };
+
+export type MergeV21Node = {
+	type: 'n8n-nodes-base.merge';
+	version: 2 | 2.1;
+	config: NodeConfig<MergeV21Params>;
+	credentials?: Record<string, never>;
+};
+
+export type MergeV1Node = {
+	type: 'n8n-nodes-base.merge';
+	version: 1;
+	config: NodeConfig<MergeV1Params>;
+	credentials?: Record<string, never>;
+};
+
+export type MergeNode = MergeV32Node | MergeV21Node | MergeV1Node;

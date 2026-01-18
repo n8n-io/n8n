@@ -32,13 +32,15 @@ export interface RedisTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RedisTriggerNode = {
+export type RedisTriggerV1Node = {
 	type: 'n8n-nodes-base.redisTrigger';
 	version: 1;
 	config: NodeConfig<RedisTriggerV1Params>;
 	credentials?: RedisTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type RedisTriggerNode = RedisTriggerV1Node;

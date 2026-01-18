@@ -145,12 +145,14 @@ export interface EmeliaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EmeliaNode = {
+export type EmeliaV1Node = {
 	type: 'n8n-nodes-base.emelia';
 	version: 1;
 	config: NodeConfig<EmeliaV1Params>;
 	credentials?: EmeliaV1Credentials;
 };
+
+export type EmeliaNode = EmeliaV1Node;

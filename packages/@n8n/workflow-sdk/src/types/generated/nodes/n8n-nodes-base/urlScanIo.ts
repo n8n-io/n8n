@@ -64,12 +64,14 @@ export interface UrlScanIoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UrlScanIoNode = {
+export type UrlScanIoV1Node = {
 	type: 'n8n-nodes-base.urlScanIo';
 	version: 1;
 	config: NodeConfig<UrlScanIoV1Params>;
 	credentials?: UrlScanIoV1Credentials;
 };
+
+export type UrlScanIoNode = UrlScanIoV1Node;

@@ -49,12 +49,18 @@ export interface ExecuteWorkflowV13Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ExecuteWorkflowNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ExecuteWorkflowV13Node = {
 	type: 'n8n-nodes-base.executeWorkflow';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<ExecuteWorkflowV13Params>;
 	credentials?: Record<string, never>;
 };
+
+export type ExecuteWorkflowNode = ExecuteWorkflowV13Node;

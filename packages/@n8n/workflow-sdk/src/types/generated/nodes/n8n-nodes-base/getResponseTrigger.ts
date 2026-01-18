@@ -36,13 +36,15 @@ export interface GetResponseTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GetResponseTriggerNode = {
+export type GetResponseTriggerV1Node = {
 	type: 'n8n-nodes-base.getResponseTrigger';
 	version: 1;
 	config: NodeConfig<GetResponseTriggerV1Params>;
 	credentials?: GetResponseTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type GetResponseTriggerNode = GetResponseTriggerV1Node;

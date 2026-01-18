@@ -62,12 +62,18 @@ export interface FormV25Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type FormNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type FormV25Node = {
 	type: 'n8n-nodes-base.form';
 	version: 1 | 2.3 | 2.4 | 2.5;
 	config: NodeConfig<FormV25Params>;
 	credentials?: Record<string, never>;
 };
+
+export type FormNode = FormV25Node;

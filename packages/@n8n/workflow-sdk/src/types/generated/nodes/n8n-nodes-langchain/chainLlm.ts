@@ -60,12 +60,18 @@ export type LcChainLlmV19Params =
 	| LcChainLlmV19DefineConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcChainLlmNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcChainLlmV19Node = {
 	type: '@n8n/n8n-nodes-langchain.chainLlm';
 	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.7 | 1.8 | 1.9;
 	config: NodeConfig<LcChainLlmV19Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcChainLlmNode = LcChainLlmV19Node;

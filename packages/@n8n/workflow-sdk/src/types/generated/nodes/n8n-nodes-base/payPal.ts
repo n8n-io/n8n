@@ -88,12 +88,14 @@ export interface PayPalV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PayPalNode = {
+export type PayPalV1Node = {
 	type: 'n8n-nodes-base.payPal';
 	version: 1;
 	config: NodeConfig<PayPalV1Params>;
 	credentials?: PayPalV1Credentials;
 };
+
+export type PayPalNode = PayPalV1Node;

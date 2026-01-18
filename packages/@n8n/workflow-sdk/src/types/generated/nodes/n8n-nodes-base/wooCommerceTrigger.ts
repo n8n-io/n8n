@@ -44,13 +44,15 @@ export interface WooCommerceTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WooCommerceTriggerNode = {
+export type WooCommerceTriggerV1Node = {
 	type: 'n8n-nodes-base.wooCommerceTrigger';
 	version: 1;
 	config: NodeConfig<WooCommerceTriggerV1Params>;
 	credentials?: WooCommerceTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type WooCommerceTriggerNode = WooCommerceTriggerV1Node;

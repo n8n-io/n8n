@@ -40,13 +40,15 @@ export interface TelegramTriggerV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TelegramTriggerNode = {
+export type TelegramTriggerV12Node = {
 	type: 'n8n-nodes-base.telegramTrigger';
 	version: 1 | 1.1 | 1.2;
 	config: NodeConfig<TelegramTriggerV12Params>;
 	credentials?: TelegramTriggerV12Credentials;
 	isTrigger: true;
 };
+
+export type TelegramTriggerNode = TelegramTriggerV12Node;

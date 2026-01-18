@@ -37,13 +37,15 @@ export interface LcLmChatGoogleGeminiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatGoogleGeminiNode = {
+export type LcLmChatGoogleGeminiV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini';
 	version: 1;
 	config: NodeConfig<LcLmChatGoogleGeminiV1Params>;
 	credentials?: LcLmChatGoogleGeminiV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatGoogleGeminiNode = LcLmChatGoogleGeminiV1Node;

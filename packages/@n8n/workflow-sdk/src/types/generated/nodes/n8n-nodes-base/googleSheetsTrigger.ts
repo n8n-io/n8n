@@ -49,13 +49,15 @@ export interface GoogleSheetsTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleSheetsTriggerNode = {
+export type GoogleSheetsTriggerV1Node = {
 	type: 'n8n-nodes-base.googleSheetsTrigger';
 	version: 1;
 	config: NodeConfig<GoogleSheetsTriggerV1Params>;
 	credentials?: GoogleSheetsTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type GoogleSheetsTriggerNode = GoogleSheetsTriggerV1Node;

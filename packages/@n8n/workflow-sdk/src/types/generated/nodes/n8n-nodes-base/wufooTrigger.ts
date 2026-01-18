@@ -36,13 +36,15 @@ export interface WufooTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WufooTriggerNode = {
+export type WufooTriggerV1Node = {
 	type: 'n8n-nodes-base.wufooTrigger';
 	version: 1;
 	config: NodeConfig<WufooTriggerV1Params>;
 	credentials?: WufooTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type WufooTriggerNode = WufooTriggerV1Node;

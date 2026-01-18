@@ -64,12 +64,14 @@ export interface HunterV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HunterNode = {
+export type HunterV1Node = {
 	type: 'n8n-nodes-base.hunter';
 	version: 1;
 	config: NodeConfig<HunterV1Params>;
 	credentials?: HunterV1Credentials;
 };
+
+export type HunterNode = HunterV1Node;

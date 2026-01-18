@@ -30,12 +30,18 @@ export interface StopAndErrorV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type StopAndErrorNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type StopAndErrorV1Node = {
 	type: 'n8n-nodes-base.stopAndError';
 	version: 1;
 	config: NodeConfig<StopAndErrorV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type StopAndErrorNode = StopAndErrorV1Node;

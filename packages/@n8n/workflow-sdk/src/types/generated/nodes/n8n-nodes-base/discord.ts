@@ -374,12 +374,21 @@ export interface DiscordV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DiscordNode = {
+export type DiscordV2Node = {
 	type: 'n8n-nodes-base.discord';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<DiscordV2Params>;
 	credentials?: DiscordV2Credentials;
 };
+
+export type DiscordV1Node = {
+	type: 'n8n-nodes-base.discord';
+	version: 1;
+	config: NodeConfig<DiscordV1Params>;
+	credentials?: Record<string, never>;
+};
+
+export type DiscordNode = DiscordV2Node | DiscordV1Node;

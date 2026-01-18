@@ -62,14 +62,28 @@ export interface MailerLiteTriggerV2Credentials {
 	mailerLiteApi: CredentialReference;
 }
 
+export interface MailerLiteTriggerV1Credentials {
+	mailerLiteApi: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailerLiteTriggerNode = {
+export type MailerLiteTriggerV2Node = {
 	type: 'n8n-nodes-base.mailerLiteTrigger';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<MailerLiteTriggerV2Params>;
 	credentials?: MailerLiteTriggerV2Credentials;
 	isTrigger: true;
 };
+
+export type MailerLiteTriggerV1Node = {
+	type: 'n8n-nodes-base.mailerLiteTrigger';
+	version: 1;
+	config: NodeConfig<MailerLiteTriggerV1Params>;
+	credentials?: MailerLiteTriggerV1Credentials;
+	isTrigger: true;
+};
+
+export type MailerLiteTriggerNode = MailerLiteTriggerV2Node | MailerLiteTriggerV1Node;

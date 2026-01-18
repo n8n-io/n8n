@@ -281,12 +281,14 @@ export interface GoogleBusinessProfileV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleBusinessProfileNode = {
+export type GoogleBusinessProfileV1Node = {
 	type: 'n8n-nodes-base.googleBusinessProfile';
 	version: 1;
 	config: NodeConfig<GoogleBusinessProfileV1Params>;
 	credentials?: GoogleBusinessProfileV1Credentials;
 };
+
+export type GoogleBusinessProfileNode = GoogleBusinessProfileV1Node;

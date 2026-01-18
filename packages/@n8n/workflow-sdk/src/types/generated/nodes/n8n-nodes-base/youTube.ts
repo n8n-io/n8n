@@ -370,12 +370,14 @@ export interface YouTubeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type YouTubeNode = {
+export type YouTubeV1Node = {
 	type: 'n8n-nodes-base.youTube';
 	version: 1;
 	config: NodeConfig<YouTubeV1Params>;
 	credentials?: YouTubeV1Credentials;
 };
+
+export type YouTubeNode = YouTubeV1Node;

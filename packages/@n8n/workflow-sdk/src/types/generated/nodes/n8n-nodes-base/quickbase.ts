@@ -249,12 +249,14 @@ export interface QuickbaseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type QuickbaseNode = {
+export type QuickbaseV1Node = {
 	type: 'n8n-nodes-base.quickbase';
 	version: 1;
 	config: NodeConfig<QuickbaseV1Params>;
 	credentials?: QuickbaseV1Credentials;
 };
+
+export type QuickbaseNode = QuickbaseV1Node;

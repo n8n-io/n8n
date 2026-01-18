@@ -37,13 +37,15 @@ export interface LcEmbeddingsHuggingFaceInferenceV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsHuggingFaceInferenceNode = {
+export type LcEmbeddingsHuggingFaceInferenceV1Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference';
 	version: 1;
 	config: NodeConfig<LcEmbeddingsHuggingFaceInferenceV1Params>;
 	credentials?: LcEmbeddingsHuggingFaceInferenceV1Credentials;
 	isTrigger: true;
 };
+
+export type LcEmbeddingsHuggingFaceInferenceNode = LcEmbeddingsHuggingFaceInferenceV1Node;

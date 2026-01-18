@@ -39,13 +39,15 @@ export interface CalendlyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CalendlyTriggerNode = {
+export type CalendlyTriggerV1Node = {
 	type: 'n8n-nodes-base.calendlyTrigger';
 	version: 1;
 	config: NodeConfig<CalendlyTriggerV1Params>;
 	credentials?: CalendlyTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type CalendlyTriggerNode = CalendlyTriggerV1Node;

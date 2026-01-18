@@ -41,13 +41,15 @@ export interface TaigaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TaigaTriggerNode = {
+export type TaigaTriggerV1Node = {
 	type: 'n8n-nodes-base.taigaTrigger';
 	version: 1;
 	config: NodeConfig<TaigaTriggerV1Params>;
 	credentials?: TaigaTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type TaigaTriggerNode = TaigaTriggerV1Node;

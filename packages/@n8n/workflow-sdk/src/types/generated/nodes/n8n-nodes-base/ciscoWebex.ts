@@ -178,12 +178,14 @@ export interface CiscoWebexV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CiscoWebexNode = {
+export type CiscoWebexV1Node = {
 	type: 'n8n-nodes-base.ciscoWebex';
 	version: 1;
 	config: NodeConfig<CiscoWebexV1Params>;
 	credentials?: CiscoWebexV1Credentials;
 };
+
+export type CiscoWebexNode = CiscoWebexV1Node;

@@ -32,13 +32,15 @@ export interface LcEmbeddingsGoogleGeminiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsGoogleGeminiNode = {
+export type LcEmbeddingsGoogleGeminiV1Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsGoogleGemini';
 	version: 1;
 	config: NodeConfig<LcEmbeddingsGoogleGeminiV1Params>;
 	credentials?: LcEmbeddingsGoogleGeminiV1Credentials;
 	isTrigger: true;
 };
+
+export type LcEmbeddingsGoogleGeminiNode = LcEmbeddingsGoogleGeminiV1Node;

@@ -61,12 +61,14 @@ export interface GotifyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GotifyNode = {
+export type GotifyV1Node = {
 	type: 'n8n-nodes-base.gotify';
 	version: 1;
 	config: NodeConfig<GotifyV1Params>;
 	credentials?: GotifyV1Credentials;
 };
+
+export type GotifyNode = GotifyV1Node;

@@ -121,12 +121,14 @@ export interface OktaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OktaNode = {
+export type OktaV1Node = {
 	type: 'n8n-nodes-base.okta';
 	version: 1;
 	config: NodeConfig<OktaV1Params>;
 	credentials?: OktaV1Credentials;
 };
+
+export type OktaNode = OktaV1Node;

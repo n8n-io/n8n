@@ -73,12 +73,14 @@ export interface RabbitmqV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RabbitmqNode = {
+export type RabbitmqV11Node = {
 	type: 'n8n-nodes-base.rabbitmq';
 	version: 1 | 1.1;
 	config: NodeConfig<RabbitmqV11Params>;
 	credentials?: RabbitmqV11Credentials;
 };
+
+export type RabbitmqNode = RabbitmqV11Node;

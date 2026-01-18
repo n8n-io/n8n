@@ -37,13 +37,15 @@ export interface LcEmbeddingsMistralCloudV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsMistralCloudNode = {
+export type LcEmbeddingsMistralCloudV1Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsMistralCloud';
 	version: 1;
 	config: NodeConfig<LcEmbeddingsMistralCloudV1Params>;
 	credentials?: LcEmbeddingsMistralCloudV1Credentials;
 	isTrigger: true;
 };
+
+export type LcEmbeddingsMistralCloudNode = LcEmbeddingsMistralCloudV1Node;

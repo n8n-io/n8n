@@ -35,13 +35,15 @@ export interface InvoiceNinjaTriggerV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type InvoiceNinjaTriggerNode = {
+export type InvoiceNinjaTriggerV2Node = {
 	type: 'n8n-nodes-base.invoiceNinjaTrigger';
 	version: 1 | 2;
 	config: NodeConfig<InvoiceNinjaTriggerV2Params>;
 	credentials?: InvoiceNinjaTriggerV2Credentials;
 	isTrigger: true;
 };
+
+export type InvoiceNinjaTriggerNode = InvoiceNinjaTriggerV2Node;

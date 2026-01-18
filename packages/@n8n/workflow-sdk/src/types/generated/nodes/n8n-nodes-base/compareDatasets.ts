@@ -29,12 +29,18 @@ export interface CompareDatasetsV23Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type CompareDatasetsNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type CompareDatasetsV23Node = {
 	type: 'n8n-nodes-base.compareDatasets';
 	version: 1 | 2 | 2.1 | 2.2 | 2.3;
 	config: NodeConfig<CompareDatasetsV23Params>;
 	credentials?: Record<string, never>;
 };
+
+export type CompareDatasetsNode = CompareDatasetsV23Node;

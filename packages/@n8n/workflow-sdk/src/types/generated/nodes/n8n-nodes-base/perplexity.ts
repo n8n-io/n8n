@@ -52,12 +52,14 @@ export interface PerplexityV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PerplexityNode = {
+export type PerplexityV1Node = {
 	type: 'n8n-nodes-base.perplexity';
 	version: 1;
 	config: NodeConfig<PerplexityV1Params>;
 	credentials?: PerplexityV1Credentials;
 };
+
+export type PerplexityNode = PerplexityV1Node;

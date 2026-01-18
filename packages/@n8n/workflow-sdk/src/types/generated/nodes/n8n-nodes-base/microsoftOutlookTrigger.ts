@@ -69,13 +69,15 @@ export interface MicrosoftOutlookTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOutlookTriggerNode = {
+export type MicrosoftOutlookTriggerV1Node = {
 	type: 'n8n-nodes-base.microsoftOutlookTrigger';
 	version: 1;
 	config: NodeConfig<MicrosoftOutlookTriggerV1Params>;
 	credentials?: MicrosoftOutlookTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type MicrosoftOutlookTriggerNode = MicrosoftOutlookTriggerV1Node;

@@ -97,12 +97,14 @@ export interface PhantombusterV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PhantombusterNode = {
+export type PhantombusterV1Node = {
 	type: 'n8n-nodes-base.phantombuster';
 	version: 1;
 	config: NodeConfig<PhantombusterV1Params>;
 	credentials?: PhantombusterV1Credentials;
 };
+
+export type PhantombusterNode = PhantombusterV1Node;

@@ -28,13 +28,15 @@ export interface LcToolSerpApiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcToolSerpApiNode = {
+export type LcToolSerpApiV1Node = {
 	type: '@n8n/n8n-nodes-langchain.toolSerpApi';
 	version: 1;
 	config: NodeConfig<LcToolSerpApiV1Params>;
 	credentials?: LcToolSerpApiV1Credentials;
 	isTrigger: true;
 };
+
+export type LcToolSerpApiNode = LcToolSerpApiV1Node;

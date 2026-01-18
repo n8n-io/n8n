@@ -30,12 +30,18 @@ export interface N8nTrainingCustomerDatastoreV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type N8nTrainingCustomerDatastoreNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type N8nTrainingCustomerDatastoreV1Node = {
 	type: 'n8n-nodes-base.n8nTrainingCustomerDatastore';
 	version: 1;
 	config: NodeConfig<N8nTrainingCustomerDatastoreV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type N8nTrainingCustomerDatastoreNode = N8nTrainingCustomerDatastoreV1Node;

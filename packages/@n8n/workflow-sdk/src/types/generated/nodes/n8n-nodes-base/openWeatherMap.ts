@@ -63,12 +63,14 @@ export interface OpenWeatherMapV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OpenWeatherMapNode = {
+export type OpenWeatherMapV1Node = {
 	type: 'n8n-nodes-base.openWeatherMap';
 	version: 1;
 	config: NodeConfig<OpenWeatherMapV1Params>;
 	credentials?: OpenWeatherMapV1Credentials;
 };
+
+export type OpenWeatherMapNode = OpenWeatherMapV1Node;

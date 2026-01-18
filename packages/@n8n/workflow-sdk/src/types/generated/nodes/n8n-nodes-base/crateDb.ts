@@ -56,12 +56,14 @@ export interface CrateDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CrateDbNode = {
+export type CrateDbV1Node = {
 	type: 'n8n-nodes-base.crateDb';
 	version: 1;
 	config: NodeConfig<CrateDbV1Params>;
 	credentials?: CrateDbV1Credentials;
 };
+
+export type CrateDbNode = CrateDbV1Node;

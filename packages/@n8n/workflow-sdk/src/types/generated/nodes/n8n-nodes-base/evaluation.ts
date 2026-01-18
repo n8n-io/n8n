@@ -140,12 +140,14 @@ export interface EvaluationV48Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EvaluationNode = {
+export type EvaluationV48Node = {
 	type: 'n8n-nodes-base.evaluation';
 	version: 4.6 | 4.7 | 4.8;
 	config: NodeConfig<EvaluationV48Params>;
 	credentials?: EvaluationV48Credentials;
 };
+
+export type EvaluationNode = EvaluationV48Node;

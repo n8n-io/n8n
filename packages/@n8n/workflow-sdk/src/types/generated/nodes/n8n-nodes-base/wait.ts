@@ -117,12 +117,14 @@ export interface WaitV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WaitNode = {
+export type WaitV11Node = {
 	type: 'n8n-nodes-base.wait';
 	version: 1 | 1.1;
 	config: NodeConfig<WaitV11Params>;
 	credentials?: WaitV11Credentials;
 };
+
+export type WaitNode = WaitV11Node;

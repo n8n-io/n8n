@@ -233,16 +233,29 @@ export type WebflowV1Params =
 
 export interface WebflowV2Credentials {
 	webflowOAuth2Api: CredentialReference;
+}
+
+export interface WebflowV1Credentials {
 	webflowApi: CredentialReference;
+	webflowOAuth2Api: CredentialReference;
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WebflowNode = {
+export type WebflowV2Node = {
 	type: 'n8n-nodes-base.webflow';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<WebflowV2Params>;
 	credentials?: WebflowV2Credentials;
 };
+
+export type WebflowV1Node = {
+	type: 'n8n-nodes-base.webflow';
+	version: 1;
+	config: NodeConfig<WebflowV1Params>;
+	credentials?: WebflowV1Credentials;
+};
+
+export type WebflowNode = WebflowV2Node | WebflowV1Node;

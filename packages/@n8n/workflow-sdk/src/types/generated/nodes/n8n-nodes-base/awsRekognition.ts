@@ -53,12 +53,14 @@ export interface AwsRekognitionV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsRekognitionNode = {
+export type AwsRekognitionV1Node = {
 	type: 'n8n-nodes-base.awsRekognition';
 	version: 1;
 	config: NodeConfig<AwsRekognitionV1Params>;
 	credentials?: AwsRekognitionV1Credentials;
 };
+
+export type AwsRekognitionNode = AwsRekognitionV1Node;

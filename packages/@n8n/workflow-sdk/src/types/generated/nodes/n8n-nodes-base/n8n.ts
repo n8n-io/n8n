@@ -224,12 +224,14 @@ export interface N8nV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type N8nNode = {
+export type N8nV1Node = {
 	type: 'n8n-nodes-base.n8n';
 	version: 1;
 	config: NodeConfig<N8nV1Params>;
 	credentials?: N8nV1Credentials;
 };
+
+export type N8nNode = N8nV1Node;

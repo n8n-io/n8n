@@ -80,12 +80,14 @@ export interface DriftV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DriftNode = {
+export type DriftV1Node = {
 	type: 'n8n-nodes-base.drift';
 	version: 1;
 	config: NodeConfig<DriftV1Params>;
 	credentials?: DriftV1Credentials;
 };
+
+export type DriftNode = DriftV1Node;

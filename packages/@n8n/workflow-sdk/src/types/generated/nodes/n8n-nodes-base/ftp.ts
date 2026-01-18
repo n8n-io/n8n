@@ -56,12 +56,14 @@ export interface FtpV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FtpNode = {
+export type FtpV1Node = {
 	type: 'n8n-nodes-base.ftp';
 	version: 1;
 	config: NodeConfig<FtpV1Params>;
 	credentials?: FtpV1Credentials;
 };
+
+export type FtpNode = FtpV1Node;

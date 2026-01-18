@@ -40,12 +40,25 @@ export interface LcAgentToolV22Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcAgentToolNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcAgentToolV3Node = {
 	type: '@n8n/n8n-nodes-langchain.agentTool';
-	version: 2.2 | 3;
+	version: 3;
 	config: NodeConfig<LcAgentToolV3Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcAgentToolV22Node = {
+	type: '@n8n/n8n-nodes-langchain.agentTool';
+	version: 2.2;
+	config: NodeConfig<LcAgentToolV22Params>;
+	credentials?: Record<string, never>;
+};
+
+export type LcAgentToolNode = LcAgentToolV3Node | LcAgentToolV22Node;

@@ -37,13 +37,15 @@ export interface LcLmChatMistralCloudV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatMistralCloudNode = {
+export type LcLmChatMistralCloudV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud';
 	version: 1;
 	config: NodeConfig<LcLmChatMistralCloudV1Params>;
 	credentials?: LcLmChatMistralCloudV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatMistralCloudNode = LcLmChatMistralCloudV1Node;

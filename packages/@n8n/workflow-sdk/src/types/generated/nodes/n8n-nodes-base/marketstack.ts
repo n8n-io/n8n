@@ -70,12 +70,14 @@ export interface MarketstackV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MarketstackNode = {
+export type MarketstackV1Node = {
 	type: 'n8n-nodes-base.marketstack';
 	version: 1;
 	config: NodeConfig<MarketstackV1Params>;
 	credentials?: MarketstackV1Credentials;
 };
+
+export type MarketstackNode = MarketstackV1Node;

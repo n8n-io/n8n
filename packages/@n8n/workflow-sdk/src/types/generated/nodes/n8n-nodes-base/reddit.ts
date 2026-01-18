@@ -290,12 +290,14 @@ export interface RedditV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RedditNode = {
+export type RedditV1Node = {
 	type: 'n8n-nodes-base.reddit';
 	version: 1;
 	config: NodeConfig<RedditV1Params>;
 	credentials?: RedditV1Credentials;
 };
+
+export type RedditNode = RedditV1Node;

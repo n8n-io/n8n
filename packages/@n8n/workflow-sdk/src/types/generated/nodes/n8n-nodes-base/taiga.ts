@@ -318,12 +318,14 @@ export interface TaigaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TaigaNode = {
+export type TaigaV1Node = {
 	type: 'n8n-nodes-base.taiga';
 	version: 1;
 	config: NodeConfig<TaigaV1Params>;
 	credentials?: TaigaV1Credentials;
 };
+
+export type TaigaNode = TaigaV1Node;

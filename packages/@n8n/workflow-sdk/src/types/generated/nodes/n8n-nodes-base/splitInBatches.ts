@@ -43,12 +43,32 @@ export interface SplitInBatchesV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type SplitInBatchesNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type SplitInBatchesV3Node = {
 	type: 'n8n-nodes-base.splitInBatches';
-	version: 1 | 2 | 3;
+	version: 3;
 	config: NodeConfig<SplitInBatchesV3Params>;
 	credentials?: Record<string, never>;
 };
+
+export type SplitInBatchesV2Node = {
+	type: 'n8n-nodes-base.splitInBatches';
+	version: 2;
+	config: NodeConfig<SplitInBatchesV2Params>;
+	credentials?: Record<string, never>;
+};
+
+export type SplitInBatchesV1Node = {
+	type: 'n8n-nodes-base.splitInBatches';
+	version: 1;
+	config: NodeConfig<SplitInBatchesV1Params>;
+	credentials?: Record<string, never>;
+};
+
+export type SplitInBatchesNode = SplitInBatchesV3Node | SplitInBatchesV2Node | SplitInBatchesV1Node;

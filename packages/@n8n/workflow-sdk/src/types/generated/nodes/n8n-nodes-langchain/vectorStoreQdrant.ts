@@ -117,12 +117,14 @@ export interface LcVectorStoreQdrantV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreQdrantNode = {
+export type LcVectorStoreQdrantV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreQdrant';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStoreQdrantV13Params>;
 	credentials?: LcVectorStoreQdrantV13Credentials;
 };
+
+export type LcVectorStoreQdrantNode = LcVectorStoreQdrantV13Node;

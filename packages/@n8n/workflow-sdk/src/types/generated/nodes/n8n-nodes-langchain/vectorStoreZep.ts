@@ -114,12 +114,14 @@ export interface LcVectorStoreZepV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreZepNode = {
+export type LcVectorStoreZepV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreZep';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStoreZepV13Params>;
 	credentials?: LcVectorStoreZepV13Credentials;
 };
+
+export type LcVectorStoreZepNode = LcVectorStoreZepV13Node;

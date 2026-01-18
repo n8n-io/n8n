@@ -77,12 +77,14 @@ export interface AwsTranscribeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsTranscribeNode = {
+export type AwsTranscribeV1Node = {
 	type: 'n8n-nodes-base.awsTranscribe';
 	version: 1;
 	config: NodeConfig<AwsTranscribeV1Params>;
 	credentials?: AwsTranscribeV1Credentials;
 };
+
+export type AwsTranscribeNode = AwsTranscribeV1Node;

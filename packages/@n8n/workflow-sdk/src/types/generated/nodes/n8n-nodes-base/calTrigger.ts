@@ -30,13 +30,15 @@ export interface CalTriggerV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CalTriggerNode = {
+export type CalTriggerV2Node = {
 	type: 'n8n-nodes-base.calTrigger';
 	version: 1 | 2;
 	config: NodeConfig<CalTriggerV2Params>;
 	credentials?: CalTriggerV2Credentials;
 	isTrigger: true;
 };
+
+export type CalTriggerNode = CalTriggerV2Node;

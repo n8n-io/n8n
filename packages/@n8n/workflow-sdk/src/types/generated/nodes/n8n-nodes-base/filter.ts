@@ -48,12 +48,25 @@ export interface FilterV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type FilterNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type FilterV23Node = {
 	type: 'n8n-nodes-base.filter';
-	version: 1 | 2 | 2.1 | 2.2 | 2.3;
+	version: 2 | 2.1 | 2.2 | 2.3;
 	config: NodeConfig<FilterV23Params>;
 	credentials?: Record<string, never>;
 };
+
+export type FilterV1Node = {
+	type: 'n8n-nodes-base.filter';
+	version: 1;
+	config: NodeConfig<FilterV1Params>;
+	credentials?: Record<string, never>;
+};
+
+export type FilterNode = FilterV23Node | FilterV1Node;

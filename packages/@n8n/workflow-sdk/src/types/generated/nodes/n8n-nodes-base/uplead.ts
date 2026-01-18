@@ -62,12 +62,14 @@ export interface UpleadV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UpleadNode = {
+export type UpleadV1Node = {
 	type: 'n8n-nodes-base.uplead';
 	version: 1;
 	config: NodeConfig<UpleadV1Params>;
 	credentials?: UpleadV1Credentials;
 };
+
+export type UpleadNode = UpleadV1Node;

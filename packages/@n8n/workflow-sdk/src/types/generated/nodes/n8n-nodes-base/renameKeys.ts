@@ -25,12 +25,18 @@ export interface RenameKeysV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type RenameKeysNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type RenameKeysV1Node = {
 	type: 'n8n-nodes-base.renameKeys';
 	version: 1;
 	config: NodeConfig<RenameKeysV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type RenameKeysNode = RenameKeysV1Node;

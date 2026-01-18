@@ -413,12 +413,14 @@ export interface GoToWebinarV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoToWebinarNode = {
+export type GoToWebinarV1Node = {
 	type: 'n8n-nodes-base.goToWebinar';
 	version: 1;
 	config: NodeConfig<GoToWebinarV1Params>;
 	credentials?: GoToWebinarV1Credentials;
 };
+
+export type GoToWebinarNode = GoToWebinarV1Node;

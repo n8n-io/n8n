@@ -82,12 +82,14 @@ export interface FlowV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FlowNode = {
+export type FlowV1Node = {
 	type: 'n8n-nodes-base.flow';
 	version: 1;
 	config: NodeConfig<FlowV1Params>;
 	credentials?: FlowV1Credentials;
 };
+
+export type FlowNode = FlowV1Node;

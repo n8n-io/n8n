@@ -90,12 +90,14 @@ export interface FacebookGraphApiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FacebookGraphApiNode = {
+export type FacebookGraphApiV1Node = {
 	type: 'n8n-nodes-base.facebookGraphApi';
 	version: 1;
 	config: NodeConfig<FacebookGraphApiV1Params>;
 	credentials?: FacebookGraphApiV1Credentials;
 };
+
+export type FacebookGraphApiNode = FacebookGraphApiV1Node;

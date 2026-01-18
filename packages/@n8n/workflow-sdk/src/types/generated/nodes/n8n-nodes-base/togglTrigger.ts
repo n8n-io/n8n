@@ -33,13 +33,15 @@ export interface TogglTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TogglTriggerNode = {
+export type TogglTriggerV1Node = {
 	type: 'n8n-nodes-base.togglTrigger';
 	version: 1;
 	config: NodeConfig<TogglTriggerV1Params>;
 	credentials?: TogglTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type TogglTriggerNode = TogglTriggerV1Node;

@@ -76,12 +76,14 @@ export interface PhilipsHueV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PhilipsHueNode = {
+export type PhilipsHueV1Node = {
 	type: 'n8n-nodes-base.philipsHue';
 	version: 1;
 	config: NodeConfig<PhilipsHueV1Params>;
 	credentials?: PhilipsHueV1Credentials;
 };
+
+export type PhilipsHueNode = PhilipsHueV1Node;

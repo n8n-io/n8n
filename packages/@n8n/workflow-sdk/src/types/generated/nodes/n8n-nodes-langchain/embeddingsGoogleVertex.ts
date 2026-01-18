@@ -40,13 +40,15 @@ export interface LcEmbeddingsGoogleVertexV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsGoogleVertexNode = {
+export type LcEmbeddingsGoogleVertexV1Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsGoogleVertex';
 	version: 1;
 	config: NodeConfig<LcEmbeddingsGoogleVertexV1Params>;
 	credentials?: LcEmbeddingsGoogleVertexV1Credentials;
 	isTrigger: true;
 };
+
+export type LcEmbeddingsGoogleVertexNode = LcEmbeddingsGoogleVertexV1Node;

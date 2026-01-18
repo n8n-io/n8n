@@ -49,12 +49,14 @@ export interface JwtV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JwtNode = {
+export type JwtV1Node = {
 	type: 'n8n-nodes-base.jwt';
 	version: 1;
 	config: NodeConfig<JwtV1Params>;
 	credentials?: JwtV1Credentials;
 };
+
+export type JwtNode = JwtV1Node;

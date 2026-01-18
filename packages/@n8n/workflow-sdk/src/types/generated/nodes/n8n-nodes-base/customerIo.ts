@@ -158,12 +158,14 @@ export interface CustomerIoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CustomerIoNode = {
+export type CustomerIoV1Node = {
 	type: 'n8n-nodes-base.customerIo';
 	version: 1;
 	config: NodeConfig<CustomerIoV1Params>;
 	credentials?: CustomerIoV1Credentials;
 };
+
+export type CustomerIoNode = CustomerIoV1Node;

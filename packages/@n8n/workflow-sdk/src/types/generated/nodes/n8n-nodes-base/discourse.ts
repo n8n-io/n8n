@@ -290,12 +290,14 @@ export interface DiscourseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DiscourseNode = {
+export type DiscourseV1Node = {
 	type: 'n8n-nodes-base.discourse';
 	version: 1;
 	config: NodeConfig<DiscourseV1Params>;
 	credentials?: DiscourseV1Credentials;
 };
+
+export type DiscourseNode = DiscourseV1Node;

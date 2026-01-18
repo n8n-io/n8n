@@ -42,13 +42,15 @@ export interface FacebookLeadAdsTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FacebookLeadAdsTriggerNode = {
+export type FacebookLeadAdsTriggerV1Node = {
 	type: 'n8n-nodes-base.facebookLeadAdsTrigger';
 	version: 1;
 	config: NodeConfig<FacebookLeadAdsTriggerV1Params>;
 	credentials?: FacebookLeadAdsTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type FacebookLeadAdsTriggerNode = FacebookLeadAdsTriggerV1Node;

@@ -53,12 +53,14 @@ export interface GoogleAdsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleAdsNode = {
+export type GoogleAdsV1Node = {
 	type: 'n8n-nodes-base.googleAds';
 	version: 1;
 	config: NodeConfig<GoogleAdsV1Params>;
 	credentials?: GoogleAdsV1Credentials;
 };
+
+export type GoogleAdsNode = GoogleAdsV1Node;

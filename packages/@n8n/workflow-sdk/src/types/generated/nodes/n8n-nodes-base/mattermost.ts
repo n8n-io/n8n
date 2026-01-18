@@ -350,12 +350,14 @@ export interface MattermostV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MattermostNode = {
+export type MattermostV1Node = {
 	type: 'n8n-nodes-base.mattermost';
 	version: 1;
 	config: NodeConfig<MattermostV1Params>;
 	credentials?: MattermostV1Credentials;
 };
+
+export type MattermostNode = MattermostV1Node;

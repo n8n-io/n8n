@@ -31,13 +31,15 @@ export interface LoneScaleTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LoneScaleTriggerNode = {
+export type LoneScaleTriggerV1Node = {
 	type: 'n8n-nodes-base.loneScaleTrigger';
 	version: 1;
 	config: NodeConfig<LoneScaleTriggerV1Params>;
 	credentials?: LoneScaleTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type LoneScaleTriggerNode = LoneScaleTriggerV1Node;

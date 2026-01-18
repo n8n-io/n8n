@@ -163,12 +163,14 @@ export interface WhatsAppV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WhatsAppNode = {
+export type WhatsAppV11Node = {
 	type: 'n8n-nodes-base.whatsApp';
 	version: 1 | 1.1;
 	config: NodeConfig<WhatsAppV11Params>;
 	credentials?: WhatsAppV11Credentials;
 };
+
+export type WhatsAppNode = WhatsAppV11Node;

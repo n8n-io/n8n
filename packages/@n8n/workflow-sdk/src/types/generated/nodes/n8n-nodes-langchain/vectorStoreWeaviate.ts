@@ -117,12 +117,14 @@ export interface LcVectorStoreWeaviateV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreWeaviateNode = {
+export type LcVectorStoreWeaviateV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreWeaviate';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStoreWeaviateV13Params>;
 	credentials?: LcVectorStoreWeaviateV13Credentials;
 };
+
+export type LcVectorStoreWeaviateNode = LcVectorStoreWeaviateV13Node;

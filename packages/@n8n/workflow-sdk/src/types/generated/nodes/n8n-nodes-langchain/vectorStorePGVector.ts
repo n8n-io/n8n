@@ -130,12 +130,14 @@ export interface LcVectorStorePGVectorV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStorePGVectorNode = {
+export type LcVectorStorePGVectorV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStorePGVector';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStorePGVectorV13Params>;
 	credentials?: LcVectorStorePGVectorV13Credentials;
 };
+
+export type LcVectorStorePGVectorNode = LcVectorStorePGVectorV13Node;

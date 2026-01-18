@@ -208,12 +208,18 @@ export interface EditImageV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type EditImageNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type EditImageV1Node = {
 	type: 'n8n-nodes-base.editImage';
 	version: 1;
 	config: NodeConfig<EditImageV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type EditImageNode = EditImageV1Node;

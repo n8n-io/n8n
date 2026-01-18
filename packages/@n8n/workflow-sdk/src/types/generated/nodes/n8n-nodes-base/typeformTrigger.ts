@@ -43,13 +43,15 @@ export interface TypeformTriggerV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TypeformTriggerNode = {
+export type TypeformTriggerV11Node = {
 	type: 'n8n-nodes-base.typeformTrigger';
 	version: 1 | 1.1;
 	config: NodeConfig<TypeformTriggerV11Params>;
 	credentials?: TypeformTriggerV11Credentials;
 	isTrigger: true;
 };
+
+export type TypeformTriggerNode = TypeformTriggerV11Node;

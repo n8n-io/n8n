@@ -25,12 +25,18 @@ export interface OpenThesaurusV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type OpenThesaurusNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type OpenThesaurusV1Node = {
 	type: 'n8n-nodes-base.openThesaurus';
 	version: 1;
 	config: NodeConfig<OpenThesaurusV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type OpenThesaurusNode = OpenThesaurusV1Node;

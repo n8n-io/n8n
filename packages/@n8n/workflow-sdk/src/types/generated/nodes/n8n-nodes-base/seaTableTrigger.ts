@@ -63,14 +63,28 @@ export interface SeaTableTriggerV2Credentials {
 	seaTableApi: CredentialReference;
 }
 
+export interface SeaTableTriggerV1Credentials {
+	seaTableApi: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SeaTableTriggerNode = {
+export type SeaTableTriggerV2Node = {
 	type: 'n8n-nodes-base.seaTableTrigger';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<SeaTableTriggerV2Params>;
 	credentials?: SeaTableTriggerV2Credentials;
 	isTrigger: true;
 };
+
+export type SeaTableTriggerV1Node = {
+	type: 'n8n-nodes-base.seaTableTrigger';
+	version: 1;
+	config: NodeConfig<SeaTableTriggerV1Params>;
+	credentials?: SeaTableTriggerV1Credentials;
+	isTrigger: true;
+};
+
+export type SeaTableTriggerNode = SeaTableTriggerV2Node | SeaTableTriggerV1Node;

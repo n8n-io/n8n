@@ -274,12 +274,14 @@ export interface MailchimpV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailchimpNode = {
+export type MailchimpV1Node = {
 	type: 'n8n-nodes-base.mailchimp';
 	version: 1;
 	config: NodeConfig<MailchimpV1Params>;
 	credentials?: MailchimpV1Credentials;
 };
+
+export type MailchimpNode = MailchimpV1Node;

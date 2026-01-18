@@ -581,12 +581,14 @@ export interface GithubV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GithubNode = {
+export type GithubV11Node = {
 	type: 'n8n-nodes-base.github';
 	version: 1 | 1.1;
 	config: NodeConfig<GithubV11Params>;
 	credentials?: GithubV11Credentials;
 };
+
+export type GithubNode = GithubV11Node;

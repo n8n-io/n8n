@@ -42,13 +42,19 @@ export interface LcRetrieverWorkflowV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcRetrieverWorkflowNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcRetrieverWorkflowV11Node = {
 	type: '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 	version: 1 | 1.1;
 	config: NodeConfig<LcRetrieverWorkflowV11Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcRetrieverWorkflowNode = LcRetrieverWorkflowV11Node;

@@ -33,12 +33,18 @@ export interface SplitOutV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type SplitOutNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type SplitOutV1Node = {
 	type: 'n8n-nodes-base.splitOut';
 	version: 1;
 	config: NodeConfig<SplitOutV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type SplitOutNode = SplitOutV1Node;

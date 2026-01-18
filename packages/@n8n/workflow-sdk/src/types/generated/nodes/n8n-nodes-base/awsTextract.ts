@@ -40,12 +40,14 @@ export interface AwsTextractV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsTextractNode = {
+export type AwsTextractV1Node = {
 	type: 'n8n-nodes-base.awsTextract';
 	version: 1;
 	config: NodeConfig<AwsTextractV1Params>;
 	credentials?: AwsTextractV1Credentials;
 };
+
+export type AwsTextractNode = AwsTextractV1Node;

@@ -95,12 +95,14 @@ export interface PushbulletV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PushbulletNode = {
+export type PushbulletV1Node = {
 	type: 'n8n-nodes-base.pushbullet';
 	version: 1;
 	config: NodeConfig<PushbulletV1Params>;
 	credentials?: PushbulletV1Credentials;
 };
+
+export type PushbulletNode = PushbulletV1Node;

@@ -29,13 +29,19 @@ export interface RssFeedReadTriggerV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type RssFeedReadTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type RssFeedReadTriggerV1Node = {
 	type: 'n8n-nodes-base.rssFeedReadTrigger';
 	version: 1;
 	config: NodeConfig<RssFeedReadTriggerV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type RssFeedReadTriggerNode = RssFeedReadTriggerV1Node;

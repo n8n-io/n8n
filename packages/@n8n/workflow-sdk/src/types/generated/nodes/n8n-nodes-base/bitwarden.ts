@@ -261,12 +261,14 @@ export interface BitwardenV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BitwardenNode = {
+export type BitwardenV1Node = {
 	type: 'n8n-nodes-base.bitwarden';
 	version: 1;
 	config: NodeConfig<BitwardenV1Params>;
 	credentials?: BitwardenV1Credentials;
 };
+
+export type BitwardenNode = BitwardenV1Node;

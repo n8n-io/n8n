@@ -178,13 +178,26 @@ export interface GoogleAnalyticsV2Credentials {
 	googleAnalyticsOAuth2: CredentialReference;
 }
 
+export interface GoogleAnalyticsV1Credentials {
+	googleAnalyticsOAuth2: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleAnalyticsNode = {
+export type GoogleAnalyticsV2Node = {
 	type: 'n8n-nodes-base.googleAnalytics';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<GoogleAnalyticsV2Params>;
 	credentials?: GoogleAnalyticsV2Credentials;
 };
+
+export type GoogleAnalyticsV1Node = {
+	type: 'n8n-nodes-base.googleAnalytics';
+	version: 1;
+	config: NodeConfig<GoogleAnalyticsV1Params>;
+	credentials?: GoogleAnalyticsV1Credentials;
+};
+
+export type GoogleAnalyticsNode = GoogleAnalyticsV2Node | GoogleAnalyticsV1Node;

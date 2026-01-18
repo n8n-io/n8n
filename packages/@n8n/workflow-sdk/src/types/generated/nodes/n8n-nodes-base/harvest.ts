@@ -921,12 +921,14 @@ export interface HarvestV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HarvestNode = {
+export type HarvestV1Node = {
 	type: 'n8n-nodes-base.harvest';
 	version: 1;
 	config: NodeConfig<HarvestV1Params>;
 	credentials?: HarvestV1Credentials;
 };
+
+export type HarvestNode = HarvestV1Node;

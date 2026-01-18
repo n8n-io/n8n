@@ -191,12 +191,14 @@ export interface GoogleContactsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleContactsNode = {
+export type GoogleContactsV1Node = {
 	type: 'n8n-nodes-base.googleContacts';
 	version: 1;
 	config: NodeConfig<GoogleContactsV1Params>;
 	credentials?: GoogleContactsV1Credentials;
 };
+
+export type GoogleContactsNode = GoogleContactsV1Node;

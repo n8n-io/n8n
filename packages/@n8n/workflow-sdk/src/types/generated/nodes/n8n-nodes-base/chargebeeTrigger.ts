@@ -56,13 +56,19 @@ export interface ChargebeeTriggerV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ChargebeeTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ChargebeeTriggerV1Node = {
 	type: 'n8n-nodes-base.chargebeeTrigger';
 	version: 1;
 	config: NodeConfig<ChargebeeTriggerV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type ChargebeeTriggerNode = ChargebeeTriggerV1Node;

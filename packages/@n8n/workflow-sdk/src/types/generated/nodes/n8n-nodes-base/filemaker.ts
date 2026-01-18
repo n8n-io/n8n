@@ -136,12 +136,14 @@ export interface FilemakerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FilemakerNode = {
+export type FilemakerV1Node = {
 	type: 'n8n-nodes-base.filemaker';
 	version: 1;
 	config: NodeConfig<FilemakerV1Params>;
 	credentials?: FilemakerV1Credentials;
 };
+
+export type FilemakerNode = FilemakerV1Node;

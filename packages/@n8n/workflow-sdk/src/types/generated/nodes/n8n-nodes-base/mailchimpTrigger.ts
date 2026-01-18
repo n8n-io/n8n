@@ -43,13 +43,15 @@ export interface MailchimpTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailchimpTriggerNode = {
+export type MailchimpTriggerV1Node = {
 	type: 'n8n-nodes-base.mailchimpTrigger';
 	version: 1;
 	config: NodeConfig<MailchimpTriggerV1Params>;
 	credentials?: MailchimpTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type MailchimpTriggerNode = MailchimpTriggerV1Node;

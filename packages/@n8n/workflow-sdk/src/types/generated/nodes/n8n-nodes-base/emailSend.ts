@@ -93,13 +93,26 @@ export interface EmailSendV21Credentials {
 	smtp: CredentialReference;
 }
 
+export interface EmailSendV1Credentials {
+	smtp: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EmailSendNode = {
+export type EmailSendV21Node = {
 	type: 'n8n-nodes-base.emailSend';
-	version: 1 | 2 | 2.1;
+	version: 2 | 2.1;
 	config: NodeConfig<EmailSendV21Params>;
 	credentials?: EmailSendV21Credentials;
 };
+
+export type EmailSendV1Node = {
+	type: 'n8n-nodes-base.emailSend';
+	version: 1;
+	config: NodeConfig<EmailSendV1Params>;
+	credentials?: EmailSendV1Credentials;
+};
+
+export type EmailSendNode = EmailSendV21Node | EmailSendV1Node;

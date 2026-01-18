@@ -284,12 +284,14 @@ export interface ZendeskV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ZendeskNode = {
+export type ZendeskV1Node = {
 	type: 'n8n-nodes-base.zendesk';
 	version: 1;
 	config: NodeConfig<ZendeskV1Params>;
 	credentials?: ZendeskV1Credentials;
 };
+
+export type ZendeskNode = ZendeskV1Node;

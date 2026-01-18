@@ -38,13 +38,15 @@ export interface LcLmChatAzureOpenAiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatAzureOpenAiNode = {
+export type LcLmChatAzureOpenAiV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi';
 	version: 1;
 	config: NodeConfig<LcLmChatAzureOpenAiV1Params>;
 	credentials?: LcLmChatAzureOpenAiV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatAzureOpenAiNode = LcLmChatAzureOpenAiV1Node;

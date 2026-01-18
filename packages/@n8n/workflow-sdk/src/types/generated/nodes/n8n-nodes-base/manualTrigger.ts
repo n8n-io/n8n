@@ -18,13 +18,19 @@ import type { NodeConfig } from '../../../base';
 export interface ManualTriggerV1Params {}
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ManualTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ManualTriggerV1Node = {
 	type: 'n8n-nodes-base.manualTrigger';
 	version: 1;
 	config: NodeConfig<ManualTriggerV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type ManualTriggerNode = ManualTriggerV1Node;

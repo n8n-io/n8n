@@ -561,13 +561,27 @@ export interface GmailV22Credentials {
 	gmailOAuth2: CredentialReference;
 }
 
+export interface GmailV1Credentials {
+	googleApi: CredentialReference;
+	gmailOAuth2: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GmailNode = {
+export type GmailV22Node = {
 	type: 'n8n-nodes-base.gmail';
-	version: 1 | 2 | 2.1 | 2.2;
+	version: 2 | 2.1 | 2.2;
 	config: NodeConfig<GmailV22Params>;
 	credentials?: GmailV22Credentials;
 };
+
+export type GmailV1Node = {
+	type: 'n8n-nodes-base.gmail';
+	version: 1;
+	config: NodeConfig<GmailV1Params>;
+	credentials?: GmailV1Credentials;
+};
+
+export type GmailNode = GmailV22Node | GmailV1Node;

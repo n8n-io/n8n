@@ -137,12 +137,14 @@ export interface ShopifyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ShopifyNode = {
+export type ShopifyV1Node = {
 	type: 'n8n-nodes-base.shopify';
 	version: 1;
 	config: NodeConfig<ShopifyV1Params>;
 	credentials?: ShopifyV1Credentials;
 };
+
+export type ShopifyNode = ShopifyV1Node;

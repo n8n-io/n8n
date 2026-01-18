@@ -37,13 +37,15 @@ export interface WiseTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WiseTriggerNode = {
+export type WiseTriggerV1Node = {
 	type: 'n8n-nodes-base.wiseTrigger';
 	version: 1;
 	config: NodeConfig<WiseTriggerV1Params>;
 	credentials?: WiseTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type WiseTriggerNode = WiseTriggerV1Node;

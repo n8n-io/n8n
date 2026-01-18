@@ -211,12 +211,14 @@ export interface MicrosoftOneDriveV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOneDriveNode = {
+export type MicrosoftOneDriveV11Node = {
 	type: 'n8n-nodes-base.microsoftOneDrive';
 	version: 1 | 1.1;
 	config: NodeConfig<MicrosoftOneDriveV11Params>;
 	credentials?: MicrosoftOneDriveV11Credentials;
 };
+
+export type MicrosoftOneDriveNode = MicrosoftOneDriveV11Node;

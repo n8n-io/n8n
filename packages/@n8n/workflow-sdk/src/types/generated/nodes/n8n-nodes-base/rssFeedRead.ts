@@ -24,12 +24,18 @@ export interface RssFeedReadV12Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type RssFeedReadNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type RssFeedReadV12Node = {
 	type: 'n8n-nodes-base.rssFeedRead';
 	version: 1 | 1.1 | 1.2;
 	config: NodeConfig<RssFeedReadV12Params>;
 	credentials?: Record<string, never>;
 };
+
+export type RssFeedReadNode = RssFeedReadV12Node;

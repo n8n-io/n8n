@@ -74,13 +74,15 @@ export interface WebhookV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WebhookNode = {
+export type WebhookV21Node = {
 	type: 'n8n-nodes-base.webhook';
 	version: 1 | 1.1 | 2 | 2.1;
 	config: NodeConfig<WebhookV21Params>;
 	credentials?: WebhookV21Credentials;
 	isTrigger: true;
 };
+
+export type WebhookNode = WebhookV21Node;

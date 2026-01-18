@@ -1023,12 +1023,14 @@ export interface UprocV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UprocNode = {
+export type UprocV1Node = {
 	type: 'n8n-nodes-base.uproc';
 	version: 1;
 	config: NodeConfig<UprocV1Params>;
 	credentials?: UprocV1Credentials;
 };
+
+export type UprocNode = UprocV1Node;

@@ -41,13 +41,15 @@ export interface FormIoTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FormIoTriggerNode = {
+export type FormIoTriggerV1Node = {
 	type: 'n8n-nodes-base.formIoTrigger';
 	version: 1;
 	config: NodeConfig<FormIoTriggerV1Params>;
 	credentials?: FormIoTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type FormIoTriggerNode = FormIoTriggerV1Node;

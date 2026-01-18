@@ -70,12 +70,14 @@ export interface UnleashedSoftwareV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UnleashedSoftwareNode = {
+export type UnleashedSoftwareV1Node = {
 	type: 'n8n-nodes-base.unleashedSoftware';
 	version: 1;
 	config: NodeConfig<UnleashedSoftwareV1Params>;
 	credentials?: UnleashedSoftwareV1Credentials;
 };
+
+export type UnleashedSoftwareNode = UnleashedSoftwareV1Node;

@@ -342,13 +342,26 @@ export interface LemlistV2Credentials {
 	lemlistApi: CredentialReference;
 }
 
+export interface LemlistV1Credentials {
+	lemlistApi: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LemlistNode = {
+export type LemlistV2Node = {
 	type: 'n8n-nodes-base.lemlist';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<LemlistV2Params>;
 	credentials?: LemlistV2Credentials;
 };
+
+export type LemlistV1Node = {
+	type: 'n8n-nodes-base.lemlist';
+	version: 1;
+	config: NodeConfig<LemlistV1Params>;
+	credentials?: LemlistV1Credentials;
+};
+
+export type LemlistNode = LemlistV2Node | LemlistV1Node;

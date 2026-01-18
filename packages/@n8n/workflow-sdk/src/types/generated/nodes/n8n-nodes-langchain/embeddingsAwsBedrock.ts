@@ -31,13 +31,15 @@ export interface LcEmbeddingsAwsBedrockV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsAwsBedrockNode = {
+export type LcEmbeddingsAwsBedrockV1Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsAwsBedrock';
 	version: 1;
 	config: NodeConfig<LcEmbeddingsAwsBedrockV1Params>;
 	credentials?: LcEmbeddingsAwsBedrockV1Credentials;
 	isTrigger: true;
 };
+
+export type LcEmbeddingsAwsBedrockNode = LcEmbeddingsAwsBedrockV1Node;

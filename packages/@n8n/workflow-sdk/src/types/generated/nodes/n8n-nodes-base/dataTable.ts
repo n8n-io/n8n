@@ -200,12 +200,18 @@ export type DataTableV11Params =
 	| DataTableV11TableUpdateConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type DataTableNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type DataTableV11Node = {
 	type: 'n8n-nodes-base.dataTable';
 	version: 1 | 1.1;
 	config: NodeConfig<DataTableV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type DataTableNode = DataTableV11Node;

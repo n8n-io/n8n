@@ -158,12 +158,14 @@ export interface XeroV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type XeroNode = {
+export type XeroV1Node = {
 	type: 'n8n-nodes-base.xero';
 	version: 1;
 	config: NodeConfig<XeroV1Params>;
 	credentials?: XeroV1Credentials;
 };
+
+export type XeroNode = XeroV1Node;

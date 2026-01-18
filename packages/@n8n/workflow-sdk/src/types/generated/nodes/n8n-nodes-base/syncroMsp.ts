@@ -275,12 +275,14 @@ export interface SyncroMspV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SyncroMspNode = {
+export type SyncroMspV1Node = {
 	type: 'n8n-nodes-base.syncroMsp';
 	version: 1;
 	config: NodeConfig<SyncroMspV1Params>;
 	credentials?: SyncroMspV1Credentials;
 };
+
+export type SyncroMspNode = SyncroMspV1Node;

@@ -102,12 +102,14 @@ export interface BubbleV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BubbleNode = {
+export type BubbleV1Node = {
 	type: 'n8n-nodes-base.bubble';
 	version: 1;
 	config: NodeConfig<BubbleV1Params>;
 	credentials?: BubbleV1Credentials;
 };
+
+export type BubbleNode = BubbleV1Node;

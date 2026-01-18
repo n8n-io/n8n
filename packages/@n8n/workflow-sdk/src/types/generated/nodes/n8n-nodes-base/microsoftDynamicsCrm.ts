@@ -80,12 +80,14 @@ export interface MicrosoftDynamicsCrmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftDynamicsCrmNode = {
+export type MicrosoftDynamicsCrmV1Node = {
 	type: 'n8n-nodes-base.microsoftDynamicsCrm';
 	version: 1;
 	config: NodeConfig<MicrosoftDynamicsCrmV1Params>;
 	credentials?: MicrosoftDynamicsCrmV1Credentials;
 };
+
+export type MicrosoftDynamicsCrmNode = MicrosoftDynamicsCrmV1Node;

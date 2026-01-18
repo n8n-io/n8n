@@ -41,13 +41,15 @@ export interface AcuitySchedulingTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AcuitySchedulingTriggerNode = {
+export type AcuitySchedulingTriggerV1Node = {
 	type: 'n8n-nodes-base.acuitySchedulingTrigger';
 	version: 1;
 	config: NodeConfig<AcuitySchedulingTriggerV1Params>;
 	credentials?: AcuitySchedulingTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type AcuitySchedulingTriggerNode = AcuitySchedulingTriggerV1Node;

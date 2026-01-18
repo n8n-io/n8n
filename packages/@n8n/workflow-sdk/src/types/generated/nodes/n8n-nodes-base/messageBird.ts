@@ -51,12 +51,14 @@ export interface MessageBirdV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MessageBirdNode = {
+export type MessageBirdV1Node = {
 	type: 'n8n-nodes-base.messageBird';
 	version: 1;
 	config: NodeConfig<MessageBirdV1Params>;
 	credentials?: MessageBirdV1Credentials;
 };
+
+export type MessageBirdNode = MessageBirdV1Node;

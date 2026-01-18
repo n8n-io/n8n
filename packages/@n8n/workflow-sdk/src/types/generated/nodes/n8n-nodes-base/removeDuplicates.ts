@@ -81,12 +81,25 @@ export interface RemoveDuplicatesV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type RemoveDuplicatesNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type RemoveDuplicatesV2Node = {
 	type: 'n8n-nodes-base.removeDuplicates';
-	version: 1 | 1.1 | 2;
+	version: 2;
 	config: NodeConfig<RemoveDuplicatesV2Params>;
 	credentials?: Record<string, never>;
 };
+
+export type RemoveDuplicatesV11Node = {
+	type: 'n8n-nodes-base.removeDuplicates';
+	version: 1 | 1.1;
+	config: NodeConfig<RemoveDuplicatesV11Params>;
+	credentials?: Record<string, never>;
+};
+
+export type RemoveDuplicatesNode = RemoveDuplicatesV2Node | RemoveDuplicatesV11Node;

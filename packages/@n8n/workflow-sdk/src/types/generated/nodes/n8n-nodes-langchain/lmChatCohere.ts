@@ -37,13 +37,15 @@ export interface LcLmChatCohereV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatCohereNode = {
+export type LcLmChatCohereV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatCohere';
 	version: 1;
 	config: NodeConfig<LcLmChatCohereV1Params>;
 	credentials?: LcLmChatCohereV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatCohereNode = LcLmChatCohereV1Node;

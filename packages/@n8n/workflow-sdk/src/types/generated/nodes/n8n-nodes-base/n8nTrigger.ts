@@ -29,13 +29,19 @@ export interface N8nTriggerV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type N8nTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type N8nTriggerV1Node = {
 	type: 'n8n-nodes-base.n8nTrigger';
 	version: 1;
 	config: NodeConfig<N8nTriggerV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type N8nTriggerNode = N8nTriggerV1Node;

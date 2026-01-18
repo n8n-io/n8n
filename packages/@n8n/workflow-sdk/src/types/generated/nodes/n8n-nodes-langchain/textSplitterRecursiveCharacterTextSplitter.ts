@@ -26,13 +26,20 @@ export interface LcTextSplitterRecursiveCharacterTextSplitterV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcTextSplitterRecursiveCharacterTextSplitterNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcTextSplitterRecursiveCharacterTextSplitterV1Node = {
 	type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter';
 	version: 1;
 	config: NodeConfig<LcTextSplitterRecursiveCharacterTextSplitterV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcTextSplitterRecursiveCharacterTextSplitterNode =
+	LcTextSplitterRecursiveCharacterTextSplitterV1Node;

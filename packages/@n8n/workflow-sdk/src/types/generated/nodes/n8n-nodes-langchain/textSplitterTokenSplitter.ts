@@ -29,13 +29,19 @@ export interface LcTextSplitterTokenSplitterV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcTextSplitterTokenSplitterNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcTextSplitterTokenSplitterV1Node = {
 	type: '@n8n/n8n-nodes-langchain.textSplitterTokenSplitter';
 	version: 1;
 	config: NodeConfig<LcTextSplitterTokenSplitterV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcTextSplitterTokenSplitterNode = LcTextSplitterTokenSplitterV1Node;

@@ -46,13 +46,15 @@ export interface NotionTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NotionTriggerNode = {
+export type NotionTriggerV1Node = {
 	type: 'n8n-nodes-base.notionTrigger';
 	version: 1;
 	config: NodeConfig<NotionTriggerV1Params>;
 	credentials?: NotionTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type NotionTriggerNode = NotionTriggerV1Node;

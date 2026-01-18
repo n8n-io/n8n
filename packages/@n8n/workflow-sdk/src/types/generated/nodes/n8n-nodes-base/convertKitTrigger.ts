@@ -59,13 +59,15 @@ export interface ConvertKitTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ConvertKitTriggerNode = {
+export type ConvertKitTriggerV1Node = {
 	type: 'n8n-nodes-base.convertKitTrigger';
 	version: 1;
 	config: NodeConfig<ConvertKitTriggerV1Params>;
 	credentials?: ConvertKitTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type ConvertKitTriggerNode = ConvertKitTriggerV1Node;

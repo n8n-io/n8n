@@ -48,13 +48,15 @@ export interface GoogleCalendarTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleCalendarTriggerNode = {
+export type GoogleCalendarTriggerV1Node = {
 	type: 'n8n-nodes-base.googleCalendarTrigger';
 	version: 1;
 	config: NodeConfig<GoogleCalendarTriggerV1Params>;
 	credentials?: GoogleCalendarTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type GoogleCalendarTriggerNode = GoogleCalendarTriggerV1Node;

@@ -283,12 +283,14 @@ export interface ElasticSecurityV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ElasticSecurityNode = {
+export type ElasticSecurityV1Node = {
 	type: 'n8n-nodes-base.elasticSecurity';
 	version: 1;
 	config: NodeConfig<ElasticSecurityV1Params>;
 	credentials?: ElasticSecurityV1Credentials;
 };
+
+export type ElasticSecurityNode = ElasticSecurityV1Node;

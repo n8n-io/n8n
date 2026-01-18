@@ -159,12 +159,14 @@ export interface GoogleCalendarV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleCalendarNode = {
+export type GoogleCalendarV13Node = {
 	type: 'n8n-nodes-base.googleCalendar';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<GoogleCalendarV13Params>;
 	credentials?: GoogleCalendarV13Credentials;
 };
+
+export type GoogleCalendarNode = GoogleCalendarV13Node;

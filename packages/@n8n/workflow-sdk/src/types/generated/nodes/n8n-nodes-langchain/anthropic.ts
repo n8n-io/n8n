@@ -222,12 +222,14 @@ export interface LcAnthropicV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcAnthropicNode = {
+export type LcAnthropicV1Node = {
 	type: '@n8n/n8n-nodes-langchain.anthropic';
 	version: 1;
 	config: NodeConfig<LcAnthropicV1Params>;
 	credentials?: LcAnthropicV1Credentials;
 };
+
+export type LcAnthropicNode = LcAnthropicV1Node;

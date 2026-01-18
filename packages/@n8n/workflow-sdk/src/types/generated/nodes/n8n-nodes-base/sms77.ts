@@ -60,12 +60,14 @@ export interface Sms77V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type Sms77Node = {
+export type Sms77V1Node = {
 	type: 'n8n-nodes-base.sms77';
 	version: 1;
 	config: NodeConfig<Sms77V1Params>;
 	credentials?: Sms77V1Credentials;
 };
+
+export type Sms77Node = Sms77V1Node;

@@ -136,12 +136,14 @@ export interface CockpitV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CockpitNode = {
+export type CockpitV1Node = {
 	type: 'n8n-nodes-base.cockpit';
 	version: 1;
 	config: NodeConfig<CockpitV1Params>;
 	credentials?: CockpitV1Credentials;
 };
+
+export type CockpitNode = CockpitV1Node;

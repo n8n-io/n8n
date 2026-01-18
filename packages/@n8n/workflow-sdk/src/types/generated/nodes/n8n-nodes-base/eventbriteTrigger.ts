@@ -63,13 +63,15 @@ export interface EventbriteTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EventbriteTriggerNode = {
+export type EventbriteTriggerV1Node = {
 	type: 'n8n-nodes-base.eventbriteTrigger';
 	version: 1;
 	config: NodeConfig<EventbriteTriggerV1Params>;
 	credentials?: EventbriteTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type EventbriteTriggerNode = EventbriteTriggerV1Node;

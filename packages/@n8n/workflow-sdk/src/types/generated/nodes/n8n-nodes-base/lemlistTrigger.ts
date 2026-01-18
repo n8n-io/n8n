@@ -78,13 +78,15 @@ export interface LemlistTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LemlistTriggerNode = {
+export type LemlistTriggerV1Node = {
 	type: 'n8n-nodes-base.lemlistTrigger';
 	version: 1;
 	config: NodeConfig<LemlistTriggerV1Params>;
 	credentials?: LemlistTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type LemlistTriggerNode = LemlistTriggerV1Node;

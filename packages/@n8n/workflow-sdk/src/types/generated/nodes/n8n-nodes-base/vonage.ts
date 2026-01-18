@@ -44,12 +44,14 @@ export interface VonageV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type VonageNode = {
+export type VonageV1Node = {
 	type: 'n8n-nodes-base.vonage';
 	version: 1;
 	config: NodeConfig<VonageV1Params>;
 	credentials?: VonageV1Credentials;
 };
+
+export type VonageNode = VonageV1Node;

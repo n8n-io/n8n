@@ -37,13 +37,15 @@ export interface ClockifyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ClockifyTriggerNode = {
+export type ClockifyTriggerV1Node = {
 	type: 'n8n-nodes-base.clockifyTrigger';
 	version: 1;
 	config: NodeConfig<ClockifyTriggerV1Params>;
 	credentials?: ClockifyTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type ClockifyTriggerNode = ClockifyTriggerV1Node;

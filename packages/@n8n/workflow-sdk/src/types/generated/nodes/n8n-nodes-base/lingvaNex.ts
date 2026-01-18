@@ -37,12 +37,14 @@ export interface LingvaNexV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LingvaNexNode = {
+export type LingvaNexV1Node = {
 	type: 'n8n-nodes-base.lingvaNex';
 	version: 1;
 	config: NodeConfig<LingvaNexV1Params>;
 	credentials?: LingvaNexV1Credentials;
 };
+
+export type LingvaNexNode = LingvaNexV1Node;

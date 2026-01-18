@@ -160,12 +160,14 @@ export interface CitrixAdcV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CitrixAdcNode = {
+export type CitrixAdcV1Node = {
 	type: 'n8n-nodes-base.citrixAdc';
 	version: 1;
 	config: NodeConfig<CitrixAdcV1Params>;
 	credentials?: CitrixAdcV1Credentials;
 };
+
+export type CitrixAdcNode = CitrixAdcV1Node;

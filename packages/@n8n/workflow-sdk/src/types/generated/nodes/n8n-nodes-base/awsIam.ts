@@ -226,12 +226,14 @@ export interface AwsIamV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsIamNode = {
+export type AwsIamV1Node = {
 	type: 'n8n-nodes-base.awsIam';
 	version: 1;
 	config: NodeConfig<AwsIamV1Params>;
 	credentials?: AwsIamV1Credentials;
 };
+
+export type AwsIamNode = AwsIamV1Node;

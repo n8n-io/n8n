@@ -48,12 +48,18 @@ export type MarkdownV1HtmlToMarkdownConfig = {
 export type MarkdownV1Params = MarkdownV1MarkdownToHtmlConfig | MarkdownV1HtmlToMarkdownConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type MarkdownNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type MarkdownV1Node = {
 	type: 'n8n-nodes-base.markdown';
 	version: 1;
 	config: NodeConfig<MarkdownV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type MarkdownNode = MarkdownV1Node;

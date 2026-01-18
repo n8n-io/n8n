@@ -61,12 +61,14 @@ export interface ClearbitV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ClearbitNode = {
+export type ClearbitV1Node = {
 	type: 'n8n-nodes-base.clearbit';
 	version: 1;
 	config: NodeConfig<ClearbitV1Params>;
 	credentials?: ClearbitV1Credentials;
 };
+
+export type ClearbitNode = ClearbitV1Node;

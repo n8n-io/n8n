@@ -120,12 +120,32 @@ export type SwitchV1RulesConfig = {
 export type SwitchV1Params = SwitchV1ExpressionConfig | SwitchV1RulesConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type SwitchNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type SwitchV34Node = {
 	type: 'n8n-nodes-base.switch';
-	version: 1 | 2 | 3 | 3.1 | 3.2 | 3.3 | 3.4;
+	version: 3 | 3.1 | 3.2 | 3.3 | 3.4;
 	config: NodeConfig<SwitchV34Params>;
 	credentials?: Record<string, never>;
 };
+
+export type SwitchV2Node = {
+	type: 'n8n-nodes-base.switch';
+	version: 2;
+	config: NodeConfig<SwitchV2Params>;
+	credentials?: Record<string, never>;
+};
+
+export type SwitchV1Node = {
+	type: 'n8n-nodes-base.switch';
+	version: 1;
+	config: NodeConfig<SwitchV1Params>;
+	credentials?: Record<string, never>;
+};
+
+export type SwitchNode = SwitchV34Node | SwitchV2Node | SwitchV1Node;

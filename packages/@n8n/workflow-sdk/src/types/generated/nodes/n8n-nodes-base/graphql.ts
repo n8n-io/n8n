@@ -94,12 +94,14 @@ export interface GraphqlV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GraphqlNode = {
+export type GraphqlV11Node = {
 	type: 'n8n-nodes-base.graphql';
 	version: 1 | 1.1;
 	config: NodeConfig<GraphqlV11Params>;
 	credentials?: GraphqlV11Credentials;
 };
+
+export type GraphqlNode = GraphqlV11Node;

@@ -30,12 +30,18 @@ export interface LcCodeV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcCodeNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcCodeV1Node = {
 	type: '@n8n/n8n-nodes-langchain.code';
 	version: 1;
 	config: NodeConfig<LcCodeV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcCodeNode = LcCodeV1Node;

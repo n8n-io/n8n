@@ -154,12 +154,14 @@ export interface AwsElbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsElbNode = {
+export type AwsElbV1Node = {
 	type: 'n8n-nodes-base.awsElb';
 	version: 1;
 	config: NodeConfig<AwsElbV1Params>;
 	credentials?: AwsElbV1Credentials;
 };
+
+export type AwsElbNode = AwsElbV1Node;

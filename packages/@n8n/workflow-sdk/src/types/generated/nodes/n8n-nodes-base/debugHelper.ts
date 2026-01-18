@@ -69,12 +69,18 @@ export interface DebugHelperV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type DebugHelperNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type DebugHelperV1Node = {
 	type: 'n8n-nodes-base.debugHelper';
 	version: 1;
 	config: NodeConfig<DebugHelperV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type DebugHelperNode = DebugHelperV1Node;

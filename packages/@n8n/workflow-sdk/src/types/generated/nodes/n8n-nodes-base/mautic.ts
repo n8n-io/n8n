@@ -315,12 +315,14 @@ export interface MauticV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MauticNode = {
+export type MauticV1Node = {
 	type: 'n8n-nodes-base.mautic';
 	version: 1;
 	config: NodeConfig<MauticV1Params>;
 	credentials?: MauticV1Credentials;
 };
+
+export type MauticNode = MauticV1Node;

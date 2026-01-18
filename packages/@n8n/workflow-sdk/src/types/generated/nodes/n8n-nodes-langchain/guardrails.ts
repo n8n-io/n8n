@@ -88,12 +88,25 @@ Analyze the following text according to the instructions above.
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcGuardrailsNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcGuardrailsV2Node = {
 	type: '@n8n/n8n-nodes-langchain.guardrails';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<LcGuardrailsV2Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcGuardrailsV1Node = {
+	type: '@n8n/n8n-nodes-langchain.guardrails';
+	version: 1;
+	config: NodeConfig<LcGuardrailsV1Params>;
+	credentials?: Record<string, never>;
+};
+
+export type LcGuardrailsNode = LcGuardrailsV2Node | LcGuardrailsV1Node;

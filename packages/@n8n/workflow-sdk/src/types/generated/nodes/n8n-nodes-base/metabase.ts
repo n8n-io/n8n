@@ -126,12 +126,14 @@ export interface MetabaseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MetabaseNode = {
+export type MetabaseV1Node = {
 	type: 'n8n-nodes-base.metabase';
 	version: 1;
 	config: NodeConfig<MetabaseV1Params>;
 	credentials?: MetabaseV1Credentials;
 };
+
+export type MetabaseNode = MetabaseV1Node;

@@ -41,13 +41,15 @@ export interface LcLmChatAwsBedrockV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatAwsBedrockNode = {
+export type LcLmChatAwsBedrockV11Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatAwsBedrock';
 	version: 1 | 1.1;
 	config: NodeConfig<LcLmChatAwsBedrockV11Params>;
 	credentials?: LcLmChatAwsBedrockV11Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatAwsBedrockNode = LcLmChatAwsBedrockV11Node;

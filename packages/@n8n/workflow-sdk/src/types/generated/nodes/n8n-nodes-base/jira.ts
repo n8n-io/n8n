@@ -354,12 +354,14 @@ export interface JiraV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JiraNode = {
+export type JiraV1Node = {
 	type: 'n8n-nodes-base.jira';
 	version: 1;
 	config: NodeConfig<JiraV1Params>;
 	credentials?: JiraV1Credentials;
 };
+
+export type JiraNode = JiraV1Node;

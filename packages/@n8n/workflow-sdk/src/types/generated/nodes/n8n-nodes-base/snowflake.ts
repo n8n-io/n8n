@@ -45,12 +45,14 @@ export interface SnowflakeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SnowflakeNode = {
+export type SnowflakeV1Node = {
 	type: 'n8n-nodes-base.snowflake';
 	version: 1;
 	config: NodeConfig<SnowflakeV1Params>;
 	credentials?: SnowflakeV1Credentials;
 };
+
+export type SnowflakeNode = SnowflakeV1Node;

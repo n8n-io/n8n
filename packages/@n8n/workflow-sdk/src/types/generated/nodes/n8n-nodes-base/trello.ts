@@ -674,12 +674,14 @@ export interface TrelloV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TrelloNode = {
+export type TrelloV1Node = {
 	type: 'n8n-nodes-base.trello';
 	version: 1;
 	config: NodeConfig<TrelloV1Params>;
 	credentials?: TrelloV1Credentials;
 };
+
+export type TrelloNode = TrelloV1Node;

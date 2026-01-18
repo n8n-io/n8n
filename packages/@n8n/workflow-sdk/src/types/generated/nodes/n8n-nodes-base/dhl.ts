@@ -31,12 +31,14 @@ export interface DhlV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DhlNode = {
+export type DhlV1Node = {
 	type: 'n8n-nodes-base.dhl';
 	version: 1;
 	config: NodeConfig<DhlV1Params>;
 	credentials?: DhlV1Credentials;
 };
+
+export type DhlNode = DhlV1Node;

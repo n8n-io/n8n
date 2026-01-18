@@ -585,13 +585,27 @@ export interface GoogleDriveV3Credentials {
 	googleDriveOAuth2Api: CredentialReference;
 }
 
+export interface GoogleDriveV2Credentials {
+	googleApi: CredentialReference;
+	googleDriveOAuth2Api: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleDriveNode = {
+export type GoogleDriveV3Node = {
 	type: 'n8n-nodes-base.googleDrive';
-	version: 1 | 2 | 3;
+	version: 3;
 	config: NodeConfig<GoogleDriveV3Params>;
 	credentials?: GoogleDriveV3Credentials;
 };
+
+export type GoogleDriveV2Node = {
+	type: 'n8n-nodes-base.googleDrive';
+	version: 1 | 2;
+	config: NodeConfig<GoogleDriveV2Params>;
+	credentials?: GoogleDriveV2Credentials;
+};
+
+export type GoogleDriveNode = GoogleDriveV3Node | GoogleDriveV2Node;

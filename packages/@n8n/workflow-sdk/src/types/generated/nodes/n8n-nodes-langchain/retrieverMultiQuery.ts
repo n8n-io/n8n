@@ -24,13 +24,19 @@ export interface LcRetrieverMultiQueryV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcRetrieverMultiQueryNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcRetrieverMultiQueryV1Node = {
 	type: '@n8n/n8n-nodes-langchain.retrieverMultiQuery';
 	version: 1;
 	config: NodeConfig<LcRetrieverMultiQueryV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcRetrieverMultiQueryNode = LcRetrieverMultiQueryV1Node;

@@ -50,12 +50,14 @@ export interface MicrosoftSqlV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftSqlNode = {
+export type MicrosoftSqlV11Node = {
 	type: 'n8n-nodes-base.microsoftSql';
 	version: 1 | 1.1;
 	config: NodeConfig<MicrosoftSqlV11Params>;
 	credentials?: MicrosoftSqlV11Credentials;
 };
+
+export type MicrosoftSqlNode = MicrosoftSqlV11Node;

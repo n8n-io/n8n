@@ -43,12 +43,14 @@ export interface BrandfetchV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BrandfetchNode = {
+export type BrandfetchV1Node = {
 	type: 'n8n-nodes-base.Brandfetch';
 	version: 1;
 	config: NodeConfig<BrandfetchV1Params>;
 	credentials?: BrandfetchV1Credentials;
 };
+
+export type BrandfetchNode = BrandfetchV1Node;

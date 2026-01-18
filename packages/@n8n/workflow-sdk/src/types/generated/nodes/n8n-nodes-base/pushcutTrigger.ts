@@ -31,13 +31,15 @@ export interface PushcutTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PushcutTriggerNode = {
+export type PushcutTriggerV1Node = {
 	type: 'n8n-nodes-base.pushcutTrigger';
 	version: 1;
 	config: NodeConfig<PushcutTriggerV1Params>;
 	credentials?: PushcutTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type PushcutTriggerNode = PushcutTriggerV1Node;

@@ -69,13 +69,15 @@ export interface SurveyMonkeyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SurveyMonkeyTriggerNode = {
+export type SurveyMonkeyTriggerV1Node = {
 	type: 'n8n-nodes-base.surveyMonkeyTrigger';
 	version: 1;
 	config: NodeConfig<SurveyMonkeyTriggerV1Params>;
 	credentials?: SurveyMonkeyTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type SurveyMonkeyTriggerNode = SurveyMonkeyTriggerV1Node;

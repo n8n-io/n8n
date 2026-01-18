@@ -196,12 +196,14 @@ export interface MatrixV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MatrixNode = {
+export type MatrixV1Node = {
 	type: 'n8n-nodes-base.matrix';
 	version: 1;
 	config: NodeConfig<MatrixV1Params>;
 	credentials?: MatrixV1Credentials;
 };
+
+export type MatrixNode = MatrixV1Node;

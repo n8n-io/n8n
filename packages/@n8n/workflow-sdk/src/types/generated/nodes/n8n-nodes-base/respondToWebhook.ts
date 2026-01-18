@@ -72,12 +72,14 @@ export interface RespondToWebhookV15Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RespondToWebhookNode = {
+export type RespondToWebhookV15Node = {
 	type: 'n8n-nodes-base.respondToWebhook';
 	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5;
 	config: NodeConfig<RespondToWebhookV15Params>;
 	credentials?: RespondToWebhookV15Credentials;
 };
+
+export type RespondToWebhookNode = RespondToWebhookV15Node;

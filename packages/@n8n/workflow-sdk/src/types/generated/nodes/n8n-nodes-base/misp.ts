@@ -577,12 +577,14 @@ export interface MispV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MispNode = {
+export type MispV1Node = {
 	type: 'n8n-nodes-base.misp';
 	version: 1;
 	config: NodeConfig<MispV1Params>;
 	credentials?: MispV1Credentials;
 };
+
+export type MispNode = MispV1Node;

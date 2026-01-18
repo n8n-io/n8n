@@ -112,13 +112,27 @@ export interface GoogleBigQueryV21Credentials {
 	googleBigQueryOAuth2Api: CredentialReference;
 }
 
+export interface GoogleBigQueryV1Credentials {
+	googleApi: CredentialReference;
+	googleBigQueryOAuth2Api: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleBigQueryNode = {
+export type GoogleBigQueryV21Node = {
 	type: 'n8n-nodes-base.googleBigQuery';
-	version: 1 | 2 | 2.1;
+	version: 2 | 2.1;
 	config: NodeConfig<GoogleBigQueryV21Params>;
 	credentials?: GoogleBigQueryV21Credentials;
 };
+
+export type GoogleBigQueryV1Node = {
+	type: 'n8n-nodes-base.googleBigQuery';
+	version: 1;
+	config: NodeConfig<GoogleBigQueryV1Params>;
+	credentials?: GoogleBigQueryV1Credentials;
+};
+
+export type GoogleBigQueryNode = GoogleBigQueryV21Node | GoogleBigQueryV1Node;

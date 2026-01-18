@@ -62,12 +62,18 @@ export type LcMemoryManagerV11Params =
 	| LcMemoryManagerV11DeleteConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcMemoryManagerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcMemoryManagerV11Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryManager';
 	version: 1 | 1.1;
 	config: NodeConfig<LcMemoryManagerV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcMemoryManagerNode = LcMemoryManagerV11Node;

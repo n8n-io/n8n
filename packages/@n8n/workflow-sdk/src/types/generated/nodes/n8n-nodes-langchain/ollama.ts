@@ -67,12 +67,14 @@ export interface LcOllamaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOllamaNode = {
+export type LcOllamaV1Node = {
 	type: '@n8n/n8n-nodes-langchain.ollama';
 	version: 1;
 	config: NodeConfig<LcOllamaV1Params>;
 	credentials?: LcOllamaV1Credentials;
 };
+
+export type LcOllamaNode = LcOllamaV1Node;

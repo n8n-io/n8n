@@ -70,12 +70,14 @@ export interface KafkaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KafkaNode = {
+export type KafkaV1Node = {
 	type: 'n8n-nodes-base.kafka';
 	version: 1;
 	config: NodeConfig<KafkaV1Params>;
 	credentials?: KafkaV1Credentials;
 };
+
+export type KafkaNode = KafkaV1Node;

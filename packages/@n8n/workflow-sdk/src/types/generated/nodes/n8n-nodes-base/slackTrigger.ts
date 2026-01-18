@@ -57,13 +57,15 @@ export interface SlackTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SlackTriggerNode = {
+export type SlackTriggerV1Node = {
 	type: 'n8n-nodes-base.slackTrigger';
 	version: 1;
 	config: NodeConfig<SlackTriggerV1Params>;
 	credentials?: SlackTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type SlackTriggerNode = SlackTriggerV1Node;

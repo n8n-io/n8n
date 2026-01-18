@@ -775,12 +775,14 @@ export interface MonicaCrmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MonicaCrmNode = {
+export type MonicaCrmV1Node = {
 	type: 'n8n-nodes-base.monicaCrm';
 	version: 1;
 	config: NodeConfig<MonicaCrmV1Params>;
 	credentials?: MonicaCrmV1Credentials;
 };
+
+export type MonicaCrmNode = MonicaCrmV1Node;

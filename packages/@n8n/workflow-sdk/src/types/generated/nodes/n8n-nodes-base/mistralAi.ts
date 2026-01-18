@@ -57,12 +57,14 @@ export interface MistralAiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MistralAiNode = {
+export type MistralAiV1Node = {
 	type: 'n8n-nodes-base.mistralAi';
 	version: 1;
 	config: NodeConfig<MistralAiV1Params>;
 	credentials?: MistralAiV1Credentials;
 };
+
+export type MistralAiNode = MistralAiV1Node;

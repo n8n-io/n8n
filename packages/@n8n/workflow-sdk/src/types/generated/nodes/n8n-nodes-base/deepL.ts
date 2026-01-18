@@ -41,12 +41,14 @@ export interface DeepLV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DeepLNode = {
+export type DeepLV1Node = {
 	type: 'n8n-nodes-base.deepL';
 	version: 1;
 	config: NodeConfig<DeepLV1Params>;
 	credentials?: DeepLV1Credentials;
 };
+
+export type DeepLNode = DeepLV1Node;

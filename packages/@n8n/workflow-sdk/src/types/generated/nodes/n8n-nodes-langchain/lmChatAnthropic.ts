@@ -51,13 +51,15 @@ export interface LcLmChatAnthropicV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatAnthropicNode = {
+export type LcLmChatAnthropicV13Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatAnthropic';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcLmChatAnthropicV13Params>;
 	credentials?: LcLmChatAnthropicV13Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatAnthropicNode = LcLmChatAnthropicV13Node;

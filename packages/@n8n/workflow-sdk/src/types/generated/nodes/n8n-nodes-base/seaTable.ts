@@ -365,13 +365,26 @@ export interface SeaTableV2Credentials {
 	seaTableApi: CredentialReference;
 }
 
+export interface SeaTableV1Credentials {
+	seaTableApi: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SeaTableNode = {
+export type SeaTableV2Node = {
 	type: 'n8n-nodes-base.seaTable';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<SeaTableV2Params>;
 	credentials?: SeaTableV2Credentials;
 };
+
+export type SeaTableV1Node = {
+	type: 'n8n-nodes-base.seaTable';
+	version: 1;
+	config: NodeConfig<SeaTableV1Params>;
+	credentials?: SeaTableV1Credentials;
+};
+
+export type SeaTableNode = SeaTableV2Node | SeaTableV1Node;

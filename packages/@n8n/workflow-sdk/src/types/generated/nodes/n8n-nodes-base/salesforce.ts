@@ -949,12 +949,14 @@ export interface SalesforceV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SalesforceNode = {
+export type SalesforceV1Node = {
 	type: 'n8n-nodes-base.salesforce';
 	version: 1;
 	config: NodeConfig<SalesforceV1Params>;
 	credentials?: SalesforceV1Credentials;
 };
+
+export type SalesforceNode = SalesforceV1Node;

@@ -36,13 +36,15 @@ export interface AutopilotTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AutopilotTriggerNode = {
+export type AutopilotTriggerV1Node = {
 	type: 'n8n-nodes-base.autopilotTrigger';
 	version: 1;
 	config: NodeConfig<AutopilotTriggerV1Params>;
 	credentials?: AutopilotTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type AutopilotTriggerNode = AutopilotTriggerV1Node;

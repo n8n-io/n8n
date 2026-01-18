@@ -49,12 +49,14 @@ export interface ProfitWellV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ProfitWellNode = {
+export type ProfitWellV1Node = {
 	type: 'n8n-nodes-base.profitWell';
 	version: 1;
 	config: NodeConfig<ProfitWellV1Params>;
 	credentials?: ProfitWellV1Credentials;
 };
+
+export type ProfitWellNode = ProfitWellV1Node;

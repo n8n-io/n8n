@@ -20,13 +20,19 @@ export interface LcOutputParserAutofixingV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcOutputParserAutofixingNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcOutputParserAutofixingV1Node = {
 	type: '@n8n/n8n-nodes-langchain.outputParserAutofixing';
 	version: 1;
 	config: NodeConfig<LcOutputParserAutofixingV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcOutputParserAutofixingNode = LcOutputParserAutofixingV1Node;

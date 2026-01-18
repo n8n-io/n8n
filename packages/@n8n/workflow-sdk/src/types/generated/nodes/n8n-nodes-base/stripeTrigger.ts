@@ -187,13 +187,15 @@ export interface StripeTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StripeTriggerNode = {
+export type StripeTriggerV1Node = {
 	type: 'n8n-nodes-base.stripeTrigger';
 	version: 1;
 	config: NodeConfig<StripeTriggerV1Params>;
 	credentials?: StripeTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type StripeTriggerNode = StripeTriggerV1Node;

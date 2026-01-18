@@ -82,12 +82,14 @@ export interface SegmentV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SegmentNode = {
+export type SegmentV1Node = {
 	type: 'n8n-nodes-base.segment';
 	version: 1;
 	config: NodeConfig<SegmentV1Params>;
 	credentials?: SegmentV1Credentials;
 };
+
+export type SegmentNode = SegmentV1Node;

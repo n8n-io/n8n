@@ -350,12 +350,14 @@ export interface TwistV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwistNode = {
+export type TwistV1Node = {
 	type: 'n8n-nodes-base.twist';
 	version: 1;
 	config: NodeConfig<TwistV1Params>;
 	credentials?: TwistV1Credentials;
 };
+
+export type TwistNode = TwistV1Node;

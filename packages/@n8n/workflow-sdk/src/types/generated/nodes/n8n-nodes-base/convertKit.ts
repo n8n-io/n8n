@@ -283,12 +283,14 @@ export interface ConvertKitV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ConvertKitNode = {
+export type ConvertKitV1Node = {
 	type: 'n8n-nodes-base.convertKit';
 	version: 1;
 	config: NodeConfig<ConvertKitV1Params>;
 	credentials?: ConvertKitV1Credentials;
 };
+
+export type ConvertKitNode = ConvertKitV1Node;

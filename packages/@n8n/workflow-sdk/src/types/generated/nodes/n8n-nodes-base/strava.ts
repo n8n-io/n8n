@@ -259,12 +259,14 @@ export interface StravaV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StravaNode = {
+export type StravaV11Node = {
 	type: 'n8n-nodes-base.strava';
 	version: 1 | 1.1;
 	config: NodeConfig<StravaV11Params>;
 	credentials?: StravaV11Credentials;
 };
+
+export type StravaNode = StravaV11Node;

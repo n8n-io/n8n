@@ -32,13 +32,15 @@ export interface PayPalTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PayPalTriggerNode = {
+export type PayPalTriggerV1Node = {
 	type: 'n8n-nodes-base.payPalTrigger';
 	version: 1;
 	config: NodeConfig<PayPalTriggerV1Params>;
 	credentials?: PayPalTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type PayPalTriggerNode = PayPalTriggerV1Node;

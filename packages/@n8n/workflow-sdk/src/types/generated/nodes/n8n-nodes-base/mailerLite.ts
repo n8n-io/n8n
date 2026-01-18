@@ -133,13 +133,26 @@ export interface MailerLiteV2Credentials {
 	mailerLiteApi: CredentialReference;
 }
 
+export interface MailerLiteV1Credentials {
+	mailerLiteApi: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailerLiteNode = {
+export type MailerLiteV2Node = {
 	type: 'n8n-nodes-base.mailerLite';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<MailerLiteV2Params>;
 	credentials?: MailerLiteV2Credentials;
 };
+
+export type MailerLiteV1Node = {
+	type: 'n8n-nodes-base.mailerLite';
+	version: 1;
+	config: NodeConfig<MailerLiteV1Params>;
+	credentials?: MailerLiteV1Credentials;
+};
+
+export type MailerLiteNode = MailerLiteV2Node | MailerLiteV1Node;

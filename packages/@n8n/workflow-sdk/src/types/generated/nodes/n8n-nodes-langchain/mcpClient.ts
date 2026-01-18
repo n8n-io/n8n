@@ -168,12 +168,14 @@ export interface LcMcpClientV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMcpClientNode = {
+export type LcMcpClientV1Node = {
 	type: '@n8n/n8n-nodes-langchain.mcpClient';
 	version: 1;
 	config: NodeConfig<LcMcpClientV1Params>;
 	credentials?: LcMcpClientV1Credentials;
 };
+
+export type LcMcpClientNode = LcMcpClientV1Node;

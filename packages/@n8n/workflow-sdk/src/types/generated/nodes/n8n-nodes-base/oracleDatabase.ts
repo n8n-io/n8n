@@ -77,12 +77,14 @@ export interface OracleDatabaseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OracleDatabaseNode = {
+export type OracleDatabaseV1Node = {
 	type: 'n8n-nodes-base.oracleDatabase';
 	version: 1;
 	config: NodeConfig<OracleDatabaseV1Params>;
 	credentials?: OracleDatabaseV1Credentials;
 };
+
+export type OracleDatabaseNode = OracleDatabaseV1Node;

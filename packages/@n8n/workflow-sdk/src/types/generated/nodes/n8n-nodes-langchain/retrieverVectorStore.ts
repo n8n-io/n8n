@@ -24,13 +24,19 @@ export interface LcRetrieverVectorStoreV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcRetrieverVectorStoreNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcRetrieverVectorStoreV1Node = {
 	type: '@n8n/n8n-nodes-langchain.retrieverVectorStore';
 	version: 1;
 	config: NodeConfig<LcRetrieverVectorStoreV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcRetrieverVectorStoreNode = LcRetrieverVectorStoreV1Node;

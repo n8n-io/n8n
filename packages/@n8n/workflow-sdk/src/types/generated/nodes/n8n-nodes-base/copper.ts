@@ -416,12 +416,14 @@ export interface CopperV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CopperNode = {
+export type CopperV1Node = {
 	type: 'n8n-nodes-base.copper';
 	version: 1;
 	config: NodeConfig<CopperV1Params>;
 	credentials?: CopperV1Credentials;
 };
+
+export type CopperNode = CopperV1Node;

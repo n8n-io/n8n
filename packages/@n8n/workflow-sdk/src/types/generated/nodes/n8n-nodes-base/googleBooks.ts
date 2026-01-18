@@ -183,12 +183,14 @@ export interface GoogleBooksV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleBooksNode = {
+export type GoogleBooksV2Node = {
 	type: 'n8n-nodes-base.googleBooks';
 	version: 1 | 2;
 	config: NodeConfig<GoogleBooksV2Params>;
 	credentials?: GoogleBooksV2Credentials;
 };
+
+export type GoogleBooksNode = GoogleBooksV2Node;

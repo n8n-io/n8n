@@ -347,12 +347,14 @@ export interface BambooHrV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BambooHrNode = {
+export type BambooHrV1Node = {
 	type: 'n8n-nodes-base.bambooHr';
 	version: 1;
 	config: NodeConfig<BambooHrV1Params>;
 	credentials?: BambooHrV1Credentials;
 };
+
+export type BambooHrNode = BambooHrV1Node;

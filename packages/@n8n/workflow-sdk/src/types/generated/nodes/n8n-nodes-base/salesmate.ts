@@ -276,12 +276,14 @@ export interface SalesmateV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SalesmateNode = {
+export type SalesmateV1Node = {
 	type: 'n8n-nodes-base.salesmate';
 	version: 1;
 	config: NodeConfig<SalesmateV1Params>;
 	credentials?: SalesmateV1Credentials;
 };
+
+export type SalesmateNode = SalesmateV1Node;

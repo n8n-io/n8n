@@ -172,12 +172,14 @@ export interface GoogleChatV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleChatNode = {
+export type GoogleChatV1Node = {
 	type: 'n8n-nodes-base.googleChat';
 	version: 1;
 	config: NodeConfig<GoogleChatV1Params>;
 	credentials?: GoogleChatV1Credentials;
 };
+
+export type GoogleChatNode = GoogleChatV1Node;

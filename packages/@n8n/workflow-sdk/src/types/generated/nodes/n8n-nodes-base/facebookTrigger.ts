@@ -54,13 +54,15 @@ export interface FacebookTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FacebookTriggerNode = {
+export type FacebookTriggerV1Node = {
 	type: 'n8n-nodes-base.facebookTrigger';
 	version: 1;
 	config: NodeConfig<FacebookTriggerV1Params>;
 	credentials?: FacebookTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type FacebookTriggerNode = FacebookTriggerV1Node;

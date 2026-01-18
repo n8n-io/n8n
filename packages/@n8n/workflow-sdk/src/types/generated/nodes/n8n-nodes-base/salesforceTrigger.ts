@@ -59,13 +59,15 @@ export interface SalesforceTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SalesforceTriggerNode = {
+export type SalesforceTriggerV1Node = {
 	type: 'n8n-nodes-base.salesforceTrigger';
 	version: 1;
 	config: NodeConfig<SalesforceTriggerV1Params>;
 	credentials?: SalesforceTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type SalesforceTriggerNode = SalesforceTriggerV1Node;

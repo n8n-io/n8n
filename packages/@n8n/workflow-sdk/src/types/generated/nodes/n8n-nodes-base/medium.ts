@@ -71,12 +71,14 @@ export interface MediumV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MediumNode = {
+export type MediumV1Node = {
 	type: 'n8n-nodes-base.medium';
 	version: 1;
 	config: NodeConfig<MediumV1Params>;
 	credentials?: MediumV1Credentials;
 };
+
+export type MediumNode = MediumV1Node;

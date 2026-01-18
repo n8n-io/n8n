@@ -137,12 +137,14 @@ export interface MandrillV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MandrillNode = {
+export type MandrillV1Node = {
 	type: 'n8n-nodes-base.mandrill';
 	version: 1;
 	config: NodeConfig<MandrillV1Params>;
 	credentials?: MandrillV1Credentials;
 };
+
+export type MandrillNode = MandrillV1Node;

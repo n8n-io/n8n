@@ -25,12 +25,18 @@ export interface SummarizeV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type SummarizeNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type SummarizeV11Node = {
 	type: 'n8n-nodes-base.summarize';
 	version: 1 | 1.1;
 	config: NodeConfig<SummarizeV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type SummarizeNode = SummarizeV11Node;

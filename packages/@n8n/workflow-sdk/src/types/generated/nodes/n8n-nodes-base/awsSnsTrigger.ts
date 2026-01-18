@@ -33,13 +33,15 @@ export interface AwsSnsTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsSnsTriggerNode = {
+export type AwsSnsTriggerV1Node = {
 	type: 'n8n-nodes-base.awsSnsTrigger';
 	version: 1;
 	config: NodeConfig<AwsSnsTriggerV1Params>;
 	credentials?: AwsSnsTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type AwsSnsTriggerNode = AwsSnsTriggerV1Node;

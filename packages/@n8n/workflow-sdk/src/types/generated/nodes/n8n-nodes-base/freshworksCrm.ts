@@ -506,12 +506,14 @@ export interface FreshworksCrmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FreshworksCrmNode = {
+export type FreshworksCrmV1Node = {
 	type: 'n8n-nodes-base.freshworksCrm';
 	version: 1;
 	config: NodeConfig<FreshworksCrmV1Params>;
 	credentials?: FreshworksCrmV1Credentials;
 };
+
+export type FreshworksCrmNode = FreshworksCrmV1Node;

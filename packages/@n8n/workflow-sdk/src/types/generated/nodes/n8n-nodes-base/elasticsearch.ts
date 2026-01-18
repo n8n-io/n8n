@@ -191,12 +191,14 @@ export interface ElasticsearchV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ElasticsearchNode = {
+export type ElasticsearchV1Node = {
 	type: 'n8n-nodes-base.elasticsearch';
 	version: 1;
 	config: NodeConfig<ElasticsearchV1Params>;
 	credentials?: ElasticsearchV1Credentials;
 };
+
+export type ElasticsearchNode = ElasticsearchV1Node;

@@ -32,13 +32,15 @@ export interface LcLmCohereV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmCohereNode = {
+export type LcLmCohereV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmCohere';
 	version: 1;
 	config: NodeConfig<LcLmCohereV1Params>;
 	credentials?: LcLmCohereV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmCohereNode = LcLmCohereV1Node;

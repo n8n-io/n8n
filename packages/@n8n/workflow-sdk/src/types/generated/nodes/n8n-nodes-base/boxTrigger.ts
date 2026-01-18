@@ -77,13 +77,15 @@ export interface BoxTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BoxTriggerNode = {
+export type BoxTriggerV1Node = {
 	type: 'n8n-nodes-base.boxTrigger';
 	version: 1;
 	config: NodeConfig<BoxTriggerV1Params>;
 	credentials?: BoxTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type BoxTriggerNode = BoxTriggerV1Node;

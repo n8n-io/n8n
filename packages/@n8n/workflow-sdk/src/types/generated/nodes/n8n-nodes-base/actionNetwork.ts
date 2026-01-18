@@ -452,12 +452,14 @@ export interface ActionNetworkV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ActionNetworkNode = {
+export type ActionNetworkV1Node = {
 	type: 'n8n-nodes-base.actionNetwork';
 	version: 1;
 	config: NodeConfig<ActionNetworkV1Params>;
 	credentials?: ActionNetworkV1Credentials;
 };
+
+export type ActionNetworkNode = ActionNetworkV1Node;

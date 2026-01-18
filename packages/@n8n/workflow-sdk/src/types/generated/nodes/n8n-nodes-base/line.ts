@@ -34,12 +34,14 @@ export interface LineV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LineNode = {
+export type LineV1Node = {
 	type: 'n8n-nodes-base.line';
 	version: 1;
 	config: NodeConfig<LineV1Params>;
 	credentials?: LineV1Credentials;
 };
+
+export type LineNode = LineV1Node;

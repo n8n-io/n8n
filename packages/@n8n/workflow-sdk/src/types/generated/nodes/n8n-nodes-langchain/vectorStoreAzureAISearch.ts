@@ -146,12 +146,14 @@ export interface LcVectorStoreAzureAISearchV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreAzureAISearchNode = {
+export type LcVectorStoreAzureAISearchV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreAzureAISearch';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStoreAzureAISearchV13Params>;
 	credentials?: LcVectorStoreAzureAISearchV13Credentials;
 };
+
+export type LcVectorStoreAzureAISearchNode = LcVectorStoreAzureAISearchV13Node;

@@ -20,13 +20,19 @@ export interface LcOutputParserItemListV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcOutputParserItemListNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcOutputParserItemListV1Node = {
 	type: '@n8n/n8n-nodes-langchain.outputParserItemList';
 	version: 1;
 	config: NodeConfig<LcOutputParserItemListV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcOutputParserItemListNode = LcOutputParserItemListV1Node;

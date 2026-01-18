@@ -174,12 +174,14 @@ export interface GoogleCloudStorageV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleCloudStorageNode = {
+export type GoogleCloudStorageV1Node = {
 	type: 'n8n-nodes-base.googleCloudStorage';
 	version: 1;
 	config: NodeConfig<GoogleCloudStorageV1Params>;
 	credentials?: GoogleCloudStorageV1Credentials;
 };
+
+export type GoogleCloudStorageNode = GoogleCloudStorageV1Node;

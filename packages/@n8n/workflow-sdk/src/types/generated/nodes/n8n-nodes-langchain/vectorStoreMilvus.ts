@@ -114,12 +114,14 @@ export interface LcVectorStoreMilvusV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreMilvusNode = {
+export type LcVectorStoreMilvusV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreMilvus';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStoreMilvusV13Params>;
 	credentials?: LcVectorStoreMilvusV13Credentials;
 };
+
+export type LcVectorStoreMilvusNode = LcVectorStoreMilvusV13Node;

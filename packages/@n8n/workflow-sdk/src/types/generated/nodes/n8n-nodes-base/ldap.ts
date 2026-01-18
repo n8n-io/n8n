@@ -85,12 +85,14 @@ export interface LdapV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LdapNode = {
+export type LdapV1Node = {
 	type: 'n8n-nodes-base.ldap';
 	version: 1;
 	config: NodeConfig<LdapV1Params>;
 	credentials?: LdapV1Credentials;
 };
+
+export type LdapNode = LdapV1Node;

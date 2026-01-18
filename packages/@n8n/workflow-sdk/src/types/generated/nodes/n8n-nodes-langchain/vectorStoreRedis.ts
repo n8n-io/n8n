@@ -129,12 +129,14 @@ export interface LcVectorStoreRedisV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreRedisNode = {
+export type LcVectorStoreRedisV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreRedis';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStoreRedisV13Params>;
 	credentials?: LcVectorStoreRedisV13Credentials;
 };
+
+export type LcVectorStoreRedisNode = LcVectorStoreRedisV13Node;

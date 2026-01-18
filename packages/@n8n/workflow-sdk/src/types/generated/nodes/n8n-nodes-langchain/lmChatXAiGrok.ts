@@ -37,13 +37,15 @@ export interface LcLmChatXAiGrokV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatXAiGrokNode = {
+export type LcLmChatXAiGrokV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatXAiGrok';
 	version: 1;
 	config: NodeConfig<LcLmChatXAiGrokV1Params>;
 	credentials?: LcLmChatXAiGrokV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatXAiGrokNode = LcLmChatXAiGrokV1Node;

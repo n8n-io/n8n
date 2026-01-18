@@ -31,13 +31,15 @@ export interface LcEmbeddingsLemonadeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsLemonadeNode = {
+export type LcEmbeddingsLemonadeV1Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsLemonade';
 	version: 1;
 	config: NodeConfig<LcEmbeddingsLemonadeV1Params>;
 	credentials?: LcEmbeddingsLemonadeV1Credentials;
 	isTrigger: true;
 };
+
+export type LcEmbeddingsLemonadeNode = LcEmbeddingsLemonadeV1Node;

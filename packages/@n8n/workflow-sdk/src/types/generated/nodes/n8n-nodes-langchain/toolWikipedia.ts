@@ -18,13 +18,19 @@ import type { NodeConfig } from '../../../base';
 export interface LcToolWikipediaV1Params {}
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcToolWikipediaNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcToolWikipediaV1Node = {
 	type: '@n8n/n8n-nodes-langchain.toolWikipedia';
 	version: 1;
 	config: NodeConfig<LcToolWikipediaV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcToolWikipediaNode = LcToolWikipediaV1Node;

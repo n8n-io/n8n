@@ -18,13 +18,19 @@ import type { NodeConfig } from '../../../base';
 export interface LcRetrieverContextualCompressionV1Params {}
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcRetrieverContextualCompressionNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcRetrieverContextualCompressionV1Node = {
 	type: '@n8n/n8n-nodes-langchain.retrieverContextualCompression';
 	version: 1;
 	config: NodeConfig<LcRetrieverContextualCompressionV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcRetrieverContextualCompressionNode = LcRetrieverContextualCompressionV1Node;

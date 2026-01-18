@@ -261,12 +261,14 @@ export interface OdooV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OdooNode = {
+export type OdooV1Node = {
 	type: 'n8n-nodes-base.odoo';
 	version: 1;
 	config: NodeConfig<OdooV1Params>;
 	credentials?: OdooV1Credentials;
 };
+
+export type OdooNode = OdooV1Node;

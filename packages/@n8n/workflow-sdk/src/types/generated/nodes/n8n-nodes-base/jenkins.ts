@@ -150,12 +150,14 @@ export interface JenkinsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JenkinsNode = {
+export type JenkinsV1Node = {
 	type: 'n8n-nodes-base.jenkins';
 	version: 1;
 	config: NodeConfig<JenkinsV1Params>;
 	credentials?: JenkinsV1Credentials;
 };
+
+export type JenkinsNode = JenkinsV1Node;

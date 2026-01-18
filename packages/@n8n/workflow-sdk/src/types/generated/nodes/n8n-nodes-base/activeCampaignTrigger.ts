@@ -33,13 +33,15 @@ export interface ActiveCampaignTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ActiveCampaignTriggerNode = {
+export type ActiveCampaignTriggerV1Node = {
 	type: 'n8n-nodes-base.activeCampaignTrigger';
 	version: 1;
 	config: NodeConfig<ActiveCampaignTriggerV1Params>;
 	credentials?: ActiveCampaignTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type ActiveCampaignTriggerNode = ActiveCampaignTriggerV1Node;

@@ -902,12 +902,14 @@ export interface ClickUpV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ClickUpNode = {
+export type ClickUpV1Node = {
 	type: 'n8n-nodes-base.clickUp';
 	version: 1;
 	config: NodeConfig<ClickUpV1Params>;
 	credentials?: ClickUpV1Credentials;
 };
+
+export type ClickUpNode = ClickUpV1Node;

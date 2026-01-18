@@ -233,12 +233,14 @@ export interface MicrosoftEntraV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftEntraNode = {
+export type MicrosoftEntraV1Node = {
 	type: 'n8n-nodes-base.microsoftEntra';
 	version: 1;
 	config: NodeConfig<MicrosoftEntraV1Params>;
 	credentials?: MicrosoftEntraV1Credentials;
 };
+
+export type MicrosoftEntraNode = MicrosoftEntraV1Node;

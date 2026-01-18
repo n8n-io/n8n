@@ -29,12 +29,14 @@ export interface PeekalinkV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PeekalinkNode = {
+export type PeekalinkV1Node = {
 	type: 'n8n-nodes-base.peekalink';
 	version: 1;
 	config: NodeConfig<PeekalinkV1Params>;
 	credentials?: PeekalinkV1Credentials;
 };
+
+export type PeekalinkNode = PeekalinkV1Node;

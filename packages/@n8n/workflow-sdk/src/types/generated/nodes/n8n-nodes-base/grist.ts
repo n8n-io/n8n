@@ -61,12 +61,14 @@ export interface GristV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GristNode = {
+export type GristV1Node = {
 	type: 'n8n-nodes-base.grist';
 	version: 1;
 	config: NodeConfig<GristV1Params>;
 	credentials?: GristV1Credentials;
 };
+
+export type GristNode = GristV1Node;

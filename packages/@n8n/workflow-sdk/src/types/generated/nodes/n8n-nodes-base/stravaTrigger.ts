@@ -35,13 +35,15 @@ export interface StravaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StravaTriggerNode = {
+export type StravaTriggerV1Node = {
 	type: 'n8n-nodes-base.stravaTrigger';
 	version: 1;
 	config: NodeConfig<StravaTriggerV1Params>;
 	credentials?: StravaTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type StravaTriggerNode = StravaTriggerV1Node;

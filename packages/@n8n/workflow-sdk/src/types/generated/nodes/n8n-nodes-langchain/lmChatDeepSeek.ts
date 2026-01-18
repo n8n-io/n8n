@@ -37,13 +37,15 @@ export interface LcLmChatDeepSeekV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatDeepSeekNode = {
+export type LcLmChatDeepSeekV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatDeepSeek';
 	version: 1;
 	config: NodeConfig<LcLmChatDeepSeekV1Params>;
 	credentials?: LcLmChatDeepSeekV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatDeepSeekNode = LcLmChatDeepSeekV1Node;

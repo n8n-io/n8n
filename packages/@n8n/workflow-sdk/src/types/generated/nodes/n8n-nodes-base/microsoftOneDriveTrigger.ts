@@ -62,13 +62,15 @@ export interface MicrosoftOneDriveTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOneDriveTriggerNode = {
+export type MicrosoftOneDriveTriggerV1Node = {
 	type: 'n8n-nodes-base.microsoftOneDriveTrigger';
 	version: 1;
 	config: NodeConfig<MicrosoftOneDriveTriggerV1Params>;
 	credentials?: MicrosoftOneDriveTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type MicrosoftOneDriveTriggerNode = MicrosoftOneDriveTriggerV1Node;

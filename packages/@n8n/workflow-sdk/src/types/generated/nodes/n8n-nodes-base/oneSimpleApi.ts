@@ -169,12 +169,14 @@ export interface OneSimpleApiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OneSimpleApiNode = {
+export type OneSimpleApiV1Node = {
 	type: 'n8n-nodes-base.oneSimpleApi';
 	version: 1;
 	config: NodeConfig<OneSimpleApiV1Params>;
 	credentials?: OneSimpleApiV1Credentials;
 };
+
+export type OneSimpleApiNode = OneSimpleApiV1Node;

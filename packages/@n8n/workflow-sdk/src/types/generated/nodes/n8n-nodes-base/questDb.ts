@@ -50,12 +50,14 @@ export interface QuestDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type QuestDbNode = {
+export type QuestDbV1Node = {
 	type: 'n8n-nodes-base.questDb';
 	version: 1;
 	config: NodeConfig<QuestDbV1Params>;
 	credentials?: QuestDbV1Credentials;
 };
+
+export type QuestDbNode = QuestDbV1Node;

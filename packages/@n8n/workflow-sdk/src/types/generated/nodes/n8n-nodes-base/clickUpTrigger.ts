@@ -64,13 +64,15 @@ export interface ClickUpTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ClickUpTriggerNode = {
+export type ClickUpTriggerV1Node = {
 	type: 'n8n-nodes-base.clickUpTrigger';
 	version: 1;
 	config: NodeConfig<ClickUpTriggerV1Params>;
 	credentials?: ClickUpTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type ClickUpTriggerNode = ClickUpTriggerV1Node;

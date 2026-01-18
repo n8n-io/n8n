@@ -321,16 +321,30 @@ export type AirtableV1Params =
 export interface AirtableV21Credentials {
 	airtableTokenApi: CredentialReference;
 	airtableOAuth2Api: CredentialReference;
+}
+
+export interface AirtableV1Credentials {
 	airtableApi: CredentialReference;
+	airtableTokenApi: CredentialReference;
+	airtableOAuth2Api: CredentialReference;
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AirtableNode = {
+export type AirtableV21Node = {
 	type: 'n8n-nodes-base.airtable';
-	version: 1 | 2 | 2.1;
+	version: 2 | 2.1;
 	config: NodeConfig<AirtableV21Params>;
 	credentials?: AirtableV21Credentials;
 };
+
+export type AirtableV1Node = {
+	type: 'n8n-nodes-base.airtable';
+	version: 1;
+	config: NodeConfig<AirtableV1Params>;
+	credentials?: AirtableV1Credentials;
+};
+
+export type AirtableNode = AirtableV21Node | AirtableV1Node;

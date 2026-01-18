@@ -206,12 +206,14 @@ export interface DropboxV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DropboxNode = {
+export type DropboxV1Node = {
 	type: 'n8n-nodes-base.dropbox';
 	version: 1;
 	config: NodeConfig<DropboxV1Params>;
 	credentials?: DropboxV1Credentials;
 };
+
+export type DropboxNode = DropboxV1Node;

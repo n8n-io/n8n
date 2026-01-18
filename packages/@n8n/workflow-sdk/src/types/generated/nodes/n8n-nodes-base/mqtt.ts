@@ -41,12 +41,14 @@ export interface MqttV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MqttNode = {
+export type MqttV1Node = {
 	type: 'n8n-nodes-base.mqtt';
 	version: 1;
 	config: NodeConfig<MqttV1Params>;
 	credentials?: MqttV1Credentials;
 };
+
+export type MqttNode = MqttV1Node;

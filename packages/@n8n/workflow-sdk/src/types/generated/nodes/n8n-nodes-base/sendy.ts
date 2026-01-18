@@ -136,12 +136,14 @@ export interface SendyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SendyNode = {
+export type SendyV1Node = {
 	type: 'n8n-nodes-base.sendy';
 	version: 1;
 	config: NodeConfig<SendyV1Params>;
 	credentials?: SendyV1Credentials;
 };
+
+export type SendyNode = SendyV1Node;

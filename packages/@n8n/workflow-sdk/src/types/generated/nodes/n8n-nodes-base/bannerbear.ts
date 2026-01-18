@@ -68,12 +68,14 @@ export interface BannerbearV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BannerbearNode = {
+export type BannerbearV1Node = {
 	type: 'n8n-nodes-base.bannerbear';
 	version: 1;
 	config: NodeConfig<BannerbearV1Params>;
 	credentials?: BannerbearV1Credentials;
 };
+
+export type BannerbearNode = BannerbearV1Node;

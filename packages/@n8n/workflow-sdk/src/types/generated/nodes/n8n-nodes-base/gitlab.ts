@@ -426,12 +426,14 @@ export interface GitlabV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GitlabNode = {
+export type GitlabV1Node = {
 	type: 'n8n-nodes-base.gitlab';
 	version: 1;
 	config: NodeConfig<GitlabV1Params>;
 	credentials?: GitlabV1Credentials;
 };
+
+export type GitlabNode = GitlabV1Node;

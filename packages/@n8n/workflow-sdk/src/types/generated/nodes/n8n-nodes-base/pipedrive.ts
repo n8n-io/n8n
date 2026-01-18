@@ -792,12 +792,14 @@ export interface PipedriveV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PipedriveNode = {
+export type PipedriveV1Node = {
 	type: 'n8n-nodes-base.pipedrive';
 	version: 1;
 	config: NodeConfig<PipedriveV1Params>;
 	credentials?: PipedriveV1Credentials;
 };
+
+export type PipedriveNode = PipedriveV1Node;

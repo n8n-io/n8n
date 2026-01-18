@@ -43,13 +43,15 @@ export interface CiscoWebexTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CiscoWebexTriggerNode = {
+export type CiscoWebexTriggerV1Node = {
 	type: 'n8n-nodes-base.ciscoWebexTrigger';
 	version: 1;
 	config: NodeConfig<CiscoWebexTriggerV1Params>;
 	credentials?: CiscoWebexTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type CiscoWebexTriggerNode = CiscoWebexTriggerV1Node;

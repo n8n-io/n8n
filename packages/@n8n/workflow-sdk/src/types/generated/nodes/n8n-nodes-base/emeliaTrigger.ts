@@ -32,13 +32,15 @@ export interface EmeliaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EmeliaTriggerNode = {
+export type EmeliaTriggerV1Node = {
 	type: 'n8n-nodes-base.emeliaTrigger';
 	version: 1;
 	config: NodeConfig<EmeliaTriggerV1Params>;
 	credentials?: EmeliaTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type EmeliaTriggerNode = EmeliaTriggerV1Node;

@@ -186,12 +186,14 @@ export interface AutopilotV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AutopilotNode = {
+export type AutopilotV1Node = {
 	type: 'n8n-nodes-base.autopilot';
 	version: 1;
 	config: NodeConfig<AutopilotV1Params>;
 	credentials?: AutopilotV1Credentials;
 };
+
+export type AutopilotNode = AutopilotV1Node;

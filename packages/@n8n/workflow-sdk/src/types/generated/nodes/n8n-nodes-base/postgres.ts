@@ -127,13 +127,26 @@ export interface PostgresV26Credentials {
 	postgres: CredentialReference;
 }
 
+export interface PostgresV1Credentials {
+	postgres: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostgresNode = {
+export type PostgresV26Node = {
 	type: 'n8n-nodes-base.postgres';
-	version: 1 | 2 | 2.1 | 2.2 | 2.3 | 2.4 | 2.5 | 2.6;
+	version: 2 | 2.1 | 2.2 | 2.3 | 2.4 | 2.5 | 2.6;
 	config: NodeConfig<PostgresV26Params>;
 	credentials?: PostgresV26Credentials;
 };
+
+export type PostgresV1Node = {
+	type: 'n8n-nodes-base.postgres';
+	version: 1;
+	config: NodeConfig<PostgresV1Params>;
+	credentials?: PostgresV1Credentials;
+};
+
+export type PostgresNode = PostgresV26Node | PostgresV1Node;

@@ -336,12 +336,14 @@ export interface ClockifyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ClockifyNode = {
+export type ClockifyV1Node = {
 	type: 'n8n-nodes-base.clockify';
 	version: 1;
 	config: NodeConfig<ClockifyV1Params>;
 	credentials?: ClockifyV1Credentials;
 };
+
+export type ClockifyNode = ClockifyV1Node;

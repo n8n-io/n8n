@@ -41,13 +41,19 @@ export interface TheHiveTriggerV2Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type TheHiveTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type TheHiveTriggerV2Node = {
 	type: 'n8n-nodes-base.theHiveTrigger';
 	version: 1 | 2;
 	config: NodeConfig<TheHiveTriggerV2Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type TheHiveTriggerNode = TheHiveTriggerV2Node;

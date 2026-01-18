@@ -59,12 +59,18 @@ export type HackerNewsV1Params =
 	| HackerNewsV1UserGetConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type HackerNewsNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type HackerNewsV1Node = {
 	type: 'n8n-nodes-base.hackerNews';
 	version: 1;
 	config: NodeConfig<HackerNewsV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type HackerNewsNode = HackerNewsV1Node;

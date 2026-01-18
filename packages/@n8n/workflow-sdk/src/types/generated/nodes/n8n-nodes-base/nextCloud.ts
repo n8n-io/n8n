@@ -294,12 +294,14 @@ export interface NextCloudV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NextCloudNode = {
+export type NextCloudV1Node = {
 	type: 'n8n-nodes-base.nextCloud';
 	version: 1;
 	config: NodeConfig<NextCloudV1Params>;
 	credentials?: NextCloudV1Credentials;
 };
+
+export type NextCloudNode = NextCloudV1Node;

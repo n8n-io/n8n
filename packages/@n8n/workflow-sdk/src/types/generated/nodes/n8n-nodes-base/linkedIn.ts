@@ -53,12 +53,14 @@ export interface LinkedInV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LinkedInNode = {
+export type LinkedInV1Node = {
 	type: 'n8n-nodes-base.linkedIn';
 	version: 1;
 	config: NodeConfig<LinkedInV1Params>;
 	credentials?: LinkedInV1Credentials;
 };
+
+export type LinkedInNode = LinkedInV1Node;

@@ -36,13 +36,15 @@ export interface LcEmbeddingsAzureOpenAiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsAzureOpenAiNode = {
+export type LcEmbeddingsAzureOpenAiV1Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi';
 	version: 1;
 	config: NodeConfig<LcEmbeddingsAzureOpenAiV1Params>;
 	credentials?: LcEmbeddingsAzureOpenAiV1Credentials;
 	isTrigger: true;
 };
+
+export type LcEmbeddingsAzureOpenAiNode = LcEmbeddingsAzureOpenAiV1Node;

@@ -139,18 +139,34 @@ export type LcAgentV19Params =
 // Credentials
 // ===========================================================================
 
-export interface LcAgentV31Credentials {
+export interface LcAgentV19Credentials {
 	mySql: CredentialReference;
 	postgres: CredentialReference;
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcAgentNode = {
+export type LcAgentV31Node = {
 	type: '@n8n/n8n-nodes-langchain.agent';
-	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.7 | 1.8 | 1.9 | 2 | 2.1 | 2.2 | 3 | 3.1;
+	version: 3 | 3.1;
 	config: NodeConfig<LcAgentV31Params>;
-	credentials?: LcAgentV31Credentials;
+	credentials?: Record<string, never>;
 };
+
+export type LcAgentV22Node = {
+	type: '@n8n/n8n-nodes-langchain.agent';
+	version: 2 | 2.1 | 2.2;
+	config: NodeConfig<LcAgentV22Params>;
+	credentials?: Record<string, never>;
+};
+
+export type LcAgentV19Node = {
+	type: '@n8n/n8n-nodes-langchain.agent';
+	version: 1 | 1.1 | 1.2 | 1.3 | 1.4 | 1.5 | 1.6 | 1.7 | 1.8 | 1.9;
+	config: NodeConfig<LcAgentV19Params>;
+	credentials?: LcAgentV19Credentials;
+};
+
+export type LcAgentNode = LcAgentV31Node | LcAgentV22Node | LcAgentV19Node;

@@ -816,54 +816,71 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 		}
 	}
 
-	// Generate credentials type using highest version's suffix
-	const highestVersion = Math.max(...allVersions);
-	const highestVersionSuffix = versionToTypeName(highestVersion);
-
-	if (allCredentials.length > 0) {
-		lines.push('// ' + '='.repeat(75));
-		lines.push('// Credentials');
-		lines.push('// ' + '='.repeat(75));
-		lines.push('');
-		lines.push(`export interface ${nodeName}${highestVersionSuffix}Credentials {`);
-		for (const cred of allCredentials) {
-			const optional = !cred.required ? '?' : '';
-			lines.push(`\t${cred.name}${optional}: CredentialReference;`);
-		}
-		lines.push('}');
-		lines.push('');
-	}
-
-	// Generate node type
+	// Generate credentials type for each version entry
 	lines.push('// ' + '='.repeat(75));
-	lines.push('// Node Type');
+	lines.push('// Credentials');
 	lines.push('// ' + '='.repeat(75));
 	lines.push('');
 
-	// Use all versions across all entries
-	const versionUnion = allVersions
-		.sort((a, b) => a - b)
-		.map((v) => String(v))
-		.join(' | ');
+	for (const n of sortedNodes) {
+		const entryVersion = getHighestVersion(n.version);
+		const entryVersionSuffix = versionToTypeName(entryVersion);
 
-	lines.push(`export type ${nodeName}Node = {`);
-	lines.push(`\ttype: '${node.name}';`);
-	lines.push(`\tversion: ${versionUnion};`);
-
-	const credType =
-		allCredentials.length > 0
-			? `${nodeName}${highestVersionSuffix}Credentials`
-			: 'Record<string, never>';
-
-	// Config type uses the highest version's params
-	lines.push(`\tconfig: NodeConfig<${nodeName}${highestVersionSuffix}Params>;`);
-	lines.push(`\tcredentials?: ${credType};`);
-
-	if (isTrigger) {
-		lines.push('\tisTrigger: true;');
+		if (n.credentials && n.credentials.length > 0) {
+			lines.push(`export interface ${nodeName}${entryVersionSuffix}Credentials {`);
+			const seenCreds = new Set<string>();
+			for (const cred of n.credentials) {
+				if (seenCreds.has(cred.name)) continue;
+				seenCreds.add(cred.name);
+				const optional = !cred.required ? '?' : '';
+				lines.push(`\t${cred.name}${optional}: CredentialReference;`);
+			}
+			lines.push('}');
+			lines.push('');
+		}
 	}
 
-	lines.push('};');
+	// Generate node type for each version entry
+	lines.push('// ' + '='.repeat(75));
+	lines.push('// Node Types');
+	lines.push('// ' + '='.repeat(75));
+	lines.push('');
+
+	const nodeTypeNames: string[] = [];
+
+	for (const n of sortedNodes) {
+		const entryVersion = getHighestVersion(n.version);
+		const entryVersionSuffix = versionToTypeName(entryVersion);
+		const versions = Array.isArray(n.version) ? n.version : [n.version];
+		const versionUnion = versions
+			.sort((a, b) => a - b)
+			.map((v) => String(v))
+			.join(' | ');
+
+		const nodeTypeName = `${nodeName}${entryVersionSuffix}Node`;
+		nodeTypeNames.push(nodeTypeName);
+
+		const credType =
+			n.credentials && n.credentials.length > 0
+				? `${nodeName}${entryVersionSuffix}Credentials`
+				: 'Record<string, never>';
+
+		lines.push(`export type ${nodeTypeName} = {`);
+		lines.push(`\ttype: '${n.name}';`);
+		lines.push(`\tversion: ${versionUnion};`);
+		lines.push(`\tconfig: NodeConfig<${nodeName}${entryVersionSuffix}Params>;`);
+		lines.push(`\tcredentials?: ${credType};`);
+
+		if (isTrigger) {
+			lines.push('\tisTrigger: true;');
+		}
+
+		lines.push('};');
+		lines.push('');
+	}
+
+	// Generate union type for all node versions (for backwards compatibility)
+	lines.push(`export type ${nodeName}Node = ${nodeTypeNames.join(' | ')};`);
 
 	return lines.join('\n');
 }

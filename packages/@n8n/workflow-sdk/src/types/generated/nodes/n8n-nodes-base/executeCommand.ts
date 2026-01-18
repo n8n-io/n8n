@@ -28,12 +28,18 @@ export interface ExecuteCommandV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ExecuteCommandNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ExecuteCommandV1Node = {
 	type: 'n8n-nodes-base.executeCommand';
 	version: 1;
 	config: NodeConfig<ExecuteCommandV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type ExecuteCommandNode = ExecuteCommandV1Node;

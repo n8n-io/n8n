@@ -32,13 +32,15 @@ export interface MqttTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MqttTriggerNode = {
+export type MqttTriggerV1Node = {
 	type: 'n8n-nodes-base.mqttTrigger';
 	version: 1;
 	config: NodeConfig<MqttTriggerV1Params>;
 	credentials?: MqttTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type MqttTriggerNode = MqttTriggerV1Node;

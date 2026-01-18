@@ -25,12 +25,18 @@ export interface LcTextClassifierV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcTextClassifierNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcTextClassifierV11Node = {
 	type: '@n8n/n8n-nodes-langchain.textClassifier';
 	version: 1 | 1.1;
 	config: NodeConfig<LcTextClassifierV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcTextClassifierNode = LcTextClassifierV11Node;

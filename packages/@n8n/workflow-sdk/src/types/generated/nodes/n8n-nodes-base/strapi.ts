@@ -114,12 +114,14 @@ export interface StrapiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StrapiNode = {
+export type StrapiV1Node = {
 	type: 'n8n-nodes-base.strapi';
 	version: 1;
 	config: NodeConfig<StrapiV1Params>;
 	credentials?: StrapiV1Credentials;
 };
+
+export type StrapiNode = StrapiV1Node;

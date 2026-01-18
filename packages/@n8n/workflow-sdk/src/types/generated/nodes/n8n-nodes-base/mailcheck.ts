@@ -35,12 +35,14 @@ export interface MailcheckV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailcheckNode = {
+export type MailcheckV1Node = {
 	type: 'n8n-nodes-base.mailcheck';
 	version: 1;
 	config: NodeConfig<MailcheckV1Params>;
 	credentials?: MailcheckV1Credentials;
 };
+
+export type MailcheckNode = MailcheckV1Node;

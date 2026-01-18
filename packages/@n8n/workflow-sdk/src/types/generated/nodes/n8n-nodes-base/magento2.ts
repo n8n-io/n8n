@@ -231,12 +231,14 @@ export interface Magento2V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type Magento2Node = {
+export type Magento2V1Node = {
 	type: 'n8n-nodes-base.magento2';
 	version: 1;
 	config: NodeConfig<Magento2V1Params>;
 	credentials?: Magento2V1Credentials;
 };
+
+export type Magento2Node = Magento2V1Node;

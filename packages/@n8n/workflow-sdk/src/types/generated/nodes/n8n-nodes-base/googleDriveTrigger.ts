@@ -51,13 +51,15 @@ export interface GoogleDriveTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleDriveTriggerNode = {
+export type GoogleDriveTriggerV1Node = {
 	type: 'n8n-nodes-base.googleDriveTrigger';
 	version: 1;
 	config: NodeConfig<GoogleDriveTriggerV1Params>;
 	credentials?: GoogleDriveTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type GoogleDriveTriggerNode = GoogleDriveTriggerV1Node;

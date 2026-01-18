@@ -37,13 +37,15 @@ export interface LcLmChatVercelAiGatewayV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatVercelAiGatewayNode = {
+export type LcLmChatVercelAiGatewayV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatVercelAiGateway';
 	version: 1;
 	config: NodeConfig<LcLmChatVercelAiGatewayV1Params>;
 	credentials?: LcLmChatVercelAiGatewayV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatVercelAiGatewayNode = LcLmChatVercelAiGatewayV1Node;

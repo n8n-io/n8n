@@ -31,13 +31,15 @@ export interface TwilioTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwilioTriggerNode = {
+export type TwilioTriggerV1Node = {
 	type: 'n8n-nodes-base.twilioTrigger';
 	version: 1;
 	config: NodeConfig<TwilioTriggerV1Params>;
 	credentials?: TwilioTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type TwilioTriggerNode = TwilioTriggerV1Node;

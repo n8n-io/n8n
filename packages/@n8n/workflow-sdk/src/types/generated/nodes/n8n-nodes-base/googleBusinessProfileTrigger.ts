@@ -46,13 +46,15 @@ export interface GoogleBusinessProfileTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleBusinessProfileTriggerNode = {
+export type GoogleBusinessProfileTriggerV1Node = {
 	type: 'n8n-nodes-base.googleBusinessProfileTrigger';
 	version: 1;
 	config: NodeConfig<GoogleBusinessProfileTriggerV1Params>;
 	credentials?: GoogleBusinessProfileTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type GoogleBusinessProfileTriggerNode = GoogleBusinessProfileTriggerV1Node;

@@ -34,13 +34,15 @@ export interface LcMemoryXataV14Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryXataNode = {
+export type LcMemoryXataV14Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryXata';
 	version: 1 | 1.1 | 1.2 | 1.3 | 1.4;
 	config: NodeConfig<LcMemoryXataV14Params>;
 	credentials?: LcMemoryXataV14Credentials;
 	isTrigger: true;
 };
+
+export type LcMemoryXataNode = LcMemoryXataV14Node;

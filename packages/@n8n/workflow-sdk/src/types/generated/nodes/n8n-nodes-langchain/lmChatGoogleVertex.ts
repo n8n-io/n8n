@@ -45,13 +45,15 @@ export interface LcLmChatGoogleVertexV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatGoogleVertexNode = {
+export type LcLmChatGoogleVertexV1Node = {
 	type: '@n8n/n8n-nodes-langchain.lmChatGoogleVertex';
 	version: 1;
 	config: NodeConfig<LcLmChatGoogleVertexV1Params>;
 	credentials?: LcLmChatGoogleVertexV1Credentials;
 	isTrigger: true;
 };
+
+export type LcLmChatGoogleVertexNode = LcLmChatGoogleVertexV1Node;

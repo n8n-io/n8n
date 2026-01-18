@@ -41,13 +41,15 @@ export interface JotFormTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JotFormTriggerNode = {
+export type JotFormTriggerV1Node = {
 	type: 'n8n-nodes-base.jotFormTrigger';
 	version: 1;
 	config: NodeConfig<JotFormTriggerV1Params>;
 	credentials?: JotFormTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type JotFormTriggerNode = JotFormTriggerV1Node;

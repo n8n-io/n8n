@@ -188,12 +188,25 @@ export interface DateTimeV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type DateTimeNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type DateTimeV2Node = {
 	type: 'n8n-nodes-base.dateTime';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<DateTimeV2Params>;
 	credentials?: Record<string, never>;
 };
+
+export type DateTimeV1Node = {
+	type: 'n8n-nodes-base.dateTime';
+	version: 1;
+	config: NodeConfig<DateTimeV1Params>;
+	credentials?: Record<string, never>;
+};
+
+export type DateTimeNode = DateTimeV2Node | DateTimeV1Node;

@@ -18,13 +18,19 @@ import type { NodeConfig } from '../../../base';
 export interface ErrorTriggerV1Params {}
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type ErrorTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type ErrorTriggerV1Node = {
 	type: 'n8n-nodes-base.errorTrigger';
 	version: 1;
 	config: NodeConfig<ErrorTriggerV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type ErrorTriggerNode = ErrorTriggerV1Node;

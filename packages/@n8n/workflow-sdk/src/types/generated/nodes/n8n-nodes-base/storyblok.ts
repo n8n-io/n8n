@@ -76,12 +76,14 @@ export interface StoryblokV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StoryblokNode = {
+export type StoryblokV1Node = {
 	type: 'n8n-nodes-base.storyblok';
 	version: 1;
 	config: NodeConfig<StoryblokV1Params>;
 	credentials?: StoryblokV1Credentials;
 };
+
+export type StoryblokNode = StoryblokV1Node;

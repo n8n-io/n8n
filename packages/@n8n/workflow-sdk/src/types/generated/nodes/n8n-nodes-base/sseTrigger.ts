@@ -23,13 +23,19 @@ export interface SseTriggerV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type SseTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type SseTriggerV1Node = {
 	type: 'n8n-nodes-base.sseTrigger';
 	version: 1;
 	config: NodeConfig<SseTriggerV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type SseTriggerNode = SseTriggerV1Node;

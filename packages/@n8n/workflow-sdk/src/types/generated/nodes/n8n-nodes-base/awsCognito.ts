@@ -306,12 +306,14 @@ export interface AwsCognitoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsCognitoNode = {
+export type AwsCognitoV1Node = {
 	type: 'n8n-nodes-base.awsCognito';
 	version: 1;
 	config: NodeConfig<AwsCognitoV1Params>;
 	credentials?: AwsCognitoV1Credentials;
 };
+
+export type AwsCognitoNode = AwsCognitoV1Node;

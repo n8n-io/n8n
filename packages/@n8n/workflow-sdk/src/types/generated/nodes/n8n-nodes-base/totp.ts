@@ -29,12 +29,14 @@ export interface TotpV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TotpNode = {
+export type TotpV1Node = {
 	type: 'n8n-nodes-base.totp';
 	version: 1;
 	config: NodeConfig<TotpV1Params>;
 	credentials?: TotpV1Credentials;
 };
+
+export type TotpNode = TotpV1Node;

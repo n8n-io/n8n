@@ -29,12 +29,18 @@ export interface LimitV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LimitNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LimitV1Node = {
 	type: 'n8n-nodes-base.limit';
 	version: 1;
 	config: NodeConfig<LimitV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LimitNode = LimitV1Node;

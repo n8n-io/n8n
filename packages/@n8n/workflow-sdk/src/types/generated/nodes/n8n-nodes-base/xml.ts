@@ -40,12 +40,18 @@ export type XmlV1XmlToJsonConfig = {
 export type XmlV1Params = XmlV1JsonToxmlConfig | XmlV1XmlToJsonConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type XmlNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type XmlV1Node = {
 	type: 'n8n-nodes-base.xml';
 	version: 1;
 	config: NodeConfig<XmlV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type XmlNode = XmlV1Node;

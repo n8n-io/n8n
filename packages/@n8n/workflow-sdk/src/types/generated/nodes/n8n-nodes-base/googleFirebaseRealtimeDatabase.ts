@@ -40,12 +40,14 @@ export interface GoogleFirebaseRealtimeDatabaseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleFirebaseRealtimeDatabaseNode = {
+export type GoogleFirebaseRealtimeDatabaseV1Node = {
 	type: 'n8n-nodes-base.googleFirebaseRealtimeDatabase';
 	version: 1;
 	config: NodeConfig<GoogleFirebaseRealtimeDatabaseV1Params>;
 	credentials?: GoogleFirebaseRealtimeDatabaseV1Credentials;
 };
+
+export type GoogleFirebaseRealtimeDatabaseNode = GoogleFirebaseRealtimeDatabaseV1Node;

@@ -35,13 +35,15 @@ export interface CopperTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CopperTriggerNode = {
+export type CopperTriggerV1Node = {
 	type: 'n8n-nodes-base.copperTrigger';
 	version: 1;
 	config: NodeConfig<CopperTriggerV1Params>;
 	credentials?: CopperTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type CopperTriggerNode = CopperTriggerV1Node;

@@ -1181,12 +1181,14 @@ export interface ActiveCampaignV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ActiveCampaignNode = {
+export type ActiveCampaignV1Node = {
 	type: 'n8n-nodes-base.activeCampaign';
 	version: 1;
 	config: NodeConfig<ActiveCampaignV1Params>;
 	credentials?: ActiveCampaignV1Credentials;
 };
+
+export type ActiveCampaignNode = ActiveCampaignV1Node;

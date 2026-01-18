@@ -36,13 +36,15 @@ export interface ZendeskTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ZendeskTriggerNode = {
+export type ZendeskTriggerV1Node = {
 	type: 'n8n-nodes-base.zendeskTrigger';
 	version: 1;
 	config: NodeConfig<ZendeskTriggerV1Params>;
 	credentials?: ZendeskTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type ZendeskTriggerNode = ZendeskTriggerV1Node;

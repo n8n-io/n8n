@@ -58,13 +58,15 @@ export interface AffinityTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AffinityTriggerNode = {
+export type AffinityTriggerV1Node = {
 	type: 'n8n-nodes-base.affinityTrigger';
 	version: 1;
 	config: NodeConfig<AffinityTriggerV1Params>;
 	credentials?: AffinityTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type AffinityTriggerNode = AffinityTriggerV1Node;

@@ -514,13 +514,27 @@ export interface GoogleSheetsV47Credentials {
 	googleSheetsOAuth2Api: CredentialReference;
 }
 
+export interface GoogleSheetsV2Credentials {
+	googleApi: CredentialReference;
+	googleSheetsOAuth2Api: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleSheetsNode = {
+export type GoogleSheetsV47Node = {
 	type: 'n8n-nodes-base.googleSheets';
-	version: 1 | 2 | 3 | 4 | 4.1 | 4.2 | 4.3 | 4.4 | 4.5 | 4.6 | 4.7;
+	version: 3 | 4 | 4.1 | 4.2 | 4.3 | 4.4 | 4.5 | 4.6 | 4.7;
 	config: NodeConfig<GoogleSheetsV47Params>;
 	credentials?: GoogleSheetsV47Credentials;
 };
+
+export type GoogleSheetsV2Node = {
+	type: 'n8n-nodes-base.googleSheets';
+	version: 1 | 2;
+	config: NodeConfig<GoogleSheetsV2Params>;
+	credentials?: GoogleSheetsV2Credentials;
+};
+
+export type GoogleSheetsNode = GoogleSheetsV47Node | GoogleSheetsV2Node;

@@ -99,12 +99,14 @@ export interface MicrosoftGraphSecurityV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftGraphSecurityNode = {
+export type MicrosoftGraphSecurityV1Node = {
 	type: 'n8n-nodes-base.microsoftGraphSecurity';
 	version: 1;
 	config: NodeConfig<MicrosoftGraphSecurityV1Params>;
 	credentials?: MicrosoftGraphSecurityV1Credentials;
 };
+
+export type MicrosoftGraphSecurityNode = MicrosoftGraphSecurityV1Node;

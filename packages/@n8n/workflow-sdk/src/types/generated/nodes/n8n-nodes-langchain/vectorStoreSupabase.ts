@@ -130,12 +130,14 @@ export interface LcVectorStoreSupabaseV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreSupabaseNode = {
+export type LcVectorStoreSupabaseV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStoreSupabaseV13Params>;
 	credentials?: LcVectorStoreSupabaseV13Credentials;
 };
+
+export type LcVectorStoreSupabaseNode = LcVectorStoreSupabaseV13Node;

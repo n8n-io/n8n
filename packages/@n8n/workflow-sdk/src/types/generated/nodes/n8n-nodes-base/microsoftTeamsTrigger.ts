@@ -71,13 +71,15 @@ export interface MicrosoftTeamsTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftTeamsTriggerNode = {
+export type MicrosoftTeamsTriggerV1Node = {
 	type: 'n8n-nodes-base.microsoftTeamsTrigger';
 	version: 1;
 	config: NodeConfig<MicrosoftTeamsTriggerV1Params>;
 	credentials?: MicrosoftTeamsTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type MicrosoftTeamsTriggerNode = MicrosoftTeamsTriggerV1Node;

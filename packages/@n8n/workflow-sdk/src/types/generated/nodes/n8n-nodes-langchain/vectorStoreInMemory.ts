@@ -126,12 +126,18 @@ export type LcVectorStoreInMemoryV13Params =
 	| LcVectorStoreInMemoryV13RetrieveAsToolConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcVectorStoreInMemoryNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcVectorStoreInMemoryV13Node = {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcVectorStoreInMemoryV13Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcVectorStoreInMemoryNode = LcVectorStoreInMemoryV13Node;

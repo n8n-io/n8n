@@ -76,12 +76,14 @@ export interface HumanticAiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HumanticAiNode = {
+export type HumanticAiV1Node = {
 	type: 'n8n-nodes-base.humanticAi';
 	version: 1;
 	config: NodeConfig<HumanticAiV1Params>;
 	credentials?: HumanticAiV1Credentials;
 };
+
+export type HumanticAiNode = HumanticAiV1Node;

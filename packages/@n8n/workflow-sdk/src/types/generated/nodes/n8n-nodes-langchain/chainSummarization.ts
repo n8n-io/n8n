@@ -49,12 +49,25 @@ export interface LcChainSummarizationV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcChainSummarizationNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcChainSummarizationV21Node = {
 	type: '@n8n/n8n-nodes-langchain.chainSummarization';
-	version: 1 | 2 | 2.1;
+	version: 2 | 2.1;
 	config: NodeConfig<LcChainSummarizationV21Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcChainSummarizationV1Node = {
+	type: '@n8n/n8n-nodes-langchain.chainSummarization';
+	version: 1;
+	config: NodeConfig<LcChainSummarizationV1Params>;
+	credentials?: Record<string, never>;
+};
+
+export type LcChainSummarizationNode = LcChainSummarizationV21Node | LcChainSummarizationV1Node;

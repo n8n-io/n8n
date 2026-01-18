@@ -84,13 +84,15 @@ export interface GithubTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GithubTriggerNode = {
+export type GithubTriggerV1Node = {
 	type: 'n8n-nodes-base.githubTrigger';
 	version: 1;
 	config: NodeConfig<GithubTriggerV1Params>;
 	credentials?: GithubTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type GithubTriggerNode = GithubTriggerV1Node;

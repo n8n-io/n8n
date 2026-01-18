@@ -211,12 +211,14 @@ export interface SendGridV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SendGridNode = {
+export type SendGridV1Node = {
 	type: 'n8n-nodes-base.sendGrid';
 	version: 1;
 	config: NodeConfig<SendGridV1Params>;
 	credentials?: SendGridV1Credentials;
 };
+
+export type SendGridNode = SendGridV1Node;

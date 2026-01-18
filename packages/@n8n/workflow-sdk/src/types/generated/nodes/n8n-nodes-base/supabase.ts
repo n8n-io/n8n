@@ -178,12 +178,14 @@ export interface SupabaseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SupabaseNode = {
+export type SupabaseV1Node = {
 	type: 'n8n-nodes-base.supabase';
 	version: 1;
 	config: NodeConfig<SupabaseV1Params>;
 	credentials?: SupabaseV1Credentials;
 };
+
+export type SupabaseNode = SupabaseV1Node;

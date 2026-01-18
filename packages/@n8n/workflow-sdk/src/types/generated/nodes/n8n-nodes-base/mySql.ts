@@ -111,13 +111,26 @@ export interface MySqlV25Credentials {
 	mySql: CredentialReference;
 }
 
+export interface MySqlV1Credentials {
+	mySql: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MySqlNode = {
+export type MySqlV25Node = {
 	type: 'n8n-nodes-base.mySql';
-	version: 1 | 2 | 2.1 | 2.2 | 2.3 | 2.4 | 2.5;
+	version: 2 | 2.1 | 2.2 | 2.3 | 2.4 | 2.5;
 	config: NodeConfig<MySqlV25Params>;
 	credentials?: MySqlV25Credentials;
 };
+
+export type MySqlV1Node = {
+	type: 'n8n-nodes-base.mySql';
+	version: 1;
+	config: NodeConfig<MySqlV1Params>;
+	credentials?: MySqlV1Credentials;
+};
+
+export type MySqlNode = MySqlV25Node | MySqlV1Node;

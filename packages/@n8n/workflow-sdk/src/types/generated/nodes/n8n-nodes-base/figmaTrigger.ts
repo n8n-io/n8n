@@ -38,13 +38,15 @@ export interface FigmaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FigmaTriggerNode = {
+export type FigmaTriggerV1Node = {
 	type: 'n8n-nodes-base.figmaTrigger';
 	version: 1;
 	config: NodeConfig<FigmaTriggerV1Params>;
 	credentials?: FigmaTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type FigmaTriggerNode = FigmaTriggerV1Node;

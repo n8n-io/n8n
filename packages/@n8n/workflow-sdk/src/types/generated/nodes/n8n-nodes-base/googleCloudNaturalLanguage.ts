@@ -46,12 +46,14 @@ export interface GoogleCloudNaturalLanguageV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleCloudNaturalLanguageNode = {
+export type GoogleCloudNaturalLanguageV1Node = {
 	type: 'n8n-nodes-base.googleCloudNaturalLanguage';
 	version: 1;
 	config: NodeConfig<GoogleCloudNaturalLanguageV1Params>;
 	credentials?: GoogleCloudNaturalLanguageV1Credentials;
 };
+
+export type GoogleCloudNaturalLanguageNode = GoogleCloudNaturalLanguageV1Node;

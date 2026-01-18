@@ -47,13 +47,15 @@ export interface OnfleetTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OnfleetTriggerNode = {
+export type OnfleetTriggerV1Node = {
 	type: 'n8n-nodes-base.onfleetTrigger';
 	version: 1;
 	config: NodeConfig<OnfleetTriggerV1Params>;
 	credentials?: OnfleetTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type OnfleetTriggerNode = OnfleetTriggerV1Node;

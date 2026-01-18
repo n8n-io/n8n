@@ -37,13 +37,15 @@ export interface LcMcpTriggerV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMcpTriggerNode = {
+export type LcMcpTriggerV2Node = {
 	type: '@n8n/n8n-nodes-langchain.mcpTrigger';
 	version: 1 | 1.1 | 2;
 	config: NodeConfig<LcMcpTriggerV2Params>;
 	credentials?: LcMcpTriggerV2Credentials;
 	isTrigger: true;
 };
+
+export type LcMcpTriggerNode = LcMcpTriggerV2Node;

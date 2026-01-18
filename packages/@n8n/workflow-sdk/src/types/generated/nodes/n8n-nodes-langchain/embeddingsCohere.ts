@@ -40,13 +40,15 @@ export interface LcEmbeddingsCohereV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsCohereNode = {
+export type LcEmbeddingsCohereV1Node = {
 	type: '@n8n/n8n-nodes-langchain.embeddingsCohere';
 	version: 1;
 	config: NodeConfig<LcEmbeddingsCohereV1Params>;
 	credentials?: LcEmbeddingsCohereV1Credentials;
 	isTrigger: true;
 };
+
+export type LcEmbeddingsCohereNode = LcEmbeddingsCohereV1Node;

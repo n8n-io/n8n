@@ -71,12 +71,14 @@ export interface GhostV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GhostNode = {
+export type GhostV1Node = {
 	type: 'n8n-nodes-base.ghost';
 	version: 1;
 	config: NodeConfig<GhostV1Params>;
 	credentials?: GhostV1Credentials;
 };
+
+export type GhostNode = GhostV1Node;

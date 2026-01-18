@@ -27,13 +27,19 @@ export interface LocalFileTriggerV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LocalFileTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LocalFileTriggerV1Node = {
 	type: 'n8n-nodes-base.localFileTrigger';
 	version: 1;
 	config: NodeConfig<LocalFileTriggerV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LocalFileTriggerNode = LocalFileTriggerV1Node;

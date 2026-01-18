@@ -52,13 +52,19 @@ export interface TheHiveProjectTriggerV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type TheHiveProjectTriggerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type TheHiveProjectTriggerV1Node = {
 	type: 'n8n-nodes-base.theHiveProjectTrigger';
 	version: 1;
 	config: NodeConfig<TheHiveProjectTriggerV1Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type TheHiveProjectTriggerNode = TheHiveProjectTriggerV1Node;

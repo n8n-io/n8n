@@ -18,12 +18,18 @@ import type { NodeConfig } from '../../../base';
 export interface NoOpV1Params {}
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type NoOpNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type NoOpV1Node = {
 	type: 'n8n-nodes-base.noOp';
 	version: 1;
 	config: NodeConfig<NoOpV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type NoOpNode = NoOpV1Node;

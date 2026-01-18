@@ -65,13 +65,19 @@ return _query.upper()
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcToolCodeNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcToolCodeV13Node = {
 	type: '@n8n/n8n-nodes-langchain.toolCode';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcToolCodeV13Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcToolCodeNode = LcToolCodeV13Node;

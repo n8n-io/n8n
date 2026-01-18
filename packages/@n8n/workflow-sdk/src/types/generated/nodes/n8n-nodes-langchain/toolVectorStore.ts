@@ -32,13 +32,19 @@ export interface LcToolVectorStoreV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcToolVectorStoreNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcToolVectorStoreV11Node = {
 	type: '@n8n/n8n-nodes-langchain.toolVectorStore';
 	version: 1 | 1.1;
 	config: NodeConfig<LcToolVectorStoreV11Params>;
 	credentials?: Record<string, never>;
 	isTrigger: true;
 };
+
+export type LcToolVectorStoreNode = LcToolVectorStoreV11Node;

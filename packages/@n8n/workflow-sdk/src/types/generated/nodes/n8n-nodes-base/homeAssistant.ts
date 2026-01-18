@@ -181,12 +181,14 @@ export interface HomeAssistantV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HomeAssistantNode = {
+export type HomeAssistantV1Node = {
 	type: 'n8n-nodes-base.homeAssistant';
 	version: 1;
 	config: NodeConfig<HomeAssistantV1Params>;
 	credentials?: HomeAssistantV1Credentials;
 };
+
+export type HomeAssistantNode = HomeAssistantV1Node;

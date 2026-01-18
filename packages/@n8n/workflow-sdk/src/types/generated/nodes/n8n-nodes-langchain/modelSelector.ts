@@ -29,12 +29,18 @@ export interface LcModelSelectorV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcModelSelectorNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcModelSelectorV1Node = {
 	type: '@n8n/n8n-nodes-langchain.modelSelector';
 	version: 1;
 	config: NodeConfig<LcModelSelectorV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcModelSelectorNode = LcModelSelectorV1Node;

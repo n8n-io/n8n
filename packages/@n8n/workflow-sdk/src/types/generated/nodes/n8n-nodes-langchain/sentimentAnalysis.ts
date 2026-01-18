@@ -24,12 +24,18 @@ export interface LcSentimentAnalysisV11Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type LcSentimentAnalysisNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type LcSentimentAnalysisV11Node = {
 	type: '@n8n/n8n-nodes-langchain.sentimentAnalysis';
 	version: 1 | 1.1;
 	config: NodeConfig<LcSentimentAnalysisV11Params>;
 	credentials?: Record<string, never>;
 };
+
+export type LcSentimentAnalysisNode = LcSentimentAnalysisV11Node;

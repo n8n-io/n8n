@@ -55,12 +55,14 @@ export interface BitlyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BitlyNode = {
+export type BitlyV1Node = {
 	type: 'n8n-nodes-base.bitly';
 	version: 1;
 	config: NodeConfig<BitlyV1Params>;
 	credentials?: BitlyV1Credentials;
 };
+
+export type BitlyNode = BitlyV1Node;

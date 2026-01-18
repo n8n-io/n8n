@@ -33,13 +33,15 @@ export interface KoBoToolboxTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KoBoToolboxTriggerNode = {
+export type KoBoToolboxTriggerV1Node = {
 	type: 'n8n-nodes-base.koBoToolboxTrigger';
 	version: 1;
 	config: NodeConfig<KoBoToolboxTriggerV1Params>;
 	credentials?: KoBoToolboxTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type KoBoToolboxTriggerNode = KoBoToolboxTriggerV1Node;

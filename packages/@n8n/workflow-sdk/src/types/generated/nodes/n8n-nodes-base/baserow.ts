@@ -144,12 +144,14 @@ export interface BaserowV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BaserowNode = {
+export type BaserowV1Node = {
 	type: 'n8n-nodes-base.baserow';
 	version: 1;
 	config: NodeConfig<BaserowV1Params>;
 	credentials?: BaserowV1Credentials;
 };
+
+export type BaserowNode = BaserowV1Node;

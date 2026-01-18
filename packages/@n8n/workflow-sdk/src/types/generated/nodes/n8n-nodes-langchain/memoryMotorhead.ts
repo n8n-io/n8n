@@ -30,13 +30,15 @@ export interface LcMemoryMotorheadV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryMotorheadNode = {
+export type LcMemoryMotorheadV13Node = {
 	type: '@n8n/n8n-nodes-langchain.memoryMotorhead';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<LcMemoryMotorheadV13Params>;
 	credentials?: LcMemoryMotorheadV13Credentials;
 	isTrigger: true;
 };
+
+export type LcMemoryMotorheadNode = LcMemoryMotorheadV13Node;

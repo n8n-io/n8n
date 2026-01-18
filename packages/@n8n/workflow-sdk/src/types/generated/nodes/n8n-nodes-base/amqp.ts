@@ -37,12 +37,14 @@ export interface AmqpV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AmqpNode = {
+export type AmqpV1Node = {
 	type: 'n8n-nodes-base.amqp';
 	version: 1;
 	config: NodeConfig<AmqpV1Params>;
 	credentials?: AmqpV1Credentials;
 };
+
+export type AmqpNode = AmqpV1Node;

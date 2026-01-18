@@ -162,12 +162,14 @@ export interface VeroV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type VeroNode = {
+export type VeroV1Node = {
 	type: 'n8n-nodes-base.vero';
 	version: 1;
 	config: NodeConfig<VeroV1Params>;
 	credentials?: VeroV1Credentials;
 };
+
+export type VeroNode = VeroV1Node;

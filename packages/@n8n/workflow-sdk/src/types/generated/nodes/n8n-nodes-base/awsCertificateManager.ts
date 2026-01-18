@@ -91,12 +91,14 @@ export interface AwsCertificateManagerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsCertificateManagerNode = {
+export type AwsCertificateManagerV1Node = {
 	type: 'n8n-nodes-base.awsCertificateManager';
 	version: 1;
 	config: NodeConfig<AwsCertificateManagerV1Params>;
 	credentials?: AwsCertificateManagerV1Credentials;
 };
+
+export type AwsCertificateManagerNode = AwsCertificateManagerV1Node;

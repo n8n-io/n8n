@@ -208,12 +208,14 @@ export interface WordpressV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WordpressNode = {
+export type WordpressV1Node = {
 	type: 'n8n-nodes-base.wordpress';
 	version: 1;
 	config: NodeConfig<WordpressV1Params>;
 	credentials?: WordpressV1Credentials;
 };
+
+export type WordpressNode = WordpressV1Node;

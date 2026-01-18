@@ -69,12 +69,14 @@ export interface SshV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SshNode = {
+export type SshV1Node = {
 	type: 'n8n-nodes-base.ssh';
 	version: 1;
 	config: NodeConfig<SshV1Params>;
 	credentials?: SshV1Credentials;
 };
+
+export type SshNode = SshV1Node;

@@ -602,13 +602,26 @@ export interface NotionV22Credentials {
 	notionApi: CredentialReference;
 }
 
+export interface NotionV1Credentials {
+	notionApi: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NotionNode = {
+export type NotionV22Node = {
 	type: 'n8n-nodes-base.notion';
-	version: 1 | 2 | 2.1 | 2.2;
+	version: 2 | 2.1 | 2.2;
 	config: NodeConfig<NotionV22Params>;
 	credentials?: NotionV22Credentials;
 };
+
+export type NotionV1Node = {
+	type: 'n8n-nodes-base.notion';
+	version: 1;
+	config: NodeConfig<NotionV1Params>;
+	credentials?: NotionV1Credentials;
+};
+
+export type NotionNode = NotionV22Node | NotionV1Node;

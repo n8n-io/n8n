@@ -41,12 +41,14 @@ export interface GoogleTranslateV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleTranslateNode = {
+export type GoogleTranslateV2Node = {
 	type: 'n8n-nodes-base.googleTranslate';
 	version: 1 | 2;
 	config: NodeConfig<GoogleTranslateV2Params>;
 	credentials?: GoogleTranslateV2Credentials;
 };
+
+export type GoogleTranslateNode = GoogleTranslateV2Node;

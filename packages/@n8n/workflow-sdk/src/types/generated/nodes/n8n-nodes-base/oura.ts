@@ -87,12 +87,14 @@ export interface OuraV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OuraNode = {
+export type OuraV1Node = {
 	type: 'n8n-nodes-base.oura';
 	version: 1;
 	config: NodeConfig<OuraV1Params>;
 	credentials?: OuraV1Credentials;
 };
+
+export type OuraNode = OuraV1Node;

@@ -59,12 +59,14 @@ export interface MailgunV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailgunNode = {
+export type MailgunV1Node = {
 	type: 'n8n-nodes-base.mailgun';
 	version: 1;
 	config: NodeConfig<MailgunV1Params>;
 	credentials?: MailgunV1Credentials;
 };
+
+export type MailgunNode = MailgunV1Node;

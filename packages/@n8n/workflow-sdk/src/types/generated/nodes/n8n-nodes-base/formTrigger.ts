@@ -69,13 +69,23 @@ export interface FormTriggerV25Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FormTriggerNode = {
+export type FormTriggerV25Node = {
 	type: 'n8n-nodes-base.formTrigger';
-	version: 1 | 2 | 2.1 | 2.2 | 2.3 | 2.4 | 2.5;
+	version: 2 | 2.1 | 2.2 | 2.3 | 2.4 | 2.5;
 	config: NodeConfig<FormTriggerV25Params>;
 	credentials?: FormTriggerV25Credentials;
 	isTrigger: true;
 };
+
+export type FormTriggerV1Node = {
+	type: 'n8n-nodes-base.formTrigger';
+	version: 1;
+	config: NodeConfig<FormTriggerV1Params>;
+	credentials?: Record<string, never>;
+	isTrigger: true;
+};
+
+export type FormTriggerNode = FormTriggerV25Node | FormTriggerV1Node;

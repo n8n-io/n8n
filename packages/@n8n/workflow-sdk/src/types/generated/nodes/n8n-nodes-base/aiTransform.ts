@@ -25,12 +25,18 @@ export interface AiTransformV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type AiTransformNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type AiTransformV1Node = {
 	type: 'n8n-nodes-base.aiTransform';
 	version: 1;
 	config: NodeConfig<AiTransformV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type AiTransformNode = AiTransformV1Node;

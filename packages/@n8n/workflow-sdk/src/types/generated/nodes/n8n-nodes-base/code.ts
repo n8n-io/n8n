@@ -46,12 +46,18 @@ export type CodeV2RunOnceForEachItemConfig = {
 export type CodeV2Params = CodeV2RunOnceForAllItemsConfig | CodeV2RunOnceForEachItemConfig;
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type CodeNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type CodeV2Node = {
 	type: 'n8n-nodes-base.code';
 	version: 1 | 2;
 	config: NodeConfig<CodeV2Params>;
 	credentials?: Record<string, never>;
 };
+
+export type CodeNode = CodeV2Node;

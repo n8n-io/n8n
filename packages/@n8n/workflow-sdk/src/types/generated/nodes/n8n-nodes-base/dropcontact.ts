@@ -38,12 +38,14 @@ export interface DropcontactV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DropcontactNode = {
+export type DropcontactV1Node = {
 	type: 'n8n-nodes-base.dropcontact';
 	version: 1;
 	config: NodeConfig<DropcontactV1Params>;
 	credentials?: DropcontactV1Credentials;
 };
+
+export type DropcontactNode = DropcontactV1Node;

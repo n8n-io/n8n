@@ -44,12 +44,14 @@ export interface Msg91V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type Msg91Node = {
+export type Msg91V1Node = {
 	type: 'n8n-nodes-base.msg91';
 	version: 1;
 	config: NodeConfig<Msg91V1Params>;
 	credentials?: Msg91V1Credentials;
 };
+
+export type Msg91Node = Msg91V1Node;

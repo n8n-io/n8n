@@ -291,12 +291,14 @@ export interface SendInBlueV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SendInBlueNode = {
+export type SendInBlueV1Node = {
 	type: 'n8n-nodes-base.sendInBlue';
 	version: 1;
 	config: NodeConfig<SendInBlueV1Params>;
 	credentials?: SendInBlueV1Credentials;
 };
+
+export type SendInBlueNode = SendInBlueV1Node;

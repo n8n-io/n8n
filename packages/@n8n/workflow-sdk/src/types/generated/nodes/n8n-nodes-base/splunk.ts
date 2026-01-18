@@ -407,13 +407,26 @@ export interface SplunkV2Credentials {
 	splunkApi: CredentialReference;
 }
 
+export interface SplunkV1Credentials {
+	splunkApi: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SplunkNode = {
+export type SplunkV2Node = {
 	type: 'n8n-nodes-base.splunk';
-	version: 1 | 2;
+	version: 2;
 	config: NodeConfig<SplunkV2Params>;
 	credentials?: SplunkV2Credentials;
 };
+
+export type SplunkV1Node = {
+	type: 'n8n-nodes-base.splunk';
+	version: 1;
+	config: NodeConfig<SplunkV1Params>;
+	credentials?: SplunkV1Credentials;
+};
+
+export type SplunkNode = SplunkV2Node | SplunkV1Node;

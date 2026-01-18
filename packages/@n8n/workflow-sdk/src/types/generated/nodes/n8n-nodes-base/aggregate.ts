@@ -30,12 +30,18 @@ export interface AggregateV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type AggregateNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type AggregateV1Node = {
 	type: 'n8n-nodes-base.aggregate';
 	version: 1;
 	config: NodeConfig<AggregateV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type AggregateNode = AggregateV1Node;

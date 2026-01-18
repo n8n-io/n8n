@@ -47,12 +47,14 @@ export interface Signl4V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type Signl4Node = {
+export type Signl4V1Node = {
 	type: 'n8n-nodes-base.signl4';
 	version: 1;
 	config: NodeConfig<Signl4V1Params>;
 	credentials?: Signl4V1Credentials;
 };
+
+export type Signl4Node = Signl4V1Node;

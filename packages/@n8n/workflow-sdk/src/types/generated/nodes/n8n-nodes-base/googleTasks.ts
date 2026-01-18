@@ -101,12 +101,14 @@ export interface GoogleTasksV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleTasksNode = {
+export type GoogleTasksV1Node = {
 	type: 'n8n-nodes-base.googleTasks';
 	version: 1;
 	config: NodeConfig<GoogleTasksV1Params>;
 	credentials?: GoogleTasksV1Credentials;
 };
+
+export type GoogleTasksNode = GoogleTasksV1Node;

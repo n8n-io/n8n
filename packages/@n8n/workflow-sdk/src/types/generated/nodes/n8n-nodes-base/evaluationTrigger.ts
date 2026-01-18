@@ -62,13 +62,15 @@ export interface EvaluationTriggerV47Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EvaluationTriggerNode = {
+export type EvaluationTriggerV47Node = {
 	type: 'n8n-nodes-base.evaluationTrigger';
 	version: 4.6 | 4.7;
 	config: NodeConfig<EvaluationTriggerV47Params>;
 	credentials?: EvaluationTriggerV47Credentials;
 	isTrigger: true;
 };
+
+export type EvaluationTriggerNode = EvaluationTriggerV47Node;

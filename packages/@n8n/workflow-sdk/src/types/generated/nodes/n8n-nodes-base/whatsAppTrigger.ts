@@ -40,13 +40,15 @@ export interface WhatsAppTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WhatsAppTriggerNode = {
+export type WhatsAppTriggerV1Node = {
 	type: 'n8n-nodes-base.whatsAppTrigger';
 	version: 1;
 	config: NodeConfig<WhatsAppTriggerV1Params>;
 	credentials?: WhatsAppTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type WhatsAppTriggerNode = WhatsAppTriggerV1Node;

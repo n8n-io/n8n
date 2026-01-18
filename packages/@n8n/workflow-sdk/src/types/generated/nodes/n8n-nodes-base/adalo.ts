@@ -59,12 +59,14 @@ export interface AdaloV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AdaloNode = {
+export type AdaloV1Node = {
 	type: 'n8n-nodes-base.adalo';
 	version: 1;
 	config: NodeConfig<AdaloV1Params>;
 	credentials?: AdaloV1Credentials;
 };
+
+export type AdaloNode = AdaloV1Node;

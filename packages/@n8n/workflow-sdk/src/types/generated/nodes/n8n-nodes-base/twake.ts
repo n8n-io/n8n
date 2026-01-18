@@ -41,12 +41,14 @@ export interface TwakeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwakeNode = {
+export type TwakeV1Node = {
 	type: 'n8n-nodes-base.twake';
 	version: 1;
 	config: NodeConfig<TwakeV1Params>;
 	credentials?: TwakeV1Credentials;
 };
+
+export type TwakeNode = TwakeV1Node;

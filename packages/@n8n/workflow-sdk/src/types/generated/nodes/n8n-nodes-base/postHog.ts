@@ -96,12 +96,14 @@ export interface PostHogV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostHogNode = {
+export type PostHogV1Node = {
 	type: 'n8n-nodes-base.postHog';
 	version: 1;
 	config: NodeConfig<PostHogV1Params>;
 	credentials?: PostHogV1Credentials;
 };
+
+export type PostHogNode = PostHogV1Node;

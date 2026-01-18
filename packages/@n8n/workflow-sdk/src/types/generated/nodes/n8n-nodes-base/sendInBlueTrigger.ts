@@ -42,13 +42,15 @@ export interface SendInBlueTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SendInBlueTriggerNode = {
+export type SendInBlueTriggerV1Node = {
 	type: 'n8n-nodes-base.sendInBlueTrigger';
 	version: 1;
 	config: NodeConfig<SendInBlueTriggerV1Params>;
 	credentials?: SendInBlueTriggerV1Credentials;
 	isTrigger: true;
 };
+
+export type SendInBlueTriggerNode = SendInBlueTriggerV1Node;

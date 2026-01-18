@@ -42,13 +42,15 @@ export interface GmailTriggerV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GmailTriggerNode = {
+export type GmailTriggerV13Node = {
 	type: 'n8n-nodes-base.gmailTrigger';
 	version: 1 | 1.1 | 1.2 | 1.3;
 	config: NodeConfig<GmailTriggerV13Params>;
 	credentials?: GmailTriggerV13Credentials;
 	isTrigger: true;
 };
+
+export type GmailTriggerNode = GmailTriggerV13Node;

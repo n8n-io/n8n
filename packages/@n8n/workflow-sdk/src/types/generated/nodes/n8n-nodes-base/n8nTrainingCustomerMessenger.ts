@@ -21,12 +21,18 @@ export interface N8nTrainingCustomerMessengerV1Params {
 }
 
 // ===========================================================================
-// Node Type
+// Credentials
 // ===========================================================================
 
-export type N8nTrainingCustomerMessengerNode = {
+// ===========================================================================
+// Node Types
+// ===========================================================================
+
+export type N8nTrainingCustomerMessengerV1Node = {
 	type: 'n8n-nodes-base.n8nTrainingCustomerMessenger';
 	version: 1;
 	config: NodeConfig<N8nTrainingCustomerMessengerV1Params>;
 	credentials?: Record<string, never>;
 };
+
+export type N8nTrainingCustomerMessengerNode = N8nTrainingCustomerMessengerV1Node;

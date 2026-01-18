@@ -950,13 +950,28 @@ export interface HubspotV22Credentials {
 	hubspotOAuth2Api: CredentialReference;
 }
 
+export interface HubspotV1Credentials {
+	hubspotApi: CredentialReference;
+	hubspotAppToken: CredentialReference;
+	hubspotOAuth2Api: CredentialReference;
+}
+
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HubspotNode = {
+export type HubspotV22Node = {
 	type: 'n8n-nodes-base.hubspot';
-	version: 1 | 2 | 2.1 | 2.2;
+	version: 2 | 2.1 | 2.2;
 	config: NodeConfig<HubspotV22Params>;
 	credentials?: HubspotV22Credentials;
 };
+
+export type HubspotV1Node = {
+	type: 'n8n-nodes-base.hubspot';
+	version: 1;
+	config: NodeConfig<HubspotV1Params>;
+	credentials?: HubspotV1Credentials;
+};
+
+export type HubspotNode = HubspotV22Node | HubspotV1Node;

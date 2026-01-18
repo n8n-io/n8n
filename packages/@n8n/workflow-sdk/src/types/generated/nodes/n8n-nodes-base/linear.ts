@@ -101,12 +101,14 @@ export interface LinearV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LinearNode = {
+export type LinearV11Node = {
 	type: 'n8n-nodes-base.linear';
 	version: 1 | 1.1;
 	config: NodeConfig<LinearV11Params>;
 	credentials?: LinearV11Credentials;
 };
+
+export type LinearNode = LinearV11Node;

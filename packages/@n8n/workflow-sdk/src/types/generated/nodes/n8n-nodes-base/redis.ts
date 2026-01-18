@@ -99,12 +99,14 @@ export interface RedisV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RedisNode = {
+export type RedisV1Node = {
 	type: 'n8n-nodes-base.redis';
 	version: 1;
 	config: NodeConfig<RedisV1Params>;
 	credentials?: RedisV1Credentials;
 };
+
+export type RedisNode = RedisV1Node;

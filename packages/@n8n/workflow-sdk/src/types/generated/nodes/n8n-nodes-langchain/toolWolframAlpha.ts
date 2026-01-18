@@ -26,13 +26,15 @@ export interface LcToolWolframAlphaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcToolWolframAlphaNode = {
+export type LcToolWolframAlphaV1Node = {
 	type: '@n8n/n8n-nodes-langchain.toolWolframAlpha';
 	version: 1;
 	config: NodeConfig<LcToolWolframAlphaV1Params>;
 	credentials?: LcToolWolframAlphaV1Credentials;
 	isTrigger: true;
 };
+
+export type LcToolWolframAlphaNode = LcToolWolframAlphaV1Node;
