@@ -741,3 +741,40 @@ export type RunOnceForAllItemsFn = <T = unknown>(
 export type RunOnceForEachItemFn = <T = unknown>(
 	fn: (ctx: EachItemContext) => { json: T } | null,
 ) => CodeResult<T>;
+
+// =============================================================================
+// Type Helpers for Generated Node Types
+// =============================================================================
+
+/**
+ * Extract parameter types from a node type
+ *
+ * @example
+ * ```typescript
+ * import type { CodeNode, ExtractNodeParams } from '@n8n/workflow-sdk';
+ * type CodeParams = ExtractNodeParams<CodeNode>; // CodeV2Params
+ * ```
+ */
+export type ExtractNodeParams<T> = T extends NodeInput<string, number, infer P> ? P : never;
+
+/**
+ * Extract credential types from a node type
+ *
+ * @example
+ * ```typescript
+ * import type { HttpRequestNode, ExtractNodeCredentials } from '@n8n/workflow-sdk';
+ * type HttpCreds = ExtractNodeCredentials<HttpRequestNode>;
+ * ```
+ */
+export type ExtractNodeCredentials<T> = T extends { credentials?: infer C } ? C : never;
+
+/**
+ * Extract version from a node type
+ *
+ * @example
+ * ```typescript
+ * import type { CodeNode, ExtractNodeVersion } from '@n8n/workflow-sdk';
+ * type CodeVersion = ExtractNodeVersion<CodeNode>; // 1 | 2
+ * ```
+ */
+export type ExtractNodeVersion<T> = T extends NodeInput<string, infer V, unknown> ? V : never;

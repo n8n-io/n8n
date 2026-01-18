@@ -186,7 +186,7 @@ export function validateWorkflow(
 		for (const node of json.nodes) {
 			// HTTP Request should have a URL
 			if (node.type === 'n8n-nodes-base.httpRequest') {
-				if (!node.parameters.url && !node.parameters.requestUrl) {
+				if (!node.parameters?.url && !node.parameters?.requestUrl) {
 					warnings.push(
 						new ValidationWarning(
 							'MISSING_PARAMETER',
