@@ -31,7 +31,8 @@ import {
   node,
   trigger,
   runOnceForAllItems,
-  runOnceForEachItem
+  runOnceForEachItem,
+  z  // re-exported from zod
 } from '@n8n/workflow-sdk';
 ```
 
@@ -480,6 +481,144 @@ node('n8n-nodes-base.code', 'v2', {
 
 ---
 
+## Agent Nodes & Structured Output
+
+Agent nodes use subnodes for model, memory, tools, and output parsing. Output typing is set via an explicit generic on the node call.
+
+### Basic Structure
+
+```typescript
+import { z } from 'zod';
+
+const outputSchema = z.object({
+  output: z.object({
+    summary: z.string(),
+    confidence: z.number()
+  })
+});
+
+node<z.infer<typeof outputSchema>>('n8n-nodes-langchain.agent', 'v3.1', {
+  parameters: {
+    text: '{{ $json.prompt }}'
+  },
+  subnodes: {
+    model: node('n8n-nodes-langchain.lmChatOpenAi', 'v1', {
+      parameters: { model: 'gpt-4' }
+    }),
+    memory: node('n8n-nodes-langchain.memoryBufferWindow', 'v1', {
+      parameters: { windowSize: 5 }
+    }),
+    tools: [
+      node('n8n-nodes-langchain.toolCalculator', 'v1', {})
+    ],
+    outputParser: node('n8n-nodes-langchain.outputParserStructured', 'v1.3', {
+      parameters: {
+        schemaType: 'manual',
+        schema: outputSchema
+      }
+    })
+  },
+  credentials: {
+    openAiApi: { name: 'OpenAI', id: 'openai-1' }
+  }
+})
+```
+
+### Subnodes
+
+| Subnode | Type | Required | Description |
+|---------|------|----------|-------------|
+| `model` | single node | Yes | Chat model (OpenAI, Anthropic, etc.) |
+| `memory` | single node | No | Conversation memory |
+| `tools` | array of nodes | No | Tools available to agent |
+| `outputParser` | single node | No | Structured output schema |
+
+### Structured Output Parser
+
+The `outputParserStructured` node has two modes:
+
+**Manual mode** - Zod schema (recommended for type safety):
+
+```typescript
+const schema = z.object({
+  output: z.object({ name: z.string(), score: z.number() })
+});
+
+node<z.infer<typeof schema>>('n8n-nodes-langchain.agent', 'v3.1', {
+  subnodes: {
+    outputParser: node('n8n-nodes-langchain.outputParserStructured', 'v1.3', {
+      parameters: {
+        schemaType: 'manual',
+        schema: schema
+      }
+    })
+  }
+})
+```
+
+**Example mode** - JSON example string:
+
+```typescript
+node<{ output: { name: string; score: number } }>('n8n-nodes-langchain.agent', 'v3.1', {
+  subnodes: {
+    outputParser: node('n8n-nodes-langchain.outputParserStructured', 'v1.3', {
+      parameters: {
+        schemaType: 'fromJson',
+        jsonExample: '{"output": {"name": "example", "score": 0.95}}'
+      }
+    })
+  }
+})
+```
+
+### Output Type Inference
+
+- Output type is set via explicit generic: `node<OutputType>(...)`
+- For Zod schemas: use `z.infer<typeof schema>`
+- Without `outputParser`: output type defaults to `unknown`
+- The full schema including `output` wrapper must be specified (no auto-wrapping)
+
+### Serialization
+
+Zod schemas are converted to JSON Schema in the serialized output:
+
+```typescript
+// SDK
+z.object({
+  output: z.object({ name: z.string() })
+})
+
+// Serializes to JSON:
+{
+  "schemaType": "manual",
+  "jsonSchema": {
+    "type": "object",
+    "properties": {
+      "output": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" }
+        },
+        "required": ["name"]
+      }
+    },
+    "required": ["output"]
+  }
+}
+```
+
+### Dependencies
+
+The SDK re-exports Zod for schema definition:
+
+```typescript
+import { z } from '@n8n/workflow-sdk';
+// or
+import { z } from 'zod';  // direct import also works
+```
+
+---
+
 ## JSON Conversion
 
 ### Export (TS → JSON)
@@ -642,6 +781,7 @@ packages/
 ### Dependencies
 
 - `@n8n/workflow` - Core interfaces only
+- `zod` - Schema definition for structured output
 - No runtime dependencies on node implementations
 
 ---
