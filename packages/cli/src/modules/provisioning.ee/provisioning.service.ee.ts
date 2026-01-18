@@ -53,21 +53,57 @@ export class ProvisioningService {
 		return this.provisioningConfig;
 	}
 
-	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
+	async provisionInstanceRoleForUser(user: User, roleSlugInput: unknown) {
 		if (!(await this.isInstanceRoleProvisioningEnabled())) {
 			return;
 		}
 
 		const globalOwnerRoleSlug = 'global:owner';
 
-		if (typeof roleSlug !== 'string') {
+		// Handle both string and array input (Azure AD sends roles as an array)
+		let roleSlug: string | undefined;
+
+		if (typeof roleSlugInput === 'string') {
+			roleSlug = roleSlugInput;
+		} else if (Array.isArray(roleSlugInput)) {
+			// Filter for global roles only (e.g., global:admin, global:member)
+			const globalRoles = roleSlugInput.filter(
+				(r): r is string => typeof r === 'string' && r.startsWith('global:'),
+			);
+
+			if (globalRoles.length === 0) {
+				this.logger.debug('No global roles found in roles array, skipping instance role provisioning', {
+					userId: user.id,
+					roleSlugInput,
+				});
+				return;
+			}
+
+			// Prioritize: global:owner > global:admin > global:member > others
+			const rolePriority = ['global:owner', 'global:admin', 'global:member'];
+			roleSlug = rolePriority.find((r) => globalRoles.includes(r)) ?? globalRoles[0];
+
+			this.logger.debug('Extracted global role from array', {
+				userId: user.id,
+				selectedRole: roleSlug,
+				availableGlobalRoles: globalRoles,
+			});
+		} else {
 			this.logger.warn(
-				`skipping instance role provisioning. Invalid role type: expected string, received ${typeof roleSlug}`,
+				`skipping instance role provisioning. Invalid role type: expected string or array, received ${typeof roleSlugInput}`,
 				{
 					userId: user.id,
-					roleSlug,
+					roleSlug: roleSlugInput,
 				},
 			);
+			return;
+		}
+
+		if (!roleSlug) {
+			this.logger.warn('No valid role slug found for instance role provisioning', {
+				userId: user.id,
+				roleSlugInput,
+			});
 			return;
 		}
 
@@ -148,6 +184,16 @@ export class ProvisioningService {
 				if (typeof entry !== 'string') {
 					this.logger.warn(
 						`Skipping invalid project role mapping entry. Expected string, received ${typeof entry}.`,
+						{ userId, entry },
+					);
+					continue;
+				}
+
+				// Skip global roles - they are instance roles, not project roles
+				// Azure AD and other IdPs may send all roles in a single array
+				if (entry.startsWith('global:')) {
+					this.logger.debug(
+						`Skipping global role "${entry}" in project roles provisioning - global roles should be handled by instance role provisioning.`,
 						{ userId, entry },
 					);
 					continue;
