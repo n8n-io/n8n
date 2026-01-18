@@ -126,10 +126,30 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-upload-post.uploadPost',
+					version: 1,
+					config: {
+						parameters: {
+							user: "={{ $('Set Input Data').item.json['upload-post_user'] }}",
+							title: "={{ $('Social Media Agent').item.json.output[1].content }}",
+							photos:
+								"=https://api.screenshotone.com/take?access_key={{ $('Set Input Data').item.json['ScreenshotOne_API_KEY'] }}&url={{ $('Set Input Data').item.json.workflow_url }}&format=jpg&block_ads=false&block_cookie_banners=false&block_banners_by_heuristics=false&block_trackers=true&delay=20&timeout=60&response_type=by_format&image_quality=80\n",
+							platform: ['x'],
+						},
+						credentials: {
+							uploadPostApi: { id: 'credential-id', name: 'uploadPostApi Credential' },
+						},
+						position: [1060, -160],
+						name: 'Upload Post X',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -155,34 +175,12 @@ const wf = workflow(
 					},
 					looseTypeValidation: '=true',
 				},
-				position: [740, 20],
 				name: 'If approved publish',
 			},
-		}),
+		),
 	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-upload-post.uploadPost',
-			version: 1,
-			config: {
-				parameters: {
-					user: "={{ $('Set Input Data').item.json['upload-post_user'] }}",
-					title: "={{ $('Social Media Agent').item.json.output[1].content }}",
-					photos:
-						"=https://api.screenshotone.com/take?access_key={{ $('Set Input Data').item.json['ScreenshotOne_API_KEY'] }}&url={{ $('Set Input Data').item.json.workflow_url }}&format=jpg&block_ads=false&block_cookie_banners=false&block_banners_by_heuristics=false&block_trackers=true&delay=20&timeout=60&response_type=by_format&image_quality=80\n",
-					platform: ['x'],
-				},
-				credentials: {
-					uploadPostApi: { id: 'credential-id', name: 'uploadPostApi Credential' },
-				},
-				position: [1060, -160],
-				name: 'Upload Post X',
-			},
-		}),
-	)
-	.output(0)
-	.then(
+	// Disconnected: Upload Post Threads
+	.add(
 		node({
 			type: 'n8n-nodes-upload-post.uploadPost',
 			version: 1,
@@ -202,8 +200,8 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	// Disconnected: Upload Post Linkedin
+	.add(
 		node({
 			type: 'n8n-nodes-upload-post.uploadPost',
 			version: 1,
@@ -223,8 +221,8 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	// Disconnected: Upload Post Reddit
+	.add(
 		node({
 			type: 'n8n-nodes-base.reddit',
 			version: 1,

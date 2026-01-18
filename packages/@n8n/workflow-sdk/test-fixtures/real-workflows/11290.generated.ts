@@ -78,10 +78,58 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.filter',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'or',
+								conditions: [
+									{
+										id: 'filter-invoice',
+										operator: { type: 'string', operation: 'contains' },
+										leftValue: "={{ $('Get Email Content').item.json.subject }}",
+										rightValue: 'Invoice',
+									},
+									{
+										id: 'filter-receipt',
+										operator: { type: 'string', operation: 'contains' },
+										leftValue: "={{ $('Get Email Content').item.json.subject }}",
+										rightValue: 'Receipt',
+									},
+									{
+										id: 'filter-bill',
+										operator: { type: 'string', operation: 'contains' },
+										leftValue: "={{ $('Get Email Content').item.json.subject }}",
+										rightValue: 'Bill',
+									},
+									{
+										id: 'filter-payment',
+										operator: { type: 'string', operation: 'contains' },
+										leftValue: "={{ $('Get Email Content').item.json.subject }}",
+										rightValue: 'Payment Confirmation',
+									},
+								],
+							},
+						},
+						position: [592, 432],
+						name: 'Filter Finance Keywords',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -103,58 +151,9 @@ const wf = workflow('', '')
 					},
 					looseTypeValidation: true,
 				},
-				position: [208, 336],
 				name: 'IF (Guardrail Passed)',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.filter',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'or',
-						conditions: [
-							{
-								id: 'filter-invoice',
-								operator: { type: 'string', operation: 'contains' },
-								leftValue: "={{ $('Get Email Content').item.json.subject }}",
-								rightValue: 'Invoice',
-							},
-							{
-								id: 'filter-receipt',
-								operator: { type: 'string', operation: 'contains' },
-								leftValue: "={{ $('Get Email Content').item.json.subject }}",
-								rightValue: 'Receipt',
-							},
-							{
-								id: 'filter-bill',
-								operator: { type: 'string', operation: 'contains' },
-								leftValue: "={{ $('Get Email Content').item.json.subject }}",
-								rightValue: 'Bill',
-							},
-							{
-								id: 'filter-payment',
-								operator: { type: 'string', operation: 'contains' },
-								leftValue: "={{ $('Get Email Content').item.json.subject }}",
-								rightValue: 'Payment Confirmation',
-							},
-						],
-					},
-				},
-				position: [592, 432],
-				name: 'Filter Finance Keywords',
-			},
-		}),
+		),
 	)
 	.then(
 		ifBranch(

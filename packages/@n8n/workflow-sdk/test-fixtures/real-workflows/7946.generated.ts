@@ -175,8 +175,7 @@ const wf = workflow('h81ddl7uooV3eLBq', 'Hybrid Search with Qdrant & n8n, Legal 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.aggregate',
 			version: 1,
@@ -215,8 +214,7 @@ const wf = workflow('h81ddl7uooV3eLBq', 'Hybrid Search with Qdrant & n8n, Legal 
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
@@ -252,8 +250,7 @@ const wf = workflow('h81ddl7uooV3eLBq', 'Hybrid Search with Qdrant & n8n, Legal 
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-qdrant.qdrant',
 			version: 1,

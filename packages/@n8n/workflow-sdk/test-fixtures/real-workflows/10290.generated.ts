@@ -27,16 +27,14 @@ const wf = workflow(
 			{ version: 3.3, name: 'Route by Message Type' },
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
 			config: { position: [1600, 592], name: 'Send Processing Notification (Voice)' },
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
@@ -134,32 +132,28 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
 			config: { position: [3920, 1152], name: 'Generate Voice Response' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
 			config: { position: [4256, 1008], name: 'Send Voice to Telegram' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
 			config: { position: [4272, 1280], name: 'Send Text to Telegram' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,

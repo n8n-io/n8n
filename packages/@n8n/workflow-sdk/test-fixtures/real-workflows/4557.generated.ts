@@ -75,8 +75,7 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.if',
 			version: 2.2,
@@ -268,8 +267,7 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.compareDatasets',
 			version: 2.3,
@@ -284,8 +282,7 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.gmail',
 			version: 2.1,
@@ -329,8 +326,7 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 			config: { position: [1000, -600], name: 'Replace Me' },
 		}),
 	)
-	.output(2)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.gmail',
 			version: 2.1,
@@ -348,8 +344,7 @@ const wf = workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.gmail',
 			version: 2.1,

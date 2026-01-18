@@ -224,10 +224,39 @@ const wf = workflow('', 'Reels Trends Watcher')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.notion',
+					version: 2,
+					config: {
+						parameters: {
+							pageId: { __rl: true, mode: 'id', value: '={{ $json.notionPageId }}' },
+							options: {},
+							resource: 'databasePage',
+							operation: 'update',
+							propertiesUi: {
+								propertyValues: [
+									{
+										key: 'Status|select',
+										selectValue: '={{ $json.publishingStatus }}',
+									},
+									{ key: 'Title|title', title: '={{ $json.ownerFullName }}' },
+									{ key: 'URL|url', urlValue: '={{ $json.inputUrl }}' },
+								],
+							},
+						},
+						credentials: {
+							notionApi: { id: 'credential-id', name: 'notionApi Credential' },
+						},
+						position: [1560, 540],
+						name: 'Update Accounts',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -248,39 +277,9 @@ const wf = workflow('', 'Reels Trends Watcher')
 						],
 					},
 				},
-				position: [1340, 540],
 				name: 'Owner?',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.notion',
-			version: 2,
-			config: {
-				parameters: {
-					pageId: { __rl: true, mode: 'id', value: '={{ $json.notionPageId }}' },
-					options: {},
-					resource: 'databasePage',
-					operation: 'update',
-					propertiesUi: {
-						propertyValues: [
-							{
-								key: 'Status|select',
-								selectValue: '={{ $json.publishingStatus }}',
-							},
-							{ key: 'Title|title', title: '={{ $json.ownerFullName }}' },
-							{ key: 'URL|url', urlValue: '={{ $json.inputUrl }}' },
-						],
-					},
-				},
-				credentials: {
-					notionApi: { id: 'credential-id', name: 'notionApi Credential' },
-				},
-				position: [1560, 540],
-				name: 'Update Accounts',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -346,8 +345,7 @@ const wf = workflow('', 'Reels Trends Watcher')
 			config: { parameters: { options: {} }, position: [-400, 1400], name: 'Loop Over Items' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -361,8 +359,7 @@ const wf = workflow('', 'Reels Trends Watcher')
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.switch',
 			version: 3.2,
@@ -421,8 +418,7 @@ const wf = workflow('', 'Reels Trends Watcher')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
@@ -654,8 +650,7 @@ const wf = workflow('', 'Reels Trends Watcher')
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.notion',
 			version: 2.2,

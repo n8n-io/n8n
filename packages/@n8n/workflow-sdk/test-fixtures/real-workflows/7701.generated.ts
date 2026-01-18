@@ -72,10 +72,29 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.emailSend',
+					version: 2.1,
+					config: {
+						parameters: {
+							text: "=🚨 Stock Alert: {{ $('Smart Alert Logic').item.json.message }}",
+							options: {},
+							subject: "=🚨 Stock Alert: {{ $('Smart Alert Logic').item.json.message }}",
+							toEmail: 'user@example.com',
+							fromEmail: 'user@example.com',
+							emailFormat: 'text',
+						},
+						credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
+						position: [992, -16],
+						name: 'Send Email Alert',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -96,33 +115,12 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [768, 176],
 				name: 'Check Alert Conditions',
 			},
-		}),
+		),
 	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.emailSend',
-			version: 2.1,
-			config: {
-				parameters: {
-					text: "=🚨 Stock Alert: {{ $('Smart Alert Logic').item.json.message }}",
-					options: {},
-					subject: "=🚨 Stock Alert: {{ $('Smart Alert Logic').item.json.message }}",
-					toEmail: 'user@example.com',
-					fromEmail: 'user@example.com',
-					emailFormat: 'text',
-				},
-				credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
-				position: [992, -16],
-				name: 'Send Email Alert',
-			},
-		}),
-	)
-	.output(0)
-	.then(
+	// Disconnected: Send Telegram Alert
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1,
@@ -140,8 +138,8 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	// Disconnected: Update Alert History
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4,
@@ -169,42 +167,12 @@ const wf = workflow(
 			},
 		}),
 	)
-	.then(
-		ifBranch(
-			[
-				node({
-					type: 'n8n-nodes-base.emailSend',
-					version: 2.1,
-					config: {
-						parameters: {
-							options: {},
-							subject: '✅ Stock Monitor: Alert Sent Successfully',
-							toEmail: 'user@example.com',
-							fromEmail: 'user@example.com',
-						},
-						credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
-						position: [1440, 80],
-						name: 'Success Notification',
-					},
-				}),
-				node({
-					type: 'n8n-nodes-base.emailSend',
-					version: 2.1,
-					config: {
-						parameters: {
-							options: {},
-							subject: '❌ Stock Monitor: Alert Failed',
-							toEmail: 'user@example.com',
-							fromEmail: 'user@example.com',
-						},
-						credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
-						position: [1440, 272],
-						name: 'Error Notification',
-					},
-				}),
-			],
-			{
-				version: 2,
+	// Disconnected: Alert Status Check
+	.add(
+		node({
+			type: 'n8n-nodes-base.if',
+			version: 2,
+			config: {
 				parameters: {
 					options: {},
 					conditions: {
@@ -224,9 +192,46 @@ const wf = workflow(
 						],
 					},
 				},
+				position: [1216, 176],
 				name: 'Alert Status Check',
 			},
-		),
+		}),
+	)
+	// Disconnected: Success Notification
+	.add(
+		node({
+			type: 'n8n-nodes-base.emailSend',
+			version: 2.1,
+			config: {
+				parameters: {
+					options: {},
+					subject: '✅ Stock Monitor: Alert Sent Successfully',
+					toEmail: 'user@example.com',
+					fromEmail: 'user@example.com',
+				},
+				credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
+				position: [1440, 80],
+				name: 'Success Notification',
+			},
+		}),
+	)
+	// Disconnected: Error Notification
+	.add(
+		node({
+			type: 'n8n-nodes-base.emailSend',
+			version: 2.1,
+			config: {
+				parameters: {
+					options: {},
+					subject: '❌ Stock Monitor: Alert Failed',
+					toEmail: 'user@example.com',
+					fromEmail: 'user@example.com',
+				},
+				credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } },
+				position: [1440, 272],
+				name: 'Error Notification',
+			},
+		}),
 	)
 	.add(
 		sticky(

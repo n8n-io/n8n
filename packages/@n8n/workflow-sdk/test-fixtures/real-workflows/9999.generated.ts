@@ -13,8 +13,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -364,8 +363,7 @@ const wf = workflow('', '')
 			},
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.if',
 			version: 2.2,
@@ -395,8 +393,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.gmail',
 			version: 2.1,
@@ -417,8 +414,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.noOp',
 			version: 1,

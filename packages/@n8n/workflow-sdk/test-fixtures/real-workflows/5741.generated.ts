@@ -323,8 +323,7 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 			config: { parameters: { options: {} }, position: [200, 40], name: 'Loop Over Items' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
@@ -361,8 +360,7 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 			config: { parameters: { options: {} }, position: [-540, 520], name: 'Loop Over Items1' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.aggregate',
 			version: 1,
@@ -590,8 +588,7 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
@@ -744,8 +741,7 @@ const wf = workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { exe
 			},
 		),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,

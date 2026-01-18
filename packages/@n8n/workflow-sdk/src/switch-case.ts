@@ -45,6 +45,10 @@ class SwitchNodeInstance implements NodeInstance<'n8n-nodes-base.switch', string
 		throw new Error('Switch node connections are managed by SwitchCaseComposite');
 	}
 
+	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): T {
+		throw new Error('Switch node error handling is managed by SwitchCaseComposite');
+	}
+
 	getConnections(): DeclaredConnection[] {
 		return [];
 	}

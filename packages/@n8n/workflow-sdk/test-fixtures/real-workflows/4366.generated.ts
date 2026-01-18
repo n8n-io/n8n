@@ -429,8 +429,7 @@ const wf = workflow('leftLsw8mj6dIDBp', '[AOE]  Inbox & Calendar Management Agen
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.textClassifier',
 			version: 1,
@@ -479,8 +478,7 @@ const wf = workflow('leftLsw8mj6dIDBp', '[AOE]  Inbox & Calendar Management Agen
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.gmail',
 			version: 2.1,
@@ -498,8 +496,7 @@ const wf = workflow('leftLsw8mj6dIDBp', '[AOE]  Inbox & Calendar Management Agen
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.gmail',
 			version: 2.1,

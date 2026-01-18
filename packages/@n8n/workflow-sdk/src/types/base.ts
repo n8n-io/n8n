@@ -311,6 +311,18 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	then<T extends NodeInstance<string, string, unknown>>(target: T, outputIndex?: number): T;
 
 	/**
+	 * Connect this node's error output to an error handler node.
+	 * Only valid when the node has `onError: 'continueErrorOutput'` set.
+	 * The error output index is automatically calculated based on node type:
+	 * - Regular nodes: index 1 (after main output 0)
+	 * - IF nodes: index 2 (after true=0, false=1)
+	 * - Switch nodes: index = numberOfCases (after all case outputs)
+	 * @param handler - The error handler node to connect to
+	 * @returns The handler node (for chaining)
+	 */
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T): T;
+
+	/**
 	 * Get all declared connections from this node
 	 */
 	getConnections(): DeclaredConnection[];
@@ -515,14 +527,6 @@ export interface SplitInBatchesEachChain<TOutput> {
 }
 
 /**
- * Branch selector for multi-output nodes
- */
-export interface OutputSelector<TWorkflow extends WorkflowBuilder> {
-	/** Chain from this output */
-	then<N extends NodeInstance<string, string, unknown>>(node: N): TWorkflow;
-}
-
-/**
  * Workflow builder for constructing workflows with a fluent API
  */
 export interface WorkflowBuilder {
@@ -562,11 +566,6 @@ export interface WorkflowBuilder {
 	 * Chain a split in batches builder (batch processing with loop)
 	 */
 	then<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;
-
-	/**
-	 * Select an output branch by index
-	 */
-	output(index: number): OutputSelector<WorkflowBuilder>;
 
 	/**
 	 * Update workflow settings

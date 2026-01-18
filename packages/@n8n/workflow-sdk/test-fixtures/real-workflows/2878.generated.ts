@@ -183,8 +183,7 @@ const wf = workflow('', '')
 			config: { parameters: { options: {} }, position: [-540, -460], name: 'For Each Question...' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -389,8 +388,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.form',
 			version: 1,
@@ -1000,8 +998,7 @@ const wf = workflow('', '')
 			config: { parameters: { options: {} }, position: [-420, 860], name: 'For Each Query...' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.aggregate',
 			version: 1,
@@ -1012,8 +1009,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
@@ -1516,8 +1512,7 @@ const wf = workflow('', '')
 			config: { parameters: { options: {} }, position: [1440, 1600], name: 'For Each Block...' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.notion',
 			version: 2.2,
@@ -1546,8 +1541,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

@@ -74,8 +74,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.7,
@@ -149,8 +148,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.microsoftOutlook',
 			version: 2,

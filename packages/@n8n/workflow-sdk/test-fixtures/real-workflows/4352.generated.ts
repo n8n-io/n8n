@@ -146,8 +146,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.twitter',
 			version: 2,
@@ -161,8 +160,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.facebookGraphApi',
 			version: 1,
@@ -173,8 +171,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.linkedIn',
 			version: 1,

@@ -17,8 +17,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -324,10 +323,46 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.discord',
+					version: 2,
+					config: {
+						parameters: {
+							embeds: {
+								values: [
+									{
+										url: '={{ $json.output.action_url }}',
+										color: '={{ $json.output.priority_color }}',
+										image: '={{ $json.output.image_url }}',
+										title: '={{ $json.output.subject }}',
+										author: '={{ $json.output.from }}',
+										description: '={{ $json.output.summary }}',
+									},
+								],
+							},
+							guildId: { __rl: true, mode: 'list', value: '1363069056558825554' },
+							options: {},
+							resource: 'message',
+							channelId: {
+								__rl: true,
+								mode: 'id',
+								value: "={{ $('Merge4').item.json.discord_channel }}",
+							},
+							authentication: 'oAuth2',
+						},
+						credentials: {
+							discordOAuth2Api: { id: 'credential-id', name: 'discordOAuth2Api Credential' },
+						},
+						position: [1160, 1580],
+						name: 'Send a message',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -354,46 +389,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [900, 1600],
 				name: 'If2',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.discord',
-			version: 2,
-			config: {
-				parameters: {
-					embeds: {
-						values: [
-							{
-								url: '={{ $json.output.action_url }}',
-								color: '={{ $json.output.priority_color }}',
-								image: '={{ $json.output.image_url }}',
-								title: '={{ $json.output.subject }}',
-								author: '={{ $json.output.from }}',
-								description: '={{ $json.output.summary }}',
-							},
-						],
-					},
-					guildId: { __rl: true, mode: 'list', value: '1363069056558825554' },
-					options: {},
-					resource: 'message',
-					channelId: {
-						__rl: true,
-						mode: 'id',
-						value: "={{ $('Merge4').item.json.discord_channel }}",
-					},
-					authentication: 'oAuth2',
-				},
-				credentials: {
-					discordOAuth2Api: { id: 'credential-id', name: 'discordOAuth2Api Credential' },
-				},
-				position: [1160, 1580],
-				name: 'Send a message',
-			},
-		}),
+		),
 	)
 	.add(
 		trigger({

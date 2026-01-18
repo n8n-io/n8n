@@ -308,8 +308,7 @@ const wf = workflow('gMlV2BS7Aj3XlgCC', 'Lead Magnet Agent - Trigify', { executi
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.7,

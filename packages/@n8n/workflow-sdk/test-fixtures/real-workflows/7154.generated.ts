@@ -82,8 +82,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
@@ -266,8 +265,7 @@ const wf = workflow('', '')
 			{ version: 3.2, name: 'Append Column Names' },
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,

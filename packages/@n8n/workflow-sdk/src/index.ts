@@ -49,7 +49,6 @@ export type {
 	SplitInBatchesDoneChain,
 	SplitInBatchesEachChain,
 	// Other types
-	OutputSelector,
 	PlaceholderValue,
 	AllItemsContext,
 	EachItemContext,

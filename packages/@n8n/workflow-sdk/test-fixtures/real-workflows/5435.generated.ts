@@ -154,8 +154,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.aggregate',
 			version: 1,
@@ -190,8 +189,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.1,
@@ -206,8 +204,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -256,8 +253,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.aggregate',
 			version: 1,
@@ -321,8 +317,7 @@ const wf = workflow('', '')
 			},
 		),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,

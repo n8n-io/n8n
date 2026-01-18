@@ -307,8 +307,7 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 			},
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.gmail',
 			version: 2.1,
@@ -328,8 +327,7 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.slack',
 			version: 2.3,
@@ -354,8 +352,7 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
@@ -519,8 +516,7 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 			},
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.gmail',
 			version: 2.1,
@@ -540,8 +536,7 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.slack',
 			version: 2.3,
@@ -566,8 +561,7 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
@@ -585,8 +579,7 @@ const wf = workflow('Cki3H3LKIaoXKG1r', 'Website Down Time Monitoring for n8n', 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

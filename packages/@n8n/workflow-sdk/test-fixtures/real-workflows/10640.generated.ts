@@ -85,8 +85,7 @@ const wf = workflow(
 			config: { parameters: { options: {} }, position: [-800, 4032], name: 'Loop Over Items' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
@@ -101,8 +100,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.openAi',
 			version: 1.8,

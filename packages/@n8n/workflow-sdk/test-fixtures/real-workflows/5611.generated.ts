@@ -177,8 +177,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -376,16 +375,14 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
 			config: { position: [-96, -336], name: 'Already scraped' },
 		}),
 	)
-	.output(3)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.supabase',
 			version: 1,
@@ -465,8 +462,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.postgres',
 			version: 2.6,

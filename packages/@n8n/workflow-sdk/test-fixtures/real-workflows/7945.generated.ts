@@ -8,8 +8,7 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			config: { position: [-368, 768], name: 'Index Dataset from HuggingFace' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
@@ -162,8 +161,7 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.limit',
 			version: 1,
@@ -291,8 +289,7 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			{ version: 3.2, parameters: { mode: 'combine', options: {}, combineBy: 'combineAll' } },
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.splitInBatches',
 			version: 3,
@@ -344,8 +341,7 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.splitInBatches',
 			version: 3,
@@ -356,16 +352,14 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
 			config: { parameters: { options: {} }, position: [2912, 1104], name: 'Edit Fields' },
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
@@ -421,8 +415,7 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.aggregate',
 			version: 1,
@@ -474,8 +467,7 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 			config: { parameters: { options: {}, fieldToSplitOut: 'data' }, position: [3520, 1104] },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-qdrant.qdrant',
 			version: 1,
@@ -494,10 +486,34 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				null,
+				node({
+					type: 'n8n-nodes-qdrant.qdrant',
+					version: 1,
+					config: {
+						parameters: {
+							vectors:
+								'{\n  "mxbai_large": \n  {\n    "size": 1024,\n    "distance": "Cosine"\n  }\n}',
+							operation: 'createCollection',
+							shardNumber: {},
+							sparseVectors: '{\n  "bm25": \n  {\n    "modifier": "idf"\n  }\n}',
+							collectionName: 'legalQA_test',
+							requestOptions: {},
+							replicationFactor: {},
+							writeConsistencyFactor: {},
+						},
+						credentials: {
+							qdrantApi: { id: 'credential-id', name: 'qdrantApi Credential' },
+						},
+						position: [560, 368],
+						name: 'Create Collection',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -523,32 +539,9 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 					},
 					looseTypeValidation: true,
 				},
-				position: [400, 288],
+				name: 'If',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-qdrant.qdrant',
-			version: 1,
-			config: {
-				parameters: {
-					vectors: '{\n  "mxbai_large": \n  {\n    "size": 1024,\n    "distance": "Cosine"\n  }\n}',
-					operation: 'createCollection',
-					shardNumber: {},
-					sparseVectors: '{\n  "bm25": \n  {\n    "modifier": "idf"\n  }\n}',
-					collectionName: 'legalQA_test',
-					requestOptions: {},
-					replicationFactor: {},
-					writeConsistencyFactor: {},
-				},
-				credentials: {
-					qdrantApi: { id: 'credential-id', name: 'qdrantApi Credential' },
-				},
-				position: [560, 368],
-				name: 'Create Collection',
-			},
-		}),
+		),
 	)
 	.add(
 		node({
@@ -569,10 +562,34 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				null,
+				node({
+					type: 'n8n-nodes-qdrant.qdrant',
+					version: 1,
+					config: {
+						parameters: {
+							vectors:
+								'{\n  "open_ai_small": \n  {\n    "size": 1536,\n    "distance": "Cosine"\n  }\n}',
+							operation: 'createCollection',
+							shardNumber: {},
+							sparseVectors: '{\n  "bm25": \n  {\n    "modifier": "idf"\n  }\n}',
+							collectionName: 'legalQA_openAI_test',
+							requestOptions: {},
+							replicationFactor: {},
+							writeConsistencyFactor: {},
+						},
+						credentials: {
+							qdrantApi: { id: 'credential-id', name: 'qdrantApi Credential' },
+						},
+						position: [3008, 1840],
+						name: 'Create Collection1',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -598,34 +615,9 @@ const wf = workflow('FnlDCNDV3x4pYVyC', 'Hybrid Search with Qdrant & n8n, Legal 
 					},
 					looseTypeValidation: true,
 				},
-				position: [2816, 1744],
 				name: 'If1',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-qdrant.qdrant',
-			version: 1,
-			config: {
-				parameters: {
-					vectors:
-						'{\n  "open_ai_small": \n  {\n    "size": 1536,\n    "distance": "Cosine"\n  }\n}',
-					operation: 'createCollection',
-					shardNumber: {},
-					sparseVectors: '{\n  "bm25": \n  {\n    "modifier": "idf"\n  }\n}',
-					collectionName: 'legalQA_openAI_test',
-					requestOptions: {},
-					replicationFactor: {},
-					writeConsistencyFactor: {},
-				},
-				credentials: {
-					qdrantApi: { id: 'credential-id', name: 'qdrantApi Credential' },
-				},
-				position: [3008, 1840],
-				name: 'Create Collection1',
-			},
-		}),
+		),
 	)
 	.add(
 		sticky(

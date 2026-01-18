@@ -77,8 +77,7 @@ const wf = workflow('lZbh3p9grft1d8dr', 'Learn Customer Onboarding Automation wi
 			},
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1,
@@ -89,8 +88,7 @@ const wf = workflow('lZbh3p9grft1d8dr', 'Learn Customer Onboarding Automation wi
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.emailSend',
 			version: 1,
@@ -132,8 +130,7 @@ const wf = workflow('lZbh3p9grft1d8dr', 'Learn Customer Onboarding Automation wi
 			config: { parameters: { unit: 'days' }, position: [960, 360], name: 'Wait 1 Day' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.hubspot',
 			version: 1,
@@ -144,8 +141,7 @@ const wf = workflow('lZbh3p9grft1d8dr', 'Learn Customer Onboarding Automation wi
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.emailSend',
 			version: 1,
@@ -184,8 +180,7 @@ const wf = workflow('lZbh3p9grft1d8dr', 'Learn Customer Onboarding Automation wi
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.hubspot',
 			version: 1,
@@ -196,8 +191,7 @@ const wf = workflow('lZbh3p9grft1d8dr', 'Learn Customer Onboarding Automation wi
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1,

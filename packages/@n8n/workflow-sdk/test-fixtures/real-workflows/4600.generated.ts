@@ -140,16 +140,14 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.twitter',
 			version: 2,
 			config: { parameters: { additionalFields: {} }, position: [4180, 460], name: 'X' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.facebookGraphApi',
 			version: 1,
@@ -160,8 +158,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.linkedIn',
 			version: 1,
@@ -177,8 +174,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,

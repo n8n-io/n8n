@@ -163,8 +163,7 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.aggregate',
 			version: 1,
@@ -242,8 +241,7 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -446,8 +444,7 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -694,8 +691,7 @@ const wf = workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder:
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.7,

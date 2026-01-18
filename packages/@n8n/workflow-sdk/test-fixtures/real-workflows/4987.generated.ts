@@ -113,8 +113,7 @@ const wf = workflow('Njfc4Qsoi6p35Bfj', '3D Product Video', { executionOrder: 'v
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
@@ -239,8 +238,7 @@ const wf = workflow('Njfc4Qsoi6p35Bfj', '3D Product Video', { executionOrder: 'v
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

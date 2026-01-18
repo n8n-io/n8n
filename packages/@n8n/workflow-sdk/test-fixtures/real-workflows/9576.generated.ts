@@ -224,8 +224,7 @@ const wf = workflow('IIQhSqMWv4u6e0Jh', 'Create Video with Sora2 Pro and Upload 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
@@ -353,8 +352,7 @@ const wf = workflow('IIQhSqMWv4u6e0Jh', 'Create Video with Sora2 Pro and Upload 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

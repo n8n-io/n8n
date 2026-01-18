@@ -126,8 +126,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.switch',
 			version: 3.3,
@@ -227,8 +226,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
@@ -316,8 +314,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
@@ -417,8 +414,7 @@ const wf = workflow('', '')
 			},
 		),
 	)
-	.output(2)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.ssh',
 			version: 1,
@@ -447,8 +443,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(3)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
@@ -504,8 +499,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,

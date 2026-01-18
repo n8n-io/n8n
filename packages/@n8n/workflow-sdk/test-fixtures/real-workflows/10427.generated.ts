@@ -297,8 +297,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -328,8 +327,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.5,
@@ -356,8 +354,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -823,8 +820,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,

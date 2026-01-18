@@ -182,8 +182,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
@@ -228,8 +227,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4,

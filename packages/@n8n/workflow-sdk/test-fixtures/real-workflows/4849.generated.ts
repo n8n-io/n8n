@@ -124,8 +124,7 @@ const wf = workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.6,

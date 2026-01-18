@@ -92,10 +92,24 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								'function extractVideoUrl(contentHtml) {\n  if (!contentHtml) return null;\n  try {\n    const scriptMatch = contentHtml.match(/<script type="application\\/json" class="wp-playlist-script">(.*?)<\\/script>/s);\n    if (scriptMatch && scriptMatch[1]) {\n      const playlistData = JSON.parse(scriptMatch[1]);\n      if (playlistData.tracks && playlistData.tracks.length > 0) {\n        return playlistData.tracks[0].src;\n      }\n    }\n    const videoSrcMatch = contentHtml.match(/<video[^>]*src="([^"]+)"/);\n    if (videoSrcMatch && videoSrcMatch[1]) return videoSrcMatch[1];\n    \n    const sourceMatch = contentHtml.match(/<source[^>]*src="([^"]+)"/);\n    if (sourceMatch && sourceMatch[1]) return sourceMatch[1];\n  } catch (error) {\n    return null;\n  }\n  return null;\n}\n\n// Process WordPress articles\nconst articles = $input.all();\nreturn articles.map(article => {\n  const content = article.json.content?.rendered;\n  const videoUrl = extractVideoUrl(content);\n  \n  return {\n    json: {\n      ...article.json,\n      video: videoUrl ? { src: videoUrl } : null\n    }\n  };\n});',
+						},
+						position: [304, 272],
+						name: 'Check if have videos',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -116,24 +130,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [80, 272],
 				name: 'Check if have enough articles',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						'function extractVideoUrl(contentHtml) {\n  if (!contentHtml) return null;\n  try {\n    const scriptMatch = contentHtml.match(/<script type="application\\/json" class="wp-playlist-script">(.*?)<\\/script>/s);\n    if (scriptMatch && scriptMatch[1]) {\n      const playlistData = JSON.parse(scriptMatch[1]);\n      if (playlistData.tracks && playlistData.tracks.length > 0) {\n        return playlistData.tracks[0].src;\n      }\n    }\n    const videoSrcMatch = contentHtml.match(/<video[^>]*src="([^"]+)"/);\n    if (videoSrcMatch && videoSrcMatch[1]) return videoSrcMatch[1];\n    \n    const sourceMatch = contentHtml.match(/<source[^>]*src="([^"]+)"/);\n    if (sourceMatch && sourceMatch[1]) return sourceMatch[1];\n  } catch (error) {\n    return null;\n  }\n  return null;\n}\n\n// Process WordPress articles\nconst articles = $input.all();\nreturn articles.map(article => {\n  const content = article.json.content?.rendered;\n  const videoUrl = extractVideoUrl(content);\n  \n  return {\n    json: {\n      ...article.json,\n      video: videoUrl ? { src: videoUrl } : null\n    }\n  };\n});',
-				},
-				position: [304, 272],
-				name: 'Check if have videos',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

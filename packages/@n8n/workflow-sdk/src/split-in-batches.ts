@@ -37,6 +37,10 @@ class SplitInBatchesNodeInstance
 		throw new Error('SplitInBatches node connections are managed by SplitInBatchesBuilder');
 	}
 
+	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): T {
+		throw new Error('SplitInBatches node error handling is managed by SplitInBatchesBuilder');
+	}
+
 	getConnections(): DeclaredConnection[] {
 		return [];
 	}

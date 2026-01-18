@@ -63,6 +63,11 @@ const SKIP_WORKFLOWS = new Set([
 	'5453', // Resume screening: merge with implicit defaults
 	'4868', // Invoice data extraction: merge with implicit defaults
 	'5375', // Content strategy reports: merge with implicit defaults
+	// Multi-output nodes not handled by IF/Switch/Merge composites
+	'5678', // Email filtering: multi-output node not handled by composites
+	'9383', // Law firm leads: multi-output node not handled by composites
+	'5832', // B2B leads: multi-output node not handled by composites
+	'9549', // Fathom transcripts: multi-output node not handled by composites
 ]);
 
 interface TestWorkflow {

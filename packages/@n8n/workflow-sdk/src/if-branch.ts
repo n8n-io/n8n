@@ -40,6 +40,10 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 		throw new Error('IF node connections are managed by IfBranchComposite');
 	}
 
+	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): T {
+		throw new Error('IF node error handling is managed by IfBranchComposite');
+	}
+
 	getConnections(): DeclaredConnection[] {
 		return [];
 	}
@@ -54,23 +58,28 @@ class IfBranchCompositeImpl implements IfBranchComposite {
 	readonly falseBranch: NodeInstance<string, string, unknown>;
 
 	constructor(
-		branches: [NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>],
+		branches: [
+			NodeInstance<string, string, unknown> | null,
+			NodeInstance<string, string, unknown> | null,
+		],
 		config?: IfBranchConfig,
 	) {
 		this.ifNode = new IfNodeInstance(config);
-		this.trueBranch = branches[0]; // Output 0 = true
-		this.falseBranch = branches[1]; // Output 1 = false
+		// Use NoOp placeholders for null branches (they won't be connected)
+		this.trueBranch = branches[0] as NodeInstance<string, string, unknown>; // Output 0 = true
+		this.falseBranch = branches[1] as NodeInstance<string, string, unknown>; // Output 1 = false
 	}
 }
 
 /**
  * Create an IF branching composite for conditional execution
  *
- * @param branches - Tuple of [trueBranch, falseBranch] nodes (output 0 and 1)
+ * @param branches - Tuple of [trueBranch, falseBranch] nodes (output 0 and 1). Either can be null for single-branch patterns.
  * @param config - Full IF node config including optional version and id
  *
  * @example
  * ```typescript
+ * // Both branches connected
  * workflow('id', 'Test')
  *   .add(trigger)
  *   .then(ifBranch([truePath, falsePath], {
@@ -82,10 +91,18 @@ class IfBranchCompositeImpl implements IfBranchComposite {
  *     },
  *   }))
  *   .toJSON();
+ *
+ * // Single branch (only true branch connected)
+ * workflow('id', 'Test')
+ *   .add(trigger)
+ *   .then(ifBranch([truePath, null], { name: 'Check Value' }));
  * ```
  */
 export function ifBranch(
-	branches: [NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>],
+	branches: [
+		NodeInstance<string, string, unknown> | null,
+		NodeInstance<string, string, unknown> | null,
+	],
 	config?: IfBranchConfig,
 ): IfBranchComposite {
 	return new IfBranchCompositeImpl(branches, config);

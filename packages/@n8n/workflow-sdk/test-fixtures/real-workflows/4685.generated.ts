@@ -963,8 +963,7 @@ const wf = workflow('Dbzu6lmK6zWsyyQP', 'Lead 1', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -1200,8 +1199,7 @@ const wf = workflow('Dbzu6lmK6zWsyyQP', 'Lead 1', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.5,
@@ -1525,8 +1523,7 @@ const wf = workflow('Dbzu6lmK6zWsyyQP', 'Lead 1', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -1760,8 +1757,7 @@ const wf = workflow('Dbzu6lmK6zWsyyQP', 'Lead 1', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.5,

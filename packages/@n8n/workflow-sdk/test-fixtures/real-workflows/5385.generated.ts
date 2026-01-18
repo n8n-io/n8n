@@ -110,8 +110,7 @@ const wf = workflow(
 			config: { parameters: { options: {} }, position: [1340, 0], name: 'Loop Over Items' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
@@ -215,8 +214,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

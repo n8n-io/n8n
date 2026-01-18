@@ -91,8 +91,7 @@ const wf = workflow('iuPhSS8Dr2Dl7Hbo', 'VEO3 Video Generator TEMPLATE', { execu
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

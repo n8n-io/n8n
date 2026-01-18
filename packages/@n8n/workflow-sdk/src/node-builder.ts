@@ -89,6 +89,37 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		return target;
 	}
 
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T): T {
+		const errorOutputIndex = this.calculateErrorOutputIndex();
+		this._connections.push({ target: handler, outputIndex: errorOutputIndex });
+		return handler;
+	}
+
+	/**
+	 * Calculate the error output index based on node type.
+	 * Error outputs are always the last output after regular outputs:
+	 * - Regular nodes: index 1 (after main output 0)
+	 * - IF nodes: index 2 (after true=0, false=1)
+	 * - Switch nodes: index = numberOfOutputs (determined from parameters)
+	 */
+	private calculateErrorOutputIndex(): number {
+		// IF nodes have true (0) and false (1) branches, error at index 2
+		if (this.type === 'n8n-nodes-base.if') {
+			return 2;
+		}
+
+		// Switch nodes have variable outputs based on parameters
+		if (this.type === 'n8n-nodes-base.switch') {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const params = this.config.parameters as Record<string, any> | undefined;
+			const numberOutputs = params?.numberOutputs ?? params?.rules?.rules?.length ?? 4;
+			return numberOutputs;
+		}
+
+		// Regular nodes: error at index 1 (after main output 0)
+		return 1;
+	}
+
 	getConnections(): DeclaredConnection[] {
 		return [...this._connections];
 	}
@@ -207,6 +238,10 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 
 	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
 		throw new Error('Sticky notes do not support connections');
+	}
+
+	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): T {
+		throw new Error('Sticky notes do not support error handlers');
 	}
 
 	getConnections(): DeclaredConnection[] {

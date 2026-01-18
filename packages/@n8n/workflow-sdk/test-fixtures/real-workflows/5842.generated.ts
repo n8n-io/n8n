@@ -265,8 +265,7 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.9,
@@ -427,8 +426,7 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.9,
@@ -493,8 +491,7 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.9,
@@ -559,8 +556,7 @@ const wf = workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder:
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.9,

@@ -456,10 +456,35 @@ const wf = workflow('', 'Apply to Jobs from Excel and Track Application Status',
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4,
+					config: {
+						parameters: {
+							range: 'D{{ $json.row_index }}:F{{ $json.row_index }}',
+							keyRow: 1,
+							values: {
+								values: [
+									['={{ $json.newStatus }}', '={{ $json.Applied_Date }}', '={{ $json.checkDate }}'],
+								],
+							},
+							dataMode: 'autoMapInputData',
+							sheetName: 'Jobs',
+							documentId: "={{ $('Configuration').first().json.spreadsheetId }}",
+							requestMethod: 'UPDATE',
+							authentication: 'oAuth2',
+							valueInputMode: 'raw',
+						},
+						position: [1560, 980],
+						name: '📝 Update Changed Status',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2,
 				parameters: {
 					conditions: {
 						options: {
@@ -478,35 +503,9 @@ const wf = workflow('', 'Apply to Jobs from Excel and Track Application Status',
 						],
 					},
 				},
-				position: [1340, 980],
 				name: '🔄 Check if Status Changed',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4,
-			config: {
-				parameters: {
-					range: 'D{{ $json.row_index }}:F{{ $json.row_index }}',
-					keyRow: 1,
-					values: {
-						values: [
-							['={{ $json.newStatus }}', '={{ $json.Applied_Date }}', '={{ $json.checkDate }}'],
-						],
-					},
-					dataMode: 'autoMapInputData',
-					sheetName: 'Jobs',
-					documentId: "={{ $('Configuration').first().json.spreadsheetId }}",
-					requestMethod: 'UPDATE',
-					authentication: 'oAuth2',
-					valueInputMode: 'raw',
-				},
-				position: [1560, 980],
-				name: '📝 Update Changed Status',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

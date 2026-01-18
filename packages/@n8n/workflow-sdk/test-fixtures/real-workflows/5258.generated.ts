@@ -128,8 +128,7 @@ const wf = workflow('WczQxQgtvjjk1HC1', 'LinkedIn Profile Enrichment With Error 
 			},
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -165,8 +164,7 @@ const wf = workflow('WczQxQgtvjjk1HC1', 'LinkedIn Profile Enrichment With Error 
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,

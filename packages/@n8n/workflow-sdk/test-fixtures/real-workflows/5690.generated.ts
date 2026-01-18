@@ -43,10 +43,17 @@ const wf = workflow('XVI3nC7HVl7JU6C5', 'Youtube - Get Video Comments', { execut
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.splitInBatches',
+					version: 3,
+					config: { parameters: { options: {} }, position: [-1440, 480], name: 'Loop Over Items' },
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -68,17 +75,9 @@ const wf = workflow('XVI3nC7HVl7JU6C5', 'Youtube - Get Video Comments', { execut
 					},
 					looseTypeValidation: true,
 				},
-				position: [-1800, 500],
 				name: 'If - Check Video Url is Not Empty',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitInBatches',
-			version: 3,
-			config: { parameters: { options: {} }, position: [-1440, 480], name: 'Loop Over Items' },
-		}),
+		),
 	)
 	.then(
 		node({

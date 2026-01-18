@@ -113,7 +113,7 @@ describe('generateWorkflowCode', () => {
 		expect(code).toContain('color: 4');
 	});
 
-	it('should handle branching with output indices', () => {
+	it('should handle IF branching with ifBranch() composite', () => {
 		const json: WorkflowJSON = {
 			id: 'branch-test',
 			name: 'Branch Test',
@@ -155,9 +155,46 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		// Should show branching
-		expect(code).toContain('.output(0)');
-		expect(code).toContain('.output(1)');
+		// Should use ifBranch() composite instead of .output()
+		expect(code).toContain('ifBranch(');
+		expect(code).not.toContain('.output(0)');
+		expect(code).not.toContain('.output(1)');
+	});
+
+	it('should handle single-branch IF nodes', () => {
+		const json: WorkflowJSON = {
+			id: 'single-branch-test',
+			name: 'Single Branch Test',
+			nodes: [
+				{
+					id: 'if-1',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'true-1',
+					name: 'True Handler',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [200, -100],
+					parameters: {},
+				},
+			],
+			connections: {
+				IF: {
+					main: [[{ node: 'True Handler', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should use ifBranch() with null for missing branch
+		expect(code).toContain('ifBranch(');
+		expect(code).toContain('null');
 	});
 
 	it('should escape special characters in strings', () => {

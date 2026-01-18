@@ -6,8 +6,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			config: { parameters: { rule: { interval: [{}] } }, position: [-2032, 1248] },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -261,8 +260,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -276,8 +274,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -288,8 +285,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -303,8 +299,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -318,8 +313,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -330,8 +324,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -342,8 +335,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -354,8 +346,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -369,8 +360,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -381,8 +371,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -396,8 +385,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -408,8 +396,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -423,8 +410,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -435,8 +421,7 @@ const wf = workflow('V994vNilogCvoCug', 'News_Tech_EN', { executionOrder: 'v1' }
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,

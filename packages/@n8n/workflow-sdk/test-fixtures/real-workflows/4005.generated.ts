@@ -415,8 +415,7 @@ const wf = workflow('w9YVsuUtlNgXOEAQ', 'LinkedIn Post Generation & Approval Aut
 			},
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
@@ -449,8 +448,7 @@ const wf = workflow('w9YVsuUtlNgXOEAQ', 'LinkedIn Post Generation & Approval Aut
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.linkedIn',
 			version: 1,

@@ -6,8 +6,7 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 			config: { position: [320, -80], name: 'When clicking ‘Test workflow’' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
@@ -483,8 +482,7 @@ const wf = workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder:
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.6,

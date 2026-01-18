@@ -10,8 +10,7 @@ const wf = workflow('', 'Daily Digest', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -45,8 +44,7 @@ const wf = workflow('', 'Daily Digest', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
@@ -132,8 +130,7 @@ const wf = workflow('', 'Daily Digest', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,
@@ -144,8 +141,7 @@ const wf = workflow('', 'Daily Digest', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -183,8 +179,7 @@ const wf = workflow('', 'Daily Digest', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.rssFeedRead',
 			version: 1.2,

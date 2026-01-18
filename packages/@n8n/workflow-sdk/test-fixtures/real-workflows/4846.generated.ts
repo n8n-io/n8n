@@ -224,8 +224,7 @@ const wf = workflow('g1hmK8jw38TOYX7D', 'Create Video with Google Veo3 and Uploa
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
@@ -353,8 +352,7 @@ const wf = workflow('g1hmK8jw38TOYX7D', 'Create Video with Google Veo3 and Uploa
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

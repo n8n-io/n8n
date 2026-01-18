@@ -52,8 +52,7 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.6,
@@ -407,8 +406,7 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
@@ -443,8 +441,7 @@ const wf = workflow('bKy4ngwZ5svUgPH6', 'hr screening system community1')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.extractFromFile',
 			version: 1,

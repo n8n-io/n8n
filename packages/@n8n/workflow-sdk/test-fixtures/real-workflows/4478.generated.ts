@@ -44,8 +44,7 @@ const wf = workflow('kPBvBnjidCFr5v69', 'Youtube to Instagram_Facebook', { execu
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
@@ -120,8 +119,7 @@ const wf = workflow('kPBvBnjidCFr5v69', 'Youtube to Instagram_Facebook', { execu
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

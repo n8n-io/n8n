@@ -13,8 +13,7 @@ const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOr
 			config: { position: [80, 192], name: 'Code in JavaScript' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.3,
@@ -98,24 +97,21 @@ const wf = workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOr
 			config: { position: [2464, 464], name: 'Send a text message' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.3,
 			config: { position: [400, 192], name: '1 hour' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.3,
 			config: { position: [400, 400], name: '1 day' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.3,

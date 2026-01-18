@@ -69,8 +69,7 @@ const wf = workflow('sCy7Dz1t2CXusiPB', 'Prompt generator', {
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.chainLlm',
 			version: 1.6,
@@ -135,8 +134,7 @@ const wf = workflow('sCy7Dz1t2CXusiPB', 'Prompt generator', {
 			config: { parameters: { options: {} }, position: [0, 60], name: 'LoopQuestions' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.1,
@@ -228,8 +226,7 @@ const wf = workflow('sCy7Dz1t2CXusiPB', 'Prompt generator', {
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.form',
 			version: 1,

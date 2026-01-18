@@ -62,8 +62,7 @@ const wf = workflow('Tq4g5UK8c3GZ8tm7', 'Ade_Technical_Analyst', { executionOrde
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1,

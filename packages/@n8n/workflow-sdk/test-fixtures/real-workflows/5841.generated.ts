@@ -36,8 +36,7 @@ const wf = workflow('59a8WDMIKKo9faYP', 'Posting', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.openAi',
 			version: 1.8,
@@ -143,8 +142,7 @@ const wf = workflow('59a8WDMIKKo9faYP', 'Posting', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.twitter',
 			version: 2,
@@ -158,8 +156,7 @@ const wf = workflow('59a8WDMIKKo9faYP', 'Posting', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.linkedIn',
 			version: 1,
@@ -170,8 +167,7 @@ const wf = workflow('59a8WDMIKKo9faYP', 'Posting', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.facebookGraphApi',
 			version: 1,
@@ -184,8 +180,7 @@ const wf = workflow('59a8WDMIKKo9faYP', 'Posting', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.openAi',
 			version: 1.8,

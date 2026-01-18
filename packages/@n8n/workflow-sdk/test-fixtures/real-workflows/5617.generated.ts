@@ -39,10 +39,17 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				null,
+				node({
+					type: 'n8n-nodes-base.splitInBatches',
+					version: 3,
+					config: { parameters: { options: {} }, position: [1600, 480], name: 'Loop Over Items' },
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -63,17 +70,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [1420, 400],
 				name: 'If1',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitInBatches',
-			version: 3,
-			config: { parameters: { options: {} }, position: [1600, 480], name: 'Loop Over Items' },
-		}),
+		),
 	)
 	.then(
 		node({

@@ -204,8 +204,7 @@ const wf = workflow('6Bn6KSpg1le9mG4Y', 'Alapaca Trade automation', {
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
@@ -402,8 +401,7 @@ const wf = workflow('6Bn6KSpg1le9mG4Y', 'Alapaca Trade automation', {
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,

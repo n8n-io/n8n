@@ -492,8 +492,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.whatsApp',
 			version: 1,
@@ -565,8 +564,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.whatsApp',
 			version: 1,

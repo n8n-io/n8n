@@ -8,8 +8,7 @@ const wf = workflow('CDVBZRDH5gNUzIml', 'N8N for Beginners: Looping over Items',
 			config: { position: [-400, -540], name: 'Paste JSON into this node' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.splitOut',
 			version: 1,
@@ -23,24 +22,21 @@ const wf = workflow('CDVBZRDH5gNUzIml', 'N8N for Beginners: Looping over Items',
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.splitInBatches',
 			version: 3,
 			config: { parameters: { options: {} }, position: [320, 60], name: 'Loop over Items 2' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
 			config: { position: [880, 40], name: 'Result2' },
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.wait',
 			version: 1.1,
@@ -65,8 +61,7 @@ const wf = workflow('CDVBZRDH5gNUzIml', 'N8N for Beginners: Looping over Items',
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -86,8 +81,7 @@ const wf = workflow('CDVBZRDH5gNUzIml', 'N8N for Beginners: Looping over Items',
 			config: { position: [900, 780], name: 'Result4' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -108,8 +102,7 @@ const wf = workflow('CDVBZRDH5gNUzIml', 'N8N for Beginners: Looping over Items',
 			config: { position: [900, 500], name: 'Result3' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -129,8 +122,7 @@ const wf = workflow('CDVBZRDH5gNUzIml', 'N8N for Beginners: Looping over Items',
 			config: { position: [880, -540], name: 'Result5' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.splitInBatches',
 			version: 3,
@@ -141,16 +133,14 @@ const wf = workflow('CDVBZRDH5gNUzIml', 'N8N for Beginners: Looping over Items',
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
 			config: { position: [880, -280], name: 'Result1' },
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,

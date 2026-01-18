@@ -117,8 +117,7 @@ const wf = workflow('gkf2gpDVeNbAoCYO', 'Save_your_workflows_into_a_GitHub_repos
 			config: { parameters: { options: {} }, position: [-80, 240], name: 'Loop Over Items' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.slack',
 			version: 2.2,
@@ -137,8 +136,7 @@ const wf = workflow('gkf2gpDVeNbAoCYO', 'Save_your_workflows_into_a_GitHub_repos
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.github',
 			version: 1.1,

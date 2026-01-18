@@ -81,8 +81,7 @@ const wf = workflow(
 			config: { parameters: { operation: 'information' }, position: [1008, 1664] },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.editImage',
 			version: 1,
@@ -2494,8 +2493,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.editImage',
 			version: 1,
@@ -2535,8 +2533,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.editImage',
 			version: 1,
@@ -2760,8 +2757,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
@@ -2815,8 +2811,7 @@ const wf = workflow(
 			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1472], name: 'Wait1' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
@@ -2870,8 +2865,7 @@ const wf = workflow(
 			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1664], name: 'Wait2' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.editImage',
 			version: 1,
@@ -3091,8 +3085,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
@@ -3146,8 +3139,7 @@ const wf = workflow(
 			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 1872], name: 'Wait3' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.editImage',
 			version: 1,
@@ -3368,8 +3360,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3.2,
@@ -3423,8 +3414,7 @@ const wf = workflow(
 			config: { parameters: { unit: 'minutes', amount: 3 }, position: [2816, 2080], name: 'Wait4' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.editImage',
 			version: 1,

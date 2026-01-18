@@ -216,10 +216,58 @@ const wf = workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', 
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.executeWorkflow',
+					version: 1.2,
+					config: {
+						parameters: {
+							options: {},
+							workflowId: {
+								__rl: true,
+								mode: 'list',
+								value: '7FHTcSuCIjHvvBfe',
+								cachedResultName: 'Shape workflows — SEO Content evaluator',
+							},
+							workflowInputs: {
+								value: {
+									article: '={{ $json.output.article }}',
+									summary: '={{ $json.output.summary }}',
+								},
+								schema: [
+									{
+										id: 'article',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'article',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'summary',
+										type: 'string',
+										display: true,
+										required: false,
+										displayName: 'summary',
+										defaultMatch: false,
+										canBeUsedToMatch: true,
+									},
+								],
+								mappingMode: 'defineBelow',
+								matchingColumns: [],
+								attemptToConvertTypes: false,
+								convertFieldsToString: true,
+							},
+						},
+						position: [980, -300],
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -240,58 +288,9 @@ const wf = workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', 
 						],
 					},
 				},
-				position: [980, 0],
 				name: 'Article written?',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.executeWorkflow',
-			version: 1.2,
-			config: {
-				parameters: {
-					options: {},
-					workflowId: {
-						__rl: true,
-						mode: 'list',
-						value: '7FHTcSuCIjHvvBfe',
-						cachedResultName: 'Shape workflows — SEO Content evaluator',
-					},
-					workflowInputs: {
-						value: {
-							article: '={{ $json.output.article }}',
-							summary: '={{ $json.output.summary }}',
-						},
-						schema: [
-							{
-								id: 'article',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'article',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-							{
-								id: 'summary',
-								type: 'string',
-								display: true,
-								required: false,
-								displayName: 'summary',
-								defaultMatch: false,
-								canBeUsedToMatch: true,
-							},
-						],
-						mappingMode: 'defineBelow',
-						matchingColumns: [],
-						attemptToConvertTypes: false,
-						convertFieldsToString: true,
-					},
-				},
-				position: [980, -300],
-			},
-		}),
+		),
 	)
 	.then(
 		ifBranch(
@@ -552,8 +551,7 @@ const wf = workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.5,
@@ -674,8 +672,7 @@ const wf = workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', 
 			config: { position: [2080, 260], name: 'No Operation, do nothing' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.webflow',
 			version: 2,

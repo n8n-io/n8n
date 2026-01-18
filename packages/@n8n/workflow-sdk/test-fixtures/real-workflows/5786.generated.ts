@@ -191,8 +191,7 @@ const wf = workflow('995Zs4albP6ZWzOD', 'The Recap AI - Email Scraper', { execut
 			},
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.stopAndError',
 			version: 1,

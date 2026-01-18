@@ -179,8 +179,7 @@ const wf = workflow('LtlVKYumh3ovfRvp', 'Loyverse Sales Report Agent', {
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.emailSend',
 			version: 2.1,
@@ -199,8 +198,7 @@ const wf = workflow('LtlVKYumh3ovfRvp', 'Loyverse Sales Report Agent', {
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.6,

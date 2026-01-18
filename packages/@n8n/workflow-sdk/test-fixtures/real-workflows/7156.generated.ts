@@ -6,8 +6,7 @@ const wf = workflow('', '')
 			config: { position: [-208, 896], name: 'Run Workflow' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.6,
@@ -190,8 +189,7 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,

@@ -38,10 +38,24 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.code',
+					version: 2,
+					config: {
+						parameters: {
+							jsCode:
+								"const invoices = $input.all();\nconst today = new Date();\nconst results = [];\n\nfor (const invoice of invoices) {\n  const dueDate = new Date(invoice.json.due_date);\n  const issueDate = new Date(invoice.json.issue_date);\n  const lastReminder = invoice.json.last_reminder_sent ? new Date(invoice.json.last_reminder_sent) : null;\n  \n  // Calculate days overdue\n  const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));\n  \n  // Calculate days since last reminder\n  const daysSinceReminder = lastReminder ? Math.floor((today - lastReminder) / (1000 * 60 * 60 * 24)) : 999;\n  \n  // Determine reminder type and urgency\n  let reminderType = '';\n  let urgencyLevel = '';\n  let shouldSendReminder = false;\n  \n  if (daysOverdue > 30 && daysSinceReminder >= 3) {\n    reminderType = 'final_notice';\n    urgencyLevel = 'critical';\n    shouldSendReminder = true;\n  } else if (daysOverdue > 14 && daysSinceReminder >= 5) {\n    reminderType = 'second_reminder';\n    urgencyLevel = 'high';\n    shouldSendReminder = true;\n  } else if (daysOverdue > 0 && daysSinceReminder >= 7) {\n    reminderType = 'first_reminder';\n    urgencyLevel = 'medium';\n    shouldSendReminder = true;\n  } else if (daysOverdue === 0) {\n    reminderType = 'due_today';\n    urgencyLevel = 'medium';\n    shouldSendReminder = true;\n  } else if (daysOverdue < 0 && daysOverdue >= -3 && !lastReminder) {\n    reminderType = 'upcoming_reminder';\n    urgencyLevel = 'low';\n    shouldSendReminder = true;\n  }\n  \n  if (shouldSendReminder) {\n    results.push({\n      json: {\n        ...invoice.json,\n        daysOverdue,\n        daysSinceReminder,\n        reminderType,\n        urgencyLevel,\n        shouldSendReminder\n      }\n    });\n  }\n}\n\nreturn results;",
+						},
+						position: [672, -304],
+						name: 'Calculate Reminder Logic',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -67,24 +81,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [448, -304],
 				name: 'Filter Overdue Invoices',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.code',
-			version: 2,
-			config: {
-				parameters: {
-					jsCode:
-						"const invoices = $input.all();\nconst today = new Date();\nconst results = [];\n\nfor (const invoice of invoices) {\n  const dueDate = new Date(invoice.json.due_date);\n  const issueDate = new Date(invoice.json.issue_date);\n  const lastReminder = invoice.json.last_reminder_sent ? new Date(invoice.json.last_reminder_sent) : null;\n  \n  // Calculate days overdue\n  const daysOverdue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));\n  \n  // Calculate days since last reminder\n  const daysSinceReminder = lastReminder ? Math.floor((today - lastReminder) / (1000 * 60 * 60 * 24)) : 999;\n  \n  // Determine reminder type and urgency\n  let reminderType = '';\n  let urgencyLevel = '';\n  let shouldSendReminder = false;\n  \n  if (daysOverdue > 30 && daysSinceReminder >= 3) {\n    reminderType = 'final_notice';\n    urgencyLevel = 'critical';\n    shouldSendReminder = true;\n  } else if (daysOverdue > 14 && daysSinceReminder >= 5) {\n    reminderType = 'second_reminder';\n    urgencyLevel = 'high';\n    shouldSendReminder = true;\n  } else if (daysOverdue > 0 && daysSinceReminder >= 7) {\n    reminderType = 'first_reminder';\n    urgencyLevel = 'medium';\n    shouldSendReminder = true;\n  } else if (daysOverdue === 0) {\n    reminderType = 'due_today';\n    urgencyLevel = 'medium';\n    shouldSendReminder = true;\n  } else if (daysOverdue < 0 && daysOverdue >= -3 && !lastReminder) {\n    reminderType = 'upcoming_reminder';\n    urgencyLevel = 'low';\n    shouldSendReminder = true;\n  }\n  \n  if (shouldSendReminder) {\n    results.push({\n      json: {\n        ...invoice.json,\n        daysOverdue,\n        daysSinceReminder,\n        reminderType,\n        urgencyLevel,\n        shouldSendReminder\n      }\n    });\n  }\n}\n\nreturn results;",
-				},
-				position: [672, -304],
-				name: 'Calculate Reminder Logic',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -301,8 +300,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.respondToWebhook',
 			version: 1.1,
@@ -318,8 +316,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.emailSend',
 			version: 2.1,

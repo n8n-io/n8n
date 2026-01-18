@@ -233,7 +233,7 @@ const wf = workflow('M7saccCy1gO4g2zr', 'Agent_Builder', { executionOrder: 'v1' 
 					config: { parameters: { options: {} }, position: [-2320, -540], name: 'Convert to File' },
 				}),
 			],
-			{ version: 2.2, parameters: { options: {} }, name: 'If' },
+			{ version: 2.2, parameters: { options: {} }, name: 'If', onError: 'continueErrorOutput' },
 		),
 	)
 	.then(

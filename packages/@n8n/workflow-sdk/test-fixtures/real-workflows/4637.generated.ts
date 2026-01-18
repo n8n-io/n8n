@@ -117,8 +117,7 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.openAi',
 			version: 1.8,
@@ -194,8 +193,7 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 		}),
 	)
 	.then(node({ type: 'n8n-nodes-base.gmail', version: 2.1, config: { position: [7360, 2560] } }))
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.openAi',
 			version: 1.8,
@@ -233,8 +231,7 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 			config: { position: [5140, 420], name: 'Upload media to Instagram' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.openAi',
 			version: 1.8,
@@ -265,8 +262,7 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 			{ version: 3.1, name: 'Merge4' },
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.openAi',
 			version: 1.8,
@@ -297,8 +293,7 @@ const wf = workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executio
 			{ version: 3.1, name: 'Merge6' },
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.5,

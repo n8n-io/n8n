@@ -269,8 +269,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.readBinaryFile',
 			version: 1,
@@ -392,8 +391,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.readBinaryFile',
 			version: 1,
@@ -515,8 +513,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.readBinaryFile',
 			version: 1,
@@ -646,10 +643,26 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.1,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.telegram',
+					version: 1.2,
+					config: {
+						parameters: {
+							text: '=🔔 ERROR SUBIENDO VIDEOS',
+							additionalFields: { appendAttribution: false },
+						},
+						credentials: {
+							telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
+						},
+						position: [-1920, 740],
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.1,
 				parameters: {
 					options: {},
 					conditions: {
@@ -670,25 +683,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [-2120, 760],
+				name: 'If',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.telegram',
-			version: 1.2,
-			config: {
-				parameters: {
-					text: '=🔔 ERROR SUBIENDO VIDEOS',
-					additionalFields: { appendAttribution: false },
-				},
-				credentials: {
-					telegramApi: { id: 'credential-id', name: 'telegramApi Credential' },
-				},
-				position: [-1920, 740],
-			},
-		}),
+		),
 	)
 	.add(
 		sticky(

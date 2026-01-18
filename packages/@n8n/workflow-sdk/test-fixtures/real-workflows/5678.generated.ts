@@ -29,10 +29,35 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2,
+					config: {
+						parameters: {
+							text: '=Please read this email "{{ $json.Content }}" and provide a very short, concise summary containing only the most important information. Keep the summary as brief as possible without losing essential details. ',
+							options: {},
+							promptType: 'define',
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatGroq',
+								version: 1,
+								config: {
+									parameters: { model: 'llama-3.1-8b-instant', options: {} },
+									name: 'Groq Chat Model1',
+								},
+							}),
+						},
+						position: [400, 1500],
+						name: 'AI Agent1',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -53,35 +78,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [60, 1600],
 				name: 'Check Valid Email',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2,
-			config: {
-				parameters: {
-					text: '=Please read this email "{{ $json.Content }}" and provide a very short, concise summary containing only the most important information. Keep the summary as brief as possible without losing essential details. ',
-					options: {},
-					promptType: 'define',
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatGroq',
-						version: 1,
-						config: {
-							parameters: { model: 'llama-3.1-8b-instant', options: {} },
-							name: 'Groq Chat Model1',
-						},
-					}),
-				},
-				position: [400, 1500],
-				name: 'AI Agent1',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

@@ -611,8 +611,7 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -636,8 +635,7 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -661,8 +659,7 @@ const wf = workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder:
 			},
 		}),
 	)
-	.output(2)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,

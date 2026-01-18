@@ -91,8 +91,7 @@ const wf = workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
 			},
 		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.chainLlm',
 			version: 1.7,
@@ -128,8 +127,7 @@ const wf = workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.memoryManager',
 			version: 1.1,

@@ -6,7 +6,6 @@ import type {
 	NodeJSON,
 	NodeInstance,
 	TriggerInstance,
-	OutputSelector,
 	MergeComposite,
 	IfBranchComposite,
 	SwitchCaseComposite,
@@ -151,38 +150,6 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			currentNode: node.name,
 			currentOutput: 0,
 		});
-	}
-
-	output(index: number): OutputSelector<WorkflowBuilder> {
-		const self = this;
-		return {
-			then<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder {
-				const newNodes = new Map(self._nodes);
-
-				// Add the new node and its subnodes
-				self.addNodeWithSubnodes(newNodes, node);
-
-				// Connect from current node at specified output
-				if (self._currentNode) {
-					const currentGraphNode = newNodes.get(self._currentNode);
-					if (currentGraphNode) {
-						const mainConns = currentGraphNode.connections.get('main') || new Map();
-						const outputConnections = mainConns.get(index) || [];
-						mainConns.set(index, [
-							...outputConnections,
-							{ node: node.name, type: 'main', index: 0 },
-						]);
-						currentGraphNode.connections.set('main', mainConns);
-					}
-				}
-
-				return self.clone({
-					nodes: newNodes,
-					currentNode: self._currentNode, // Stay on the same node for .output() chaining
-					currentOutput: index,
-				});
-			},
-		};
 	}
 
 	settings(settings: WorkflowSettings): WorkflowBuilder {
@@ -573,35 +540,37 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 	/**
 	 * Handle IF branch composite - creates IF node with true/false branches
+	 * Supports null branches for single-branch patterns
 	 */
 	private handleIfBranchComposite(composite: IfBranchComposite): WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
+		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add true branch node
-		const trueConns = new Map<string, Map<number, ConnectionTarget[]>>();
-		trueConns.set('main', new Map());
-		newNodes.set(composite.trueBranch.name, {
-			instance: composite.trueBranch,
-			connections: trueConns,
-		});
+		// Add true branch node if present
+		if (composite.trueBranch) {
+			const trueConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			trueConns.set('main', new Map());
+			newNodes.set(composite.trueBranch.name, {
+				instance: composite.trueBranch,
+				connections: trueConns,
+			});
+			ifMainConns.set(0, [{ node: composite.trueBranch.name, type: 'main', index: 0 }]);
+		}
 
-		// Add false branch node
-		const falseConns = new Map<string, Map<number, ConnectionTarget[]>>();
-		falseConns.set('main', new Map());
-		newNodes.set(composite.falseBranch.name, {
-			instance: composite.falseBranch,
-			connections: falseConns,
-		});
+		// Add false branch node if present
+		if (composite.falseBranch) {
+			const falseConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			falseConns.set('main', new Map());
+			newNodes.set(composite.falseBranch.name, {
+				instance: composite.falseBranch,
+				connections: falseConns,
+			});
+			ifMainConns.set(1, [{ node: composite.falseBranch.name, type: 'main', index: 0 }]);
+		}
 
-		// Add IF node with connections to both branches
+		// Add IF node with connections to present branches
 		const ifConns = new Map<string, Map<number, ConnectionTarget[]>>();
-		ifConns.set(
-			'main',
-			new Map([
-				[0, [{ node: composite.trueBranch.name, type: 'main', index: 0 }]],
-				[1, [{ node: composite.falseBranch.name, type: 'main', index: 0 }]],
-			]),
-		);
+		ifConns.set('main', ifMainConns);
 		newNodes.set(composite.ifNode.name, {
 			instance: composite.ifNode,
 			connections: ifConns,
@@ -901,6 +870,11 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 			then: function () {
 				throw new Error(
 					'Nodes from fromJSON() do not support then() - use workflow builder methods',
+				);
+			},
+			onError: function () {
+				throw new Error(
+					'Nodes from fromJSON() do not support onError() - use workflow builder methods',
 				);
 			},
 			getConnections: function () {

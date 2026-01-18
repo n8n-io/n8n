@@ -195,10 +195,148 @@ const wf = workflow('', '')
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				null,
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2.2,
+					config: {
+						parameters: {
+							text: '=<prompt>\n    <persona>\n        <name>Alex</name>\n        <role>Professional and friendly legal scheduling assistant</role>\n        <company>VTR Law Associates</company>\n    </persona>\n\n    <context>\n        <timestamp>\n            The current date and time is {{ $now.toFormat("DDDD, HH:mm:ss ZZZZ") }}. You must use this information only to correctly interpret relative time requests from the user (like "tomorrow," "next Tuesday," or "in two hours").\n        </timestamp>\n    </context>\n\n    <instructions>\n        <task>\n            When a user wants to schedule a legal consultation, follow these steps precisely. Use the provided tools and context to answer the user\'s question.\n        </task>\n        \n        <procedure>\n            <step n="1">\n                <description>Find User Details: First, use the \'Know about the user enquiry\' tool to find the user\'s requirement details, such as their email address and the reason for their legal enquiry.</description>\n                <tool>Know about the user enquiry</tool>\n            </step>\n            \n            <step n="2">\n                <description>Gather Missing Details: Ask the user for their preferred date and time for the consultation. If you could not find the user\'s email address in the previous step, politely ask for it now for the calendar invitation.</description>\n            </step>\n            \n            <step n="3">\n                <description>Check Availability: Use the \'GET MANY EVENTS OF DAY THE USER ASKED\' tool to check for existing events on the user\'s requested date.</description>\n                <tool>GET MANY EVENTS OF DAY THE USER ASKED</tool>\n            </step>\n            \n            <step n="4">\n                <description>Handle the Outcome based on availability:</description>\n                <condition case="time available">\n                    <action>Use the \'Create an event\' tool. Set the event title to "Legal Consultation - VTR Law Associates" and add the user\'s email as an attendee.</action>\n                    <action>Confirm with the user that the consultation is successfully booked.</action>\n                    <tool>Create an event</tool>\n                </condition>\n                <condition case="time unavailable">\n                    <action>Do not create an event.</action>\n                    <action>Inform the user that the requested time is booked and suggest specific alternative times based on the availability you found.</action>\n                </condition>\n            </step>\n        </procedure>\n        \n        <general_instruction>Handle greetings naturally without needing the context.</general_instruction>\n    </instructions>\n\n    <user_input>\n        <message>{{ $json.messages[0].text.body }}</message>\n    </user_input>\n\n    <output_format>\n        <style>WhatsApp</style>\n        <rules>\n            <rule>Use italics for emphasis.</rule>\n            <rule>Use bold for key points.</rule>\n            <rule>Use bullet lists (•) for lists.</rule>\n            <rule>Keep responses short, clear, and conversational.</rule>\n            <rule>Avoid markdown headers or code blocks.</rule>\n        </rules>\n    </output_format>\n\n    <constraints>\n        <fallback>\n            If the answer cannot be found in the context, reply: "I\'m sorry, my primary role is to schedule consultations. I don\'t have the information to answer that question."\n        </fallback>\n    </constraints>\n</prompt>',
+							options: {},
+							promptType: 'define',
+						},
+						subnodes: {
+							tools: [
+								tool({
+									type: 'n8n-nodes-base.googleCalendarTool',
+									version: 1.3,
+									config: {
+										parameters: {
+											end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+											start:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+											calendar: {
+												__rl: true,
+												mode: 'list',
+												value: 'user@example.com',
+												cachedResultName: 'user@example.com',
+											},
+											additionalFields: {
+												summary:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
+												attendees: [
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('attendees0_Attendees', ``, 'string') }}",
+												],
+												description:
+													"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+												sendUpdates: 'all',
+												guestsCanInviteOthers: true,
+											},
+										},
+										credentials: {
+											googleCalendarOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleCalendarOAuth2Api Credential',
+											},
+										},
+										name: 'Create an event',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleSheetsTool',
+									version: 4.7,
+									config: {
+										parameters: {
+											options: {},
+											filtersUI: { values: [{ lookupColumn: 'Phone Number' }] },
+											sheetName: {
+												__rl: true,
+												mode: 'list',
+												value: 'gid=0',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1invngp2z_3ZMe_Qcs5XioDkAs50DSXT-Pl4ibPLXyA0/edit#gid=0',
+												cachedResultName: 'Sheet1',
+											},
+											documentId: {
+												__rl: true,
+												mode: 'list',
+												value: '1invngp2z_3ZMe_Qcs5XioDkAs50DSXT-Pl4ibPLXyA0',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1invngp2z_3ZMe_Qcs5XioDkAs50DSXT-Pl4ibPLXyA0/edit?usp=drivesdk',
+												cachedResultName: 'Law Client Enquiries',
+											},
+											authentication: 'serviceAccount',
+										},
+										credentials: {
+											googleApi: { id: 'credential-id', name: 'googleApi Credential' },
+										},
+										name: 'Know about the user enquiry',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleCalendarTool',
+									version: 1.3,
+									config: {
+										parameters: {
+											options: {},
+											timeMax:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+											timeMin:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+											calendar: {
+												__rl: true,
+												mode: 'list',
+												value: 'user@example.com',
+												cachedResultName: 'user@example.com',
+											},
+											operation: 'getAll',
+											returnAll: true,
+										},
+										credentials: {
+											googleCalendarOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleCalendarOAuth2Api Credential',
+											},
+										},
+										name: 'GET MANY EVENTS OF DAY THE USER ASKED',
+									},
+								}),
+							],
+							memory: memory({
+								type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+								version: 1.3,
+								config: {
+									parameters: {
+										sessionKey: "={{ $('If').item.json.contacts[0].wa_id }}",
+										sessionIdType: 'customKey',
+									},
+									credentials: {
+										postgres: { id: 'credential-id', name: 'postgres Credential' },
+									},
+									name: 'Postgres Chat Memory',
+								},
+							}),
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+								version: 1,
+								config: {
+									parameters: { options: {} },
+									credentials: {
+										googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+									},
+									name: 'Google Gemini Chat Model1',
+								},
+							}),
+						},
+						position: [912, 336],
+						name: 'AI Agent1',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -219,147 +357,9 @@ const wf = workflow('', '')
 						],
 					},
 				},
-				position: [496, 320],
+				name: 'If',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2.2,
-			config: {
-				parameters: {
-					text: '=<prompt>\n    <persona>\n        <name>Alex</name>\n        <role>Professional and friendly legal scheduling assistant</role>\n        <company>VTR Law Associates</company>\n    </persona>\n\n    <context>\n        <timestamp>\n            The current date and time is {{ $now.toFormat("DDDD, HH:mm:ss ZZZZ") }}. You must use this information only to correctly interpret relative time requests from the user (like "tomorrow," "next Tuesday," or "in two hours").\n        </timestamp>\n    </context>\n\n    <instructions>\n        <task>\n            When a user wants to schedule a legal consultation, follow these steps precisely. Use the provided tools and context to answer the user\'s question.\n        </task>\n        \n        <procedure>\n            <step n="1">\n                <description>Find User Details: First, use the \'Know about the user enquiry\' tool to find the user\'s requirement details, such as their email address and the reason for their legal enquiry.</description>\n                <tool>Know about the user enquiry</tool>\n            </step>\n            \n            <step n="2">\n                <description>Gather Missing Details: Ask the user for their preferred date and time for the consultation. If you could not find the user\'s email address in the previous step, politely ask for it now for the calendar invitation.</description>\n            </step>\n            \n            <step n="3">\n                <description>Check Availability: Use the \'GET MANY EVENTS OF DAY THE USER ASKED\' tool to check for existing events on the user\'s requested date.</description>\n                <tool>GET MANY EVENTS OF DAY THE USER ASKED</tool>\n            </step>\n            \n            <step n="4">\n                <description>Handle the Outcome based on availability:</description>\n                <condition case="time available">\n                    <action>Use the \'Create an event\' tool. Set the event title to "Legal Consultation - VTR Law Associates" and add the user\'s email as an attendee.</action>\n                    <action>Confirm with the user that the consultation is successfully booked.</action>\n                    <tool>Create an event</tool>\n                </condition>\n                <condition case="time unavailable">\n                    <action>Do not create an event.</action>\n                    <action>Inform the user that the requested time is booked and suggest specific alternative times based on the availability you found.</action>\n                </condition>\n            </step>\n        </procedure>\n        \n        <general_instruction>Handle greetings naturally without needing the context.</general_instruction>\n    </instructions>\n\n    <user_input>\n        <message>{{ $json.messages[0].text.body }}</message>\n    </user_input>\n\n    <output_format>\n        <style>WhatsApp</style>\n        <rules>\n            <rule>Use italics for emphasis.</rule>\n            <rule>Use bold for key points.</rule>\n            <rule>Use bullet lists (•) for lists.</rule>\n            <rule>Keep responses short, clear, and conversational.</rule>\n            <rule>Avoid markdown headers or code blocks.</rule>\n        </rules>\n    </output_format>\n\n    <constraints>\n        <fallback>\n            If the answer cannot be found in the context, reply: "I\'m sorry, my primary role is to schedule consultations. I don\'t have the information to answer that question."\n        </fallback>\n    </constraints>\n</prompt>',
-					options: {},
-					promptType: 'define',
-				},
-				subnodes: {
-					tools: [
-						tool({
-							type: 'n8n-nodes-base.googleCalendarTool',
-							version: 1.3,
-							config: {
-								parameters: {
-									end: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
-									start:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
-									calendar: {
-										__rl: true,
-										mode: 'list',
-										value: 'user@example.com',
-										cachedResultName: 'user@example.com',
-									},
-									additionalFields: {
-										summary:
-											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}",
-										attendees: [
-											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('attendees0_Attendees', ``, 'string') }}",
-										],
-										description:
-											"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
-										sendUpdates: 'all',
-										guestsCanInviteOthers: true,
-									},
-								},
-								credentials: {
-									googleCalendarOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleCalendarOAuth2Api Credential',
-									},
-								},
-								name: 'Create an event',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleSheetsTool',
-							version: 4.7,
-							config: {
-								parameters: {
-									options: {},
-									filtersUI: { values: [{ lookupColumn: 'Phone Number' }] },
-									sheetName: {
-										__rl: true,
-										mode: 'list',
-										value: 'gid=0',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1invngp2z_3ZMe_Qcs5XioDkAs50DSXT-Pl4ibPLXyA0/edit#gid=0',
-										cachedResultName: 'Sheet1',
-									},
-									documentId: {
-										__rl: true,
-										mode: 'list',
-										value: '1invngp2z_3ZMe_Qcs5XioDkAs50DSXT-Pl4ibPLXyA0',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1invngp2z_3ZMe_Qcs5XioDkAs50DSXT-Pl4ibPLXyA0/edit?usp=drivesdk',
-										cachedResultName: 'Law Client Enquiries',
-									},
-									authentication: 'serviceAccount',
-								},
-								credentials: {
-									googleApi: { id: 'credential-id', name: 'googleApi Credential' },
-								},
-								name: 'Know about the user enquiry',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleCalendarTool',
-							version: 1.3,
-							config: {
-								parameters: {
-									options: {},
-									timeMax:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
-									timeMin:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
-									calendar: {
-										__rl: true,
-										mode: 'list',
-										value: 'user@example.com',
-										cachedResultName: 'user@example.com',
-									},
-									operation: 'getAll',
-									returnAll: true,
-								},
-								credentials: {
-									googleCalendarOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleCalendarOAuth2Api Credential',
-									},
-								},
-								name: 'GET MANY EVENTS OF DAY THE USER ASKED',
-							},
-						}),
-					],
-					memory: memory({
-						type: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-						version: 1.3,
-						config: {
-							parameters: {
-								sessionKey: "={{ $('If').item.json.contacts[0].wa_id }}",
-								sessionIdType: 'customKey',
-							},
-							credentials: {
-								postgres: { id: 'credential-id', name: 'postgres Credential' },
-							},
-							name: 'Postgres Chat Memory',
-						},
-					}),
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-						version: 1,
-						config: {
-							parameters: { options: {} },
-							credentials: {
-								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-							},
-							name: 'Google Gemini Chat Model1',
-						},
-					}),
-				},
-				position: [912, 336],
-				name: 'AI Agent1',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

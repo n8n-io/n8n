@@ -47,16 +47,41 @@ const myNode = node({
 ## Workflow Builder Methods
 
 \`\`\`typescript
+import { workflow, node, trigger, ifBranch, switchCase, merge } from '@n8n/workflow-sdk';
+
 // Add trigger (first node)
 wf.add(triggerNode)
 
 // Chain nodes with .then()
 wf.add(trigger).then(node1).then(node2)
 
-// Branch with .output(index)
-wf.add(trigger).then(ifNode)
-  .output(0).then(yesNode)  // True branch
-  .output(1).then(noNode)   // False branch
+// Conditional branching with ifBranch()
+wf.add(trigger).then(
+  ifBranch([yesNode, noNode], {
+    name: 'Check Condition',
+    parameters: {
+      conditions: {
+        conditions: [{ leftValue: '={{ $json.value }}', rightValue: 100, operator: { type: 'number', operation: 'gt' } }]
+      }
+    }
+  })
+)
+
+// Multi-way branching with switchCase()
+wf.add(trigger).then(
+  switchCase([case0Node, case1Node, fallbackNode], {
+    name: 'Route by Type',
+    parameters: { mode: 'rules' }
+  })
+)
+
+// Fan-in with merge()
+wf.add(trigger).then(merge([branch1Node, branch2Node], { mode: 'append' }))
+
+// Error handling with onError()
+const httpNode = node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { onError: 'continueErrorOutput' } });
+httpNode.then(successHandler);
+httpNode.onError(errorHandler);
 
 // Settings
 wf.settings({ timezone: 'America/New_York', executionTimeout: 300 })
@@ -289,6 +314,8 @@ const wf = workflow('simple-http', 'Fetch API Data')
 
 ## Example 2: Scheduled Task with Conditional
 \`\`\`typescript
+import { workflow, node, trigger, ifBranch } from '@n8n/workflow-sdk';
+
 const wf = workflow('scheduled-check', 'Daily Status Check')
   .add(trigger({
     type: 'n8n-nodes-base.scheduleTrigger',
@@ -312,45 +339,44 @@ const wf = workflow('scheduled-check', 'Daily Status Check')
       position: [540, 300]
     }
   }))
-  .then(node({
-    type: 'n8n-nodes-base.if',
-    version: 2,
-    config: {
-      name: 'Is OK?',
-      parameters: {
-        conditions: {
-          options: {
-            caseSensitive: true,
-            leftValue: '',
-            typeValidation: 'strict'
-          },
-          conditions: [{
-            leftValue: '={{ $json.status }}',
-            rightValue: 'ok',
-            operator: { type: 'string', operation: 'equals' }
-          }]
-        }
-      },
-      position: [840, 300]
-    }
-  }))
-  .output(0).then(node({
-    type: 'n8n-nodes-base.noOp',
-    version: 1,
-    config: { name: 'All Good', position: [1140, 200] }
-  }))
-  .output(1).then(node({
-    type: 'n8n-nodes-base.httpRequest',
-    version: 4.3,
-    config: {
-      name: 'Send Alert',
-      parameters: {
-        method: 'POST',
-        url: 'https://hooks.slack.com/...',
-        body: { json: { text: 'API is down!' } }
-      },
-      position: [1140, 400]
-    }
+  .then(ifBranch([
+    // True branch (output 0): Status is OK
+    node({
+      type: 'n8n-nodes-base.noOp',
+      version: 1,
+      config: { name: 'All Good', position: [1140, 200] }
+    }),
+    // False branch (output 1): Status is not OK
+    node({
+      type: 'n8n-nodes-base.httpRequest',
+      version: 4.3,
+      config: {
+        name: 'Send Alert',
+        parameters: {
+          method: 'POST',
+          url: 'https://hooks.slack.com/...',
+          body: { json: { text: 'API is down!' } }
+        },
+        position: [1140, 400]
+      }
+    })
+  ], {
+    name: 'Is OK?',
+    parameters: {
+      conditions: {
+        options: {
+          caseSensitive: true,
+          leftValue: '',
+          typeValidation: 'strict'
+        },
+        conditions: [{
+          leftValue: '={{ $json.status }}',
+          rightValue: 'ok',
+          operator: { type: 'string', operation: 'equals' }
+        }]
+      }
+    },
+    position: [840, 300]
   }));
 \`\`\`
 

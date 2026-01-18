@@ -105,10 +105,65 @@ const wf = workflow('szS5RoHWF5QAzxqk', 'B2B AI Leads Automation', { executionOr
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 2,
+					config: {
+						parameters: {
+							text: "=You are a professional B2B sales assistant.\n\nCompose a short, professional, and polite outreach email to schedule a call with the following lead.\n\nTone: concise and respectful. The goal is to open a conversation and set up a meeting.\n\nUse this format:\n---\nSend a message in Gmail:\nTo: {{ $('HTTP Request').item.json.person.email }}\nSubject: Exploring Collaboration in AI Solutions\n\nHi {{ $('HTTP Request').item.json.person.name }},\n\nI hope this message finds you well.\n\nI’m reaching out from ABC Pvt Ltd—we specialize in tailored IT solutions, including AI and machine learning services. Given your role at {{ $('HTTP Request').item.json.person.employment_history[0].organization_name }}, I’d love to briefly connect and explore potential synergies.\n\nWould you be available for a quick call sometime this week?\n\nBest regards,  \nABC XYZ  \nABC Pvt Ltd\n---\n\nHere is the lead detail:\nName: {{ $('HTTP Request').item.json.person.name }}\nEmail: {{ $('HTTP Request').item.json.person.email }}\nJob Title: {{ $('HTTP Request').item.json.person.title }}\nOrganization: {{ $('HTTP Request').item.json.person.employment_history[0].organization_name }}\n\nInstructions:\nTools - Send a message in Gmail Tools for send mails",
+							options: {},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatGroq',
+								version: 1,
+								config: {
+									parameters: { options: {} },
+									credentials: {
+										groqApi: { id: 'credential-id', name: 'groqApi Credential' },
+									},
+									name: 'Groq Chat Model',
+								},
+							}),
+							tools: [
+								tool({
+									type: 'n8n-nodes-base.gmailTool',
+									version: 2.1,
+									config: {
+										parameters: {
+											sendTo: "={{ $('HTTP Request').item.json.person.email }}",
+											message:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+											options: {},
+											subject:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+											emailType: 'text',
+										},
+										credentials: {
+											gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+										},
+										name: 'Send a message in Gmail',
+									},
+								}),
+							],
+							outputParser: outputParser({
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								version: 1.3,
+								config: { name: 'Structured Output Parser' },
+							}),
+						},
+						position: [520, -40],
+						name: 'AI Agent',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -129,64 +184,9 @@ const wf = workflow('szS5RoHWF5QAzxqk', 'B2B AI Leads Automation', { executionOr
 						],
 					},
 				},
-				position: [260, -20],
+				name: 'If',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.agent',
-			version: 2,
-			config: {
-				parameters: {
-					text: "=You are a professional B2B sales assistant.\n\nCompose a short, professional, and polite outreach email to schedule a call with the following lead.\n\nTone: concise and respectful. The goal is to open a conversation and set up a meeting.\n\nUse this format:\n---\nSend a message in Gmail:\nTo: {{ $('HTTP Request').item.json.person.email }}\nSubject: Exploring Collaboration in AI Solutions\n\nHi {{ $('HTTP Request').item.json.person.name }},\n\nI hope this message finds you well.\n\nI’m reaching out from ABC Pvt Ltd—we specialize in tailored IT solutions, including AI and machine learning services. Given your role at {{ $('HTTP Request').item.json.person.employment_history[0].organization_name }}, I’d love to briefly connect and explore potential synergies.\n\nWould you be available for a quick call sometime this week?\n\nBest regards,  \nABC XYZ  \nABC Pvt Ltd\n---\n\nHere is the lead detail:\nName: {{ $('HTTP Request').item.json.person.name }}\nEmail: {{ $('HTTP Request').item.json.person.email }}\nJob Title: {{ $('HTTP Request').item.json.person.title }}\nOrganization: {{ $('HTTP Request').item.json.person.employment_history[0].organization_name }}\n\nInstructions:\nTools - Send a message in Gmail Tools for send mails",
-					options: {},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatGroq',
-						version: 1,
-						config: {
-							parameters: { options: {} },
-							credentials: {
-								groqApi: { id: 'credential-id', name: 'groqApi Credential' },
-							},
-							name: 'Groq Chat Model',
-						},
-					}),
-					tools: [
-						tool({
-							type: 'n8n-nodes-base.gmailTool',
-							version: 2.1,
-							config: {
-								parameters: {
-									sendTo: "={{ $('HTTP Request').item.json.person.email }}",
-									message:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
-									options: {},
-									subject:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-									emailType: 'text',
-								},
-								credentials: {
-									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-								},
-								name: 'Send a message in Gmail',
-							},
-						}),
-					],
-					outputParser: outputParser({
-						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-						version: 1.3,
-						config: { name: 'Structured Output Parser' },
-					}),
-				},
-				position: [520, -40],
-				name: 'AI Agent',
-			},
-		}),
+		),
 	)
 	.then(
 		node({

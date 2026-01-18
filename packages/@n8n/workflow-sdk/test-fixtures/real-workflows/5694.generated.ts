@@ -45,10 +45,40 @@ const wf = workflow('TEMPLATE_WORKFLOW_ID', 'Newsletter', { executionOrder: 'v1'
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							modelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'gpt-4o',
+								cachedResultName: 'GPT-4O',
+							},
+							options: {},
+							messages: {
+								values: [
+									{
+										content:
+											'=Create an HTML newsletter on the topic:{{ $json.Topic }}. \n Include these hook sentences:{{ $json.hooks }} . \n Structure with a header, body paragraphs, and footer\n',
+									},
+								],
+							},
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [620, -180],
+						name: 'Create HTML for Newsletter',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -73,40 +103,9 @@ const wf = workflow('TEMPLATE_WORKFLOW_ID', 'Newsletter', { executionOrder: 'v1'
 						],
 					},
 				},
-				position: [400, -180],
 				name: 'Validate Status as Pending',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					modelId: {
-						__rl: true,
-						mode: 'list',
-						value: 'gpt-4o',
-						cachedResultName: 'GPT-4O',
-					},
-					options: {},
-					messages: {
-						values: [
-							{
-								content:
-									'=Create an HTML newsletter on the topic:{{ $json.Topic }}. \n Include these hook sentences:{{ $json.hooks }} . \n Structure with a header, body paragraphs, and footer\n',
-							},
-						],
-					},
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [620, -180],
-				name: 'Create HTML for Newsletter',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -340,10 +339,45 @@ const wf = workflow('TEMPLATE_WORKFLOW_ID', 'Newsletter', { executionOrder: 'v1'
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.googleSheets',
+					version: 4.5,
+					config: {
+						parameters: {
+							options: {},
+							sheetName: {
+								__rl: true,
+								mode: 'list',
+								value: 'YOUR_EMAIL_SHEET_GID',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID_HERE/edit#gid=YOUR_EMAIL_SHEET_GID',
+								cachedResultName: 'Email',
+							},
+							documentId: {
+								__rl: true,
+								mode: 'list',
+								value: 'YOUR_GOOGLE_SHEET_ID_HERE',
+								cachedResultUrl:
+									'https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID_HERE/edit?usp=drivesdk',
+								cachedResultName: 'Newsletter',
+							},
+						},
+						credentials: {
+							googleSheetsOAuth2Api: {
+								id: 'credential-id',
+								name: 'googleSheetsOAuth2Api Credential',
+							},
+						},
+						position: [620, 230],
+						name: 'Get Client email address',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -368,45 +402,9 @@ const wf = workflow('TEMPLATE_WORKFLOW_ID', 'Newsletter', { executionOrder: 'v1'
 						],
 					},
 				},
-				position: [400, 230],
 				name: 'Validate Status as Approved',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.googleSheets',
-			version: 4.5,
-			config: {
-				parameters: {
-					options: {},
-					sheetName: {
-						__rl: true,
-						mode: 'list',
-						value: 'YOUR_EMAIL_SHEET_GID',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID_HERE/edit#gid=YOUR_EMAIL_SHEET_GID',
-						cachedResultName: 'Email',
-					},
-					documentId: {
-						__rl: true,
-						mode: 'list',
-						value: 'YOUR_GOOGLE_SHEET_ID_HERE',
-						cachedResultUrl:
-							'https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID_HERE/edit?usp=drivesdk',
-						cachedResultName: 'Newsletter',
-					},
-				},
-				credentials: {
-					googleSheetsOAuth2Api: {
-						id: 'credential-id',
-						name: 'googleSheetsOAuth2Api Credential',
-					},
-				},
-				position: [620, 230],
-				name: 'Get Client email address',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -415,8 +413,7 @@ const wf = workflow('TEMPLATE_WORKFLOW_ID', 'Newsletter', { executionOrder: 'v1'
 			config: { parameters: { options: {} }, position: [840, 230], name: 'Loop Over Items' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.5,
@@ -534,8 +531,7 @@ const wf = workflow('TEMPLATE_WORKFLOW_ID', 'Newsletter', { executionOrder: 'v1'
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.gmail',
 			version: 2.1,

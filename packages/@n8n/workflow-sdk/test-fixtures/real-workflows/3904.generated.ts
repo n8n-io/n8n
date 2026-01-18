@@ -226,6 +226,7 @@ const wf = workflow('r82OA8ExycLYuK1u', 'My workflow 8', { executionOrder: 'v1' 
 					},
 				},
 				name: 'Filter Valid Companies',
+				onError: 'continueRegularOutput',
 			},
 		),
 	)

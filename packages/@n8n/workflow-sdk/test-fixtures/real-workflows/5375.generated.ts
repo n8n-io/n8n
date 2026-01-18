@@ -58,8 +58,7 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
@@ -490,8 +489,7 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.6,
@@ -512,8 +510,7 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -555,8 +552,7 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
@@ -581,8 +577,7 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.reddit',
 			version: 1,
@@ -601,8 +596,7 @@ const wf = workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.twitter',
 			version: 2,

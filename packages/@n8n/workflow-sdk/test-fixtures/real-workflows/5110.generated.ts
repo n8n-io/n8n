@@ -406,8 +406,7 @@ const wf = workflow('LPUpZtHK7gGRA5wa', 'Automated AI YouTube Shorts Factory for
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.gmail',
 			version: 2.1,
@@ -427,8 +426,7 @@ const wf = workflow('LPUpZtHK7gGRA5wa', 'Automated AI YouTube Shorts Factory for
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.telegram',
 			version: 1.2,
@@ -446,8 +444,7 @@ const wf = workflow('LPUpZtHK7gGRA5wa', 'Automated AI YouTube Shorts Factory for
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleSheets',
 			version: 4.5,

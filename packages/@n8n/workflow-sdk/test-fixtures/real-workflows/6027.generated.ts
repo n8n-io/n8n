@@ -1193,6 +1193,7 @@ const wf = workflow('', '')
 					},
 				},
 				name: 'Filter Valid Companies',
+				onError: 'continueRegularOutput',
 			},
 		),
 	)

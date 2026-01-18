@@ -449,8 +449,7 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -479,8 +478,7 @@ const wf = workflow('', 'Generate 5-level AI explanations from Telegram to Googl
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,

@@ -6,8 +6,7 @@ const wf = workflow('', '')
 			config: { position: [-592, 80], name: 'Schedule Trigger1' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.microsoftOneDrive',
 			version: 1,
@@ -35,21 +34,19 @@ const wf = workflow('', '')
 		),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { position: [480, 992], name: 'If Size' },
-		}),
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.splitInBatches',
+					version: 3,
+					config: { position: [480, 1168], name: 'Loop Over Items 2' },
+				}),
+				null,
+			],
+			{ version: 2.2, name: 'If Size' },
+		),
 	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.splitInBatches',
-			version: 3,
-			config: { position: [480, 1168], name: 'Loop Over Items 2' },
-		}),
-	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.compareDatasets',
 			version: 2.3,
@@ -63,8 +60,7 @@ const wf = workflow('', '')
 			config: { position: [1008, 928], name: 'Loop Over Items 3' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.splitInBatches',
 			version: 3,
@@ -78,16 +74,14 @@ const wf = workflow('', '')
 			config: { position: [1280, 1136], name: 'Download file' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.extractFromFile',
 			version: 1,
 			config: { position: [1280, 1360], name: 'Extract PDF Text' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2,
@@ -208,8 +202,7 @@ const wf = workflow('', '')
 			config: { position: [2304, 1488], name: 'Insert row' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2,
@@ -226,16 +219,14 @@ const wf = workflow('', '')
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
 			config: { position: [1024, 1136], name: 'Set File ID 3' },
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -321,14 +312,15 @@ const wf = workflow('', '')
 		),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: { position: [0, 1648], name: 'If PDF 8' },
-		}),
+		ifBranch(
+			[
+				node({ type: 'n8n-nodes-base.merge', version: 3.2, config: { position: [304, 896] } }),
+				null,
+			],
+			{ version: 2.2, name: 'If PDF 8' },
+		),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.dataTable',
 			version: 1,
@@ -342,8 +334,7 @@ const wf = workflow('', '')
 			config: { position: [480, 544], name: 'Loop Over Items' },
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,

@@ -85,8 +85,7 @@ const wf = workflow('[WORKFLOW_ID_REMOVED]', 'HR CVs Filter', { executionOrder: 
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,

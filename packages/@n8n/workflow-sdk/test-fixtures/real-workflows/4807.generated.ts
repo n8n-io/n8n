@@ -18,10 +18,40 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				null,
+				node({
+					type: 'n8n-nodes-base.if',
+					version: 2.2,
+					config: {
+						parameters: {
+							options: {},
+							conditions: {
+								options: {
+									version: 2,
+									leftValue: '',
+									caseSensitive: true,
+									typeValidation: 'strict',
+								},
+								combinator: 'and',
+								conditions: [
+									{
+										id: '07a6d5e2-ffc5-41d8-b69a-abd6860879c0',
+										operator: { type: 'string', operation: 'notStartsWith' },
+										leftValue: '={{ $json.subject }}',
+										rightValue: 'Re:',
+									},
+								],
+							},
+						},
+						position: [1640, 460],
+						name: 'Reply',
+					},
+				}),
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -42,40 +72,9 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 						],
 					},
 				},
-				position: [1640, 220],
 				name: 'Emails from Existing Contracts',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
-				parameters: {
-					options: {},
-					conditions: {
-						options: {
-							version: 2,
-							leftValue: '',
-							caseSensitive: true,
-							typeValidation: 'strict',
-						},
-						combinator: 'and',
-						conditions: [
-							{
-								id: '07a6d5e2-ffc5-41d8-b69a-abd6860879c0',
-								operator: { type: 'string', operation: 'notStartsWith' },
-								leftValue: '={{ $json.subject }}',
-								rightValue: 'Re:',
-							},
-						],
-					},
-				},
-				position: [1640, 460],
-				name: 'Reply',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -123,8 +122,7 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleCalendar',
 			version: 1.3,
@@ -162,8 +160,7 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 			config: { parameters: { options: {} }, position: [2280, 160], name: 'Loop Over Items' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
@@ -229,8 +226,7 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleCalendar',
 			version: 1.3,
@@ -264,8 +260,7 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.emailSend',
 			version: 2.1,
@@ -283,8 +278,7 @@ const wf = workflow('1RHsJldA8GlWFp1E', 'Smart Email Auto-Responder', { executio
 			},
 		}),
 	)
-	.output(2)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.emailSend',
 			version: 2.1,

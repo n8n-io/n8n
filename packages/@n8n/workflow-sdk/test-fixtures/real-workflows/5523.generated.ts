@@ -163,8 +163,7 @@ const wf = workflow('OvYZQiWH2KlJsFbK', 'Multi-Agent Evaluation (eval nodes)', {
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.set',
 			version: 3.4,
@@ -253,8 +252,7 @@ const wf = workflow('OvYZQiWH2KlJsFbK', 'Multi-Agent Evaluation (eval nodes)', {
 			},
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.noOp',
 			version: 1,

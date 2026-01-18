@@ -168,10 +168,29 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.8,
+					config: {
+						parameters: {
+							prompt:
+								"={{ $('Social Media Content Factory').item.json.output.platform_posts.Instagram.caption }}",
+							options: {},
+							resource: 'image',
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						position: [40, -20],
+						name: 'OpenAI',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -192,32 +211,11 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [-240, -20],
 				name: 'Is Content Approved?',
 			},
-		}),
+		),
 	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.8,
-			config: {
-				parameters: {
-					prompt:
-						"={{ $('Social Media Content Factory').item.json.output.platform_posts.Instagram.caption }}",
-					options: {},
-					resource: 'image',
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				position: [40, -20],
-				name: 'OpenAI',
-			},
-		}),
-	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
@@ -250,8 +248,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3,
@@ -289,10 +286,27 @@ const wf = workflow(
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: 'n8n-nodes-base.twitter',
+					version: 2,
+					config: {
+						parameters: {
+							text: "={{ $('Social Media Content Factory').item.json.output.platform_posts['X-Twitter'].post }}",
+							additionalFields: {},
+						},
+						credentials: {
+							twitterOAuth2Api: { id: 'credential-id', name: 'twitterOAuth2Api Credential' },
+						},
+						position: [1700, 380],
+						name: 'X Post',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -313,28 +327,9 @@ const wf = workflow(
 						],
 					},
 				},
-				position: [1160, 20],
 				name: 'Is Approved?',
 			},
-		}),
-	)
-	.output(0)
-	.then(
-		node({
-			type: 'n8n-nodes-base.twitter',
-			version: 2,
-			config: {
-				parameters: {
-					text: "={{ $('Social Media Content Factory').item.json.output.platform_posts['X-Twitter'].post }}",
-					additionalFields: {},
-				},
-				credentials: {
-					twitterOAuth2Api: { id: 'credential-id', name: 'twitterOAuth2Api Credential' },
-				},
-				position: [1700, 380],
-				name: 'X Post',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -460,8 +455,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.7,
@@ -517,8 +511,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 1.7,
@@ -573,8 +566,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3,
@@ -651,8 +643,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.merge',
 			version: 3,
@@ -667,8 +658,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.facebookGraphApi',
 			version: 1,
@@ -705,8 +695,7 @@ const wf = workflow(
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.linkedIn',
 			version: 1,

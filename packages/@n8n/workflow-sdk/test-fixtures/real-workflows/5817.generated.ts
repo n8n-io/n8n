@@ -127,8 +127,7 @@ const wf = workflow('sgcKe5gsmJFdEAe3', 'ai-trend-email-alerter-weaviate', { exe
 			config: { parameters: { compare: '={{ $json.id }}', options: {} }, position: [1424, 752] },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2,

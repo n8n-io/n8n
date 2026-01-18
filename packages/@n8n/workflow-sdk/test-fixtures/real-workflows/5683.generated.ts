@@ -93,8 +93,7 @@ const wf = workflow('CXHBDt6tSiHrMyZj', '🎬 AI YouTube Video Generator - One-C
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

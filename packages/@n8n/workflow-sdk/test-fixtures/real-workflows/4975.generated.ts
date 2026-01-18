@@ -16,8 +16,7 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: '@n8n/n8n-nodes-langchain.chainLlm',
 			version: 1.7,
@@ -1468,10 +1467,94 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					version: 1.7,
+					config: {
+						parameters: {
+							modelId: { __rl: true, mode: 'id', value: 'gpt-4o-mini' },
+							options: {},
+							messages: {
+								values: [
+									{
+										role: 'assistant',
+										content:
+											"=You are an HR assistant generating personalized recruitment emails based on candidate data for ICICI bank (mention in subject and content). Below is a candidate’s information:\nthe input instructions are {{ $('WhatsApp Trigger').item.json.messages[0].text.body }}. extract number of candidates and poistion from this \n\nName: {{ $('Google Sheets2').item.json.Name }}\nEmail:{{ $('Shortlist Agent').item.json.output.email }}\nShortlist Status:  {{ $('Google Sheets2').item.json.Shortlist }}\nmessage {{ $('Book Meeting').item.json.output.message }}\nWrite a professional email:\n\n- If the candidate is shortlisted (`Shortlist` is \"yes\"):\n    - Congratulate the candidate on being shortlisted.\n    - Mention the position and the interview timings. mention in normal date time format\n    - Be encouraging and appreciative.\n\n- If the candidate is not shortlisted (`Shortlist` is \"no\"):\n    - Politely inform them they have not been selected.\n    - \n    - Thank them for applying and encourage future applications if appropriate.\n\nThe email should be polite, human-sounding, clear, and well-formatted.\n\nOutput as \nto: \nsubject: \"make this more detailed\"\ncontent\nsend the email using gmail node and write a whatsapp message confirming it \n\n",
+									},
+								],
+							},
+							jsonOutput: true,
+						},
+						credentials: {
+							openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
+						},
+						subnodes: {
+							tools: [
+								tool({
+									type: 'n8n-nodes-base.gmailTool',
+									version: 2.1,
+									config: {
+										parameters: {
+											sendTo:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+											message:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+											options: {},
+											subject:
+												"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+											emailType: 'text',
+										},
+										credentials: {
+											gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
+										},
+										name: 'Gmail1',
+									},
+								}),
+								tool({
+									type: 'n8n-nodes-base.googleSheetsTool',
+									version: 4.6,
+									config: {
+										parameters: {
+											options: {},
+											filtersUI: { values: [{ lookupColumn: 'Name' }] },
+											sheetName: {
+												__rl: true,
+												mode: 'list',
+												value: 'gid=0',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=0',
+												cachedResultName: 'rec shortlist sheet',
+											},
+											documentId: {
+												__rl: true,
+												mode: 'list',
+												value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
+												cachedResultUrl:
+													'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
+												cachedResultName: 'Untitled spreadsheet',
+											},
+										},
+										credentials: {
+											googleSheetsOAuth2Api: {
+												id: 'credential-id',
+												name: 'googleSheetsOAuth2Api Credential',
+											},
+										},
+										name: 'get mail',
+									},
+								}),
+							],
+						},
+						position: [4980, 1920],
+						name: 'Personalize email',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -1492,93 +1575,9 @@ const wf = workflow('GGBZPOcvm844DgAy', 'n8n HR agent', {
 						],
 					},
 				},
-				position: [4660, 1800],
+				name: 'If',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.openAi',
-			version: 1.7,
-			config: {
-				parameters: {
-					modelId: { __rl: true, mode: 'id', value: 'gpt-4o-mini' },
-					options: {},
-					messages: {
-						values: [
-							{
-								role: 'assistant',
-								content:
-									"=You are an HR assistant generating personalized recruitment emails based on candidate data for ICICI bank (mention in subject and content). Below is a candidate’s information:\nthe input instructions are {{ $('WhatsApp Trigger').item.json.messages[0].text.body }}. extract number of candidates and poistion from this \n\nName: {{ $('Google Sheets2').item.json.Name }}\nEmail:{{ $('Shortlist Agent').item.json.output.email }}\nShortlist Status:  {{ $('Google Sheets2').item.json.Shortlist }}\nmessage {{ $('Book Meeting').item.json.output.message }}\nWrite a professional email:\n\n- If the candidate is shortlisted (`Shortlist` is \"yes\"):\n    - Congratulate the candidate on being shortlisted.\n    - Mention the position and the interview timings. mention in normal date time format\n    - Be encouraging and appreciative.\n\n- If the candidate is not shortlisted (`Shortlist` is \"no\"):\n    - Politely inform them they have not been selected.\n    - \n    - Thank them for applying and encourage future applications if appropriate.\n\nThe email should be polite, human-sounding, clear, and well-formatted.\n\nOutput as \nto: \nsubject: \"make this more detailed\"\ncontent\nsend the email using gmail node and write a whatsapp message confirming it \n\n",
-							},
-						],
-					},
-					jsonOutput: true,
-				},
-				credentials: {
-					openAiApi: { id: 'credential-id', name: 'openAiApi Credential' },
-				},
-				subnodes: {
-					tools: [
-						tool({
-							type: 'n8n-nodes-base.gmailTool',
-							version: 2.1,
-							config: {
-								parameters: {
-									sendTo:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
-									message:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
-									options: {},
-									subject:
-										"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
-									emailType: 'text',
-								},
-								credentials: {
-									gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' },
-								},
-								name: 'Gmail1',
-							},
-						}),
-						tool({
-							type: 'n8n-nodes-base.googleSheetsTool',
-							version: 4.6,
-							config: {
-								parameters: {
-									options: {},
-									filtersUI: { values: [{ lookupColumn: 'Name' }] },
-									sheetName: {
-										__rl: true,
-										mode: 'list',
-										value: 'gid=0',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit#gid=0',
-										cachedResultName: 'rec shortlist sheet',
-									},
-									documentId: {
-										__rl: true,
-										mode: 'list',
-										value: '1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc',
-										cachedResultUrl:
-											'https://docs.google.com/spreadsheets/d/1cV4GluXOU9d1xXON9yW80ZYPFEhQfizzDjcc8xwpeNc/edit?usp=drivesdk',
-										cachedResultName: 'Untitled spreadsheet',
-									},
-								},
-								credentials: {
-									googleSheetsOAuth2Api: {
-										id: 'credential-id',
-										name: 'googleSheetsOAuth2Api Credential',
-									},
-								},
-								name: 'get mail',
-							},
-						}),
-					],
-				},
-				position: [4980, 1920],
-				name: 'Personalize email',
-			},
-		}),
+		),
 	)
 	.add(
 		sticky(

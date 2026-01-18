@@ -116,16 +116,14 @@ const wf = workflow('', 'UGC Nano Banana', { executionOrder: 'v1' })
 			config: { parameters: { options: {} }, position: [352, -16], name: 'Loop Over Items' },
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.noOp',
 			version: 1,
 			config: { position: [560, -32], name: 'No Operation, do nothing' },
 		}),
 	)
-	.output(1)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

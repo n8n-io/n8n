@@ -163,6 +163,30 @@ function isSwitchNode(node: NodeJSON): boolean {
 	return node.type === 'n8n-nodes-base.switch';
 }
 
+/**
+ * Determines if a node has error output enabled (onError: 'continueErrorOutput')
+ */
+function hasErrorOutput(node: NodeJSON): boolean {
+	return node.onError === 'continueErrorOutput';
+}
+
+/**
+ * Calculate the error output index for a node.
+ * Error outputs are always the last output after regular outputs.
+ */
+function getErrorOutputIndex(node: NodeJSON): number {
+	if (isIfNode(node)) {
+		return 2; // IF: true=0, false=1, error=2
+	}
+	if (isSwitchNode(node)) {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const params = node.parameters as Record<string, any> | undefined;
+		const numberOutputs = params?.numberOutputs ?? params?.rules?.rules?.length ?? 4;
+		return numberOutputs;
+	}
+	return 1; // Regular nodes: main=0, error=1
+}
+
 interface MergePattern {
 	mergeNode: string;
 	sources: { nodeName: string; inputIndex: number }[];
@@ -280,6 +304,41 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 	// Add orphan nodes (nodes not connected to any trigger)
 	for (const orphanInfo of orphanNodes) {
 		if (addedNodes.has(orphanInfo.node.name)) continue;
+
+		// Check if orphan is an IF node with branches - use ifBranch() composite
+		if (isIfNode(orphanInfo.node)) {
+			const ifResult = generateIfBranchCall(orphanInfo, nodeInfoMap, addedNodes);
+			if (ifResult) {
+				lines.push(`  .add(${ifResult.call})`);
+				addedNodes.add(orphanInfo.node.name);
+				// Generate downstream chains for each branch
+				for (const branchName of ifResult.branchNames) {
+					const branchInfo = nodeInfoMap.get(branchName);
+					if (branchInfo) {
+						generateChain(branchInfo, nodeInfoMap, addedNodes, lines, 1);
+					}
+				}
+				continue;
+			}
+		}
+
+		// Check if orphan is a Switch node with cases - use switchCase() composite
+		if (isSwitchNode(orphanInfo.node)) {
+			const switchResult = generateSwitchCaseCall(orphanInfo, nodeInfoMap, addedNodes);
+			if (switchResult) {
+				lines.push(`  .add(${switchResult.call})`);
+				addedNodes.add(orphanInfo.node.name);
+				// Generate downstream chains for each case
+				for (const caseName of switchResult.caseNames) {
+					const caseInfo = nodeInfoMap.get(caseName);
+					if (caseInfo) {
+						generateChain(caseInfo, nodeInfoMap, addedNodes, lines, 1);
+					}
+				}
+				continue;
+			}
+		}
+
 		lines.push(`  .add(${generateNodeCall(orphanInfo.node, nodeInfoMap)})`);
 		addedNodes.add(orphanInfo.node.name);
 		generateChain(orphanInfo, nodeInfoMap, addedNodes, lines, 1);
@@ -394,7 +453,7 @@ function generateChain(
 
 	// Multiple outputs (branching) - check for special patterns first
 	// Check if all targets from a single output feed into the same merge node
-	for (const [outputIndex, targets] of outputs) {
+	for (const [_outputIndex, targets] of outputs) {
 		if (targets.length === 0) continue;
 
 		// Check if all targets feed into the same merge node
@@ -437,15 +496,14 @@ function generateChain(
 			}
 		}
 
-		// Regular branching - use .output(n).then()
+		// Multi-output branching - add nodes directly (connections established via node.then())
 		for (const target of targets) {
 			const targetInfo = nodeInfoMap.get(target.to);
 			// Skip subnodes - they're included in parent config
 			if (!targetInfo || addedNodes.has(target.to) || targetInfo.isSubnodeOf) continue;
 
-			lines.push(
-				`  .output(${outputIndex}).then(${generateNodeCall(targetInfo.node, nodeInfoMap)})`,
-			);
+			// For multi-output nodes, just add the node - connections are declared via node.then()
+			lines.push(`  .add(${generateNodeCall(targetInfo.node, nodeInfoMap)})`);
 			addedNodes.add(target.to);
 			generateChain(targetInfo, nodeInfoMap, addedNodes, lines, depth + 1);
 		}
@@ -563,7 +621,8 @@ function generateMergeCall(
 
 /**
  * Generate an ifBranch() call for an IF node.
- * Returns the ifBranch call string and branch names, or null if pattern doesn't match.
+ * Supports both full IF nodes (both branches) and single-branch IF nodes.
+ * Returns the ifBranch call string and branch names, or null if no branches connected.
  */
 function generateIfBranchCall(
 	ifInfo: NodeInfo,
@@ -572,24 +631,35 @@ function generateIfBranchCall(
 ): { call: string; branchNames: string[] } | null {
 	const outputs = ifInfo.outgoingConnections;
 
-	// Need both true (output 0) and false (output 1) branches
+	// Get true (output 0) and false (output 1) branches - may be error output at index 2
+	const errorOutputIndex = hasErrorOutput(ifInfo.node) ? getErrorOutputIndex(ifInfo.node) : -1;
 	const trueBranch = outputs.get(0)?.[0];
 	const falseBranch = outputs.get(1)?.[0];
 
-	if (!trueBranch || !falseBranch) return null;
+	// Need at least one branch (true or false, but not just error)
+	if (!trueBranch && !falseBranch) return null;
 
-	const trueInfo = nodeInfoMap.get(trueBranch.to);
-	const falseInfo = nodeInfoMap.get(falseBranch.to);
+	const trueInfo = trueBranch ? nodeInfoMap.get(trueBranch.to) : null;
+	const falseInfo = falseBranch ? nodeInfoMap.get(falseBranch.to) : null;
 
-	if (!trueInfo || !falseInfo) return null;
+	// If we have a branch but can't find its info, skip
+	if ((trueBranch && !trueInfo) || (falseBranch && !falseInfo)) return null;
+
+	const branchNames: string[] = [];
 
 	// Mark branch nodes as added
-	addedNodes.add(trueBranch.to);
-	addedNodes.add(falseBranch.to);
+	if (trueBranch && trueInfo) {
+		addedNodes.add(trueBranch.to);
+		branchNames.push(trueBranch.to);
+	}
+	if (falseBranch && falseInfo) {
+		addedNodes.add(falseBranch.to);
+		branchNames.push(falseBranch.to);
+	}
 
 	// Generate the ifBranch call
-	const trueCall = generateNodeCall(trueInfo.node, nodeInfoMap);
-	const falseCall = generateNodeCall(falseInfo.node, nodeInfoMap);
+	const trueCall = trueInfo ? generateNodeCall(trueInfo.node, nodeInfoMap) : 'null';
+	const falseCall = falseInfo ? generateNodeCall(falseInfo.node, nodeInfoMap) : 'null';
 
 	const configParts: string[] = [];
 	// Always include version to preserve original node version
@@ -602,11 +672,32 @@ function generateIfBranchCall(
 	if (ifInfo.node.name !== 'IF') {
 		configParts.push(`name: '${escapeString(ifInfo.node.name)}'`);
 	}
+	// Include onError if set
+	if (ifInfo.node.onError) {
+		configParts.push(`onError: '${ifInfo.node.onError}'`);
+	}
 
 	const configStr = configParts.length > 0 ? `, { ${configParts.join(', ')} }` : '';
+
+	// Check for error output connection
+	let errorHandlerCall = '';
+	if (errorOutputIndex >= 0) {
+		const errorTargets = outputs.get(errorOutputIndex);
+		if (errorTargets && errorTargets.length > 0) {
+			const errorTarget = errorTargets[0];
+			const errorInfo = nodeInfoMap.get(errorTarget.to);
+			if (errorInfo && !addedNodes.has(errorTarget.to)) {
+				// We'll need to handle error output separately via a variable
+				addedNodes.add(errorTarget.to);
+				branchNames.push(errorTarget.to);
+				errorHandlerCall = `\n  // Error handler connected via ifNode.onError(errorHandler)`;
+			}
+		}
+	}
+
 	return {
-		call: `ifBranch([${trueCall}, ${falseCall}]${configStr})`,
-		branchNames: [trueBranch.to, falseBranch.to],
+		call: `ifBranch([${trueCall}, ${falseCall}]${configStr})${errorHandlerCall}`,
+		branchNames,
 	};
 }
 

@@ -33,10 +33,58 @@ const wf = workflow('AJch0Bi1L5u67nRO', 'Fathom Meeting Summary & Actions AI Age
 		}),
 	)
 	.then(
-		node({
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			config: {
+		ifBranch(
+			[
+				node({
+					type: '@n8n/n8n-nodes-langchain.chainLlm',
+					version: 1.7,
+					config: {
+						parameters: {
+							text: "=For the meeting transcript provided at the bottom, please follow the below template to write your reviewing comments about the meeting.\nNote that if there are sections below that you cannot identify in the transcript, then simply mention \"None identified in the transcript\"\n\n---\n\nMeeting:\nHeader line, nicely formatted and using the information exactly as provided.\nUse the official meeting title here (if provided): '{{ $json.meeting_title }}'\nOr, if there is no meeting title provided, create a title based on your analysis of the raw transcript provided at the end.\n\nRecording URL:\n{{ $json.recording_url }}\n\nScheduled Start Date/Time and End Time:\nFormatted as 'DD-MM-YYYY - HH:MM to HH:MM': {{ $json.scheduled_start_time }} - {{ $json.scheduled_end_time }} \n\nRecording Start Date/Time and End Time:\nFormatted as 'DD-MM-YYYY - HH:MM to HH:MM': {{ $json.recording_start_time }} - {{ $json.recording_end_time }}\n\n---\n\nAttendees:\n- names and email addresses, where available\nAttendee official list:{{ JSON.stringify($json.attendees) }}\nAlso check the transcript to identify additional speakers where possible\n\n\nExecutive Summary:\n- {1–5 sentences, no fluff. What’s the meeting about, key outcome(s), and immediate next step(s)?} \n\nKey Points:\n- {Concise point}.\n- {Another concise point}.\n(8 bullets max, but less is fine if more effective)\n\nAction Items:\n- List of each action item with any mentioned Owner, Due Date, Priority, and Source\n\nKey Decisions Made:\n- Decision:** {What was decided}. (By {who}, if stated) \n(6 bullets max, but less is fine if more effective)\n\n\nKey Risks / Concerns:\n- {Risk/issue}: {Context or impact in 1 line}\n(6 items maximum, but less is fine if more effective)\n\nOpen Questions:\n- {Question asked or unresolved point}\n- {Any missing info needed to proceed}\n(6 items maximum, but less is fine if more effective)\n\nEntities & References (quick extract):\n- People: {names}  \n- Organizations/Places: {entities}  \n- Numbers & Dates Mentioned (with brief context of why any numbers and dates are provided): {normalize money, dates, durations if present}\n\n\n**For Key Points, Action Items, Decisions, Risks/Concerns, Open Questions: return a single string. If items exist, output them as newline-separated lines (no bullets/numbers). If none, return the exact string “None identified in the transcript”.**\n\n---\n\n*** HERE IS THE TRANSCRIPT: ***\n\n{{ JSON.stringify($json.transcript_merged) }}",
+							batching: {},
+							messages: {
+								messageValues: [
+									{
+										message:
+											'You are an expert meeting analyst. Produce a concise, executive-quality report from the transcript. Be precise, non-fluffy, and focus on important takeaways and outcomes from the meeting.',
+									},
+								],
+							},
+							promptType: 'define',
+							hasOutputParser: true,
+						},
+						subnodes: {
+							model: languageModel({
+								type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+								version: 1,
+								config: {
+									parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
+									credentials: {
+										googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
+									},
+									name: 'Google Gemini Chat Model',
+								},
+							}),
+							outputParser: outputParser({
+								type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+								version: 1.3,
+								config: {
+									parameters: {
+										jsonSchemaExample:
+											'{\n  "Meeting Title": "Test call",\n  "Recording URL": "https://fathom.video/share/745cvtcxSXKb7YyfDMiyzMChZ3AsoGad",\n  "Scheduled Date/Time": "30-01-2025, 12:15 to 12:30",\n  "Recording Date/Time": "30-01-2025, 12:16 to 12:16",\n  "Attendees": "John Doe <user@example.com> (Attendee)",\n  "Executive Summary": "Single-speaker intro explaining that Fathom auto-records meetings, captures key moments and action items, and allows manual highlights. No concrete decisions or actions were stated.",\n  "Key Points": "Fathom auto-records and captures important moments and action items.\\nPost-meeting summaries are delivered quickly.\\nManual highlight button available for special moments.",\n  "Action Items": "Send John 2-3 specific YouTube video links.\\nGet automation engineer to review Sheets integration Mon-Tue.",\n  "Decisions": "Emmily to update feature on the contact page.\\nJohn will speak to Jess about product development roadmap.",\n  "Risks/Concerns": "John mentioned development pace is slow in January meaning a late release date is likely.",\n  "Open Questions": "What\'s the status of the Hubspot implementation?\\nNone identified in the transcript.",\n  "Entities — People": "Emmily Bowman; John Doe",\n  "Entities — Orgs/Places": "Fathom",\n  "Entities — Numbers/Dates": "30 seconds"\n}\n',
+									},
+									name: 'Structured Output Parser',
+								},
+							}),
+						},
+						position: [96, -144],
+						name: 'AI Meeting Analysis',
+					},
+				}),
+				null,
+			],
+			{
+				version: 2.2,
 				parameters: {
 					options: {},
 					conditions: {
@@ -63,58 +111,9 @@ const wf = workflow('AJch0Bi1L5u67nRO', 'Fathom Meeting Summary & Actions AI Age
 						],
 					},
 				},
-				position: [-176, -96],
 				name: 'Transcript Present?',
 			},
-		}),
-	)
-	.then(
-		node({
-			type: '@n8n/n8n-nodes-langchain.chainLlm',
-			version: 1.7,
-			config: {
-				parameters: {
-					text: "=For the meeting transcript provided at the bottom, please follow the below template to write your reviewing comments about the meeting.\nNote that if there are sections below that you cannot identify in the transcript, then simply mention \"None identified in the transcript\"\n\n---\n\nMeeting:\nHeader line, nicely formatted and using the information exactly as provided.\nUse the official meeting title here (if provided): '{{ $json.meeting_title }}'\nOr, if there is no meeting title provided, create a title based on your analysis of the raw transcript provided at the end.\n\nRecording URL:\n{{ $json.recording_url }}\n\nScheduled Start Date/Time and End Time:\nFormatted as 'DD-MM-YYYY - HH:MM to HH:MM': {{ $json.scheduled_start_time }} - {{ $json.scheduled_end_time }} \n\nRecording Start Date/Time and End Time:\nFormatted as 'DD-MM-YYYY - HH:MM to HH:MM': {{ $json.recording_start_time }} - {{ $json.recording_end_time }}\n\n---\n\nAttendees:\n- names and email addresses, where available\nAttendee official list:{{ JSON.stringify($json.attendees) }}\nAlso check the transcript to identify additional speakers where possible\n\n\nExecutive Summary:\n- {1–5 sentences, no fluff. What’s the meeting about, key outcome(s), and immediate next step(s)?} \n\nKey Points:\n- {Concise point}.\n- {Another concise point}.\n(8 bullets max, but less is fine if more effective)\n\nAction Items:\n- List of each action item with any mentioned Owner, Due Date, Priority, and Source\n\nKey Decisions Made:\n- Decision:** {What was decided}. (By {who}, if stated) \n(6 bullets max, but less is fine if more effective)\n\n\nKey Risks / Concerns:\n- {Risk/issue}: {Context or impact in 1 line}\n(6 items maximum, but less is fine if more effective)\n\nOpen Questions:\n- {Question asked or unresolved point}\n- {Any missing info needed to proceed}\n(6 items maximum, but less is fine if more effective)\n\nEntities & References (quick extract):\n- People: {names}  \n- Organizations/Places: {entities}  \n- Numbers & Dates Mentioned (with brief context of why any numbers and dates are provided): {normalize money, dates, durations if present}\n\n\n**For Key Points, Action Items, Decisions, Risks/Concerns, Open Questions: return a single string. If items exist, output them as newline-separated lines (no bullets/numbers). If none, return the exact string “None identified in the transcript”.**\n\n---\n\n*** HERE IS THE TRANSCRIPT: ***\n\n{{ JSON.stringify($json.transcript_merged) }}",
-					batching: {},
-					messages: {
-						messageValues: [
-							{
-								message:
-									'You are an expert meeting analyst. Produce a concise, executive-quality report from the transcript. Be precise, non-fluffy, and focus on important takeaways and outcomes from the meeting.',
-							},
-						],
-					},
-					promptType: 'define',
-					hasOutputParser: true,
-				},
-				subnodes: {
-					model: languageModel({
-						type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-						version: 1,
-						config: {
-							parameters: { options: {}, modelName: 'models/gemini-2.5-pro' },
-							credentials: {
-								googlePalmApi: { id: 'credential-id', name: 'googlePalmApi Credential' },
-							},
-							name: 'Google Gemini Chat Model',
-						},
-					}),
-					outputParser: outputParser({
-						type: '@n8n/n8n-nodes-langchain.outputParserStructured',
-						version: 1.3,
-						config: {
-							parameters: {
-								jsonSchemaExample:
-									'{\n  "Meeting Title": "Test call",\n  "Recording URL": "https://fathom.video/share/745cvtcxSXKb7YyfDMiyzMChZ3AsoGad",\n  "Scheduled Date/Time": "30-01-2025, 12:15 to 12:30",\n  "Recording Date/Time": "30-01-2025, 12:16 to 12:16",\n  "Attendees": "John Doe <user@example.com> (Attendee)",\n  "Executive Summary": "Single-speaker intro explaining that Fathom auto-records meetings, captures key moments and action items, and allows manual highlights. No concrete decisions or actions were stated.",\n  "Key Points": "Fathom auto-records and captures important moments and action items.\\nPost-meeting summaries are delivered quickly.\\nManual highlight button available for special moments.",\n  "Action Items": "Send John 2-3 specific YouTube video links.\\nGet automation engineer to review Sheets integration Mon-Tue.",\n  "Decisions": "Emmily to update feature on the contact page.\\nJohn will speak to Jess about product development roadmap.",\n  "Risks/Concerns": "John mentioned development pace is slow in January meaning a late release date is likely.",\n  "Open Questions": "What\'s the status of the Hubspot implementation?\\nNone identified in the transcript.",\n  "Entities — People": "Emmily Bowman; John Doe",\n  "Entities — Orgs/Places": "Fathom",\n  "Entities — Numbers/Dates": "30 seconds"\n}\n',
-							},
-							name: 'Structured Output Parser',
-						},
-					}),
-				},
-				position: [96, -144],
-				name: 'AI Meeting Analysis',
-			},
-		}),
+		),
 	)
 	.then(
 		node({
@@ -297,8 +296,7 @@ const wf = workflow('AJch0Bi1L5u67nRO', 'Fathom Meeting Summary & Actions AI Age
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.googleDrive',
 			version: 3,
@@ -323,8 +321,7 @@ const wf = workflow('AJch0Bi1L5u67nRO', 'Fathom Meeting Summary & Actions AI Age
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,

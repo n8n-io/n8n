@@ -68,41 +68,81 @@ describe('Workflow Builder', () => {
 		});
 	});
 
-	describe('.output()', () => {
-		it('should select output branch by index', () => {
-			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+	describe('NodeInstance.onError()', () => {
+		it('should connect error output to handler for regular nodes', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueErrorOutput' },
+			});
+			const successHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Success' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Handler' },
+			});
+
+			// Use node.then() and node.onError() to set up connections
+			httpNode.then(successHandler); // Output 0 -> success
+			httpNode.onError(errorHandler); // Error output -> error handler
+
+			const wf = workflow('test-id', 'Test Workflow')
+				.add(httpNode)
+				.add(successHandler)
+				.add(errorHandler);
+
+			const json = wf.toJSON();
+			expect(json.nodes).toHaveLength(3);
+
+			// Check HTTP node has two outputs: main (0) and error (1)
+			expect(json.connections['HTTP'].main[0]).toHaveLength(1);
+			expect(json.connections['HTTP'].main[0][0].node).toBe('Success');
+			expect(json.connections['HTTP'].main[1]).toHaveLength(1);
+			expect(json.connections['HTTP'].main[1][0].node).toBe('Error Handler');
+		});
+
+		it('should calculate correct error output index for IF nodes', () => {
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
 				version: 2,
-				config: { parameters: { conditions: { boolean: [{ value1: true }] } } },
+				config: { name: 'IF', onError: 'continueErrorOutput' },
 			});
 			const trueHandler = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
-				config: { name: 'True Branch' },
+				config: { name: 'True' },
 			});
 			const falseHandler = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
-				config: { name: 'False Branch' },
+				config: { name: 'False' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error' },
 			});
 
-			const wf = workflow('test-id', 'Test Workflow')
-				.add(t)
-				.then(ifNode)
-				.output(0)
-				.then(trueHandler)
-				.output(1)
-				.then(falseHandler);
+			// IF: true=0, false=1, error=2
+			ifNode.then(trueHandler, 0);
+			ifNode.then(falseHandler, 1);
+			ifNode.onError(errorHandler);
+
+			const wf = workflow('test-id', 'Test')
+				.add(ifNode)
+				.add(trueHandler)
+				.add(falseHandler)
+				.add(errorHandler);
 
 			const json = wf.toJSON();
-			expect(json.nodes).toHaveLength(4);
 
-			// Check if node has two output branches
-			expect(json.connections[ifNode.name].main[0]).toHaveLength(1);
-			expect(json.connections[ifNode.name].main[0][0].node).toBe('True Branch');
-			expect(json.connections[ifNode.name].main[1]).toHaveLength(1);
-			expect(json.connections[ifNode.name].main[1][0].node).toBe('False Branch');
+			expect(json.connections['IF'].main[0][0].node).toBe('True');
+			expect(json.connections['IF'].main[1][0].node).toBe('False');
+			expect(json.connections['IF'].main[2][0].node).toBe('Error');
 		});
 	});
 

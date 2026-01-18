@@ -29,8 +29,7 @@ const wf = workflow('I7d4x1yTzFgp0Eib', 'Smart Inventory Replenishment & Auto-Pu
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.httpRequest',
 			version: 4.2,
@@ -50,8 +49,7 @@ const wf = workflow('I7d4x1yTzFgp0Eib', 'Smart Inventory Replenishment & Auto-Pu
 			},
 		}),
 	)
-	.output(0)
-	.then(
+	.add(
 		node({
 			type: 'n8n-nodes-base.code',
 			version: 2,
