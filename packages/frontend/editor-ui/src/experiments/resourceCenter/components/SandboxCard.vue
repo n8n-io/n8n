@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import type { QuickStartWorkflow } from '../data/quickStartWorkflows';
+import WorkflowPreviewSvg from './WorkflowPreviewSvg.vue';
 
 const props = defineProps<{
 	workflow: QuickStartWorkflow;
@@ -32,7 +33,7 @@ const handleClick = () => {
 				:alt="workflow.name"
 				:class="$style.image"
 			/>
-			<div v-else :class="$style.imagePlaceholder" />
+			<WorkflowPreviewSvg v-else :class="$style.workflowPreview" />
 		</div>
 		<div :class="$style.content">
 			<div :class="$style.titleRow">
@@ -88,14 +89,10 @@ const handleClick = () => {
 	object-fit: cover;
 }
 
-.imagePlaceholder {
+.workflowPreview {
 	width: 100%;
 	height: 100%;
-	background: linear-gradient(
-		135deg,
-		var(--color--foreground--tint-2) 0%,
-		var(--color--foreground--tint-1) 100%
-	);
+	pointer-events: none;
 }
 
 .content {

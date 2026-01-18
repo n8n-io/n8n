@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
@@ -7,8 +7,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
-import { requestRender, markRenderComplete, cancelRender } from '../utils/previewQueue';
+import WorkflowPreviewSvg from './WorkflowPreviewSvg.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -28,49 +27,6 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const { getTemplateRoute, trackTileClick } = useResourceCenterStore();
 const router = useRouter();
-
-// Lazy loading and queue state
-const cardRef = ref<HTMLElement | null>(null);
-const isVisible = ref(false);
-const canRender = ref(false);
-let observer: IntersectionObserver | null = null;
-
-// Generate a unique ID for this card's preview
-const previewId = computed(() => `template-preview-${props.template.id}`);
-
-onMounted(() => {
-	if (cardRef.value) {
-		observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0].isIntersecting) {
-					isVisible.value = true;
-					// Request a render slot from the queue
-					requestRender(previewId.value, () => {
-						canRender.value = true;
-					});
-					// Stop observing once visible
-					observer?.disconnect();
-				}
-			},
-			{
-				rootMargin: '100px', // Start loading slightly before visible
-				threshold: 0,
-			},
-		);
-		observer.observe(cardRef.value);
-	}
-});
-
-onBeforeUnmount(() => {
-	observer?.disconnect();
-	// Cancel any pending render request
-	cancelRender(previewId.value);
-});
-
-// Called when WorkflowPreview finishes loading
-const onPreviewReady = () => {
-	markRenderComplete(previewId.value);
-};
 
 const templateNodes = computed(() => {
 	if (!props.template?.nodes) return [];
@@ -106,21 +62,9 @@ const handleClick = async () => {
 </script>
 
 <template>
-	<div ref="cardRef" :class="$style.card" @click="handleClick">
+	<div :class="$style.card" @click="handleClick">
 		<div :class="$style.imageContainer">
-			<!-- Only render WorkflowPreview when queue allows (canRender) -->
-			<WorkflowPreview
-				v-if="template.workflow && canRender"
-				:workflow="template.workflow"
-				:can-open-n-d-v="false"
-				:hide-node-issues="true"
-				:focus-on-load="false"
-				hide-controls
-				loader-type="spinner"
-				:class="$style.workflowPreview"
-				@ready="onPreviewReady"
-			/>
-			<div v-else :class="$style.imagePlaceholder" />
+			<WorkflowPreviewSvg :class="$style.workflowPreview" />
 			<div v-if="templateNodes.length > 0" :class="$style.nodesBadge">
 				<div v-for="nodeType in templateNodes" :key="nodeType!.name" :class="$style.nodeIcon">
 					<NodeIcon :size="20" :stroke-width="1.5" :node-type="nodeType" />
@@ -177,25 +121,10 @@ const handleClick = async () => {
 	transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.imagePlaceholder {
-	width: 100%;
-	height: 100%;
-	background: linear-gradient(
-		135deg,
-		var(--color--foreground--tint-2) 0%,
-		var(--color--foreground--tint-1) 100%
-	);
-}
-
 .workflowPreview {
 	width: 100%;
 	height: 100%;
 	pointer-events: none;
-
-	:deep(iframe) {
-		border: none;
-		border-radius: var(--radius--lg);
-	}
 }
 
 .nodesBadge {
