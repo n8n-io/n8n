@@ -7,6 +7,7 @@ export class ChatHubModule implements ModuleInterface {
 	async init() {
 		await import('./chat-hub.controller');
 		await import('./chat-hub.settings.controller');
+		await import('./chat-hub-extractor');
 	}
 
 	async settings() {
