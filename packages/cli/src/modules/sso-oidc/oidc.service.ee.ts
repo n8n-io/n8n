@@ -219,7 +219,23 @@ export class OidcService {
 				expectedNonce,
 			});
 		} catch (error) {
-			this.logger.error('Failed to exchange authorization code for tokens', { error });
+			// Log detailed error information for debugging Azure AD/OIDC issues
+			const errorDetails: Record<string, unknown> = {
+				name: error instanceof Error ? error.name : 'Unknown',
+				message: error instanceof Error ? error.message : String(error),
+			};
+			if (error instanceof Error && 'cause' in error) {
+				// Serialize the cause object properly for logging
+				const cause = error.cause;
+				if (typeof cause === 'object' && cause !== null) {
+					errorDetails.cause = JSON.stringify(cause, null, 2);
+				} else {
+					errorDetails.cause = String(cause);
+				}
+			}
+			this.logger.error('Failed to exchange authorization code for tokens', {
+				error: errorDetails,
+			});
 			throw new BadRequestError('Invalid authorization code');
 		}
 
@@ -239,8 +255,28 @@ export class OidcService {
 		try {
 			userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
 		} catch (error) {
-			this.logger.error('Failed to fetch user info', { error });
-			throw new BadRequestError('Invalid token');
+			// Userinfo endpoint may fail when using custom API scopes (e.g., Azure AD with custom scopes)
+			// In this case, fall back to using ID token claims which already contain user info
+			this.logger.debug('Userinfo endpoint failed, falling back to ID token claims', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+			// Use claims from ID token as userInfo fallback
+			// Azure AD and other providers include email, name, etc. in the ID token
+			if (claims.email) {
+				userInfo = {
+					sub: claims.sub,
+					email: claims.email as string,
+					name: (claims.name as string) ?? undefined,
+					given_name: (claims.given_name as string) ?? undefined,
+					family_name: (claims.family_name as string) ?? undefined,
+					preferred_username: (claims.preferred_username as string) ?? undefined,
+				};
+				this.logger.debug('Using ID token claims as user info', { email: userInfo.email });
+			} else {
+				this.logger.error('Failed to fetch user info and no email in ID token claims', { error });
+				throw new BadRequestError('Invalid token - could not retrieve user info');
+			}
 		}
 
 		if (!userInfo.email) {
@@ -507,8 +543,11 @@ export class OidcService {
 	/**
 	 * Creates a proxy-aware fetch function that respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
 	 * Returns undefined if no proxy is configured.
+	 * The function is typed to match openid-client's CustomFetch signature.
 	 */
-	private createProxyAwareFetch(): typeof fetch | undefined {
+	private createProxyAwareFetch():
+		| ((url: string, options: unknown) => Promise<Response>)
+		| undefined {
 		const hasProxyConfig =
 			process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY;
 
@@ -527,9 +566,10 @@ export class OidcService {
 		const proxyAgent = new EnvHttpProxyAgent();
 
 		// Return a fetch function that uses the proxy agent
-		return async (url: string | URL | Request, options?: RequestInit) => {
+		// openid-client passes CustomFetchOptions which is compatible with RequestInit
+		return async (url: string, options: unknown) => {
 			return await fetch(url, {
-				...options,
+				...(options as RequestInit),
 				// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
 				dispatcher: proxyAgent,
 			});
@@ -547,24 +587,30 @@ export class OidcService {
 	): Promise<client.Configuration> {
 		const proxyFetch = this.createProxyAwareFetch();
 
-		// Pass customFetch to discovery so the initial metadata fetch also uses the proxy
-		// This fixes the issue where discovery requests failed behind corporate proxies
-		const discoveryOptions: Record<symbol, unknown> = {};
-		if (proxyFetch) {
-			discoveryOptions[client.customFetch] = proxyFetch;
-		}
+		// Build discovery options with customFetch if proxy is configured
+		// Note: discovery() signature is (server, clientId, metadata, clientAuth, options)
+		// We pass clientSecret as metadata (string form), undefined for clientAuth (uses default),
+		// and the customFetch in options
+		// We use type assertion because our fetch wrapper is compatible at runtime but TypeScript
+		// has strict type checking between CustomFetchOptions and RequestInit
+		type DiscoveryOptions = Parameters<typeof client.discovery>[4];
+		const discoveryOptions: DiscoveryOptions = proxyFetch
+			? ({ [client.customFetch]: proxyFetch } as DiscoveryOptions)
+			: undefined;
 
 		const configuration = await client.discovery(
 			discoveryUrl,
 			clientId,
-			clientSecret,
+			clientSecret, // This is passed as metadata (string form = client_secret)
+			undefined, // Use default client authentication
 			discoveryOptions,
 		);
 
 		// Also set customFetch on the returned configuration for subsequent requests
 		// (token exchange, userinfo, etc.)
 		if (proxyFetch) {
-			configuration[client.customFetch] = proxyFetch;
+			// Type assertion needed due to CustomFetchOptions vs RequestInit incompatibility
+			(configuration as unknown as Record<symbol, unknown>)[client.customFetch] = proxyFetch;
 		}
 
 		return configuration;
