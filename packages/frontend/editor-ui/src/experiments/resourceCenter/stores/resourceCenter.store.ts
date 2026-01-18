@@ -66,34 +66,25 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	}
 
 	// Telemetry tracking
-	function trackTemplateClick(templateId: number) {
-		telemetry.track('User clicked resource center template', {
-			templateId,
-			source: 'resource_center',
-		});
+	function trackResourceCenterView() {
+		telemetry.track('User visited resource center');
 	}
 
-	function trackVideoClick(videoId: string, videoTitle: string) {
-		telemetry.track('User clicked resource center video', {
-			videoId,
-			videoTitle,
-			source: 'resource_center',
-		});
+	function trackSectionView(section: string) {
+		telemetry.track('User visited resource center section', { section });
 	}
 
-	function trackQuickStartImport(quickStartId: string, workflowName: string) {
-		telemetry.track('User clicked resource center quick start', {
-			quickStartId,
-			workflowName,
-			source: 'resource_center',
-		});
+	function trackTileClick(section: string, type: string, id: string | number) {
+		telemetry.track('User clicked on resource center tile', { section, type, id });
+	}
+
+	function trackTemplateRepoVisit() {
+		telemetry.track('User visited template repo', { source: 'resource_center' });
 	}
 
 	async function createAndOpenQuickStartWorkflow(quickStartId: string) {
 		const quickStart = quickStartWorkflows.find((w) => w.id === quickStartId);
 		if (!quickStart) return;
-
-		trackQuickStartImport(quickStartId, quickStart.name);
 
 		// Claim OpenAI credits if user can (same logic as readyToRun)
 		if (readyToRunStore.userCanClaimOpenAiCredits) {
@@ -129,27 +120,6 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 		});
 	}
 
-	function trackCourseClick(courseId: string, courseTitle: string) {
-		telemetry.track('User clicked resource center course', {
-			courseId,
-			courseTitle,
-			source: 'resource_center',
-		});
-	}
-
-	function trackSectionSeeMore(sectionKey: string) {
-		telemetry.track('User clicked resource center see more', {
-			section: sectionKey,
-			source: 'resource_center',
-		});
-	}
-
-	function trackResourceCenterView() {
-		telemetry.track('User viewed resource center', {
-			source: 'resource_center',
-		});
-	}
-
 	// Track experiment participation
 	const trackExperimentParticipation = () => {
 		const variant = posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
@@ -181,10 +151,9 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 		loadTemplates,
 		getTemplateRoute,
 		createAndOpenQuickStartWorkflow,
-		trackTemplateClick,
-		trackVideoClick,
-		trackCourseClick,
-		trackSectionSeeMore,
 		trackResourceCenterView,
+		trackSectionView,
+		trackTileClick,
+		trackTemplateRepoVisit,
 	};
 });

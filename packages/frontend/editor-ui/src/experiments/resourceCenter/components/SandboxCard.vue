@@ -57,7 +57,7 @@ const handleClick = () => {
 
 <style lang="scss" module>
 .card {
-	flex: 1 1 0;
+	flex: 0 0 calc((100% - 2 * var(--spacing--sm)) / 3);
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
@@ -74,7 +74,7 @@ const handleClick = () => {
 
 .imageContainer {
 	width: 100%;
-	height: 140px;
+	aspect-ratio: 16 / 9;
 	overflow: hidden;
 	background-color: var(--color--foreground--tint-2);
 	border-radius: var(--radius--lg);

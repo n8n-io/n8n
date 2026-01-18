@@ -32,16 +32,16 @@ const isLoadingTemplates = ref(false);
 const isLoadingLearnTemplates = ref(false);
 
 const handleQuickStartImport = async (quickStartId: string) => {
+	resourceCenterStore.trackTileClick('quick-start', 'ready-to-run', quickStartId);
 	await resourceCenterStore.createAndOpenQuickStartWorkflow(quickStartId);
 };
 
 const handleSeeMore = async (sectionKey: string) => {
-	resourceCenterStore.trackSectionSeeMore(sectionKey);
 	await router.push({ name: VIEWS.RESOURCE_CENTER_SECTION, params: { sectionId: sectionKey } });
 };
 
 const handleViewAllTemplates = () => {
-	resourceCenterStore.trackSectionSeeMore('all-templates');
+	resourceCenterStore.trackTemplateRepoVisit();
 	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
 };
 
@@ -131,6 +131,7 @@ onMounted(() => {
 								v-for="template in templates.slice(0, 3)"
 								:key="template.id"
 								:template="template"
+								section="inspiration"
 							/>
 						</template>
 					</HorizontalGallery>
@@ -147,6 +148,7 @@ onMounted(() => {
 							:key="video.videoId"
 							:video="video"
 							icon-type="youtube"
+							section="inspiration"
 						/>
 					</HorizontalGallery>
 				</div>
@@ -170,6 +172,7 @@ onMounted(() => {
 							:key="video.videoId"
 							:video="video"
 							icon-type="youtube"
+							section="learn"
 						/>
 					</HorizontalGallery>
 
@@ -185,6 +188,7 @@ onMounted(() => {
 							:key="video.videoId"
 							:video="video"
 							icon-type="youtube"
+							section="learn"
 						/>
 					</HorizontalGallery>
 
@@ -204,6 +208,7 @@ onMounted(() => {
 								v-for="template in learnTemplates.slice(0, 3)"
 								:key="template.id"
 								:template="template"
+								section="learn"
 							/>
 						</template>
 					</HorizontalGallery>

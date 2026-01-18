@@ -8,18 +8,21 @@ const props = withDefaults(
 	defineProps<{
 		video: YouTubeVideo;
 		iconType?: 'youtube' | 'lightbulb';
+		section?: 'inspiration' | 'learn';
 	}>(),
 	{
 		iconType: 'youtube',
+		section: 'inspiration',
 	},
 );
 
 const i18n = useI18n();
-const { trackVideoClick } = useResourceCenterStore();
+const { trackTileClick } = useResourceCenterStore();
 
 const openVideo = () => {
-	trackVideoClick(props.video.videoId, props.video.title);
-	window.open(`https://www.youtube.com/watch?v=${props.video.videoId}`, '_blank');
+	const videoUrl = `https://www.youtube.com/watch?v=${props.video.videoId}`;
+	trackTileClick(props.section, 'video', videoUrl);
+	window.open(videoUrl, '_blank');
 };
 </script>
 

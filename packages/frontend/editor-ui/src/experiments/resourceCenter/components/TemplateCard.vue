@@ -15,16 +15,18 @@ const props = withDefaults(
 		template: ITemplatesWorkflowFull;
 		noSetup?: boolean;
 		onClickOverride?: () => void;
+		section?: 'inspiration' | 'learn';
 	}>(),
 	{
 		noSetup: false,
 		onClickOverride: undefined,
+		section: 'inspiration',
 	},
 );
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
-const { getTemplateRoute, trackTemplateClick } = useResourceCenterStore();
+const { getTemplateRoute, trackTileClick } = useResourceCenterStore();
 const router = useRouter();
 
 // Lazy loading and queue state
@@ -97,7 +99,7 @@ const handleClick = async () => {
 	if (props.onClickOverride) {
 		props.onClickOverride();
 	} else {
-		trackTemplateClick(props.template.id);
+		trackTileClick(props.section, 'template', props.template.id);
 		await router.push(getTemplateRoute(props.template.id));
 	}
 };

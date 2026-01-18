@@ -112,8 +112,16 @@ const goBack = async () => {
 };
 
 const handleViewAllTemplates = () => {
-	resourceCenterStore.trackSectionSeeMore('all-templates');
+	resourceCenterStore.trackTemplateRepoVisit();
 	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
+};
+
+// Map section keys to tracking section values
+const getSectionForTracking = (key: string): 'inspiration' | 'learn' => {
+	if (key === 'templates' || key === 'inspiration-videos') {
+		return 'inspiration';
+	}
+	return 'learn';
 };
 
 onMounted(() => {
@@ -124,6 +132,7 @@ onMounted(() => {
 		contentWrapper?.scrollTo({ top: 0, behavior: 'auto' });
 	}, 50);
 
+	resourceCenterStore.trackSectionView(sectionConfig.value.title);
 	void loadTemplates();
 });
 </script>
@@ -156,7 +165,12 @@ onMounted(() => {
 			<!-- Items Grid -->
 			<div :class="$style.grid">
 				<template v-if="sectionConfig.type === 'video'">
-					<VideoThumbCard v-for="item in videoItems" :key="item.videoId" :video="item" />
+					<VideoThumbCard
+						v-for="item in videoItems"
+						:key="item.videoId"
+						:video="item"
+						:section="getSectionForTracking(sectionKey)"
+					/>
 				</template>
 				<template v-else>
 					<template v-if="isLoadingTemplates">
@@ -169,6 +183,7 @@ onMounted(() => {
 							v-for="template in sortedTemplates"
 							:key="template.id"
 							:template="template"
+							:section="getSectionForTracking(sectionKey)"
 						/>
 					</template>
 				</template>

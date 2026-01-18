@@ -4,15 +4,21 @@ import { N8nIcon } from '@n8n/design-system';
 import type { Course } from '../data/resourceCenterData';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
 
-const props = defineProps<{
-	course: Course;
-}>();
+const props = withDefaults(
+	defineProps<{
+		course: Course;
+		section?: 'inspiration' | 'learn';
+	}>(),
+	{
+		section: 'learn',
+	},
+);
 
 const i18n = useI18n();
-const { trackCourseClick } = useResourceCenterStore();
+const { trackTileClick } = useResourceCenterStore();
 
 const openCourse = () => {
-	trackCourseClick(props.course.id, props.course.title);
+	trackTileClick(props.section, 'video', props.course.url);
 	window.open(props.course.url, '_blank');
 };
 </script>
