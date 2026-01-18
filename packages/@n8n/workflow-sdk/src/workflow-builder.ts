@@ -4,6 +4,7 @@ import type {
 	IDataObject,
 	INodeParameters,
 	INodeCredentials,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import type {
 	WorkflowBuilder,
@@ -277,13 +278,15 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 					// Get max output index to ensure array is properly sized
 					const maxOutput = Math.max(...outputMap.keys());
-					const outputArray: Array<Array<{ node: string; type: string; index: number }>> = [];
+					const outputArray: Array<
+						Array<{ node: string; type: NodeConnectionType; index: number }>
+					> = [];
 
 					for (let i = 0; i <= maxOutput; i++) {
 						const targets = outputMap.get(i) || [];
 						outputArray[i] = targets.map((target) => ({
 							node: target.node,
-							type: target.type,
+							type: target.type as NodeConnectionType,
 							index: target.index,
 						}));
 					}

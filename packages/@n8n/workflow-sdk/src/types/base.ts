@@ -1,4 +1,4 @@
-import type { IDataObject, INode, IConnections, NodeConnectionType } from 'n8n-workflow';
+import type { IDataObject, INode, IConnections } from 'n8n-workflow';
 
 /**
  * Workflow settings configuration
@@ -270,7 +270,7 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 /**
  * Chain after .done() for finalization
  */
-export interface SplitInBatchesDoneChain<TOutput> {
+export interface SplitInBatchesDoneChain<_TOutput> {
 	then<N extends NodeInstance<string, string, unknown>>(
 		node: N,
 	): SplitInBatchesDoneChain<N extends NodeInstance<string, string, infer O> ? O : unknown>;

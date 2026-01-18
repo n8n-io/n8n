@@ -22,7 +22,7 @@ export function isExpression(value: unknown): boolean {
  */
 function createExpressionProxy(path: string[] = []): unknown {
 	const handler: ProxyHandler<object> = {
-		get(target, prop) {
+		get(_target, prop) {
 			if (prop === Symbol.toPrimitive || prop === 'valueOf' || prop === 'toString') {
 				return () => buildPath(path);
 			}
@@ -34,7 +34,7 @@ function createExpressionProxy(path: string[] = []): unknown {
 			}
 			return createExpressionProxy([...path, String(prop)]);
 		},
-		apply(target, thisArg, args) {
+		apply(_target, _thisArg, args) {
 			// Handle function calls like $('NodeName') or input.first()
 			const lastPart = path[path.length - 1];
 			const parentPath = path.slice(0, -1);

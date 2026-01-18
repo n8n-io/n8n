@@ -95,7 +95,7 @@ function findDisconnectedNodes(json: WorkflowJSON): string[] {
 	const hasIncoming = new Set<string>();
 
 	// Find all nodes that have incoming connections
-	for (const [sourceName, nodeConnections] of Object.entries(json.connections)) {
+	for (const [_sourceName, nodeConnections] of Object.entries(json.connections)) {
 		if (nodeConnections.main) {
 			for (const outputs of nodeConnections.main) {
 				if (outputs) {

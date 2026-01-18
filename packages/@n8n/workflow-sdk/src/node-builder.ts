@@ -35,15 +35,6 @@ function generateNodeName(type: string): string {
 }
 
 /**
- * Parse version string to number
- * @example 'v4.2' -> 4.2, 'v1' -> 1
- */
-function parseVersion(version: string): number {
-	const match = version.match(/v?(\d+(?:\.\d+)?)/);
-	return match ? parseFloat(match[1]) : 1;
-}
-
-/**
  * Internal node instance implementation
  */
 class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = unknown>
