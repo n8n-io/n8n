@@ -266,11 +266,12 @@ export class OidcService {
 			if (claims.email) {
 				userInfo = {
 					sub: claims.sub,
-					email: claims.email as string,
-					name: (claims.name as string) ?? undefined,
-					given_name: (claims.given_name as string) ?? undefined,
-					family_name: (claims.family_name as string) ?? undefined,
-					preferred_username: (claims.preferred_username as string) ?? undefined,
+					email: typeof claims.email === 'string' ? claims.email : undefined,
+					name: typeof claims.name === 'string' ? claims.name : undefined,
+					given_name: typeof claims.given_name === 'string' ? claims.given_name : undefined,
+					family_name: typeof claims.family_name === 'string' ? claims.family_name : undefined,
+					preferred_username:
+						typeof claims.preferred_username === 'string' ? claims.preferred_username : undefined,
 				};
 				this.logger.debug('Using ID token claims as user info', { email: userInfo.email });
 			} else {
