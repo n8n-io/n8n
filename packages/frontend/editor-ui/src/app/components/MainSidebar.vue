@@ -37,6 +37,7 @@ import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.
 import MainSidebarTrialUpgrade from '@/app/components/MainSidebarTrialUpgrade.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
+import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 
 const cloudPlanStore = useCloudPlanStore();
@@ -304,6 +305,10 @@ function openCommandBar(event: MouseEvent) {
 
 const handleSelect = (key: string) => {
 	switch (key) {
+		case 'resource-center': {
+			resourceCenterStore.markResourceCenterTooltipDismissed();
+			break;
+		}
 		case 'templates':
 			if (templatesDataQualityStore.isFeatureEnabled()) {
 				uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
@@ -418,6 +423,7 @@ useKeybindings({
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 		<MainSidebarTrialUpgrade />
 		<TemplateTooltip />
+		<ResourceCenterTooltip />
 	</N8nResizeWrapper>
 </template>
 

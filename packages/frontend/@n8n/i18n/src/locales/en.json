@@ -998,6 +998,8 @@
 	"experiments.resourceCenter.course.lessons": "{count} lessons",
 	"experiments.resourceCenter.video.level": "Level: {level}",
 	"experiments.resourceCenter.template.setupTime": "{minutes} minute set up",
+	"experiments.resourceCenter.tooltip.getInspired": "Get inspired",
+	"experiments.resourceCenter.tooltip.learnHere": "Learn here",
 	"experiments.templatesDataQuality.modalTitle": "Featured templates",
 	"error": "Error",
 	"error.goBack": "Go back",

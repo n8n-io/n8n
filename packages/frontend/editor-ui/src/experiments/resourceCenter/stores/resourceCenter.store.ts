@@ -7,12 +7,13 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { OPEN_AI_API_CREDENTIAL_TYPE, deepCopy } from 'n8n-workflow';
 import { quickStartWorkflows } from '../data/quickStartWorkflows';
 
 const LOCAL_STORAGE_CREDENTIAL_KEY = 'N8N_READY_TO_RUN_OPENAI_CREDENTIAL_ID';
+const TOOLTIP_STORAGE_KEY = 'n8n-resourceCenter-tooltipDismissed';
 
 export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	const posthogStore = usePostHog();
@@ -23,6 +24,7 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	const router = useRouter();
 
 	const isLoadingTemplates = ref(false);
+	const hasTooltipBeenDismissed = ref(localStorage.getItem(TOOLTIP_STORAGE_KEY) === 'true');
 
 	const isFeatureEnabled = () => {
 		const variant = posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
@@ -35,6 +37,23 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	const getCurrentVariant = () => {
 		return posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
 	};
+
+	const shouldShowResourceCenterTooltip = computed(() => {
+		return isFeatureEnabled() && !hasTooltipBeenDismissed.value;
+	});
+
+	function markResourceCenterTooltipDismissed() {
+		hasTooltipBeenDismissed.value = true;
+		localStorage.setItem(TOOLTIP_STORAGE_KEY, 'true');
+	}
+
+	function trackResourceCenterTooltipView() {
+		telemetry.track('User viewed resource center tooltip');
+	}
+
+	function trackResourceCenterTooltipDismiss() {
+		telemetry.track('User dismissed resource center tooltip');
+	}
 
 	async function fetchTemplateById(templateId: number): Promise<ITemplatesWorkflowFull | null> {
 		try {
@@ -147,11 +166,15 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 		isFeatureEnabled,
 		getCurrentVariant,
 		isLoadingTemplates,
+		shouldShowResourceCenterTooltip,
 		fetchTemplateById,
 		loadTemplates,
 		getTemplateRoute,
 		createAndOpenQuickStartWorkflow,
+		markResourceCenterTooltipDismissed,
 		trackResourceCenterView,
+		trackResourceCenterTooltipView,
+		trackResourceCenterTooltipDismiss,
 		trackSectionView,
 		trackTileClick,
 		trackTemplateRepoVisit,
