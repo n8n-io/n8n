@@ -31,6 +31,7 @@ import {
   node,
   trigger,
   sticky,
+  splitInBatches,
   placeholder,
   runOnceForAllItems,
   runOnceForEachItem
@@ -148,6 +149,114 @@ const wf = workflow('My Workflow')
 ```
 
 Sticky notes are added to the workflow but don't participate in the node chain.
+
+### `splitInBatches(config, branches)`
+
+Creates a batch processing loop. The Split In Batches node has two outputs:
+- **Output 0 (done):** Fires once when all batches have been processed
+- **Output 1 (each):** Fires for each batch; typically loops back to continue processing
+
+```typescript
+const loop = splitInBatches({
+  batchSize: 1,
+  options: {}
+}, {
+  done: [initFinishedSet],                    // Nodes to run when loop completes
+  each: [startSubWorkflow]                    // Nodes to process each batch (auto-loops back)
+});
+
+wf.add(trigger(...))
+  .then(simulateItems)
+  .then(loop);
+```
+
+**Full example (matching the workflow):**
+
+```typescript
+const initFinishedSet = node('n8n-nodes-base.set', 'v3.4', {
+  parameters: {
+    assignments: {
+      assignments: [{ name: 'finishedSet', type: 'array', value: '[]' }]
+    }
+  },
+  executeOnce: true
+});
+
+const startSubWorkflow = node('n8n-nodes-base.httpRequest', 'v4.2', {
+  parameters: {
+    method: 'POST',
+    url: $ => `${$.env.WEBHOOK_URL}/webhook/parallel-subworkflow-target`,
+    sendHeaders: true,
+    headerParameters: {
+      parameters: [{ name: 'callbackurl', value: $ => $.execution.resumeUrl }]
+    },
+    sendBody: true,
+    bodyParameters: {
+      parameters: [{ name: 'requestItemId', value: $ => $.json.requestId }]
+    }
+  }
+});
+
+const loop = splitInBatches({
+  batchSize: 1,
+  options: {}
+}, {
+  done: [initFinishedSet],
+  each: [startSubWorkflow]   // Automatically connects back to loop
+});
+
+const wf = workflow('loop-123', 'Parallel Processing')
+  .add(trigger('n8n-nodes-base.manualTrigger', 'v1', {}))
+  .then(node('n8n-nodes-base.code', 'v2', {
+    parameters: {
+      jsCode: runOnceForAllItems(() => [
+        { json: { requestId: 'req4567' } },
+        { json: { requestId: 'req8765' } },
+        { json: { requestId: 'req1234' } }
+      ])
+    }
+  }))
+  .then(loop);
+```
+
+**Parameters:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `batchSize` | `number` | No | Items per batch (default: 1) |
+| `options` | `object` | No | Reset behavior, etc. |
+
+**Branch configuration:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `done` | `Node[]` | No | Flow when all batches complete (output 0) |
+| `each` | `Node[]` | Yes | Flow for each batch (output 1), auto-connects back |
+
+**Behavior:**
+- The `each` branch automatically creates a connection back to the splitInBatches node, forming the loop
+- The `done` branch receives all items once processing completes
+- Use `executeOnce: true` on done-branch nodes to initialize once before looping
+
+**Serialization:**
+
+```json
+{
+  "connections": {
+    "Loop Over Items": {
+      "main": [
+        [{ "node": "Initialize finishedSet", "type": "main", "index": 0 }],
+        [{ "node": "Start Sub-Workflow via Webhook", "type": "main", "index": 0 }]
+      ]
+    },
+    "Start Sub-Workflow via Webhook": {
+      "main": [
+        [{ "node": "Loop Over Items", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}
+```
 
 ---
 
