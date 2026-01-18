@@ -490,8 +490,6 @@ node('n8n-nodes-base.code', 'v2', {
 
 Agent nodes use subnodes for model, memory, tools, and output parsing. Output typing is set via an explicit generic on the node call.
 
-**Note:** Unlike other nodes, the structured output parser requires a runtime schema because n8n sends it to the LLM as formatting instructions and validates the response. This is the only place where a schema object is needed in addition to the TypeScript generic.
-
 ### Basic Structure
 
 ```typescript
@@ -512,20 +510,7 @@ node<{ output: { summary: string; confidence: number } }>('n8n-nodes-langchain.a
     outputParser: node('n8n-nodes-langchain.outputParserStructured', 'v1.3', {
       parameters: {
         schemaType: 'manual',
-        jsonSchema: {
-          type: 'object',
-          properties: {
-            output: {
-              type: 'object',
-              properties: {
-                summary: { type: 'string' },
-                confidence: { type: 'number' }
-              },
-              required: ['summary', 'confidence']
-            }
-          },
-          required: ['output']
-        }
+        inputSchema: '{"type":"object","properties":{"output":{"type":"object","properties":{"summary":{"type":"string"},"confidence":{"type":"number"}}}}}'
       }
     })
   },
@@ -542,13 +527,13 @@ node<{ output: { summary: string; confidence: number } }>('n8n-nodes-langchain.a
 | `model` | single node | Yes | Chat model (OpenAI, Anthropic, etc.) |
 | `memory` | single node | No | Conversation memory |
 | `tools` | array of nodes | No | Tools available to agent |
-| `outputParser` | single node | No | Structured output schema |
+| `outputParser` | single node | No | Structured output parser |
 
 ### Structured Output Parser
 
-The `outputParserStructured` node has two modes:
+The `outputParserStructured` node is a regular subnode with its own parameters. The SDK does not infer types from it - the user specifies both the parser's `inputSchema` and the agent's output type separately.
 
-**Manual mode** - JSON Schema (recommended for LLM authorship):
+**Manual mode** - JSON Schema as string:
 
 ```typescript
 node<{ output: { name: string; score: number } }>('n8n-nodes-langchain.agent', 'v3.1', {
@@ -556,27 +541,14 @@ node<{ output: { name: string; score: number } }>('n8n-nodes-langchain.agent', '
     outputParser: node('n8n-nodes-langchain.outputParserStructured', 'v1.3', {
       parameters: {
         schemaType: 'manual',
-        jsonSchema: {
-          type: 'object',
-          properties: {
-            output: {
-              type: 'object',
-              properties: {
-                name: { type: 'string' },
-                score: { type: 'number' }
-              },
-              required: ['name', 'score']
-            }
-          },
-          required: ['output']
-        }
+        inputSchema: '{"type":"object","properties":{"output":{"type":"object","properties":{"name":{"type":"string"},"score":{"type":"number"}}}}}'
       }
     })
   }
 })
 ```
 
-**Example mode** - JSON example string (schema inferred):
+**Example mode** - JSON example string (n8n infers schema):
 
 ```typescript
 node<{ output: { name: string; score: number } }>('n8n-nodes-langchain.agent', 'v3.1', {
@@ -591,12 +563,11 @@ node<{ output: { name: string; score: number } }>('n8n-nodes-langchain.agent', '
 })
 ```
 
-### Output Type Inference
+### Output Type
 
-- Output type is set via explicit generic: `node<OutputType>(...)`
-- Without `outputParser`: output type defaults to `unknown`
-- The full schema including `output` wrapper must be specified (no auto-wrapping)
-- Generic and JSON Schema must match (SDK does not validate this)
+- Agent output type is set via explicit generic: `node<OutputType>(...)`
+- The `outputParser` subnode is independent - user must keep them in sync
+- Without generic: output type defaults to `unknown`
 
 ---
 
