@@ -31,8 +31,7 @@ import {
   node,
   trigger,
   runOnceForAllItems,
-  runOnceForEachItem,
-  z  // re-exported from zod
+  runOnceForEachItem
 } from '@n8n/workflow-sdk';
 ```
 
@@ -93,16 +92,17 @@ const schedule = trigger('n8n-nodes-base.scheduleTrigger', 'v1.1', {
 All node configuration is passed as a single object:
 
 ```typescript
-node(type, version, {
+node<OutputType>(type, version, {
   parameters: { ... },      // Node-specific parameters
   subnodes?: { ... },       // For AI nodes with subnode inputs
   credentials?: { ... },    // Credential references
   position?: [x, y],        // Canvas position
   disabled?: boolean,       // Whether node is disabled
   name?: string,            // Custom node name (auto-generated if omitted)
-  outputSchema?: z.ZodType, // Zod schema for dynamic nodes (HTTP, Code)
 });
 ```
+
+Output typing is provided via the generic parameter `<OutputType>` rather than a schema property. This is simpler for LLM authorship and sufficient since n8n doesn't validate outputs at runtime (except for agent structured output which requires a schema - see below).
 
 ### Parameters
 
@@ -300,22 +300,17 @@ const sendMessage = node('n8n-nodes-base.slack', 'v2.2', {
 // sendMessage output is already typed as { ts: string, channel: string, ... }
 ```
 
-**Dynamic nodes** (HTTP Request, Code) accept user-provided Zod schemas (preferred):
+**Dynamic nodes** (HTTP Request, Code) use the generic parameter for output typing:
 
 ```typescript
-import { z } from '@n8n/workflow-sdk';
+interface User {
+  id: number;
+  email: string;
+  name: string;
+}
 
-const userSchema = z.object({
-  users: z.array(z.object({
-    id: z.number(),
-    email: z.string(),
-    name: z.string()
-  }))
-});
-
-const fetchUsers = node<z.infer<typeof userSchema>>('n8n-nodes-base.httpRequest', 'v4.2', {
-  parameters: { url: 'https://api.example.com/users', method: 'GET' },
-  outputSchema: userSchema
+const fetchUsers = node<{ users: User[] }>('n8n-nodes-base.httpRequest', 'v4.2', {
+  parameters: { url: 'https://api.example.com/users', method: 'GET' }
 });
 
 // Downstream nodes get typed access
@@ -333,6 +328,8 @@ wf.add(trigger(...))
     }
   }));
 ```
+
+No runtime schema is needed for these nodes - n8n doesn't validate their output. The generic is purely for SDK type inference.
 
 **Operation-dependent schemas** vary based on parameters (e.g., Gmail get vs getAll).
 
@@ -493,19 +490,12 @@ node('n8n-nodes-base.code', 'v2', {
 
 Agent nodes use subnodes for model, memory, tools, and output parsing. Output typing is set via an explicit generic on the node call.
 
+**Note:** Unlike other nodes, the structured output parser requires a runtime schema because n8n sends it to the LLM as formatting instructions and validates the response. This is the only place where a schema object is needed in addition to the TypeScript generic.
+
 ### Basic Structure
 
 ```typescript
-import { z } from 'zod';
-
-const outputSchema = z.object({
-  output: z.object({
-    summary: z.string(),
-    confidence: z.number()
-  })
-});
-
-node<z.infer<typeof outputSchema>>('n8n-nodes-langchain.agent', 'v3.1', {
+node<{ output: { summary: string; confidence: number } }>('n8n-nodes-langchain.agent', 'v3.1', {
   parameters: {
     text: '{{ $json.prompt }}'
   },
@@ -522,7 +512,20 @@ node<z.infer<typeof outputSchema>>('n8n-nodes-langchain.agent', 'v3.1', {
     outputParser: node('n8n-nodes-langchain.outputParserStructured', 'v1.3', {
       parameters: {
         schemaType: 'manual',
-        schema: outputSchema
+        jsonSchema: {
+          type: 'object',
+          properties: {
+            output: {
+              type: 'object',
+              properties: {
+                summary: { type: 'string' },
+                confidence: { type: 'number' }
+              },
+              required: ['summary', 'confidence']
+            }
+          },
+          required: ['output']
+        }
       }
     })
   },
@@ -545,26 +548,35 @@ node<z.infer<typeof outputSchema>>('n8n-nodes-langchain.agent', 'v3.1', {
 
 The `outputParserStructured` node has two modes:
 
-**Manual mode** - Zod schema (recommended for type safety):
+**Manual mode** - JSON Schema (recommended for LLM authorship):
 
 ```typescript
-const schema = z.object({
-  output: z.object({ name: z.string(), score: z.number() })
-});
-
-node<z.infer<typeof schema>>('n8n-nodes-langchain.agent', 'v3.1', {
+node<{ output: { name: string; score: number } }>('n8n-nodes-langchain.agent', 'v3.1', {
   subnodes: {
     outputParser: node('n8n-nodes-langchain.outputParserStructured', 'v1.3', {
       parameters: {
         schemaType: 'manual',
-        schema: schema
+        jsonSchema: {
+          type: 'object',
+          properties: {
+            output: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                score: { type: 'number' }
+              },
+              required: ['name', 'score']
+            }
+          },
+          required: ['output']
+        }
       }
     })
   }
 })
 ```
 
-**Example mode** - JSON example string:
+**Example mode** - JSON example string (schema inferred):
 
 ```typescript
 node<{ output: { name: string; score: number } }>('n8n-nodes-langchain.agent', 'v3.1', {
@@ -582,48 +594,9 @@ node<{ output: { name: string; score: number } }>('n8n-nodes-langchain.agent', '
 ### Output Type Inference
 
 - Output type is set via explicit generic: `node<OutputType>(...)`
-- For Zod schemas: use `z.infer<typeof schema>`
 - Without `outputParser`: output type defaults to `unknown`
 - The full schema including `output` wrapper must be specified (no auto-wrapping)
-
-### Serialization
-
-Zod schemas are converted to JSON Schema in the serialized output:
-
-```typescript
-// SDK
-z.object({
-  output: z.object({ name: z.string() })
-})
-
-// Serializes to JSON:
-{
-  "schemaType": "manual",
-  "jsonSchema": {
-    "type": "object",
-    "properties": {
-      "output": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" }
-        },
-        "required": ["name"]
-      }
-    },
-    "required": ["output"]
-  }
-}
-```
-
-### Dependencies
-
-The SDK re-exports Zod for schema definition:
-
-```typescript
-import { z } from '@n8n/workflow-sdk';
-// or
-import { z } from 'zod';  // direct import also works
-```
+- Generic and JSON Schema must match (SDK does not validate this)
 
 ---
 
@@ -789,7 +762,6 @@ packages/
 ### Dependencies
 
 - `@n8n/workflow` - Core interfaces only
-- `zod` - Schema definition for structured output
 - No runtime dependencies on node implementations
 
 ---
