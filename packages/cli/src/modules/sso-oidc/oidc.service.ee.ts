@@ -288,8 +288,10 @@ export class OidcService {
 			return foundUser;
 		}
 
-		return await this.userRepository.manager.transaction(async (trx) => {
-			const { user } = await this.userRepository.createUserWithProject(
+		// Create user in a transaction first, then apply provisioning AFTER the transaction commits
+		// This prevents FK constraint violations when provisionProjectRolesForUser creates project relations
+		const user = await this.userRepository.manager.transaction(async (trx) => {
+			const { user: newUser } = await this.userRepository.createUserWithProject(
 				{
 					firstName: userInfo.given_name,
 					lastName: userInfo.family_name,
@@ -305,14 +307,18 @@ export class OidcService {
 				trx.create(AuthIdentity, {
 					providerId: claims.sub,
 					providerType: 'oidc',
-					userId: user.id,
+					userId: newUser.id,
 				}),
 			);
 
-			await this.applySsoProvisioning(user, claims);
-
-			return user;
+			return newUser;
 		});
+
+		// Apply SSO provisioning AFTER the user is committed to avoid FK constraint violations
+		// provisionProjectRolesForUser uses its own transaction which requires the user to exist first
+		await this.applySsoProvisioning(user, claims);
+
+		return user;
 	}
 
 	private async applySsoProvisioning(user: User, claims: any) {
@@ -499,40 +505,66 @@ export class OidcService {
 		| undefined;
 
 	/**
+	 * Creates a proxy-aware fetch function that respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
+	 * Returns undefined if no proxy is configured.
+	 */
+	private createProxyAwareFetch(): typeof fetch | undefined {
+		const hasProxyConfig =
+			process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY;
+
+		if (!hasProxyConfig) {
+			return undefined;
+		}
+
+		this.logger.debug('Configuring OIDC client with proxy support', {
+			HTTP_PROXY: process.env.HTTP_PROXY,
+			HTTPS_PROXY: process.env.HTTPS_PROXY,
+			NO_PROXY: process.env.NO_PROXY,
+			ALL_PROXY: process.env.ALL_PROXY,
+		});
+
+		// Create a proxy agent that automatically reads from environment variables
+		const proxyAgent = new EnvHttpProxyAgent();
+
+		// Return a fetch function that uses the proxy agent
+		return async (url: string | URL | Request, options?: RequestInit) => {
+			return await fetch(url, {
+				...options,
+				// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
+				dispatcher: proxyAgent,
+			});
+		};
+	}
+
+	/**
 	 * Creates a proxy-aware configuration for openid-client.
-	 * This method configures customFetch to respect HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
+	 * This method ensures the proxy is used for BOTH the discovery request AND subsequent requests.
 	 */
 	private async createProxyAwareConfiguration(
 		discoveryUrl: URL,
 		clientId: string,
 		clientSecret: string,
 	): Promise<client.Configuration> {
-		const configuration = await client.discovery(discoveryUrl, clientId, clientSecret);
+		const proxyFetch = this.createProxyAwareFetch();
 
-		// Check if proxy environment variables are set
-		const hasProxyConfig =
-			process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY;
+		// Pass customFetch to discovery so the initial metadata fetch also uses the proxy
+		// This fixes the issue where discovery requests failed behind corporate proxies
+		const discoveryOptions: Record<symbol, unknown> = {};
+		if (proxyFetch) {
+			discoveryOptions[client.customFetch] = proxyFetch;
+		}
 
-		if (hasProxyConfig) {
-			this.logger.debug('Configuring OIDC client with proxy support', {
-				HTTP_PROXY: process.env.HTTP_PROXY,
-				HTTPS_PROXY: process.env.HTTPS_PROXY,
-				NO_PROXY: process.env.NO_PROXY,
-				ALL_PROXY: process.env.ALL_PROXY,
-			});
+		const configuration = await client.discovery(
+			discoveryUrl,
+			clientId,
+			clientSecret,
+			discoveryOptions,
+		);
 
-			// Create a proxy agent that automatically reads from environment variables
-			const proxyAgent = new EnvHttpProxyAgent();
-
-			// Configure customFetch to use the proxy agent
-			configuration[client.customFetch] = async (...args) => {
-				const [url, options] = args;
-				return await fetch(url, {
-					...options,
-					// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
-					dispatcher: proxyAgent,
-				});
-			};
+		// Also set customFetch on the returned configuration for subsequent requests
+		// (token exchange, userinfo, etc.)
+		if (proxyFetch) {
+			configuration[client.customFetch] = proxyFetch;
 		}
 
 		return configuration;
