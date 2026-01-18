@@ -16,7 +16,7 @@
 
 ## Public API (`src/index.ts`)
 
-- [ ] Export `workflow(id, name, settings?)` function
+- [x] Export `workflow(id, name, settings?)` function
 - [x] Export `node(type, version, config)` function
 - [x] Export `trigger(type, version, config)` function
 - [ ] Export `merge(branches, config)` function
@@ -32,30 +32,30 @@
 
 ### Core Methods
 
-- [ ] `workflow(id, name, settings?)` - creates WorkflowBuilder
-- [ ] `.add(node)` - adds node to workflow
-- [ ] `.then(node)` - chains node after current
+- [x] `workflow(id, name, settings?)` - creates WorkflowBuilder
+- [x] `.add(node)` - adds node to workflow
+- [x] `.then(node)` - chains node after current
 - [ ] `.then(merge)` - accepts MergeComposite (fans out to branches)
-- [ ] `.output(index)` - selects output branch
-- [ ] `.settings(settings)` - updates workflow settings
-- [ ] `.toJSON()` - exports to n8n JSON format
-- [ ] `.toString()` - serializes to JSON string
-- [ ] `workflow.fromJSON(json)` - static import method
-- [ ] `.getNode(name)` - retrieves node by name
-- [ ] `.getNode(name).update(config)` - modifies existing node
+- [x] `.output(index)` - selects output branch
+- [x] `.settings(settings)` - updates workflow settings
+- [x] `.toJSON()` - exports to n8n JSON format
+- [x] `.toString()` - serializes to JSON string
+- [x] `workflow.fromJSON(json)` - static import method
+- [x] `.getNode(name)` - retrieves node by name
+- [x] `.getNode(name).update(config)` - modifies existing node
 
 ### Workflow Settings Support
 
-- [ ] `timezone` setting
-- [ ] `errorWorkflow` setting
-- [ ] `saveDataErrorExecution` setting
-- [ ] `saveDataSuccessExecution` setting
-- [ ] `saveManualExecutions` setting
-- [ ] `saveExecutionProgress` setting
-- [ ] `executionTimeout` setting
-- [ ] `executionOrder` setting ('v0' | 'v1')
-- [ ] `callerPolicy` setting
-- [ ] `callerIds` setting
+- [x] `timezone` setting
+- [x] `errorWorkflow` setting
+- [x] `saveDataErrorExecution` setting
+- [x] `saveDataSuccessExecution` setting
+- [x] `saveManualExecutions` setting
+- [x] `saveExecutionProgress` setting
+- [x] `executionTimeout` setting
+- [x] `executionOrder` setting ('v0' | 'v1')
+- [x] `callerPolicy` setting
+- [x] `callerIds` setting
 
 ---
 

@@ -33,8 +33,8 @@ export type {
 	CodeResult,
 } from './types/base';
 
-// Workflow builder (to be implemented)
-// export { workflow } from './workflow-builder';
+// Workflow builder
+export { workflow } from './workflow-builder';
 
 // Node builders
 export { node, trigger, sticky, placeholder } from './node-builder';
