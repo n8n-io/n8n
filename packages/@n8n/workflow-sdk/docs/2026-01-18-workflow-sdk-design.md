@@ -30,6 +30,7 @@ import {
   workflow,
   node,
   trigger,
+  sticky,
   runOnceForAllItems,
   runOnceForEachItem
 } from '@n8n/workflow-sdk';
@@ -84,6 +85,39 @@ const schedule = trigger('n8n-nodes-base.scheduleTrigger', 'v1.1', {
   }
 });
 ```
+
+### `sticky(content, config?)`
+
+Creates a sticky note for annotating workflows. Sticky notes have no inputs/outputs and don't connect to other nodes.
+
+```typescript
+const note = sticky('## API Integration\nThis section handles the **external API** calls.', {
+  color: 4,
+  position: [80, -176]
+});
+```
+
+**Parameters:**
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `content` | `string` | Yes | Markdown content |
+| `color` | `1-7` | No | Color theme (default: 1) |
+| `position` | `[x, y]` | No | Canvas position |
+| `name` | `string` | No | Custom name |
+
+**Colors:** 1-7 map to n8n's sticky note color palette.
+
+**Adding to workflow:**
+
+```typescript
+const wf = workflow('My Workflow')
+  .add(sticky('## Notes\nWorkflow documentation here.', { color: 2 }))
+  .add(trigger(...))
+  .then(node(...));
+```
+
+Sticky notes are added to the workflow but don't participate in the node chain.
 
 ---
 
