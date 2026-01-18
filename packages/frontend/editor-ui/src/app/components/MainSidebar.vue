@@ -7,6 +7,7 @@ import {
 	ABOUT_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	RESOURCE_CENTER_EXPERIMENT,
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
@@ -85,6 +86,14 @@ const isTemplatesExperimentEnabled = computed(() => {
 
 const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
 
+const resourceCenterLabel = computed(() => {
+	const variant = resourceCenterStore.getCurrentVariant();
+	if (variant === RESOURCE_CENTER_EXPERIMENT.variantInspiration) {
+		return i18n.baseText('experiments.resourceCenter.sidebar.inspiration');
+	}
+	return i18n.baseText('experiments.resourceCenter.sidebar');
+});
+
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
@@ -97,7 +106,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		// Resource Center - replaces Templates when experiment is enabled
 		id: 'resource-center',
 		icon: 'lightbulb',
-		label: i18n.baseText('experiments.resourceCenter.sidebar'),
+		label: resourceCenterLabel.value,
 		position: 'bottom',
 		available: isResourceCenterEnabled.value,
 		route: { to: { name: VIEWS.RESOURCE_CENTER } },

@@ -5,6 +5,7 @@ import { N8nHeading, N8nIcon, N8nSelect, N8nOption, N8nSpinner } from '@n8n/desi
 import { useI18n } from '@n8n/i18n';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { VIEWS } from '@/app/constants';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import ResourceCenterHeader from '../components/ResourceCenterHeader.vue';
 import TemplateCard from '../components/TemplateCard.vue';
 import VideoThumbCard from '../components/VideoThumbCard.vue';
@@ -22,6 +23,7 @@ const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
 const resourceCenterStore = useResourceCenterStore();
+const templatesStore = useTemplatesStore();
 
 const sortBy = ref<'alphabetical' | 'newest'>('alphabetical');
 const templates = ref<ITemplatesWorkflowFull[]>([]);
@@ -32,7 +34,7 @@ const sectionKey = computed(() => route.params.sectionId as string);
 const sectionConfig = computed(() => {
 	const configs: Record<string, { title: string; type: 'video' | 'template' }> = {
 		templates: {
-			title: i18n.baseText('experiments.resourceCenter.templatePreviews.title'),
+			title: i18n.baseText('experiments.resourceCenter.popularTemplates.title'),
 			type: 'template',
 		},
 		courses: {
@@ -109,6 +111,11 @@ const goBack = async () => {
 	await router.push({ name: VIEWS.RESOURCE_CENTER });
 };
 
+const handleViewAllTemplates = () => {
+	resourceCenterStore.trackSectionSeeMore('all-templates');
+	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
+};
+
 onMounted(() => {
 	// Reset scroll
 	setTimeout(() => {
@@ -165,6 +172,14 @@ onMounted(() => {
 						/>
 					</template>
 				</template>
+			</div>
+
+			<!-- View All Templates Link (for templates section only) -->
+			<div v-if="sectionKey === 'templates'" :class="$style.viewAllLink">
+				<a @click="handleViewAllTemplates">
+					{{ i18n.baseText('experiments.resourceCenter.viewAllTemplates') }}
+					<N8nIcon icon="external-link" size="small" />
+				</a>
 			</div>
 		</div>
 	</div>
@@ -246,5 +261,23 @@ onMounted(() => {
 	justify-content: center;
 	padding: var(--spacing--lg);
 	grid-column: 1 / -1;
+}
+
+.viewAllLink {
+	margin-top: var(--spacing--xl);
+	text-align: center;
+
+	a {
+		color: var(--color--primary);
+		cursor: pointer;
+		font-size: var(--font-size--sm);
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing--4xs);
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
 }
 </style>

@@ -3,26 +3,37 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client/api/templates';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { OPEN_AI_API_CREDENTIAL_TYPE, deepCopy } from 'n8n-workflow';
 import { quickStartWorkflows } from '../data/quickStartWorkflows';
+
+const LOCAL_STORAGE_CREDENTIAL_KEY = 'N8N_READY_TO_RUN_OPENAI_CREDENTIAL_ID';
 
 export const useResourceCenterStore = defineStore('resourceCenter', () => {
 	const posthogStore = usePostHog();
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
+	const readyToRunStore = useReadyToRunStore();
 	const telemetry = useTelemetry();
 	const router = useRouter();
 
 	const isLoadingTemplates = ref(false);
 
 	const isFeatureEnabled = () => {
+		const variant = posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
 		return (
-			posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name) ===
-			RESOURCE_CENTER_EXPERIMENT.variant
+			variant === RESOURCE_CENTER_EXPERIMENT.variantResources ||
+			variant === RESOURCE_CENTER_EXPERIMENT.variantInspiration
 		);
+	};
+
+	const getCurrentVariant = () => {
+		return posthogStore.getVariant(RESOURCE_CENTER_EXPERIMENT.name);
 	};
 
 	async function fetchTemplateById(templateId: number): Promise<ITemplatesWorkflowFull | null> {
@@ -84,10 +95,33 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 
 		trackQuickStartImport(quickStartId, quickStart.name);
 
-		const createdWorkflow = await workflowsStore.createNewWorkflow({
+		// Claim OpenAI credits if user can (same logic as readyToRun)
+		if (readyToRunStore.userCanClaimOpenAiCredits) {
+			await readyToRunStore.claimFreeAiCredits();
+		}
+
+		// Create workflow with credential injection
+		let workflowToCreate: WorkflowDataCreate = {
 			...quickStart.workflow,
 			name: quickStart.name,
-		});
+		};
+
+		// Get claimed credential from localStorage (via readyToRun store)
+		const credentialId = localStorage.getItem(LOCAL_STORAGE_CREDENTIAL_KEY);
+		if (credentialId && workflowToCreate.nodes) {
+			const clonedWorkflow = deepCopy(workflowToCreate);
+			const openAiNode = clonedWorkflow.nodes?.find((node) => node.name === 'OpenAI Model');
+			if (openAiNode) {
+				openAiNode.credentials ??= {};
+				openAiNode.credentials[OPEN_AI_API_CREDENTIAL_TYPE] = {
+					id: credentialId,
+					name: '',
+				};
+			}
+			workflowToCreate = clonedWorkflow;
+		}
+
+		const createdWorkflow = await workflowsStore.createNewWorkflow(workflowToCreate);
 
 		await router.push({
 			name: VIEWS.WORKFLOW,
@@ -141,6 +175,7 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 
 	return {
 		isFeatureEnabled,
+		getCurrentVariant,
 		isLoadingTemplates,
 		fetchTemplateById,
 		loadTemplates,

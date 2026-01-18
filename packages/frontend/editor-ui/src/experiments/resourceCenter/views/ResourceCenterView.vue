@@ -10,7 +10,6 @@ import HorizontalGallery from '../components/HorizontalGallery.vue';
 import ResourceCenterHeader from '../components/ResourceCenterHeader.vue';
 import TemplateCard from '../components/TemplateCard.vue';
 import VideoThumbCard from '../components/VideoThumbCard.vue';
-import FeaturedSandboxCard from '../components/FeaturedSandboxCard.vue';
 import SandboxCard from '../components/SandboxCard.vue';
 import {
 	featuredTemplateIds,
@@ -98,22 +97,58 @@ onMounted(() => {
 					{{ i18n.baseText('experiments.resourceCenter.getStarted.title') }}
 				</h2>
 				<div :class="$style.sectionContent">
-					<!-- Featured Sandbox Card -->
-					<FeaturedSandboxCard
-						v-if="quickStartWorkflows.length > 0"
-						:workflow="quickStartWorkflows[0]"
-						@click="handleQuickStartImport(quickStartWorkflows[0].id)"
-					/>
-
 					<!-- Sandbox Cards Row -->
 					<div :class="$style.cardsRow">
 						<SandboxCard
-							v-for="workflow in quickStartWorkflows.slice(1, 4)"
+							v-for="workflow in quickStartWorkflows"
 							:key="workflow.id"
 							:workflow="workflow"
 							@click="handleQuickStartImport(workflow.id)"
 						/>
 					</div>
+				</div>
+			</section>
+
+			<!-- Get Inspired Section -->
+			<section :class="$style.mainSection">
+				<h2 :class="$style.sectionTitle">
+					{{ i18n.baseText('experiments.resourceCenter.getInspired.title') }}
+				</h2>
+				<div :class="$style.sectionContent">
+					<!-- Popular Templates -->
+					<HorizontalGallery
+						v-if="templates.length > 0 || isLoadingTemplates"
+						:title="i18n.baseText('experiments.resourceCenter.popularTemplates.title')"
+						:on-title-click="() => handleSeeMore('templates')"
+					>
+						<template v-if="isLoadingTemplates">
+							<div :class="$style.loading">
+								<N8nSpinner size="small" />
+							</div>
+						</template>
+						<template v-else>
+							<TemplateCard
+								v-for="template in templates.slice(0, 3)"
+								:key="template.id"
+								:template="template"
+							/>
+						</template>
+					</HorizontalGallery>
+
+					<!-- Automation Ideas -->
+					<HorizontalGallery
+						:title="i18n.baseText('experiments.resourceCenter.automationIdeas.title')"
+						:on-title-click="
+							inspirationVideos.length > 3 ? () => handleSeeMore('inspiration-videos') : undefined
+						"
+					>
+						<VideoThumbCard
+							v-for="video in inspirationVideos.slice(0, 3)"
+							:key="video.videoId"
+							:video="video"
+							icon-type="youtube"
+						/>
+					</HorizontalGallery>
 				</div>
 			</section>
 
@@ -171,49 +206,6 @@ onMounted(() => {
 								:template="template"
 							/>
 						</template>
-					</HorizontalGallery>
-				</div>
-			</section>
-
-			<!-- Get Inspired Section -->
-			<section :class="$style.mainSection">
-				<h2 :class="$style.sectionTitle">
-					{{ i18n.baseText('experiments.resourceCenter.getInspired.title') }}
-				</h2>
-				<div :class="$style.sectionContent">
-					<!-- Popular Templates -->
-					<HorizontalGallery
-						v-if="templates.length > 0 || isLoadingTemplates"
-						:title="i18n.baseText('experiments.resourceCenter.popularTemplates.title')"
-						:on-title-click="() => handleViewAllTemplates()"
-					>
-						<template v-if="isLoadingTemplates">
-							<div :class="$style.loading">
-								<N8nSpinner size="small" />
-							</div>
-						</template>
-						<template v-else>
-							<TemplateCard
-								v-for="template in templates.slice(0, 3)"
-								:key="template.id"
-								:template="template"
-							/>
-						</template>
-					</HorizontalGallery>
-
-					<!-- Automation Ideas -->
-					<HorizontalGallery
-						:title="i18n.baseText('experiments.resourceCenter.automationIdeas.title')"
-						:on-title-click="
-							inspirationVideos.length > 3 ? () => handleSeeMore('inspiration-videos') : undefined
-						"
-					>
-						<VideoThumbCard
-							v-for="video in inspirationVideos.slice(0, 3)"
-							:key="video.videoId"
-							:video="video"
-							icon-type="youtube"
-						/>
 					</HorizontalGallery>
 				</div>
 			</section>

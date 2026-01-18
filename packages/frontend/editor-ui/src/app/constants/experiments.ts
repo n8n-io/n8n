@@ -66,11 +66,11 @@ export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 
 export const TAMPER_PROOF_INVITE_LINKS = createExperiment('061_tamper_proof_invite_links');
 
-export const RESOURCE_CENTER_EXPERIMENT = {
-	name: '063_resource_center_0',
+export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_0', {
 	control: 'control',
-	variant: 'variant',
-};
+	variantResources: 'variant-resources',
+	variantInspiration: 'variant-inspiration',
+});
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
