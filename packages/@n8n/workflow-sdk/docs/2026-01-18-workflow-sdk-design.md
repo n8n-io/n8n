@@ -541,7 +541,7 @@ node<{ output: { name: string; score: number } }>('n8n-nodes-langchain.agent', '
     outputParser: node('n8n-nodes-langchain.outputParserStructured', 'v1.3', {
       parameters: {
         schemaType: 'manual',
-        inputSchema: '{"type":"object","properties":{"output":{"type":"object","properties":{"name":{"type":"string"},"score":{"type":"number"}}}}}'
+        inputSchema: '{"type":"object","properties":{"type":"object","properties":{"name":{"type":"string"},"score":{"type":"number"}}}}'
       }
     })
   }
