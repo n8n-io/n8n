@@ -16,6 +16,7 @@
 		"test:unit": "jest",
 		"test:dev": "jest --watch",
 		"generate-types": "npx tsx scripts/generate-types.ts",
+		"generate-llm-types": "npx tsx scripts/generate-llm-types.ts",
 		"fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts"
 	},
 	"main": "dist/index.js",
