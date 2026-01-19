@@ -1,8 +1,6 @@
 /**
  * Redis Node - Version 1
  * Get, send and update data in Redis
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface RedisV1Params {
+export interface RedisV1Config {
 	operation?: 'delete' | 'get' | 'incr' | 'info' | 'keys' | 'llen' | 'pop' | 'publish' | 'push' | 'set' | Expression<string>;
 /**
  * Name of the key to delete from Redis
@@ -99,12 +97,17 @@ export interface RedisV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RedisV1Node = {
+interface RedisV1NodeBase {
 	type: 'n8n-nodes-base.redis';
 	version: 1;
-	config: NodeConfig<RedisV1Params>;
 	credentials?: RedisV1Credentials;
+}
+
+export type RedisV1Node = RedisV1NodeBase & {
+	config: NodeConfig<RedisV1Config>;
 };
+
+export type RedisV1Node = RedisV1Node;

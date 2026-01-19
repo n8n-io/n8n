@@ -1,8 +1,6 @@
 /**
  * Filter Node - Version 2.1
  * Remove items matching a condition
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: s
 // Parameters
 // ===========================================================================
 
-export interface FilterV21Params {
+export interface FilterV21Config {
 	conditions?: FilterValue;
 	options?: Record<string, unknown>;
 }
@@ -26,12 +24,16 @@ export interface FilterV21Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FilterV21Node = {
+interface FilterV21NodeBase {
 	type: 'n8n-nodes-base.filter';
 	version: 2.1;
-	config: NodeConfig<FilterV21Params>;
-	credentials?: Record<string, never>;
+}
+
+export type FilterV21Node = FilterV21NodeBase & {
+	config: NodeConfig<FilterV21Config>;
 };
+
+export type FilterV21Node = FilterV21Node;

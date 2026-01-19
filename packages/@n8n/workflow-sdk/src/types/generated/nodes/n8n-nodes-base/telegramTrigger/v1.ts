@@ -1,8 +1,6 @@
 /**
  * Telegram Trigger Node - Version 1
  * Starts the workflow on a Telegram update
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface TelegramTriggerV1Params {
+export interface TelegramTriggerV1Config {
 	updates: Array<'*' | 'callback_query' | 'channel_post' | 'edited_channel_post' | 'edited_message' | 'inline_query' | 'message' | 'poll' | 'pre_checkout_query' | 'shipping_query'>;
 	additionalFields?: Record<string, unknown>;
 }
@@ -27,13 +25,18 @@ export interface TelegramTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TelegramTriggerV1Node = {
+interface TelegramTriggerV1NodeBase {
 	type: 'n8n-nodes-base.telegramTrigger';
 	version: 1;
-	config: NodeConfig<TelegramTriggerV1Params>;
 	credentials?: TelegramTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type TelegramTriggerV1Node = TelegramTriggerV1NodeBase & {
+	config: NodeConfig<TelegramTriggerV1Config>;
 };
+
+export type TelegramTriggerV1Node = TelegramTriggerV1Node;

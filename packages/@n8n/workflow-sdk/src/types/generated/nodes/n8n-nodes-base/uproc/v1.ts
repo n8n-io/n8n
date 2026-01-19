@@ -1,8 +1,6 @@
 /**
  * uProc Node - Version 1
  * Consume uProc API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface UprocV1Params {
+export interface UprocV1Config {
 	group?: 'audio' | 'communication' | 'company' | 'finance' | 'geographic' | 'image' | 'internet' | 'personal' | 'product' | 'security' | 'text' | Expression<string>;
 /**
  * The Operation to consume
@@ -743,12 +741,17 @@ export interface UprocV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UprocV1Node = {
+interface UprocV1NodeBase {
 	type: 'n8n-nodes-base.uproc';
 	version: 1;
-	config: NodeConfig<UprocV1Params>;
 	credentials?: UprocV1Credentials;
+}
+
+export type UprocV1Node = UprocV1NodeBase & {
+	config: NodeConfig<UprocV1Config>;
 };
+
+export type UprocV1Node = UprocV1Node;

@@ -1,8 +1,6 @@
 /**
  * Embeddings Azure OpenAI Node - Version 1
  * Use Embeddings Azure OpenAI
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsAzureOpenAiV1Params {
+export interface LcEmbeddingsAzureOpenAiV1Config {
 /**
  * The name of the model(deployment) to use
  */
@@ -34,13 +32,18 @@ export interface LcEmbeddingsAzureOpenAiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsAzureOpenAiV1Node = {
+interface LcEmbeddingsAzureOpenAiV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi';
 	version: 1;
-	config: NodeConfig<LcEmbeddingsAzureOpenAiV1Params>;
 	credentials?: LcEmbeddingsAzureOpenAiV1Credentials;
 	isTrigger: true;
+}
+
+export type LcEmbeddingsAzureOpenAiV1Node = LcEmbeddingsAzureOpenAiV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsAzureOpenAiV1Config>;
 };
+
+export type LcEmbeddingsAzureOpenAiV1Node = LcEmbeddingsAzureOpenAiV1Node;

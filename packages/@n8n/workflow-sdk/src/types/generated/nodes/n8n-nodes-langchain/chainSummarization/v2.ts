@@ -1,8 +1,6 @@
 /**
  * Summarization Chain Node - Version 2
  * Transforms text into a concise summary
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcChainSummarizationV2Params {
+export interface LcChainSummarizationV2Config {
 /**
  * How to pass data into the summarization chain
  * @default nodeInputJson
@@ -45,12 +43,16 @@ export interface LcChainSummarizationV2Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChainSummarizationV2Node = {
+interface LcChainSummarizationV2NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chainSummarization';
 	version: 2;
-	config: NodeConfig<LcChainSummarizationV2Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcChainSummarizationV2Node = LcChainSummarizationV2NodeBase & {
+	config: NodeConfig<LcChainSummarizationV2Config>;
 };
+
+export type LcChainSummarizationV2Node = LcChainSummarizationV2Node;

@@ -1,8 +1,6 @@
 /**
  * Postgres Node - Version 2.4
  * Get, add and update data in Postgres
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface PostgresV24Params {
+export interface PostgresV24Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -110,12 +108,17 @@ export interface PostgresV24Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostgresV24Node = {
+interface PostgresV24NodeBase {
 	type: 'n8n-nodes-base.postgres';
 	version: 2.4;
-	config: NodeConfig<PostgresV24Params>;
 	credentials?: PostgresV24Credentials;
+}
+
+export type PostgresV24Node = PostgresV24NodeBase & {
+	config: NodeConfig<PostgresV24Config>;
 };
+
+export type PostgresV24Node = PostgresV24Node;

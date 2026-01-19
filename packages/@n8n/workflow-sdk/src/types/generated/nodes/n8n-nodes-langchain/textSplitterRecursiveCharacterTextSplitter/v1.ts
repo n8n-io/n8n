@@ -1,8 +1,6 @@
 /**
  * Recursive Character Text Splitter Node - Version 1
  * Split text into chunks by characters recursively, recommended for most use cases
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcTextSplitterRecursiveCharacterTextSplitterV1Params {
+export interface LcTextSplitterRecursiveCharacterTextSplitterV1Config {
 	chunkSize?: number | Expression<number>;
 	chunkOverlap?: number | Expression<number>;
 /**
@@ -28,13 +26,17 @@ export interface LcTextSplitterRecursiveCharacterTextSplitterV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcTextSplitterRecursiveCharacterTextSplitterV1Node = {
+interface LcTextSplitterRecursiveCharacterTextSplitterV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter';
 	version: 1;
-	config: NodeConfig<LcTextSplitterRecursiveCharacterTextSplitterV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcTextSplitterRecursiveCharacterTextSplitterV1Node = LcTextSplitterRecursiveCharacterTextSplitterV1NodeBase & {
+	config: NodeConfig<LcTextSplitterRecursiveCharacterTextSplitterV1Config>;
 };
+
+export type LcTextSplitterRecursiveCharacterTextSplitterV1Node = LcTextSplitterRecursiveCharacterTextSplitterV1Node;

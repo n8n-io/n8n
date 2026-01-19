@@ -1,8 +1,6 @@
 /**
  * Jenkins Node - Version 1
  * Consume Jenkins API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -146,19 +144,18 @@ export type JenkinsV1JobTriggerParamsConfig = {
 	};
 };
 
-export type JenkinsV1Params =
-	| JenkinsV1BuildGetAllConfig
-	| JenkinsV1InstanceCancelQuietDownConfig
-	| JenkinsV1InstanceQuietDownConfig
-	| JenkinsV1InstanceRestartConfig
-	| JenkinsV1InstanceSafeRestartConfig
-	| JenkinsV1InstanceSafeExitConfig
-	| JenkinsV1InstanceExitConfig
-	| JenkinsV1JobCopyConfig
-	| JenkinsV1JobCreateConfig
-	| JenkinsV1JobTriggerConfig
-	| JenkinsV1JobTriggerParamsConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type JenkinsV1JobTriggerOutput = {
+	success?: boolean;
+};
+
+export type JenkinsV1JobTriggerParamsOutput = {
+	success?: boolean;
+};
 
 // ===========================================================================
 // Credentials
@@ -169,12 +166,71 @@ export interface JenkinsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JenkinsV1Node = {
+interface JenkinsV1NodeBase {
 	type: 'n8n-nodes-base.jenkins';
 	version: 1;
-	config: NodeConfig<JenkinsV1Params>;
 	credentials?: JenkinsV1Credentials;
+}
+
+export type JenkinsV1BuildGetAllNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1BuildGetAllConfig>;
 };
+
+export type JenkinsV1InstanceCancelQuietDownNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1InstanceCancelQuietDownConfig>;
+};
+
+export type JenkinsV1InstanceQuietDownNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1InstanceQuietDownConfig>;
+};
+
+export type JenkinsV1InstanceRestartNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1InstanceRestartConfig>;
+};
+
+export type JenkinsV1InstanceSafeRestartNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1InstanceSafeRestartConfig>;
+};
+
+export type JenkinsV1InstanceSafeExitNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1InstanceSafeExitConfig>;
+};
+
+export type JenkinsV1InstanceExitNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1InstanceExitConfig>;
+};
+
+export type JenkinsV1JobCopyNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1JobCopyConfig>;
+};
+
+export type JenkinsV1JobCreateNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1JobCreateConfig>;
+};
+
+export type JenkinsV1JobTriggerNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1JobTriggerConfig>;
+	output?: JenkinsV1JobTriggerOutput;
+};
+
+export type JenkinsV1JobTriggerParamsNode = JenkinsV1NodeBase & {
+	config: NodeConfig<JenkinsV1JobTriggerParamsConfig>;
+	output?: JenkinsV1JobTriggerParamsOutput;
+};
+
+export type JenkinsV1Node =
+	| JenkinsV1BuildGetAllNode
+	| JenkinsV1InstanceCancelQuietDownNode
+	| JenkinsV1InstanceQuietDownNode
+	| JenkinsV1InstanceRestartNode
+	| JenkinsV1InstanceSafeRestartNode
+	| JenkinsV1InstanceSafeExitNode
+	| JenkinsV1InstanceExitNode
+	| JenkinsV1JobCopyNode
+	| JenkinsV1JobCreateNode
+	| JenkinsV1JobTriggerNode
+	| JenkinsV1JobTriggerParamsNode
+	;

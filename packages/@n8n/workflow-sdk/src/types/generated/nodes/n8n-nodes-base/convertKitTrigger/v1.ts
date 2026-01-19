@@ -1,8 +1,6 @@
 /**
  * ConvertKit Trigger Node - Version 1
  * Handle ConvertKit events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface ConvertKitTriggerV1Params {
+export interface ConvertKitTriggerV1Config {
 /**
  * The events that can trigger the webhook and whether they are enabled
  */
@@ -50,13 +48,18 @@ export interface ConvertKitTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ConvertKitTriggerV1Node = {
+interface ConvertKitTriggerV1NodeBase {
 	type: 'n8n-nodes-base.convertKitTrigger';
 	version: 1;
-	config: NodeConfig<ConvertKitTriggerV1Params>;
 	credentials?: ConvertKitTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type ConvertKitTriggerV1Node = ConvertKitTriggerV1NodeBase & {
+	config: NodeConfig<ConvertKitTriggerV1Config>;
 };
+
+export type ConvertKitTriggerV1Node = ConvertKitTriggerV1Node;

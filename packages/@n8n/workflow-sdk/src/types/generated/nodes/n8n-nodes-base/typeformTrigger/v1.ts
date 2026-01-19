@@ -1,8 +1,6 @@
 /**
  * Typeform Trigger Node - Version 1
  * Starts the workflow on a Typeform form submission
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface TypeformTriggerV1Params {
+export interface TypeformTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 /**
  * Form which should trigger workflow on submission. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -41,13 +39,18 @@ export interface TypeformTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TypeformTriggerV1Node = {
+interface TypeformTriggerV1NodeBase {
 	type: 'n8n-nodes-base.typeformTrigger';
 	version: 1;
-	config: NodeConfig<TypeformTriggerV1Params>;
 	credentials?: TypeformTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type TypeformTriggerV1Node = TypeformTriggerV1NodeBase & {
+	config: NodeConfig<TypeformTriggerV1Config>;
 };
+
+export type TypeformTriggerV1Node = TypeformTriggerV1Node;

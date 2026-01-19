@@ -1,8 +1,6 @@
 /**
  * Postgres PGVector Store Node - Version 1
  * Work with your data in Postgresql with the PGVector extension
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -113,12 +111,6 @@ export type LcVectorStorePGVectorV1RetrieveAsToolConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStorePGVectorV1Params =
-	| LcVectorStorePGVectorV1LoadConfig
-	| LcVectorStorePGVectorV1InsertConfig
-	| LcVectorStorePGVectorV1RetrieveConfig
-	| LcVectorStorePGVectorV1RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -129,12 +121,34 @@ export interface LcVectorStorePGVectorV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStorePGVectorV1Node = {
+interface LcVectorStorePGVectorV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStorePGVector';
 	version: 1;
-	config: NodeConfig<LcVectorStorePGVectorV1Params>;
 	credentials?: LcVectorStorePGVectorV1Credentials;
+}
+
+export type LcVectorStorePGVectorV1LoadNode = LcVectorStorePGVectorV1NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV1LoadConfig>;
 };
+
+export type LcVectorStorePGVectorV1InsertNode = LcVectorStorePGVectorV1NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV1InsertConfig>;
+};
+
+export type LcVectorStorePGVectorV1RetrieveNode = LcVectorStorePGVectorV1NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV1RetrieveConfig>;
+};
+
+export type LcVectorStorePGVectorV1RetrieveAsToolNode = LcVectorStorePGVectorV1NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV1RetrieveAsToolConfig>;
+};
+
+export type LcVectorStorePGVectorV1Node =
+	| LcVectorStorePGVectorV1LoadNode
+	| LcVectorStorePGVectorV1InsertNode
+	| LcVectorStorePGVectorV1RetrieveNode
+	| LcVectorStorePGVectorV1RetrieveAsToolNode
+	;

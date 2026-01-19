@@ -1,8 +1,6 @@
 /**
  * xAI Grok Chat Model Node - Version 1
  * For advanced usage with an AI chain
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatXAiGrokV1Params {
+export interface LcLmChatXAiGrokV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://docs.x.ai/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default grok-2-vision-1212
@@ -35,13 +33,18 @@ export interface LcLmChatXAiGrokV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatXAiGrokV1Node = {
+interface LcLmChatXAiGrokV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatXAiGrok';
 	version: 1;
-	config: NodeConfig<LcLmChatXAiGrokV1Params>;
 	credentials?: LcLmChatXAiGrokV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatXAiGrokV1Node = LcLmChatXAiGrokV1NodeBase & {
+	config: NodeConfig<LcLmChatXAiGrokV1Config>;
 };
+
+export type LcLmChatXAiGrokV1Node = LcLmChatXAiGrokV1Node;

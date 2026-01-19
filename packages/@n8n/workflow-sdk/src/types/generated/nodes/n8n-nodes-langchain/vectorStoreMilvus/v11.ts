@@ -1,8 +1,6 @@
 /**
  * Milvus Vector Store Node - Version 1.1
  * Work with your data in Milvus Vector Store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -97,12 +95,6 @@ export type LcVectorStoreMilvusV11RetrieveAsToolConfig = {
 		useReranker?: boolean | Expression<boolean>;
 };
 
-export type LcVectorStoreMilvusV11Params =
-	| LcVectorStoreMilvusV11LoadConfig
-	| LcVectorStoreMilvusV11InsertConfig
-	| LcVectorStoreMilvusV11RetrieveConfig
-	| LcVectorStoreMilvusV11RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -113,12 +105,34 @@ export interface LcVectorStoreMilvusV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreMilvusV11Node = {
+interface LcVectorStoreMilvusV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreMilvus';
 	version: 1.1;
-	config: NodeConfig<LcVectorStoreMilvusV11Params>;
 	credentials?: LcVectorStoreMilvusV11Credentials;
+}
+
+export type LcVectorStoreMilvusV11LoadNode = LcVectorStoreMilvusV11NodeBase & {
+	config: NodeConfig<LcVectorStoreMilvusV11LoadConfig>;
 };
+
+export type LcVectorStoreMilvusV11InsertNode = LcVectorStoreMilvusV11NodeBase & {
+	config: NodeConfig<LcVectorStoreMilvusV11InsertConfig>;
+};
+
+export type LcVectorStoreMilvusV11RetrieveNode = LcVectorStoreMilvusV11NodeBase & {
+	config: NodeConfig<LcVectorStoreMilvusV11RetrieveConfig>;
+};
+
+export type LcVectorStoreMilvusV11RetrieveAsToolNode = LcVectorStoreMilvusV11NodeBase & {
+	config: NodeConfig<LcVectorStoreMilvusV11RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreMilvusV11Node =
+	| LcVectorStoreMilvusV11LoadNode
+	| LcVectorStoreMilvusV11InsertNode
+	| LcVectorStoreMilvusV11RetrieveNode
+	| LcVectorStoreMilvusV11RetrieveAsToolNode
+	;

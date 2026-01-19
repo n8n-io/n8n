@@ -1,8 +1,6 @@
 /**
  * Mailjet Trigger Node - Version 1
  * Handle Mailjet events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MailjetTriggerV1Params {
+export interface MailjetTriggerV1Config {
 /**
  * Determines which resource events the webhook is triggered for
  * @default open
@@ -30,13 +28,18 @@ export interface MailjetTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailjetTriggerV1Node = {
+interface MailjetTriggerV1NodeBase {
 	type: 'n8n-nodes-base.mailjetTrigger';
 	version: 1;
-	config: NodeConfig<MailjetTriggerV1Params>;
 	credentials?: MailjetTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MailjetTriggerV1Node = MailjetTriggerV1NodeBase & {
+	config: NodeConfig<MailjetTriggerV1Config>;
 };
+
+export type MailjetTriggerV1Node = MailjetTriggerV1Node;

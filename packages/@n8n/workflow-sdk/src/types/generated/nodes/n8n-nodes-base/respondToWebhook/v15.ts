@@ -1,8 +1,6 @@
 /**
  * Respond to Webhook Node - Version 1.5
  * Returns data for Webhook
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface RespondToWebhookV15Params {
+export interface RespondToWebhookV15Config {
 /**
  * The URL to redirect to
  * @displayOptions.show { respondWith: ["redirect"] }
@@ -55,12 +53,17 @@ export interface RespondToWebhookV15Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RespondToWebhookV15Node = {
+interface RespondToWebhookV15NodeBase {
 	type: 'n8n-nodes-base.respondToWebhook';
 	version: 1.5;
-	config: NodeConfig<RespondToWebhookV15Params>;
 	credentials?: RespondToWebhookV15Credentials;
+}
+
+export type RespondToWebhookV15Node = RespondToWebhookV15NodeBase & {
+	config: NodeConfig<RespondToWebhookV15Config>;
 };
+
+export type RespondToWebhookV15Node = RespondToWebhookV15Node;

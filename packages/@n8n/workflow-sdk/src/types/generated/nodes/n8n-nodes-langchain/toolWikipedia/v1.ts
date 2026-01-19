@@ -1,8 +1,6 @@
 /**
  * Wikipedia Node - Version 1
  * Search in Wikipedia
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolWikipediaV1Params {
+export interface LcToolWikipediaV1Config {
 }
 
 // ===========================================================================
@@ -21,13 +19,17 @@ export interface LcToolWikipediaV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcToolWikipediaV1Node = {
+interface LcToolWikipediaV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.toolWikipedia';
 	version: 1;
-	config: NodeConfig<LcToolWikipediaV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcToolWikipediaV1Node = LcToolWikipediaV1NodeBase & {
+	config: NodeConfig<LcToolWikipediaV1Config>;
 };
+
+export type LcToolWikipediaV1Node = LcToolWikipediaV1Node;

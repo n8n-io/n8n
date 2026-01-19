@@ -5,12 +5,18 @@ import type {
 	NodeConfig,
 	DeclaredConnection,
 } from './types/base';
-import type { SwitchV34Params } from './types/generated/nodes/n8n-nodes-base/switch';
+import type {
+	SwitchV34RulesConfig,
+	SwitchV34ExpressionConfig,
+} from './types/generated/nodes/n8n-nodes-base/switch';
+
+/** Union of all Switch v3.4 config types */
+type SwitchV34Config = SwitchV34RulesConfig | SwitchV34ExpressionConfig;
 
 /**
  * Extended config for Switch case that includes version and id
  */
-export interface SwitchCaseConfig extends NodeConfig<SwitchV34Params> {
+export interface SwitchCaseConfig extends NodeConfig<SwitchV34Config> {
 	/** Node version (defaults to 3.4) */
 	version?: number | string;
 	/** Node ID (auto-generated if omitted) */
@@ -38,7 +44,7 @@ class SwitchNodeInstance implements NodeInstance<'n8n-nodes-base.switch', string
 	}
 
 	update(config: Partial<NodeConfig>): NodeInstance<'n8n-nodes-base.switch', string, unknown> {
-		return new SwitchNodeInstance({ ...this.config, ...config } as NodeConfig<SwitchV34Params>);
+		return new SwitchNodeInstance({ ...this.config, ...config } as NodeConfig<SwitchV34Config>);
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {

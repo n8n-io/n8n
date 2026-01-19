@@ -1,8 +1,6 @@
 /**
  * Structured Output Parser Node - Version 1
  * Return data in a defined JSON format
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcOutputParserStructuredV1Params {
+export interface LcOutputParserStructuredV1Config {
 /**
  * Example JSON object to use to generate the schema
  * @displayOptions.show { schemaType: ["fromJson"] }
@@ -84,12 +82,16 @@ Please try again. Please only respond with an answer that satisfies the constrai
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOutputParserStructuredV1Node = {
+interface LcOutputParserStructuredV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.outputParserStructured';
 	version: 1;
-	config: NodeConfig<LcOutputParserStructuredV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcOutputParserStructuredV1Node = LcOutputParserStructuredV1NodeBase & {
+	config: NodeConfig<LcOutputParserStructuredV1Config>;
 };
+
+export type LcOutputParserStructuredV1Node = LcOutputParserStructuredV1Node;

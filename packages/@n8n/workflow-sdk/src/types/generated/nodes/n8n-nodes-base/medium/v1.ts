@@ -1,8 +1,6 @@
 /**
  * Medium Node - Version 1
  * Consume Medium API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -64,10 +62,23 @@ export type MediumV1PublicationGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type MediumV1Params =
-	| MediumV1PostCreateConfig
-	| MediumV1PublicationGetAllConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type MediumV1PostCreateOutput = {
+	authorId?: string;
+	canonicalUrl?: string;
+	id?: string;
+	license?: string;
+	licenseUrl?: string;
+	publishedAt?: number;
+	publishStatus?: string;
+	tags?: Array<string>;
+	title?: string;
+	url?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -79,12 +90,25 @@ export interface MediumV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MediumV1Node = {
+interface MediumV1NodeBase {
 	type: 'n8n-nodes-base.medium';
 	version: 1;
-	config: NodeConfig<MediumV1Params>;
 	credentials?: MediumV1Credentials;
+}
+
+export type MediumV1PostCreateNode = MediumV1NodeBase & {
+	config: NodeConfig<MediumV1PostCreateConfig>;
+	output?: MediumV1PostCreateOutput;
 };
+
+export type MediumV1PublicationGetAllNode = MediumV1NodeBase & {
+	config: NodeConfig<MediumV1PublicationGetAllConfig>;
+};
+
+export type MediumV1Node =
+	| MediumV1PostCreateNode
+	| MediumV1PublicationGetAllNode
+	;

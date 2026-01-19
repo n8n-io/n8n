@@ -1,8 +1,6 @@
 /**
  * RocketChat Node - Version 1
  * Consume RocketChat API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -34,9 +32,57 @@ export type RocketchatV1ChatPostMessageConfig = {
 	attachmentsJson?: IDataObject | string | Expression<string>;
 };
 
-export type RocketchatV1Params =
-	| RocketchatV1ChatPostMessageConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type RocketchatV1ChatPostMessageOutput = {
+	channel?: string;
+	message?: {
+		_id?: string;
+		_updatedAt?: string;
+		alias?: string;
+		attachments?: Array<{
+			fields?: Array<{
+				short?: boolean;
+				title?: string;
+				value?: string;
+			}>;
+			text?: string;
+			title?: string;
+			ts?: string;
+		}>;
+		groupable?: boolean;
+		md?: Array<{
+			type?: string;
+			value?: Array<{
+				type?: string;
+			}>;
+		}>;
+		mentions?: Array<{
+			_id?: string;
+			name?: string;
+			type?: string;
+			username?: string;
+		}>;
+		msg?: string;
+		parseUrls?: boolean;
+		rid?: string;
+		ts?: string;
+		u?: {
+			_id?: string;
+			name?: string;
+			username?: string;
+		};
+		unread?: boolean;
+		urls?: Array<{
+			url?: string;
+		}>;
+	};
+	success?: boolean;
+	ts?: number;
+};
 
 // ===========================================================================
 // Credentials
@@ -47,12 +93,18 @@ export interface RocketchatV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RocketchatV1Node = {
+interface RocketchatV1NodeBase {
 	type: 'n8n-nodes-base.rocketchat';
 	version: 1;
-	config: NodeConfig<RocketchatV1Params>;
 	credentials?: RocketchatV1Credentials;
+}
+
+export type RocketchatV1ChatPostMessageNode = RocketchatV1NodeBase & {
+	config: NodeConfig<RocketchatV1ChatPostMessageConfig>;
+	output?: RocketchatV1ChatPostMessageOutput;
 };
+
+export type RocketchatV1Node = RocketchatV1ChatPostMessageNode;

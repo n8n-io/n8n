@@ -1,8 +1,6 @@
 /**
  * Airtable Trigger Node - Version 1
  * Starts the workflow when Airtable events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface AirtableTriggerV1Params {
+export interface AirtableTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -99,13 +97,18 @@ export interface AirtableTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AirtableTriggerV1Node = {
+interface AirtableTriggerV1NodeBase {
 	type: 'n8n-nodes-base.airtableTrigger';
 	version: 1;
-	config: NodeConfig<AirtableTriggerV1Params>;
 	credentials?: AirtableTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type AirtableTriggerV1Node = AirtableTriggerV1NodeBase & {
+	config: NodeConfig<AirtableTriggerV1Config>;
 };
+
+export type AirtableTriggerV1Node = AirtableTriggerV1Node;

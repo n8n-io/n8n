@@ -1,8 +1,6 @@
 /**
  * Mautic Trigger Node - Version 1
  * Handle Mautic events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MauticTriggerV1Params {
+export interface MauticTriggerV1Config {
 	authentication?: 'credentials' | 'oAuth2' | Expression<string>;
 /**
  * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
@@ -37,13 +35,18 @@ export interface MauticTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MauticTriggerV1Node = {
+interface MauticTriggerV1NodeBase {
 	type: 'n8n-nodes-base.mauticTrigger';
 	version: 1;
-	config: NodeConfig<MauticTriggerV1Params>;
 	credentials?: MauticTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MauticTriggerV1Node = MauticTriggerV1NodeBase & {
+	config: NodeConfig<MauticTriggerV1Config>;
 };
+
+export type MauticTriggerV1Node = MauticTriggerV1Node;

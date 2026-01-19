@@ -1,8 +1,6 @@
 /**
  * Azure OpenAI Chat Model Node - Version 1
  * For advanced usage with an AI chain
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatAzureOpenAiV1Params {
+export interface LcLmChatAzureOpenAiV1Config {
 	authentication?: 'azureOpenAiApi' | 'azureEntraCognitiveServicesOAuth2Api' | Expression<string>;
 /**
  * The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)
@@ -36,13 +34,18 @@ export interface LcLmChatAzureOpenAiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatAzureOpenAiV1Node = {
+interface LcLmChatAzureOpenAiV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi';
 	version: 1;
-	config: NodeConfig<LcLmChatAzureOpenAiV1Params>;
 	credentials?: LcLmChatAzureOpenAiV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatAzureOpenAiV1Node = LcLmChatAzureOpenAiV1NodeBase & {
+	config: NodeConfig<LcLmChatAzureOpenAiV1Config>;
 };
+
+export type LcLmChatAzureOpenAiV1Node = LcLmChatAzureOpenAiV1Node;

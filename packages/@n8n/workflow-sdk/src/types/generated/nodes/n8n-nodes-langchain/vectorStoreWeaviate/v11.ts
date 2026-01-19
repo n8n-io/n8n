@@ -1,8 +1,6 @@
 /**
  * Weaviate Vector Store Node - Version 1.1
  * Work with your data in a Weaviate Cluster
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -100,12 +98,6 @@ export type LcVectorStoreWeaviateV11RetrieveAsToolConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStoreWeaviateV11Params =
-	| LcVectorStoreWeaviateV11LoadConfig
-	| LcVectorStoreWeaviateV11InsertConfig
-	| LcVectorStoreWeaviateV11RetrieveConfig
-	| LcVectorStoreWeaviateV11RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -116,12 +108,34 @@ export interface LcVectorStoreWeaviateV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreWeaviateV11Node = {
+interface LcVectorStoreWeaviateV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreWeaviate';
 	version: 1.1;
-	config: NodeConfig<LcVectorStoreWeaviateV11Params>;
 	credentials?: LcVectorStoreWeaviateV11Credentials;
+}
+
+export type LcVectorStoreWeaviateV11LoadNode = LcVectorStoreWeaviateV11NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV11LoadConfig>;
 };
+
+export type LcVectorStoreWeaviateV11InsertNode = LcVectorStoreWeaviateV11NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV11InsertConfig>;
+};
+
+export type LcVectorStoreWeaviateV11RetrieveNode = LcVectorStoreWeaviateV11NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV11RetrieveConfig>;
+};
+
+export type LcVectorStoreWeaviateV11RetrieveAsToolNode = LcVectorStoreWeaviateV11NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV11RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreWeaviateV11Node =
+	| LcVectorStoreWeaviateV11LoadNode
+	| LcVectorStoreWeaviateV11InsertNode
+	| LcVectorStoreWeaviateV11RetrieveNode
+	| LcVectorStoreWeaviateV11RetrieveAsToolNode
+	;

@@ -1,8 +1,6 @@
 /**
  * No Operation, do nothing Node - Version 1
  * No Operation
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface NoOpV1Params {
+export interface NoOpV1Config {
 }
 
 // ===========================================================================
@@ -21,12 +19,16 @@ export interface NoOpV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NoOpV1Node = {
+interface NoOpV1NodeBase {
 	type: 'n8n-nodes-base.noOp';
 	version: 1;
-	config: NodeConfig<NoOpV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type NoOpV1Node = NoOpV1NodeBase & {
+	config: NodeConfig<NoOpV1Config>;
 };
+
+export type NoOpV1Node = NoOpV1Node;

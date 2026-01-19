@@ -1,8 +1,6 @@
 /**
  * Twist Node - Version 1
  * Consume Twist API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -353,30 +351,6 @@ export type TwistV1ThreadUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type TwistV1Params =
-	| TwistV1ChannelArchiveConfig
-	| TwistV1ChannelCreateConfig
-	| TwistV1ChannelDeleteConfig
-	| TwistV1ChannelGetConfig
-	| TwistV1ChannelGetAllConfig
-	| TwistV1ChannelUnarchiveConfig
-	| TwistV1ChannelUpdateConfig
-	| TwistV1CommentCreateConfig
-	| TwistV1CommentDeleteConfig
-	| TwistV1CommentGetConfig
-	| TwistV1CommentGetAllConfig
-	| TwistV1CommentUpdateConfig
-	| TwistV1MessageConversationCreateConfig
-	| TwistV1MessageConversationDeleteConfig
-	| TwistV1MessageConversationGetConfig
-	| TwistV1MessageConversationGetAllConfig
-	| TwistV1MessageConversationUpdateConfig
-	| TwistV1ThreadCreateConfig
-	| TwistV1ThreadDeleteConfig
-	| TwistV1ThreadGetConfig
-	| TwistV1ThreadGetAllConfig
-	| TwistV1ThreadUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -387,12 +361,124 @@ export interface TwistV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwistV1Node = {
+interface TwistV1NodeBase {
 	type: 'n8n-nodes-base.twist';
 	version: 1;
-	config: NodeConfig<TwistV1Params>;
 	credentials?: TwistV1Credentials;
+}
+
+export type TwistV1ChannelArchiveNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ChannelArchiveConfig>;
 };
+
+export type TwistV1ChannelCreateNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ChannelCreateConfig>;
+};
+
+export type TwistV1ChannelDeleteNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ChannelDeleteConfig>;
+};
+
+export type TwistV1ChannelGetNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ChannelGetConfig>;
+};
+
+export type TwistV1ChannelGetAllNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ChannelGetAllConfig>;
+};
+
+export type TwistV1ChannelUnarchiveNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ChannelUnarchiveConfig>;
+};
+
+export type TwistV1ChannelUpdateNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ChannelUpdateConfig>;
+};
+
+export type TwistV1CommentCreateNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1CommentCreateConfig>;
+};
+
+export type TwistV1CommentDeleteNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1CommentDeleteConfig>;
+};
+
+export type TwistV1CommentGetNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1CommentGetConfig>;
+};
+
+export type TwistV1CommentGetAllNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1CommentGetAllConfig>;
+};
+
+export type TwistV1CommentUpdateNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1CommentUpdateConfig>;
+};
+
+export type TwistV1MessageConversationCreateNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1MessageConversationCreateConfig>;
+};
+
+export type TwistV1MessageConversationDeleteNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1MessageConversationDeleteConfig>;
+};
+
+export type TwistV1MessageConversationGetNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1MessageConversationGetConfig>;
+};
+
+export type TwistV1MessageConversationGetAllNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1MessageConversationGetAllConfig>;
+};
+
+export type TwistV1MessageConversationUpdateNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1MessageConversationUpdateConfig>;
+};
+
+export type TwistV1ThreadCreateNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ThreadCreateConfig>;
+};
+
+export type TwistV1ThreadDeleteNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ThreadDeleteConfig>;
+};
+
+export type TwistV1ThreadGetNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ThreadGetConfig>;
+};
+
+export type TwistV1ThreadGetAllNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ThreadGetAllConfig>;
+};
+
+export type TwistV1ThreadUpdateNode = TwistV1NodeBase & {
+	config: NodeConfig<TwistV1ThreadUpdateConfig>;
+};
+
+export type TwistV1Node =
+	| TwistV1ChannelArchiveNode
+	| TwistV1ChannelCreateNode
+	| TwistV1ChannelDeleteNode
+	| TwistV1ChannelGetNode
+	| TwistV1ChannelGetAllNode
+	| TwistV1ChannelUnarchiveNode
+	| TwistV1ChannelUpdateNode
+	| TwistV1CommentCreateNode
+	| TwistV1CommentDeleteNode
+	| TwistV1CommentGetNode
+	| TwistV1CommentGetAllNode
+	| TwistV1CommentUpdateNode
+	| TwistV1MessageConversationCreateNode
+	| TwistV1MessageConversationDeleteNode
+	| TwistV1MessageConversationGetNode
+	| TwistV1MessageConversationGetAllNode
+	| TwistV1MessageConversationUpdateNode
+	| TwistV1ThreadCreateNode
+	| TwistV1ThreadDeleteNode
+	| TwistV1ThreadGetNode
+	| TwistV1ThreadGetAllNode
+	| TwistV1ThreadUpdateNode
+	;

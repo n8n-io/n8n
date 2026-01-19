@@ -1,8 +1,6 @@
 /**
  * Google Perspective Node - Version 1
  * Consume Google Perspective API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GooglePerspectiveV1Params {
+export interface GooglePerspectiveV1Config {
 	operation?: 'analyzeComment' | Expression<string>;
 	text: string | Expression<string>;
 	requestedAttributesUi: {
@@ -40,12 +38,17 @@ export interface GooglePerspectiveV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GooglePerspectiveV1Node = {
+interface GooglePerspectiveV1NodeBase {
 	type: 'n8n-nodes-base.googlePerspective';
 	version: 1;
-	config: NodeConfig<GooglePerspectiveV1Params>;
 	credentials?: GooglePerspectiveV1Credentials;
+}
+
+export type GooglePerspectiveV1Node = GooglePerspectiveV1NodeBase & {
+	config: NodeConfig<GooglePerspectiveV1Config>;
 };
+
+export type GooglePerspectiveV1Node = GooglePerspectiveV1Node;

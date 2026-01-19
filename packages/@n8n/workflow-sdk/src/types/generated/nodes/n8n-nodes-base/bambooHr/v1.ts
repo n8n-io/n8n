@@ -1,8 +1,6 @@
 /**
  * BambooHR Node - Version 1
  * Consume BambooHR API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -386,23 +384,56 @@ export type BambooHrV1FileUploadConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type BambooHrV1Params =
-	| BambooHrV1CompanyReportGetConfig
-	| BambooHrV1EmployeeCreateConfig
-	| BambooHrV1EmployeeGetConfig
-	| BambooHrV1EmployeeGetAllConfig
-	| BambooHrV1EmployeeUpdateConfig
-	| BambooHrV1EmployeeDocumentDeleteConfig
-	| BambooHrV1EmployeeDocumentDownloadConfig
-	| BambooHrV1EmployeeDocumentGetAllConfig
-	| BambooHrV1EmployeeDocumentUpdateConfig
-	| BambooHrV1EmployeeDocumentUploadConfig
-	| BambooHrV1FileDeleteConfig
-	| BambooHrV1FileDownloadConfig
-	| BambooHrV1FileGetAllConfig
-	| BambooHrV1FileUpdateConfig
-	| BambooHrV1FileUploadConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type BambooHrV1CompanyReportGetOutput = {
+	employees?: Array<{
+		fullName1?: string;
+		fullName2?: string;
+		hireDate?: string;
+		id?: string;
+		payRate?: string;
+	}>;
+	fields?: Array<{
+		name?: string;
+		type?: string;
+	}>;
+	title?: string;
+};
+
+export type BambooHrV1EmployeeGetOutput = {
+	canUploadPhoto?: boolean;
+	displayName?: string;
+	firstName?: string;
+	hireDate?: string;
+	id?: string;
+	lastName?: string;
+	photoUploaded?: boolean;
+	photoUrl?: string;
+};
+
+export type BambooHrV1EmployeeGetAllOutput = {
+	canUploadPhoto?: number;
+	department?: string;
+	displayName?: string;
+	firstName?: string;
+	id?: string;
+	jobTitle?: string;
+	lastName?: string;
+	location?: string;
+	photoUploaded?: boolean;
+	photoUrl?: string;
+	pronouns?: null;
+	supervisor?: string;
+	workEmail?: string;
+};
+
+export type BambooHrV1EmployeeUpdateOutput = {
+	success?: boolean;
+};
 
 // ===========================================================================
 // Credentials
@@ -413,12 +444,93 @@ export interface BambooHrV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BambooHrV1Node = {
+interface BambooHrV1NodeBase {
 	type: 'n8n-nodes-base.bambooHr';
 	version: 1;
-	config: NodeConfig<BambooHrV1Params>;
 	credentials?: BambooHrV1Credentials;
+}
+
+export type BambooHrV1CompanyReportGetNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1CompanyReportGetConfig>;
+	output?: BambooHrV1CompanyReportGetOutput;
 };
+
+export type BambooHrV1EmployeeCreateNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1EmployeeCreateConfig>;
+};
+
+export type BambooHrV1EmployeeGetNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1EmployeeGetConfig>;
+	output?: BambooHrV1EmployeeGetOutput;
+};
+
+export type BambooHrV1EmployeeGetAllNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1EmployeeGetAllConfig>;
+	output?: BambooHrV1EmployeeGetAllOutput;
+};
+
+export type BambooHrV1EmployeeUpdateNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1EmployeeUpdateConfig>;
+	output?: BambooHrV1EmployeeUpdateOutput;
+};
+
+export type BambooHrV1EmployeeDocumentDeleteNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1EmployeeDocumentDeleteConfig>;
+};
+
+export type BambooHrV1EmployeeDocumentDownloadNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1EmployeeDocumentDownloadConfig>;
+};
+
+export type BambooHrV1EmployeeDocumentGetAllNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1EmployeeDocumentGetAllConfig>;
+};
+
+export type BambooHrV1EmployeeDocumentUpdateNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1EmployeeDocumentUpdateConfig>;
+};
+
+export type BambooHrV1EmployeeDocumentUploadNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1EmployeeDocumentUploadConfig>;
+};
+
+export type BambooHrV1FileDeleteNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1FileDeleteConfig>;
+};
+
+export type BambooHrV1FileDownloadNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1FileDownloadConfig>;
+};
+
+export type BambooHrV1FileGetAllNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1FileGetAllConfig>;
+};
+
+export type BambooHrV1FileUpdateNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1FileUpdateConfig>;
+};
+
+export type BambooHrV1FileUploadNode = BambooHrV1NodeBase & {
+	config: NodeConfig<BambooHrV1FileUploadConfig>;
+};
+
+export type BambooHrV1Node =
+	| BambooHrV1CompanyReportGetNode
+	| BambooHrV1EmployeeCreateNode
+	| BambooHrV1EmployeeGetNode
+	| BambooHrV1EmployeeGetAllNode
+	| BambooHrV1EmployeeUpdateNode
+	| BambooHrV1EmployeeDocumentDeleteNode
+	| BambooHrV1EmployeeDocumentDownloadNode
+	| BambooHrV1EmployeeDocumentGetAllNode
+	| BambooHrV1EmployeeDocumentUpdateNode
+	| BambooHrV1EmployeeDocumentUploadNode
+	| BambooHrV1FileDeleteNode
+	| BambooHrV1FileDownloadNode
+	| BambooHrV1FileGetAllNode
+	| BambooHrV1FileUpdateNode
+	| BambooHrV1FileUploadNode
+	;

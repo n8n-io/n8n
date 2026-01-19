@@ -1,8 +1,6 @@
 /**
  * OpenAI Node - Version 2
  * Message an assistant or GPT, analyze images, generate audio, etc.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -391,24 +389,6 @@ export type LcOpenAiV2VideoGenerateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcOpenAiV2Params =
-	| LcOpenAiV2TextResponseConfig
-	| LcOpenAiV2TextClassifyConfig
-	| LcOpenAiV2ImageAnalyzeConfig
-	| LcOpenAiV2ImageGenerateConfig
-	| LcOpenAiV2ImageEditConfig
-	| LcOpenAiV2AudioGenerateConfig
-	| LcOpenAiV2AudioTranscribeConfig
-	| LcOpenAiV2AudioTranslateConfig
-	| LcOpenAiV2FileDeleteFileConfig
-	| LcOpenAiV2FileListConfig
-	| LcOpenAiV2FileUploadConfig
-	| LcOpenAiV2ConversationCreateConfig
-	| LcOpenAiV2ConversationGetConfig
-	| LcOpenAiV2ConversationRemoveConfig
-	| LcOpenAiV2ConversationUpdateConfig
-	| LcOpenAiV2VideoGenerateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -419,12 +399,94 @@ export interface LcOpenAiV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOpenAiV2Node = {
+interface LcOpenAiV2NodeBase {
 	type: '@n8n/n8n-nodes-langchain.openAi';
 	version: 2;
-	config: NodeConfig<LcOpenAiV2Params>;
 	credentials?: LcOpenAiV2Credentials;
+}
+
+export type LcOpenAiV2TextResponseNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2TextResponseConfig>;
 };
+
+export type LcOpenAiV2TextClassifyNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2TextClassifyConfig>;
+};
+
+export type LcOpenAiV2ImageAnalyzeNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2ImageAnalyzeConfig>;
+};
+
+export type LcOpenAiV2ImageGenerateNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2ImageGenerateConfig>;
+};
+
+export type LcOpenAiV2ImageEditNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2ImageEditConfig>;
+};
+
+export type LcOpenAiV2AudioGenerateNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2AudioGenerateConfig>;
+};
+
+export type LcOpenAiV2AudioTranscribeNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2AudioTranscribeConfig>;
+};
+
+export type LcOpenAiV2AudioTranslateNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2AudioTranslateConfig>;
+};
+
+export type LcOpenAiV2FileDeleteFileNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2FileDeleteFileConfig>;
+};
+
+export type LcOpenAiV2FileListNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2FileListConfig>;
+};
+
+export type LcOpenAiV2FileUploadNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2FileUploadConfig>;
+};
+
+export type LcOpenAiV2ConversationCreateNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2ConversationCreateConfig>;
+};
+
+export type LcOpenAiV2ConversationGetNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2ConversationGetConfig>;
+};
+
+export type LcOpenAiV2ConversationRemoveNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2ConversationRemoveConfig>;
+};
+
+export type LcOpenAiV2ConversationUpdateNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2ConversationUpdateConfig>;
+};
+
+export type LcOpenAiV2VideoGenerateNode = LcOpenAiV2NodeBase & {
+	config: NodeConfig<LcOpenAiV2VideoGenerateConfig>;
+};
+
+export type LcOpenAiV2Node =
+	| LcOpenAiV2TextResponseNode
+	| LcOpenAiV2TextClassifyNode
+	| LcOpenAiV2ImageAnalyzeNode
+	| LcOpenAiV2ImageGenerateNode
+	| LcOpenAiV2ImageEditNode
+	| LcOpenAiV2AudioGenerateNode
+	| LcOpenAiV2AudioTranscribeNode
+	| LcOpenAiV2AudioTranslateNode
+	| LcOpenAiV2FileDeleteFileNode
+	| LcOpenAiV2FileListNode
+	| LcOpenAiV2FileUploadNode
+	| LcOpenAiV2ConversationCreateNode
+	| LcOpenAiV2ConversationGetNode
+	| LcOpenAiV2ConversationRemoveNode
+	| LcOpenAiV2ConversationUpdateNode
+	| LcOpenAiV2VideoGenerateNode
+	;

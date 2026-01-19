@@ -1,8 +1,6 @@
 /**
  * Supabase Vector Store Node - Version 1
  * Work with your data in Supabase Vector Store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -113,13 +111,6 @@ export type LcVectorStoreSupabaseV1UpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStoreSupabaseV1Params =
-	| LcVectorStoreSupabaseV1LoadConfig
-	| LcVectorStoreSupabaseV1InsertConfig
-	| LcVectorStoreSupabaseV1RetrieveConfig
-	| LcVectorStoreSupabaseV1RetrieveAsToolConfig
-	| LcVectorStoreSupabaseV1UpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -130,12 +121,39 @@ export interface LcVectorStoreSupabaseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreSupabaseV1Node = {
+interface LcVectorStoreSupabaseV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase';
 	version: 1;
-	config: NodeConfig<LcVectorStoreSupabaseV1Params>;
 	credentials?: LcVectorStoreSupabaseV1Credentials;
+}
+
+export type LcVectorStoreSupabaseV1LoadNode = LcVectorStoreSupabaseV1NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV1LoadConfig>;
 };
+
+export type LcVectorStoreSupabaseV1InsertNode = LcVectorStoreSupabaseV1NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV1InsertConfig>;
+};
+
+export type LcVectorStoreSupabaseV1RetrieveNode = LcVectorStoreSupabaseV1NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV1RetrieveConfig>;
+};
+
+export type LcVectorStoreSupabaseV1RetrieveAsToolNode = LcVectorStoreSupabaseV1NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV1RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreSupabaseV1UpdateNode = LcVectorStoreSupabaseV1NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV1UpdateConfig>;
+};
+
+export type LcVectorStoreSupabaseV1Node =
+	| LcVectorStoreSupabaseV1LoadNode
+	| LcVectorStoreSupabaseV1InsertNode
+	| LcVectorStoreSupabaseV1RetrieveNode
+	| LcVectorStoreSupabaseV1RetrieveAsToolNode
+	| LcVectorStoreSupabaseV1UpdateNode
+	;

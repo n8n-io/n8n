@@ -1,8 +1,6 @@
 /**
  * Webflow Node - Version 2
  * Consume the Webflow API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -147,13 +145,61 @@ export type WebflowV2ItemUpdateConfig = {
 	};
 };
 
-export type WebflowV2Params =
-	| WebflowV2ItemCreateConfig
-	| WebflowV2ItemDeleteItemConfig
-	| WebflowV2ItemGetConfig
-	| WebflowV2ItemGetAllConfig
-	| WebflowV2ItemUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type WebflowV2ItemCreateOutput = {
+	createdOn?: string;
+	fieldData?: {
+		name?: string;
+		slug?: string;
+	};
+	id?: string;
+	isArchived?: boolean;
+	isDraft?: boolean;
+	lastUpdated?: string;
+};
+
+export type WebflowV2ItemDeleteItemOutput = {
+	success?: boolean;
+};
+
+export type WebflowV2ItemGetOutput = {
+	createdOn?: string;
+	fieldData?: {
+		name?: string;
+		slug?: string;
+	};
+	id?: string;
+	isArchived?: boolean;
+	lastUpdated?: string;
+};
+
+export type WebflowV2ItemGetAllOutput = {
+	createdOn?: string;
+	fieldData?: {
+		name?: string;
+		slug?: string;
+	};
+	id?: string;
+	isArchived?: boolean;
+	isDraft?: boolean;
+	lastUpdated?: string;
+};
+
+export type WebflowV2ItemUpdateOutput = {
+	createdOn?: string;
+	fieldData?: {
+		name?: string;
+		slug?: string;
+	};
+	id?: string;
+	isArchived?: boolean;
+	isDraft?: boolean;
+	lastUpdated?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -164,12 +210,44 @@ export interface WebflowV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WebflowV2Node = {
+interface WebflowV2NodeBase {
 	type: 'n8n-nodes-base.webflow';
 	version: 2;
-	config: NodeConfig<WebflowV2Params>;
 	credentials?: WebflowV2Credentials;
+}
+
+export type WebflowV2ItemCreateNode = WebflowV2NodeBase & {
+	config: NodeConfig<WebflowV2ItemCreateConfig>;
+	output?: WebflowV2ItemCreateOutput;
 };
+
+export type WebflowV2ItemDeleteItemNode = WebflowV2NodeBase & {
+	config: NodeConfig<WebflowV2ItemDeleteItemConfig>;
+	output?: WebflowV2ItemDeleteItemOutput;
+};
+
+export type WebflowV2ItemGetNode = WebflowV2NodeBase & {
+	config: NodeConfig<WebflowV2ItemGetConfig>;
+	output?: WebflowV2ItemGetOutput;
+};
+
+export type WebflowV2ItemGetAllNode = WebflowV2NodeBase & {
+	config: NodeConfig<WebflowV2ItemGetAllConfig>;
+	output?: WebflowV2ItemGetAllOutput;
+};
+
+export type WebflowV2ItemUpdateNode = WebflowV2NodeBase & {
+	config: NodeConfig<WebflowV2ItemUpdateConfig>;
+	output?: WebflowV2ItemUpdateOutput;
+};
+
+export type WebflowV2Node =
+	| WebflowV2ItemCreateNode
+	| WebflowV2ItemDeleteItemNode
+	| WebflowV2ItemGetNode
+	| WebflowV2ItemGetAllNode
+	| WebflowV2ItemUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Adalo Node - Version 1
  * Consume Adalo API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AdaloV1Params {
+export interface AdaloV1Config {
 	resource?: 'collection' | Expression<string>;
 	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | Expression<string>;
 /**
@@ -73,12 +71,17 @@ export interface AdaloV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AdaloV1Node = {
+interface AdaloV1NodeBase {
 	type: 'n8n-nodes-base.adalo';
 	version: 1;
-	config: NodeConfig<AdaloV1Params>;
 	credentials?: AdaloV1Credentials;
+}
+
+export type AdaloV1Node = AdaloV1NodeBase & {
+	config: NodeConfig<AdaloV1Config>;
 };
+
+export type AdaloV1Node = AdaloV1Node;

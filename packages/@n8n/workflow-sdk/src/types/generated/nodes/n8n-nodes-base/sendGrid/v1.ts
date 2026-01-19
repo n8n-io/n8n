@@ -1,8 +1,6 @@
 /**
  * SendGrid Node - Version 1
  * Consume SendGrid API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -222,18 +220,23 @@ export type SendGridV1MailSendConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type SendGridV1Params =
-	| SendGridV1ContactUpsertConfig
-	| SendGridV1ContactDeleteConfig
-	| SendGridV1ContactGetConfig
-	| SendGridV1ContactGetAllConfig
-	| SendGridV1ListCreateConfig
-	| SendGridV1ListDeleteConfig
-	| SendGridV1ListGetConfig
-	| SendGridV1ListGetAllConfig
-	| SendGridV1ListUpdateConfig
-	| SendGridV1MailSendConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type SendGridV1ListCreateOutput = {
+	_metadata?: {
+		self?: string;
+	};
+	contact_count?: number;
+	id?: string;
+	name?: string;
+};
+
+export type SendGridV1MailSendOutput = {
+	messageId?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -244,12 +247,66 @@ export interface SendGridV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SendGridV1Node = {
+interface SendGridV1NodeBase {
 	type: 'n8n-nodes-base.sendGrid';
 	version: 1;
-	config: NodeConfig<SendGridV1Params>;
 	credentials?: SendGridV1Credentials;
+}
+
+export type SendGridV1ContactUpsertNode = SendGridV1NodeBase & {
+	config: NodeConfig<SendGridV1ContactUpsertConfig>;
 };
+
+export type SendGridV1ContactDeleteNode = SendGridV1NodeBase & {
+	config: NodeConfig<SendGridV1ContactDeleteConfig>;
+};
+
+export type SendGridV1ContactGetNode = SendGridV1NodeBase & {
+	config: NodeConfig<SendGridV1ContactGetConfig>;
+};
+
+export type SendGridV1ContactGetAllNode = SendGridV1NodeBase & {
+	config: NodeConfig<SendGridV1ContactGetAllConfig>;
+};
+
+export type SendGridV1ListCreateNode = SendGridV1NodeBase & {
+	config: NodeConfig<SendGridV1ListCreateConfig>;
+	output?: SendGridV1ListCreateOutput;
+};
+
+export type SendGridV1ListDeleteNode = SendGridV1NodeBase & {
+	config: NodeConfig<SendGridV1ListDeleteConfig>;
+};
+
+export type SendGridV1ListGetNode = SendGridV1NodeBase & {
+	config: NodeConfig<SendGridV1ListGetConfig>;
+};
+
+export type SendGridV1ListGetAllNode = SendGridV1NodeBase & {
+	config: NodeConfig<SendGridV1ListGetAllConfig>;
+};
+
+export type SendGridV1ListUpdateNode = SendGridV1NodeBase & {
+	config: NodeConfig<SendGridV1ListUpdateConfig>;
+};
+
+export type SendGridV1MailSendNode = SendGridV1NodeBase & {
+	config: NodeConfig<SendGridV1MailSendConfig>;
+	output?: SendGridV1MailSendOutput;
+};
+
+export type SendGridV1Node =
+	| SendGridV1ContactUpsertNode
+	| SendGridV1ContactDeleteNode
+	| SendGridV1ContactGetNode
+	| SendGridV1ContactGetAllNode
+	| SendGridV1ListCreateNode
+	| SendGridV1ListDeleteNode
+	| SendGridV1ListGetNode
+	| SendGridV1ListGetAllNode
+	| SendGridV1ListUpdateNode
+	| SendGridV1MailSendNode
+	;

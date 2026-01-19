@@ -1,8 +1,6 @@
 /**
  * MSG91 Node - Version 1
  * Sends transactional SMS via MSG91
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -34,9 +32,6 @@ export type Msg91V1SmsSendConfig = {
 		message: string | Expression<string>;
 };
 
-export type Msg91V1Params =
-	| Msg91V1SmsSendConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -47,12 +42,17 @@ export interface Msg91V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type Msg91V1Node = {
+interface Msg91V1NodeBase {
 	type: 'n8n-nodes-base.msg91';
 	version: 1;
-	config: NodeConfig<Msg91V1Params>;
 	credentials?: Msg91V1Credentials;
+}
+
+export type Msg91V1SmsSendNode = Msg91V1NodeBase & {
+	config: NodeConfig<Msg91V1SmsSendConfig>;
 };
+
+export type Msg91V1Node = Msg91V1SmsSendNode;

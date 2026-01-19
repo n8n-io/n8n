@@ -1,8 +1,6 @@
 /**
  * XML Node - Version 1
  * Convert data from and to XML
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -37,22 +35,29 @@ export type XmlV1XmlToJsonConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type XmlV1Params =
-	| XmlV1JsonToxmlConfig
-	| XmlV1XmlToJsonConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type XmlV1Node = {
+interface XmlV1NodeBase {
 	type: 'n8n-nodes-base.xml';
 	version: 1;
-	config: NodeConfig<XmlV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type XmlV1JsonToxmlNode = XmlV1NodeBase & {
+	config: NodeConfig<XmlV1JsonToxmlConfig>;
 };
+
+export type XmlV1XmlToJsonNode = XmlV1NodeBase & {
+	config: NodeConfig<XmlV1XmlToJsonConfig>;
+};
+
+export type XmlV1Node =
+	| XmlV1JsonToxmlNode
+	| XmlV1XmlToJsonNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Schedule Trigger Node - Version 1
  * Triggers the workflow on a given schedule
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ScheduleTriggerV1Params {
+export interface ScheduleTriggerV1Config {
 	rule?: {
 		interval?: Array<{
 			/** Trigger Interval
@@ -89,13 +87,17 @@ export interface ScheduleTriggerV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ScheduleTriggerV1Node = {
+interface ScheduleTriggerV1NodeBase {
 	type: 'n8n-nodes-base.scheduleTrigger';
 	version: 1;
-	config: NodeConfig<ScheduleTriggerV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type ScheduleTriggerV1Node = ScheduleTriggerV1NodeBase & {
+	config: NodeConfig<ScheduleTriggerV1Config>;
 };
+
+export type ScheduleTriggerV1Node = ScheduleTriggerV1Node;

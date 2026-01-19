@@ -1,8 +1,6 @@
 /**
  * Guardrails Node - Version 1
  * Safeguard AI models from malicious input or prevent them from generating undesirable responses
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcGuardrailsV1Params {
+export interface LcGuardrailsV1Config {
 	operation?: 'classify' | 'sanitize' | Expression<string>;
 	text: string | Expression<string>;
 	guardrails?: Record<string, unknown>;
@@ -57,12 +55,16 @@ Analyze the following text according to the instructions above.
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcGuardrailsV1Node = {
+interface LcGuardrailsV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.guardrails';
 	version: 1;
-	config: NodeConfig<LcGuardrailsV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcGuardrailsV1Node = LcGuardrailsV1NodeBase & {
+	config: NodeConfig<LcGuardrailsV1Config>;
 };
+
+export type LcGuardrailsV1Node = LcGuardrailsV1Node;

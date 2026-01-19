@@ -1,8 +1,6 @@
 /**
  * MQTT Trigger Node - Version 1
  * Listens to MQTT events
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MqttTriggerV1Params {
+export interface MqttTriggerV1Config {
 /**
  * Topics to subscribe to, multiple can be defined with comma. Wildcard characters are supported (+ - for single level and # - for multi level). By default all subscription used QoS=0. To set a different QoS, write the QoS desired after the topic preceded by a colom. For Example: topicA:1,topicB:2
  */
@@ -30,13 +28,18 @@ export interface MqttTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MqttTriggerV1Node = {
+interface MqttTriggerV1NodeBase {
 	type: 'n8n-nodes-base.mqttTrigger';
 	version: 1;
-	config: NodeConfig<MqttTriggerV1Params>;
 	credentials?: MqttTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MqttTriggerV1Node = MqttTriggerV1NodeBase & {
+	config: NodeConfig<MqttTriggerV1Config>;
 };
+
+export type MqttTriggerV1Node = MqttTriggerV1Node;

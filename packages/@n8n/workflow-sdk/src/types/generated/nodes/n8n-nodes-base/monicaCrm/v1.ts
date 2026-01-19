@@ -1,8 +1,6 @@
 /**
  * Monica CRM Node - Version 1
  * Consume the Monica CRM API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -798,60 +796,6 @@ export type MonicaCrmV1TaskUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type MonicaCrmV1Params =
-	| MonicaCrmV1ActivityCreateConfig
-	| MonicaCrmV1ActivityDeleteConfig
-	| MonicaCrmV1ActivityGetConfig
-	| MonicaCrmV1ActivityGetAllConfig
-	| MonicaCrmV1ActivityUpdateConfig
-	| MonicaCrmV1CallCreateConfig
-	| MonicaCrmV1CallDeleteConfig
-	| MonicaCrmV1CallGetConfig
-	| MonicaCrmV1CallGetAllConfig
-	| MonicaCrmV1CallUpdateConfig
-	| MonicaCrmV1ContactCreateConfig
-	| MonicaCrmV1ContactDeleteConfig
-	| MonicaCrmV1ContactGetConfig
-	| MonicaCrmV1ContactGetAllConfig
-	| MonicaCrmV1ContactUpdateConfig
-	| MonicaCrmV1ContactFieldCreateConfig
-	| MonicaCrmV1ContactFieldDeleteConfig
-	| MonicaCrmV1ContactFieldGetConfig
-	| MonicaCrmV1ContactFieldUpdateConfig
-	| MonicaCrmV1ContactTagAddConfig
-	| MonicaCrmV1ContactTagRemoveConfig
-	| MonicaCrmV1ConversationCreateConfig
-	| MonicaCrmV1ConversationDeleteConfig
-	| MonicaCrmV1ConversationGetConfig
-	| MonicaCrmV1ConversationUpdateConfig
-	| MonicaCrmV1ConversationMessageAddConfig
-	| MonicaCrmV1ConversationMessageUpdateConfig
-	| MonicaCrmV1JournalEntryCreateConfig
-	| MonicaCrmV1JournalEntryDeleteConfig
-	| MonicaCrmV1JournalEntryGetConfig
-	| MonicaCrmV1JournalEntryGetAllConfig
-	| MonicaCrmV1JournalEntryUpdateConfig
-	| MonicaCrmV1NoteCreateConfig
-	| MonicaCrmV1NoteDeleteConfig
-	| MonicaCrmV1NoteGetConfig
-	| MonicaCrmV1NoteGetAllConfig
-	| MonicaCrmV1NoteUpdateConfig
-	| MonicaCrmV1ReminderCreateConfig
-	| MonicaCrmV1ReminderDeleteConfig
-	| MonicaCrmV1ReminderGetConfig
-	| MonicaCrmV1ReminderGetAllConfig
-	| MonicaCrmV1ReminderUpdateConfig
-	| MonicaCrmV1TagCreateConfig
-	| MonicaCrmV1TagDeleteConfig
-	| MonicaCrmV1TagGetConfig
-	| MonicaCrmV1TagGetAllConfig
-	| MonicaCrmV1TagUpdateConfig
-	| MonicaCrmV1TaskCreateConfig
-	| MonicaCrmV1TaskDeleteConfig
-	| MonicaCrmV1TaskGetConfig
-	| MonicaCrmV1TaskGetAllConfig
-	| MonicaCrmV1TaskUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -862,12 +806,274 @@ export interface MonicaCrmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MonicaCrmV1Node = {
+interface MonicaCrmV1NodeBase {
 	type: 'n8n-nodes-base.monicaCrm';
 	version: 1;
-	config: NodeConfig<MonicaCrmV1Params>;
 	credentials?: MonicaCrmV1Credentials;
+}
+
+export type MonicaCrmV1ActivityCreateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ActivityCreateConfig>;
 };
+
+export type MonicaCrmV1ActivityDeleteNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ActivityDeleteConfig>;
+};
+
+export type MonicaCrmV1ActivityGetNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ActivityGetConfig>;
+};
+
+export type MonicaCrmV1ActivityGetAllNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ActivityGetAllConfig>;
+};
+
+export type MonicaCrmV1ActivityUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ActivityUpdateConfig>;
+};
+
+export type MonicaCrmV1CallCreateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1CallCreateConfig>;
+};
+
+export type MonicaCrmV1CallDeleteNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1CallDeleteConfig>;
+};
+
+export type MonicaCrmV1CallGetNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1CallGetConfig>;
+};
+
+export type MonicaCrmV1CallGetAllNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1CallGetAllConfig>;
+};
+
+export type MonicaCrmV1CallUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1CallUpdateConfig>;
+};
+
+export type MonicaCrmV1ContactCreateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactCreateConfig>;
+};
+
+export type MonicaCrmV1ContactDeleteNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactDeleteConfig>;
+};
+
+export type MonicaCrmV1ContactGetNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactGetConfig>;
+};
+
+export type MonicaCrmV1ContactGetAllNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactGetAllConfig>;
+};
+
+export type MonicaCrmV1ContactUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactUpdateConfig>;
+};
+
+export type MonicaCrmV1ContactFieldCreateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactFieldCreateConfig>;
+};
+
+export type MonicaCrmV1ContactFieldDeleteNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactFieldDeleteConfig>;
+};
+
+export type MonicaCrmV1ContactFieldGetNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactFieldGetConfig>;
+};
+
+export type MonicaCrmV1ContactFieldUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactFieldUpdateConfig>;
+};
+
+export type MonicaCrmV1ContactTagAddNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactTagAddConfig>;
+};
+
+export type MonicaCrmV1ContactTagRemoveNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ContactTagRemoveConfig>;
+};
+
+export type MonicaCrmV1ConversationCreateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ConversationCreateConfig>;
+};
+
+export type MonicaCrmV1ConversationDeleteNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ConversationDeleteConfig>;
+};
+
+export type MonicaCrmV1ConversationGetNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ConversationGetConfig>;
+};
+
+export type MonicaCrmV1ConversationUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ConversationUpdateConfig>;
+};
+
+export type MonicaCrmV1ConversationMessageAddNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ConversationMessageAddConfig>;
+};
+
+export type MonicaCrmV1ConversationMessageUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ConversationMessageUpdateConfig>;
+};
+
+export type MonicaCrmV1JournalEntryCreateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1JournalEntryCreateConfig>;
+};
+
+export type MonicaCrmV1JournalEntryDeleteNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1JournalEntryDeleteConfig>;
+};
+
+export type MonicaCrmV1JournalEntryGetNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1JournalEntryGetConfig>;
+};
+
+export type MonicaCrmV1JournalEntryGetAllNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1JournalEntryGetAllConfig>;
+};
+
+export type MonicaCrmV1JournalEntryUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1JournalEntryUpdateConfig>;
+};
+
+export type MonicaCrmV1NoteCreateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1NoteCreateConfig>;
+};
+
+export type MonicaCrmV1NoteDeleteNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1NoteDeleteConfig>;
+};
+
+export type MonicaCrmV1NoteGetNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1NoteGetConfig>;
+};
+
+export type MonicaCrmV1NoteGetAllNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1NoteGetAllConfig>;
+};
+
+export type MonicaCrmV1NoteUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1NoteUpdateConfig>;
+};
+
+export type MonicaCrmV1ReminderCreateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ReminderCreateConfig>;
+};
+
+export type MonicaCrmV1ReminderDeleteNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ReminderDeleteConfig>;
+};
+
+export type MonicaCrmV1ReminderGetNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ReminderGetConfig>;
+};
+
+export type MonicaCrmV1ReminderGetAllNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ReminderGetAllConfig>;
+};
+
+export type MonicaCrmV1ReminderUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1ReminderUpdateConfig>;
+};
+
+export type MonicaCrmV1TagCreateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1TagCreateConfig>;
+};
+
+export type MonicaCrmV1TagDeleteNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1TagDeleteConfig>;
+};
+
+export type MonicaCrmV1TagGetNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1TagGetConfig>;
+};
+
+export type MonicaCrmV1TagGetAllNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1TagGetAllConfig>;
+};
+
+export type MonicaCrmV1TagUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1TagUpdateConfig>;
+};
+
+export type MonicaCrmV1TaskCreateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1TaskCreateConfig>;
+};
+
+export type MonicaCrmV1TaskDeleteNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1TaskDeleteConfig>;
+};
+
+export type MonicaCrmV1TaskGetNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1TaskGetConfig>;
+};
+
+export type MonicaCrmV1TaskGetAllNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1TaskGetAllConfig>;
+};
+
+export type MonicaCrmV1TaskUpdateNode = MonicaCrmV1NodeBase & {
+	config: NodeConfig<MonicaCrmV1TaskUpdateConfig>;
+};
+
+export type MonicaCrmV1Node =
+	| MonicaCrmV1ActivityCreateNode
+	| MonicaCrmV1ActivityDeleteNode
+	| MonicaCrmV1ActivityGetNode
+	| MonicaCrmV1ActivityGetAllNode
+	| MonicaCrmV1ActivityUpdateNode
+	| MonicaCrmV1CallCreateNode
+	| MonicaCrmV1CallDeleteNode
+	| MonicaCrmV1CallGetNode
+	| MonicaCrmV1CallGetAllNode
+	| MonicaCrmV1CallUpdateNode
+	| MonicaCrmV1ContactCreateNode
+	| MonicaCrmV1ContactDeleteNode
+	| MonicaCrmV1ContactGetNode
+	| MonicaCrmV1ContactGetAllNode
+	| MonicaCrmV1ContactUpdateNode
+	| MonicaCrmV1ContactFieldCreateNode
+	| MonicaCrmV1ContactFieldDeleteNode
+	| MonicaCrmV1ContactFieldGetNode
+	| MonicaCrmV1ContactFieldUpdateNode
+	| MonicaCrmV1ContactTagAddNode
+	| MonicaCrmV1ContactTagRemoveNode
+	| MonicaCrmV1ConversationCreateNode
+	| MonicaCrmV1ConversationDeleteNode
+	| MonicaCrmV1ConversationGetNode
+	| MonicaCrmV1ConversationUpdateNode
+	| MonicaCrmV1ConversationMessageAddNode
+	| MonicaCrmV1ConversationMessageUpdateNode
+	| MonicaCrmV1JournalEntryCreateNode
+	| MonicaCrmV1JournalEntryDeleteNode
+	| MonicaCrmV1JournalEntryGetNode
+	| MonicaCrmV1JournalEntryGetAllNode
+	| MonicaCrmV1JournalEntryUpdateNode
+	| MonicaCrmV1NoteCreateNode
+	| MonicaCrmV1NoteDeleteNode
+	| MonicaCrmV1NoteGetNode
+	| MonicaCrmV1NoteGetAllNode
+	| MonicaCrmV1NoteUpdateNode
+	| MonicaCrmV1ReminderCreateNode
+	| MonicaCrmV1ReminderDeleteNode
+	| MonicaCrmV1ReminderGetNode
+	| MonicaCrmV1ReminderGetAllNode
+	| MonicaCrmV1ReminderUpdateNode
+	| MonicaCrmV1TagCreateNode
+	| MonicaCrmV1TagDeleteNode
+	| MonicaCrmV1TagGetNode
+	| MonicaCrmV1TagGetAllNode
+	| MonicaCrmV1TagUpdateNode
+	| MonicaCrmV1TaskCreateNode
+	| MonicaCrmV1TaskDeleteNode
+	| MonicaCrmV1TaskGetNode
+	| MonicaCrmV1TaskGetAllNode
+	| MonicaCrmV1TaskUpdateNode
+	;

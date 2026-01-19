@@ -1,8 +1,6 @@
 /**
  * Flow Trigger Node - Version 1
  * Handle Flow events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FlowTriggerV1Params {
+export interface FlowTriggerV1Config {
 /**
  * Resource that triggers the webhook
  */
@@ -41,13 +39,18 @@ export interface FlowTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FlowTriggerV1Node = {
+interface FlowTriggerV1NodeBase {
 	type: 'n8n-nodes-base.flowTrigger';
 	version: 1;
-	config: NodeConfig<FlowTriggerV1Params>;
 	credentials?: FlowTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type FlowTriggerV1Node = FlowTriggerV1NodeBase & {
+	config: NodeConfig<FlowTriggerV1Config>;
 };
+
+export type FlowTriggerV1Node = FlowTriggerV1Node;

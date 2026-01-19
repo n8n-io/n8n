@@ -1,8 +1,6 @@
 /**
  * Google Sheets Node - Version 4.5
  * Read, update and write data to Google Sheets
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -170,18 +168,6 @@ export type GoogleSheetsV45SheetUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleSheetsV45Params =
-	| GoogleSheetsV45SpreadsheetCreateConfig
-	| GoogleSheetsV45SpreadsheetDeleteSpreadsheetConfig
-	| GoogleSheetsV45SheetAppendOrUpdateConfig
-	| GoogleSheetsV45SheetAppendConfig
-	| GoogleSheetsV45SheetClearConfig
-	| GoogleSheetsV45SheetCreateConfig
-	| GoogleSheetsV45SheetRemoveConfig
-	| GoogleSheetsV45SheetDeleteConfig
-	| GoogleSheetsV45SheetReadConfig
-	| GoogleSheetsV45SheetUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -193,12 +179,64 @@ export interface GoogleSheetsV45Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleSheetsV45Node = {
+interface GoogleSheetsV45NodeBase {
 	type: 'n8n-nodes-base.googleSheets';
 	version: 4.5;
-	config: NodeConfig<GoogleSheetsV45Params>;
 	credentials?: GoogleSheetsV45Credentials;
+}
+
+export type GoogleSheetsV45SpreadsheetCreateNode = GoogleSheetsV45NodeBase & {
+	config: NodeConfig<GoogleSheetsV45SpreadsheetCreateConfig>;
 };
+
+export type GoogleSheetsV45SpreadsheetDeleteSpreadsheetNode = GoogleSheetsV45NodeBase & {
+	config: NodeConfig<GoogleSheetsV45SpreadsheetDeleteSpreadsheetConfig>;
+};
+
+export type GoogleSheetsV45SheetAppendOrUpdateNode = GoogleSheetsV45NodeBase & {
+	config: NodeConfig<GoogleSheetsV45SheetAppendOrUpdateConfig>;
+};
+
+export type GoogleSheetsV45SheetAppendNode = GoogleSheetsV45NodeBase & {
+	config: NodeConfig<GoogleSheetsV45SheetAppendConfig>;
+};
+
+export type GoogleSheetsV45SheetClearNode = GoogleSheetsV45NodeBase & {
+	config: NodeConfig<GoogleSheetsV45SheetClearConfig>;
+};
+
+export type GoogleSheetsV45SheetCreateNode = GoogleSheetsV45NodeBase & {
+	config: NodeConfig<GoogleSheetsV45SheetCreateConfig>;
+};
+
+export type GoogleSheetsV45SheetRemoveNode = GoogleSheetsV45NodeBase & {
+	config: NodeConfig<GoogleSheetsV45SheetRemoveConfig>;
+};
+
+export type GoogleSheetsV45SheetDeleteNode = GoogleSheetsV45NodeBase & {
+	config: NodeConfig<GoogleSheetsV45SheetDeleteConfig>;
+};
+
+export type GoogleSheetsV45SheetReadNode = GoogleSheetsV45NodeBase & {
+	config: NodeConfig<GoogleSheetsV45SheetReadConfig>;
+};
+
+export type GoogleSheetsV45SheetUpdateNode = GoogleSheetsV45NodeBase & {
+	config: NodeConfig<GoogleSheetsV45SheetUpdateConfig>;
+};
+
+export type GoogleSheetsV45Node =
+	| GoogleSheetsV45SpreadsheetCreateNode
+	| GoogleSheetsV45SpreadsheetDeleteSpreadsheetNode
+	| GoogleSheetsV45SheetAppendOrUpdateNode
+	| GoogleSheetsV45SheetAppendNode
+	| GoogleSheetsV45SheetClearNode
+	| GoogleSheetsV45SheetCreateNode
+	| GoogleSheetsV45SheetRemoveNode
+	| GoogleSheetsV45SheetDeleteNode
+	| GoogleSheetsV45SheetReadNode
+	| GoogleSheetsV45SheetUpdateNode
+	;

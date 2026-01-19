@@ -1,8 +1,6 @@
 /**
  * Execute Sub-workflow Node - Version 1
  * Execute another workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ExecuteWorkflowV1Params {
+export interface ExecuteWorkflowV1Config {
 	operation?: unknown;
 /**
  * Note on using an expression here: if this node is set to run once with all items, they will all be sent to the &lt;em&gt;same&lt;/em&gt; workflow. That workflow's ID will be calculated by evaluating the expression for the &lt;strong&gt;first input item&lt;/strong&gt;.
@@ -50,12 +48,16 @@ export interface ExecuteWorkflowV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ExecuteWorkflowV1Node = {
+interface ExecuteWorkflowV1NodeBase {
 	type: 'n8n-nodes-base.executeWorkflow';
 	version: 1;
-	config: NodeConfig<ExecuteWorkflowV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type ExecuteWorkflowV1Node = ExecuteWorkflowV1NodeBase & {
+	config: NodeConfig<ExecuteWorkflowV1Config>;
 };
+
+export type ExecuteWorkflowV1Node = ExecuteWorkflowV1Node;

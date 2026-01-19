@@ -1,8 +1,6 @@
 /**
  * Google BigQuery Node - Version 1
  * Consume Google BigQuery API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -80,10 +78,6 @@ export type GoogleBigQueryV1RecordGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleBigQueryV1Params =
-	| GoogleBigQueryV1RecordCreateConfig
-	| GoogleBigQueryV1RecordGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -95,12 +89,24 @@ export interface GoogleBigQueryV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleBigQueryV1Node = {
+interface GoogleBigQueryV1NodeBase {
 	type: 'n8n-nodes-base.googleBigQuery';
 	version: 1;
-	config: NodeConfig<GoogleBigQueryV1Params>;
 	credentials?: GoogleBigQueryV1Credentials;
+}
+
+export type GoogleBigQueryV1RecordCreateNode = GoogleBigQueryV1NodeBase & {
+	config: NodeConfig<GoogleBigQueryV1RecordCreateConfig>;
 };
+
+export type GoogleBigQueryV1RecordGetAllNode = GoogleBigQueryV1NodeBase & {
+	config: NodeConfig<GoogleBigQueryV1RecordGetAllConfig>;
+};
+
+export type GoogleBigQueryV1Node =
+	| GoogleBigQueryV1RecordCreateNode
+	| GoogleBigQueryV1RecordGetAllNode
+	;

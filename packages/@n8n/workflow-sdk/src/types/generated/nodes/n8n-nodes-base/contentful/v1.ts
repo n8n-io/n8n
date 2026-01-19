@@ -1,8 +1,6 @@
 /**
  * Contentful Node - Version 1
  * Consume Contentful API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -162,15 +160,24 @@ export type ContentfulV1SpaceGetConfig = {
 		source?: 'deliveryApi' | 'previewApi' | Expression<string>;
 };
 
-export type ContentfulV1Params =
-	| ContentfulV1AssetGetConfig
-	| ContentfulV1AssetGetAllConfig
-	| ContentfulV1ContentTypeGetConfig
-	| ContentfulV1EntryGetConfig
-	| ContentfulV1EntryGetAllConfig
-	| ContentfulV1LocaleGetAllConfig
-	| ContentfulV1SpaceGetConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type ContentfulV1ContentTypeGetOutput = {
+	disabled?: boolean;
+	id?: string;
+	localized?: boolean;
+	name?: string;
+	omitted?: boolean;
+	required?: boolean;
+	type?: string;
+};
+
+export type ContentfulV1EntryGetAllOutput = {
+	name?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -181,12 +188,51 @@ export interface ContentfulV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ContentfulV1Node = {
+interface ContentfulV1NodeBase {
 	type: 'n8n-nodes-base.contentful';
 	version: 1;
-	config: NodeConfig<ContentfulV1Params>;
 	credentials?: ContentfulV1Credentials;
+}
+
+export type ContentfulV1AssetGetNode = ContentfulV1NodeBase & {
+	config: NodeConfig<ContentfulV1AssetGetConfig>;
 };
+
+export type ContentfulV1AssetGetAllNode = ContentfulV1NodeBase & {
+	config: NodeConfig<ContentfulV1AssetGetAllConfig>;
+};
+
+export type ContentfulV1ContentTypeGetNode = ContentfulV1NodeBase & {
+	config: NodeConfig<ContentfulV1ContentTypeGetConfig>;
+	output?: ContentfulV1ContentTypeGetOutput;
+};
+
+export type ContentfulV1EntryGetNode = ContentfulV1NodeBase & {
+	config: NodeConfig<ContentfulV1EntryGetConfig>;
+};
+
+export type ContentfulV1EntryGetAllNode = ContentfulV1NodeBase & {
+	config: NodeConfig<ContentfulV1EntryGetAllConfig>;
+	output?: ContentfulV1EntryGetAllOutput;
+};
+
+export type ContentfulV1LocaleGetAllNode = ContentfulV1NodeBase & {
+	config: NodeConfig<ContentfulV1LocaleGetAllConfig>;
+};
+
+export type ContentfulV1SpaceGetNode = ContentfulV1NodeBase & {
+	config: NodeConfig<ContentfulV1SpaceGetConfig>;
+};
+
+export type ContentfulV1Node =
+	| ContentfulV1AssetGetNode
+	| ContentfulV1AssetGetAllNode
+	| ContentfulV1ContentTypeGetNode
+	| ContentfulV1EntryGetNode
+	| ContentfulV1EntryGetAllNode
+	| ContentfulV1LocaleGetAllNode
+	| ContentfulV1SpaceGetNode
+	;

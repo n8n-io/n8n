@@ -1,8 +1,6 @@
 /**
  * seven Node - Version 1
  * Send SMS and make text-to-speech calls
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -52,10 +50,22 @@ export type Sms77V1VoiceSendConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type Sms77V1Params =
-	| Sms77V1SmsSendConfig
-	| Sms77V1VoiceSendConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type Sms77V1SmsSendOutput = {
+	debug?: string;
+	messages?: Array<{
+		parts?: number;
+		sender?: string;
+		success?: boolean;
+		udh?: null;
+	}>;
+	sms_type?: string;
+	success?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -66,12 +76,25 @@ export interface Sms77V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type Sms77V1Node = {
+interface Sms77V1NodeBase {
 	type: 'n8n-nodes-base.sms77';
 	version: 1;
-	config: NodeConfig<Sms77V1Params>;
 	credentials?: Sms77V1Credentials;
+}
+
+export type Sms77V1SmsSendNode = Sms77V1NodeBase & {
+	config: NodeConfig<Sms77V1SmsSendConfig>;
+	output?: Sms77V1SmsSendOutput;
 };
+
+export type Sms77V1VoiceSendNode = Sms77V1NodeBase & {
+	config: NodeConfig<Sms77V1VoiceSendConfig>;
+};
+
+export type Sms77V1Node =
+	| Sms77V1SmsSendNode
+	| Sms77V1VoiceSendNode
+	;

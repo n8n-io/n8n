@@ -1,8 +1,6 @@
 /**
  * Wekan Node - Version 1
  * Consume Wekan API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -603,32 +601,6 @@ export type WekanV1ListGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type WekanV1Params =
-	| WekanV1BoardCreateConfig
-	| WekanV1BoardDeleteConfig
-	| WekanV1BoardGetConfig
-	| WekanV1BoardGetAllConfig
-	| WekanV1CardCreateConfig
-	| WekanV1CardDeleteConfig
-	| WekanV1CardGetConfig
-	| WekanV1CardGetAllConfig
-	| WekanV1CardUpdateConfig
-	| WekanV1CardCommentCreateConfig
-	| WekanV1CardCommentDeleteConfig
-	| WekanV1CardCommentGetConfig
-	| WekanV1CardCommentGetAllConfig
-	| WekanV1ChecklistCreateConfig
-	| WekanV1ChecklistDeleteConfig
-	| WekanV1ChecklistGetConfig
-	| WekanV1ChecklistGetAllConfig
-	| WekanV1ChecklistItemDeleteConfig
-	| WekanV1ChecklistItemGetConfig
-	| WekanV1ChecklistItemUpdateConfig
-	| WekanV1ListCreateConfig
-	| WekanV1ListDeleteConfig
-	| WekanV1ListGetConfig
-	| WekanV1ListGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -639,12 +611,134 @@ export interface WekanV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WekanV1Node = {
+interface WekanV1NodeBase {
 	type: 'n8n-nodes-base.wekan';
 	version: 1;
-	config: NodeConfig<WekanV1Params>;
 	credentials?: WekanV1Credentials;
+}
+
+export type WekanV1BoardCreateNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1BoardCreateConfig>;
 };
+
+export type WekanV1BoardDeleteNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1BoardDeleteConfig>;
+};
+
+export type WekanV1BoardGetNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1BoardGetConfig>;
+};
+
+export type WekanV1BoardGetAllNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1BoardGetAllConfig>;
+};
+
+export type WekanV1CardCreateNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1CardCreateConfig>;
+};
+
+export type WekanV1CardDeleteNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1CardDeleteConfig>;
+};
+
+export type WekanV1CardGetNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1CardGetConfig>;
+};
+
+export type WekanV1CardGetAllNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1CardGetAllConfig>;
+};
+
+export type WekanV1CardUpdateNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1CardUpdateConfig>;
+};
+
+export type WekanV1CardCommentCreateNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1CardCommentCreateConfig>;
+};
+
+export type WekanV1CardCommentDeleteNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1CardCommentDeleteConfig>;
+};
+
+export type WekanV1CardCommentGetNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1CardCommentGetConfig>;
+};
+
+export type WekanV1CardCommentGetAllNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1CardCommentGetAllConfig>;
+};
+
+export type WekanV1ChecklistCreateNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ChecklistCreateConfig>;
+};
+
+export type WekanV1ChecklistDeleteNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ChecklistDeleteConfig>;
+};
+
+export type WekanV1ChecklistGetNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ChecklistGetConfig>;
+};
+
+export type WekanV1ChecklistGetAllNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ChecklistGetAllConfig>;
+};
+
+export type WekanV1ChecklistItemDeleteNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ChecklistItemDeleteConfig>;
+};
+
+export type WekanV1ChecklistItemGetNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ChecklistItemGetConfig>;
+};
+
+export type WekanV1ChecklistItemUpdateNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ChecklistItemUpdateConfig>;
+};
+
+export type WekanV1ListCreateNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ListCreateConfig>;
+};
+
+export type WekanV1ListDeleteNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ListDeleteConfig>;
+};
+
+export type WekanV1ListGetNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ListGetConfig>;
+};
+
+export type WekanV1ListGetAllNode = WekanV1NodeBase & {
+	config: NodeConfig<WekanV1ListGetAllConfig>;
+};
+
+export type WekanV1Node =
+	| WekanV1BoardCreateNode
+	| WekanV1BoardDeleteNode
+	| WekanV1BoardGetNode
+	| WekanV1BoardGetAllNode
+	| WekanV1CardCreateNode
+	| WekanV1CardDeleteNode
+	| WekanV1CardGetNode
+	| WekanV1CardGetAllNode
+	| WekanV1CardUpdateNode
+	| WekanV1CardCommentCreateNode
+	| WekanV1CardCommentDeleteNode
+	| WekanV1CardCommentGetNode
+	| WekanV1CardCommentGetAllNode
+	| WekanV1ChecklistCreateNode
+	| WekanV1ChecklistDeleteNode
+	| WekanV1ChecklistGetNode
+	| WekanV1ChecklistGetAllNode
+	| WekanV1ChecklistItemDeleteNode
+	| WekanV1ChecklistItemGetNode
+	| WekanV1ChecklistItemUpdateNode
+	| WekanV1ListCreateNode
+	| WekanV1ListDeleteNode
+	| WekanV1ListGetNode
+	| WekanV1ListGetAllNode
+	;

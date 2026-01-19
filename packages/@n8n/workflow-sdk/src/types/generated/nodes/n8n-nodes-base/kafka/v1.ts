@@ -1,8 +1,6 @@
 /**
  * Kafka Node - Version 1
  * Sends messages to a Kafka topic
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface KafkaV1Params {
+export interface KafkaV1Config {
 /**
  * Name of the queue of topic to publish to
  */
@@ -82,12 +80,17 @@ export interface KafkaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KafkaV1Node = {
+interface KafkaV1NodeBase {
 	type: 'n8n-nodes-base.kafka';
 	version: 1;
-	config: NodeConfig<KafkaV1Params>;
 	credentials?: KafkaV1Credentials;
+}
+
+export type KafkaV1Node = KafkaV1NodeBase & {
+	config: NodeConfig<KafkaV1Config>;
 };
+
+export type KafkaV1Node = KafkaV1Node;

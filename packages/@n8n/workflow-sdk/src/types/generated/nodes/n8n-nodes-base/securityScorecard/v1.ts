@@ -1,8 +1,6 @@
 /**
  * SecurityScorecard Node - Version 1
  * Consume SecurityScorecard API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -351,27 +349,6 @@ export type SecurityScorecardV1ReportGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type SecurityScorecardV1Params =
-	| SecurityScorecardV1CompanyGetFactorConfig
-	| SecurityScorecardV1CompanyGetFactorHistoricalConfig
-	| SecurityScorecardV1CompanyGetHistoricalScoreConfig
-	| SecurityScorecardV1CompanyGetScorecardConfig
-	| SecurityScorecardV1CompanyGetScorePlanConfig
-	| SecurityScorecardV1IndustryGetFactorConfig
-	| SecurityScorecardV1IndustryGetFactorHistoricalConfig
-	| SecurityScorecardV1IndustryGetScoreConfig
-	| SecurityScorecardV1InviteCreateConfig
-	| SecurityScorecardV1PortfolioCreateConfig
-	| SecurityScorecardV1PortfolioDeleteConfig
-	| SecurityScorecardV1PortfolioGetAllConfig
-	| SecurityScorecardV1PortfolioUpdateConfig
-	| SecurityScorecardV1PortfolioCompanyAddConfig
-	| SecurityScorecardV1PortfolioCompanyGetAllConfig
-	| SecurityScorecardV1PortfolioCompanyRemoveConfig
-	| SecurityScorecardV1ReportDownloadConfig
-	| SecurityScorecardV1ReportGenerateConfig
-	| SecurityScorecardV1ReportGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -382,12 +359,109 @@ export interface SecurityScorecardV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SecurityScorecardV1Node = {
+interface SecurityScorecardV1NodeBase {
 	type: 'n8n-nodes-base.securityScorecard';
 	version: 1;
-	config: NodeConfig<SecurityScorecardV1Params>;
 	credentials?: SecurityScorecardV1Credentials;
+}
+
+export type SecurityScorecardV1CompanyGetFactorNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1CompanyGetFactorConfig>;
 };
+
+export type SecurityScorecardV1CompanyGetFactorHistoricalNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1CompanyGetFactorHistoricalConfig>;
+};
+
+export type SecurityScorecardV1CompanyGetHistoricalScoreNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1CompanyGetHistoricalScoreConfig>;
+};
+
+export type SecurityScorecardV1CompanyGetScorecardNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1CompanyGetScorecardConfig>;
+};
+
+export type SecurityScorecardV1CompanyGetScorePlanNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1CompanyGetScorePlanConfig>;
+};
+
+export type SecurityScorecardV1IndustryGetFactorNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1IndustryGetFactorConfig>;
+};
+
+export type SecurityScorecardV1IndustryGetFactorHistoricalNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1IndustryGetFactorHistoricalConfig>;
+};
+
+export type SecurityScorecardV1IndustryGetScoreNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1IndustryGetScoreConfig>;
+};
+
+export type SecurityScorecardV1InviteCreateNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1InviteCreateConfig>;
+};
+
+export type SecurityScorecardV1PortfolioCreateNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1PortfolioCreateConfig>;
+};
+
+export type SecurityScorecardV1PortfolioDeleteNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1PortfolioDeleteConfig>;
+};
+
+export type SecurityScorecardV1PortfolioGetAllNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1PortfolioGetAllConfig>;
+};
+
+export type SecurityScorecardV1PortfolioUpdateNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1PortfolioUpdateConfig>;
+};
+
+export type SecurityScorecardV1PortfolioCompanyAddNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1PortfolioCompanyAddConfig>;
+};
+
+export type SecurityScorecardV1PortfolioCompanyGetAllNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1PortfolioCompanyGetAllConfig>;
+};
+
+export type SecurityScorecardV1PortfolioCompanyRemoveNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1PortfolioCompanyRemoveConfig>;
+};
+
+export type SecurityScorecardV1ReportDownloadNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1ReportDownloadConfig>;
+};
+
+export type SecurityScorecardV1ReportGenerateNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1ReportGenerateConfig>;
+};
+
+export type SecurityScorecardV1ReportGetAllNode = SecurityScorecardV1NodeBase & {
+	config: NodeConfig<SecurityScorecardV1ReportGetAllConfig>;
+};
+
+export type SecurityScorecardV1Node =
+	| SecurityScorecardV1CompanyGetFactorNode
+	| SecurityScorecardV1CompanyGetFactorHistoricalNode
+	| SecurityScorecardV1CompanyGetHistoricalScoreNode
+	| SecurityScorecardV1CompanyGetScorecardNode
+	| SecurityScorecardV1CompanyGetScorePlanNode
+	| SecurityScorecardV1IndustryGetFactorNode
+	| SecurityScorecardV1IndustryGetFactorHistoricalNode
+	| SecurityScorecardV1IndustryGetScoreNode
+	| SecurityScorecardV1InviteCreateNode
+	| SecurityScorecardV1PortfolioCreateNode
+	| SecurityScorecardV1PortfolioDeleteNode
+	| SecurityScorecardV1PortfolioGetAllNode
+	| SecurityScorecardV1PortfolioUpdateNode
+	| SecurityScorecardV1PortfolioCompanyAddNode
+	| SecurityScorecardV1PortfolioCompanyGetAllNode
+	| SecurityScorecardV1PortfolioCompanyRemoveNode
+	| SecurityScorecardV1ReportDownloadNode
+	| SecurityScorecardV1ReportGenerateNode
+	| SecurityScorecardV1ReportGetAllNode
+	;

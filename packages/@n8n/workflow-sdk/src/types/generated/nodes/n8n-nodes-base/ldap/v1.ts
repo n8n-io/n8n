@@ -1,8 +1,6 @@
 /**
  * Ldap Node - Version 1
  * Interact with LDAP servers
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LdapV1Params {
+export interface LdapV1Config {
 	operation?: 'compare' | 'create' | 'delete' | 'rename' | 'search' | 'update' | Expression<string>;
 	nodeDebug?: boolean | Expression<boolean>;
 /**
@@ -106,12 +104,17 @@ export interface LdapV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LdapV1Node = {
+interface LdapV1NodeBase {
 	type: 'n8n-nodes-base.ldap';
 	version: 1;
-	config: NodeConfig<LdapV1Params>;
 	credentials?: LdapV1Credentials;
+}
+
+export type LdapV1Node = LdapV1NodeBase & {
+	config: NodeConfig<LdapV1Config>;
 };
+
+export type LdapV1Node = LdapV1Node;

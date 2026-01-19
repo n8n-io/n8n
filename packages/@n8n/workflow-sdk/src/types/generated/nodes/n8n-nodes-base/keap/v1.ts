@@ -1,8 +1,6 @@
 /**
  * Keap Node - Version 1
  * Consume Keap API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -566,36 +564,94 @@ export type KeapV1FileUploadConfig = {
 	isPublic?: boolean | Expression<boolean>;
 };
 
-export type KeapV1Params =
-	| KeapV1CompanyCreateConfig
-	| KeapV1CompanyGetAllConfig
-	| KeapV1ContactUpsertConfig
-	| KeapV1ContactDeleteConfig
-	| KeapV1ContactGetConfig
-	| KeapV1ContactGetAllConfig
-	| KeapV1ContactNoteCreateConfig
-	| KeapV1ContactNoteDeleteConfig
-	| KeapV1ContactNoteGetConfig
-	| KeapV1ContactNoteGetAllConfig
-	| KeapV1ContactNoteUpdateConfig
-	| KeapV1ContactTagCreateConfig
-	| KeapV1ContactTagDeleteConfig
-	| KeapV1ContactTagGetAllConfig
-	| KeapV1EcommerceOrderCreateConfig
-	| KeapV1EcommerceOrderGetConfig
-	| KeapV1EcommerceOrderDeleteConfig
-	| KeapV1EcommerceOrderGetAllConfig
-	| KeapV1EcommerceProductCreateConfig
-	| KeapV1EcommerceProductDeleteConfig
-	| KeapV1EcommerceProductGetConfig
-	| KeapV1EcommerceProductGetAllConfig
-	| KeapV1EmailCreateRecordConfig
-	| KeapV1EmailGetAllConfig
-	| KeapV1EmailSendConfig
-	| KeapV1FileDeleteConfig
-	| KeapV1FileGetAllConfig
-	| KeapV1FileUploadConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type KeapV1ContactUpsertOutput = {
+	addresses?: Array<{
+		field?: string;
+		locality?: string;
+		postal_code?: string;
+	}>;
+	date_created?: string;
+	email_addresses?: Array<{
+		email?: string;
+		field?: string;
+	}>;
+	email_opted_in?: boolean;
+	email_status?: string;
+	family_name?: string;
+	given_name?: string;
+	id?: number;
+	last_updated?: string;
+	last_updated_utc_millis?: number;
+	phone_numbers?: Array<{
+		field?: string;
+		number?: string;
+		number_e164?: null;
+	}>;
+	ScoreValue?: null;
+	tag_ids?: Array<number>;
+};
+
+export type KeapV1ContactGetOutput = {
+	addresses?: Array<{
+		field?: string;
+		line1?: string;
+		locality?: string;
+		postal_code?: string;
+	}>;
+	contact_type?: string;
+	custom_fields?: Array<{
+		id?: number;
+	}>;
+	date_created?: string;
+	email_addresses?: Array<{
+		email?: string;
+		field?: string;
+	}>;
+	email_opted_in?: boolean;
+	email_status?: string;
+	family_name?: string;
+	given_name?: string;
+	id?: number;
+	last_updated?: string;
+	last_updated_utc_millis?: number;
+	phone_numbers?: Array<{
+		field?: string;
+		number?: string;
+	}>;
+	ScoreValue?: string;
+	tag_ids?: Array<number>;
+};
+
+export type KeapV1ContactGetAllOutput = {
+	addresses?: Array<{
+		field?: string;
+		line1?: string;
+		locality?: string;
+		postal_code?: string;
+	}>;
+	date_created?: string;
+	email_addresses?: Array<{
+		email?: string;
+		field?: string;
+	}>;
+	email_opted_in?: boolean;
+	family_name?: string;
+	given_name?: string;
+	id?: number;
+	last_updated?: string;
+	last_updated_utc_millis?: number;
+	phone_numbers?: Array<{
+		field?: string;
+		number?: string;
+		number_e164?: null;
+	}>;
+	ScoreValue?: null;
+};
 
 // ===========================================================================
 // Credentials
@@ -606,12 +662,157 @@ export interface KeapV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KeapV1Node = {
+interface KeapV1NodeBase {
 	type: 'n8n-nodes-base.keap';
 	version: 1;
-	config: NodeConfig<KeapV1Params>;
 	credentials?: KeapV1Credentials;
+}
+
+export type KeapV1CompanyCreateNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1CompanyCreateConfig>;
 };
+
+export type KeapV1CompanyGetAllNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1CompanyGetAllConfig>;
+};
+
+export type KeapV1ContactUpsertNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactUpsertConfig>;
+	output?: KeapV1ContactUpsertOutput;
+};
+
+export type KeapV1ContactDeleteNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactDeleteConfig>;
+};
+
+export type KeapV1ContactGetNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactGetConfig>;
+	output?: KeapV1ContactGetOutput;
+};
+
+export type KeapV1ContactGetAllNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactGetAllConfig>;
+	output?: KeapV1ContactGetAllOutput;
+};
+
+export type KeapV1ContactNoteCreateNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactNoteCreateConfig>;
+};
+
+export type KeapV1ContactNoteDeleteNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactNoteDeleteConfig>;
+};
+
+export type KeapV1ContactNoteGetNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactNoteGetConfig>;
+};
+
+export type KeapV1ContactNoteGetAllNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactNoteGetAllConfig>;
+};
+
+export type KeapV1ContactNoteUpdateNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactNoteUpdateConfig>;
+};
+
+export type KeapV1ContactTagCreateNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactTagCreateConfig>;
+};
+
+export type KeapV1ContactTagDeleteNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactTagDeleteConfig>;
+};
+
+export type KeapV1ContactTagGetAllNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1ContactTagGetAllConfig>;
+};
+
+export type KeapV1EcommerceOrderCreateNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EcommerceOrderCreateConfig>;
+};
+
+export type KeapV1EcommerceOrderGetNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EcommerceOrderGetConfig>;
+};
+
+export type KeapV1EcommerceOrderDeleteNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EcommerceOrderDeleteConfig>;
+};
+
+export type KeapV1EcommerceOrderGetAllNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EcommerceOrderGetAllConfig>;
+};
+
+export type KeapV1EcommerceProductCreateNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EcommerceProductCreateConfig>;
+};
+
+export type KeapV1EcommerceProductDeleteNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EcommerceProductDeleteConfig>;
+};
+
+export type KeapV1EcommerceProductGetNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EcommerceProductGetConfig>;
+};
+
+export type KeapV1EcommerceProductGetAllNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EcommerceProductGetAllConfig>;
+};
+
+export type KeapV1EmailCreateRecordNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EmailCreateRecordConfig>;
+};
+
+export type KeapV1EmailGetAllNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EmailGetAllConfig>;
+};
+
+export type KeapV1EmailSendNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1EmailSendConfig>;
+};
+
+export type KeapV1FileDeleteNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1FileDeleteConfig>;
+};
+
+export type KeapV1FileGetAllNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1FileGetAllConfig>;
+};
+
+export type KeapV1FileUploadNode = KeapV1NodeBase & {
+	config: NodeConfig<KeapV1FileUploadConfig>;
+};
+
+export type KeapV1Node =
+	| KeapV1CompanyCreateNode
+	| KeapV1CompanyGetAllNode
+	| KeapV1ContactUpsertNode
+	| KeapV1ContactDeleteNode
+	| KeapV1ContactGetNode
+	| KeapV1ContactGetAllNode
+	| KeapV1ContactNoteCreateNode
+	| KeapV1ContactNoteDeleteNode
+	| KeapV1ContactNoteGetNode
+	| KeapV1ContactNoteGetAllNode
+	| KeapV1ContactNoteUpdateNode
+	| KeapV1ContactTagCreateNode
+	| KeapV1ContactTagDeleteNode
+	| KeapV1ContactTagGetAllNode
+	| KeapV1EcommerceOrderCreateNode
+	| KeapV1EcommerceOrderGetNode
+	| KeapV1EcommerceOrderDeleteNode
+	| KeapV1EcommerceOrderGetAllNode
+	| KeapV1EcommerceProductCreateNode
+	| KeapV1EcommerceProductDeleteNode
+	| KeapV1EcommerceProductGetNode
+	| KeapV1EcommerceProductGetAllNode
+	| KeapV1EmailCreateRecordNode
+	| KeapV1EmailGetAllNode
+	| KeapV1EmailSendNode
+	| KeapV1FileDeleteNode
+	| KeapV1FileGetAllNode
+	| KeapV1FileUploadNode
+	;

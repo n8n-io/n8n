@@ -1,8 +1,6 @@
 /**
  * DHL Node - Version 1
  * Consume DHL API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface DhlV1Params {
+export interface DhlV1Config {
 	resource?: unknown;
 	operation?: 'get' | Expression<string>;
 	trackingNumber: string | Expression<string>;
@@ -29,12 +27,17 @@ export interface DhlV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DhlV1Node = {
+interface DhlV1NodeBase {
 	type: 'n8n-nodes-base.dhl';
 	version: 1;
-	config: NodeConfig<DhlV1Params>;
 	credentials?: DhlV1Credentials;
+}
+
+export type DhlV1Node = DhlV1NodeBase & {
+	config: NodeConfig<DhlV1Config>;
 };
+
+export type DhlV1Node = DhlV1Node;

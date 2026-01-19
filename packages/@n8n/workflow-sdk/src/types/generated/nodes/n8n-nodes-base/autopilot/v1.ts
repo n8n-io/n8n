@@ -1,8 +1,6 @@
 /**
  * Autopilot Node - Version 1
  * Consume Autopilot API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -181,19 +179,6 @@ export type AutopilotV1ListGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type AutopilotV1Params =
-	| AutopilotV1ContactUpsertConfig
-	| AutopilotV1ContactDeleteConfig
-	| AutopilotV1ContactGetConfig
-	| AutopilotV1ContactGetAllConfig
-	| AutopilotV1ContactJourneyAddConfig
-	| AutopilotV1ContactListAddConfig
-	| AutopilotV1ContactListExistConfig
-	| AutopilotV1ContactListGetAllConfig
-	| AutopilotV1ContactListRemoveConfig
-	| AutopilotV1ListCreateConfig
-	| AutopilotV1ListGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -204,12 +189,69 @@ export interface AutopilotV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AutopilotV1Node = {
+interface AutopilotV1NodeBase {
 	type: 'n8n-nodes-base.autopilot';
 	version: 1;
-	config: NodeConfig<AutopilotV1Params>;
 	credentials?: AutopilotV1Credentials;
+}
+
+export type AutopilotV1ContactUpsertNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ContactUpsertConfig>;
 };
+
+export type AutopilotV1ContactDeleteNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ContactDeleteConfig>;
+};
+
+export type AutopilotV1ContactGetNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ContactGetConfig>;
+};
+
+export type AutopilotV1ContactGetAllNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ContactGetAllConfig>;
+};
+
+export type AutopilotV1ContactJourneyAddNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ContactJourneyAddConfig>;
+};
+
+export type AutopilotV1ContactListAddNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ContactListAddConfig>;
+};
+
+export type AutopilotV1ContactListExistNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ContactListExistConfig>;
+};
+
+export type AutopilotV1ContactListGetAllNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ContactListGetAllConfig>;
+};
+
+export type AutopilotV1ContactListRemoveNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ContactListRemoveConfig>;
+};
+
+export type AutopilotV1ListCreateNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ListCreateConfig>;
+};
+
+export type AutopilotV1ListGetAllNode = AutopilotV1NodeBase & {
+	config: NodeConfig<AutopilotV1ListGetAllConfig>;
+};
+
+export type AutopilotV1Node =
+	| AutopilotV1ContactUpsertNode
+	| AutopilotV1ContactDeleteNode
+	| AutopilotV1ContactGetNode
+	| AutopilotV1ContactGetAllNode
+	| AutopilotV1ContactJourneyAddNode
+	| AutopilotV1ContactListAddNode
+	| AutopilotV1ContactListExistNode
+	| AutopilotV1ContactListGetAllNode
+	| AutopilotV1ContactListRemoveNode
+	| AutopilotV1ListCreateNode
+	| AutopilotV1ListGetAllNode
+	;

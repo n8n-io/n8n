@@ -1,8 +1,6 @@
 /**
  * NocoDB Node - Version 3
  * Read, update, write and delete data from NocoDB
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -242,13 +240,6 @@ export type NocoDbV3RowUpdateConfig = {
 	};
 };
 
-export type NocoDbV3Params =
-	| NocoDbV3RowCreateConfig
-	| NocoDbV3RowDeleteConfig
-	| NocoDbV3RowGetConfig
-	| NocoDbV3RowGetAllConfig
-	| NocoDbV3RowUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -260,12 +251,39 @@ export interface NocoDbV3Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NocoDbV3Node = {
+interface NocoDbV3NodeBase {
 	type: 'n8n-nodes-base.nocoDb';
 	version: 3;
-	config: NodeConfig<NocoDbV3Params>;
 	credentials?: NocoDbV3Credentials;
+}
+
+export type NocoDbV3RowCreateNode = NocoDbV3NodeBase & {
+	config: NodeConfig<NocoDbV3RowCreateConfig>;
 };
+
+export type NocoDbV3RowDeleteNode = NocoDbV3NodeBase & {
+	config: NodeConfig<NocoDbV3RowDeleteConfig>;
+};
+
+export type NocoDbV3RowGetNode = NocoDbV3NodeBase & {
+	config: NodeConfig<NocoDbV3RowGetConfig>;
+};
+
+export type NocoDbV3RowGetAllNode = NocoDbV3NodeBase & {
+	config: NodeConfig<NocoDbV3RowGetAllConfig>;
+};
+
+export type NocoDbV3RowUpdateNode = NocoDbV3NodeBase & {
+	config: NodeConfig<NocoDbV3RowUpdateConfig>;
+};
+
+export type NocoDbV3Node =
+	| NocoDbV3RowCreateNode
+	| NocoDbV3RowDeleteNode
+	| NocoDbV3RowGetNode
+	| NocoDbV3RowGetAllNode
+	| NocoDbV3RowUpdateNode
+	;

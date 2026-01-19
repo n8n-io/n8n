@@ -1,8 +1,6 @@
 /**
  * Edit Image Node - Version 1
  * Edits an image like blur, resize or adding border and text
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface EditImageV1Params {
+export interface EditImageV1Config {
 	operation?: 'blur' | 'border' | 'composite' | 'create' | 'crop' | 'draw' | 'information' | 'multiStep' | 'resize' | 'rotate' | 'shear' | 'text' | 'transparent' | Expression<string>;
 /**
  * Name of the binary property in which the image data can be found
@@ -387,12 +385,16 @@ export interface EditImageV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EditImageV1Node = {
+interface EditImageV1NodeBase {
 	type: 'n8n-nodes-base.editImage';
 	version: 1;
-	config: NodeConfig<EditImageV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type EditImageV1Node = EditImageV1NodeBase & {
+	config: NodeConfig<EditImageV1Config>;
 };
+
+export type EditImageV1Node = EditImageV1Node;

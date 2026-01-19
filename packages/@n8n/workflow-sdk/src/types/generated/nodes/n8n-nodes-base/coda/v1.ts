@@ -1,8 +1,6 @@
 /**
  * Coda Node - Version 1
  * Consume Coda API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -426,26 +424,93 @@ export type CodaV1ViewUpdateViewRowConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type CodaV1Params =
-	| CodaV1ControlGetConfig
-	| CodaV1ControlGetAllConfig
-	| CodaV1FormulaGetConfig
-	| CodaV1FormulaGetAllConfig
-	| CodaV1TableCreateRowConfig
-	| CodaV1TableDeleteRowConfig
-	| CodaV1TableGetAllColumnsConfig
-	| CodaV1TableGetAllRowsConfig
-	| CodaV1TableGetColumnConfig
-	| CodaV1TableGetRowConfig
-	| CodaV1TablePushButtonConfig
-	| CodaV1ViewDeleteViewRowConfig
-	| CodaV1ViewGetConfig
-	| CodaV1ViewGetAllViewColumnsConfig
-	| CodaV1ViewGetAllConfig
-	| CodaV1ViewGetAllViewRowsConfig
-	| CodaV1ViewPushViewButtonConfig
-	| CodaV1ViewUpdateViewRowConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type CodaV1TableGetAllColumnsOutput = {
+	display?: boolean;
+	format?: {
+		isArray?: boolean;
+		type?: string;
+	};
+	href?: string;
+	id?: string;
+	name?: string;
+	type?: string;
+};
+
+export type CodaV1TableGetAllRowsOutput = {
+	id?: string;
+};
+
+export type CodaV1TableGetRowOutput = {
+	id?: string;
+};
+
+export type CodaV1TablePushButtonOutput = {
+	columnId?: string;
+	requestId?: string;
+	rowId?: string;
+};
+
+export type CodaV1ViewGetOutput = {
+	href?: string;
+	items?: Array<{
+		browserLink?: string;
+		href?: string;
+		id?: string;
+		name?: string;
+		parent?: {
+			browserLink?: string;
+			href?: string;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		tableType?: string;
+		type?: string;
+	}>;
+};
+
+export type CodaV1ViewGetAllOutput = {
+	browserLink?: string;
+	href?: string;
+	id?: string;
+	name?: string;
+	parent?: {
+		browserLink?: string;
+		href?: string;
+		id?: string;
+		name?: string;
+		type?: string;
+	};
+	tableType?: string;
+	type?: string;
+};
+
+export type CodaV1ViewGetAllViewRowsOutput = {
+	'Contract ID'?: string;
+	'Contract Link'?: string;
+	'Contract Notes'?: string;
+	'Contract Signature Date'?: string;
+	contractTextOutput?: string;
+	'Created on'?: string;
+	'Do not use name/logo?'?: boolean;
+	extractText?: string;
+	fileSize?: string;
+	'Full Deletion Required?'?: boolean;
+	id?: string;
+	'IT Addendum?'?: boolean;
+	lastUpdated?: string;
+	'over4MB?'?: boolean;
+	'Processing Organization'?: string;
+	rowID?: number;
+	'Status Date'?: string;
+	Summarize?: string;
+	Summary?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -456,12 +521,111 @@ export interface CodaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CodaV1Node = {
+interface CodaV1NodeBase {
 	type: 'n8n-nodes-base.coda';
 	version: 1;
-	config: NodeConfig<CodaV1Params>;
 	credentials?: CodaV1Credentials;
+}
+
+export type CodaV1ControlGetNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1ControlGetConfig>;
 };
+
+export type CodaV1ControlGetAllNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1ControlGetAllConfig>;
+};
+
+export type CodaV1FormulaGetNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1FormulaGetConfig>;
+};
+
+export type CodaV1FormulaGetAllNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1FormulaGetAllConfig>;
+};
+
+export type CodaV1TableCreateRowNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1TableCreateRowConfig>;
+};
+
+export type CodaV1TableDeleteRowNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1TableDeleteRowConfig>;
+};
+
+export type CodaV1TableGetAllColumnsNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1TableGetAllColumnsConfig>;
+	output?: CodaV1TableGetAllColumnsOutput;
+};
+
+export type CodaV1TableGetAllRowsNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1TableGetAllRowsConfig>;
+	output?: CodaV1TableGetAllRowsOutput;
+};
+
+export type CodaV1TableGetColumnNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1TableGetColumnConfig>;
+};
+
+export type CodaV1TableGetRowNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1TableGetRowConfig>;
+	output?: CodaV1TableGetRowOutput;
+};
+
+export type CodaV1TablePushButtonNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1TablePushButtonConfig>;
+	output?: CodaV1TablePushButtonOutput;
+};
+
+export type CodaV1ViewDeleteViewRowNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1ViewDeleteViewRowConfig>;
+};
+
+export type CodaV1ViewGetNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1ViewGetConfig>;
+	output?: CodaV1ViewGetOutput;
+};
+
+export type CodaV1ViewGetAllViewColumnsNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1ViewGetAllViewColumnsConfig>;
+};
+
+export type CodaV1ViewGetAllNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1ViewGetAllConfig>;
+	output?: CodaV1ViewGetAllOutput;
+};
+
+export type CodaV1ViewGetAllViewRowsNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1ViewGetAllViewRowsConfig>;
+	output?: CodaV1ViewGetAllViewRowsOutput;
+};
+
+export type CodaV1ViewPushViewButtonNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1ViewPushViewButtonConfig>;
+};
+
+export type CodaV1ViewUpdateViewRowNode = CodaV1NodeBase & {
+	config: NodeConfig<CodaV1ViewUpdateViewRowConfig>;
+};
+
+export type CodaV1Node =
+	| CodaV1ControlGetNode
+	| CodaV1ControlGetAllNode
+	| CodaV1FormulaGetNode
+	| CodaV1FormulaGetAllNode
+	| CodaV1TableCreateRowNode
+	| CodaV1TableDeleteRowNode
+	| CodaV1TableGetAllColumnsNode
+	| CodaV1TableGetAllRowsNode
+	| CodaV1TableGetColumnNode
+	| CodaV1TableGetRowNode
+	| CodaV1TablePushButtonNode
+	| CodaV1ViewDeleteViewRowNode
+	| CodaV1ViewGetNode
+	| CodaV1ViewGetAllViewColumnsNode
+	| CodaV1ViewGetAllNode
+	| CodaV1ViewGetAllViewRowsNode
+	| CodaV1ViewPushViewButtonNode
+	| CodaV1ViewUpdateViewRowNode
+	;

@@ -1,8 +1,6 @@
 /**
  * GitHub Node - Version 1.1
  * Consume GitHub API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -647,45 +645,956 @@ export type GithubV11WorkflowListConfig = {
 	operation: 'list';
 };
 
-export type GithubV11Params =
-	| GithubV11FileCreateConfig
-	| GithubV11FileDeleteConfig
-	| GithubV11FileEditConfig
-	| GithubV11FileGetConfig
-	| GithubV11FileListConfig
-	| GithubV11IssueCreateConfig
-	| GithubV11IssueCreateCommentConfig
-	| GithubV11IssueEditConfig
-	| GithubV11IssueGetConfig
-	| GithubV11IssueLockConfig
-	| GithubV11OrganizationGetRepositoriesConfig
-	| GithubV11ReleaseCreateConfig
-	| GithubV11ReleaseDeleteConfig
-	| GithubV11ReleaseGetConfig
-	| GithubV11ReleaseGetAllConfig
-	| GithubV11ReleaseUpdateConfig
-	| GithubV11RepositoryGetConfig
-	| GithubV11RepositoryGetIssuesConfig
-	| GithubV11RepositoryGetLicenseConfig
-	| GithubV11RepositoryGetProfileConfig
-	| GithubV11RepositoryGetPullRequestsConfig
-	| GithubV11RepositoryListPopularPathsConfig
-	| GithubV11RepositoryListReferrersConfig
-	| GithubV11ReviewCreateConfig
-	| GithubV11ReviewGetConfig
-	| GithubV11ReviewGetAllConfig
-	| GithubV11ReviewUpdateConfig
-	| GithubV11UserGetRepositoriesConfig
-	| GithubV11UserGetUserIssuesConfig
-	| GithubV11UserInviteConfig
-	| GithubV11WorkflowDisableConfig
-	| GithubV11WorkflowDispatchConfig
-	| GithubV11WorkflowDispatchAndWaitConfig
-	| GithubV11WorkflowEnableConfig
-	| GithubV11WorkflowGetConfig
-	| GithubV11WorkflowGetUsageConfig
-	| GithubV11WorkflowListConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type GithubV11FileCreateOutput = {
+	commit?: {
+		author?: {
+			date?: string;
+			email?: string;
+			name?: string;
+		};
+		committer?: {
+			date?: string;
+			email?: string;
+			name?: string;
+		};
+		html_url?: string;
+		message?: string;
+		node_id?: string;
+		parents?: Array<{
+			html_url?: string;
+			sha?: string;
+			url?: string;
+		}>;
+		sha?: string;
+		tree?: {
+			sha?: string;
+			url?: string;
+		};
+		url?: string;
+		verification?: {
+			payload?: null;
+			reason?: string;
+			signature?: null;
+			verified?: boolean;
+			verified_at?: null;
+		};
+	};
+	content?: {
+		_links?: {
+			git?: string;
+			html?: string;
+			self?: string;
+		};
+		download_url?: string;
+		git_url?: string;
+		html_url?: string;
+		name?: string;
+		path?: string;
+		sha?: string;
+		size?: number;
+		type?: string;
+		url?: string;
+	};
+};
+
+export type GithubV11FileDeleteOutput = {
+	commit?: {
+		author?: {
+			date?: string;
+			email?: string;
+			name?: string;
+		};
+		committer?: {
+			date?: string;
+			email?: string;
+			name?: string;
+		};
+		html_url?: string;
+		message?: string;
+		node_id?: string;
+		parents?: Array<{
+			html_url?: string;
+			sha?: string;
+			url?: string;
+		}>;
+		sha?: string;
+		tree?: {
+			sha?: string;
+			url?: string;
+		};
+		url?: string;
+		verification?: {
+			payload?: null;
+			reason?: string;
+			signature?: null;
+			verified?: boolean;
+			verified_at?: null;
+		};
+	};
+	content?: null;
+};
+
+export type GithubV11FileEditOutput = {
+	commit?: {
+		author?: {
+			date?: string;
+			email?: string;
+			name?: string;
+		};
+		committer?: {
+			date?: string;
+			email?: string;
+			name?: string;
+		};
+		html_url?: string;
+		message?: string;
+		node_id?: string;
+		parents?: Array<{
+			html_url?: string;
+			sha?: string;
+			url?: string;
+		}>;
+		sha?: string;
+		tree?: {
+			sha?: string;
+			url?: string;
+		};
+		url?: string;
+		verification?: {
+			payload?: null;
+			reason?: string;
+			signature?: null;
+			verified?: boolean;
+			verified_at?: null;
+		};
+	};
+	content?: {
+		_links?: {
+			git?: string;
+			html?: string;
+			self?: string;
+		};
+		download_url?: string;
+		git_url?: string;
+		html_url?: string;
+		name?: string;
+		path?: string;
+		sha?: string;
+		size?: number;
+		type?: string;
+		url?: string;
+	};
+};
+
+export type GithubV11FileGetOutput = {
+	type?: string;
+};
+
+export type GithubV11FileListOutput = {
+	_links?: {
+		git?: string;
+		html?: string;
+		self?: string;
+	};
+	git_url?: string;
+	html_url?: string;
+	name?: string;
+	path?: string;
+	sha?: string;
+	size?: number;
+	type?: string;
+	url?: string;
+};
+
+export type GithubV11IssueCreateOutput = {
+	active_lock_reason?: null;
+	assignees?: Array<{
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+	}>;
+	author_association?: string;
+	closed_at?: null;
+	closed_by?: null;
+	comments?: number;
+	comments_url?: string;
+	created_at?: string;
+	events_url?: string;
+	html_url?: string;
+	id?: number;
+	labels?: Array<{
+		color?: string;
+		'default'?: boolean;
+		id?: number;
+		name?: string;
+		node_id?: string;
+		url?: string;
+	}>;
+	labels_url?: string;
+	locked?: boolean;
+	milestone?: null;
+	node_id?: string;
+	number?: number;
+	performed_via_github_app?: null;
+	reactions?: {
+		'-1'?: number;
+		'+1'?: number;
+		confused?: number;
+		eyes?: number;
+		heart?: number;
+		hooray?: number;
+		laugh?: number;
+		rocket?: number;
+		total_count?: number;
+		url?: string;
+	};
+	repository_url?: string;
+	state?: string;
+	state_reason?: null;
+	timeline_url?: string;
+	title?: string;
+	updated_at?: string;
+	url?: string;
+	user?: {
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	};
+};
+
+export type GithubV11IssueCreateCommentOutput = {
+	author_association?: string;
+	body?: string;
+	created_at?: string;
+	html_url?: string;
+	id?: number;
+	issue_url?: string;
+	node_id?: string;
+	performed_via_github_app?: null;
+	reactions?: {
+		'-1'?: number;
+		'+1'?: number;
+		confused?: number;
+		eyes?: number;
+		heart?: number;
+		hooray?: number;
+		laugh?: number;
+		rocket?: number;
+		total_count?: number;
+		url?: string;
+	};
+	updated_at?: string;
+	url?: string;
+	user?: {
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	};
+};
+
+export type GithubV11IssueGetOutput = {
+	active_lock_reason?: null;
+	assignee?: {
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	};
+	assignees?: Array<{
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	}>;
+	author_association?: string;
+	comments?: number;
+	comments_url?: string;
+	created_at?: string;
+	events_url?: string;
+	html_url?: string;
+	id?: number;
+	labels?: Array<{
+		color?: string;
+		'default'?: boolean;
+		id?: number;
+		name?: string;
+		node_id?: string;
+		url?: string;
+	}>;
+	labels_url?: string;
+	locked?: boolean;
+	node_id?: string;
+	number?: number;
+	performed_via_github_app?: null;
+	reactions?: {
+		'-1'?: number;
+		'+1'?: number;
+		confused?: number;
+		eyes?: number;
+		heart?: number;
+		hooray?: number;
+		laugh?: number;
+		rocket?: number;
+		total_count?: number;
+		url?: string;
+	};
+	repository_url?: string;
+	state?: string;
+	timeline_url?: string;
+	title?: string;
+	updated_at?: string;
+	url?: string;
+	user?: {
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	};
+};
+
+export type GithubV11OrganizationGetRepositoriesOutput = {
+	allow_forking?: boolean;
+	archive_url?: string;
+	archived?: boolean;
+	assignees_url?: string;
+	blobs_url?: string;
+	branches_url?: string;
+	clone_url?: string;
+	collaborators_url?: string;
+	comments_url?: string;
+	commits_url?: string;
+	compare_url?: string;
+	contents_url?: string;
+	contributors_url?: string;
+	created_at?: string;
+	default_branch?: string;
+	deployments_url?: string;
+	disabled?: boolean;
+	downloads_url?: string;
+	events_url?: string;
+	fork?: boolean;
+	forks?: number;
+	forks_count?: number;
+	forks_url?: string;
+	full_name?: string;
+	git_commits_url?: string;
+	git_refs_url?: string;
+	git_tags_url?: string;
+	git_url?: string;
+	has_discussions?: boolean;
+	has_downloads?: boolean;
+	has_issues?: boolean;
+	has_pages?: boolean;
+	has_projects?: boolean;
+	has_wiki?: boolean;
+	hooks_url?: string;
+	html_url?: string;
+	id?: number;
+	is_template?: boolean;
+	issue_comment_url?: string;
+	issue_events_url?: string;
+	issues_url?: string;
+	keys_url?: string;
+	labels_url?: string;
+	languages_url?: string;
+	merges_url?: string;
+	milestones_url?: string;
+	mirror_url?: null;
+	name?: string;
+	node_id?: string;
+	notifications_url?: string;
+	open_issues?: number;
+	open_issues_count?: number;
+	owner?: {
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	};
+	permissions?: {
+		admin?: boolean;
+		maintain?: boolean;
+		pull?: boolean;
+		push?: boolean;
+		triage?: boolean;
+	};
+	private?: boolean;
+	pulls_url?: string;
+	pushed_at?: string;
+	releases_url?: string;
+	security_and_analysis?: {
+		advanced_security?: {
+			status?: string;
+		};
+		dependabot_security_updates?: {
+			status?: string;
+		};
+		secret_scanning?: {
+			status?: string;
+		};
+		secret_scanning_non_provider_patterns?: {
+			status?: string;
+		};
+		secret_scanning_push_protection?: {
+			status?: string;
+		};
+		secret_scanning_validity_checks?: {
+			status?: string;
+		};
+	};
+	size?: number;
+	ssh_url?: string;
+	stargazers_count?: number;
+	stargazers_url?: string;
+	statuses_url?: string;
+	subscribers_url?: string;
+	subscription_url?: string;
+	svn_url?: string;
+	tags_url?: string;
+	teams_url?: string;
+	topics?: Array<string>;
+	trees_url?: string;
+	updated_at?: string;
+	url?: string;
+	visibility?: string;
+	watchers?: number;
+	watchers_count?: number;
+	web_commit_signoff_required?: boolean;
+};
+
+export type GithubV11ReleaseGetAllOutput = {
+	assets?: Array<{
+		browser_download_url?: string;
+		content_type?: string;
+		created_at?: string;
+		download_count?: number;
+		id?: number;
+		label?: null;
+		name?: string;
+		node_id?: string;
+		size?: number;
+		state?: string;
+		updated_at?: string;
+		uploader?: {
+			avatar_url?: string;
+			events_url?: string;
+			followers_url?: string;
+			following_url?: string;
+			gists_url?: string;
+			gravatar_id?: string;
+			html_url?: string;
+			id?: number;
+			login?: string;
+			node_id?: string;
+			organizations_url?: string;
+			received_events_url?: string;
+			repos_url?: string;
+			site_admin?: boolean;
+			starred_url?: string;
+			subscriptions_url?: string;
+			type?: string;
+			url?: string;
+			user_view_type?: string;
+		};
+		url?: string;
+	}>;
+	assets_url?: string;
+	author?: {
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	};
+	body?: string;
+	created_at?: string;
+	draft?: boolean;
+	html_url?: string;
+	id?: number;
+	mentions_count?: number;
+	name?: string;
+	node_id?: string;
+	prerelease?: boolean;
+	tag_name?: string;
+	target_commitish?: string;
+	upload_url?: string;
+	url?: string;
+};
+
+export type GithubV11RepositoryGetOutput = {
+	allow_auto_merge?: boolean;
+	allow_forking?: boolean;
+	allow_merge_commit?: boolean;
+	allow_rebase_merge?: boolean;
+	allow_squash_merge?: boolean;
+	allow_update_branch?: boolean;
+	archive_url?: string;
+	archived?: boolean;
+	assignees_url?: string;
+	blobs_url?: string;
+	branches_url?: string;
+	clone_url?: string;
+	collaborators_url?: string;
+	comments_url?: string;
+	commits_url?: string;
+	compare_url?: string;
+	contents_url?: string;
+	contributors_url?: string;
+	created_at?: string;
+	default_branch?: string;
+	delete_branch_on_merge?: boolean;
+	deployments_url?: string;
+	disabled?: boolean;
+	downloads_url?: string;
+	events_url?: string;
+	fork?: boolean;
+	forks?: number;
+	forks_count?: number;
+	forks_url?: string;
+	full_name?: string;
+	git_commits_url?: string;
+	git_refs_url?: string;
+	git_tags_url?: string;
+	git_url?: string;
+	has_discussions?: boolean;
+	has_downloads?: boolean;
+	has_issues?: boolean;
+	has_pages?: boolean;
+	has_projects?: boolean;
+	has_wiki?: boolean;
+	hooks_url?: string;
+	html_url?: string;
+	id?: number;
+	is_template?: boolean;
+	issue_comment_url?: string;
+	issue_events_url?: string;
+	issues_url?: string;
+	keys_url?: string;
+	labels_url?: string;
+	languages_url?: string;
+	merge_commit_message?: string;
+	merge_commit_title?: string;
+	merges_url?: string;
+	milestones_url?: string;
+	mirror_url?: null;
+	name?: string;
+	network_count?: number;
+	node_id?: string;
+	notifications_url?: string;
+	open_issues?: number;
+	open_issues_count?: number;
+	owner?: {
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	};
+	permissions?: {
+		admin?: boolean;
+		maintain?: boolean;
+		pull?: boolean;
+		push?: boolean;
+		triage?: boolean;
+	};
+	private?: boolean;
+	pulls_url?: string;
+	pushed_at?: string;
+	releases_url?: string;
+	size?: number;
+	squash_merge_commit_message?: string;
+	squash_merge_commit_title?: string;
+	ssh_url?: string;
+	stargazers_count?: number;
+	stargazers_url?: string;
+	statuses_url?: string;
+	subscribers_count?: number;
+	subscribers_url?: string;
+	subscription_url?: string;
+	svn_url?: string;
+	tags_url?: string;
+	teams_url?: string;
+	temp_clone_token?: string;
+	topics?: Array<string>;
+	trees_url?: string;
+	updated_at?: string;
+	url?: string;
+	use_squash_pr_title_as_default?: boolean;
+	visibility?: string;
+	watchers?: number;
+	watchers_count?: number;
+	web_commit_signoff_required?: boolean;
+};
+
+export type GithubV11RepositoryGetIssuesOutput = {
+	active_lock_reason?: null;
+	assignees?: Array<{
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	}>;
+	author_association?: string;
+	comments?: number;
+	comments_url?: string;
+	created_at?: string;
+	events_url?: string;
+	html_url?: string;
+	id?: number;
+	labels?: Array<{
+		color?: string;
+		'default'?: boolean;
+		id?: number;
+		name?: string;
+		node_id?: string;
+		url?: string;
+	}>;
+	labels_url?: string;
+	locked?: boolean;
+	node_id?: string;
+	number?: number;
+	performed_via_github_app?: null;
+	reactions?: {
+		'-1'?: number;
+		'+1'?: number;
+		confused?: number;
+		eyes?: number;
+		heart?: number;
+		hooray?: number;
+		laugh?: number;
+		rocket?: number;
+		total_count?: number;
+		url?: string;
+	};
+	repository_url?: string;
+	state?: string;
+	timeline_url?: string;
+	title?: string;
+	updated_at?: string;
+	url?: string;
+	user?: {
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	};
+};
+
+export type GithubV11RepositoryGetLicenseOutput = {
+	_links?: {
+		git?: string;
+		html?: string;
+		self?: string;
+	};
+	content?: string;
+	download_url?: string;
+	encoding?: string;
+	git_url?: string;
+	html_url?: string;
+	license?: {
+		key?: string;
+		name?: string;
+		node_id?: string;
+		spdx_id?: string;
+	};
+	name?: string;
+	path?: string;
+	sha?: string;
+	size?: number;
+	type?: string;
+	url?: string;
+};
+
+export type GithubV11UserGetRepositoriesOutput = {
+	allow_forking?: boolean;
+	archive_url?: string;
+	archived?: boolean;
+	assignees_url?: string;
+	blobs_url?: string;
+	branches_url?: string;
+	clone_url?: string;
+	collaborators_url?: string;
+	comments_url?: string;
+	commits_url?: string;
+	compare_url?: string;
+	contents_url?: string;
+	contributors_url?: string;
+	created_at?: string;
+	default_branch?: string;
+	deployments_url?: string;
+	disabled?: boolean;
+	downloads_url?: string;
+	events_url?: string;
+	fork?: boolean;
+	forks?: number;
+	forks_count?: number;
+	forks_url?: string;
+	full_name?: string;
+	git_commits_url?: string;
+	git_refs_url?: string;
+	git_tags_url?: string;
+	git_url?: string;
+	has_discussions?: boolean;
+	has_downloads?: boolean;
+	has_issues?: boolean;
+	has_pages?: boolean;
+	has_projects?: boolean;
+	has_wiki?: boolean;
+	hooks_url?: string;
+	html_url?: string;
+	id?: number;
+	is_template?: boolean;
+	issue_comment_url?: string;
+	issue_events_url?: string;
+	issues_url?: string;
+	keys_url?: string;
+	labels_url?: string;
+	languages_url?: string;
+	merges_url?: string;
+	milestones_url?: string;
+	mirror_url?: null;
+	name?: string;
+	node_id?: string;
+	notifications_url?: string;
+	open_issues?: number;
+	open_issues_count?: number;
+	owner?: {
+		avatar_url?: string;
+		events_url?: string;
+		followers_url?: string;
+		following_url?: string;
+		gists_url?: string;
+		gravatar_id?: string;
+		html_url?: string;
+		id?: number;
+		login?: string;
+		node_id?: string;
+		organizations_url?: string;
+		received_events_url?: string;
+		repos_url?: string;
+		site_admin?: boolean;
+		starred_url?: string;
+		subscriptions_url?: string;
+		type?: string;
+		url?: string;
+		user_view_type?: string;
+	};
+	permissions?: {
+		admin?: boolean;
+		maintain?: boolean;
+		pull?: boolean;
+		push?: boolean;
+		triage?: boolean;
+	};
+	private?: boolean;
+	pulls_url?: string;
+	pushed_at?: string;
+	releases_url?: string;
+	size?: number;
+	ssh_url?: string;
+	stargazers_count?: number;
+	stargazers_url?: string;
+	statuses_url?: string;
+	subscribers_url?: string;
+	subscription_url?: string;
+	svn_url?: string;
+	tags_url?: string;
+	teams_url?: string;
+	topics?: Array<string>;
+	trees_url?: string;
+	updated_at?: string;
+	url?: string;
+	visibility?: string;
+	watchers?: number;
+	watchers_count?: number;
+	web_commit_signoff_required?: boolean;
+};
+
+export type GithubV11WorkflowListOutput = {
+	total_count?: number;
+	workflows?: Array<{
+		badge_url?: string;
+		created_at?: string;
+		html_url?: string;
+		id?: number;
+		name?: string;
+		node_id?: string;
+		path?: string;
+		state?: string;
+		updated_at?: string;
+		url?: string;
+	}>;
+};
 
 // ===========================================================================
 // Credentials
@@ -697,12 +1606,214 @@ export interface GithubV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GithubV11Node = {
+interface GithubV11NodeBase {
 	type: 'n8n-nodes-base.github';
 	version: 1.1;
-	config: NodeConfig<GithubV11Params>;
 	credentials?: GithubV11Credentials;
+}
+
+export type GithubV11FileCreateNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11FileCreateConfig>;
+	output?: GithubV11FileCreateOutput;
 };
+
+export type GithubV11FileDeleteNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11FileDeleteConfig>;
+	output?: GithubV11FileDeleteOutput;
+};
+
+export type GithubV11FileEditNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11FileEditConfig>;
+	output?: GithubV11FileEditOutput;
+};
+
+export type GithubV11FileGetNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11FileGetConfig>;
+	output?: GithubV11FileGetOutput;
+};
+
+export type GithubV11FileListNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11FileListConfig>;
+	output?: GithubV11FileListOutput;
+};
+
+export type GithubV11IssueCreateNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11IssueCreateConfig>;
+	output?: GithubV11IssueCreateOutput;
+};
+
+export type GithubV11IssueCreateCommentNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11IssueCreateCommentConfig>;
+	output?: GithubV11IssueCreateCommentOutput;
+};
+
+export type GithubV11IssueEditNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11IssueEditConfig>;
+};
+
+export type GithubV11IssueGetNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11IssueGetConfig>;
+	output?: GithubV11IssueGetOutput;
+};
+
+export type GithubV11IssueLockNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11IssueLockConfig>;
+};
+
+export type GithubV11OrganizationGetRepositoriesNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11OrganizationGetRepositoriesConfig>;
+	output?: GithubV11OrganizationGetRepositoriesOutput;
+};
+
+export type GithubV11ReleaseCreateNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11ReleaseCreateConfig>;
+};
+
+export type GithubV11ReleaseDeleteNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11ReleaseDeleteConfig>;
+};
+
+export type GithubV11ReleaseGetNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11ReleaseGetConfig>;
+};
+
+export type GithubV11ReleaseGetAllNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11ReleaseGetAllConfig>;
+	output?: GithubV11ReleaseGetAllOutput;
+};
+
+export type GithubV11ReleaseUpdateNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11ReleaseUpdateConfig>;
+};
+
+export type GithubV11RepositoryGetNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11RepositoryGetConfig>;
+	output?: GithubV11RepositoryGetOutput;
+};
+
+export type GithubV11RepositoryGetIssuesNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11RepositoryGetIssuesConfig>;
+	output?: GithubV11RepositoryGetIssuesOutput;
+};
+
+export type GithubV11RepositoryGetLicenseNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11RepositoryGetLicenseConfig>;
+	output?: GithubV11RepositoryGetLicenseOutput;
+};
+
+export type GithubV11RepositoryGetProfileNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11RepositoryGetProfileConfig>;
+};
+
+export type GithubV11RepositoryGetPullRequestsNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11RepositoryGetPullRequestsConfig>;
+};
+
+export type GithubV11RepositoryListPopularPathsNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11RepositoryListPopularPathsConfig>;
+};
+
+export type GithubV11RepositoryListReferrersNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11RepositoryListReferrersConfig>;
+};
+
+export type GithubV11ReviewCreateNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11ReviewCreateConfig>;
+};
+
+export type GithubV11ReviewGetNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11ReviewGetConfig>;
+};
+
+export type GithubV11ReviewGetAllNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11ReviewGetAllConfig>;
+};
+
+export type GithubV11ReviewUpdateNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11ReviewUpdateConfig>;
+};
+
+export type GithubV11UserGetRepositoriesNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11UserGetRepositoriesConfig>;
+	output?: GithubV11UserGetRepositoriesOutput;
+};
+
+export type GithubV11UserGetUserIssuesNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11UserGetUserIssuesConfig>;
+};
+
+export type GithubV11UserInviteNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11UserInviteConfig>;
+};
+
+export type GithubV11WorkflowDisableNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11WorkflowDisableConfig>;
+};
+
+export type GithubV11WorkflowDispatchNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11WorkflowDispatchConfig>;
+};
+
+export type GithubV11WorkflowDispatchAndWaitNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11WorkflowDispatchAndWaitConfig>;
+};
+
+export type GithubV11WorkflowEnableNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11WorkflowEnableConfig>;
+};
+
+export type GithubV11WorkflowGetNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11WorkflowGetConfig>;
+};
+
+export type GithubV11WorkflowGetUsageNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11WorkflowGetUsageConfig>;
+};
+
+export type GithubV11WorkflowListNode = GithubV11NodeBase & {
+	config: NodeConfig<GithubV11WorkflowListConfig>;
+	output?: GithubV11WorkflowListOutput;
+};
+
+export type GithubV11Node =
+	| GithubV11FileCreateNode
+	| GithubV11FileDeleteNode
+	| GithubV11FileEditNode
+	| GithubV11FileGetNode
+	| GithubV11FileListNode
+	| GithubV11IssueCreateNode
+	| GithubV11IssueCreateCommentNode
+	| GithubV11IssueEditNode
+	| GithubV11IssueGetNode
+	| GithubV11IssueLockNode
+	| GithubV11OrganizationGetRepositoriesNode
+	| GithubV11ReleaseCreateNode
+	| GithubV11ReleaseDeleteNode
+	| GithubV11ReleaseGetNode
+	| GithubV11ReleaseGetAllNode
+	| GithubV11ReleaseUpdateNode
+	| GithubV11RepositoryGetNode
+	| GithubV11RepositoryGetIssuesNode
+	| GithubV11RepositoryGetLicenseNode
+	| GithubV11RepositoryGetProfileNode
+	| GithubV11RepositoryGetPullRequestsNode
+	| GithubV11RepositoryListPopularPathsNode
+	| GithubV11RepositoryListReferrersNode
+	| GithubV11ReviewCreateNode
+	| GithubV11ReviewGetNode
+	| GithubV11ReviewGetAllNode
+	| GithubV11ReviewUpdateNode
+	| GithubV11UserGetRepositoriesNode
+	| GithubV11UserGetUserIssuesNode
+	| GithubV11UserInviteNode
+	| GithubV11WorkflowDisableNode
+	| GithubV11WorkflowDispatchNode
+	| GithubV11WorkflowDispatchAndWaitNode
+	| GithubV11WorkflowEnableNode
+	| GithubV11WorkflowGetNode
+	| GithubV11WorkflowGetUsageNode
+	| GithubV11WorkflowListNode
+	;

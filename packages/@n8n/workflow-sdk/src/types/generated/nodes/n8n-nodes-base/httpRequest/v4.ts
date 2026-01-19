@@ -1,8 +1,6 @@
 /**
  * HTTP Request Node - Version 4
  * Makes an HTTP request and returns the response data
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -403,11 +401,6 @@ export type HttpRequestV4GenericCredentialTypeConfig = {
 	maxLength?: number | Expression<number>;
 };
 
-export type HttpRequestV4Params =
-	| HttpRequestV4NoneConfig
-	| HttpRequestV4PredefinedCredentialTypeConfig
-	| HttpRequestV4GenericCredentialTypeConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -418,12 +411,29 @@ export interface HttpRequestV4Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HttpRequestV4Node = {
+interface HttpRequestV4NodeBase {
 	type: 'n8n-nodes-base.httpRequest';
 	version: 4;
-	config: NodeConfig<HttpRequestV4Params>;
 	credentials?: HttpRequestV4Credentials;
+}
+
+export type HttpRequestV4NoneNode = HttpRequestV4NodeBase & {
+	config: NodeConfig<HttpRequestV4NoneConfig>;
 };
+
+export type HttpRequestV4PredefinedCredentialTypeNode = HttpRequestV4NodeBase & {
+	config: NodeConfig<HttpRequestV4PredefinedCredentialTypeConfig>;
+};
+
+export type HttpRequestV4GenericCredentialTypeNode = HttpRequestV4NodeBase & {
+	config: NodeConfig<HttpRequestV4GenericCredentialTypeConfig>;
+};
+
+export type HttpRequestV4Node =
+	| HttpRequestV4NoneNode
+	| HttpRequestV4PredefinedCredentialTypeNode
+	| HttpRequestV4GenericCredentialTypeNode
+	;

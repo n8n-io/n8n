@@ -1,8 +1,6 @@
 /**
  * Switch Node - Version 2
  * Route items depending on defined expression or rules
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -67,22 +65,29 @@ export type SwitchV2RulesConfig = {
 		fallbackOutput?: string | Expression<string>;
 };
 
-export type SwitchV2Params =
-	| SwitchV2ExpressionConfig
-	| SwitchV2RulesConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SwitchV2Node = {
+interface SwitchV2NodeBase {
 	type: 'n8n-nodes-base.switch';
 	version: 2;
-	config: NodeConfig<SwitchV2Params>;
-	credentials?: Record<string, never>;
+}
+
+export type SwitchV2ExpressionNode = SwitchV2NodeBase & {
+	config: NodeConfig<SwitchV2ExpressionConfig>;
 };
+
+export type SwitchV2RulesNode = SwitchV2NodeBase & {
+	config: NodeConfig<SwitchV2RulesConfig>;
+};
+
+export type SwitchV2Node =
+	| SwitchV2ExpressionNode
+	| SwitchV2RulesNode
+	;

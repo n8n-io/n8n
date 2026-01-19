@@ -1,8 +1,6 @@
 /**
  * AMQP Sender Node - Version 1
  * Sends a raw-message via AMQP 1.0, executed once per item
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface AmqpV1Params {
+export interface AmqpV1Config {
 /**
  * Name of the queue of topic to publish to
  */
@@ -35,12 +33,17 @@ export interface AmqpV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AmqpV1Node = {
+interface AmqpV1NodeBase {
 	type: 'n8n-nodes-base.amqp';
 	version: 1;
-	config: NodeConfig<AmqpV1Params>;
 	credentials?: AmqpV1Credentials;
+}
+
+export type AmqpV1Node = AmqpV1NodeBase & {
+	config: NodeConfig<AmqpV1Config>;
 };
+
+export type AmqpV1Node = AmqpV1Node;

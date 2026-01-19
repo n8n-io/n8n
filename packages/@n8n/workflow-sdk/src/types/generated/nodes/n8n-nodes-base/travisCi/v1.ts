@@ -1,8 +1,6 @@
 /**
  * TravisCI Node - Version 1
  * Consume TravisCI API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -83,13 +81,6 @@ export type TravisCiV1BuildTriggerConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type TravisCiV1Params =
-	| TravisCiV1BuildCancelConfig
-	| TravisCiV1BuildGetConfig
-	| TravisCiV1BuildGetAllConfig
-	| TravisCiV1BuildRestartConfig
-	| TravisCiV1BuildTriggerConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -100,12 +91,39 @@ export interface TravisCiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TravisCiV1Node = {
+interface TravisCiV1NodeBase {
 	type: 'n8n-nodes-base.travisCi';
 	version: 1;
-	config: NodeConfig<TravisCiV1Params>;
 	credentials?: TravisCiV1Credentials;
+}
+
+export type TravisCiV1BuildCancelNode = TravisCiV1NodeBase & {
+	config: NodeConfig<TravisCiV1BuildCancelConfig>;
 };
+
+export type TravisCiV1BuildGetNode = TravisCiV1NodeBase & {
+	config: NodeConfig<TravisCiV1BuildGetConfig>;
+};
+
+export type TravisCiV1BuildGetAllNode = TravisCiV1NodeBase & {
+	config: NodeConfig<TravisCiV1BuildGetAllConfig>;
+};
+
+export type TravisCiV1BuildRestartNode = TravisCiV1NodeBase & {
+	config: NodeConfig<TravisCiV1BuildRestartConfig>;
+};
+
+export type TravisCiV1BuildTriggerNode = TravisCiV1NodeBase & {
+	config: NodeConfig<TravisCiV1BuildTriggerConfig>;
+};
+
+export type TravisCiV1Node =
+	| TravisCiV1BuildCancelNode
+	| TravisCiV1BuildGetNode
+	| TravisCiV1BuildGetAllNode
+	| TravisCiV1BuildRestartNode
+	| TravisCiV1BuildTriggerNode
+	;

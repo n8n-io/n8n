@@ -1,8 +1,6 @@
 /**
  * Token Splitter Node - Version 1
  * Split text into chunks by tokens
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcTextSplitterTokenSplitterV1Params {
+export interface LcTextSplitterTokenSplitterV1Config {
 /**
  * Maximum number of tokens per chunk
  * @default 1000
@@ -31,13 +29,17 @@ export interface LcTextSplitterTokenSplitterV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcTextSplitterTokenSplitterV1Node = {
+interface LcTextSplitterTokenSplitterV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.textSplitterTokenSplitter';
 	version: 1;
-	config: NodeConfig<LcTextSplitterTokenSplitterV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcTextSplitterTokenSplitterV1Node = LcTextSplitterTokenSplitterV1NodeBase & {
+	config: NodeConfig<LcTextSplitterTokenSplitterV1Config>;
 };
+
+export type LcTextSplitterTokenSplitterV1Node = LcTextSplitterTokenSplitterV1Node;

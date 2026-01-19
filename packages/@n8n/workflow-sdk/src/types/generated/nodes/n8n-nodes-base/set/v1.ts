@@ -1,8 +1,6 @@
 /**
  * Set Node - Version 1
  * Sets values on items and optionally remove other values
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface SetV1Params {
+export interface SetV1Config {
 /**
  * Whether only the values set on this node should be kept and all others removed
  * @default false
@@ -62,12 +60,16 @@ export interface SetV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SetV1Node = {
+interface SetV1NodeBase {
 	type: 'n8n-nodes-base.set';
 	version: 1;
-	config: NodeConfig<SetV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type SetV1Node = SetV1NodeBase & {
+	config: NodeConfig<SetV1Config>;
 };
+
+export type SetV1Node = SetV1Node;

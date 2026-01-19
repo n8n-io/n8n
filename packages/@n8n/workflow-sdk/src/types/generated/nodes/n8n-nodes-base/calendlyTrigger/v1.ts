@@ -1,8 +1,6 @@
 /**
  * Calendly Trigger Node - Version 1
  * Starts the workflow when Calendly events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -25,10 +23,6 @@ export type CalendlyTriggerV1ApiKeyConfig = {
 	events: Array<'invitee.created' | 'invitee.canceled'>;
 };
 
-export type CalendlyTriggerV1Params =
-	| CalendlyTriggerV1OAuth2Config
-	| CalendlyTriggerV1ApiKeyConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -40,13 +34,25 @@ export interface CalendlyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CalendlyTriggerV1Node = {
+interface CalendlyTriggerV1NodeBase {
 	type: 'n8n-nodes-base.calendlyTrigger';
 	version: 1;
-	config: NodeConfig<CalendlyTriggerV1Params>;
 	credentials?: CalendlyTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type CalendlyTriggerV1OAuth2Node = CalendlyTriggerV1NodeBase & {
+	config: NodeConfig<CalendlyTriggerV1OAuth2Config>;
 };
+
+export type CalendlyTriggerV1ApiKeyNode = CalendlyTriggerV1NodeBase & {
+	config: NodeConfig<CalendlyTriggerV1ApiKeyConfig>;
+};
+
+export type CalendlyTriggerV1Node =
+	| CalendlyTriggerV1OAuth2Node
+	| CalendlyTriggerV1ApiKeyNode
+	;

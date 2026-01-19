@@ -1,8 +1,6 @@
 /**
  * Google Gemini Node - Version 1
  * Interact with Google Gemini AI models
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -349,23 +347,6 @@ export type LcGoogleGeminiV1VideoDownloadConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcGoogleGeminiV1Params =
-	| LcGoogleGeminiV1AudioAnalyzeConfig
-	| LcGoogleGeminiV1AudioTranscribeConfig
-	| LcGoogleGeminiV1DocumentAnalyzeConfig
-	| LcGoogleGeminiV1FileSearchCreateStoreConfig
-	| LcGoogleGeminiV1FileSearchDeleteStoreConfig
-	| LcGoogleGeminiV1FileSearchListStoresConfig
-	| LcGoogleGeminiV1FileSearchUploadToStoreConfig
-	| LcGoogleGeminiV1ImageAnalyzeConfig
-	| LcGoogleGeminiV1ImageGenerateConfig
-	| LcGoogleGeminiV1ImageEditConfig
-	| LcGoogleGeminiV1FileUploadConfig
-	| LcGoogleGeminiV1TextMessageConfig
-	| LcGoogleGeminiV1VideoAnalyzeConfig
-	| LcGoogleGeminiV1VideoGenerateConfig
-	| LcGoogleGeminiV1VideoDownloadConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -376,12 +357,89 @@ export interface LcGoogleGeminiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcGoogleGeminiV1Node = {
+interface LcGoogleGeminiV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.googleGemini';
 	version: 1;
-	config: NodeConfig<LcGoogleGeminiV1Params>;
 	credentials?: LcGoogleGeminiV1Credentials;
+}
+
+export type LcGoogleGeminiV1AudioAnalyzeNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1AudioAnalyzeConfig>;
 };
+
+export type LcGoogleGeminiV1AudioTranscribeNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1AudioTranscribeConfig>;
+};
+
+export type LcGoogleGeminiV1DocumentAnalyzeNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1DocumentAnalyzeConfig>;
+};
+
+export type LcGoogleGeminiV1FileSearchCreateStoreNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1FileSearchCreateStoreConfig>;
+};
+
+export type LcGoogleGeminiV1FileSearchDeleteStoreNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1FileSearchDeleteStoreConfig>;
+};
+
+export type LcGoogleGeminiV1FileSearchListStoresNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1FileSearchListStoresConfig>;
+};
+
+export type LcGoogleGeminiV1FileSearchUploadToStoreNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1FileSearchUploadToStoreConfig>;
+};
+
+export type LcGoogleGeminiV1ImageAnalyzeNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1ImageAnalyzeConfig>;
+};
+
+export type LcGoogleGeminiV1ImageGenerateNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1ImageGenerateConfig>;
+};
+
+export type LcGoogleGeminiV1ImageEditNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1ImageEditConfig>;
+};
+
+export type LcGoogleGeminiV1FileUploadNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1FileUploadConfig>;
+};
+
+export type LcGoogleGeminiV1TextMessageNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1TextMessageConfig>;
+};
+
+export type LcGoogleGeminiV1VideoAnalyzeNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1VideoAnalyzeConfig>;
+};
+
+export type LcGoogleGeminiV1VideoGenerateNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1VideoGenerateConfig>;
+};
+
+export type LcGoogleGeminiV1VideoDownloadNode = LcGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcGoogleGeminiV1VideoDownloadConfig>;
+};
+
+export type LcGoogleGeminiV1Node =
+	| LcGoogleGeminiV1AudioAnalyzeNode
+	| LcGoogleGeminiV1AudioTranscribeNode
+	| LcGoogleGeminiV1DocumentAnalyzeNode
+	| LcGoogleGeminiV1FileSearchCreateStoreNode
+	| LcGoogleGeminiV1FileSearchDeleteStoreNode
+	| LcGoogleGeminiV1FileSearchListStoresNode
+	| LcGoogleGeminiV1FileSearchUploadToStoreNode
+	| LcGoogleGeminiV1ImageAnalyzeNode
+	| LcGoogleGeminiV1ImageGenerateNode
+	| LcGoogleGeminiV1ImageEditNode
+	| LcGoogleGeminiV1FileUploadNode
+	| LcGoogleGeminiV1TextMessageNode
+	| LcGoogleGeminiV1VideoAnalyzeNode
+	| LcGoogleGeminiV1VideoGenerateNode
+	| LcGoogleGeminiV1VideoDownloadNode
+	;

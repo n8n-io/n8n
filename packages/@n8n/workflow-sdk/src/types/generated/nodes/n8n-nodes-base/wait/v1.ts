@@ -1,8 +1,6 @@
 /**
  * Wait Node - Version 1
  * Wait before continue with execution
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WaitV1Params {
+export interface WaitV1Config {
 /**
  * Determines the waiting mode to use before the workflow continues
  * @default timeInterval
@@ -264,12 +262,17 @@ export interface WaitV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WaitV1Node = {
+interface WaitV1NodeBase {
 	type: 'n8n-nodes-base.wait';
 	version: 1;
-	config: NodeConfig<WaitV1Params>;
 	credentials?: WaitV1Credentials;
+}
+
+export type WaitV1Node = WaitV1NodeBase & {
+	config: NodeConfig<WaitV1Config>;
 };
+
+export type WaitV1Node = WaitV1Node;

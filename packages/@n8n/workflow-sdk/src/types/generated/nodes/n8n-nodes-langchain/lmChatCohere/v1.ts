@@ -1,8 +1,6 @@
 /**
  * Cohere Chat Model Node - Version 1
  * For advanced usage with an AI chain
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatCohereV1Params {
+export interface LcLmChatCohereV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://docs.cohere.com/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default command-a-03-2025
@@ -35,13 +33,18 @@ export interface LcLmChatCohereV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatCohereV1Node = {
+interface LcLmChatCohereV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatCohere';
 	version: 1;
-	config: NodeConfig<LcLmChatCohereV1Params>;
 	credentials?: LcLmChatCohereV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatCohereV1Node = LcLmChatCohereV1NodeBase & {
+	config: NodeConfig<LcLmChatCohereV1Config>;
 };
+
+export type LcLmChatCohereV1Node = LcLmChatCohereV1Node;

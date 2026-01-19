@@ -1,8 +1,6 @@
 /**
  * Embeddings Mistral Cloud Node - Version 1
  * Use Embeddings Mistral Cloud
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsMistralCloudV1Params {
+export interface LcEmbeddingsMistralCloudV1Config {
 /**
  * The model which will compute the embeddings. &lt;a href="https://docs.mistral.ai/platform/endpoints/"&gt;Learn more&lt;/a&gt;.
  * @default mistral-embed
@@ -35,13 +33,18 @@ export interface LcEmbeddingsMistralCloudV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsMistralCloudV1Node = {
+interface LcEmbeddingsMistralCloudV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.embeddingsMistralCloud';
 	version: 1;
-	config: NodeConfig<LcEmbeddingsMistralCloudV1Params>;
 	credentials?: LcEmbeddingsMistralCloudV1Credentials;
 	isTrigger: true;
+}
+
+export type LcEmbeddingsMistralCloudV1Node = LcEmbeddingsMistralCloudV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsMistralCloudV1Config>;
 };
+
+export type LcEmbeddingsMistralCloudV1Node = LcEmbeddingsMistralCloudV1Node;

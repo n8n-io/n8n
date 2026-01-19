@@ -1,8 +1,6 @@
 /**
  * Elasticsearch Node - Version 1
  * Consume the Elasticsearch API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -208,17 +206,6 @@ export type ElasticsearchV1IndexGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type ElasticsearchV1Params =
-	| ElasticsearchV1DocumentCreateConfig
-	| ElasticsearchV1DocumentDeleteConfig
-	| ElasticsearchV1DocumentGetConfig
-	| ElasticsearchV1DocumentGetAllConfig
-	| ElasticsearchV1DocumentUpdateConfig
-	| ElasticsearchV1IndexCreateConfig
-	| ElasticsearchV1IndexDeleteConfig
-	| ElasticsearchV1IndexGetConfig
-	| ElasticsearchV1IndexGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -229,12 +216,59 @@ export interface ElasticsearchV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ElasticsearchV1Node = {
+interface ElasticsearchV1NodeBase {
 	type: 'n8n-nodes-base.elasticsearch';
 	version: 1;
-	config: NodeConfig<ElasticsearchV1Params>;
 	credentials?: ElasticsearchV1Credentials;
+}
+
+export type ElasticsearchV1DocumentCreateNode = ElasticsearchV1NodeBase & {
+	config: NodeConfig<ElasticsearchV1DocumentCreateConfig>;
 };
+
+export type ElasticsearchV1DocumentDeleteNode = ElasticsearchV1NodeBase & {
+	config: NodeConfig<ElasticsearchV1DocumentDeleteConfig>;
+};
+
+export type ElasticsearchV1DocumentGetNode = ElasticsearchV1NodeBase & {
+	config: NodeConfig<ElasticsearchV1DocumentGetConfig>;
+};
+
+export type ElasticsearchV1DocumentGetAllNode = ElasticsearchV1NodeBase & {
+	config: NodeConfig<ElasticsearchV1DocumentGetAllConfig>;
+};
+
+export type ElasticsearchV1DocumentUpdateNode = ElasticsearchV1NodeBase & {
+	config: NodeConfig<ElasticsearchV1DocumentUpdateConfig>;
+};
+
+export type ElasticsearchV1IndexCreateNode = ElasticsearchV1NodeBase & {
+	config: NodeConfig<ElasticsearchV1IndexCreateConfig>;
+};
+
+export type ElasticsearchV1IndexDeleteNode = ElasticsearchV1NodeBase & {
+	config: NodeConfig<ElasticsearchV1IndexDeleteConfig>;
+};
+
+export type ElasticsearchV1IndexGetNode = ElasticsearchV1NodeBase & {
+	config: NodeConfig<ElasticsearchV1IndexGetConfig>;
+};
+
+export type ElasticsearchV1IndexGetAllNode = ElasticsearchV1NodeBase & {
+	config: NodeConfig<ElasticsearchV1IndexGetAllConfig>;
+};
+
+export type ElasticsearchV1Node =
+	| ElasticsearchV1DocumentCreateNode
+	| ElasticsearchV1DocumentDeleteNode
+	| ElasticsearchV1DocumentGetNode
+	| ElasticsearchV1DocumentGetAllNode
+	| ElasticsearchV1DocumentUpdateNode
+	| ElasticsearchV1IndexCreateNode
+	| ElasticsearchV1IndexDeleteNode
+	| ElasticsearchV1IndexGetNode
+	| ElasticsearchV1IndexGetAllNode
+	;

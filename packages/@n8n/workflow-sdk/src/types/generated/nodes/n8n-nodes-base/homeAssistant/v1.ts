@@ -1,8 +1,6 @@
 /**
  * Home Assistant Node - Version 1
  * Consume Home Assistant API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -195,21 +193,87 @@ export type HomeAssistantV1TemplateCreateConfig = {
 		template: string | Expression<string>;
 };
 
-export type HomeAssistantV1Params =
-	| HomeAssistantV1CameraProxyGetScreenshotConfig
-	| HomeAssistantV1ConfigGetConfig
-	| HomeAssistantV1ConfigCheckConfig
-	| HomeAssistantV1EventCreateConfig
-	| HomeAssistantV1EventGetAllConfig
-	| HomeAssistantV1LogGetErroLogsConfig
-	| HomeAssistantV1LogGetLogbookEntriesConfig
-	| HomeAssistantV1ServiceCallConfig
-	| HomeAssistantV1ServiceGetAllConfig
-	| HomeAssistantV1StateUpsertConfig
-	| HomeAssistantV1StateGetConfig
-	| HomeAssistantV1StateGetAllConfig
-	| HomeAssistantV1TemplateCreateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type HomeAssistantV1ServiceCallOutput = {
+	attributes?: {
+		friendly_name?: string;
+	};
+	context?: {
+		id?: string;
+		parent_id?: null;
+		user_id?: string;
+	};
+	entity_id?: string;
+	last_changed?: string;
+	last_reported?: string;
+	last_updated?: string;
+	state?: string;
+};
+
+export type HomeAssistantV1StateUpsertOutput = {
+	context?: {
+		id?: string;
+		parent_id?: null;
+		user_id?: string;
+	};
+	entity_id?: string;
+	last_changed?: string;
+	last_reported?: string;
+	last_updated?: string;
+	state?: string;
+};
+
+export type HomeAssistantV1StateGetOutput = {
+	attributes?: {
+		device_class?: string;
+		friendly_name?: string;
+	};
+	context?: {
+		id?: string;
+	};
+	entity_id?: string;
+	last_changed?: string;
+	last_reported?: string;
+	last_updated?: string;
+	state?: string;
+};
+
+export type HomeAssistantV1StateGetAllOutput = {
+	attributes?: {
+		auto_update?: boolean;
+		device_trackers?: Array<string>;
+		editable?: boolean;
+		entity_picture?: string;
+		friendly_name?: string;
+		id?: string;
+		in_progress?: boolean;
+		installed_version?: string;
+		latest_version?: string;
+		latitude?: number;
+		longitude?: number;
+		release_summary?: null;
+		release_url?: string;
+		skipped_version?: null;
+		source?: string;
+		supported_features?: number;
+		title?: string;
+		user_id?: string;
+	};
+	context?: {
+		id?: string;
+		parent_id?: null;
+		user_id?: null;
+	};
+	entity_id?: string;
+	last_changed?: string;
+	last_reported?: string;
+	last_updated?: string;
+	state?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -220,12 +284,83 @@ export interface HomeAssistantV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HomeAssistantV1Node = {
+interface HomeAssistantV1NodeBase {
 	type: 'n8n-nodes-base.homeAssistant';
 	version: 1;
-	config: NodeConfig<HomeAssistantV1Params>;
 	credentials?: HomeAssistantV1Credentials;
+}
+
+export type HomeAssistantV1CameraProxyGetScreenshotNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1CameraProxyGetScreenshotConfig>;
 };
+
+export type HomeAssistantV1ConfigGetNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1ConfigGetConfig>;
+};
+
+export type HomeAssistantV1ConfigCheckNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1ConfigCheckConfig>;
+};
+
+export type HomeAssistantV1EventCreateNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1EventCreateConfig>;
+};
+
+export type HomeAssistantV1EventGetAllNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1EventGetAllConfig>;
+};
+
+export type HomeAssistantV1LogGetErroLogsNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1LogGetErroLogsConfig>;
+};
+
+export type HomeAssistantV1LogGetLogbookEntriesNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1LogGetLogbookEntriesConfig>;
+};
+
+export type HomeAssistantV1ServiceCallNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1ServiceCallConfig>;
+	output?: HomeAssistantV1ServiceCallOutput;
+};
+
+export type HomeAssistantV1ServiceGetAllNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1ServiceGetAllConfig>;
+};
+
+export type HomeAssistantV1StateUpsertNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1StateUpsertConfig>;
+	output?: HomeAssistantV1StateUpsertOutput;
+};
+
+export type HomeAssistantV1StateGetNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1StateGetConfig>;
+	output?: HomeAssistantV1StateGetOutput;
+};
+
+export type HomeAssistantV1StateGetAllNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1StateGetAllConfig>;
+	output?: HomeAssistantV1StateGetAllOutput;
+};
+
+export type HomeAssistantV1TemplateCreateNode = HomeAssistantV1NodeBase & {
+	config: NodeConfig<HomeAssistantV1TemplateCreateConfig>;
+};
+
+export type HomeAssistantV1Node =
+	| HomeAssistantV1CameraProxyGetScreenshotNode
+	| HomeAssistantV1ConfigGetNode
+	| HomeAssistantV1ConfigCheckNode
+	| HomeAssistantV1EventCreateNode
+	| HomeAssistantV1EventGetAllNode
+	| HomeAssistantV1LogGetErroLogsNode
+	| HomeAssistantV1LogGetLogbookEntriesNode
+	| HomeAssistantV1ServiceCallNode
+	| HomeAssistantV1ServiceGetAllNode
+	| HomeAssistantV1StateUpsertNode
+	| HomeAssistantV1StateGetNode
+	| HomeAssistantV1StateGetAllNode
+	| HomeAssistantV1TemplateCreateNode
+	;

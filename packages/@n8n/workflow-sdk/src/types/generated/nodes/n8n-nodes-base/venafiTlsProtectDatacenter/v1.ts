@@ -1,8 +1,6 @@
 /**
  * Venafi TLS Protect Datacenter Node - Version 1
  * Consume Venafi TLS Protect Datacenter
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -111,15 +109,6 @@ export type VenafiTlsProtectDatacenterV1PolicyGetConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type VenafiTlsProtectDatacenterV1Params =
-	| VenafiTlsProtectDatacenterV1CertificateCreateConfig
-	| VenafiTlsProtectDatacenterV1CertificateDeleteConfig
-	| VenafiTlsProtectDatacenterV1CertificateDownloadConfig
-	| VenafiTlsProtectDatacenterV1CertificateGetConfig
-	| VenafiTlsProtectDatacenterV1CertificateGetManyConfig
-	| VenafiTlsProtectDatacenterV1CertificateRenewConfig
-	| VenafiTlsProtectDatacenterV1PolicyGetConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -130,12 +119,49 @@ export interface VenafiTlsProtectDatacenterV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type VenafiTlsProtectDatacenterV1Node = {
+interface VenafiTlsProtectDatacenterV1NodeBase {
 	type: 'n8n-nodes-base.venafiTlsProtectDatacenter';
 	version: 1;
-	config: NodeConfig<VenafiTlsProtectDatacenterV1Params>;
 	credentials?: VenafiTlsProtectDatacenterV1Credentials;
+}
+
+export type VenafiTlsProtectDatacenterV1CertificateCreateNode = VenafiTlsProtectDatacenterV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectDatacenterV1CertificateCreateConfig>;
 };
+
+export type VenafiTlsProtectDatacenterV1CertificateDeleteNode = VenafiTlsProtectDatacenterV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectDatacenterV1CertificateDeleteConfig>;
+};
+
+export type VenafiTlsProtectDatacenterV1CertificateDownloadNode = VenafiTlsProtectDatacenterV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectDatacenterV1CertificateDownloadConfig>;
+};
+
+export type VenafiTlsProtectDatacenterV1CertificateGetNode = VenafiTlsProtectDatacenterV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectDatacenterV1CertificateGetConfig>;
+};
+
+export type VenafiTlsProtectDatacenterV1CertificateGetManyNode = VenafiTlsProtectDatacenterV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectDatacenterV1CertificateGetManyConfig>;
+};
+
+export type VenafiTlsProtectDatacenterV1CertificateRenewNode = VenafiTlsProtectDatacenterV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectDatacenterV1CertificateRenewConfig>;
+};
+
+export type VenafiTlsProtectDatacenterV1PolicyGetNode = VenafiTlsProtectDatacenterV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectDatacenterV1PolicyGetConfig>;
+};
+
+export type VenafiTlsProtectDatacenterV1Node =
+	| VenafiTlsProtectDatacenterV1CertificateCreateNode
+	| VenafiTlsProtectDatacenterV1CertificateDeleteNode
+	| VenafiTlsProtectDatacenterV1CertificateDownloadNode
+	| VenafiTlsProtectDatacenterV1CertificateGetNode
+	| VenafiTlsProtectDatacenterV1CertificateGetManyNode
+	| VenafiTlsProtectDatacenterV1CertificateRenewNode
+	| VenafiTlsProtectDatacenterV1PolicyGetNode
+	;

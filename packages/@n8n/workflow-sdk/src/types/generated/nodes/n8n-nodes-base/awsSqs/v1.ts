@@ -1,8 +1,6 @@
 /**
  * AWS SQS Node - Version 1
  * Sends messages to AWS SQS
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AwsSqsV1Params {
+export interface AwsSqsV1Config {
 	authentication?: 'iam' | 'assumeRole' | Expression<string>;
 	operation?: 'sendMessage' | Expression<string>;
 /**
@@ -50,12 +48,17 @@ export interface AwsSqsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsSqsV1Node = {
+interface AwsSqsV1NodeBase {
 	type: 'n8n-nodes-base.awsSqs';
 	version: 1;
-	config: NodeConfig<AwsSqsV1Params>;
 	credentials?: AwsSqsV1Credentials;
+}
+
+export type AwsSqsV1Node = AwsSqsV1NodeBase & {
+	config: NodeConfig<AwsSqsV1Config>;
 };
+
+export type AwsSqsV1Node = AwsSqsV1Node;

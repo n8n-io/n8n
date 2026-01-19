@@ -1,8 +1,6 @@
 /**
  * PayPal Trigger Node - Version 1
  * Handle PayPal events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface PayPalTriggerV1Params {
+export interface PayPalTriggerV1Config {
 /**
  * The event to listen to. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  * @default []
@@ -30,13 +28,18 @@ export interface PayPalTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PayPalTriggerV1Node = {
+interface PayPalTriggerV1NodeBase {
 	type: 'n8n-nodes-base.payPalTrigger';
 	version: 1;
-	config: NodeConfig<PayPalTriggerV1Params>;
 	credentials?: PayPalTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type PayPalTriggerV1Node = PayPalTriggerV1NodeBase & {
+	config: NodeConfig<PayPalTriggerV1Config>;
 };
+
+export type PayPalTriggerV1Node = PayPalTriggerV1Node;

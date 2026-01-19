@@ -1,8 +1,6 @@
 /**
  * Stop and Error Node - Version 1
  * Throw an error in the workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface StopAndErrorV1Params {
+export interface StopAndErrorV1Config {
 /**
  * Type of error to throw
  * @default errorMessage
@@ -33,12 +31,16 @@ export interface StopAndErrorV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StopAndErrorV1Node = {
+interface StopAndErrorV1NodeBase {
 	type: 'n8n-nodes-base.stopAndError';
 	version: 1;
-	config: NodeConfig<StopAndErrorV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type StopAndErrorV1Node = StopAndErrorV1NodeBase & {
+	config: NodeConfig<StopAndErrorV1Config>;
 };
+
+export type StopAndErrorV1Node = StopAndErrorV1Node;

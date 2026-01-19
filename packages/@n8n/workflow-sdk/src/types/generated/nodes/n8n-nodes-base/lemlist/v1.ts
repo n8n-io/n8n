@@ -1,8 +1,6 @@
 /**
  * Lemlist Node - Version 1
  * Consume the Lemlist API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -149,18 +147,6 @@ export type LemlistV1UnsubscribeGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type LemlistV1Params =
-	| LemlistV1ActivityGetAllConfig
-	| LemlistV1CampaignGetAllConfig
-	| LemlistV1LeadCreateConfig
-	| LemlistV1LeadDeleteConfig
-	| LemlistV1LeadGetConfig
-	| LemlistV1LeadUnsubscribeConfig
-	| LemlistV1TeamGetConfig
-	| LemlistV1UnsubscribeAddConfig
-	| LemlistV1UnsubscribeDeleteConfig
-	| LemlistV1UnsubscribeGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -171,12 +157,64 @@ export interface LemlistV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LemlistV1Node = {
+interface LemlistV1NodeBase {
 	type: 'n8n-nodes-base.lemlist';
 	version: 1;
-	config: NodeConfig<LemlistV1Params>;
 	credentials?: LemlistV1Credentials;
+}
+
+export type LemlistV1ActivityGetAllNode = LemlistV1NodeBase & {
+	config: NodeConfig<LemlistV1ActivityGetAllConfig>;
 };
+
+export type LemlistV1CampaignGetAllNode = LemlistV1NodeBase & {
+	config: NodeConfig<LemlistV1CampaignGetAllConfig>;
+};
+
+export type LemlistV1LeadCreateNode = LemlistV1NodeBase & {
+	config: NodeConfig<LemlistV1LeadCreateConfig>;
+};
+
+export type LemlistV1LeadDeleteNode = LemlistV1NodeBase & {
+	config: NodeConfig<LemlistV1LeadDeleteConfig>;
+};
+
+export type LemlistV1LeadGetNode = LemlistV1NodeBase & {
+	config: NodeConfig<LemlistV1LeadGetConfig>;
+};
+
+export type LemlistV1LeadUnsubscribeNode = LemlistV1NodeBase & {
+	config: NodeConfig<LemlistV1LeadUnsubscribeConfig>;
+};
+
+export type LemlistV1TeamGetNode = LemlistV1NodeBase & {
+	config: NodeConfig<LemlistV1TeamGetConfig>;
+};
+
+export type LemlistV1UnsubscribeAddNode = LemlistV1NodeBase & {
+	config: NodeConfig<LemlistV1UnsubscribeAddConfig>;
+};
+
+export type LemlistV1UnsubscribeDeleteNode = LemlistV1NodeBase & {
+	config: NodeConfig<LemlistV1UnsubscribeDeleteConfig>;
+};
+
+export type LemlistV1UnsubscribeGetAllNode = LemlistV1NodeBase & {
+	config: NodeConfig<LemlistV1UnsubscribeGetAllConfig>;
+};
+
+export type LemlistV1Node =
+	| LemlistV1ActivityGetAllNode
+	| LemlistV1CampaignGetAllNode
+	| LemlistV1LeadCreateNode
+	| LemlistV1LeadDeleteNode
+	| LemlistV1LeadGetNode
+	| LemlistV1LeadUnsubscribeNode
+	| LemlistV1TeamGetNode
+	| LemlistV1UnsubscribeAddNode
+	| LemlistV1UnsubscribeDeleteNode
+	| LemlistV1UnsubscribeGetAllNode
+	;

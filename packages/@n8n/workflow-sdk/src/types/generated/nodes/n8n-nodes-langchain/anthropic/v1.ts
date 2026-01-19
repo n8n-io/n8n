@@ -1,8 +1,6 @@
 /**
  * Anthropic Node - Version 1
  * Interact with Anthropic AI models
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -255,18 +253,6 @@ export type LcAnthropicV1TextMessageConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcAnthropicV1Params =
-	| LcAnthropicV1DocumentAnalyzeConfig
-	| LcAnthropicV1FileUploadConfig
-	| LcAnthropicV1FileGetConfig
-	| LcAnthropicV1FileListConfig
-	| LcAnthropicV1FileDeleteFileConfig
-	| LcAnthropicV1ImageAnalyzeConfig
-	| LcAnthropicV1PromptGenerateConfig
-	| LcAnthropicV1PromptImproveConfig
-	| LcAnthropicV1PromptTemplatizeConfig
-	| LcAnthropicV1TextMessageConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -277,12 +263,64 @@ export interface LcAnthropicV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcAnthropicV1Node = {
+interface LcAnthropicV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.anthropic';
 	version: 1;
-	config: NodeConfig<LcAnthropicV1Params>;
 	credentials?: LcAnthropicV1Credentials;
+}
+
+export type LcAnthropicV1DocumentAnalyzeNode = LcAnthropicV1NodeBase & {
+	config: NodeConfig<LcAnthropicV1DocumentAnalyzeConfig>;
 };
+
+export type LcAnthropicV1FileUploadNode = LcAnthropicV1NodeBase & {
+	config: NodeConfig<LcAnthropicV1FileUploadConfig>;
+};
+
+export type LcAnthropicV1FileGetNode = LcAnthropicV1NodeBase & {
+	config: NodeConfig<LcAnthropicV1FileGetConfig>;
+};
+
+export type LcAnthropicV1FileListNode = LcAnthropicV1NodeBase & {
+	config: NodeConfig<LcAnthropicV1FileListConfig>;
+};
+
+export type LcAnthropicV1FileDeleteFileNode = LcAnthropicV1NodeBase & {
+	config: NodeConfig<LcAnthropicV1FileDeleteFileConfig>;
+};
+
+export type LcAnthropicV1ImageAnalyzeNode = LcAnthropicV1NodeBase & {
+	config: NodeConfig<LcAnthropicV1ImageAnalyzeConfig>;
+};
+
+export type LcAnthropicV1PromptGenerateNode = LcAnthropicV1NodeBase & {
+	config: NodeConfig<LcAnthropicV1PromptGenerateConfig>;
+};
+
+export type LcAnthropicV1PromptImproveNode = LcAnthropicV1NodeBase & {
+	config: NodeConfig<LcAnthropicV1PromptImproveConfig>;
+};
+
+export type LcAnthropicV1PromptTemplatizeNode = LcAnthropicV1NodeBase & {
+	config: NodeConfig<LcAnthropicV1PromptTemplatizeConfig>;
+};
+
+export type LcAnthropicV1TextMessageNode = LcAnthropicV1NodeBase & {
+	config: NodeConfig<LcAnthropicV1TextMessageConfig>;
+};
+
+export type LcAnthropicV1Node =
+	| LcAnthropicV1DocumentAnalyzeNode
+	| LcAnthropicV1FileUploadNode
+	| LcAnthropicV1FileGetNode
+	| LcAnthropicV1FileListNode
+	| LcAnthropicV1FileDeleteFileNode
+	| LcAnthropicV1ImageAnalyzeNode
+	| LcAnthropicV1PromptGenerateNode
+	| LcAnthropicV1PromptImproveNode
+	| LcAnthropicV1PromptTemplatizeNode
+	| LcAnthropicV1TextMessageNode
+	;

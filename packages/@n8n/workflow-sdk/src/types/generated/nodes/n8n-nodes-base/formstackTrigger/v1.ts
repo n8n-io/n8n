@@ -1,8 +1,6 @@
 /**
  * Formstack Trigger Node - Version 1
  * Starts the workflow on a Formstack form submission.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FormstackTriggerV1Params {
+export interface FormstackTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 /**
  * The Formstack form to monitor for new submissions. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -36,13 +34,18 @@ export interface FormstackTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FormstackTriggerV1Node = {
+interface FormstackTriggerV1NodeBase {
 	type: 'n8n-nodes-base.formstackTrigger';
 	version: 1;
-	config: NodeConfig<FormstackTriggerV1Params>;
 	credentials?: FormstackTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type FormstackTriggerV1Node = FormstackTriggerV1NodeBase & {
+	config: NodeConfig<FormstackTriggerV1Config>;
 };
+
+export type FormstackTriggerV1Node = FormstackTriggerV1Node;

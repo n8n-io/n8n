@@ -1,8 +1,6 @@
 /**
  * Perplexity Node - Version 1
  * Interact with the Perplexity API to generate AI responses with citations
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface PerplexityV1Params {
+export interface PerplexityV1Config {
 	resource?: unknown;
 	operation?: 'complete' | Expression<string>;
 /**
@@ -57,12 +55,17 @@ export interface PerplexityV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PerplexityV1Node = {
+interface PerplexityV1NodeBase {
 	type: 'n8n-nodes-base.perplexity';
 	version: 1;
-	config: NodeConfig<PerplexityV1Params>;
 	credentials?: PerplexityV1Credentials;
+}
+
+export type PerplexityV1Node = PerplexityV1NodeBase & {
+	config: NodeConfig<PerplexityV1Config>;
 };
+
+export type PerplexityV1Node = PerplexityV1Node;

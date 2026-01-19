@@ -1,8 +1,6 @@
 /**
  * QuickChart Node - Version 1
  * Create a chart via QuickChart
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface QuickChartV1Params {
+export interface QuickChartV1Config {
 /**
  * The type of chart to create
  * @default bar
@@ -57,12 +55,16 @@ export interface QuickChartV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type QuickChartV1Node = {
+interface QuickChartV1NodeBase {
 	type: 'n8n-nodes-base.quickChart';
 	version: 1;
-	config: NodeConfig<QuickChartV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type QuickChartV1Node = QuickChartV1NodeBase & {
+	config: NodeConfig<QuickChartV1Config>;
 };
+
+export type QuickChartV1Node = QuickChartV1Node;

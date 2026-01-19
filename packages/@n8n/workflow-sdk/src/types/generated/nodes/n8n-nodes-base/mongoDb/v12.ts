@@ -1,8 +1,6 @@
 /**
  * MongoDB Node - Version 1.2
  * Find, insert and update documents in MongoDB
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -244,19 +242,6 @@ export type MongoDbV12DocumentUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MongoDbV12Params =
-	| MongoDbV12SearchIndexesCreateSearchIndexConfig
-	| MongoDbV12SearchIndexesDropSearchIndexConfig
-	| MongoDbV12SearchIndexesListSearchIndexesConfig
-	| MongoDbV12SearchIndexesUpdateSearchIndexConfig
-	| MongoDbV12DocumentAggregateConfig
-	| MongoDbV12DocumentDeleteConfig
-	| MongoDbV12DocumentFindConfig
-	| MongoDbV12DocumentFindOneAndReplaceConfig
-	| MongoDbV12DocumentFindOneAndUpdateConfig
-	| MongoDbV12DocumentInsertConfig
-	| MongoDbV12DocumentUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -267,12 +252,69 @@ export interface MongoDbV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MongoDbV12Node = {
+interface MongoDbV12NodeBase {
 	type: 'n8n-nodes-base.mongoDb';
 	version: 1.2;
-	config: NodeConfig<MongoDbV12Params>;
 	credentials?: MongoDbV12Credentials;
+}
+
+export type MongoDbV12SearchIndexesCreateSearchIndexNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12SearchIndexesCreateSearchIndexConfig>;
 };
+
+export type MongoDbV12SearchIndexesDropSearchIndexNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12SearchIndexesDropSearchIndexConfig>;
+};
+
+export type MongoDbV12SearchIndexesListSearchIndexesNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12SearchIndexesListSearchIndexesConfig>;
+};
+
+export type MongoDbV12SearchIndexesUpdateSearchIndexNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12SearchIndexesUpdateSearchIndexConfig>;
+};
+
+export type MongoDbV12DocumentAggregateNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12DocumentAggregateConfig>;
+};
+
+export type MongoDbV12DocumentDeleteNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12DocumentDeleteConfig>;
+};
+
+export type MongoDbV12DocumentFindNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12DocumentFindConfig>;
+};
+
+export type MongoDbV12DocumentFindOneAndReplaceNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12DocumentFindOneAndReplaceConfig>;
+};
+
+export type MongoDbV12DocumentFindOneAndUpdateNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12DocumentFindOneAndUpdateConfig>;
+};
+
+export type MongoDbV12DocumentInsertNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12DocumentInsertConfig>;
+};
+
+export type MongoDbV12DocumentUpdateNode = MongoDbV12NodeBase & {
+	config: NodeConfig<MongoDbV12DocumentUpdateConfig>;
+};
+
+export type MongoDbV12Node =
+	| MongoDbV12SearchIndexesCreateSearchIndexNode
+	| MongoDbV12SearchIndexesDropSearchIndexNode
+	| MongoDbV12SearchIndexesListSearchIndexesNode
+	| MongoDbV12SearchIndexesUpdateSearchIndexNode
+	| MongoDbV12DocumentAggregateNode
+	| MongoDbV12DocumentDeleteNode
+	| MongoDbV12DocumentFindNode
+	| MongoDbV12DocumentFindOneAndReplaceNode
+	| MongoDbV12DocumentFindOneAndUpdateNode
+	| MongoDbV12DocumentInsertNode
+	| MongoDbV12DocumentUpdateNode
+	;

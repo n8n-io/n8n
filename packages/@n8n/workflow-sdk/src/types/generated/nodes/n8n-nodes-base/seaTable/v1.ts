@@ -1,8 +1,6 @@
 /**
  * SeaTable Node - Version 1
  * Consume the SeaTable API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SeaTableV1Params {
+export interface SeaTableV1Config {
 	resource?: 'row' | Expression<string>;
 /**
  * The operation being performed
@@ -82,12 +80,17 @@ export interface SeaTableV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SeaTableV1Node = {
+interface SeaTableV1NodeBase {
 	type: 'n8n-nodes-base.seaTable';
 	version: 1;
-	config: NodeConfig<SeaTableV1Params>;
 	credentials?: SeaTableV1Credentials;
+}
+
+export type SeaTableV1Node = SeaTableV1NodeBase & {
+	config: NodeConfig<SeaTableV1Config>;
 };
+
+export type SeaTableV1Node = SeaTableV1Node;

@@ -1,8 +1,6 @@
 /**
  * Code Tool Node - Version 1.2
  * Write a tool in JS or Python
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolCodeV12Params {
+export interface LcToolCodeV12Config {
 	description?: string | Expression<string>;
 	language?: 'javaScript' | 'python' | Expression<string>;
 /**
@@ -74,13 +72,17 @@ return _query.upper()
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcToolCodeV12Node = {
+interface LcToolCodeV12NodeBase {
 	type: '@n8n/n8n-nodes-langchain.toolCode';
 	version: 1.2;
-	config: NodeConfig<LcToolCodeV12Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcToolCodeV12Node = LcToolCodeV12NodeBase & {
+	config: NodeConfig<LcToolCodeV12Config>;
 };
+
+export type LcToolCodeV12Node = LcToolCodeV12Node;

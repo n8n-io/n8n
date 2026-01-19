@@ -1,8 +1,6 @@
 /**
  * Anthropic Chat Model Node - Version 1
  * Language Model Anthropic
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatAnthropicV1Params {
+export interface LcLmChatAnthropicV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://docs.anthropic.com/claude/docs/models-overview"&gt;Learn more&lt;/a&gt;.
  * @default claude-2
@@ -35,13 +33,18 @@ export interface LcLmChatAnthropicV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatAnthropicV1Node = {
+interface LcLmChatAnthropicV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatAnthropic';
 	version: 1;
-	config: NodeConfig<LcLmChatAnthropicV1Params>;
 	credentials?: LcLmChatAnthropicV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatAnthropicV1Node = LcLmChatAnthropicV1NodeBase & {
+	config: NodeConfig<LcLmChatAnthropicV1Config>;
 };
+
+export type LcLmChatAnthropicV1Node = LcLmChatAnthropicV1Node;

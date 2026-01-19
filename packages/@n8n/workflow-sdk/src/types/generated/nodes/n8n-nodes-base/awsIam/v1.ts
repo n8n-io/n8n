@@ -1,8 +1,6 @@
 /**
  * AWS IAM Node - Version 1
  * Interacts with Amazon IAM
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -223,20 +221,6 @@ export type AwsIamV1GroupUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type AwsIamV1Params =
-	| AwsIamV1UserAddToGroupConfig
-	| AwsIamV1UserCreateConfig
-	| AwsIamV1UserDeleteConfig
-	| AwsIamV1UserGetConfig
-	| AwsIamV1UserGetAllConfig
-	| AwsIamV1UserRemoveFromGroupConfig
-	| AwsIamV1UserUpdateConfig
-	| AwsIamV1GroupCreateConfig
-	| AwsIamV1GroupDeleteConfig
-	| AwsIamV1GroupGetConfig
-	| AwsIamV1GroupGetAllConfig
-	| AwsIamV1GroupUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -247,12 +231,74 @@ export interface AwsIamV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsIamV1Node = {
+interface AwsIamV1NodeBase {
 	type: 'n8n-nodes-base.awsIam';
 	version: 1;
-	config: NodeConfig<AwsIamV1Params>;
 	credentials?: AwsIamV1Credentials;
+}
+
+export type AwsIamV1UserAddToGroupNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1UserAddToGroupConfig>;
 };
+
+export type AwsIamV1UserCreateNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1UserCreateConfig>;
+};
+
+export type AwsIamV1UserDeleteNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1UserDeleteConfig>;
+};
+
+export type AwsIamV1UserGetNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1UserGetConfig>;
+};
+
+export type AwsIamV1UserGetAllNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1UserGetAllConfig>;
+};
+
+export type AwsIamV1UserRemoveFromGroupNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1UserRemoveFromGroupConfig>;
+};
+
+export type AwsIamV1UserUpdateNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1UserUpdateConfig>;
+};
+
+export type AwsIamV1GroupCreateNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1GroupCreateConfig>;
+};
+
+export type AwsIamV1GroupDeleteNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1GroupDeleteConfig>;
+};
+
+export type AwsIamV1GroupGetNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1GroupGetConfig>;
+};
+
+export type AwsIamV1GroupGetAllNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1GroupGetAllConfig>;
+};
+
+export type AwsIamV1GroupUpdateNode = AwsIamV1NodeBase & {
+	config: NodeConfig<AwsIamV1GroupUpdateConfig>;
+};
+
+export type AwsIamV1Node =
+	| AwsIamV1UserAddToGroupNode
+	| AwsIamV1UserCreateNode
+	| AwsIamV1UserDeleteNode
+	| AwsIamV1UserGetNode
+	| AwsIamV1UserGetAllNode
+	| AwsIamV1UserRemoveFromGroupNode
+	| AwsIamV1UserUpdateNode
+	| AwsIamV1GroupCreateNode
+	| AwsIamV1GroupDeleteNode
+	| AwsIamV1GroupGetNode
+	| AwsIamV1GroupGetAllNode
+	| AwsIamV1GroupUpdateNode
+	;

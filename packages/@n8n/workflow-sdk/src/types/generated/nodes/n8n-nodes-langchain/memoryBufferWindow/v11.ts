@@ -1,8 +1,6 @@
 /**
  * Simple Memory Node - Version 1.1
  * Stores in n8n memory, so no credentials required
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryBufferWindowV11Params {
+export interface LcMemoryBufferWindowV11Config {
 /**
  * The key to use to store the memory
  * @default ={{ $json.sessionId }}
@@ -27,13 +25,17 @@ export interface LcMemoryBufferWindowV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryBufferWindowV11Node = {
+interface LcMemoryBufferWindowV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 	version: 1.1;
-	config: NodeConfig<LcMemoryBufferWindowV11Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcMemoryBufferWindowV11Node = LcMemoryBufferWindowV11NodeBase & {
+	config: NodeConfig<LcMemoryBufferWindowV11Config>;
 };
+
+export type LcMemoryBufferWindowV11Node = LcMemoryBufferWindowV11Node;

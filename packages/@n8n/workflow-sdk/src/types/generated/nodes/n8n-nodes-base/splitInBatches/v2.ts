@@ -1,8 +1,6 @@
 /**
  * Split In Batches Node - Version 2
  * Split data into batches and iterate over each batch
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface SplitInBatchesV2Params {
+export interface SplitInBatchesV2Config {
 /**
  * The number of items to return with each call
  * @default 10
@@ -27,12 +25,16 @@ export interface SplitInBatchesV2Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SplitInBatchesV2Node = {
+interface SplitInBatchesV2NodeBase {
 	type: 'n8n-nodes-base.splitInBatches';
 	version: 2;
-	config: NodeConfig<SplitInBatchesV2Params>;
-	credentials?: Record<string, never>;
+}
+
+export type SplitInBatchesV2Node = SplitInBatchesV2NodeBase & {
+	config: NodeConfig<SplitInBatchesV2Config>;
 };
+
+export type SplitInBatchesV2Node = SplitInBatchesV2Node;

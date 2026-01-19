@@ -34,6 +34,9 @@ const NODES_LANGCHAIN_TYPES = path.resolve(
 );
 const OUTPUT_PATH = path.resolve(__dirname, '../src/types/generated');
 
+// Path to nodes-base dist for finding output schemas
+const NODES_BASE_DIST = path.resolve(__dirname, '../../../nodes-base/dist/nodes');
+
 // Discriminator fields that create operation-specific parameter sets
 const DISCRIMINATOR_FIELDS = [
 	'resource',
@@ -143,6 +146,288 @@ export interface VersionGroup {
 	versions: number[];
 	highestVersion: number;
 	properties: NodeProperty[];
+}
+
+/**
+ * Represents an output schema discovered from the __schema__ directory
+ */
+export interface OutputSchema {
+	resource: string;
+	operation: string;
+	schema: JsonSchema;
+}
+
+/**
+ * JSON Schema type definitions for parsing output schemas
+ */
+export interface JsonSchema {
+	type?: string | string[];
+	properties?: Record<string, JsonSchema>;
+	items?: JsonSchema;
+	additionalProperties?: boolean | JsonSchema;
+	required?: string[];
+	oneOf?: JsonSchema[];
+	anyOf?: JsonSchema[];
+	allOf?: JsonSchema[];
+	enum?: unknown[];
+	const?: unknown;
+	$ref?: string;
+}
+
+// =============================================================================
+// Schema Discovery & JSON Schema to TypeScript Conversion
+// =============================================================================
+
+/**
+ * Cache for discovered schemas per node (keyed by nodeName:version)
+ */
+const schemaCache = new Map<string, OutputSchema[]>();
+
+/**
+ * Discover output schemas for a node from the __schema__ directory
+ * Schema path pattern: dist/nodes/{NodeFolder}/__schema__/v{version}.0.0/{resource}/{operation}.json
+ *
+ * @param nodeName Full node name (e.g., 'n8n-nodes-base.freshservice')
+ * @param version The node version number
+ * @returns Array of discovered output schemas
+ */
+export function discoverSchemasForNode(nodeName: string, version: number): OutputSchema[] {
+	const cacheKey = `${nodeName}:${version}`;
+	if (schemaCache.has(cacheKey)) {
+		return schemaCache.get(cacheKey)!;
+	}
+
+	const schemas: OutputSchema[] = [];
+
+	// Extract node folder name from the node name
+	// n8n-nodes-base.freshservice -> Freshservice (capitalized)
+	const baseName = nodeName.split('.').pop() ?? '';
+	// Try various capitalizations since folder names vary
+	const possibleFolderNames = [
+		baseName.charAt(0).toUpperCase() + baseName.slice(1), // Freshservice
+		baseName, // freshservice
+		baseName.toUpperCase(), // FRESHSERVICE
+	];
+
+	for (const folderName of possibleFolderNames) {
+		const schemaDir = path.join(NODES_BASE_DIST, folderName, '__schema__');
+		if (!fs.existsSync(schemaDir)) {
+			continue;
+		}
+
+		// Try to find version directory - try exact match first, then closest lower version
+		const versionDir = findVersionDirectory(schemaDir, version);
+		if (!versionDir) {
+			continue;
+		}
+
+		// Scan resource directories
+		try {
+			const resources = fs.readdirSync(versionDir, { withFileTypes: true });
+			for (const resourceEntry of resources) {
+				if (!resourceEntry.isDirectory()) continue;
+
+				const resourceDir = path.join(versionDir, resourceEntry.name);
+				const operations = fs.readdirSync(resourceDir, { withFileTypes: true });
+
+				for (const opEntry of operations) {
+					if (!opEntry.isFile() || !opEntry.name.endsWith('.json')) continue;
+
+					const operationName = opEntry.name.replace('.json', '');
+					const schemaPath = path.join(resourceDir, opEntry.name);
+
+					try {
+						const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
+						const schema = JSON.parse(schemaContent) as JsonSchema;
+						schemas.push({
+							resource: resourceEntry.name,
+							operation: operationName,
+							schema,
+						});
+					} catch {
+						// Skip invalid JSON files
+					}
+				}
+			}
+		} catch {
+			// Skip if directory can't be read
+		}
+
+		// Found schemas, no need to try other folder names
+		if (schemas.length > 0) {
+			break;
+		}
+	}
+
+	schemaCache.set(cacheKey, schemas);
+	return schemas;
+}
+
+/**
+ * Find the best matching version directory for a given version
+ * Tries exact match first (v{version}.0.0), then scans for closest lower version
+ *
+ * @param schemaDir Path to the __schema__ directory
+ * @param version Target version number
+ * @returns Path to version directory, or undefined if not found
+ */
+function findVersionDirectory(schemaDir: string, version: number): string | undefined {
+	// Try exact match first: v1.0.0, v2.0.0, etc.
+	const exactPath = path.join(schemaDir, `v${version}.0.0`);
+	if (fs.existsSync(exactPath)) {
+		return exactPath;
+	}
+
+	// Scan for available versions and find closest lower
+	try {
+		const entries = fs.readdirSync(schemaDir, { withFileTypes: true });
+		const versionDirs = entries
+			.filter((e) => e.isDirectory() && /^v\d+(\.\d+)*$/.test(e.name))
+			.map((e) => {
+				const match = e.name.match(/^v(\d+)/);
+				return {
+					name: e.name,
+					majorVersion: match ? parseInt(match[1], 10) : 0,
+				};
+			})
+			.filter((v) => v.majorVersion <= version)
+			.sort((a, b) => b.majorVersion - a.majorVersion);
+
+		if (versionDirs.length > 0) {
+			return path.join(schemaDir, versionDirs[0].name);
+		}
+	} catch {
+		// Ignore read errors
+	}
+
+	return undefined;
+}
+
+/**
+ * Convert a JSON Schema to TypeScript type string
+ *
+ * @param schema The JSON Schema to convert
+ * @param indent Current indentation level
+ * @returns TypeScript type string
+ */
+export function jsonSchemaToTypeScript(schema: JsonSchema, indent = 0): string {
+	const indentStr = '\t'.repeat(indent);
+	const nextIndent = '\t'.repeat(indent + 1);
+
+	// Handle array of types (e.g., ["string", "null"])
+	if (Array.isArray(schema.type)) {
+		const types = schema.type.map((t) => jsonSchemaToTypeScript({ ...schema, type: t }, indent));
+		return types.join(' | ');
+	}
+
+	// Handle enum
+	if (schema.enum) {
+		return schema.enum
+			.map((v) => {
+				if (typeof v === 'string') return `'${v}'`;
+				if (v === null) return 'null';
+				return String(v);
+			})
+			.join(' | ');
+	}
+
+	// Handle const
+	if (schema.const !== undefined) {
+		if (typeof schema.const === 'string') return `'${schema.const}'`;
+		if (schema.const === null) return 'null';
+		return String(schema.const);
+	}
+
+	// Handle oneOf/anyOf
+	if (schema.oneOf || schema.anyOf) {
+		const variants = schema.oneOf ?? schema.anyOf ?? [];
+		return variants.map((v) => jsonSchemaToTypeScript(v, indent)).join(' | ');
+	}
+
+	// Handle allOf (intersection)
+	if (schema.allOf) {
+		return schema.allOf.map((v) => jsonSchemaToTypeScript(v, indent)).join(' & ');
+	}
+
+	// Handle type-specific conversions
+	switch (schema.type) {
+		case 'string':
+			return 'string';
+		case 'integer':
+		case 'number':
+			return 'number';
+		case 'boolean':
+			return 'boolean';
+		case 'null':
+			return 'null';
+		case 'array':
+			if (schema.items) {
+				return `Array<${jsonSchemaToTypeScript(schema.items, indent)}>`;
+			}
+			return 'unknown[]';
+		case 'object':
+			if (schema.properties && Object.keys(schema.properties).length > 0) {
+				const required = new Set(schema.required ?? []);
+				const props = Object.entries(schema.properties).map(([key, propSchema]) => {
+					const optional = required.has(key) ? '' : '?';
+					const quotedKey = needsQuoting(key) ? `'${key}'` : key;
+					const propType = jsonSchemaToTypeScript(propSchema, indent + 1);
+					return `${nextIndent}${quotedKey}${optional}: ${propType};`;
+				});
+				return `{\n${props.join('\n')}\n${indentStr}}`;
+			}
+			if (schema.additionalProperties) {
+				if (typeof schema.additionalProperties === 'boolean') {
+					return 'Record<string, unknown>';
+				}
+				return `Record<string, ${jsonSchemaToTypeScript(schema.additionalProperties, indent)}>`;
+			}
+			return 'Record<string, unknown>';
+		default:
+			return 'unknown';
+	}
+}
+
+/**
+ * Find the output schema for a specific resource/operation combination
+ *
+ * @param schemas Array of discovered schemas for the node
+ * @param resource The resource name (e.g., 'ticket')
+ * @param operation The operation name (e.g., 'get')
+ * @returns The matching schema, or undefined if not found
+ */
+export function findSchemaForOperation(
+	schemas: OutputSchema[],
+	resource: string,
+	operation: string,
+): OutputSchema | undefined {
+	return schemas.find(
+		(s) => s.resource.toLowerCase() === resource.toLowerCase() && s.operation === operation,
+	);
+}
+
+/**
+ * Info about a generated config type for linking with output types
+ */
+export interface ConfigTypeInfo {
+	/** The TypeScript type name (e.g., 'FreshserviceV1TicketGetConfig') */
+	typeName: string;
+	/** Resource name from discriminator (e.g., 'ticket'), undefined if no resource */
+	resource?: string;
+	/** Operation name from discriminator (e.g., 'get'), undefined if no operation */
+	operation?: string;
+	/** Other discriminator values (e.g., mode, authentication) */
+	discriminators: Record<string, string>;
+}
+
+/**
+ * Result of generating discriminated union types
+ */
+export interface DiscriminatedUnionResult {
+	/** The generated TypeScript code */
+	code: string;
+	/** Info about each config type generated */
+	configTypes: ConfigTypeInfo[];
 }
 
 // =============================================================================
@@ -653,8 +938,8 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 
 	if (combinations.length === 0) {
 		// No discriminators - generate simple interface
-		const interfaceName = `${nodeName}${versionSuffix}Params`;
-		lines.push(`export interface ${interfaceName} {`);
+		const configName = `${nodeName}${versionSuffix}Config`;
+		lines.push(`export interface ${configName} {`);
 
 		// Track seen property names to avoid duplicates
 		const seenNames = new Set<string>();
@@ -732,15 +1017,6 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 		lines.push('};');
 		lines.push('');
 	}
-
-	// Generate union type
-	const unionName = `${nodeName}${versionSuffix}Params`;
-	lines.push(`export type ${unionName} =`);
-	for (let i = 0; i < configTypeNames.length; i++) {
-		const prefix = i === 0 ? '\t| ' : '\t| ';
-		lines.push(`${prefix}${configTypeNames[i]}`);
-	}
-	lines.push('\t;');
 
 	return lines.join('\n');
 }
@@ -832,8 +1108,6 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 		lines.push(` * @subnodeType ${subnodeType}`);
 	}
 
-	lines.push(' *');
-	lines.push(' * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.');
 	lines.push(' */');
 
 	return lines.join('\n');
@@ -1010,6 +1284,13 @@ export function versionToFileName(version: number): string {
  * Generate type file for a single specific version of a node
  * This creates files like v3.ts, v31.ts, v34.ts containing only that version's types
  * Properties are filtered to only include those that apply to the specific version
+ *
+ * The generated file includes:
+ * - Config types for each resource/operation combination
+ * - Output types (from JSON schemas if available)
+ * - Individual node types pairing each config with its specific output
+ * - A union type of all node types for type narrowing
+ *
  * @param node The node type description
  * @param specificVersion The specific version number to generate for
  */
@@ -1032,6 +1313,9 @@ export function generateSingleVersionTypeFile(
 		version: specificVersion, // Single version for this file
 	};
 
+	// Discover output schemas for this node/version
+	const outputSchemas = discoverSchemasForNode(node.name, specificVersion);
+
 	const lines: string[] = [];
 
 	// Header with JSDoc
@@ -1040,8 +1324,6 @@ export function generateSingleVersionTypeFile(
 	if (node.description) {
 		lines.push(` * ${node.description}`);
 	}
-	lines.push(' *');
-	lines.push(' * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.');
 	lines.push(' */');
 	lines.push('');
 	lines.push('// @ts-nocheck - Generated file may have unused imports');
@@ -1109,8 +1391,49 @@ export function generateSingleVersionTypeFile(
 	lines.push('');
 
 	// Use filtered node for discriminated union generation
-	lines.push(generateDiscriminatedUnionForEntry(filteredNode, nodeName, versionSuffix));
+	const unionResult = generateDiscriminatedUnionForEntry(filteredNode, nodeName, versionSuffix);
+	lines.push(unionResult.code);
 	lines.push('');
+
+	// Map from config type name to output type name (only populated when schema exists)
+	const configToOutputType = new Map<string, string>();
+
+	// Collect output types that have schemas
+	const outputTypesToGenerate: Array<{ typeName: string; schema: JsonSchema }> = [];
+
+	for (const configInfo of unionResult.configTypes) {
+		// Try to find matching schema
+		const matchingSchema =
+			configInfo.resource && configInfo.operation
+				? findSchemaForOperation(outputSchemas, configInfo.resource, configInfo.operation)
+				: undefined;
+
+		if (matchingSchema) {
+			// Generate output type name by replacing 'Config' with 'Output'
+			let outputTypeName = configInfo.typeName.replace(/Config$/, 'Output');
+			// Handle case where type name doesn't end with Config (simple interface)
+			if (outputTypeName === configInfo.typeName) {
+				outputTypeName = `${configInfo.typeName}Output`;
+			}
+
+			outputTypesToGenerate.push({ typeName: outputTypeName, schema: matchingSchema.schema });
+			configToOutputType.set(configInfo.typeName, outputTypeName);
+		}
+		// If no schema found, don't add to map - output field will be omitted
+	}
+
+	// Only generate Output Types section if there are schemas
+	if (outputTypesToGenerate.length > 0) {
+		lines.push('// ' + '='.repeat(75));
+		lines.push('// Output Types');
+		lines.push('// ' + '='.repeat(75));
+		lines.push('');
+
+		for (const { typeName, schema } of outputTypesToGenerate) {
+			lines.push(`export type ${typeName} = ${jsonSchemaToTypeScript(schema)};`);
+			lines.push('');
+		}
+	}
 
 	// Credentials section
 	lines.push('// ' + '='.repeat(75));
@@ -1118,8 +1441,13 @@ export function generateSingleVersionTypeFile(
 	lines.push('// ' + '='.repeat(75));
 	lines.push('');
 
+	const credTypeName =
+		node.credentials && node.credentials.length > 0
+			? `${nodeName}${versionSuffix}Credentials`
+			: undefined;
+
 	if (node.credentials && node.credentials.length > 0) {
-		lines.push(`export interface ${nodeName}${versionSuffix}Credentials {`);
+		lines.push(`export interface ${credTypeName} {`);
 		const seenCreds = new Set<string>();
 		for (const cred of node.credentials) {
 			if (seenCreds.has(cred.name)) continue;
@@ -1131,29 +1459,70 @@ export function generateSingleVersionTypeFile(
 		lines.push('');
 	}
 
-	// Node type section - single version only
+	// Node type section
 	lines.push('// ' + '='.repeat(75));
-	lines.push('// Node Type');
+	lines.push('// Node Types');
 	lines.push('// ' + '='.repeat(75));
 	lines.push('');
 
-	const nodeTypeName = `${nodeName}${versionSuffix}Node`;
-	const credType =
-		node.credentials && node.credentials.length > 0
-			? `${nodeName}${versionSuffix}Credentials`
-			: 'Record<string, never>';
-
-	lines.push(`export type ${nodeTypeName} = {`);
+	// Generate base type with common fields to avoid repetition
+	const baseTypeName = `${nodeName}${versionSuffix}NodeBase`;
+	lines.push(`interface ${baseTypeName} {`);
 	lines.push(`\ttype: '${node.name}';`);
 	lines.push(`\tversion: ${specificVersion};`);
-	lines.push(`\tconfig: NodeConfig<${nodeName}${versionSuffix}Params>;`);
-	lines.push(`\tcredentials?: ${credType};`);
-
+	if (credTypeName) {
+		lines.push(`\tcredentials?: ${credTypeName};`);
+	}
 	if (isTrigger) {
 		lines.push('\tisTrigger: true;');
 	}
+	lines.push('}');
+	lines.push('');
 
-	lines.push('};');
+	// Generate individual node types pairing each config with its output (if available)
+	// Using explicit named types for LLM clarity and self-documentation
+	const individualNodeTypes: string[] = [];
+
+	for (const configInfo of unionResult.configTypes) {
+		const outputTypeName = configToOutputType.get(configInfo.typeName);
+		// Generate individual node type name from config type
+		const individualTypeName = configInfo.typeName.replace(/Config$/, 'Node');
+		// Handle case where type name doesn't end with Config
+		const finalTypeName =
+			individualTypeName === configInfo.typeName
+				? `${configInfo.typeName}Node`
+				: individualTypeName;
+
+		individualNodeTypes.push(finalTypeName);
+
+		lines.push(`export type ${finalTypeName} = ${baseTypeName} & {`);
+		lines.push(`\tconfig: NodeConfig<${configInfo.typeName}>;`);
+		if (outputTypeName) {
+			lines.push(`\toutput?: ${outputTypeName};`);
+		}
+		lines.push('};');
+		lines.push('');
+	}
+
+	// Generate union type of all individual node types
+	const nodeTypeName = `${nodeName}${versionSuffix}Node`;
+
+	if (individualNodeTypes.length === 1) {
+		// Single node type - just export as alias
+		lines.push(`export type ${nodeTypeName} = ${individualNodeTypes[0]};`);
+	} else if (individualNodeTypes.length > 1) {
+		// Multiple node types - create union
+		lines.push(`export type ${nodeTypeName} =`);
+		for (let i = 0; i < individualNodeTypes.length; i++) {
+			lines.push(`\t| ${individualNodeTypes[i]}`);
+		}
+		lines.push('\t;');
+	} else {
+		// No config types - shouldn't happen, but handle gracefully
+		lines.push(`export type ${nodeTypeName} = ${baseTypeName} & {`);
+		lines.push(`\tconfig: NodeConfig<Record<string, unknown>>;`);
+		lines.push('};');
+	}
 
 	return lines.join('\n');
 }
@@ -1164,10 +1533,7 @@ export function generateSingleVersionTypeFile(
  * @param node A sample node description (used for display name and name)
  * @param versions Array of individual version numbers to include
  */
-export function generateVersionIndexFile(
-	node: NodeTypeDescription,
-	versions: number[],
-): string {
+export function generateVersionIndexFile(node: NodeTypeDescription, versions: number[]): string {
 	const prefix = getPackagePrefix(node.name);
 	const typeName = prefix + toPascalCase(getNodeBaseName(node.name));
 
@@ -1180,8 +1546,6 @@ export function generateVersionIndexFile(
 	lines.push(` * ${node.displayName} Node Types`);
 	lines.push(' *');
 	lines.push(' * Re-exports all version-specific types and provides combined union type.');
-	lines.push(' *');
-	lines.push(' * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.');
 	lines.push(' */');
 	lines.push('');
 
@@ -1315,12 +1679,11 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 		return bHighest - aHighest;
 	});
 
-	const paramTypeNames: string[] = [];
 	for (const n of sortedNodes) {
 		const entryVersion = getHighestVersion(n.version);
 		const entryVersionSuffix = versionToTypeName(entryVersion);
-		paramTypeNames.push(`${nodeName}${entryVersionSuffix}Params`);
-		lines.push(generateDiscriminatedUnionForEntry(n, nodeName, entryVersionSuffix));
+		const unionResult = generateDiscriminatedUnionForEntry(n, nodeName, entryVersionSuffix);
+		lines.push(unionResult.code);
 		lines.push('');
 	}
 
@@ -1409,19 +1772,21 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 
 /**
  * Generate discriminated union for a specific node entry with a given version suffix
+ * Returns structured result with config type info for linking with output types
  */
 function generateDiscriminatedUnionForEntry(
 	node: NodeTypeDescription,
 	nodeName: string,
 	versionSuffix: string,
-): string {
+): DiscriminatedUnionResult {
 	const combinations = extractDiscriminatorCombinations(node);
 	const lines: string[] = [];
+	const configTypes: ConfigTypeInfo[] = [];
 
 	if (combinations.length === 0) {
 		// No discriminators - generate simple interface
-		const interfaceName = `${nodeName}${versionSuffix}Params`;
-		lines.push(`export interface ${interfaceName} {`);
+		const configName = `${nodeName}${versionSuffix}Config`;
+		lines.push(`export interface ${configName} {`);
 
 		// Track seen property names to avoid duplicates
 		const seenNames = new Set<string>();
@@ -1440,7 +1805,17 @@ function generateDiscriminatedUnionForEntry(
 		}
 
 		lines.push('}');
-		return lines.join('\n');
+
+		// Single config type with no discriminators
+		configTypes.push({
+			typeName: configName,
+			discriminators: {},
+		});
+
+		return {
+			code: lines.join('\n'),
+			configTypes,
+		};
 	}
 
 	// Generate individual config types for each combination
@@ -1454,6 +1829,20 @@ function generateDiscriminatedUnionForEntry(
 			.map(([_, v]) => toPascalCase(v!));
 		const configName = `${nodeName}${versionSuffix}${comboValues.join('')}Config`;
 		configTypeNames.push(configName);
+
+		// Track config info for linking with output types
+		const configInfo: ConfigTypeInfo = {
+			typeName: configName,
+			resource: combo.resource,
+			operation: combo.operation,
+			discriminators: {},
+		};
+		for (const [key, value] of Object.entries(combo)) {
+			if (value !== undefined) {
+				configInfo.discriminators[key] = value;
+			}
+		}
+		configTypes.push(configInfo);
 
 		// Get properties for this combination
 		const props = getPropertiesForCombination(node, combo);
@@ -1501,16 +1890,10 @@ function generateDiscriminatedUnionForEntry(
 		lines.push('');
 	}
 
-	// Generate union type
-	const unionName = `${nodeName}${versionSuffix}Params`;
-	lines.push(`export type ${unionName} =`);
-	for (let i = 0; i < configTypeNames.length; i++) {
-		const prefix = i === 0 ? '\t| ' : '\t| ';
-		lines.push(`${prefix}${configTypeNames[i]}`);
-	}
-	lines.push('\t;');
-
-	return lines.join('\n');
+	return {
+		code: lines.join('\n'),
+		configTypes,
+	};
 }
 
 /**
@@ -1527,8 +1910,6 @@ export function generateIndexFile(nodes: NodeTypeDescription[]): string {
 	lines.push(' *');
 	lines.push(' * To regenerate:');
 	lines.push(' *   pnpm generate-types');
-	lines.push(' *');
-	lines.push(' * @generated');
 	lines.push(' */');
 	lines.push('');
 
@@ -1736,8 +2117,6 @@ export function generateSubnodesFile(nodes: NodeTypeDescription[]): string {
 	lines.push(' *');
 	lines.push(' * These union types define valid node types for each subnode category.');
 	lines.push(' * Use with the corresponding factory functions for type-safe subnode creation.');
-	lines.push(' *');
-	lines.push(' * @generated');
 	lines.push(' */');
 	lines.push('');
 

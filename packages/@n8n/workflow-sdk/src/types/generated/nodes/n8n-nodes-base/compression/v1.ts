@@ -1,8 +1,6 @@
 /**
  * Compression Node - Version 1
  * Compress and decompress files
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface CompressionV1Params {
+export interface CompressionV1Config {
 	operation?: 'compress' | 'decompress' | Expression<string>;
 /**
  * To process more than one file, use a comma-separated list of the binary fields names
@@ -46,12 +44,16 @@ export interface CompressionV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CompressionV1Node = {
+interface CompressionV1NodeBase {
 	type: 'n8n-nodes-base.compression';
 	version: 1;
-	config: NodeConfig<CompressionV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type CompressionV1Node = CompressionV1NodeBase & {
+	config: NodeConfig<CompressionV1Config>;
 };
+
+export type CompressionV1Node = CompressionV1Node;

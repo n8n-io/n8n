@@ -1,8 +1,6 @@
 /**
  * Humantic AI Node - Version 1
  * Consume Humantic AI API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -66,11 +64,6 @@ export type HumanticAiV1ProfileUpdateConfig = {
 	binaryPropertyName?: string | Expression<string>;
 };
 
-export type HumanticAiV1Params =
-	| HumanticAiV1ProfileCreateConfig
-	| HumanticAiV1ProfileGetConfig
-	| HumanticAiV1ProfileUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -81,12 +74,29 @@ export interface HumanticAiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HumanticAiV1Node = {
+interface HumanticAiV1NodeBase {
 	type: 'n8n-nodes-base.humanticAi';
 	version: 1;
-	config: NodeConfig<HumanticAiV1Params>;
 	credentials?: HumanticAiV1Credentials;
+}
+
+export type HumanticAiV1ProfileCreateNode = HumanticAiV1NodeBase & {
+	config: NodeConfig<HumanticAiV1ProfileCreateConfig>;
 };
+
+export type HumanticAiV1ProfileGetNode = HumanticAiV1NodeBase & {
+	config: NodeConfig<HumanticAiV1ProfileGetConfig>;
+};
+
+export type HumanticAiV1ProfileUpdateNode = HumanticAiV1NodeBase & {
+	config: NodeConfig<HumanticAiV1ProfileUpdateConfig>;
+};
+
+export type HumanticAiV1Node =
+	| HumanticAiV1ProfileCreateNode
+	| HumanticAiV1ProfileGetNode
+	| HumanticAiV1ProfileUpdateNode
+	;

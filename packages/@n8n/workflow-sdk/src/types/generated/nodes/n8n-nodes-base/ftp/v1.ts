@@ -1,8 +1,6 @@
 /**
  * FTP Node - Version 1
  * Transfer files via FTP or SFTP
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FtpV1Params {
+export interface FtpV1Config {
 /**
  * File transfer protocol
  * @default ftp
@@ -58,12 +56,17 @@ export interface FtpV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FtpV1Node = {
+interface FtpV1NodeBase {
 	type: 'n8n-nodes-base.ftp';
 	version: 1;
-	config: NodeConfig<FtpV1Params>;
 	credentials?: FtpV1Credentials;
+}
+
+export type FtpV1Node = FtpV1NodeBase & {
+	config: NodeConfig<FtpV1Config>;
 };
+
+export type FtpV1Node = FtpV1Node;

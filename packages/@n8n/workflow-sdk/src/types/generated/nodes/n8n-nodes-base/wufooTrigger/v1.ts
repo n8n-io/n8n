@@ -1,8 +1,6 @@
 /**
  * Wufoo Trigger Node - Version 1
  * Handle Wufoo events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WufooTriggerV1Params {
+export interface WufooTriggerV1Config {
 /**
  * The form upon which will trigger this node when a new entry is made. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  */
@@ -34,13 +32,18 @@ export interface WufooTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WufooTriggerV1Node = {
+interface WufooTriggerV1NodeBase {
 	type: 'n8n-nodes-base.wufooTrigger';
 	version: 1;
-	config: NodeConfig<WufooTriggerV1Params>;
 	credentials?: WufooTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type WufooTriggerV1Node = WufooTriggerV1NodeBase & {
+	config: NodeConfig<WufooTriggerV1Config>;
 };
+
+export type WufooTriggerV1Node = WufooTriggerV1Node;

@@ -1,8 +1,6 @@
 /**
  * MCP Client Tool Node - Version 1.2
  * Connect tools from an MCP Server
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMcpClientToolV12Params {
+export interface LcMcpClientToolV12Config {
 /**
  * How to select the tools you want to be exposed to the AI Agent
  * @default all
@@ -50,13 +48,18 @@ export interface LcMcpClientToolV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMcpClientToolV12Node = {
+interface LcMcpClientToolV12NodeBase {
 	type: '@n8n/n8n-nodes-langchain.mcpClientTool';
 	version: 1.2;
-	config: NodeConfig<LcMcpClientToolV12Params>;
 	credentials?: LcMcpClientToolV12Credentials;
 	isTrigger: true;
+}
+
+export type LcMcpClientToolV12Node = LcMcpClientToolV12NodeBase & {
+	config: NodeConfig<LcMcpClientToolV12Config>;
 };
+
+export type LcMcpClientToolV12Node = LcMcpClientToolV12Node;

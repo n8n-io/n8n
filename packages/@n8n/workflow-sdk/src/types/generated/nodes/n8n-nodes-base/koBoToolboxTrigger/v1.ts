@@ -1,8 +1,6 @@
 /**
  * KoBoToolbox Trigger Node - Version 1
  * Process KoBoToolbox submissions
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface KoBoToolboxTriggerV1Params {
+export interface KoBoToolboxTriggerV1Config {
 /**
  * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  */
@@ -31,13 +29,18 @@ export interface KoBoToolboxTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KoBoToolboxTriggerV1Node = {
+interface KoBoToolboxTriggerV1NodeBase {
 	type: 'n8n-nodes-base.koBoToolboxTrigger';
 	version: 1;
-	config: NodeConfig<KoBoToolboxTriggerV1Params>;
 	credentials?: KoBoToolboxTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type KoBoToolboxTriggerV1Node = KoBoToolboxTriggerV1NodeBase & {
+	config: NodeConfig<KoBoToolboxTriggerV1Config>;
 };
+
+export type KoBoToolboxTriggerV1Node = KoBoToolboxTriggerV1Node;

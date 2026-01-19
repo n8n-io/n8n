@@ -1,8 +1,6 @@
 /**
  * Copper Node - Version 1
  * Consume the Copper API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -412,40 +410,6 @@ export type CopperV1UserGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type CopperV1Params =
-	| CopperV1CompanyCreateConfig
-	| CopperV1CompanyDeleteConfig
-	| CopperV1CompanyGetConfig
-	| CopperV1CompanyGetAllConfig
-	| CopperV1CompanyUpdateConfig
-	| CopperV1CustomerSourceGetAllConfig
-	| CopperV1LeadCreateConfig
-	| CopperV1LeadDeleteConfig
-	| CopperV1LeadGetConfig
-	| CopperV1LeadGetAllConfig
-	| CopperV1LeadUpdateConfig
-	| CopperV1OpportunityCreateConfig
-	| CopperV1OpportunityDeleteConfig
-	| CopperV1OpportunityGetConfig
-	| CopperV1OpportunityGetAllConfig
-	| CopperV1OpportunityUpdateConfig
-	| CopperV1PersonCreateConfig
-	| CopperV1PersonDeleteConfig
-	| CopperV1PersonGetConfig
-	| CopperV1PersonGetAllConfig
-	| CopperV1PersonUpdateConfig
-	| CopperV1ProjectCreateConfig
-	| CopperV1ProjectDeleteConfig
-	| CopperV1ProjectGetConfig
-	| CopperV1ProjectGetAllConfig
-	| CopperV1ProjectUpdateConfig
-	| CopperV1TaskCreateConfig
-	| CopperV1TaskDeleteConfig
-	| CopperV1TaskGetConfig
-	| CopperV1TaskGetAllConfig
-	| CopperV1TaskUpdateConfig
-	| CopperV1UserGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -456,12 +420,174 @@ export interface CopperV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CopperV1Node = {
+interface CopperV1NodeBase {
 	type: 'n8n-nodes-base.copper';
 	version: 1;
-	config: NodeConfig<CopperV1Params>;
 	credentials?: CopperV1Credentials;
+}
+
+export type CopperV1CompanyCreateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1CompanyCreateConfig>;
 };
+
+export type CopperV1CompanyDeleteNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1CompanyDeleteConfig>;
+};
+
+export type CopperV1CompanyGetNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1CompanyGetConfig>;
+};
+
+export type CopperV1CompanyGetAllNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1CompanyGetAllConfig>;
+};
+
+export type CopperV1CompanyUpdateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1CompanyUpdateConfig>;
+};
+
+export type CopperV1CustomerSourceGetAllNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1CustomerSourceGetAllConfig>;
+};
+
+export type CopperV1LeadCreateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1LeadCreateConfig>;
+};
+
+export type CopperV1LeadDeleteNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1LeadDeleteConfig>;
+};
+
+export type CopperV1LeadGetNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1LeadGetConfig>;
+};
+
+export type CopperV1LeadGetAllNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1LeadGetAllConfig>;
+};
+
+export type CopperV1LeadUpdateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1LeadUpdateConfig>;
+};
+
+export type CopperV1OpportunityCreateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1OpportunityCreateConfig>;
+};
+
+export type CopperV1OpportunityDeleteNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1OpportunityDeleteConfig>;
+};
+
+export type CopperV1OpportunityGetNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1OpportunityGetConfig>;
+};
+
+export type CopperV1OpportunityGetAllNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1OpportunityGetAllConfig>;
+};
+
+export type CopperV1OpportunityUpdateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1OpportunityUpdateConfig>;
+};
+
+export type CopperV1PersonCreateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1PersonCreateConfig>;
+};
+
+export type CopperV1PersonDeleteNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1PersonDeleteConfig>;
+};
+
+export type CopperV1PersonGetNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1PersonGetConfig>;
+};
+
+export type CopperV1PersonGetAllNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1PersonGetAllConfig>;
+};
+
+export type CopperV1PersonUpdateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1PersonUpdateConfig>;
+};
+
+export type CopperV1ProjectCreateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1ProjectCreateConfig>;
+};
+
+export type CopperV1ProjectDeleteNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1ProjectDeleteConfig>;
+};
+
+export type CopperV1ProjectGetNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1ProjectGetConfig>;
+};
+
+export type CopperV1ProjectGetAllNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1ProjectGetAllConfig>;
+};
+
+export type CopperV1ProjectUpdateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1ProjectUpdateConfig>;
+};
+
+export type CopperV1TaskCreateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1TaskCreateConfig>;
+};
+
+export type CopperV1TaskDeleteNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1TaskDeleteConfig>;
+};
+
+export type CopperV1TaskGetNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1TaskGetConfig>;
+};
+
+export type CopperV1TaskGetAllNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1TaskGetAllConfig>;
+};
+
+export type CopperV1TaskUpdateNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1TaskUpdateConfig>;
+};
+
+export type CopperV1UserGetAllNode = CopperV1NodeBase & {
+	config: NodeConfig<CopperV1UserGetAllConfig>;
+};
+
+export type CopperV1Node =
+	| CopperV1CompanyCreateNode
+	| CopperV1CompanyDeleteNode
+	| CopperV1CompanyGetNode
+	| CopperV1CompanyGetAllNode
+	| CopperV1CompanyUpdateNode
+	| CopperV1CustomerSourceGetAllNode
+	| CopperV1LeadCreateNode
+	| CopperV1LeadDeleteNode
+	| CopperV1LeadGetNode
+	| CopperV1LeadGetAllNode
+	| CopperV1LeadUpdateNode
+	| CopperV1OpportunityCreateNode
+	| CopperV1OpportunityDeleteNode
+	| CopperV1OpportunityGetNode
+	| CopperV1OpportunityGetAllNode
+	| CopperV1OpportunityUpdateNode
+	| CopperV1PersonCreateNode
+	| CopperV1PersonDeleteNode
+	| CopperV1PersonGetNode
+	| CopperV1PersonGetAllNode
+	| CopperV1PersonUpdateNode
+	| CopperV1ProjectCreateNode
+	| CopperV1ProjectDeleteNode
+	| CopperV1ProjectGetNode
+	| CopperV1ProjectGetAllNode
+	| CopperV1ProjectUpdateNode
+	| CopperV1TaskCreateNode
+	| CopperV1TaskDeleteNode
+	| CopperV1TaskGetNode
+	| CopperV1TaskGetAllNode
+	| CopperV1TaskUpdateNode
+	| CopperV1UserGetAllNode
+	;

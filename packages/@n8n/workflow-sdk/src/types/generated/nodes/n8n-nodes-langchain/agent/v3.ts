@@ -1,8 +1,6 @@
 /**
  * AI Agent Node - Version 3
  * Generates an action plan and executes it. Can use external tools.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcAgentV3Params {
+export interface LcAgentV3Config {
 	aiAgentStarterCallout?: unknown;
 	text: string | Expression<string>;
 	hasOutputParser?: boolean | Expression<boolean>;
@@ -26,12 +24,16 @@ export interface LcAgentV3Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcAgentV3Node = {
+interface LcAgentV3NodeBase {
 	type: '@n8n/n8n-nodes-langchain.agent';
 	version: 3;
-	config: NodeConfig<LcAgentV3Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcAgentV3Node = LcAgentV3NodeBase & {
+	config: NodeConfig<LcAgentV3Config>;
 };
+
+export type LcAgentV3Node = LcAgentV3Node;

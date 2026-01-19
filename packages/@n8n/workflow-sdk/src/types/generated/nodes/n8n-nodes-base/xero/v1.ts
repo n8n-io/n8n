@@ -1,8 +1,6 @@
 /**
  * Xero Node - Version 1
  * Consume Xero API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -183,16 +181,381 @@ export type XeroV1InvoiceUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type XeroV1Params =
-	| XeroV1ContactCreateConfig
-	| XeroV1ContactGetConfig
-	| XeroV1ContactGetAllConfig
-	| XeroV1ContactUpdateConfig
-	| XeroV1InvoiceCreateConfig
-	| XeroV1InvoiceGetConfig
-	| XeroV1InvoiceGetAllConfig
-	| XeroV1InvoiceUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type XeroV1ContactCreateOutput = {
+	Addresses?: Array<{
+		AddressType?: string;
+		City?: string;
+		Country?: string;
+		PostalCode?: string;
+		Region?: string;
+	}>;
+	BankAccountDetails?: string;
+	ContactID?: string;
+	ContactStatus?: string;
+	EmailAddress?: string;
+	HasValidationErrors?: boolean;
+	IsCustomer?: boolean;
+	IsSupplier?: boolean;
+	Name?: string;
+	Phones?: Array<{
+		PhoneAreaCode?: string;
+		PhoneCountryCode?: string;
+		PhoneNumber?: string;
+		PhoneType?: string;
+	}>;
+	UpdatedDateUTC?: string;
+};
+
+export type XeroV1ContactGetOutput = {
+	Addresses?: Array<{
+		AddressLine1?: string;
+		AddressType?: string;
+		City?: string;
+		Country?: string;
+		PostalCode?: string;
+		Region?: string;
+	}>;
+	BankAccountDetails?: string;
+	ContactGroups?: Array<{
+		ContactGroupID?: string;
+		HasValidationErrors?: boolean;
+		Name?: string;
+		Status?: string;
+	}>;
+	ContactID?: string;
+	ContactPersons?: Array<{
+		EmailAddress?: string;
+		FirstName?: string;
+		IncludeInEmails?: boolean;
+		LastName?: string;
+	}>;
+	ContactStatus?: string;
+	EmailAddress?: string;
+	HasAttachments?: boolean;
+	HasValidationErrors?: boolean;
+	IsCustomer?: boolean;
+	IsSupplier?: boolean;
+	Name?: string;
+	Phones?: Array<{
+		PhoneAreaCode?: string;
+		PhoneCountryCode?: string;
+		PhoneNumber?: string;
+		PhoneType?: string;
+	}>;
+	UpdatedDateUTC?: string;
+};
+
+export type XeroV1ContactGetAllOutput = {
+	Addresses?: Array<{
+		AddressType?: string;
+		City?: string;
+		Country?: string;
+		PostalCode?: string;
+		Region?: string;
+	}>;
+	BankAccountDetails?: string;
+	ContactID?: string;
+	ContactStatus?: string;
+	EmailAddress?: string;
+	HasAttachments?: boolean;
+	HasValidationErrors?: boolean;
+	IsCustomer?: boolean;
+	IsSupplier?: boolean;
+	Name?: string;
+	Phones?: Array<{
+		PhoneAreaCode?: string;
+		PhoneCountryCode?: string;
+		PhoneNumber?: string;
+		PhoneType?: string;
+	}>;
+	UpdatedDateUTC?: string;
+};
+
+export type XeroV1InvoiceCreateOutput = {
+	AmountPaid?: number;
+	BrandingThemeID?: string;
+	Contact?: {
+		Addresses?: Array<{
+			AddressType?: string;
+			City?: string;
+			Country?: string;
+			PostalCode?: string;
+			Region?: string;
+		}>;
+		BankAccountDetails?: string;
+		ContactGroups?: Array<{
+			ContactGroupID?: string;
+			HasValidationErrors?: boolean;
+			Name?: string;
+			Status?: string;
+		}>;
+		ContactID?: string;
+		ContactPersons?: Array<{
+			EmailAddress?: string;
+			FirstName?: string;
+			IncludeInEmails?: boolean;
+			LastName?: string;
+		}>;
+		ContactStatus?: string;
+		EmailAddress?: string;
+		HasValidationErrors?: boolean;
+		IsCustomer?: boolean;
+		IsSupplier?: boolean;
+		Name?: string;
+		Phones?: Array<{
+			PhoneAreaCode?: string;
+			PhoneCountryCode?: string;
+			PhoneNumber?: string;
+			PhoneType?: string;
+		}>;
+		UpdatedDateUTC?: string;
+	};
+	CurrencyCode?: string;
+	CurrencyRate?: number;
+	Date?: string;
+	DateString?: string;
+	HasErrors?: boolean;
+	InvoiceID?: string;
+	InvoiceNumber?: string;
+	IsDiscounted?: boolean;
+	LineAmountTypes?: string;
+	LineItems?: Array<{
+		Description?: string;
+		LineItemID?: string;
+		TaxType?: string;
+	}>;
+	Reference?: string;
+	SentToContact?: boolean;
+	Status?: string;
+	Type?: string;
+	UpdatedDateUTC?: string;
+};
+
+export type XeroV1InvoiceGetOutput = {
+	Attachments?: Array<{
+		AttachmentID?: string;
+		ContentLength?: number;
+		FileName?: string;
+		MimeType?: string;
+		Url?: string;
+	}>;
+	BrandingThemeID?: string;
+	Contact?: {
+		AccountsReceivableTaxType?: string;
+		Addresses?: Array<{
+			AddressLine1?: string;
+			AddressType?: string;
+			City?: string;
+			Country?: string;
+			PostalCode?: string;
+			Region?: string;
+		}>;
+		BankAccountDetails?: string;
+		ContactGroups?: Array<{
+			ContactGroupID?: string;
+			HasValidationErrors?: boolean;
+			Name?: string;
+			Status?: string;
+		}>;
+		ContactID?: string;
+		ContactPersons?: Array<{
+			EmailAddress?: string;
+			FirstName?: string;
+			IncludeInEmails?: boolean;
+			LastName?: string;
+		}>;
+		ContactStatus?: string;
+		DefaultCurrency?: string;
+		EmailAddress?: string;
+		FirstName?: string;
+		HasValidationErrors?: boolean;
+		IsCustomer?: boolean;
+		IsSupplier?: boolean;
+		LastName?: string;
+		Name?: string;
+		Phones?: Array<{
+			PhoneAreaCode?: string;
+			PhoneCountryCode?: string;
+			PhoneNumber?: string;
+			PhoneType?: string;
+		}>;
+		PurchasesTrackingCategories?: Array<{
+			TrackingCategoryName?: string;
+			TrackingOptionName?: string;
+		}>;
+		SalesTrackingCategories?: Array<{
+			TrackingCategoryName?: string;
+			TrackingOptionName?: string;
+		}>;
+		UpdatedDateUTC?: string;
+	};
+	CurrencyCode?: string;
+	Date?: string;
+	DateString?: string;
+	DueDate?: string;
+	DueDateString?: string;
+	HasAttachments?: boolean;
+	HasErrors?: boolean;
+	InvoiceID?: string;
+	InvoiceNumber?: string;
+	IsDiscounted?: boolean;
+	LineAmountTypes?: string;
+	LineItems?: Array<{
+		AccountCode?: string;
+		AccountID?: string;
+		Description?: string;
+		LineItemID?: string;
+		TaxType?: string;
+		Tracking?: Array<{
+			Name?: string;
+			Option?: string;
+			TrackingCategoryID?: string;
+			TrackingOptionID?: string;
+		}>;
+	}>;
+	Overpayments?: Array<{
+		AppliedAmount?: number;
+		CurrencyRate?: number;
+		Date?: string;
+		DateString?: string;
+		OverpaymentID?: string;
+		Total?: number;
+	}>;
+	Reference?: string;
+	SentToContact?: boolean;
+	Status?: string;
+	Type?: string;
+	UpdatedDateUTC?: string;
+	Url?: string;
+};
+
+export type XeroV1InvoiceGetAllOutput = {
+	BrandingThemeID?: string;
+	Contact?: {
+		ContactID?: string;
+		HasValidationErrors?: boolean;
+		Name?: string;
+	};
+	CreditNotes?: Array<{
+		CreditNoteID?: string;
+		CreditNoteNumber?: string;
+		Date?: string;
+		DateString?: string;
+		HasErrors?: boolean;
+		ID?: string;
+	}>;
+	CurrencyCode?: string;
+	Date?: string;
+	DateString?: string;
+	DueDate?: string;
+	DueDateString?: string;
+	HasAttachments?: boolean;
+	HasErrors?: boolean;
+	InvoiceID?: string;
+	InvoiceNumber?: string;
+	IsDiscounted?: boolean;
+	LineAmountTypes?: string;
+	LineItems?: Array<{
+		AccountCode?: string;
+		AccountID?: string;
+		Description?: string;
+		Item?: {
+			Code?: string;
+			ItemID?: string;
+			Name?: string;
+		};
+		ItemCode?: string;
+		LineItemID?: string;
+		TaxType?: string;
+		Tracking?: Array<{
+			Name?: string;
+			Option?: string;
+			TrackingCategoryID?: string;
+		}>;
+	}>;
+	Overpayments?: Array<{
+		AppliedAmount?: number;
+		Date?: string;
+		DateString?: string;
+		OverpaymentID?: string;
+		Total?: number;
+	}>;
+	Payments?: Array<{
+		Date?: string;
+		HasAccount?: boolean;
+		HasValidationErrors?: boolean;
+		Reference?: string;
+	}>;
+	Reference?: string;
+	SentToContact?: boolean;
+	Status?: string;
+	Type?: string;
+	UpdatedDateUTC?: string;
+};
+
+export type XeroV1InvoiceUpdateOutput = {
+	AmountPaid?: number;
+	BrandingThemeID?: string;
+	Contact?: {
+		Addresses?: Array<{
+			AddressType?: string;
+			City?: string;
+			Country?: string;
+			PostalCode?: string;
+			Region?: string;
+		}>;
+		BankAccountDetails?: string;
+		ContactID?: string;
+		ContactStatus?: string;
+		EmailAddress?: string;
+		HasValidationErrors?: boolean;
+		IsCustomer?: boolean;
+		IsSupplier?: boolean;
+		Name?: string;
+		Phones?: Array<{
+			PhoneAreaCode?: string;
+			PhoneCountryCode?: string;
+			PhoneNumber?: string;
+			PhoneType?: string;
+		}>;
+		UpdatedDateUTC?: string;
+	};
+	CurrencyCode?: string;
+	CurrencyRate?: number;
+	Date?: string;
+	DateString?: string;
+	DueDate?: string;
+	DueDateString?: string;
+	HasErrors?: boolean;
+	InvoiceID?: string;
+	InvoiceNumber?: string;
+	IsDiscounted?: boolean;
+	LineAmountTypes?: string;
+	LineItems?: Array<{
+		AccountCode?: string;
+		AccountID?: string;
+		Description?: string;
+		Item?: {
+			Code?: string;
+			ItemID?: string;
+			Name?: string;
+		};
+		ItemCode?: string;
+		LineItemID?: string;
+		Quantity?: number;
+		TaxType?: string;
+	}>;
+	Reference?: string;
+	SentToContact?: boolean;
+	Status?: string;
+	Type?: string;
+	UpdatedDateUTC?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -203,12 +566,61 @@ export interface XeroV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type XeroV1Node = {
+interface XeroV1NodeBase {
 	type: 'n8n-nodes-base.xero';
 	version: 1;
-	config: NodeConfig<XeroV1Params>;
 	credentials?: XeroV1Credentials;
+}
+
+export type XeroV1ContactCreateNode = XeroV1NodeBase & {
+	config: NodeConfig<XeroV1ContactCreateConfig>;
+	output?: XeroV1ContactCreateOutput;
 };
+
+export type XeroV1ContactGetNode = XeroV1NodeBase & {
+	config: NodeConfig<XeroV1ContactGetConfig>;
+	output?: XeroV1ContactGetOutput;
+};
+
+export type XeroV1ContactGetAllNode = XeroV1NodeBase & {
+	config: NodeConfig<XeroV1ContactGetAllConfig>;
+	output?: XeroV1ContactGetAllOutput;
+};
+
+export type XeroV1ContactUpdateNode = XeroV1NodeBase & {
+	config: NodeConfig<XeroV1ContactUpdateConfig>;
+};
+
+export type XeroV1InvoiceCreateNode = XeroV1NodeBase & {
+	config: NodeConfig<XeroV1InvoiceCreateConfig>;
+	output?: XeroV1InvoiceCreateOutput;
+};
+
+export type XeroV1InvoiceGetNode = XeroV1NodeBase & {
+	config: NodeConfig<XeroV1InvoiceGetConfig>;
+	output?: XeroV1InvoiceGetOutput;
+};
+
+export type XeroV1InvoiceGetAllNode = XeroV1NodeBase & {
+	config: NodeConfig<XeroV1InvoiceGetAllConfig>;
+	output?: XeroV1InvoiceGetAllOutput;
+};
+
+export type XeroV1InvoiceUpdateNode = XeroV1NodeBase & {
+	config: NodeConfig<XeroV1InvoiceUpdateConfig>;
+	output?: XeroV1InvoiceUpdateOutput;
+};
+
+export type XeroV1Node =
+	| XeroV1ContactCreateNode
+	| XeroV1ContactGetNode
+	| XeroV1ContactGetAllNode
+	| XeroV1ContactUpdateNode
+	| XeroV1InvoiceCreateNode
+	| XeroV1InvoiceGetNode
+	| XeroV1InvoiceGetAllNode
+	| XeroV1InvoiceUpdateNode
+	;

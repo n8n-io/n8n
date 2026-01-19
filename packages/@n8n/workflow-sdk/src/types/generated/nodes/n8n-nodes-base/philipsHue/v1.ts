@@ -1,8 +1,6 @@
 /**
  * Philips Hue Node - Version 1
  * Consume Philips Hue API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -63,12 +61,123 @@ export type PhilipsHueV1LightUpdateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PhilipsHueV1Params =
-	| PhilipsHueV1LightDeleteConfig
-	| PhilipsHueV1LightGetConfig
-	| PhilipsHueV1LightGetAllConfig
-	| PhilipsHueV1LightUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type PhilipsHueV1LightGetOutput = {
+	capabilities?: {
+		certified?: boolean;
+		control?: {
+			colorgamut?: Array<Array<number>>;
+			colorgamuttype?: string;
+			ct?: {
+				max?: number;
+				min?: number;
+			};
+			maxlumen?: number;
+			mindimlevel?: number;
+		};
+		streaming?: {
+			proxy?: boolean;
+			renderer?: boolean;
+		};
+	};
+	config?: {
+		archetype?: string;
+		direction?: string;
+		'function'?: string;
+		startup?: {
+			configured?: boolean;
+			mode?: string;
+		};
+	};
+	manufacturername?: string;
+	modelid?: string;
+	name?: string;
+	productid?: string;
+	productname?: string;
+	state?: {
+		alert?: string;
+		bri?: number;
+		colormode?: string;
+		ct?: number;
+		effect?: string;
+		hue?: number;
+		mode?: string;
+		on?: boolean;
+		reachable?: boolean;
+		sat?: number;
+		xy?: Array<number>;
+	};
+	swconfigid?: string;
+	swupdate?: {
+		lastinstall?: string;
+		state?: string;
+	};
+	swversion?: string;
+	type?: string;
+	uniqueid?: string;
+};
+
+export type PhilipsHueV1LightGetAllOutput = {
+	capabilities?: {
+		certified?: boolean;
+		control?: {
+			colorgamut?: Array<Array<number>>;
+			colorgamuttype?: string;
+			ct?: {
+				max?: number;
+				min?: number;
+			};
+			maxlumen?: number;
+			mindimlevel?: number;
+		};
+		streaming?: {
+			proxy?: boolean;
+			renderer?: boolean;
+		};
+	};
+	config?: {
+		archetype?: string;
+		direction?: string;
+		'function'?: string;
+		startup?: {
+			configured?: boolean;
+			mode?: string;
+		};
+	};
+	manufacturername?: string;
+	modelid?: string;
+	name?: string;
+	productid?: string;
+	productname?: string;
+	state?: {
+		alert?: string;
+		bri?: number;
+		colormode?: string;
+		ct?: number;
+		effect?: string;
+		hue?: number;
+		mode?: string;
+		on?: boolean;
+		reachable?: boolean;
+		sat?: number;
+		xy?: Array<number>;
+	};
+	swconfigid?: string;
+	swupdate?: {
+		state?: string;
+	};
+	swversion?: string;
+	type?: string;
+	uniqueid?: string;
+};
+
+export type PhilipsHueV1LightUpdateOutput = {
+	'/lights/3/state/on'?: boolean;
+};
 
 // ===========================================================================
 // Credentials
@@ -79,12 +188,37 @@ export interface PhilipsHueV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PhilipsHueV1Node = {
+interface PhilipsHueV1NodeBase {
 	type: 'n8n-nodes-base.philipsHue';
 	version: 1;
-	config: NodeConfig<PhilipsHueV1Params>;
 	credentials?: PhilipsHueV1Credentials;
+}
+
+export type PhilipsHueV1LightDeleteNode = PhilipsHueV1NodeBase & {
+	config: NodeConfig<PhilipsHueV1LightDeleteConfig>;
 };
+
+export type PhilipsHueV1LightGetNode = PhilipsHueV1NodeBase & {
+	config: NodeConfig<PhilipsHueV1LightGetConfig>;
+	output?: PhilipsHueV1LightGetOutput;
+};
+
+export type PhilipsHueV1LightGetAllNode = PhilipsHueV1NodeBase & {
+	config: NodeConfig<PhilipsHueV1LightGetAllConfig>;
+	output?: PhilipsHueV1LightGetAllOutput;
+};
+
+export type PhilipsHueV1LightUpdateNode = PhilipsHueV1NodeBase & {
+	config: NodeConfig<PhilipsHueV1LightUpdateConfig>;
+	output?: PhilipsHueV1LightUpdateOutput;
+};
+
+export type PhilipsHueV1Node =
+	| PhilipsHueV1LightDeleteNode
+	| PhilipsHueV1LightGetNode
+	| PhilipsHueV1LightGetAllNode
+	| PhilipsHueV1LightUpdateNode
+	;

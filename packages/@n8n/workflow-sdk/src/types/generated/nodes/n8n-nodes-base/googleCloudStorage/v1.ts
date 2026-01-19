@@ -1,8 +1,6 @@
 /**
  * Google Cloud Storage Node - Version 1
  * Use the Google Cloud Storage API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -156,18 +154,6 @@ export type GoogleCloudStorageV1ObjectUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type GoogleCloudStorageV1Params =
-	| GoogleCloudStorageV1BucketCreateConfig
-	| GoogleCloudStorageV1BucketDeleteConfig
-	| GoogleCloudStorageV1BucketGetConfig
-	| GoogleCloudStorageV1BucketGetAllConfig
-	| GoogleCloudStorageV1BucketUpdateConfig
-	| GoogleCloudStorageV1ObjectCreateConfig
-	| GoogleCloudStorageV1ObjectDeleteConfig
-	| GoogleCloudStorageV1ObjectGetConfig
-	| GoogleCloudStorageV1ObjectGetAllConfig
-	| GoogleCloudStorageV1ObjectUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -178,12 +164,64 @@ export interface GoogleCloudStorageV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleCloudStorageV1Node = {
+interface GoogleCloudStorageV1NodeBase {
 	type: 'n8n-nodes-base.googleCloudStorage';
 	version: 1;
-	config: NodeConfig<GoogleCloudStorageV1Params>;
 	credentials?: GoogleCloudStorageV1Credentials;
+}
+
+export type GoogleCloudStorageV1BucketCreateNode = GoogleCloudStorageV1NodeBase & {
+	config: NodeConfig<GoogleCloudStorageV1BucketCreateConfig>;
 };
+
+export type GoogleCloudStorageV1BucketDeleteNode = GoogleCloudStorageV1NodeBase & {
+	config: NodeConfig<GoogleCloudStorageV1BucketDeleteConfig>;
+};
+
+export type GoogleCloudStorageV1BucketGetNode = GoogleCloudStorageV1NodeBase & {
+	config: NodeConfig<GoogleCloudStorageV1BucketGetConfig>;
+};
+
+export type GoogleCloudStorageV1BucketGetAllNode = GoogleCloudStorageV1NodeBase & {
+	config: NodeConfig<GoogleCloudStorageV1BucketGetAllConfig>;
+};
+
+export type GoogleCloudStorageV1BucketUpdateNode = GoogleCloudStorageV1NodeBase & {
+	config: NodeConfig<GoogleCloudStorageV1BucketUpdateConfig>;
+};
+
+export type GoogleCloudStorageV1ObjectCreateNode = GoogleCloudStorageV1NodeBase & {
+	config: NodeConfig<GoogleCloudStorageV1ObjectCreateConfig>;
+};
+
+export type GoogleCloudStorageV1ObjectDeleteNode = GoogleCloudStorageV1NodeBase & {
+	config: NodeConfig<GoogleCloudStorageV1ObjectDeleteConfig>;
+};
+
+export type GoogleCloudStorageV1ObjectGetNode = GoogleCloudStorageV1NodeBase & {
+	config: NodeConfig<GoogleCloudStorageV1ObjectGetConfig>;
+};
+
+export type GoogleCloudStorageV1ObjectGetAllNode = GoogleCloudStorageV1NodeBase & {
+	config: NodeConfig<GoogleCloudStorageV1ObjectGetAllConfig>;
+};
+
+export type GoogleCloudStorageV1ObjectUpdateNode = GoogleCloudStorageV1NodeBase & {
+	config: NodeConfig<GoogleCloudStorageV1ObjectUpdateConfig>;
+};
+
+export type GoogleCloudStorageV1Node =
+	| GoogleCloudStorageV1BucketCreateNode
+	| GoogleCloudStorageV1BucketDeleteNode
+	| GoogleCloudStorageV1BucketGetNode
+	| GoogleCloudStorageV1BucketGetAllNode
+	| GoogleCloudStorageV1BucketUpdateNode
+	| GoogleCloudStorageV1ObjectCreateNode
+	| GoogleCloudStorageV1ObjectDeleteNode
+	| GoogleCloudStorageV1ObjectGetNode
+	| GoogleCloudStorageV1ObjectGetAllNode
+	| GoogleCloudStorageV1ObjectUpdateNode
+	;

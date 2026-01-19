@@ -1,8 +1,6 @@
 /**
  * Azure AI Search Vector Store Node - Version 1
  * Work with your data in Azure AI Search Vector Store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -129,13 +127,6 @@ export type LcVectorStoreAzureAISearchV1UpdateConfig = {
 		id: string | Expression<string>;
 };
 
-export type LcVectorStoreAzureAISearchV1Params =
-	| LcVectorStoreAzureAISearchV1LoadConfig
-	| LcVectorStoreAzureAISearchV1InsertConfig
-	| LcVectorStoreAzureAISearchV1RetrieveConfig
-	| LcVectorStoreAzureAISearchV1RetrieveAsToolConfig
-	| LcVectorStoreAzureAISearchV1UpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -146,12 +137,39 @@ export interface LcVectorStoreAzureAISearchV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreAzureAISearchV1Node = {
+interface LcVectorStoreAzureAISearchV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreAzureAISearch';
 	version: 1;
-	config: NodeConfig<LcVectorStoreAzureAISearchV1Params>;
 	credentials?: LcVectorStoreAzureAISearchV1Credentials;
+}
+
+export type LcVectorStoreAzureAISearchV1LoadNode = LcVectorStoreAzureAISearchV1NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV1LoadConfig>;
 };
+
+export type LcVectorStoreAzureAISearchV1InsertNode = LcVectorStoreAzureAISearchV1NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV1InsertConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV1RetrieveNode = LcVectorStoreAzureAISearchV1NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV1RetrieveConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV1RetrieveAsToolNode = LcVectorStoreAzureAISearchV1NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV1RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV1UpdateNode = LcVectorStoreAzureAISearchV1NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV1UpdateConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV1Node =
+	| LcVectorStoreAzureAISearchV1LoadNode
+	| LcVectorStoreAzureAISearchV1InsertNode
+	| LcVectorStoreAzureAISearchV1RetrieveNode
+	| LcVectorStoreAzureAISearchV1RetrieveAsToolNode
+	| LcVectorStoreAzureAISearchV1UpdateNode
+	;

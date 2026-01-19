@@ -1,8 +1,6 @@
 /**
  * Figma Trigger (Beta) Node - Version 1
  * Starts the workflow when Figma events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FigmaTriggerV1Params {
+export interface FigmaTriggerV1Config {
 /**
  * Trigger will monitor this Figma Team for changes. Team ID can be found in the URL of a Figma Team page when viewed in a web browser: figma.com/files/team/{TEAM-ID}/.
  */
@@ -30,13 +28,18 @@ export interface FigmaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FigmaTriggerV1Node = {
+interface FigmaTriggerV1NodeBase {
 	type: 'n8n-nodes-base.figmaTrigger';
 	version: 1;
-	config: NodeConfig<FigmaTriggerV1Params>;
 	credentials?: FigmaTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type FigmaTriggerV1Node = FigmaTriggerV1NodeBase & {
+	config: NodeConfig<FigmaTriggerV1Config>;
 };
+
+export type FigmaTriggerV1Node = FigmaTriggerV1Node;

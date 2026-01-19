@@ -1,8 +1,6 @@
 /**
  * Notion Node - Version 1
  * Consume Notion API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -2499,20 +2497,15 @@ export type NotionV1UserGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type NotionV1Params =
-	| NotionV1BlockAppendConfig
-	| NotionV1BlockGetAllConfig
-	| NotionV1DatabaseGetConfig
-	| NotionV1DatabaseGetAllConfig
-	| NotionV1DatabasePageCreateConfig
-	| NotionV1DatabasePageGetAllConfig
-	| NotionV1DatabasePageUpdateConfig
-	| NotionV1PageCreateConfig
-	| NotionV1PageGetConfig
-	| NotionV1PageSearchConfig
-	| NotionV1UserGetConfig
-	| NotionV1UserGetAllConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type NotionV1PageGetOutput = {
+	id?: string;
+	'Messaggi Schedulati'?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -2523,12 +2516,75 @@ export interface NotionV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NotionV1Node = {
+interface NotionV1NodeBase {
 	type: 'n8n-nodes-base.notion';
 	version: 1;
-	config: NodeConfig<NotionV1Params>;
 	credentials?: NotionV1Credentials;
+}
+
+export type NotionV1BlockAppendNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1BlockAppendConfig>;
 };
+
+export type NotionV1BlockGetAllNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1BlockGetAllConfig>;
+};
+
+export type NotionV1DatabaseGetNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1DatabaseGetConfig>;
+};
+
+export type NotionV1DatabaseGetAllNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1DatabaseGetAllConfig>;
+};
+
+export type NotionV1DatabasePageCreateNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1DatabasePageCreateConfig>;
+};
+
+export type NotionV1DatabasePageGetAllNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1DatabasePageGetAllConfig>;
+};
+
+export type NotionV1DatabasePageUpdateNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1DatabasePageUpdateConfig>;
+};
+
+export type NotionV1PageCreateNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1PageCreateConfig>;
+};
+
+export type NotionV1PageGetNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1PageGetConfig>;
+	output?: NotionV1PageGetOutput;
+};
+
+export type NotionV1PageSearchNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1PageSearchConfig>;
+};
+
+export type NotionV1UserGetNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1UserGetConfig>;
+};
+
+export type NotionV1UserGetAllNode = NotionV1NodeBase & {
+	config: NodeConfig<NotionV1UserGetAllConfig>;
+};
+
+export type NotionV1Node =
+	| NotionV1BlockAppendNode
+	| NotionV1BlockGetAllNode
+	| NotionV1DatabaseGetNode
+	| NotionV1DatabaseGetAllNode
+	| NotionV1DatabasePageCreateNode
+	| NotionV1DatabasePageGetAllNode
+	| NotionV1DatabasePageUpdateNode
+	| NotionV1PageCreateNode
+	| NotionV1PageGetNode
+	| NotionV1PageSearchNode
+	| NotionV1UserGetNode
+	| NotionV1UserGetAllNode
+	;

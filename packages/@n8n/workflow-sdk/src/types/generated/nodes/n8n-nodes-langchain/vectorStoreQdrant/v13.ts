@@ -1,8 +1,6 @@
 /**
  * Qdrant Vector Store Node - Version 1.3
  * Work with your data in a Qdrant collection
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -100,12 +98,6 @@ export type LcVectorStoreQdrantV13RetrieveAsToolConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStoreQdrantV13Params =
-	| LcVectorStoreQdrantV13LoadConfig
-	| LcVectorStoreQdrantV13InsertConfig
-	| LcVectorStoreQdrantV13RetrieveConfig
-	| LcVectorStoreQdrantV13RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -116,12 +108,34 @@ export interface LcVectorStoreQdrantV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreQdrantV13Node = {
+interface LcVectorStoreQdrantV13NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreQdrant';
 	version: 1.3;
-	config: NodeConfig<LcVectorStoreQdrantV13Params>;
 	credentials?: LcVectorStoreQdrantV13Credentials;
+}
+
+export type LcVectorStoreQdrantV13LoadNode = LcVectorStoreQdrantV13NodeBase & {
+	config: NodeConfig<LcVectorStoreQdrantV13LoadConfig>;
 };
+
+export type LcVectorStoreQdrantV13InsertNode = LcVectorStoreQdrantV13NodeBase & {
+	config: NodeConfig<LcVectorStoreQdrantV13InsertConfig>;
+};
+
+export type LcVectorStoreQdrantV13RetrieveNode = LcVectorStoreQdrantV13NodeBase & {
+	config: NodeConfig<LcVectorStoreQdrantV13RetrieveConfig>;
+};
+
+export type LcVectorStoreQdrantV13RetrieveAsToolNode = LcVectorStoreQdrantV13NodeBase & {
+	config: NodeConfig<LcVectorStoreQdrantV13RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreQdrantV13Node =
+	| LcVectorStoreQdrantV13LoadNode
+	| LcVectorStoreQdrantV13InsertNode
+	| LcVectorStoreQdrantV13RetrieveNode
+	| LcVectorStoreQdrantV13RetrieveAsToolNode
+	;

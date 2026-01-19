@@ -1,8 +1,6 @@
 /**
  * Microsoft Outlook Node - Version 1
  * Consume Microsoft Outlook API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -320,31 +318,6 @@ export type MicrosoftOutlookV1MessageAttachmentGetAllConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type MicrosoftOutlookV1Params =
-	| MicrosoftOutlookV1DraftCreateConfig
-	| MicrosoftOutlookV1DraftDeleteConfig
-	| MicrosoftOutlookV1DraftGetConfig
-	| MicrosoftOutlookV1DraftSendConfig
-	| MicrosoftOutlookV1DraftUpdateConfig
-	| MicrosoftOutlookV1FolderCreateConfig
-	| MicrosoftOutlookV1FolderDeleteConfig
-	| MicrosoftOutlookV1FolderGetConfig
-	| MicrosoftOutlookV1FolderGetChildrenConfig
-	| MicrosoftOutlookV1FolderGetAllConfig
-	| MicrosoftOutlookV1FolderMessageGetAllConfig
-	| MicrosoftOutlookV1MessageDeleteConfig
-	| MicrosoftOutlookV1MessageGetConfig
-	| MicrosoftOutlookV1MessageGetAllConfig
-	| MicrosoftOutlookV1MessageGetMimeConfig
-	| MicrosoftOutlookV1MessageMoveConfig
-	| MicrosoftOutlookV1MessageReplyConfig
-	| MicrosoftOutlookV1MessageSendConfig
-	| MicrosoftOutlookV1MessageUpdateConfig
-	| MicrosoftOutlookV1MessageAttachmentAddConfig
-	| MicrosoftOutlookV1MessageAttachmentDownloadConfig
-	| MicrosoftOutlookV1MessageAttachmentGetConfig
-	| MicrosoftOutlookV1MessageAttachmentGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -355,12 +328,129 @@ export interface MicrosoftOutlookV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOutlookV1Node = {
+interface MicrosoftOutlookV1NodeBase {
 	type: 'n8n-nodes-base.microsoftOutlook';
 	version: 1;
-	config: NodeConfig<MicrosoftOutlookV1Params>;
 	credentials?: MicrosoftOutlookV1Credentials;
+}
+
+export type MicrosoftOutlookV1DraftCreateNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1DraftCreateConfig>;
 };
+
+export type MicrosoftOutlookV1DraftDeleteNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1DraftDeleteConfig>;
+};
+
+export type MicrosoftOutlookV1DraftGetNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1DraftGetConfig>;
+};
+
+export type MicrosoftOutlookV1DraftSendNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1DraftSendConfig>;
+};
+
+export type MicrosoftOutlookV1DraftUpdateNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1DraftUpdateConfig>;
+};
+
+export type MicrosoftOutlookV1FolderCreateNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1FolderCreateConfig>;
+};
+
+export type MicrosoftOutlookV1FolderDeleteNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1FolderDeleteConfig>;
+};
+
+export type MicrosoftOutlookV1FolderGetNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1FolderGetConfig>;
+};
+
+export type MicrosoftOutlookV1FolderGetChildrenNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1FolderGetChildrenConfig>;
+};
+
+export type MicrosoftOutlookV1FolderGetAllNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1FolderGetAllConfig>;
+};
+
+export type MicrosoftOutlookV1FolderMessageGetAllNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1FolderMessageGetAllConfig>;
+};
+
+export type MicrosoftOutlookV1MessageDeleteNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageDeleteConfig>;
+};
+
+export type MicrosoftOutlookV1MessageGetNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageGetConfig>;
+};
+
+export type MicrosoftOutlookV1MessageGetAllNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageGetAllConfig>;
+};
+
+export type MicrosoftOutlookV1MessageGetMimeNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageGetMimeConfig>;
+};
+
+export type MicrosoftOutlookV1MessageMoveNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageMoveConfig>;
+};
+
+export type MicrosoftOutlookV1MessageReplyNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageReplyConfig>;
+};
+
+export type MicrosoftOutlookV1MessageSendNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageSendConfig>;
+};
+
+export type MicrosoftOutlookV1MessageUpdateNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageUpdateConfig>;
+};
+
+export type MicrosoftOutlookV1MessageAttachmentAddNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageAttachmentAddConfig>;
+};
+
+export type MicrosoftOutlookV1MessageAttachmentDownloadNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageAttachmentDownloadConfig>;
+};
+
+export type MicrosoftOutlookV1MessageAttachmentGetNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageAttachmentGetConfig>;
+};
+
+export type MicrosoftOutlookV1MessageAttachmentGetAllNode = MicrosoftOutlookV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV1MessageAttachmentGetAllConfig>;
+};
+
+export type MicrosoftOutlookV1Node =
+	| MicrosoftOutlookV1DraftCreateNode
+	| MicrosoftOutlookV1DraftDeleteNode
+	| MicrosoftOutlookV1DraftGetNode
+	| MicrosoftOutlookV1DraftSendNode
+	| MicrosoftOutlookV1DraftUpdateNode
+	| MicrosoftOutlookV1FolderCreateNode
+	| MicrosoftOutlookV1FolderDeleteNode
+	| MicrosoftOutlookV1FolderGetNode
+	| MicrosoftOutlookV1FolderGetChildrenNode
+	| MicrosoftOutlookV1FolderGetAllNode
+	| MicrosoftOutlookV1FolderMessageGetAllNode
+	| MicrosoftOutlookV1MessageDeleteNode
+	| MicrosoftOutlookV1MessageGetNode
+	| MicrosoftOutlookV1MessageGetAllNode
+	| MicrosoftOutlookV1MessageGetMimeNode
+	| MicrosoftOutlookV1MessageMoveNode
+	| MicrosoftOutlookV1MessageReplyNode
+	| MicrosoftOutlookV1MessageSendNode
+	| MicrosoftOutlookV1MessageUpdateNode
+	| MicrosoftOutlookV1MessageAttachmentAddNode
+	| MicrosoftOutlookV1MessageAttachmentDownloadNode
+	| MicrosoftOutlookV1MessageAttachmentGetNode
+	| MicrosoftOutlookV1MessageAttachmentGetAllNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Microsoft OneDrive Node - Version 1.1
  * Consume Microsoft OneDrive API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -203,22 +201,6 @@ export type MicrosoftOneDriveV11FolderShareConfig = {
 		scope?: 'anonymous' | 'organization' | Expression<string>;
 };
 
-export type MicrosoftOneDriveV11Params =
-	| MicrosoftOneDriveV11FileCopyConfig
-	| MicrosoftOneDriveV11FileDeleteConfig
-	| MicrosoftOneDriveV11FileDownloadConfig
-	| MicrosoftOneDriveV11FileGetConfig
-	| MicrosoftOneDriveV11FileRenameConfig
-	| MicrosoftOneDriveV11FileSearchConfig
-	| MicrosoftOneDriveV11FileShareConfig
-	| MicrosoftOneDriveV11FileUploadConfig
-	| MicrosoftOneDriveV11FolderCreateConfig
-	| MicrosoftOneDriveV11FolderDeleteConfig
-	| MicrosoftOneDriveV11FolderGetChildrenConfig
-	| MicrosoftOneDriveV11FolderRenameConfig
-	| MicrosoftOneDriveV11FolderSearchConfig
-	| MicrosoftOneDriveV11FolderShareConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -229,12 +211,84 @@ export interface MicrosoftOneDriveV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOneDriveV11Node = {
+interface MicrosoftOneDriveV11NodeBase {
 	type: 'n8n-nodes-base.microsoftOneDrive';
 	version: 1.1;
-	config: NodeConfig<MicrosoftOneDriveV11Params>;
 	credentials?: MicrosoftOneDriveV11Credentials;
+}
+
+export type MicrosoftOneDriveV11FileCopyNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FileCopyConfig>;
 };
+
+export type MicrosoftOneDriveV11FileDeleteNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FileDeleteConfig>;
+};
+
+export type MicrosoftOneDriveV11FileDownloadNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FileDownloadConfig>;
+};
+
+export type MicrosoftOneDriveV11FileGetNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FileGetConfig>;
+};
+
+export type MicrosoftOneDriveV11FileRenameNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FileRenameConfig>;
+};
+
+export type MicrosoftOneDriveV11FileSearchNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FileSearchConfig>;
+};
+
+export type MicrosoftOneDriveV11FileShareNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FileShareConfig>;
+};
+
+export type MicrosoftOneDriveV11FileUploadNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FileUploadConfig>;
+};
+
+export type MicrosoftOneDriveV11FolderCreateNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FolderCreateConfig>;
+};
+
+export type MicrosoftOneDriveV11FolderDeleteNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FolderDeleteConfig>;
+};
+
+export type MicrosoftOneDriveV11FolderGetChildrenNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FolderGetChildrenConfig>;
+};
+
+export type MicrosoftOneDriveV11FolderRenameNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FolderRenameConfig>;
+};
+
+export type MicrosoftOneDriveV11FolderSearchNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FolderSearchConfig>;
+};
+
+export type MicrosoftOneDriveV11FolderShareNode = MicrosoftOneDriveV11NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV11FolderShareConfig>;
+};
+
+export type MicrosoftOneDriveV11Node =
+	| MicrosoftOneDriveV11FileCopyNode
+	| MicrosoftOneDriveV11FileDeleteNode
+	| MicrosoftOneDriveV11FileDownloadNode
+	| MicrosoftOneDriveV11FileGetNode
+	| MicrosoftOneDriveV11FileRenameNode
+	| MicrosoftOneDriveV11FileSearchNode
+	| MicrosoftOneDriveV11FileShareNode
+	| MicrosoftOneDriveV11FileUploadNode
+	| MicrosoftOneDriveV11FolderCreateNode
+	| MicrosoftOneDriveV11FolderDeleteNode
+	| MicrosoftOneDriveV11FolderGetChildrenNode
+	| MicrosoftOneDriveV11FolderRenameNode
+	| MicrosoftOneDriveV11FolderSearchNode
+	| MicrosoftOneDriveV11FolderShareNode
+	;

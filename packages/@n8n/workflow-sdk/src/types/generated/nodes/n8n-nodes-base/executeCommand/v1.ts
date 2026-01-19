@@ -1,8 +1,6 @@
 /**
  * Execute Command Node - Version 1
  * Executes a command on the host
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ExecuteCommandV1Params {
+export interface ExecuteCommandV1Config {
 /**
  * Whether to execute only once instead of once for each entry
  * @default true
@@ -30,12 +28,16 @@ export interface ExecuteCommandV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ExecuteCommandV1Node = {
+interface ExecuteCommandV1NodeBase {
 	type: 'n8n-nodes-base.executeCommand';
 	version: 1;
-	config: NodeConfig<ExecuteCommandV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type ExecuteCommandV1Node = ExecuteCommandV1NodeBase & {
+	config: NodeConfig<ExecuteCommandV1Config>;
 };
+
+export type ExecuteCommandV1Node = ExecuteCommandV1Node;

@@ -1,8 +1,6 @@
 /**
  * Bubble Node - Version 1
  * Consume the Bubble Data API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -112,13 +110,37 @@ export type BubbleV1ObjectUpdateConfig = {
 	};
 };
 
-export type BubbleV1Params =
-	| BubbleV1ObjectCreateConfig
-	| BubbleV1ObjectDeleteConfig
-	| BubbleV1ObjectGetConfig
-	| BubbleV1ObjectGetAllConfig
-	| BubbleV1ObjectUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type BubbleV1ObjectCreateOutput = {
+	id?: string;
+	status?: string;
+};
+
+export type BubbleV1ObjectDeleteOutput = {
+	success?: boolean;
+};
+
+export type BubbleV1ObjectGetOutput = {
+	_id?: string;
+	'Created By'?: string;
+	'Created Date'?: string;
+	'Modified Date'?: string;
+};
+
+export type BubbleV1ObjectGetAllOutput = {
+	_id?: string;
+	'Created By'?: string;
+	'Created Date'?: string;
+	'Modified Date'?: string;
+};
+
+export type BubbleV1ObjectUpdateOutput = {
+	success?: boolean;
+};
 
 // ===========================================================================
 // Credentials
@@ -129,12 +151,44 @@ export interface BubbleV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BubbleV1Node = {
+interface BubbleV1NodeBase {
 	type: 'n8n-nodes-base.bubble';
 	version: 1;
-	config: NodeConfig<BubbleV1Params>;
 	credentials?: BubbleV1Credentials;
+}
+
+export type BubbleV1ObjectCreateNode = BubbleV1NodeBase & {
+	config: NodeConfig<BubbleV1ObjectCreateConfig>;
+	output?: BubbleV1ObjectCreateOutput;
 };
+
+export type BubbleV1ObjectDeleteNode = BubbleV1NodeBase & {
+	config: NodeConfig<BubbleV1ObjectDeleteConfig>;
+	output?: BubbleV1ObjectDeleteOutput;
+};
+
+export type BubbleV1ObjectGetNode = BubbleV1NodeBase & {
+	config: NodeConfig<BubbleV1ObjectGetConfig>;
+	output?: BubbleV1ObjectGetOutput;
+};
+
+export type BubbleV1ObjectGetAllNode = BubbleV1NodeBase & {
+	config: NodeConfig<BubbleV1ObjectGetAllConfig>;
+	output?: BubbleV1ObjectGetAllOutput;
+};
+
+export type BubbleV1ObjectUpdateNode = BubbleV1NodeBase & {
+	config: NodeConfig<BubbleV1ObjectUpdateConfig>;
+	output?: BubbleV1ObjectUpdateOutput;
+};
+
+export type BubbleV1Node =
+	| BubbleV1ObjectCreateNode
+	| BubbleV1ObjectDeleteNode
+	| BubbleV1ObjectGetNode
+	| BubbleV1ObjectGetAllNode
+	| BubbleV1ObjectUpdateNode
+	;

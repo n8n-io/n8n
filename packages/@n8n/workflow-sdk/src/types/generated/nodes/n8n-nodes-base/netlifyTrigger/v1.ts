@@ -1,8 +1,6 @@
 /**
  * Netlify Trigger Node - Version 1
  * Handle netlify events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface NetlifyTriggerV1Params {
+export interface NetlifyTriggerV1Config {
 /**
  * Select the Site ID. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  */
@@ -41,13 +39,18 @@ export interface NetlifyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NetlifyTriggerV1Node = {
+interface NetlifyTriggerV1NodeBase {
 	type: 'n8n-nodes-base.netlifyTrigger';
 	version: 1;
-	config: NodeConfig<NetlifyTriggerV1Params>;
 	credentials?: NetlifyTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type NetlifyTriggerV1Node = NetlifyTriggerV1NodeBase & {
+	config: NodeConfig<NetlifyTriggerV1Config>;
 };
+
+export type NetlifyTriggerV1Node = NetlifyTriggerV1Node;

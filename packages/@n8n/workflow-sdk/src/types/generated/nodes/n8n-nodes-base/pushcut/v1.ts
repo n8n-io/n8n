@@ -1,8 +1,6 @@
 /**
  * Pushcut Node - Version 1
  * Consume Pushcut API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -25,9 +23,16 @@ export type PushcutV1NotificationSendConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PushcutV1Params =
-	| PushcutV1NotificationSendConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type PushcutV1NotificationSendOutput = {
+	id?: string;
+	message?: string;
+	notificationId?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -38,12 +43,18 @@ export interface PushcutV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PushcutV1Node = {
+interface PushcutV1NodeBase {
 	type: 'n8n-nodes-base.pushcut';
 	version: 1;
-	config: NodeConfig<PushcutV1Params>;
 	credentials?: PushcutV1Credentials;
+}
+
+export type PushcutV1NotificationSendNode = PushcutV1NodeBase & {
+	config: NodeConfig<PushcutV1NotificationSendConfig>;
+	output?: PushcutV1NotificationSendOutput;
 };
+
+export type PushcutV1Node = PushcutV1NotificationSendNode;

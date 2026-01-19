@@ -1,8 +1,6 @@
 /**
  * UptimeRobot Node - Version 1
  * Consume UptimeRobot API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -323,29 +321,6 @@ export type UptimeRobotV1PublicStatusPageGetAllConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type UptimeRobotV1Params =
-	| UptimeRobotV1AccountGetConfig
-	| UptimeRobotV1AlertContactCreateConfig
-	| UptimeRobotV1AlertContactDeleteConfig
-	| UptimeRobotV1AlertContactGetConfig
-	| UptimeRobotV1AlertContactGetAllConfig
-	| UptimeRobotV1AlertContactUpdateConfig
-	| UptimeRobotV1MaintenanceWindowCreateConfig
-	| UptimeRobotV1MaintenanceWindowDeleteConfig
-	| UptimeRobotV1MaintenanceWindowGetConfig
-	| UptimeRobotV1MaintenanceWindowGetAllConfig
-	| UptimeRobotV1MaintenanceWindowUpdateConfig
-	| UptimeRobotV1MonitorCreateConfig
-	| UptimeRobotV1MonitorDeleteConfig
-	| UptimeRobotV1MonitorGetConfig
-	| UptimeRobotV1MonitorGetAllConfig
-	| UptimeRobotV1MonitorResetConfig
-	| UptimeRobotV1MonitorUpdateConfig
-	| UptimeRobotV1PublicStatusPageCreateConfig
-	| UptimeRobotV1PublicStatusPageDeleteConfig
-	| UptimeRobotV1PublicStatusPageGetConfig
-	| UptimeRobotV1PublicStatusPageGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -356,12 +331,119 @@ export interface UptimeRobotV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UptimeRobotV1Node = {
+interface UptimeRobotV1NodeBase {
 	type: 'n8n-nodes-base.uptimeRobot';
 	version: 1;
-	config: NodeConfig<UptimeRobotV1Params>;
 	credentials?: UptimeRobotV1Credentials;
+}
+
+export type UptimeRobotV1AccountGetNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1AccountGetConfig>;
 };
+
+export type UptimeRobotV1AlertContactCreateNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1AlertContactCreateConfig>;
+};
+
+export type UptimeRobotV1AlertContactDeleteNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1AlertContactDeleteConfig>;
+};
+
+export type UptimeRobotV1AlertContactGetNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1AlertContactGetConfig>;
+};
+
+export type UptimeRobotV1AlertContactGetAllNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1AlertContactGetAllConfig>;
+};
+
+export type UptimeRobotV1AlertContactUpdateNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1AlertContactUpdateConfig>;
+};
+
+export type UptimeRobotV1MaintenanceWindowCreateNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MaintenanceWindowCreateConfig>;
+};
+
+export type UptimeRobotV1MaintenanceWindowDeleteNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MaintenanceWindowDeleteConfig>;
+};
+
+export type UptimeRobotV1MaintenanceWindowGetNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MaintenanceWindowGetConfig>;
+};
+
+export type UptimeRobotV1MaintenanceWindowGetAllNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MaintenanceWindowGetAllConfig>;
+};
+
+export type UptimeRobotV1MaintenanceWindowUpdateNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MaintenanceWindowUpdateConfig>;
+};
+
+export type UptimeRobotV1MonitorCreateNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MonitorCreateConfig>;
+};
+
+export type UptimeRobotV1MonitorDeleteNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MonitorDeleteConfig>;
+};
+
+export type UptimeRobotV1MonitorGetNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MonitorGetConfig>;
+};
+
+export type UptimeRobotV1MonitorGetAllNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MonitorGetAllConfig>;
+};
+
+export type UptimeRobotV1MonitorResetNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MonitorResetConfig>;
+};
+
+export type UptimeRobotV1MonitorUpdateNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1MonitorUpdateConfig>;
+};
+
+export type UptimeRobotV1PublicStatusPageCreateNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1PublicStatusPageCreateConfig>;
+};
+
+export type UptimeRobotV1PublicStatusPageDeleteNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1PublicStatusPageDeleteConfig>;
+};
+
+export type UptimeRobotV1PublicStatusPageGetNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1PublicStatusPageGetConfig>;
+};
+
+export type UptimeRobotV1PublicStatusPageGetAllNode = UptimeRobotV1NodeBase & {
+	config: NodeConfig<UptimeRobotV1PublicStatusPageGetAllConfig>;
+};
+
+export type UptimeRobotV1Node =
+	| UptimeRobotV1AccountGetNode
+	| UptimeRobotV1AlertContactCreateNode
+	| UptimeRobotV1AlertContactDeleteNode
+	| UptimeRobotV1AlertContactGetNode
+	| UptimeRobotV1AlertContactGetAllNode
+	| UptimeRobotV1AlertContactUpdateNode
+	| UptimeRobotV1MaintenanceWindowCreateNode
+	| UptimeRobotV1MaintenanceWindowDeleteNode
+	| UptimeRobotV1MaintenanceWindowGetNode
+	| UptimeRobotV1MaintenanceWindowGetAllNode
+	| UptimeRobotV1MaintenanceWindowUpdateNode
+	| UptimeRobotV1MonitorCreateNode
+	| UptimeRobotV1MonitorDeleteNode
+	| UptimeRobotV1MonitorGetNode
+	| UptimeRobotV1MonitorGetAllNode
+	| UptimeRobotV1MonitorResetNode
+	| UptimeRobotV1MonitorUpdateNode
+	| UptimeRobotV1PublicStatusPageCreateNode
+	| UptimeRobotV1PublicStatusPageDeleteNode
+	| UptimeRobotV1PublicStatusPageGetNode
+	| UptimeRobotV1PublicStatusPageGetAllNode
+	;

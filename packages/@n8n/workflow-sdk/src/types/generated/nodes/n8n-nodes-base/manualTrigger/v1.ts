@@ -1,8 +1,6 @@
 /**
  * Manual Trigger Node - Version 1
  * Runs the flow on clicking a button in n8n
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ManualTriggerV1Params {
+export interface ManualTriggerV1Config {
 }
 
 // ===========================================================================
@@ -21,13 +19,17 @@ export interface ManualTriggerV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ManualTriggerV1Node = {
+interface ManualTriggerV1NodeBase {
 	type: 'n8n-nodes-base.manualTrigger';
 	version: 1;
-	config: NodeConfig<ManualTriggerV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type ManualTriggerV1Node = ManualTriggerV1NodeBase & {
+	config: NodeConfig<ManualTriggerV1Config>;
 };
+
+export type ManualTriggerV1Node = ManualTriggerV1Node;

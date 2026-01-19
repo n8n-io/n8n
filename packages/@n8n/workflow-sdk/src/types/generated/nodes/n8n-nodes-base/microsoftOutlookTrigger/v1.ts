@@ -1,8 +1,6 @@
 /**
  * Microsoft Outlook Trigger Node - Version 1
  * Fetches emails from Microsoft Outlook and starts the workflow on specified polling intervals.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MicrosoftOutlookTriggerV1Params {
+export interface MicrosoftOutlookTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -82,13 +80,18 @@ export interface MicrosoftOutlookTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOutlookTriggerV1Node = {
+interface MicrosoftOutlookTriggerV1NodeBase {
 	type: 'n8n-nodes-base.microsoftOutlookTrigger';
 	version: 1;
-	config: NodeConfig<MicrosoftOutlookTriggerV1Params>;
 	credentials?: MicrosoftOutlookTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MicrosoftOutlookTriggerV1Node = MicrosoftOutlookTriggerV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookTriggerV1Config>;
 };
+
+export type MicrosoftOutlookTriggerV1Node = MicrosoftOutlookTriggerV1Node;

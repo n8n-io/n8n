@@ -1,8 +1,6 @@
 /**
  * Facebook Lead Ads Trigger Node - Version 1
  * Handle Facebook Lead Ads events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface FacebookLeadAdsTriggerV1Params {
+export interface FacebookLeadAdsTriggerV1Config {
 	event: 'newLead' | Expression<string>;
 /**
  * The page linked to the form for retrieving new leads
@@ -40,13 +38,18 @@ export interface FacebookLeadAdsTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FacebookLeadAdsTriggerV1Node = {
+interface FacebookLeadAdsTriggerV1NodeBase {
 	type: 'n8n-nodes-base.facebookLeadAdsTrigger';
 	version: 1;
-	config: NodeConfig<FacebookLeadAdsTriggerV1Params>;
 	credentials?: FacebookLeadAdsTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type FacebookLeadAdsTriggerV1Node = FacebookLeadAdsTriggerV1NodeBase & {
+	config: NodeConfig<FacebookLeadAdsTriggerV1Config>;
 };
+
+export type FacebookLeadAdsTriggerV1Node = FacebookLeadAdsTriggerV1Node;

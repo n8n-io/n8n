@@ -1,8 +1,6 @@
 /**
  * Google Vertex Chat Model Node - Version 1
  * Chat Model Google Vertex
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatGoogleVertexV1Params {
+export interface LcLmChatGoogleVertexV1Config {
 /**
  * Select or enter your Google Cloud project ID
  * @default {"mode":"list","value":""}
@@ -43,13 +41,18 @@ export interface LcLmChatGoogleVertexV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatGoogleVertexV1Node = {
+interface LcLmChatGoogleVertexV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatGoogleVertex';
 	version: 1;
-	config: NodeConfig<LcLmChatGoogleVertexV1Params>;
 	credentials?: LcLmChatGoogleVertexV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatGoogleVertexV1Node = LcLmChatGoogleVertexV1NodeBase & {
+	config: NodeConfig<LcLmChatGoogleVertexV1Config>;
 };
+
+export type LcLmChatGoogleVertexV1Node = LcLmChatGoogleVertexV1Node;

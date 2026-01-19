@@ -1,8 +1,6 @@
 /**
  * MongoDB Chat Memory Node - Version 1
  * Stores the chat history in MongoDB collection.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryMongoDbChatV1Params {
+export interface LcMemoryMongoDbChatV1Config {
 	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
 /**
  * The key to use to store session ID in the memory
@@ -41,13 +39,18 @@ export interface LcMemoryMongoDbChatV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryMongoDbChatV1Node = {
+interface LcMemoryMongoDbChatV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryMongoDbChat';
 	version: 1;
-	config: NodeConfig<LcMemoryMongoDbChatV1Params>;
 	credentials?: LcMemoryMongoDbChatV1Credentials;
 	isTrigger: true;
+}
+
+export type LcMemoryMongoDbChatV1Node = LcMemoryMongoDbChatV1NodeBase & {
+	config: NodeConfig<LcMemoryMongoDbChatV1Config>;
 };
+
+export type LcMemoryMongoDbChatV1Node = LcMemoryMongoDbChatV1Node;

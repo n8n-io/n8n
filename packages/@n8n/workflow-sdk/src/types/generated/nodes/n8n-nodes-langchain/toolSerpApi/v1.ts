@@ -1,8 +1,6 @@
 /**
  * SerpApi (Google Search) Node - Version 1
  * Search in Google using SerpAPI
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolSerpApiV1Params {
+export interface LcToolSerpApiV1Config {
 	options?: Record<string, unknown>;
 }
 
@@ -26,13 +24,18 @@ export interface LcToolSerpApiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcToolSerpApiV1Node = {
+interface LcToolSerpApiV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.toolSerpApi';
 	version: 1;
-	config: NodeConfig<LcToolSerpApiV1Params>;
 	credentials?: LcToolSerpApiV1Credentials;
 	isTrigger: true;
+}
+
+export type LcToolSerpApiV1Node = LcToolSerpApiV1NodeBase & {
+	config: NodeConfig<LcToolSerpApiV1Config>;
 };
+
+export type LcToolSerpApiV1Node = LcToolSerpApiV1Node;

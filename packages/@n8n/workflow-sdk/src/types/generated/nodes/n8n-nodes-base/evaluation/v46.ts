@@ -1,8 +1,6 @@
 /**
  * Evaluation Node - Version 4.6
  * Runs an evaluation
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -17,7 +15,7 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 // Parameters
 // ===========================================================================
 
-export interface EvaluationV46Params {
+export interface EvaluationV46Config {
 	operation?: 'setInputs' | 'setOutputs' | 'setMetrics' | 'checkIfEvaluating' | Expression<string>;
 	authentication?: 'serviceAccount' | 'oAuth2' | Expression<string>;
 	inputs?: {
@@ -154,12 +152,17 @@ export interface EvaluationV46Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EvaluationV46Node = {
+interface EvaluationV46NodeBase {
 	type: 'n8n-nodes-base.evaluation';
 	version: 4.6;
-	config: NodeConfig<EvaluationV46Params>;
 	credentials?: EvaluationV46Credentials;
+}
+
+export type EvaluationV46Node = EvaluationV46NodeBase & {
+	config: NodeConfig<EvaluationV46Config>;
 };
+
+export type EvaluationV46Node = EvaluationV46Node;

@@ -1,8 +1,6 @@
 /**
  * Default Data Loader Node - Version 1.1
  * Load data from previous step in the workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcDocumentDefaultDataLoaderV11Params {
+export interface LcDocumentDefaultDataLoaderV11Config {
 	dataType: 'json' | 'binary' | Expression<string>;
 	jsonMode: 'allInputData' | 'expressionData' | Expression<string>;
 	binaryMode: 'allInputData' | 'specificField' | Expression<string>;
@@ -39,12 +37,16 @@ export interface LcDocumentDefaultDataLoaderV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcDocumentDefaultDataLoaderV11Node = {
+interface LcDocumentDefaultDataLoaderV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 	version: 1.1;
-	config: NodeConfig<LcDocumentDefaultDataLoaderV11Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcDocumentDefaultDataLoaderV11Node = LcDocumentDefaultDataLoaderV11NodeBase & {
+	config: NodeConfig<LcDocumentDefaultDataLoaderV11Config>;
 };
+
+export type LcDocumentDefaultDataLoaderV11Node = LcDocumentDefaultDataLoaderV11Node;

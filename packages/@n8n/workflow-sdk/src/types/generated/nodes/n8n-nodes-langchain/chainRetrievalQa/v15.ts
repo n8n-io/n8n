@@ -1,8 +1,6 @@
 /**
  * Question and Answer Chain Node - Version 1.5
  * Answer questions about retrieved documents
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -32,23 +30,34 @@ export type LcChainRetrievalQaV15DefineConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcChainRetrievalQaV15Params =
-	| LcChainRetrievalQaV15AutoConfig
-	| LcChainRetrievalQaV15GuardrailsConfig
-	| LcChainRetrievalQaV15DefineConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChainRetrievalQaV15Node = {
+interface LcChainRetrievalQaV15NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chainRetrievalQa';
 	version: 1.5;
-	config: NodeConfig<LcChainRetrievalQaV15Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcChainRetrievalQaV15AutoNode = LcChainRetrievalQaV15NodeBase & {
+	config: NodeConfig<LcChainRetrievalQaV15AutoConfig>;
 };
+
+export type LcChainRetrievalQaV15GuardrailsNode = LcChainRetrievalQaV15NodeBase & {
+	config: NodeConfig<LcChainRetrievalQaV15GuardrailsConfig>;
+};
+
+export type LcChainRetrievalQaV15DefineNode = LcChainRetrievalQaV15NodeBase & {
+	config: NodeConfig<LcChainRetrievalQaV15DefineConfig>;
+};
+
+export type LcChainRetrievalQaV15Node =
+	| LcChainRetrievalQaV15AutoNode
+	| LcChainRetrievalQaV15GuardrailsNode
+	| LcChainRetrievalQaV15DefineNode
+	;

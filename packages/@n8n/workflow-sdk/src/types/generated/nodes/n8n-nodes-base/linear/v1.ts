@@ -1,8 +1,6 @@
 /**
  * Linear Node - Version 1
  * Consume Linear API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -83,15 +81,77 @@ export type LinearV1IssueUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type LinearV1Params =
-	| LinearV1CommentAddCommentConfig
-	| LinearV1IssueAddLinkConfig
-	| LinearV1IssueCreateConfig
-	| LinearV1IssueDeleteConfig
-	| LinearV1IssueGetConfig
-	| LinearV1IssueGetAllConfig
-	| LinearV1IssueUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type LinearV1IssueCreateOutput = {
+	archivedAt?: null;
+	createdAt?: string;
+	creator?: {
+		displayName?: string;
+		id?: string;
+	};
+	dueDate?: null;
+	id?: string;
+	identifier?: string;
+	priority?: number;
+	state?: {
+		id?: string;
+		name?: string;
+	};
+	title?: string;
+};
+
+export type LinearV1IssueGetOutput = {
+	createdAt?: string;
+	creator?: {
+		displayName?: string;
+		id?: string;
+	};
+	id?: string;
+	identifier?: string;
+	priority?: number;
+	state?: {
+		id?: string;
+		name?: string;
+	};
+	title?: string;
+};
+
+export type LinearV1IssueGetAllOutput = {
+	archivedAt?: null;
+	createdAt?: string;
+	creator?: {
+		displayName?: string;
+		id?: string;
+	};
+	id?: string;
+	identifier?: string;
+	priority?: number;
+	state?: {
+		id?: string;
+		name?: string;
+	};
+	title?: string;
+};
+
+export type LinearV1IssueUpdateOutput = {
+	createdAt?: string;
+	creator?: {
+		displayName?: string;
+		id?: string;
+	};
+	id?: string;
+	identifier?: string;
+	priority?: number;
+	state?: {
+		id?: string;
+		name?: string;
+	};
+	title?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -103,12 +163,53 @@ export interface LinearV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LinearV1Node = {
+interface LinearV1NodeBase {
 	type: 'n8n-nodes-base.linear';
 	version: 1;
-	config: NodeConfig<LinearV1Params>;
 	credentials?: LinearV1Credentials;
+}
+
+export type LinearV1CommentAddCommentNode = LinearV1NodeBase & {
+	config: NodeConfig<LinearV1CommentAddCommentConfig>;
 };
+
+export type LinearV1IssueAddLinkNode = LinearV1NodeBase & {
+	config: NodeConfig<LinearV1IssueAddLinkConfig>;
+};
+
+export type LinearV1IssueCreateNode = LinearV1NodeBase & {
+	config: NodeConfig<LinearV1IssueCreateConfig>;
+	output?: LinearV1IssueCreateOutput;
+};
+
+export type LinearV1IssueDeleteNode = LinearV1NodeBase & {
+	config: NodeConfig<LinearV1IssueDeleteConfig>;
+};
+
+export type LinearV1IssueGetNode = LinearV1NodeBase & {
+	config: NodeConfig<LinearV1IssueGetConfig>;
+	output?: LinearV1IssueGetOutput;
+};
+
+export type LinearV1IssueGetAllNode = LinearV1NodeBase & {
+	config: NodeConfig<LinearV1IssueGetAllConfig>;
+	output?: LinearV1IssueGetAllOutput;
+};
+
+export type LinearV1IssueUpdateNode = LinearV1NodeBase & {
+	config: NodeConfig<LinearV1IssueUpdateConfig>;
+	output?: LinearV1IssueUpdateOutput;
+};
+
+export type LinearV1Node =
+	| LinearV1CommentAddCommentNode
+	| LinearV1IssueAddLinkNode
+	| LinearV1IssueCreateNode
+	| LinearV1IssueDeleteNode
+	| LinearV1IssueGetNode
+	| LinearV1IssueGetAllNode
+	| LinearV1IssueUpdateNode
+	;

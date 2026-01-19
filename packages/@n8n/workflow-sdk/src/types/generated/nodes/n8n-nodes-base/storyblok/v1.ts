@@ -1,8 +1,6 @@
 /**
  * Storyblok Node - Version 1
  * Consume Storyblok API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -68,10 +66,44 @@ export type StoryblokV1StoryGetAllConfig = {
 		space: string | Expression<string>;
 };
 
-export type StoryblokV1Params =
-	| StoryblokV1StoryGetConfig
-	| StoryblokV1StoryGetAllConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type StoryblokV1StoryGetAllOutput = {
+	content_type?: string;
+	created_at?: string;
+	default_root?: null;
+	deleted_at?: null;
+	disable_fe_editor?: boolean;
+	disble_fe_editor?: boolean;
+	expire_at?: null;
+	full_slug?: string;
+	group_id?: string;
+	id?: number;
+	is_folder?: boolean;
+	is_startpage?: boolean;
+	last_author?: {
+		friendly_name?: string;
+		id?: number;
+		userid?: string;
+	};
+	last_author_id?: number;
+	name?: string;
+	path?: null;
+	pinned?: boolean;
+	position?: number;
+	publish_at?: null;
+	published?: boolean;
+	scheduled_dates?: null;
+	slug?: string;
+	sort_by_date?: null;
+	tag_list?: Array<string>;
+	unpublished_changes?: boolean;
+	updated_at?: string;
+	uuid?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -83,12 +115,25 @@ export interface StoryblokV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StoryblokV1Node = {
+interface StoryblokV1NodeBase {
 	type: 'n8n-nodes-base.storyblok';
 	version: 1;
-	config: NodeConfig<StoryblokV1Params>;
 	credentials?: StoryblokV1Credentials;
+}
+
+export type StoryblokV1StoryGetNode = StoryblokV1NodeBase & {
+	config: NodeConfig<StoryblokV1StoryGetConfig>;
 };
+
+export type StoryblokV1StoryGetAllNode = StoryblokV1NodeBase & {
+	config: NodeConfig<StoryblokV1StoryGetAllConfig>;
+	output?: StoryblokV1StoryGetAllOutput;
+};
+
+export type StoryblokV1Node =
+	| StoryblokV1StoryGetNode
+	| StoryblokV1StoryGetAllNode
+	;

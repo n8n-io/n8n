@@ -1,8 +1,6 @@
 /**
  * Github Trigger Node - Version 1
  * Starts the workflow when Github events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface GithubTriggerV1Params {
+export interface GithubTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 	owner: ResourceLocatorValue;
 	repository: ResourceLocatorValue;
@@ -38,13 +36,18 @@ export interface GithubTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GithubTriggerV1Node = {
+interface GithubTriggerV1NodeBase {
 	type: 'n8n-nodes-base.githubTrigger';
 	version: 1;
-	config: NodeConfig<GithubTriggerV1Params>;
 	credentials?: GithubTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type GithubTriggerV1Node = GithubTriggerV1NodeBase & {
+	config: NodeConfig<GithubTriggerV1Config>;
 };
+
+export type GithubTriggerV1Node = GithubTriggerV1Node;

@@ -594,9 +594,8 @@ describe('generate-types', () => {
 			expect(result).toContain("resource: 'message'");
 			expect(result).toContain("operation: 'send'");
 
-			// Should contain union type (resources are processed in order from options array)
-			expect(result).toContain('GmailV21Params');
-			expect(result).toMatch(/export type GmailV21Params\s*=/);
+			// Should NOT contain a union params type (removed - individual node types use configs directly)
+			expect(result).not.toContain('GmailV21Params');
 		});
 
 		it('should generate simple interface for HTTP Request (no discriminators)', () => {
@@ -605,8 +604,8 @@ describe('generate-types', () => {
 			// Should NOT have discriminated unions
 			expect(result).not.toContain('HttpRequestMessageSendConfig');
 
-			// Should have a single interface
-			expect(result).toContain('HttpRequestV42Params');
+			// Should have a single config interface (not Params)
+			expect(result).toContain('HttpRequestV42Config');
 			expect(result).toContain('interface');
 		});
 	});
@@ -768,9 +767,9 @@ describe('generate-types', () => {
 			expect(result).toContain('Send and receive emails using Gmail');
 		});
 
-		it('should include @generated marker', () => {
+		it('should include Node Types label', () => {
 			const result = generateTypes.generateNodeJSDoc(mockGmailNode);
-			expect(result).toContain('@generated');
+			expect(result).toContain('Node Types');
 		});
 	});
 
@@ -850,9 +849,9 @@ describe('generate-types', () => {
 		it('should generate complete type file for Gmail node', () => {
 			const result = generateTypes.generateNodeTypeFile(mockGmailNode);
 
-			// Should have header with @generated marker
-			expect(result).toContain('@generated');
-			expect(result).toContain('Do not edit manually');
+			// Should have header with description
+			expect(result).toContain('Gmail');
+			expect(result).toContain('Send and receive emails using Gmail');
 
 			// Should have imports
 			expect(result).toContain('import type { Expression');
@@ -899,8 +898,9 @@ describe('generate-types', () => {
 			expect(result).toContain("export * from './nodes/n8n-nodes-base/httpRequest'");
 			expect(result).toContain("export * from './nodes/n8n-nodes-base/gmail'");
 
-			// Should have @generated marker
-			expect(result).toContain('@generated');
+			// Should have header
+			expect(result).toContain('Generated Node Types');
+			expect(result).toContain('Do not edit manually');
 
 			// Should have AllNodeTypes union
 			expect(result).toContain('AllNodeTypes');
@@ -1457,7 +1457,7 @@ describe('generate-types', () => {
 				const code = generateTypes.generateSubnodesFile(nodes);
 
 				// Should have file header
-				expect(code).toContain('@generated');
+				expect(code).toContain('Generated Subnode Union Types');
 				expect(code).toContain('Do not edit manually');
 
 				// Should have all union types

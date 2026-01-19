@@ -1,8 +1,6 @@
 /**
  * Track Time Saved Node - Version 1
  * Dynamically track time saved based on the workflow’s execution path and the number of items processed
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface TimeSavedV1Params {
+export interface TimeSavedV1Config {
 	mode?: 'once' | 'perItem' | Expression<string>;
 /**
  * Number of minutes saved by this workflow execution
@@ -27,12 +25,16 @@ export interface TimeSavedV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TimeSavedV1Node = {
+interface TimeSavedV1NodeBase {
 	type: 'n8n-nodes-base.timeSaved';
 	version: 1;
-	config: NodeConfig<TimeSavedV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type TimeSavedV1Node = TimeSavedV1NodeBase & {
+	config: NodeConfig<TimeSavedV1Config>;
 };
+
+export type TimeSavedV1Node = TimeSavedV1Node;

@@ -1,8 +1,6 @@
 /**
  * Cal.com Trigger Node - Version 1
  * Handle Cal.com events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface CalTriggerV1Params {
+export interface CalTriggerV1Config {
 	events: Array<'BOOKING_CANCELLED' | 'BOOKING_CREATED' | 'BOOKING_RESCHEDULED' | 'MEETING_ENDED'>;
 	version?: 1 | 2 | Expression<number>;
 	options?: Record<string, unknown>;
@@ -28,13 +26,18 @@ export interface CalTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CalTriggerV1Node = {
+interface CalTriggerV1NodeBase {
 	type: 'n8n-nodes-base.calTrigger';
 	version: 1;
-	config: NodeConfig<CalTriggerV1Params>;
 	credentials?: CalTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type CalTriggerV1Node = CalTriggerV1NodeBase & {
+	config: NodeConfig<CalTriggerV1Config>;
 };
+
+export type CalTriggerV1Node = CalTriggerV1Node;

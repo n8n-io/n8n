@@ -1,8 +1,6 @@
 /**
  * n8n Node - Version 1
  * Handle events and perform actions on your n8n instance
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -213,23 +211,6 @@ export type N8nV1WorkflowUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type N8nV1Params =
-	| N8nV1AuditGenerateConfig
-	| N8nV1CredentialCreateConfig
-	| N8nV1CredentialDeleteConfig
-	| N8nV1CredentialGetSchemaConfig
-	| N8nV1ExecutionGetConfig
-	| N8nV1ExecutionGetAllConfig
-	| N8nV1ExecutionDeleteConfig
-	| N8nV1WorkflowActivateConfig
-	| N8nV1WorkflowCreateConfig
-	| N8nV1WorkflowDeactivateConfig
-	| N8nV1WorkflowDeleteConfig
-	| N8nV1WorkflowGetConfig
-	| N8nV1WorkflowGetAllConfig
-	| N8nV1WorkflowGetVersionConfig
-	| N8nV1WorkflowUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -240,12 +221,89 @@ export interface N8nV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type N8nV1Node = {
+interface N8nV1NodeBase {
 	type: 'n8n-nodes-base.n8n';
 	version: 1;
-	config: NodeConfig<N8nV1Params>;
 	credentials?: N8nV1Credentials;
+}
+
+export type N8nV1AuditGenerateNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1AuditGenerateConfig>;
 };
+
+export type N8nV1CredentialCreateNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1CredentialCreateConfig>;
+};
+
+export type N8nV1CredentialDeleteNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1CredentialDeleteConfig>;
+};
+
+export type N8nV1CredentialGetSchemaNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1CredentialGetSchemaConfig>;
+};
+
+export type N8nV1ExecutionGetNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1ExecutionGetConfig>;
+};
+
+export type N8nV1ExecutionGetAllNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1ExecutionGetAllConfig>;
+};
+
+export type N8nV1ExecutionDeleteNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1ExecutionDeleteConfig>;
+};
+
+export type N8nV1WorkflowActivateNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1WorkflowActivateConfig>;
+};
+
+export type N8nV1WorkflowCreateNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1WorkflowCreateConfig>;
+};
+
+export type N8nV1WorkflowDeactivateNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1WorkflowDeactivateConfig>;
+};
+
+export type N8nV1WorkflowDeleteNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1WorkflowDeleteConfig>;
+};
+
+export type N8nV1WorkflowGetNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1WorkflowGetConfig>;
+};
+
+export type N8nV1WorkflowGetAllNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1WorkflowGetAllConfig>;
+};
+
+export type N8nV1WorkflowGetVersionNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1WorkflowGetVersionConfig>;
+};
+
+export type N8nV1WorkflowUpdateNode = N8nV1NodeBase & {
+	config: NodeConfig<N8nV1WorkflowUpdateConfig>;
+};
+
+export type N8nV1Node =
+	| N8nV1AuditGenerateNode
+	| N8nV1CredentialCreateNode
+	| N8nV1CredentialDeleteNode
+	| N8nV1CredentialGetSchemaNode
+	| N8nV1ExecutionGetNode
+	| N8nV1ExecutionGetAllNode
+	| N8nV1ExecutionDeleteNode
+	| N8nV1WorkflowActivateNode
+	| N8nV1WorkflowCreateNode
+	| N8nV1WorkflowDeactivateNode
+	| N8nV1WorkflowDeleteNode
+	| N8nV1WorkflowGetNode
+	| N8nV1WorkflowGetAllNode
+	| N8nV1WorkflowGetVersionNode
+	| N8nV1WorkflowUpdateNode
+	;

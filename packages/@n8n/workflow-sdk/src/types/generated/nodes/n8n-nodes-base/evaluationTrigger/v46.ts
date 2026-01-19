@@ -1,8 +1,6 @@
 /**
  * Evaluation Trigger Node - Version 4.6
  * Run a test dataset through your workflow to check performance
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface EvaluationTriggerV46Params {
+export interface EvaluationTriggerV46Config {
 	authentication?: 'serviceAccount' | 'oAuth2' | Expression<string>;
 	documentId: ResourceLocatorValue;
 	sheetName: string | Expression<string>;
@@ -83,13 +81,18 @@ export interface EvaluationTriggerV46Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EvaluationTriggerV46Node = {
+interface EvaluationTriggerV46NodeBase {
 	type: 'n8n-nodes-base.evaluationTrigger';
 	version: 4.6;
-	config: NodeConfig<EvaluationTriggerV46Params>;
 	credentials?: EvaluationTriggerV46Credentials;
 	isTrigger: true;
+}
+
+export type EvaluationTriggerV46Node = EvaluationTriggerV46NodeBase & {
+	config: NodeConfig<EvaluationTriggerV46Config>;
 };
+
+export type EvaluationTriggerV46Node = EvaluationTriggerV46Node;

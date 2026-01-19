@@ -1,8 +1,6 @@
 /**
  * WhatsApp Business Cloud Node - Version 1
  * Access WhatsApp API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -295,14 +293,52 @@ export type WhatsAppV1MediaMediaDeleteConfig = {
 		mediaDeleteId: string | Expression<string>;
 };
 
-export type WhatsAppV1Params =
-	| WhatsAppV1MessageSendConfig
-	| WhatsAppV1MessageSendAndWaitConfig
-	| WhatsAppV1MessageSendTemplateConfig
-	| WhatsAppV1MediaMediaUploadConfig
-	| WhatsAppV1MediaMediaUrlGetConfig
-	| WhatsAppV1MediaMediaDeleteConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type WhatsAppV1MessageSendOutput = {
+	contacts?: Array<{
+		input?: string;
+		wa_id?: string;
+	}>;
+	messages?: Array<{
+		id?: string;
+	}>;
+	messaging_product?: string;
+};
+
+export type WhatsAppV1MessageSendAndWaitOutput = {
+	data?: {
+		text?: string;
+	};
+};
+
+export type WhatsAppV1MessageSendTemplateOutput = {
+	contacts?: Array<{
+		input?: string;
+		wa_id?: string;
+	}>;
+	messages?: Array<{
+		id?: string;
+		message_status?: string;
+	}>;
+	messaging_product?: string;
+};
+
+export type WhatsAppV1MediaMediaUploadOutput = {
+	id?: string;
+};
+
+export type WhatsAppV1MediaMediaUrlGetOutput = {
+	file_size?: number;
+	id?: string;
+	messaging_product?: string;
+	mime_type?: string;
+	sha256?: string;
+	url?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -313,12 +349,49 @@ export interface WhatsAppV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WhatsAppV1Node = {
+interface WhatsAppV1NodeBase {
 	type: 'n8n-nodes-base.whatsApp';
 	version: 1;
-	config: NodeConfig<WhatsAppV1Params>;
 	credentials?: WhatsAppV1Credentials;
+}
+
+export type WhatsAppV1MessageSendNode = WhatsAppV1NodeBase & {
+	config: NodeConfig<WhatsAppV1MessageSendConfig>;
+	output?: WhatsAppV1MessageSendOutput;
 };
+
+export type WhatsAppV1MessageSendAndWaitNode = WhatsAppV1NodeBase & {
+	config: NodeConfig<WhatsAppV1MessageSendAndWaitConfig>;
+	output?: WhatsAppV1MessageSendAndWaitOutput;
+};
+
+export type WhatsAppV1MessageSendTemplateNode = WhatsAppV1NodeBase & {
+	config: NodeConfig<WhatsAppV1MessageSendTemplateConfig>;
+	output?: WhatsAppV1MessageSendTemplateOutput;
+};
+
+export type WhatsAppV1MediaMediaUploadNode = WhatsAppV1NodeBase & {
+	config: NodeConfig<WhatsAppV1MediaMediaUploadConfig>;
+	output?: WhatsAppV1MediaMediaUploadOutput;
+};
+
+export type WhatsAppV1MediaMediaUrlGetNode = WhatsAppV1NodeBase & {
+	config: NodeConfig<WhatsAppV1MediaMediaUrlGetConfig>;
+	output?: WhatsAppV1MediaMediaUrlGetOutput;
+};
+
+export type WhatsAppV1MediaMediaDeleteNode = WhatsAppV1NodeBase & {
+	config: NodeConfig<WhatsAppV1MediaMediaDeleteConfig>;
+};
+
+export type WhatsAppV1Node =
+	| WhatsAppV1MessageSendNode
+	| WhatsAppV1MessageSendAndWaitNode
+	| WhatsAppV1MessageSendTemplateNode
+	| WhatsAppV1MediaMediaUploadNode
+	| WhatsAppV1MediaMediaUrlGetNode
+	| WhatsAppV1MediaMediaDeleteNode
+	;

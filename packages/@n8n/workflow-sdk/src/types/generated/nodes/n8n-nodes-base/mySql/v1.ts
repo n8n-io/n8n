@@ -1,8 +1,6 @@
 /**
  * MySQL Node - Version 1
  * Get, add and update data in MySQL
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MySqlV1Params {
+export interface MySqlV1Config {
 	operation?: 'executeQuery' | 'insert' | 'update' | Expression<string>;
 /**
  * The SQL query to execute
@@ -57,12 +55,17 @@ export interface MySqlV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MySqlV1Node = {
+interface MySqlV1NodeBase {
 	type: 'n8n-nodes-base.mySql';
 	version: 1;
-	config: NodeConfig<MySqlV1Params>;
 	credentials?: MySqlV1Credentials;
+}
+
+export type MySqlV1Node = MySqlV1NodeBase & {
+	config: NodeConfig<MySqlV1Config>;
 };
+
+export type MySqlV1Node = MySqlV1Node;

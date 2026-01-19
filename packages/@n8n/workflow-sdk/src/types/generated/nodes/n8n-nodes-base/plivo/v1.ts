@@ -1,8 +1,6 @@
 /**
  * Plivo Node - Version 1
  * Send SMS/MMS messages or make phone calls
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -87,11 +85,16 @@ export type PlivoV1SmsSendConfig = {
 		message: string | Expression<string>;
 };
 
-export type PlivoV1Params =
-	| PlivoV1CallMakeConfig
-	| PlivoV1MmsSendConfig
-	| PlivoV1SmsSendConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type PlivoV1CallMakeOutput = {
+	api_id?: string;
+	message?: string;
+	request_uuid?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -102,12 +105,30 @@ export interface PlivoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PlivoV1Node = {
+interface PlivoV1NodeBase {
 	type: 'n8n-nodes-base.plivo';
 	version: 1;
-	config: NodeConfig<PlivoV1Params>;
 	credentials?: PlivoV1Credentials;
+}
+
+export type PlivoV1CallMakeNode = PlivoV1NodeBase & {
+	config: NodeConfig<PlivoV1CallMakeConfig>;
+	output?: PlivoV1CallMakeOutput;
 };
+
+export type PlivoV1MmsSendNode = PlivoV1NodeBase & {
+	config: NodeConfig<PlivoV1MmsSendConfig>;
+};
+
+export type PlivoV1SmsSendNode = PlivoV1NodeBase & {
+	config: NodeConfig<PlivoV1SmsSendConfig>;
+};
+
+export type PlivoV1Node =
+	| PlivoV1CallMakeNode
+	| PlivoV1MmsSendNode
+	| PlivoV1SmsSendNode
+	;

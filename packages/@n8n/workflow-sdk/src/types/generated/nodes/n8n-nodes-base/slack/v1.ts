@@ -1,8 +1,6 @@
 /**
  * Slack Node - Version 1
  * Consume Slack API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -979,49 +977,6 @@ export type SlackV1UserProfileUpdateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type SlackV1Params =
-	| SlackV1ChannelArchiveConfig
-	| SlackV1ChannelCloseConfig
-	| SlackV1ChannelCreateConfig
-	| SlackV1ChannelGetConfig
-	| SlackV1ChannelGetAllConfig
-	| SlackV1ChannelHistoryConfig
-	| SlackV1ChannelInviteConfig
-	| SlackV1ChannelJoinConfig
-	| SlackV1ChannelKickConfig
-	| SlackV1ChannelLeaveConfig
-	| SlackV1ChannelMemberConfig
-	| SlackV1ChannelOpenConfig
-	| SlackV1ChannelRenameConfig
-	| SlackV1ChannelRepliesConfig
-	| SlackV1ChannelSetPurposeConfig
-	| SlackV1ChannelSetTopicConfig
-	| SlackV1ChannelUnarchiveConfig
-	| SlackV1FileGetConfig
-	| SlackV1FileGetAllConfig
-	| SlackV1FileUploadConfig
-	| SlackV1MessageDeleteConfig
-	| SlackV1MessageGetPermalinkConfig
-	| SlackV1MessagePostConfig
-	| SlackV1MessagePostEphemeralConfig
-	| SlackV1MessageUpdateConfig
-	| SlackV1ReactionAddConfig
-	| SlackV1ReactionGetConfig
-	| SlackV1ReactionRemoveConfig
-	| SlackV1StarAddConfig
-	| SlackV1StarDeleteConfig
-	| SlackV1StarGetAllConfig
-	| SlackV1UserInfoConfig
-	| SlackV1UserGetAllConfig
-	| SlackV1UserGetPresenceConfig
-	| SlackV1UserGroupCreateConfig
-	| SlackV1UserGroupDisableConfig
-	| SlackV1UserGroupEnableConfig
-	| SlackV1UserGroupGetAllConfig
-	| SlackV1UserGroupUpdateConfig
-	| SlackV1UserProfileGetConfig
-	| SlackV1UserProfileUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -1033,12 +988,219 @@ export interface SlackV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SlackV1Node = {
+interface SlackV1NodeBase {
 	type: 'n8n-nodes-base.slack';
 	version: 1;
-	config: NodeConfig<SlackV1Params>;
 	credentials?: SlackV1Credentials;
+}
+
+export type SlackV1ChannelArchiveNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelArchiveConfig>;
 };
+
+export type SlackV1ChannelCloseNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelCloseConfig>;
+};
+
+export type SlackV1ChannelCreateNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelCreateConfig>;
+};
+
+export type SlackV1ChannelGetNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelGetConfig>;
+};
+
+export type SlackV1ChannelGetAllNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelGetAllConfig>;
+};
+
+export type SlackV1ChannelHistoryNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelHistoryConfig>;
+};
+
+export type SlackV1ChannelInviteNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelInviteConfig>;
+};
+
+export type SlackV1ChannelJoinNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelJoinConfig>;
+};
+
+export type SlackV1ChannelKickNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelKickConfig>;
+};
+
+export type SlackV1ChannelLeaveNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelLeaveConfig>;
+};
+
+export type SlackV1ChannelMemberNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelMemberConfig>;
+};
+
+export type SlackV1ChannelOpenNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelOpenConfig>;
+};
+
+export type SlackV1ChannelRenameNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelRenameConfig>;
+};
+
+export type SlackV1ChannelRepliesNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelRepliesConfig>;
+};
+
+export type SlackV1ChannelSetPurposeNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelSetPurposeConfig>;
+};
+
+export type SlackV1ChannelSetTopicNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelSetTopicConfig>;
+};
+
+export type SlackV1ChannelUnarchiveNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ChannelUnarchiveConfig>;
+};
+
+export type SlackV1FileGetNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1FileGetConfig>;
+};
+
+export type SlackV1FileGetAllNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1FileGetAllConfig>;
+};
+
+export type SlackV1FileUploadNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1FileUploadConfig>;
+};
+
+export type SlackV1MessageDeleteNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1MessageDeleteConfig>;
+};
+
+export type SlackV1MessageGetPermalinkNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1MessageGetPermalinkConfig>;
+};
+
+export type SlackV1MessagePostNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1MessagePostConfig>;
+};
+
+export type SlackV1MessagePostEphemeralNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1MessagePostEphemeralConfig>;
+};
+
+export type SlackV1MessageUpdateNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1MessageUpdateConfig>;
+};
+
+export type SlackV1ReactionAddNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ReactionAddConfig>;
+};
+
+export type SlackV1ReactionGetNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ReactionGetConfig>;
+};
+
+export type SlackV1ReactionRemoveNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1ReactionRemoveConfig>;
+};
+
+export type SlackV1StarAddNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1StarAddConfig>;
+};
+
+export type SlackV1StarDeleteNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1StarDeleteConfig>;
+};
+
+export type SlackV1StarGetAllNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1StarGetAllConfig>;
+};
+
+export type SlackV1UserInfoNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1UserInfoConfig>;
+};
+
+export type SlackV1UserGetAllNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1UserGetAllConfig>;
+};
+
+export type SlackV1UserGetPresenceNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1UserGetPresenceConfig>;
+};
+
+export type SlackV1UserGroupCreateNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1UserGroupCreateConfig>;
+};
+
+export type SlackV1UserGroupDisableNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1UserGroupDisableConfig>;
+};
+
+export type SlackV1UserGroupEnableNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1UserGroupEnableConfig>;
+};
+
+export type SlackV1UserGroupGetAllNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1UserGroupGetAllConfig>;
+};
+
+export type SlackV1UserGroupUpdateNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1UserGroupUpdateConfig>;
+};
+
+export type SlackV1UserProfileGetNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1UserProfileGetConfig>;
+};
+
+export type SlackV1UserProfileUpdateNode = SlackV1NodeBase & {
+	config: NodeConfig<SlackV1UserProfileUpdateConfig>;
+};
+
+export type SlackV1Node =
+	| SlackV1ChannelArchiveNode
+	| SlackV1ChannelCloseNode
+	| SlackV1ChannelCreateNode
+	| SlackV1ChannelGetNode
+	| SlackV1ChannelGetAllNode
+	| SlackV1ChannelHistoryNode
+	| SlackV1ChannelInviteNode
+	| SlackV1ChannelJoinNode
+	| SlackV1ChannelKickNode
+	| SlackV1ChannelLeaveNode
+	| SlackV1ChannelMemberNode
+	| SlackV1ChannelOpenNode
+	| SlackV1ChannelRenameNode
+	| SlackV1ChannelRepliesNode
+	| SlackV1ChannelSetPurposeNode
+	| SlackV1ChannelSetTopicNode
+	| SlackV1ChannelUnarchiveNode
+	| SlackV1FileGetNode
+	| SlackV1FileGetAllNode
+	| SlackV1FileUploadNode
+	| SlackV1MessageDeleteNode
+	| SlackV1MessageGetPermalinkNode
+	| SlackV1MessagePostNode
+	| SlackV1MessagePostEphemeralNode
+	| SlackV1MessageUpdateNode
+	| SlackV1ReactionAddNode
+	| SlackV1ReactionGetNode
+	| SlackV1ReactionRemoveNode
+	| SlackV1StarAddNode
+	| SlackV1StarDeleteNode
+	| SlackV1StarGetAllNode
+	| SlackV1UserInfoNode
+	| SlackV1UserGetAllNode
+	| SlackV1UserGetPresenceNode
+	| SlackV1UserGroupCreateNode
+	| SlackV1UserGroupDisableNode
+	| SlackV1UserGroupEnableNode
+	| SlackV1UserGroupGetAllNode
+	| SlackV1UserGroupUpdateNode
+	| SlackV1UserProfileGetNode
+	| SlackV1UserProfileUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Merge Node - Version 3
  * Merges data of multiple streams once data from both is available
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -115,24 +113,39 @@ export type MergeV3ChooseBranchConfig = {
 		useDataOfInput?: string | Expression<string>;
 };
 
-export type MergeV3Params =
-	| MergeV3AppendConfig
-	| MergeV3CombineConfig
-	| MergeV3CombineBySqlConfig
-	| MergeV3ChooseBranchConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MergeV3Node = {
+interface MergeV3NodeBase {
 	type: 'n8n-nodes-base.merge';
 	version: 3;
-	config: NodeConfig<MergeV3Params>;
-	credentials?: Record<string, never>;
+}
+
+export type MergeV3AppendNode = MergeV3NodeBase & {
+	config: NodeConfig<MergeV3AppendConfig>;
 };
+
+export type MergeV3CombineNode = MergeV3NodeBase & {
+	config: NodeConfig<MergeV3CombineConfig>;
+};
+
+export type MergeV3CombineBySqlNode = MergeV3NodeBase & {
+	config: NodeConfig<MergeV3CombineBySqlConfig>;
+};
+
+export type MergeV3ChooseBranchNode = MergeV3NodeBase & {
+	config: NodeConfig<MergeV3ChooseBranchConfig>;
+};
+
+export type MergeV3Node =
+	| MergeV3AppendNode
+	| MergeV3CombineNode
+	| MergeV3CombineBySqlNode
+	| MergeV3ChooseBranchNode
+	;

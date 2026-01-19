@@ -1,8 +1,6 @@
 /**
  * Phantombuster Node - Version 1
  * Consume Phantombuster API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -86,13 +84,55 @@ export type PhantombusterV1AgentLaunchConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PhantombusterV1Params =
-	| PhantombusterV1AgentDeleteConfig
-	| PhantombusterV1AgentGetConfig
-	| PhantombusterV1AgentGetAllConfig
-	| PhantombusterV1AgentGetOutputConfig
-	| PhantombusterV1AgentLaunchConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type PhantombusterV1AgentGetOutput = {
+	argument?: string;
+	branch?: string;
+	code?: null;
+	environment?: string;
+	fileMgmt?: string;
+	id?: string;
+	lastEndType?: string;
+	launchType?: string;
+	maxParallelism?: number;
+	name?: string;
+	nbLaunches?: number;
+	notifications?: {
+		mailAutomaticExitError?: boolean;
+		mailAutomaticExitSuccess?: boolean;
+		mailAutomaticLaunchError?: boolean;
+		mailAutomaticTimeError?: boolean;
+		mailManualExitError?: boolean;
+		mailManualExitSuccess?: boolean;
+		mailManualLaunchError?: boolean;
+		mailManualTimeError?: boolean;
+	};
+	orgS3Folder?: string;
+	s3Folder?: string;
+	script?: string;
+	scriptId?: string;
+	scriptOrgName?: string;
+	updatedAt?: number;
+	wasSetupValidWhenSubmittedByTheFrontend?: boolean;
+};
+
+export type PhantombusterV1AgentGetOutputOutput = {
+	profileUrl?: string;
+	timestamp?: string;
+};
+
+export type PhantombusterV1AgentLaunchOutput = {
+	createdAt?: number;
+	id?: string;
+	launchedAt?: number;
+	launchType?: string;
+	retryNumber?: number;
+	status?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -103,12 +143,42 @@ export interface PhantombusterV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PhantombusterV1Node = {
+interface PhantombusterV1NodeBase {
 	type: 'n8n-nodes-base.phantombuster';
 	version: 1;
-	config: NodeConfig<PhantombusterV1Params>;
 	credentials?: PhantombusterV1Credentials;
+}
+
+export type PhantombusterV1AgentDeleteNode = PhantombusterV1NodeBase & {
+	config: NodeConfig<PhantombusterV1AgentDeleteConfig>;
 };
+
+export type PhantombusterV1AgentGetNode = PhantombusterV1NodeBase & {
+	config: NodeConfig<PhantombusterV1AgentGetConfig>;
+	output?: PhantombusterV1AgentGetOutput;
+};
+
+export type PhantombusterV1AgentGetAllNode = PhantombusterV1NodeBase & {
+	config: NodeConfig<PhantombusterV1AgentGetAllConfig>;
+};
+
+export type PhantombusterV1AgentGetOutputNode = PhantombusterV1NodeBase & {
+	config: NodeConfig<PhantombusterV1AgentGetOutputConfig>;
+	output?: PhantombusterV1AgentGetOutputOutput;
+};
+
+export type PhantombusterV1AgentLaunchNode = PhantombusterV1NodeBase & {
+	config: NodeConfig<PhantombusterV1AgentLaunchConfig>;
+	output?: PhantombusterV1AgentLaunchOutput;
+};
+
+export type PhantombusterV1Node =
+	| PhantombusterV1AgentDeleteNode
+	| PhantombusterV1AgentGetNode
+	| PhantombusterV1AgentGetAllNode
+	| PhantombusterV1AgentGetOutputNode
+	| PhantombusterV1AgentLaunchNode
+	;

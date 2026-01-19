@@ -1,8 +1,6 @@
 /**
  * DeepL Node - Version 1
  * Translate data using DeepL
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,9 +28,15 @@ export type DeepLV1LanguageTranslateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type DeepLV1Params =
-	| DeepLV1LanguageTranslateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type DeepLV1LanguageTranslateOutput = {
+	detected_source_language?: string;
+	text?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -43,12 +47,18 @@ export interface DeepLV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DeepLV1Node = {
+interface DeepLV1NodeBase {
 	type: 'n8n-nodes-base.deepL';
 	version: 1;
-	config: NodeConfig<DeepLV1Params>;
 	credentials?: DeepLV1Credentials;
+}
+
+export type DeepLV1LanguageTranslateNode = DeepLV1NodeBase & {
+	config: NodeConfig<DeepLV1LanguageTranslateConfig>;
+	output?: DeepLV1LanguageTranslateOutput;
 };
+
+export type DeepLV1Node = DeepLV1LanguageTranslateNode;

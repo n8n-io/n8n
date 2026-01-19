@@ -1,8 +1,6 @@
 /**
  * Asana Trigger Node - Version 1
  * Starts the workflow when Asana events occur.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AsanaTriggerV1Params {
+export interface AsanaTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 /**
  * The resource ID to subscribe to. The resource can be a task or project.
@@ -35,13 +33,18 @@ export interface AsanaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AsanaTriggerV1Node = {
+interface AsanaTriggerV1NodeBase {
 	type: 'n8n-nodes-base.asanaTrigger';
 	version: 1;
-	config: NodeConfig<AsanaTriggerV1Params>;
 	credentials?: AsanaTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type AsanaTriggerV1Node = AsanaTriggerV1NodeBase & {
+	config: NodeConfig<AsanaTriggerV1Config>;
 };
+
+export type AsanaTriggerV1Node = AsanaTriggerV1Node;

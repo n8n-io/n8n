@@ -1,8 +1,6 @@
 /**
  * Trello Trigger Node - Version 1
  * Starts the workflow when Trello events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface TrelloTriggerV1Params {
+export interface TrelloTriggerV1Config {
 /**
  * ID of the model of which to subscribe to events
  */
@@ -29,13 +27,18 @@ export interface TrelloTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TrelloTriggerV1Node = {
+interface TrelloTriggerV1NodeBase {
 	type: 'n8n-nodes-base.trelloTrigger';
 	version: 1;
-	config: NodeConfig<TrelloTriggerV1Params>;
 	credentials?: TrelloTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type TrelloTriggerV1Node = TrelloTriggerV1NodeBase & {
+	config: NodeConfig<TrelloTriggerV1Config>;
 };
+
+export type TrelloTriggerV1Node = TrelloTriggerV1Node;

@@ -1,8 +1,6 @@
 /**
  * Switch Node - Version 3
  * Route items depending on defined expression or rules
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -47,22 +45,29 @@ export type SwitchV3ExpressionConfig = {
 		output?: number | Expression<number>;
 };
 
-export type SwitchV3Params =
-	| SwitchV3RulesConfig
-	| SwitchV3ExpressionConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SwitchV3Node = {
+interface SwitchV3NodeBase {
 	type: 'n8n-nodes-base.switch';
 	version: 3;
-	config: NodeConfig<SwitchV3Params>;
-	credentials?: Record<string, never>;
+}
+
+export type SwitchV3RulesNode = SwitchV3NodeBase & {
+	config: NodeConfig<SwitchV3RulesConfig>;
 };
+
+export type SwitchV3ExpressionNode = SwitchV3NodeBase & {
+	config: NodeConfig<SwitchV3ExpressionConfig>;
+};
+
+export type SwitchV3Node =
+	| SwitchV3RulesNode
+	| SwitchV3ExpressionNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Basic LLM Chain Node - Version 1.7
  * A simple chain to prompt a large language model
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -122,23 +120,34 @@ export type LcChainLlmV17DefineConfig = {
 	};
 };
 
-export type LcChainLlmV17Params =
-	| LcChainLlmV17AutoConfig
-	| LcChainLlmV17GuardrailsConfig
-	| LcChainLlmV17DefineConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChainLlmV17Node = {
+interface LcChainLlmV17NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chainLlm';
 	version: 1.7;
-	config: NodeConfig<LcChainLlmV17Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcChainLlmV17AutoNode = LcChainLlmV17NodeBase & {
+	config: NodeConfig<LcChainLlmV17AutoConfig>;
 };
+
+export type LcChainLlmV17GuardrailsNode = LcChainLlmV17NodeBase & {
+	config: NodeConfig<LcChainLlmV17GuardrailsConfig>;
+};
+
+export type LcChainLlmV17DefineNode = LcChainLlmV17NodeBase & {
+	config: NodeConfig<LcChainLlmV17DefineConfig>;
+};
+
+export type LcChainLlmV17Node =
+	| LcChainLlmV17AutoNode
+	| LcChainLlmV17GuardrailsNode
+	| LcChainLlmV17DefineNode
+	;

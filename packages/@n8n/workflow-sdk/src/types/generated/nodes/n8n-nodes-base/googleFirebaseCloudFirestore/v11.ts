@@ -1,8 +1,6 @@
 /**
  * Google Cloud Firestore Node - Version 1.1
  * Interact with Google Firebase - Cloud Firestore API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -228,15 +226,6 @@ export type GoogleFirebaseCloudFirestoreV11CollectionGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type GoogleFirebaseCloudFirestoreV11Params =
-	| GoogleFirebaseCloudFirestoreV11DocumentCreateConfig
-	| GoogleFirebaseCloudFirestoreV11DocumentUpsertConfig
-	| GoogleFirebaseCloudFirestoreV11DocumentDeleteConfig
-	| GoogleFirebaseCloudFirestoreV11DocumentGetConfig
-	| GoogleFirebaseCloudFirestoreV11DocumentGetAllConfig
-	| GoogleFirebaseCloudFirestoreV11DocumentQueryConfig
-	| GoogleFirebaseCloudFirestoreV11CollectionGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -248,12 +237,49 @@ export interface GoogleFirebaseCloudFirestoreV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleFirebaseCloudFirestoreV11Node = {
+interface GoogleFirebaseCloudFirestoreV11NodeBase {
 	type: 'n8n-nodes-base.googleFirebaseCloudFirestore';
 	version: 1.1;
-	config: NodeConfig<GoogleFirebaseCloudFirestoreV11Params>;
 	credentials?: GoogleFirebaseCloudFirestoreV11Credentials;
+}
+
+export type GoogleFirebaseCloudFirestoreV11DocumentCreateNode = GoogleFirebaseCloudFirestoreV11NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV11DocumentCreateConfig>;
 };
+
+export type GoogleFirebaseCloudFirestoreV11DocumentUpsertNode = GoogleFirebaseCloudFirestoreV11NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV11DocumentUpsertConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV11DocumentDeleteNode = GoogleFirebaseCloudFirestoreV11NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV11DocumentDeleteConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV11DocumentGetNode = GoogleFirebaseCloudFirestoreV11NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV11DocumentGetConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV11DocumentGetAllNode = GoogleFirebaseCloudFirestoreV11NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV11DocumentGetAllConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV11DocumentQueryNode = GoogleFirebaseCloudFirestoreV11NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV11DocumentQueryConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV11CollectionGetAllNode = GoogleFirebaseCloudFirestoreV11NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV11CollectionGetAllConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV11Node =
+	| GoogleFirebaseCloudFirestoreV11DocumentCreateNode
+	| GoogleFirebaseCloudFirestoreV11DocumentUpsertNode
+	| GoogleFirebaseCloudFirestoreV11DocumentDeleteNode
+	| GoogleFirebaseCloudFirestoreV11DocumentGetNode
+	| GoogleFirebaseCloudFirestoreV11DocumentGetAllNode
+	| GoogleFirebaseCloudFirestoreV11DocumentQueryNode
+	| GoogleFirebaseCloudFirestoreV11CollectionGetAllNode
+	;

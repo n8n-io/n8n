@@ -1,8 +1,6 @@
 /**
  * Paddle Node - Version 1
  * Consume Paddle API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -222,17 +220,6 @@ export type PaddleV1UserGetAllConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PaddleV1Params =
-	| PaddleV1CouponCreateConfig
-	| PaddleV1CouponGetAllConfig
-	| PaddleV1CouponUpdateConfig
-	| PaddleV1PaymentGetAllConfig
-	| PaddleV1PaymentRescheduleConfig
-	| PaddleV1PlanGetConfig
-	| PaddleV1PlanGetAllConfig
-	| PaddleV1ProductGetAllConfig
-	| PaddleV1UserGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -243,12 +230,59 @@ export interface PaddleV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PaddleV1Node = {
+interface PaddleV1NodeBase {
 	type: 'n8n-nodes-base.paddle';
 	version: 1;
-	config: NodeConfig<PaddleV1Params>;
 	credentials?: PaddleV1Credentials;
+}
+
+export type PaddleV1CouponCreateNode = PaddleV1NodeBase & {
+	config: NodeConfig<PaddleV1CouponCreateConfig>;
 };
+
+export type PaddleV1CouponGetAllNode = PaddleV1NodeBase & {
+	config: NodeConfig<PaddleV1CouponGetAllConfig>;
+};
+
+export type PaddleV1CouponUpdateNode = PaddleV1NodeBase & {
+	config: NodeConfig<PaddleV1CouponUpdateConfig>;
+};
+
+export type PaddleV1PaymentGetAllNode = PaddleV1NodeBase & {
+	config: NodeConfig<PaddleV1PaymentGetAllConfig>;
+};
+
+export type PaddleV1PaymentRescheduleNode = PaddleV1NodeBase & {
+	config: NodeConfig<PaddleV1PaymentRescheduleConfig>;
+};
+
+export type PaddleV1PlanGetNode = PaddleV1NodeBase & {
+	config: NodeConfig<PaddleV1PlanGetConfig>;
+};
+
+export type PaddleV1PlanGetAllNode = PaddleV1NodeBase & {
+	config: NodeConfig<PaddleV1PlanGetAllConfig>;
+};
+
+export type PaddleV1ProductGetAllNode = PaddleV1NodeBase & {
+	config: NodeConfig<PaddleV1ProductGetAllConfig>;
+};
+
+export type PaddleV1UserGetAllNode = PaddleV1NodeBase & {
+	config: NodeConfig<PaddleV1UserGetAllConfig>;
+};
+
+export type PaddleV1Node =
+	| PaddleV1CouponCreateNode
+	| PaddleV1CouponGetAllNode
+	| PaddleV1CouponUpdateNode
+	| PaddleV1PaymentGetAllNode
+	| PaddleV1PaymentRescheduleNode
+	| PaddleV1PlanGetNode
+	| PaddleV1PlanGetAllNode
+	| PaddleV1ProductGetAllNode
+	| PaddleV1UserGetAllNode
+	;

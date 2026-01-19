@@ -1,8 +1,6 @@
 /**
  * Line Node - Version 1
  * Consume Line API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -21,9 +19,15 @@ export type LineV1NotificationSendConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type LineV1Params =
-	| LineV1NotificationSendConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type LineV1NotificationSendOutput = {
+	message?: string;
+	status?: number;
+};
 
 // ===========================================================================
 // Credentials
@@ -34,12 +38,18 @@ export interface LineV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LineV1Node = {
+interface LineV1NodeBase {
 	type: 'n8n-nodes-base.line';
 	version: 1;
-	config: NodeConfig<LineV1Params>;
 	credentials?: LineV1Credentials;
+}
+
+export type LineV1NotificationSendNode = LineV1NodeBase & {
+	config: NodeConfig<LineV1NotificationSendConfig>;
+	output?: LineV1NotificationSendOutput;
 };
+
+export type LineV1Node = LineV1NotificationSendNode;

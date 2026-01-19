@@ -1,8 +1,6 @@
 /**
  * Switch Node - Version 3.2
  * Route items depending on defined expression or rules
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -47,22 +45,29 @@ export type SwitchV32ExpressionConfig = {
 		output?: number | Expression<number>;
 };
 
-export type SwitchV32Params =
-	| SwitchV32RulesConfig
-	| SwitchV32ExpressionConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SwitchV32Node = {
+interface SwitchV32NodeBase {
 	type: 'n8n-nodes-base.switch';
 	version: 3.2;
-	config: NodeConfig<SwitchV32Params>;
-	credentials?: Record<string, never>;
+}
+
+export type SwitchV32RulesNode = SwitchV32NodeBase & {
+	config: NodeConfig<SwitchV32RulesConfig>;
 };
+
+export type SwitchV32ExpressionNode = SwitchV32NodeBase & {
+	config: NodeConfig<SwitchV32ExpressionConfig>;
+};
+
+export type SwitchV32Node =
+	| SwitchV32RulesNode
+	| SwitchV32ExpressionNode
+	;

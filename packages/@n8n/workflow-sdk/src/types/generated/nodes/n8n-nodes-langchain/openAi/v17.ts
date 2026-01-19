@@ -1,8 +1,6 @@
 /**
  * OpenAI Node - Version 1.7
  * Message an assistant or GPT, analyze images, generate audio, etc.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -285,23 +283,6 @@ export type LcOpenAiV17FileUploadConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcOpenAiV17Params =
-	| LcOpenAiV17AssistantCreateConfig
-	| LcOpenAiV17AssistantDeleteAssistantConfig
-	| LcOpenAiV17AssistantListConfig
-	| LcOpenAiV17AssistantMessageConfig
-	| LcOpenAiV17AssistantUpdateConfig
-	| LcOpenAiV17TextMessageConfig
-	| LcOpenAiV17TextClassifyConfig
-	| LcOpenAiV17ImageAnalyzeConfig
-	| LcOpenAiV17ImageGenerateConfig
-	| LcOpenAiV17AudioGenerateConfig
-	| LcOpenAiV17AudioTranscribeConfig
-	| LcOpenAiV17AudioTranslateConfig
-	| LcOpenAiV17FileDeleteFileConfig
-	| LcOpenAiV17FileListConfig
-	| LcOpenAiV17FileUploadConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -312,12 +293,89 @@ export interface LcOpenAiV17Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOpenAiV17Node = {
+interface LcOpenAiV17NodeBase {
 	type: '@n8n/n8n-nodes-langchain.openAi';
 	version: 1.7;
-	config: NodeConfig<LcOpenAiV17Params>;
 	credentials?: LcOpenAiV17Credentials;
+}
+
+export type LcOpenAiV17AssistantCreateNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17AssistantCreateConfig>;
 };
+
+export type LcOpenAiV17AssistantDeleteAssistantNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17AssistantDeleteAssistantConfig>;
+};
+
+export type LcOpenAiV17AssistantListNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17AssistantListConfig>;
+};
+
+export type LcOpenAiV17AssistantMessageNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17AssistantMessageConfig>;
+};
+
+export type LcOpenAiV17AssistantUpdateNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17AssistantUpdateConfig>;
+};
+
+export type LcOpenAiV17TextMessageNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17TextMessageConfig>;
+};
+
+export type LcOpenAiV17TextClassifyNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17TextClassifyConfig>;
+};
+
+export type LcOpenAiV17ImageAnalyzeNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17ImageAnalyzeConfig>;
+};
+
+export type LcOpenAiV17ImageGenerateNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17ImageGenerateConfig>;
+};
+
+export type LcOpenAiV17AudioGenerateNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17AudioGenerateConfig>;
+};
+
+export type LcOpenAiV17AudioTranscribeNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17AudioTranscribeConfig>;
+};
+
+export type LcOpenAiV17AudioTranslateNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17AudioTranslateConfig>;
+};
+
+export type LcOpenAiV17FileDeleteFileNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17FileDeleteFileConfig>;
+};
+
+export type LcOpenAiV17FileListNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17FileListConfig>;
+};
+
+export type LcOpenAiV17FileUploadNode = LcOpenAiV17NodeBase & {
+	config: NodeConfig<LcOpenAiV17FileUploadConfig>;
+};
+
+export type LcOpenAiV17Node =
+	| LcOpenAiV17AssistantCreateNode
+	| LcOpenAiV17AssistantDeleteAssistantNode
+	| LcOpenAiV17AssistantListNode
+	| LcOpenAiV17AssistantMessageNode
+	| LcOpenAiV17AssistantUpdateNode
+	| LcOpenAiV17TextMessageNode
+	| LcOpenAiV17TextClassifyNode
+	| LcOpenAiV17ImageAnalyzeNode
+	| LcOpenAiV17ImageGenerateNode
+	| LcOpenAiV17AudioGenerateNode
+	| LcOpenAiV17AudioTranscribeNode
+	| LcOpenAiV17AudioTranslateNode
+	| LcOpenAiV17FileDeleteFileNode
+	| LcOpenAiV17FileListNode
+	| LcOpenAiV17FileUploadNode
+	;

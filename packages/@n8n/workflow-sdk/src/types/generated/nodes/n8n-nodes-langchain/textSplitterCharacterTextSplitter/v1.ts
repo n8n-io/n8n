@@ -1,8 +1,6 @@
 /**
  * Character Text Splitter Node - Version 1
  * Split text into chunks by characters
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcTextSplitterCharacterTextSplitterV1Params {
+export interface LcTextSplitterCharacterTextSplitterV1Config {
 	separator?: string | Expression<string>;
 /**
  * Maximum number of characters per chunk
@@ -32,13 +30,17 @@ export interface LcTextSplitterCharacterTextSplitterV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcTextSplitterCharacterTextSplitterV1Node = {
+interface LcTextSplitterCharacterTextSplitterV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.textSplitterCharacterTextSplitter';
 	version: 1;
-	config: NodeConfig<LcTextSplitterCharacterTextSplitterV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcTextSplitterCharacterTextSplitterV1Node = LcTextSplitterCharacterTextSplitterV1NodeBase & {
+	config: NodeConfig<LcTextSplitterCharacterTextSplitterV1Config>;
 };
+
+export type LcTextSplitterCharacterTextSplitterV1Node = LcTextSplitterCharacterTextSplitterV1Node;

@@ -1,8 +1,6 @@
 /**
  * Uplead Node - Version 1
  * Consume Uplead API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -55,10 +53,6 @@ export type UpleadV1PersonEnrichConfig = {
 		domain?: string | Expression<string>;
 };
 
-export type UpleadV1Params =
-	| UpleadV1CompanyEnrichConfig
-	| UpleadV1PersonEnrichConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -69,12 +63,24 @@ export interface UpleadV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UpleadV1Node = {
+interface UpleadV1NodeBase {
 	type: 'n8n-nodes-base.uplead';
 	version: 1;
-	config: NodeConfig<UpleadV1Params>;
 	credentials?: UpleadV1Credentials;
+}
+
+export type UpleadV1CompanyEnrichNode = UpleadV1NodeBase & {
+	config: NodeConfig<UpleadV1CompanyEnrichConfig>;
 };
+
+export type UpleadV1PersonEnrichNode = UpleadV1NodeBase & {
+	config: NodeConfig<UpleadV1PersonEnrichConfig>;
+};
+
+export type UpleadV1Node =
+	| UpleadV1CompanyEnrichNode
+	| UpleadV1PersonEnrichNode
+	;

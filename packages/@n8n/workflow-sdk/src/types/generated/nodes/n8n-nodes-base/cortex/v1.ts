@@ -1,8 +1,6 @@
 /**
  * Cortex Node - Version 1
  * Apply the Cortex analyzer/responder on the given entity
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -91,12 +89,6 @@ export type CortexV1ResponderExecuteConfig = {
 	parameters?: string | Expression<string>;
 };
 
-export type CortexV1Params =
-	| CortexV1AnalyzerExecuteConfig
-	| CortexV1JobGetConfig
-	| CortexV1JobReportConfig
-	| CortexV1ResponderExecuteConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -107,12 +99,34 @@ export interface CortexV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CortexV1Node = {
+interface CortexV1NodeBase {
 	type: 'n8n-nodes-base.cortex';
 	version: 1;
-	config: NodeConfig<CortexV1Params>;
 	credentials?: CortexV1Credentials;
+}
+
+export type CortexV1AnalyzerExecuteNode = CortexV1NodeBase & {
+	config: NodeConfig<CortexV1AnalyzerExecuteConfig>;
 };
+
+export type CortexV1JobGetNode = CortexV1NodeBase & {
+	config: NodeConfig<CortexV1JobGetConfig>;
+};
+
+export type CortexV1JobReportNode = CortexV1NodeBase & {
+	config: NodeConfig<CortexV1JobReportConfig>;
+};
+
+export type CortexV1ResponderExecuteNode = CortexV1NodeBase & {
+	config: NodeConfig<CortexV1ResponderExecuteConfig>;
+};
+
+export type CortexV1Node =
+	| CortexV1AnalyzerExecuteNode
+	| CortexV1JobGetNode
+	| CortexV1JobReportNode
+	| CortexV1ResponderExecuteNode
+	;

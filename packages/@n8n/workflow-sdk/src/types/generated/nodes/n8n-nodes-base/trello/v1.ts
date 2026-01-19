@@ -1,8 +1,6 @@
 /**
  * Trello Node - Version 1
  * Create, change and delete boards and cards
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -680,49 +678,763 @@ export type TrelloV1ListUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type TrelloV1Params =
-	| TrelloV1AttachmentCreateConfig
-	| TrelloV1AttachmentDeleteConfig
-	| TrelloV1AttachmentGetConfig
-	| TrelloV1AttachmentGetAllConfig
-	| TrelloV1BoardCreateConfig
-	| TrelloV1BoardDeleteConfig
-	| TrelloV1BoardGetConfig
-	| TrelloV1BoardUpdateConfig
-	| TrelloV1BoardMemberAddConfig
-	| TrelloV1BoardMemberGetAllConfig
-	| TrelloV1BoardMemberInviteConfig
-	| TrelloV1BoardMemberRemoveConfig
-	| TrelloV1CardCreateConfig
-	| TrelloV1CardDeleteConfig
-	| TrelloV1CardGetConfig
-	| TrelloV1CardUpdateConfig
-	| TrelloV1CardCommentCreateConfig
-	| TrelloV1CardCommentDeleteConfig
-	| TrelloV1CardCommentUpdateConfig
-	| TrelloV1ChecklistCreateConfig
-	| TrelloV1ChecklistCreateCheckItemConfig
-	| TrelloV1ChecklistDeleteConfig
-	| TrelloV1ChecklistDeleteCheckItemConfig
-	| TrelloV1ChecklistGetConfig
-	| TrelloV1ChecklistGetCheckItemConfig
-	| TrelloV1ChecklistCompletedCheckItemsConfig
-	| TrelloV1ChecklistGetAllConfig
-	| TrelloV1ChecklistUpdateCheckItemConfig
-	| TrelloV1LabelAddLabelConfig
-	| TrelloV1LabelCreateConfig
-	| TrelloV1LabelDeleteConfig
-	| TrelloV1LabelGetConfig
-	| TrelloV1LabelGetAllConfig
-	| TrelloV1LabelRemoveLabelConfig
-	| TrelloV1LabelUpdateConfig
-	| TrelloV1ListArchiveConfig
-	| TrelloV1ListCreateConfig
-	| TrelloV1ListGetConfig
-	| TrelloV1ListGetCardsConfig
-	| TrelloV1ListGetAllConfig
-	| TrelloV1ListUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type TrelloV1AttachmentCreateOutput = {
+	date?: string;
+	id?: string;
+	idMember?: string;
+	isMalicious?: boolean;
+	isUpload?: boolean;
+	mimeType?: string;
+	name?: string;
+	pos?: number;
+	previews?: Array<{
+		_id?: string;
+		bytes?: number;
+		height?: number;
+		id?: string;
+		scaled?: boolean;
+		url?: string;
+		width?: number;
+	}>;
+	url?: string;
+};
+
+export type TrelloV1AttachmentGetOutput = {
+	date?: string;
+	fileName?: string;
+	id?: string;
+	idMember?: string;
+	isMalicious?: boolean;
+	isUpload?: boolean;
+	mimeType?: string;
+	name?: string;
+	pos?: number;
+	previews?: Array<{
+		_id?: string;
+		bytes?: number;
+		height?: number;
+		id?: string;
+		scaled?: boolean;
+		url?: string;
+		width?: number;
+	}>;
+	url?: string;
+};
+
+export type TrelloV1AttachmentGetAllOutput = {
+	date?: string;
+	fileName?: string;
+	id?: string;
+	idMember?: string;
+	isUpload?: boolean;
+	mimeType?: string;
+	name?: string;
+	pos?: number;
+	previews?: Array<{
+		_id?: string;
+		bytes?: number;
+		height?: number;
+		id?: string;
+		scaled?: boolean;
+		url?: string;
+		width?: number;
+	}>;
+	url?: string;
+};
+
+export type TrelloV1BoardCreateOutput = {
+	closed?: boolean;
+	desc?: string;
+	descData?: null;
+	id?: string;
+	idEnterprise?: null;
+	idOrganization?: string;
+	labelNames?: {
+		black?: string;
+		black_dark?: string;
+		black_light?: string;
+		blue?: string;
+		blue_dark?: string;
+		blue_light?: string;
+		green?: string;
+		green_dark?: string;
+		green_light?: string;
+		lime?: string;
+		lime_dark?: string;
+		lime_light?: string;
+		orange?: string;
+		orange_dark?: string;
+		orange_light?: string;
+		pink?: string;
+		pink_dark?: string;
+		pink_light?: string;
+		purple?: string;
+		purple_dark?: string;
+		purple_light?: string;
+		red?: string;
+		red_dark?: string;
+		red_light?: string;
+		sky?: string;
+		sky_dark?: string;
+		sky_light?: string;
+		yellow?: string;
+		yellow_dark?: string;
+		yellow_light?: string;
+	};
+	name?: string;
+	pinned?: boolean;
+	prefs?: {
+		background?: string;
+		backgroundBottomColor?: string;
+		backgroundBrightness?: string;
+		backgroundDarkImage?: null;
+		backgroundTile?: boolean;
+		backgroundTopColor?: string;
+		calendarFeedEnabled?: boolean;
+		canBeEnterprise?: boolean;
+		canBeOrg?: boolean;
+		canBePrivate?: boolean;
+		canBePublic?: boolean;
+		canInvite?: boolean;
+		cardAging?: string;
+		cardCounts?: boolean;
+		cardCovers?: boolean;
+		comments?: string;
+		hideVotes?: boolean;
+		invitations?: string;
+		isTemplate?: boolean;
+		permissionLevel?: string;
+		selfJoin?: boolean;
+		showCompleteStatus?: boolean;
+		switcherViews?: Array<{
+			enabled?: boolean;
+			viewType?: string;
+		}>;
+		voting?: string;
+	};
+	shortUrl?: string;
+	url?: string;
+};
+
+export type TrelloV1BoardGetOutput = {
+	closed?: boolean;
+	desc?: string;
+	id?: string;
+	idEnterprise?: null;
+	idOrganization?: string;
+	labelNames?: {
+		black?: string;
+		black_dark?: string;
+		black_light?: string;
+		blue?: string;
+		blue_dark?: string;
+		blue_light?: string;
+		green?: string;
+		green_dark?: string;
+		green_light?: string;
+		lime?: string;
+		lime_dark?: string;
+		lime_light?: string;
+		orange?: string;
+		orange_dark?: string;
+		orange_light?: string;
+		pink?: string;
+		pink_dark?: string;
+		pink_light?: string;
+		purple?: string;
+		purple_dark?: string;
+		purple_light?: string;
+		red?: string;
+		red_dark?: string;
+		red_light?: string;
+		sky?: string;
+		sky_dark?: string;
+		sky_light?: string;
+		yellow?: string;
+		yellow_dark?: string;
+		yellow_light?: string;
+	};
+	name?: string;
+	pinned?: boolean;
+	prefs?: {
+		background?: string;
+		backgroundBottomColor?: string;
+		backgroundBrightness?: string;
+		backgroundTile?: boolean;
+		backgroundTopColor?: string;
+		calendarFeedEnabled?: boolean;
+		canBeEnterprise?: boolean;
+		canBeOrg?: boolean;
+		canBePrivate?: boolean;
+		canBePublic?: boolean;
+		canInvite?: boolean;
+		cardAging?: string;
+		cardCounts?: boolean;
+		cardCovers?: boolean;
+		comments?: string;
+		hiddenPluginBoardButtons?: Array<string>;
+		hideVotes?: boolean;
+		invitations?: string;
+		isTemplate?: boolean;
+		permissionLevel?: string;
+		selfJoin?: boolean;
+		showCompleteStatus?: boolean;
+		switcherViews?: Array<{
+			enabled?: boolean;
+			viewType?: string;
+		}>;
+		voting?: string;
+	};
+	shortUrl?: string;
+	url?: string;
+};
+
+export type TrelloV1BoardUpdateOutput = {
+	closed?: boolean;
+	desc?: string;
+	id?: string;
+	idEnterprise?: null;
+	idOrganization?: string;
+	labelNames?: {
+		black?: string;
+		black_dark?: string;
+		black_light?: string;
+		blue?: string;
+		blue_dark?: string;
+		blue_light?: string;
+		green?: string;
+		green_dark?: string;
+		green_light?: string;
+		lime?: string;
+		lime_dark?: string;
+		lime_light?: string;
+		orange?: string;
+		orange_dark?: string;
+		orange_light?: string;
+		pink?: string;
+		pink_dark?: string;
+		pink_light?: string;
+		purple?: string;
+		purple_dark?: string;
+		purple_light?: string;
+		red?: string;
+		red_dark?: string;
+		red_light?: string;
+		sky?: string;
+		sky_dark?: string;
+		sky_light?: string;
+		yellow?: string;
+		yellow_dark?: string;
+		yellow_light?: string;
+	};
+	name?: string;
+	pinned?: boolean;
+	prefs?: {
+		background?: string;
+		backgroundBottomColor?: string;
+		backgroundBrightness?: string;
+		backgroundTile?: boolean;
+		backgroundTopColor?: string;
+		calendarFeedEnabled?: boolean;
+		canBeEnterprise?: boolean;
+		canBeOrg?: boolean;
+		canBePrivate?: boolean;
+		canBePublic?: boolean;
+		canInvite?: boolean;
+		cardAging?: string;
+		cardCounts?: boolean;
+		cardCovers?: boolean;
+		comments?: string;
+		hideVotes?: boolean;
+		invitations?: string;
+		isTemplate?: boolean;
+		permissionLevel?: string;
+		selfJoin?: boolean;
+		switcherViews?: Array<{
+			enabled?: boolean;
+			viewType?: string;
+		}>;
+		voting?: string;
+	};
+	shortUrl?: string;
+	url?: string;
+};
+
+export type TrelloV1BoardMemberGetAllOutput = {
+	fullName?: string;
+	id?: string;
+	username?: string;
+};
+
+export type TrelloV1CardCreateOutput = {
+	attachments?: Array<{
+		bytes?: null;
+		date?: string;
+		edgeColor?: null;
+		id?: string;
+		idMember?: string;
+		isMalicious?: boolean;
+		isUpload?: boolean;
+		mimeType?: string;
+		name?: string;
+		pos?: number;
+		url?: string;
+	}>;
+	badges?: {
+		attachments?: number;
+		attachmentsByType?: {
+			trello?: {
+				board?: number;
+				card?: number;
+			};
+		};
+		checkItems?: number;
+		checkItemsChecked?: number;
+		checkItemsEarliestDue?: null;
+		comments?: number;
+		description?: boolean;
+		dueComplete?: boolean;
+		externalSource?: null;
+		fogbugz?: string;
+		lastUpdatedByAi?: boolean;
+		location?: boolean;
+		start?: null;
+		subscribed?: boolean;
+		viewingMemberVoted?: boolean;
+		votes?: number;
+	};
+	cardRole?: null;
+	closed?: boolean;
+	cover?: {
+		brightness?: string;
+		color?: null;
+		idAttachment?: null;
+		idPlugin?: null;
+		idUploadedBackground?: null;
+		size?: string;
+	};
+	dateLastActivity?: string;
+	desc?: string;
+	dueComplete?: boolean;
+	dueReminder?: null;
+	email?: null;
+	id?: string;
+	idAttachmentCover?: null;
+	idBoard?: string;
+	idChecklists?: Array<string>;
+	idLabels?: Array<string>;
+	idList?: string;
+	idMembers?: Array<string>;
+	idShort?: number;
+	isTemplate?: boolean;
+	labels?: Array<{
+		id?: string;
+		idBoard?: string;
+		idOrganization?: string;
+		name?: string;
+		nodeId?: string;
+		uses?: number;
+	}>;
+	manualCoverAttachment?: boolean;
+	mirrorSourceId?: null;
+	name?: string;
+	nodeId?: string;
+	pinned?: boolean;
+	shortLink?: string;
+	shortUrl?: string;
+	start?: null;
+	subscribed?: boolean;
+	url?: string;
+};
+
+export type TrelloV1CardGetOutput = {
+	badges?: {
+		attachments?: number;
+		attachmentsByType?: {
+			trello?: {
+				board?: number;
+				card?: number;
+			};
+		};
+		checkItems?: number;
+		checkItemsChecked?: number;
+		checkItemsEarliestDue?: null;
+		comments?: number;
+		description?: boolean;
+		dueComplete?: boolean;
+		externalSource?: null;
+		fogbugz?: string;
+		lastUpdatedByAi?: boolean;
+		location?: boolean;
+		subscribed?: boolean;
+		viewingMemberVoted?: boolean;
+		votes?: number;
+	};
+	cardRole?: null;
+	checkItemStates?: Array<{
+		idCheckItem?: string;
+		state?: string;
+	}>;
+	closed?: boolean;
+	cover?: {
+		brightness?: string;
+		idUploadedBackground?: null;
+		size?: string;
+	};
+	dateLastActivity?: string;
+	desc?: string;
+	dueComplete?: boolean;
+	email?: null;
+	id?: string;
+	idBoard?: string;
+	idChecklists?: Array<string>;
+	idLabels?: Array<string>;
+	idList?: string;
+	idMembers?: Array<string>;
+	idShort?: number;
+	isTemplate?: boolean;
+	labels?: Array<{
+		id?: string;
+		idBoard?: string;
+		idOrganization?: string;
+		name?: string;
+		nodeId?: string;
+		uses?: number;
+	}>;
+	manualCoverAttachment?: boolean;
+	mirrorSourceId?: null;
+	name?: string;
+	nodeId?: string;
+	pinned?: boolean;
+	shortLink?: string;
+	shortUrl?: string;
+	subscribed?: boolean;
+	url?: string;
+};
+
+export type TrelloV1CardUpdateOutput = {
+	badges?: {
+		attachments?: number;
+		attachmentsByType?: {
+			trello?: {
+				board?: number;
+				card?: number;
+			};
+		};
+		checkItems?: number;
+		checkItemsChecked?: number;
+		checkItemsEarliestDue?: null;
+		comments?: number;
+		description?: boolean;
+		dueComplete?: boolean;
+		fogbugz?: string;
+		lastUpdatedByAi?: boolean;
+		location?: boolean;
+		subscribed?: boolean;
+		viewingMemberVoted?: boolean;
+		votes?: number;
+	};
+	cardRole?: null;
+	checkItemStates?: Array<{
+		idCheckItem?: string;
+		state?: string;
+	}>;
+	closed?: boolean;
+	cover?: {
+		brightness?: string;
+		idPlugin?: null;
+		idUploadedBackground?: null;
+		size?: string;
+	};
+	dateLastActivity?: string;
+	desc?: string;
+	dueComplete?: boolean;
+	email?: null;
+	id?: string;
+	idBoard?: string;
+	idChecklists?: Array<string>;
+	idLabels?: Array<string>;
+	idList?: string;
+	idMembers?: Array<string>;
+	idShort?: number;
+	isTemplate?: boolean;
+	labels?: Array<{
+		color?: string;
+		id?: string;
+		idBoard?: string;
+		idOrganization?: string;
+		name?: string;
+		nodeId?: string;
+		uses?: number;
+	}>;
+	manualCoverAttachment?: boolean;
+	name?: string;
+	pinned?: boolean;
+	shortLink?: string;
+	shortUrl?: string;
+	subscribed?: boolean;
+	url?: string;
+};
+
+export type TrelloV1CardCommentCreateOutput = {
+	appCreator?: {
+		id?: string;
+	};
+	data?: {
+		board?: {
+			id?: string;
+			name?: string;
+			shortLink?: string;
+		};
+		card?: {
+			id?: string;
+			idShort?: number;
+			name?: string;
+			shortLink?: string;
+		};
+		list?: {
+			id?: string;
+			name?: string;
+		};
+		text?: string;
+	};
+	date?: string;
+	display?: {
+		entities?: {
+			card?: {
+				hideIfContext?: boolean;
+				id?: string;
+				shortLink?: string;
+				text?: string;
+				type?: string;
+			};
+			comment?: {
+				text?: string;
+				type?: string;
+			};
+			contextOn?: {
+				hideIfContext?: boolean;
+				idContext?: string;
+				translationKey?: string;
+				type?: string;
+			};
+			memberCreator?: {
+				id?: string;
+				text?: string;
+				type?: string;
+				username?: string;
+			};
+		};
+		translationKey?: string;
+	};
+	entities?: Array<{
+		hideIfContext?: boolean;
+		id?: string;
+		idContext?: string;
+		shortLink?: string;
+		text?: string;
+		type?: string;
+		username?: string;
+	}>;
+	id?: string;
+	idMemberCreator?: string;
+	limits?: {
+		reactions?: {
+			perAction?: {
+				disableAt?: number;
+				status?: string;
+				warnAt?: number;
+			};
+			uniquePerAction?: {
+				disableAt?: number;
+				status?: string;
+				warnAt?: number;
+			};
+		};
+	};
+	memberCreator?: {
+		activityBlocked?: boolean;
+		avatarHash?: string;
+		avatarUrl?: string;
+		fullName?: string;
+		id?: string;
+		initials?: string;
+		nonPublicAvailable?: boolean;
+		username?: string;
+	};
+	type?: string;
+};
+
+export type TrelloV1ChecklistCreateOutput = {
+	checkItems?: Array<{
+		due?: null;
+		dueReminder?: number;
+		id?: string;
+		idChecklist?: string;
+		idMember?: null;
+		name?: string;
+		pos?: number;
+		state?: string;
+	}>;
+	id?: string;
+	idBoard?: string;
+	idCard?: string;
+	name?: string;
+	pos?: number;
+};
+
+export type TrelloV1ChecklistCreateCheckItemOutput = {
+	due?: null;
+	dueReminder?: null;
+	id?: string;
+	idChecklist?: string;
+	idMember?: null;
+	name?: string;
+	pos?: number;
+	state?: string;
+};
+
+export type TrelloV1ChecklistGetOutput = {
+	checkItems?: Array<{
+		id?: string;
+		idChecklist?: string;
+		name?: string;
+		state?: string;
+	}>;
+	id?: string;
+	idBoard?: string;
+	idCard?: string;
+	name?: string;
+	pos?: number;
+};
+
+export type TrelloV1ChecklistGetAllOutput = {
+	checkItems?: Array<{
+		id?: string;
+		idChecklist?: string;
+		name?: string;
+		pos?: number;
+		state?: string;
+	}>;
+	id?: string;
+	idBoard?: string;
+	idCard?: string;
+	name?: string;
+	pos?: number;
+};
+
+export type TrelloV1LabelGetAllOutput = {
+	id?: string;
+	idBoard?: string;
+	name?: string;
+	uses?: number;
+};
+
+export type TrelloV1ListCreateOutput = {
+	closed?: boolean;
+	color?: null;
+	datasource?: {
+		filter?: boolean;
+	};
+	id?: string;
+	idBoard?: string;
+	name?: string;
+	type?: null;
+};
+
+export type TrelloV1ListGetOutput = {
+	closed?: boolean;
+	datasource?: {
+		filter?: boolean;
+	};
+	id?: string;
+	idBoard?: string;
+	name?: string;
+	type?: null;
+};
+
+export type TrelloV1ListGetCardsOutput = {
+	badges?: {
+		attachments?: number;
+		attachmentsByType?: {
+			trello?: {
+				board?: number;
+				card?: number;
+			};
+		};
+		checkItems?: number;
+		checkItemsChecked?: number;
+		checkItemsEarliestDue?: null;
+		comments?: number;
+		description?: boolean;
+		dueComplete?: boolean;
+		fogbugz?: string;
+		lastUpdatedByAi?: boolean;
+		location?: boolean;
+		maliciousAttachments?: number;
+		subscribed?: boolean;
+		viewingMemberVoted?: boolean;
+		votes?: number;
+	};
+	cardRole?: null;
+	checkItemStates?: Array<{
+		idCheckItem?: string;
+		state?: string;
+	}>;
+	closed?: boolean;
+	cover?: {
+		brightness?: string;
+		idUploadedBackground?: null;
+		size?: string;
+	};
+	dateLastActivity?: string;
+	desc?: string;
+	dueComplete?: boolean;
+	email?: null;
+	id?: string;
+	idBoard?: string;
+	idChecklists?: Array<string>;
+	idLabels?: Array<string>;
+	idList?: string;
+	idMembers?: Array<string>;
+	idMembersVoted?: Array<string>;
+	idShort?: number;
+	isTemplate?: boolean;
+	labels?: Array<{
+		id?: string;
+		idBoard?: string;
+		idOrganization?: string;
+		name?: string;
+		nodeId?: string;
+		uses?: number;
+	}>;
+	manualCoverAttachment?: boolean;
+	mirrorSourceId?: null;
+	name?: string;
+	nodeId?: string;
+	pinned?: boolean;
+	shortLink?: string;
+	shortUrl?: string;
+	subscribed?: boolean;
+	url?: string;
+};
+
+export type TrelloV1ListGetAllOutput = {
+	closed?: boolean;
+	datasource?: {
+		filter?: boolean;
+	};
+	id?: string;
+	idBoard?: string;
+	name?: string;
+	subscribed?: boolean;
+	type?: null;
+};
 
 // ===========================================================================
 // Credentials
@@ -733,12 +1445,239 @@ export interface TrelloV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TrelloV1Node = {
+interface TrelloV1NodeBase {
 	type: 'n8n-nodes-base.trello';
 	version: 1;
-	config: NodeConfig<TrelloV1Params>;
 	credentials?: TrelloV1Credentials;
+}
+
+export type TrelloV1AttachmentCreateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1AttachmentCreateConfig>;
+	output?: TrelloV1AttachmentCreateOutput;
 };
+
+export type TrelloV1AttachmentDeleteNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1AttachmentDeleteConfig>;
+};
+
+export type TrelloV1AttachmentGetNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1AttachmentGetConfig>;
+	output?: TrelloV1AttachmentGetOutput;
+};
+
+export type TrelloV1AttachmentGetAllNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1AttachmentGetAllConfig>;
+	output?: TrelloV1AttachmentGetAllOutput;
+};
+
+export type TrelloV1BoardCreateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1BoardCreateConfig>;
+	output?: TrelloV1BoardCreateOutput;
+};
+
+export type TrelloV1BoardDeleteNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1BoardDeleteConfig>;
+};
+
+export type TrelloV1BoardGetNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1BoardGetConfig>;
+	output?: TrelloV1BoardGetOutput;
+};
+
+export type TrelloV1BoardUpdateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1BoardUpdateConfig>;
+	output?: TrelloV1BoardUpdateOutput;
+};
+
+export type TrelloV1BoardMemberAddNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1BoardMemberAddConfig>;
+};
+
+export type TrelloV1BoardMemberGetAllNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1BoardMemberGetAllConfig>;
+	output?: TrelloV1BoardMemberGetAllOutput;
+};
+
+export type TrelloV1BoardMemberInviteNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1BoardMemberInviteConfig>;
+};
+
+export type TrelloV1BoardMemberRemoveNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1BoardMemberRemoveConfig>;
+};
+
+export type TrelloV1CardCreateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1CardCreateConfig>;
+	output?: TrelloV1CardCreateOutput;
+};
+
+export type TrelloV1CardDeleteNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1CardDeleteConfig>;
+};
+
+export type TrelloV1CardGetNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1CardGetConfig>;
+	output?: TrelloV1CardGetOutput;
+};
+
+export type TrelloV1CardUpdateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1CardUpdateConfig>;
+	output?: TrelloV1CardUpdateOutput;
+};
+
+export type TrelloV1CardCommentCreateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1CardCommentCreateConfig>;
+	output?: TrelloV1CardCommentCreateOutput;
+};
+
+export type TrelloV1CardCommentDeleteNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1CardCommentDeleteConfig>;
+};
+
+export type TrelloV1CardCommentUpdateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1CardCommentUpdateConfig>;
+};
+
+export type TrelloV1ChecklistCreateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ChecklistCreateConfig>;
+	output?: TrelloV1ChecklistCreateOutput;
+};
+
+export type TrelloV1ChecklistCreateCheckItemNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ChecklistCreateCheckItemConfig>;
+	output?: TrelloV1ChecklistCreateCheckItemOutput;
+};
+
+export type TrelloV1ChecklistDeleteNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ChecklistDeleteConfig>;
+};
+
+export type TrelloV1ChecklistDeleteCheckItemNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ChecklistDeleteCheckItemConfig>;
+};
+
+export type TrelloV1ChecklistGetNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ChecklistGetConfig>;
+	output?: TrelloV1ChecklistGetOutput;
+};
+
+export type TrelloV1ChecklistGetCheckItemNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ChecklistGetCheckItemConfig>;
+};
+
+export type TrelloV1ChecklistCompletedCheckItemsNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ChecklistCompletedCheckItemsConfig>;
+};
+
+export type TrelloV1ChecklistGetAllNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ChecklistGetAllConfig>;
+	output?: TrelloV1ChecklistGetAllOutput;
+};
+
+export type TrelloV1ChecklistUpdateCheckItemNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ChecklistUpdateCheckItemConfig>;
+};
+
+export type TrelloV1LabelAddLabelNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1LabelAddLabelConfig>;
+};
+
+export type TrelloV1LabelCreateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1LabelCreateConfig>;
+};
+
+export type TrelloV1LabelDeleteNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1LabelDeleteConfig>;
+};
+
+export type TrelloV1LabelGetNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1LabelGetConfig>;
+};
+
+export type TrelloV1LabelGetAllNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1LabelGetAllConfig>;
+	output?: TrelloV1LabelGetAllOutput;
+};
+
+export type TrelloV1LabelRemoveLabelNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1LabelRemoveLabelConfig>;
+};
+
+export type TrelloV1LabelUpdateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1LabelUpdateConfig>;
+};
+
+export type TrelloV1ListArchiveNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ListArchiveConfig>;
+};
+
+export type TrelloV1ListCreateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ListCreateConfig>;
+	output?: TrelloV1ListCreateOutput;
+};
+
+export type TrelloV1ListGetNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ListGetConfig>;
+	output?: TrelloV1ListGetOutput;
+};
+
+export type TrelloV1ListGetCardsNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ListGetCardsConfig>;
+	output?: TrelloV1ListGetCardsOutput;
+};
+
+export type TrelloV1ListGetAllNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ListGetAllConfig>;
+	output?: TrelloV1ListGetAllOutput;
+};
+
+export type TrelloV1ListUpdateNode = TrelloV1NodeBase & {
+	config: NodeConfig<TrelloV1ListUpdateConfig>;
+};
+
+export type TrelloV1Node =
+	| TrelloV1AttachmentCreateNode
+	| TrelloV1AttachmentDeleteNode
+	| TrelloV1AttachmentGetNode
+	| TrelloV1AttachmentGetAllNode
+	| TrelloV1BoardCreateNode
+	| TrelloV1BoardDeleteNode
+	| TrelloV1BoardGetNode
+	| TrelloV1BoardUpdateNode
+	| TrelloV1BoardMemberAddNode
+	| TrelloV1BoardMemberGetAllNode
+	| TrelloV1BoardMemberInviteNode
+	| TrelloV1BoardMemberRemoveNode
+	| TrelloV1CardCreateNode
+	| TrelloV1CardDeleteNode
+	| TrelloV1CardGetNode
+	| TrelloV1CardUpdateNode
+	| TrelloV1CardCommentCreateNode
+	| TrelloV1CardCommentDeleteNode
+	| TrelloV1CardCommentUpdateNode
+	| TrelloV1ChecklistCreateNode
+	| TrelloV1ChecklistCreateCheckItemNode
+	| TrelloV1ChecklistDeleteNode
+	| TrelloV1ChecklistDeleteCheckItemNode
+	| TrelloV1ChecklistGetNode
+	| TrelloV1ChecklistGetCheckItemNode
+	| TrelloV1ChecklistCompletedCheckItemsNode
+	| TrelloV1ChecklistGetAllNode
+	| TrelloV1ChecklistUpdateCheckItemNode
+	| TrelloV1LabelAddLabelNode
+	| TrelloV1LabelCreateNode
+	| TrelloV1LabelDeleteNode
+	| TrelloV1LabelGetNode
+	| TrelloV1LabelGetAllNode
+	| TrelloV1LabelRemoveLabelNode
+	| TrelloV1LabelUpdateNode
+	| TrelloV1ListArchiveNode
+	| TrelloV1ListCreateNode
+	| TrelloV1ListGetNode
+	| TrelloV1ListGetCardsNode
+	| TrelloV1ListGetAllNode
+	| TrelloV1ListUpdateNode
+	;

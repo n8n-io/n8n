@@ -1,8 +1,6 @@
 /**
  * Wordpress Node - Version 1
  * Consume Wordpress API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -203,20 +201,807 @@ export type WordpressV1UserUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type WordpressV1Params =
-	| WordpressV1PostCreateConfig
-	| WordpressV1PostGetConfig
-	| WordpressV1PostGetAllConfig
-	| WordpressV1PostUpdateConfig
-	| WordpressV1PageCreateConfig
-	| WordpressV1PageGetConfig
-	| WordpressV1PageGetAllConfig
-	| WordpressV1PageUpdateConfig
-	| WordpressV1UserCreateConfig
-	| WordpressV1UserGetConfig
-	| WordpressV1UserGetAllConfig
-	| WordpressV1UserUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type WordpressV1PostCreateOutput = {
+	_links?: {
+		about?: Array<{
+			href?: string;
+		}>;
+		author?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		collection?: Array<{
+			href?: string;
+		}>;
+		curies?: Array<{
+			href?: string;
+			name?: string;
+			templated?: boolean;
+		}>;
+		replies?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		self?: Array<{
+			href?: string;
+			targetHints?: {
+				allow?: Array<string>;
+			};
+		}>;
+		'version-history'?: Array<{
+			count?: number;
+			href?: string;
+		}>;
+		'wp:action-assign-author'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-assign-categories'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-assign-tags'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-create-categories'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-create-tags'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-publish'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-sticky'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-unfiltered-html'?: Array<{
+			href?: string;
+		}>;
+		'wp:attachment'?: Array<{
+			href?: string;
+		}>;
+		'wp:term'?: Array<{
+			embeddable?: boolean;
+			href?: string;
+			taxonomy?: string;
+		}>;
+	};
+	author?: number;
+	categories?: Array<number>;
+	comment_status?: string;
+	content?: {
+		block_version?: number;
+		protected?: boolean;
+		raw?: string;
+		rendered?: string;
+	};
+	date?: string;
+	date_gmt?: string;
+	excerpt?: {
+		protected?: boolean;
+		raw?: string;
+		rendered?: string;
+	};
+	featured_media?: number;
+	format?: string;
+	generated_slug?: string;
+	guid?: {
+		raw?: string;
+		rendered?: string;
+	};
+	id?: number;
+	link?: string;
+	meta?: {
+		footnotes?: string;
+	};
+	modified?: string;
+	modified_gmt?: string;
+	password?: string;
+	permalink_template?: string;
+	ping_status?: string;
+	slug?: string;
+	status?: string;
+	sticky?: boolean;
+	tags?: Array<number>;
+	template?: string;
+	title?: {
+		raw?: string;
+		rendered?: string;
+	};
+	type?: string;
+};
+
+export type WordpressV1PostGetOutput = {
+	_links?: {
+		about?: Array<{
+			href?: string;
+		}>;
+		author?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		collection?: Array<{
+			href?: string;
+		}>;
+		curies?: Array<{
+			href?: string;
+			name?: string;
+			templated?: boolean;
+		}>;
+		'predecessor-version'?: Array<{
+			href?: string;
+			id?: number;
+		}>;
+		replies?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		self?: Array<{
+			href?: string;
+			targetHints?: {
+				allow?: Array<string>;
+			};
+		}>;
+		'version-history'?: Array<{
+			count?: number;
+			href?: string;
+		}>;
+		'wp:attachment'?: Array<{
+			href?: string;
+		}>;
+		'wp:featuredmedia'?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		'wp:term'?: Array<{
+			embeddable?: boolean;
+			href?: string;
+			taxonomy?: string;
+		}>;
+	};
+	author?: number;
+	categories?: Array<number>;
+	comment_status?: string;
+	content?: {
+		protected?: boolean;
+		rendered?: string;
+	};
+	date?: string;
+	date_gmt?: string;
+	excerpt?: {
+		protected?: boolean;
+		rendered?: string;
+	};
+	featured_media?: number;
+	format?: string;
+	guid?: {
+		rendered?: string;
+	};
+	id?: number;
+	link?: string;
+	meta?: {
+		footnotes?: string;
+	};
+	modified?: string;
+	modified_gmt?: string;
+	ping_status?: string;
+	slug?: string;
+	status?: string;
+	sticky?: boolean;
+	tags?: Array<number>;
+	template?: string;
+	title?: {
+		rendered?: string;
+	};
+	type?: string;
+};
+
+export type WordpressV1PostGetAllOutput = {
+	_links?: {
+		about?: Array<{
+			href?: string;
+		}>;
+		author?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		collection?: Array<{
+			href?: string;
+		}>;
+		curies?: Array<{
+			href?: string;
+			name?: string;
+			templated?: boolean;
+		}>;
+		'predecessor-version'?: Array<{
+			href?: string;
+			id?: number;
+		}>;
+		replies?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		self?: Array<{
+			href?: string;
+			targetHints?: {
+				allow?: Array<string>;
+			};
+		}>;
+		'version-history'?: Array<{
+			count?: number;
+			href?: string;
+		}>;
+		'wp:attachment'?: Array<{
+			href?: string;
+		}>;
+		'wp:featuredmedia'?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		'wp:term'?: Array<{
+			embeddable?: boolean;
+			href?: string;
+			taxonomy?: string;
+		}>;
+	};
+	author?: number;
+	categories?: Array<number>;
+	comment_status?: string;
+	content?: {
+		protected?: boolean;
+		rendered?: string;
+	};
+	date?: string;
+	date_gmt?: string;
+	excerpt?: {
+		protected?: boolean;
+		rendered?: string;
+	};
+	featured_media?: number;
+	format?: string;
+	guid?: {
+		rendered?: string;
+	};
+	id?: number;
+	link?: string;
+	meta?: {
+		footnotes?: string;
+	};
+	modified?: string;
+	modified_gmt?: string;
+	ping_status?: string;
+	slug?: string;
+	status?: string;
+	sticky?: boolean;
+	tags?: Array<number>;
+	template?: string;
+	title?: {
+		rendered?: string;
+	};
+	type?: string;
+};
+
+export type WordpressV1PostUpdateOutput = {
+	_links?: {
+		about?: Array<{
+			href?: string;
+		}>;
+		author?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		collection?: Array<{
+			href?: string;
+		}>;
+		curies?: Array<{
+			href?: string;
+			name?: string;
+			templated?: boolean;
+		}>;
+		'predecessor-version'?: Array<{
+			href?: string;
+			id?: number;
+		}>;
+		replies?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		self?: Array<{
+			href?: string;
+			targetHints?: {
+				allow?: Array<string>;
+			};
+		}>;
+		'version-history'?: Array<{
+			count?: number;
+			href?: string;
+		}>;
+		'wp:action-assign-author'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-assign-categories'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-assign-tags'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-create-categories'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-create-tags'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-publish'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-sticky'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-unfiltered-html'?: Array<{
+			href?: string;
+		}>;
+		'wp:attachment'?: Array<{
+			href?: string;
+		}>;
+		'wp:term'?: Array<{
+			embeddable?: boolean;
+			href?: string;
+			taxonomy?: string;
+		}>;
+	};
+	author?: number;
+	categories?: Array<number>;
+	comment_status?: string;
+	content?: {
+		block_version?: number;
+		protected?: boolean;
+		raw?: string;
+		rendered?: string;
+	};
+	date?: string;
+	date_gmt?: string;
+	excerpt?: {
+		protected?: boolean;
+		raw?: string;
+		rendered?: string;
+	};
+	featured_media?: number;
+	format?: string;
+	generated_slug?: string;
+	guid?: {
+		raw?: string;
+		rendered?: string;
+	};
+	id?: number;
+	link?: string;
+	meta?: {
+		footnotes?: string;
+	};
+	modified?: string;
+	modified_gmt?: string;
+	password?: string;
+	permalink_template?: string;
+	ping_status?: string;
+	slug?: string;
+	status?: string;
+	sticky?: boolean;
+	tags?: Array<number>;
+	template?: string;
+	title?: {
+		raw?: string;
+		rendered?: string;
+	};
+	type?: string;
+};
+
+export type WordpressV1PageCreateOutput = {
+	_links?: {
+		about?: Array<{
+			href?: string;
+		}>;
+		author?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		collection?: Array<{
+			href?: string;
+		}>;
+		curies?: Array<{
+			href?: string;
+			name?: string;
+			templated?: boolean;
+		}>;
+		replies?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		self?: Array<{
+			href?: string;
+			targetHints?: {
+				allow?: Array<string>;
+			};
+		}>;
+		'version-history'?: Array<{
+			count?: number;
+			href?: string;
+		}>;
+		'wp:action-assign-author'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-publish'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-unfiltered-html'?: Array<{
+			href?: string;
+		}>;
+		'wp:attachment'?: Array<{
+			href?: string;
+		}>;
+	};
+	author?: number;
+	comment_status?: string;
+	content?: {
+		block_version?: number;
+		protected?: boolean;
+		raw?: string;
+	};
+	date?: string;
+	date_gmt?: string;
+	excerpt?: {
+		protected?: boolean;
+		raw?: string;
+		rendered?: string;
+	};
+	featured_media?: number;
+	generated_slug?: string;
+	guid?: {
+		raw?: string;
+		rendered?: string;
+	};
+	id?: number;
+	link?: string;
+	menu_order?: number;
+	meta?: {
+		footnotes?: string;
+	};
+	modified?: string;
+	modified_gmt?: string;
+	parent?: number;
+	password?: string;
+	permalink_template?: string;
+	ping_status?: string;
+	slug?: string;
+	status?: string;
+	template?: string;
+	title?: {
+		raw?: string;
+		rendered?: string;
+	};
+	type?: string;
+};
+
+export type WordpressV1PageGetOutput = {
+	_links?: {
+		about?: Array<{
+			href?: string;
+		}>;
+		author?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		collection?: Array<{
+			href?: string;
+		}>;
+		curies?: Array<{
+			href?: string;
+			name?: string;
+			templated?: boolean;
+		}>;
+		'predecessor-version'?: Array<{
+			href?: string;
+			id?: number;
+		}>;
+		replies?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		self?: Array<{
+			href?: string;
+			targetHints?: {
+				allow?: Array<string>;
+			};
+		}>;
+		'version-history'?: Array<{
+			count?: number;
+			href?: string;
+		}>;
+		'wp:attachment'?: Array<{
+			href?: string;
+		}>;
+	};
+	author?: number;
+	class_list?: Array<string>;
+	comment_status?: string;
+	content?: {
+		protected?: boolean;
+		rendered?: string;
+	};
+	date?: string;
+	date_gmt?: string;
+	excerpt?: {
+		protected?: boolean;
+		rendered?: string;
+	};
+	featured_media?: number;
+	guid?: {
+		rendered?: string;
+	};
+	link?: string;
+	menu_order?: number;
+	meta?: {
+		footnotes?: string;
+	};
+	modified?: string;
+	modified_gmt?: string;
+	parent?: number;
+	ping_status?: string;
+	slug?: string;
+	status?: string;
+	template?: string;
+	title?: {
+		rendered?: string;
+	};
+	type?: string;
+};
+
+export type WordpressV1PageGetAllOutput = {
+	_links?: {
+		about?: Array<{
+			href?: string;
+		}>;
+		author?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		collection?: Array<{
+			href?: string;
+		}>;
+		curies?: Array<{
+			href?: string;
+			name?: string;
+			templated?: boolean;
+		}>;
+		'predecessor-version'?: Array<{
+			href?: string;
+			id?: number;
+		}>;
+		replies?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		self?: Array<{
+			href?: string;
+			targetHints?: {
+				allow?: Array<string>;
+			};
+		}>;
+		'version-history'?: Array<{
+			count?: number;
+			href?: string;
+		}>;
+		'wp:attachment'?: Array<{
+			href?: string;
+		}>;
+	};
+	author?: number;
+	comment_status?: string;
+	content?: {
+		protected?: boolean;
+		rendered?: string;
+	};
+	date?: string;
+	date_gmt?: string;
+	excerpt?: {
+		protected?: boolean;
+		rendered?: string;
+	};
+	featured_media?: number;
+	guid?: {
+		rendered?: string;
+	};
+	id?: number;
+	link?: string;
+	menu_order?: number;
+	meta?: {
+		footnotes?: string;
+	};
+	modified?: string;
+	modified_gmt?: string;
+	parent?: number;
+	ping_status?: string;
+	slug?: string;
+	status?: string;
+	template?: string;
+	title?: {
+		rendered?: string;
+	};
+	type?: string;
+};
+
+export type WordpressV1PageUpdateOutput = {
+	_links?: {
+		about?: Array<{
+			href?: string;
+		}>;
+		author?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		collection?: Array<{
+			href?: string;
+		}>;
+		curies?: Array<{
+			href?: string;
+			name?: string;
+			templated?: boolean;
+		}>;
+		'predecessor-version'?: Array<{
+			href?: string;
+			id?: number;
+		}>;
+		replies?: Array<{
+			embeddable?: boolean;
+			href?: string;
+		}>;
+		self?: Array<{
+			href?: string;
+			targetHints?: {
+				allow?: Array<string>;
+			};
+		}>;
+		'version-history'?: Array<{
+			count?: number;
+			href?: string;
+		}>;
+		'wp:action-assign-author'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-publish'?: Array<{
+			href?: string;
+		}>;
+		'wp:action-unfiltered-html'?: Array<{
+			href?: string;
+		}>;
+		'wp:attachment'?: Array<{
+			href?: string;
+		}>;
+	};
+	author?: number;
+	comment_status?: string;
+	content?: {
+		block_version?: number;
+		protected?: boolean;
+		raw?: string;
+		rendered?: string;
+	};
+	date?: string;
+	date_gmt?: string;
+	excerpt?: {
+		protected?: boolean;
+		raw?: string;
+		rendered?: string;
+	};
+	featured_media?: number;
+	generated_slug?: string;
+	guid?: {
+		raw?: string;
+		rendered?: string;
+	};
+	id?: number;
+	link?: string;
+	menu_order?: number;
+	meta?: {
+		footnotes?: string;
+	};
+	modified?: string;
+	modified_gmt?: string;
+	parent?: number;
+	password?: string;
+	permalink_template?: string;
+	ping_status?: string;
+	slug?: string;
+	status?: string;
+	template?: string;
+	title?: {
+		raw?: string;
+		rendered?: string;
+	};
+	type?: string;
+};
+
+export type WordpressV1UserCreateOutput = {
+	_links?: {
+		collection?: Array<{
+			href?: string;
+		}>;
+		self?: Array<{
+			href?: string;
+			targetHints?: {
+				allow?: Array<string>;
+			};
+		}>;
+	};
+	avatar_urls?: {
+		'24'?: string;
+		'48'?: string;
+		'96'?: string;
+	};
+	capabilities?: {
+		level_0?: boolean;
+		read?: boolean;
+		subscriber?: boolean;
+	};
+	description?: string;
+	email?: string;
+	extra_capabilities?: {
+		subscriber?: boolean;
+	};
+	first_name?: string;
+	id?: number;
+	last_name?: string;
+	link?: string;
+	locale?: string;
+	name?: string;
+	nickname?: string;
+	registered_date?: string;
+	roles?: Array<string>;
+	slug?: string;
+	url?: string;
+	username?: string;
+};
+
+export type WordpressV1UserGetOutput = {
+	_links?: {
+		collection?: Array<{
+			href?: string;
+		}>;
+		self?: Array<{
+			href?: string;
+		}>;
+	};
+	description?: string;
+	id?: number;
+	link?: string;
+	name?: string;
+	slug?: string;
+	url?: string;
+};
+
+export type WordpressV1UserGetAllOutput = {
+	id: number;
+	name: string;
+	url: string;
+	description: string;
+	link: string;
+	slug: string;
+	avatar_urls?: {
+		'24': string;
+		'48': string;
+		'96': string;
+	};
+	_links: {
+		self: Array<{
+			href: string;
+		}>;
+		collection: Array<{
+			href: string;
+		}>;
+	};
+};
 
 // ===========================================================================
 // Credentials
@@ -227,12 +1012,85 @@ export interface WordpressV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WordpressV1Node = {
+interface WordpressV1NodeBase {
 	type: 'n8n-nodes-base.wordpress';
 	version: 1;
-	config: NodeConfig<WordpressV1Params>;
 	credentials?: WordpressV1Credentials;
+}
+
+export type WordpressV1PostCreateNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1PostCreateConfig>;
+	output?: WordpressV1PostCreateOutput;
 };
+
+export type WordpressV1PostGetNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1PostGetConfig>;
+	output?: WordpressV1PostGetOutput;
+};
+
+export type WordpressV1PostGetAllNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1PostGetAllConfig>;
+	output?: WordpressV1PostGetAllOutput;
+};
+
+export type WordpressV1PostUpdateNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1PostUpdateConfig>;
+	output?: WordpressV1PostUpdateOutput;
+};
+
+export type WordpressV1PageCreateNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1PageCreateConfig>;
+	output?: WordpressV1PageCreateOutput;
+};
+
+export type WordpressV1PageGetNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1PageGetConfig>;
+	output?: WordpressV1PageGetOutput;
+};
+
+export type WordpressV1PageGetAllNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1PageGetAllConfig>;
+	output?: WordpressV1PageGetAllOutput;
+};
+
+export type WordpressV1PageUpdateNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1PageUpdateConfig>;
+	output?: WordpressV1PageUpdateOutput;
+};
+
+export type WordpressV1UserCreateNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1UserCreateConfig>;
+	output?: WordpressV1UserCreateOutput;
+};
+
+export type WordpressV1UserGetNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1UserGetConfig>;
+	output?: WordpressV1UserGetOutput;
+};
+
+export type WordpressV1UserGetAllNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1UserGetAllConfig>;
+	output?: WordpressV1UserGetAllOutput;
+};
+
+export type WordpressV1UserUpdateNode = WordpressV1NodeBase & {
+	config: NodeConfig<WordpressV1UserUpdateConfig>;
+};
+
+export type WordpressV1Node =
+	| WordpressV1PostCreateNode
+	| WordpressV1PostGetNode
+	| WordpressV1PostGetAllNode
+	| WordpressV1PostUpdateNode
+	| WordpressV1PageCreateNode
+	| WordpressV1PageGetNode
+	| WordpressV1PageGetAllNode
+	| WordpressV1PageUpdateNode
+	| WordpressV1UserCreateNode
+	| WordpressV1UserGetNode
+	| WordpressV1UserGetAllNode
+	| WordpressV1UserUpdateNode
+	;

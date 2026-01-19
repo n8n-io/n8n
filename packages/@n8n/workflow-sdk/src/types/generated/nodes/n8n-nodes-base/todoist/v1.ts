@@ -1,8 +1,6 @@
 /**
  * Todoist Node - Version 1
  * Consume Todoist API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -113,16 +111,6 @@ export type TodoistV1TaskUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type TodoistV1Params =
-	| TodoistV1TaskCloseConfig
-	| TodoistV1TaskCreateConfig
-	| TodoistV1TaskDeleteConfig
-	| TodoistV1TaskGetConfig
-	| TodoistV1TaskGetAllConfig
-	| TodoistV1TaskMoveConfig
-	| TodoistV1TaskReopenConfig
-	| TodoistV1TaskUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -134,12 +122,54 @@ export interface TodoistV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TodoistV1Node = {
+interface TodoistV1NodeBase {
 	type: 'n8n-nodes-base.todoist';
 	version: 1;
-	config: NodeConfig<TodoistV1Params>;
 	credentials?: TodoistV1Credentials;
+}
+
+export type TodoistV1TaskCloseNode = TodoistV1NodeBase & {
+	config: NodeConfig<TodoistV1TaskCloseConfig>;
 };
+
+export type TodoistV1TaskCreateNode = TodoistV1NodeBase & {
+	config: NodeConfig<TodoistV1TaskCreateConfig>;
+};
+
+export type TodoistV1TaskDeleteNode = TodoistV1NodeBase & {
+	config: NodeConfig<TodoistV1TaskDeleteConfig>;
+};
+
+export type TodoistV1TaskGetNode = TodoistV1NodeBase & {
+	config: NodeConfig<TodoistV1TaskGetConfig>;
+};
+
+export type TodoistV1TaskGetAllNode = TodoistV1NodeBase & {
+	config: NodeConfig<TodoistV1TaskGetAllConfig>;
+};
+
+export type TodoistV1TaskMoveNode = TodoistV1NodeBase & {
+	config: NodeConfig<TodoistV1TaskMoveConfig>;
+};
+
+export type TodoistV1TaskReopenNode = TodoistV1NodeBase & {
+	config: NodeConfig<TodoistV1TaskReopenConfig>;
+};
+
+export type TodoistV1TaskUpdateNode = TodoistV1NodeBase & {
+	config: NodeConfig<TodoistV1TaskUpdateConfig>;
+};
+
+export type TodoistV1Node =
+	| TodoistV1TaskCloseNode
+	| TodoistV1TaskCreateNode
+	| TodoistV1TaskDeleteNode
+	| TodoistV1TaskGetNode
+	| TodoistV1TaskGetAllNode
+	| TodoistV1TaskMoveNode
+	| TodoistV1TaskReopenNode
+	| TodoistV1TaskUpdateNode
+	;

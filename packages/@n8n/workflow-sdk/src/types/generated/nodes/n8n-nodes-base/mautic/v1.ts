@@ -1,8 +1,6 @@
 /**
  * Mautic Node - Version 1
  * Consume Mautic API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -307,28 +305,6 @@ export type MauticV1SegmentEmailSendConfig = {
 		segmentEmailId: string | Expression<string>;
 };
 
-export type MauticV1Params =
-	| MauticV1CampaignContactAddConfig
-	| MauticV1CampaignContactRemoveConfig
-	| MauticV1CompanyCreateConfig
-	| MauticV1CompanyDeleteConfig
-	| MauticV1CompanyGetConfig
-	| MauticV1CompanyGetAllConfig
-	| MauticV1CompanyUpdateConfig
-	| MauticV1CompanyContactAddConfig
-	| MauticV1CompanyContactRemoveConfig
-	| MauticV1ContactCreateConfig
-	| MauticV1ContactDeleteConfig
-	| MauticV1ContactEditContactPointConfig
-	| MauticV1ContactEditDoNotContactListConfig
-	| MauticV1ContactGetConfig
-	| MauticV1ContactGetAllConfig
-	| MauticV1ContactSendEmailConfig
-	| MauticV1ContactUpdateConfig
-	| MauticV1ContactSegmentAddConfig
-	| MauticV1ContactSegmentRemoveConfig
-	| MauticV1SegmentEmailSendConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -340,12 +316,114 @@ export interface MauticV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MauticV1Node = {
+interface MauticV1NodeBase {
 	type: 'n8n-nodes-base.mautic';
 	version: 1;
-	config: NodeConfig<MauticV1Params>;
 	credentials?: MauticV1Credentials;
+}
+
+export type MauticV1CampaignContactAddNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1CampaignContactAddConfig>;
 };
+
+export type MauticV1CampaignContactRemoveNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1CampaignContactRemoveConfig>;
+};
+
+export type MauticV1CompanyCreateNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1CompanyCreateConfig>;
+};
+
+export type MauticV1CompanyDeleteNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1CompanyDeleteConfig>;
+};
+
+export type MauticV1CompanyGetNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1CompanyGetConfig>;
+};
+
+export type MauticV1CompanyGetAllNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1CompanyGetAllConfig>;
+};
+
+export type MauticV1CompanyUpdateNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1CompanyUpdateConfig>;
+};
+
+export type MauticV1CompanyContactAddNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1CompanyContactAddConfig>;
+};
+
+export type MauticV1CompanyContactRemoveNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1CompanyContactRemoveConfig>;
+};
+
+export type MauticV1ContactCreateNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1ContactCreateConfig>;
+};
+
+export type MauticV1ContactDeleteNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1ContactDeleteConfig>;
+};
+
+export type MauticV1ContactEditContactPointNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1ContactEditContactPointConfig>;
+};
+
+export type MauticV1ContactEditDoNotContactListNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1ContactEditDoNotContactListConfig>;
+};
+
+export type MauticV1ContactGetNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1ContactGetConfig>;
+};
+
+export type MauticV1ContactGetAllNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1ContactGetAllConfig>;
+};
+
+export type MauticV1ContactSendEmailNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1ContactSendEmailConfig>;
+};
+
+export type MauticV1ContactUpdateNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1ContactUpdateConfig>;
+};
+
+export type MauticV1ContactSegmentAddNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1ContactSegmentAddConfig>;
+};
+
+export type MauticV1ContactSegmentRemoveNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1ContactSegmentRemoveConfig>;
+};
+
+export type MauticV1SegmentEmailSendNode = MauticV1NodeBase & {
+	config: NodeConfig<MauticV1SegmentEmailSendConfig>;
+};
+
+export type MauticV1Node =
+	| MauticV1CampaignContactAddNode
+	| MauticV1CampaignContactRemoveNode
+	| MauticV1CompanyCreateNode
+	| MauticV1CompanyDeleteNode
+	| MauticV1CompanyGetNode
+	| MauticV1CompanyGetAllNode
+	| MauticV1CompanyUpdateNode
+	| MauticV1CompanyContactAddNode
+	| MauticV1CompanyContactRemoveNode
+	| MauticV1ContactCreateNode
+	| MauticV1ContactDeleteNode
+	| MauticV1ContactEditContactPointNode
+	| MauticV1ContactEditDoNotContactListNode
+	| MauticV1ContactGetNode
+	| MauticV1ContactGetAllNode
+	| MauticV1ContactSendEmailNode
+	| MauticV1ContactUpdateNode
+	| MauticV1ContactSegmentAddNode
+	| MauticV1ContactSegmentRemoveNode
+	| MauticV1SegmentEmailSendNode
+	;

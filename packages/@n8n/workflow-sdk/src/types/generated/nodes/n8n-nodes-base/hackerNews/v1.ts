@@ -1,8 +1,6 @@
 /**
  * Hacker News Node - Version 1
  * Consume Hacker News API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -55,23 +53,81 @@ export type HackerNewsV1UserGetConfig = {
 		username: string | Expression<string>;
 };
 
-export type HackerNewsV1Params =
-	| HackerNewsV1AllGetAllConfig
-	| HackerNewsV1ArticleGetConfig
-	| HackerNewsV1UserGetConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type HackerNewsV1AllGetAllOutput = {
+	_highlightResult?: {
+		author?: {
+			matchLevel?: string;
+			value?: string;
+		};
+		title?: {
+			fullyHighlighted?: boolean;
+			matchedWords?: Array<string>;
+			matchLevel?: string;
+			value?: string;
+		};
+		url?: {
+			fullyHighlighted?: boolean;
+			matchedWords?: Array<string>;
+			matchLevel?: string;
+			value?: string;
+		};
+	};
+	_tags?: Array<string>;
+	author?: string;
+	children?: Array<number>;
+	created_at?: string;
+	created_at_i?: number;
+	num_comments?: number;
+	objectID?: string;
+	story_id?: number;
+	title?: string;
+	updated_at?: string;
+	url?: string;
+};
+
+export type HackerNewsV1ArticleGetOutput = {
+	author?: string;
+	created_at?: string;
+	created_at_i?: number;
+	id?: number;
+	story_id?: number;
+	type?: string;
+};
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HackerNewsV1Node = {
+interface HackerNewsV1NodeBase {
 	type: 'n8n-nodes-base.hackerNews';
 	version: 1;
-	config: NodeConfig<HackerNewsV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type HackerNewsV1AllGetAllNode = HackerNewsV1NodeBase & {
+	config: NodeConfig<HackerNewsV1AllGetAllConfig>;
+	output?: HackerNewsV1AllGetAllOutput;
 };
+
+export type HackerNewsV1ArticleGetNode = HackerNewsV1NodeBase & {
+	config: NodeConfig<HackerNewsV1ArticleGetConfig>;
+	output?: HackerNewsV1ArticleGetOutput;
+};
+
+export type HackerNewsV1UserGetNode = HackerNewsV1NodeBase & {
+	config: NodeConfig<HackerNewsV1UserGetConfig>;
+};
+
+export type HackerNewsV1Node =
+	| HackerNewsV1AllGetAllNode
+	| HackerNewsV1ArticleGetNode
+	| HackerNewsV1UserGetNode
+	;

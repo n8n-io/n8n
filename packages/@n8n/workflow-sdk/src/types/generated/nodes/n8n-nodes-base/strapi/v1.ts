@@ -1,8 +1,6 @@
 /**
  * Strapi Node - Version 1
  * Consume Strapi API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -107,13 +105,30 @@ export type StrapiV1EntryUpdateConfig = {
 		columns?: string | Expression<string>;
 };
 
-export type StrapiV1Params =
-	| StrapiV1EntryCreateConfig
-	| StrapiV1EntryDeleteConfig
-	| StrapiV1EntryGetConfig
-	| StrapiV1EntryGetAllConfig
-	| StrapiV1EntryUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type StrapiV1EntryGetOutput = {
+	attributes?: {
+		content?: string;
+		createdAt?: string;
+		heading?: string;
+		primaryText?: string;
+		slug?: string;
+		updatedAt?: string;
+	};
+	id?: number;
+};
+
+export type StrapiV1EntryGetAllOutput = {
+	createdAt?: string;
+	documentId?: string;
+	id?: number;
+	publishedAt?: string;
+	updatedAt?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -125,12 +140,41 @@ export interface StrapiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StrapiV1Node = {
+interface StrapiV1NodeBase {
 	type: 'n8n-nodes-base.strapi';
 	version: 1;
-	config: NodeConfig<StrapiV1Params>;
 	credentials?: StrapiV1Credentials;
+}
+
+export type StrapiV1EntryCreateNode = StrapiV1NodeBase & {
+	config: NodeConfig<StrapiV1EntryCreateConfig>;
 };
+
+export type StrapiV1EntryDeleteNode = StrapiV1NodeBase & {
+	config: NodeConfig<StrapiV1EntryDeleteConfig>;
+};
+
+export type StrapiV1EntryGetNode = StrapiV1NodeBase & {
+	config: NodeConfig<StrapiV1EntryGetConfig>;
+	output?: StrapiV1EntryGetOutput;
+};
+
+export type StrapiV1EntryGetAllNode = StrapiV1NodeBase & {
+	config: NodeConfig<StrapiV1EntryGetAllConfig>;
+	output?: StrapiV1EntryGetAllOutput;
+};
+
+export type StrapiV1EntryUpdateNode = StrapiV1NodeBase & {
+	config: NodeConfig<StrapiV1EntryUpdateConfig>;
+};
+
+export type StrapiV1Node =
+	| StrapiV1EntryCreateNode
+	| StrapiV1EntryDeleteNode
+	| StrapiV1EntryGetNode
+	| StrapiV1EntryGetAllNode
+	| StrapiV1EntryUpdateNode
+	;

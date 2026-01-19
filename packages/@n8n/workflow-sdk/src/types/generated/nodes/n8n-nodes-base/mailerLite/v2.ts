@@ -1,8 +1,6 @@
 /**
  * MailerLite Node - Version 2
  * Consume Mailer Lite API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -67,12 +65,51 @@ export type MailerLiteV2SubscriberUpdateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type MailerLiteV2Params =
-	| MailerLiteV2SubscriberCreateConfig
-	| MailerLiteV2SubscriberGetConfig
-	| MailerLiteV2SubscriberGetAllConfig
-	| MailerLiteV2SubscriberUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type MailerLiteV2SubscriberCreateOutput = {
+	clicks_count?: number;
+	created_at?: string;
+	email?: string;
+	fields?: {
+		city?: null;
+		country?: null;
+		state?: null;
+		z_i_p?: null;
+	};
+	groups?: Array<{
+		active_count?: number;
+		bounced_count?: number;
+		click_rate?: {
+			string?: string;
+		};
+		clicks_count?: number;
+		created_at?: string;
+		id?: string;
+		junk_count?: number;
+		name?: string;
+		open_rate?: {
+			string?: string;
+		};
+		opens_count?: number;
+		sent_count?: number;
+		unconfirmed_count?: number;
+		unsubscribed_count?: number;
+	}>;
+	id?: string;
+	opens_count?: number;
+	opted_in_at?: null;
+	optin_ip?: null;
+	sent?: number;
+	source?: string;
+	status?: string;
+	subscribed_at?: string;
+	unsubscribed_at?: null;
+	updated_at?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -83,12 +120,35 @@ export interface MailerLiteV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailerLiteV2Node = {
+interface MailerLiteV2NodeBase {
 	type: 'n8n-nodes-base.mailerLite';
 	version: 2;
-	config: NodeConfig<MailerLiteV2Params>;
 	credentials?: MailerLiteV2Credentials;
+}
+
+export type MailerLiteV2SubscriberCreateNode = MailerLiteV2NodeBase & {
+	config: NodeConfig<MailerLiteV2SubscriberCreateConfig>;
+	output?: MailerLiteV2SubscriberCreateOutput;
 };
+
+export type MailerLiteV2SubscriberGetNode = MailerLiteV2NodeBase & {
+	config: NodeConfig<MailerLiteV2SubscriberGetConfig>;
+};
+
+export type MailerLiteV2SubscriberGetAllNode = MailerLiteV2NodeBase & {
+	config: NodeConfig<MailerLiteV2SubscriberGetAllConfig>;
+};
+
+export type MailerLiteV2SubscriberUpdateNode = MailerLiteV2NodeBase & {
+	config: NodeConfig<MailerLiteV2SubscriberUpdateConfig>;
+};
+
+export type MailerLiteV2Node =
+	| MailerLiteV2SubscriberCreateNode
+	| MailerLiteV2SubscriberGetNode
+	| MailerLiteV2SubscriberGetAllNode
+	| MailerLiteV2SubscriberUpdateNode
+	;

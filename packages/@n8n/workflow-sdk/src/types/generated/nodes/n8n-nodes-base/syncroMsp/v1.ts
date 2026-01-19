@@ -1,8 +1,6 @@
 /**
  * SyncroMSP Node - Version 1
  * Gets data from SyncroMSP
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -252,28 +250,6 @@ export type SyncroMspV1TicketUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type SyncroMspV1Params =
-	| SyncroMspV1ContactCreateConfig
-	| SyncroMspV1ContactDeleteConfig
-	| SyncroMspV1ContactGetConfig
-	| SyncroMspV1ContactGetAllConfig
-	| SyncroMspV1ContactUpdateConfig
-	| SyncroMspV1CustomerCreateConfig
-	| SyncroMspV1CustomerDeleteConfig
-	| SyncroMspV1CustomerGetConfig
-	| SyncroMspV1CustomerGetAllConfig
-	| SyncroMspV1CustomerUpdateConfig
-	| SyncroMspV1RmmCreateConfig
-	| SyncroMspV1RmmDeleteConfig
-	| SyncroMspV1RmmGetConfig
-	| SyncroMspV1RmmGetAllConfig
-	| SyncroMspV1RmmMuteConfig
-	| SyncroMspV1TicketCreateConfig
-	| SyncroMspV1TicketDeleteConfig
-	| SyncroMspV1TicketGetConfig
-	| SyncroMspV1TicketGetAllConfig
-	| SyncroMspV1TicketUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -284,12 +260,114 @@ export interface SyncroMspV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SyncroMspV1Node = {
+interface SyncroMspV1NodeBase {
 	type: 'n8n-nodes-base.syncroMsp';
 	version: 1;
-	config: NodeConfig<SyncroMspV1Params>;
 	credentials?: SyncroMspV1Credentials;
+}
+
+export type SyncroMspV1ContactCreateNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1ContactCreateConfig>;
 };
+
+export type SyncroMspV1ContactDeleteNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1ContactDeleteConfig>;
+};
+
+export type SyncroMspV1ContactGetNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1ContactGetConfig>;
+};
+
+export type SyncroMspV1ContactGetAllNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1ContactGetAllConfig>;
+};
+
+export type SyncroMspV1ContactUpdateNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1ContactUpdateConfig>;
+};
+
+export type SyncroMspV1CustomerCreateNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1CustomerCreateConfig>;
+};
+
+export type SyncroMspV1CustomerDeleteNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1CustomerDeleteConfig>;
+};
+
+export type SyncroMspV1CustomerGetNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1CustomerGetConfig>;
+};
+
+export type SyncroMspV1CustomerGetAllNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1CustomerGetAllConfig>;
+};
+
+export type SyncroMspV1CustomerUpdateNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1CustomerUpdateConfig>;
+};
+
+export type SyncroMspV1RmmCreateNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1RmmCreateConfig>;
+};
+
+export type SyncroMspV1RmmDeleteNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1RmmDeleteConfig>;
+};
+
+export type SyncroMspV1RmmGetNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1RmmGetConfig>;
+};
+
+export type SyncroMspV1RmmGetAllNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1RmmGetAllConfig>;
+};
+
+export type SyncroMspV1RmmMuteNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1RmmMuteConfig>;
+};
+
+export type SyncroMspV1TicketCreateNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1TicketCreateConfig>;
+};
+
+export type SyncroMspV1TicketDeleteNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1TicketDeleteConfig>;
+};
+
+export type SyncroMspV1TicketGetNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1TicketGetConfig>;
+};
+
+export type SyncroMspV1TicketGetAllNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1TicketGetAllConfig>;
+};
+
+export type SyncroMspV1TicketUpdateNode = SyncroMspV1NodeBase & {
+	config: NodeConfig<SyncroMspV1TicketUpdateConfig>;
+};
+
+export type SyncroMspV1Node =
+	| SyncroMspV1ContactCreateNode
+	| SyncroMspV1ContactDeleteNode
+	| SyncroMspV1ContactGetNode
+	| SyncroMspV1ContactGetAllNode
+	| SyncroMspV1ContactUpdateNode
+	| SyncroMspV1CustomerCreateNode
+	| SyncroMspV1CustomerDeleteNode
+	| SyncroMspV1CustomerGetNode
+	| SyncroMspV1CustomerGetAllNode
+	| SyncroMspV1CustomerUpdateNode
+	| SyncroMspV1RmmCreateNode
+	| SyncroMspV1RmmDeleteNode
+	| SyncroMspV1RmmGetNode
+	| SyncroMspV1RmmGetAllNode
+	| SyncroMspV1RmmMuteNode
+	| SyncroMspV1TicketCreateNode
+	| SyncroMspV1TicketDeleteNode
+	| SyncroMspV1TicketGetNode
+	| SyncroMspV1TicketGetAllNode
+	| SyncroMspV1TicketUpdateNode
+	;

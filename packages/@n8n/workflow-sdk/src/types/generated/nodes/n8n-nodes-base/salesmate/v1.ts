@@ -1,8 +1,6 @@
 /**
  * Salesmate Node - Version 1
  * Consume Salesmate API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -340,23 +338,6 @@ export type SalesmateV1DealUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type SalesmateV1Params =
-	| SalesmateV1ActivityCreateConfig
-	| SalesmateV1ActivityDeleteConfig
-	| SalesmateV1ActivityGetConfig
-	| SalesmateV1ActivityGetAllConfig
-	| SalesmateV1ActivityUpdateConfig
-	| SalesmateV1CompanyCreateConfig
-	| SalesmateV1CompanyDeleteConfig
-	| SalesmateV1CompanyGetConfig
-	| SalesmateV1CompanyGetAllConfig
-	| SalesmateV1CompanyUpdateConfig
-	| SalesmateV1DealCreateConfig
-	| SalesmateV1DealDeleteConfig
-	| SalesmateV1DealGetConfig
-	| SalesmateV1DealGetAllConfig
-	| SalesmateV1DealUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -367,12 +348,89 @@ export interface SalesmateV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SalesmateV1Node = {
+interface SalesmateV1NodeBase {
 	type: 'n8n-nodes-base.salesmate';
 	version: 1;
-	config: NodeConfig<SalesmateV1Params>;
 	credentials?: SalesmateV1Credentials;
+}
+
+export type SalesmateV1ActivityCreateNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1ActivityCreateConfig>;
 };
+
+export type SalesmateV1ActivityDeleteNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1ActivityDeleteConfig>;
+};
+
+export type SalesmateV1ActivityGetNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1ActivityGetConfig>;
+};
+
+export type SalesmateV1ActivityGetAllNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1ActivityGetAllConfig>;
+};
+
+export type SalesmateV1ActivityUpdateNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1ActivityUpdateConfig>;
+};
+
+export type SalesmateV1CompanyCreateNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1CompanyCreateConfig>;
+};
+
+export type SalesmateV1CompanyDeleteNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1CompanyDeleteConfig>;
+};
+
+export type SalesmateV1CompanyGetNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1CompanyGetConfig>;
+};
+
+export type SalesmateV1CompanyGetAllNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1CompanyGetAllConfig>;
+};
+
+export type SalesmateV1CompanyUpdateNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1CompanyUpdateConfig>;
+};
+
+export type SalesmateV1DealCreateNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1DealCreateConfig>;
+};
+
+export type SalesmateV1DealDeleteNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1DealDeleteConfig>;
+};
+
+export type SalesmateV1DealGetNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1DealGetConfig>;
+};
+
+export type SalesmateV1DealGetAllNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1DealGetAllConfig>;
+};
+
+export type SalesmateV1DealUpdateNode = SalesmateV1NodeBase & {
+	config: NodeConfig<SalesmateV1DealUpdateConfig>;
+};
+
+export type SalesmateV1Node =
+	| SalesmateV1ActivityCreateNode
+	| SalesmateV1ActivityDeleteNode
+	| SalesmateV1ActivityGetNode
+	| SalesmateV1ActivityGetAllNode
+	| SalesmateV1ActivityUpdateNode
+	| SalesmateV1CompanyCreateNode
+	| SalesmateV1CompanyDeleteNode
+	| SalesmateV1CompanyGetNode
+	| SalesmateV1CompanyGetAllNode
+	| SalesmateV1CompanyUpdateNode
+	| SalesmateV1DealCreateNode
+	| SalesmateV1DealDeleteNode
+	| SalesmateV1DealGetNode
+	| SalesmateV1DealGetAllNode
+	| SalesmateV1DealUpdateNode
+	;

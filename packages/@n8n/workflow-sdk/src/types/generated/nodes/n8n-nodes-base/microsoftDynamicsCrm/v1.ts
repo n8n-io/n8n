@@ -1,8 +1,6 @@
 /**
  * Microsoft Dynamics CRM Node - Version 1
  * Consume Microsoft Dynamics CRM API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -65,13 +63,6 @@ export type MicrosoftDynamicsCrmV1AccountUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MicrosoftDynamicsCrmV1Params =
-	| MicrosoftDynamicsCrmV1AccountCreateConfig
-	| MicrosoftDynamicsCrmV1AccountDeleteConfig
-	| MicrosoftDynamicsCrmV1AccountGetConfig
-	| MicrosoftDynamicsCrmV1AccountGetAllConfig
-	| MicrosoftDynamicsCrmV1AccountUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -82,12 +73,39 @@ export interface MicrosoftDynamicsCrmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftDynamicsCrmV1Node = {
+interface MicrosoftDynamicsCrmV1NodeBase {
 	type: 'n8n-nodes-base.microsoftDynamicsCrm';
 	version: 1;
-	config: NodeConfig<MicrosoftDynamicsCrmV1Params>;
 	credentials?: MicrosoftDynamicsCrmV1Credentials;
+}
+
+export type MicrosoftDynamicsCrmV1AccountCreateNode = MicrosoftDynamicsCrmV1NodeBase & {
+	config: NodeConfig<MicrosoftDynamicsCrmV1AccountCreateConfig>;
 };
+
+export type MicrosoftDynamicsCrmV1AccountDeleteNode = MicrosoftDynamicsCrmV1NodeBase & {
+	config: NodeConfig<MicrosoftDynamicsCrmV1AccountDeleteConfig>;
+};
+
+export type MicrosoftDynamicsCrmV1AccountGetNode = MicrosoftDynamicsCrmV1NodeBase & {
+	config: NodeConfig<MicrosoftDynamicsCrmV1AccountGetConfig>;
+};
+
+export type MicrosoftDynamicsCrmV1AccountGetAllNode = MicrosoftDynamicsCrmV1NodeBase & {
+	config: NodeConfig<MicrosoftDynamicsCrmV1AccountGetAllConfig>;
+};
+
+export type MicrosoftDynamicsCrmV1AccountUpdateNode = MicrosoftDynamicsCrmV1NodeBase & {
+	config: NodeConfig<MicrosoftDynamicsCrmV1AccountUpdateConfig>;
+};
+
+export type MicrosoftDynamicsCrmV1Node =
+	| MicrosoftDynamicsCrmV1AccountCreateNode
+	| MicrosoftDynamicsCrmV1AccountDeleteNode
+	| MicrosoftDynamicsCrmV1AccountGetNode
+	| MicrosoftDynamicsCrmV1AccountGetAllNode
+	| MicrosoftDynamicsCrmV1AccountUpdateNode
+	;

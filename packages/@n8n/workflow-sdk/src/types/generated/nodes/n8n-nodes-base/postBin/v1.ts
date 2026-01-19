@@ -1,8 +1,6 @@
 /**
  * PostBin Node - Version 1
  * Consume PostBin API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -86,26 +84,80 @@ export type PostBinV1RequestSendConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type PostBinV1Params =
-	| PostBinV1BinCreateConfig
-	| PostBinV1BinGetConfig
-	| PostBinV1BinDeleteConfig
-	| PostBinV1RequestGetConfig
-	| PostBinV1RequestRemoveFirstConfig
-	| PostBinV1RequestSendConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type PostBinV1BinCreateOutput = {
+	binId?: string;
+	expiresIso?: string;
+	expiresTimestamp?: number;
+	nowIso?: string;
+	nowTimestamp?: number;
+	requestUrl?: string;
+	viewUrl?: string;
+};
+
+export type PostBinV1BinGetOutput = {
+	binId?: string;
+	expiresIso?: string;
+	expiresTimestamp?: number;
+	nowIso?: string;
+	nowTimestamp?: number;
+	requestUrl?: string;
+	viewUrl?: string;
+};
+
+export type PostBinV1RequestSendOutput = {
+	requestId?: string;
+};
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostBinV1Node = {
+interface PostBinV1NodeBase {
 	type: 'n8n-nodes-base.postBin';
 	version: 1;
-	config: NodeConfig<PostBinV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type PostBinV1BinCreateNode = PostBinV1NodeBase & {
+	config: NodeConfig<PostBinV1BinCreateConfig>;
+	output?: PostBinV1BinCreateOutput;
 };
+
+export type PostBinV1BinGetNode = PostBinV1NodeBase & {
+	config: NodeConfig<PostBinV1BinGetConfig>;
+	output?: PostBinV1BinGetOutput;
+};
+
+export type PostBinV1BinDeleteNode = PostBinV1NodeBase & {
+	config: NodeConfig<PostBinV1BinDeleteConfig>;
+};
+
+export type PostBinV1RequestGetNode = PostBinV1NodeBase & {
+	config: NodeConfig<PostBinV1RequestGetConfig>;
+};
+
+export type PostBinV1RequestRemoveFirstNode = PostBinV1NodeBase & {
+	config: NodeConfig<PostBinV1RequestRemoveFirstConfig>;
+};
+
+export type PostBinV1RequestSendNode = PostBinV1NodeBase & {
+	config: NodeConfig<PostBinV1RequestSendConfig>;
+	output?: PostBinV1RequestSendOutput;
+};
+
+export type PostBinV1Node =
+	| PostBinV1BinCreateNode
+	| PostBinV1BinGetNode
+	| PostBinV1BinDeleteNode
+	| PostBinV1RequestGetNode
+	| PostBinV1RequestRemoveFirstNode
+	| PostBinV1RequestSendNode
+	;

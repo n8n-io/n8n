@@ -1,8 +1,6 @@
 /**
  * Gmail Node - Version 1
  * Consume the Gmail API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -241,23 +239,6 @@ export type GmailV1MessageLabelRemoveConfig = {
 		labelIds: string[];
 };
 
-export type GmailV1Params =
-	| GmailV1DraftCreateConfig
-	| GmailV1DraftDeleteConfig
-	| GmailV1DraftGetConfig
-	| GmailV1DraftGetAllConfig
-	| GmailV1LabelCreateConfig
-	| GmailV1LabelDeleteConfig
-	| GmailV1LabelGetConfig
-	| GmailV1LabelGetAllConfig
-	| GmailV1MessageDeleteConfig
-	| GmailV1MessageGetConfig
-	| GmailV1MessageGetAllConfig
-	| GmailV1MessageReplyConfig
-	| GmailV1MessageSendConfig
-	| GmailV1MessageLabelAddConfig
-	| GmailV1MessageLabelRemoveConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -269,12 +250,89 @@ export interface GmailV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GmailV1Node = {
+interface GmailV1NodeBase {
 	type: 'n8n-nodes-base.gmail';
 	version: 1;
-	config: NodeConfig<GmailV1Params>;
 	credentials?: GmailV1Credentials;
+}
+
+export type GmailV1DraftCreateNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1DraftCreateConfig>;
 };
+
+export type GmailV1DraftDeleteNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1DraftDeleteConfig>;
+};
+
+export type GmailV1DraftGetNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1DraftGetConfig>;
+};
+
+export type GmailV1DraftGetAllNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1DraftGetAllConfig>;
+};
+
+export type GmailV1LabelCreateNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1LabelCreateConfig>;
+};
+
+export type GmailV1LabelDeleteNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1LabelDeleteConfig>;
+};
+
+export type GmailV1LabelGetNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1LabelGetConfig>;
+};
+
+export type GmailV1LabelGetAllNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1LabelGetAllConfig>;
+};
+
+export type GmailV1MessageDeleteNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1MessageDeleteConfig>;
+};
+
+export type GmailV1MessageGetNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1MessageGetConfig>;
+};
+
+export type GmailV1MessageGetAllNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1MessageGetAllConfig>;
+};
+
+export type GmailV1MessageReplyNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1MessageReplyConfig>;
+};
+
+export type GmailV1MessageSendNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1MessageSendConfig>;
+};
+
+export type GmailV1MessageLabelAddNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1MessageLabelAddConfig>;
+};
+
+export type GmailV1MessageLabelRemoveNode = GmailV1NodeBase & {
+	config: NodeConfig<GmailV1MessageLabelRemoveConfig>;
+};
+
+export type GmailV1Node =
+	| GmailV1DraftCreateNode
+	| GmailV1DraftDeleteNode
+	| GmailV1DraftGetNode
+	| GmailV1DraftGetAllNode
+	| GmailV1LabelCreateNode
+	| GmailV1LabelDeleteNode
+	| GmailV1LabelGetNode
+	| GmailV1LabelGetAllNode
+	| GmailV1MessageDeleteNode
+	| GmailV1MessageGetNode
+	| GmailV1MessageGetAllNode
+	| GmailV1MessageReplyNode
+	| GmailV1MessageSendNode
+	| GmailV1MessageLabelAddNode
+	| GmailV1MessageLabelRemoveNode
+	;

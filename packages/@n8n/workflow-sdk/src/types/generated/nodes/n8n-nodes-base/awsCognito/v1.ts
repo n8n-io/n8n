@@ -1,8 +1,6 @@
 /**
  * AWS Cognito Node - Version 1
  * Sends data to AWS Cognito
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -343,21 +341,6 @@ export type AwsCognitoV1UserPoolGetConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type AwsCognitoV1Params =
-	| AwsCognitoV1GroupCreateConfig
-	| AwsCognitoV1GroupDeleteConfig
-	| AwsCognitoV1GroupGetConfig
-	| AwsCognitoV1GroupGetAllConfig
-	| AwsCognitoV1GroupUpdateConfig
-	| AwsCognitoV1UserAddToGroupConfig
-	| AwsCognitoV1UserCreateConfig
-	| AwsCognitoV1UserDeleteConfig
-	| AwsCognitoV1UserGetConfig
-	| AwsCognitoV1UserGetAllConfig
-	| AwsCognitoV1UserRemoveFromGroupConfig
-	| AwsCognitoV1UserUpdateConfig
-	| AwsCognitoV1UserPoolGetConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -368,12 +351,79 @@ export interface AwsCognitoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsCognitoV1Node = {
+interface AwsCognitoV1NodeBase {
 	type: 'n8n-nodes-base.awsCognito';
 	version: 1;
-	config: NodeConfig<AwsCognitoV1Params>;
 	credentials?: AwsCognitoV1Credentials;
+}
+
+export type AwsCognitoV1GroupCreateNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1GroupCreateConfig>;
 };
+
+export type AwsCognitoV1GroupDeleteNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1GroupDeleteConfig>;
+};
+
+export type AwsCognitoV1GroupGetNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1GroupGetConfig>;
+};
+
+export type AwsCognitoV1GroupGetAllNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1GroupGetAllConfig>;
+};
+
+export type AwsCognitoV1GroupUpdateNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1GroupUpdateConfig>;
+};
+
+export type AwsCognitoV1UserAddToGroupNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1UserAddToGroupConfig>;
+};
+
+export type AwsCognitoV1UserCreateNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1UserCreateConfig>;
+};
+
+export type AwsCognitoV1UserDeleteNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1UserDeleteConfig>;
+};
+
+export type AwsCognitoV1UserGetNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1UserGetConfig>;
+};
+
+export type AwsCognitoV1UserGetAllNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1UserGetAllConfig>;
+};
+
+export type AwsCognitoV1UserRemoveFromGroupNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1UserRemoveFromGroupConfig>;
+};
+
+export type AwsCognitoV1UserUpdateNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1UserUpdateConfig>;
+};
+
+export type AwsCognitoV1UserPoolGetNode = AwsCognitoV1NodeBase & {
+	config: NodeConfig<AwsCognitoV1UserPoolGetConfig>;
+};
+
+export type AwsCognitoV1Node =
+	| AwsCognitoV1GroupCreateNode
+	| AwsCognitoV1GroupDeleteNode
+	| AwsCognitoV1GroupGetNode
+	| AwsCognitoV1GroupGetAllNode
+	| AwsCognitoV1GroupUpdateNode
+	| AwsCognitoV1UserAddToGroupNode
+	| AwsCognitoV1UserCreateNode
+	| AwsCognitoV1UserDeleteNode
+	| AwsCognitoV1UserGetNode
+	| AwsCognitoV1UserGetAllNode
+	| AwsCognitoV1UserRemoveFromGroupNode
+	| AwsCognitoV1UserUpdateNode
+	| AwsCognitoV1UserPoolGetNode
+	;

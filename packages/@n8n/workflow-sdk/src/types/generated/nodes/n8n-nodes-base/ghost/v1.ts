@@ -1,8 +1,6 @@
 /**
  * Ghost Node - Version 1
  * Consume Ghost API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -61,10 +59,6 @@ export type GhostV1PostGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GhostV1Params =
-	| GhostV1PostGetConfig
-	| GhostV1PostGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -76,12 +70,24 @@ export interface GhostV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GhostV1Node = {
+interface GhostV1NodeBase {
 	type: 'n8n-nodes-base.ghost';
 	version: 1;
-	config: NodeConfig<GhostV1Params>;
 	credentials?: GhostV1Credentials;
+}
+
+export type GhostV1PostGetNode = GhostV1NodeBase & {
+	config: NodeConfig<GhostV1PostGetConfig>;
 };
+
+export type GhostV1PostGetAllNode = GhostV1NodeBase & {
+	config: NodeConfig<GhostV1PostGetAllConfig>;
+};
+
+export type GhostV1Node =
+	| GhostV1PostGetNode
+	| GhostV1PostGetAllNode
+	;

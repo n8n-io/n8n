@@ -1,8 +1,6 @@
 /**
  * Strava Node - Version 1.1
  * Consume Strava API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -192,17 +190,56 @@ export type StravaV11ActivityUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type StravaV11Params =
-	| StravaV11ActivityCreateConfig
-	| StravaV11ActivityGetConfig
-	| StravaV11ActivityGetCommentsConfig
-	| StravaV11ActivityGetKudosConfig
-	| StravaV11ActivityGetLapsConfig
-	| StravaV11ActivityGetAllConfig
-	| StravaV11ActivityGetStreamsConfig
-	| StravaV11ActivityGetZonesConfig
-	| StravaV11ActivityUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type StravaV11ActivityGetAllOutput = {
+	achievement_count?: number;
+	athlete?: {
+		id?: number;
+		resource_state?: number;
+	};
+	athlete_count?: number;
+	comment_count?: number;
+	commute?: boolean;
+	device_watts?: boolean;
+	display_hide_heartrate_option?: boolean;
+	elapsed_time?: number;
+	flagged?: boolean;
+	from_accepted_tag?: boolean;
+	has_heartrate?: boolean;
+	has_kudoed?: boolean;
+	heartrate_opt_out?: boolean;
+	id?: number;
+	kudos_count?: number;
+	location_city?: null;
+	location_state?: null;
+	manual?: boolean;
+	map?: {
+		id?: string;
+		resource_state?: number;
+		summary_polyline?: string;
+	};
+	max_heartrate?: number;
+	moving_time?: number;
+	name?: string;
+	photo_count?: number;
+	pr_count?: number;
+	private?: boolean;
+	resource_state?: number;
+	sport_type?: string;
+	start_date?: string;
+	start_date_local?: string;
+	timezone?: string;
+	total_photo_count?: number;
+	trainer?: boolean;
+	type?: string;
+	upload_id_str?: string;
+	utc_offset?: number;
+	visibility?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -213,12 +250,60 @@ export interface StravaV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StravaV11Node = {
+interface StravaV11NodeBase {
 	type: 'n8n-nodes-base.strava';
 	version: 1.1;
-	config: NodeConfig<StravaV11Params>;
 	credentials?: StravaV11Credentials;
+}
+
+export type StravaV11ActivityCreateNode = StravaV11NodeBase & {
+	config: NodeConfig<StravaV11ActivityCreateConfig>;
 };
+
+export type StravaV11ActivityGetNode = StravaV11NodeBase & {
+	config: NodeConfig<StravaV11ActivityGetConfig>;
+};
+
+export type StravaV11ActivityGetCommentsNode = StravaV11NodeBase & {
+	config: NodeConfig<StravaV11ActivityGetCommentsConfig>;
+};
+
+export type StravaV11ActivityGetKudosNode = StravaV11NodeBase & {
+	config: NodeConfig<StravaV11ActivityGetKudosConfig>;
+};
+
+export type StravaV11ActivityGetLapsNode = StravaV11NodeBase & {
+	config: NodeConfig<StravaV11ActivityGetLapsConfig>;
+};
+
+export type StravaV11ActivityGetAllNode = StravaV11NodeBase & {
+	config: NodeConfig<StravaV11ActivityGetAllConfig>;
+	output?: StravaV11ActivityGetAllOutput;
+};
+
+export type StravaV11ActivityGetStreamsNode = StravaV11NodeBase & {
+	config: NodeConfig<StravaV11ActivityGetStreamsConfig>;
+};
+
+export type StravaV11ActivityGetZonesNode = StravaV11NodeBase & {
+	config: NodeConfig<StravaV11ActivityGetZonesConfig>;
+};
+
+export type StravaV11ActivityUpdateNode = StravaV11NodeBase & {
+	config: NodeConfig<StravaV11ActivityUpdateConfig>;
+};
+
+export type StravaV11Node =
+	| StravaV11ActivityCreateNode
+	| StravaV11ActivityGetNode
+	| StravaV11ActivityGetCommentsNode
+	| StravaV11ActivityGetKudosNode
+	| StravaV11ActivityGetLapsNode
+	| StravaV11ActivityGetAllNode
+	| StravaV11ActivityGetStreamsNode
+	| StravaV11ActivityGetZonesNode
+	| StravaV11ActivityUpdateNode
+	;

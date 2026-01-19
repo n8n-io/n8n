@@ -1,8 +1,6 @@
 /**
  * Workflow Retriever Node - Version 1
  * Use an n8n Workflow as Retriever
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcRetrieverWorkflowV1Params {
+export interface LcRetrieverWorkflowV1Config {
 /**
  * Where to get the workflow to execute from
  * @default database
@@ -73,13 +71,17 @@ export interface LcRetrieverWorkflowV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcRetrieverWorkflowV1Node = {
+interface LcRetrieverWorkflowV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 	version: 1;
-	config: NodeConfig<LcRetrieverWorkflowV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcRetrieverWorkflowV1Node = LcRetrieverWorkflowV1NodeBase & {
+	config: NodeConfig<LcRetrieverWorkflowV1Config>;
 };
+
+export type LcRetrieverWorkflowV1Node = LcRetrieverWorkflowV1Node;

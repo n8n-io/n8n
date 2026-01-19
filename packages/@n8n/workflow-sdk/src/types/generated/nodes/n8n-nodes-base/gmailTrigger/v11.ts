@@ -1,8 +1,6 @@
 /**
  * Gmail Trigger Node - Version 1.1
  * Fetches emails from Gmail and starts the workflow on specified polling intervals.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GmailTriggerV11Params {
+export interface GmailTriggerV11Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -82,13 +80,18 @@ export interface GmailTriggerV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GmailTriggerV11Node = {
+interface GmailTriggerV11NodeBase {
 	type: 'n8n-nodes-base.gmailTrigger';
 	version: 1.1;
-	config: NodeConfig<GmailTriggerV11Params>;
 	credentials?: GmailTriggerV11Credentials;
 	isTrigger: true;
+}
+
+export type GmailTriggerV11Node = GmailTriggerV11NodeBase & {
+	config: NodeConfig<GmailTriggerV11Config>;
 };
+
+export type GmailTriggerV11Node = GmailTriggerV11Node;

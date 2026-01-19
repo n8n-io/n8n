@@ -1,8 +1,6 @@
 /**
  * HubSpot Node - Version 1
  * Consume HubSpot API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -641,43 +639,6 @@ export type HubspotV1TicketUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type HubspotV1Params =
-	| HubspotV1CompanyCreateConfig
-	| HubspotV1CompanyDeleteConfig
-	| HubspotV1CompanyGetConfig
-	| HubspotV1CompanyGetAllConfig
-	| HubspotV1CompanyGetRecentlyCreatedConfig
-	| HubspotV1CompanyGetRecentlyModifiedConfig
-	| HubspotV1CompanySearchByDomainConfig
-	| HubspotV1CompanyUpdateConfig
-	| HubspotV1ContactUpsertConfig
-	| HubspotV1ContactDeleteConfig
-	| HubspotV1ContactGetConfig
-	| HubspotV1ContactGetAllConfig
-	| HubspotV1ContactGetRecentlyCreatedUpdatedConfig
-	| HubspotV1ContactSearchConfig
-	| HubspotV1ContactListAddConfig
-	| HubspotV1ContactListRemoveConfig
-	| HubspotV1DealCreateConfig
-	| HubspotV1DealDeleteConfig
-	| HubspotV1DealGetConfig
-	| HubspotV1DealGetAllConfig
-	| HubspotV1DealGetRecentlyCreatedConfig
-	| HubspotV1DealGetRecentlyModifiedConfig
-	| HubspotV1DealSearchConfig
-	| HubspotV1DealUpdateConfig
-	| HubspotV1EngagementCreateConfig
-	| HubspotV1EngagementDeleteConfig
-	| HubspotV1EngagementGetConfig
-	| HubspotV1EngagementGetAllConfig
-	| HubspotV1FormGetFieldsConfig
-	| HubspotV1FormSubmitConfig
-	| HubspotV1TicketCreateConfig
-	| HubspotV1TicketDeleteConfig
-	| HubspotV1TicketGetConfig
-	| HubspotV1TicketGetAllConfig
-	| HubspotV1TicketUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -690,12 +651,189 @@ export interface HubspotV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HubspotV1Node = {
+interface HubspotV1NodeBase {
 	type: 'n8n-nodes-base.hubspot';
 	version: 1;
-	config: NodeConfig<HubspotV1Params>;
 	credentials?: HubspotV1Credentials;
+}
+
+export type HubspotV1CompanyCreateNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1CompanyCreateConfig>;
 };
+
+export type HubspotV1CompanyDeleteNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1CompanyDeleteConfig>;
+};
+
+export type HubspotV1CompanyGetNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1CompanyGetConfig>;
+};
+
+export type HubspotV1CompanyGetAllNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1CompanyGetAllConfig>;
+};
+
+export type HubspotV1CompanyGetRecentlyCreatedNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1CompanyGetRecentlyCreatedConfig>;
+};
+
+export type HubspotV1CompanyGetRecentlyModifiedNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1CompanyGetRecentlyModifiedConfig>;
+};
+
+export type HubspotV1CompanySearchByDomainNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1CompanySearchByDomainConfig>;
+};
+
+export type HubspotV1CompanyUpdateNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1CompanyUpdateConfig>;
+};
+
+export type HubspotV1ContactUpsertNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1ContactUpsertConfig>;
+};
+
+export type HubspotV1ContactDeleteNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1ContactDeleteConfig>;
+};
+
+export type HubspotV1ContactGetNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1ContactGetConfig>;
+};
+
+export type HubspotV1ContactGetAllNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1ContactGetAllConfig>;
+};
+
+export type HubspotV1ContactGetRecentlyCreatedUpdatedNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1ContactGetRecentlyCreatedUpdatedConfig>;
+};
+
+export type HubspotV1ContactSearchNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1ContactSearchConfig>;
+};
+
+export type HubspotV1ContactListAddNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1ContactListAddConfig>;
+};
+
+export type HubspotV1ContactListRemoveNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1ContactListRemoveConfig>;
+};
+
+export type HubspotV1DealCreateNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1DealCreateConfig>;
+};
+
+export type HubspotV1DealDeleteNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1DealDeleteConfig>;
+};
+
+export type HubspotV1DealGetNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1DealGetConfig>;
+};
+
+export type HubspotV1DealGetAllNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1DealGetAllConfig>;
+};
+
+export type HubspotV1DealGetRecentlyCreatedNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1DealGetRecentlyCreatedConfig>;
+};
+
+export type HubspotV1DealGetRecentlyModifiedNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1DealGetRecentlyModifiedConfig>;
+};
+
+export type HubspotV1DealSearchNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1DealSearchConfig>;
+};
+
+export type HubspotV1DealUpdateNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1DealUpdateConfig>;
+};
+
+export type HubspotV1EngagementCreateNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1EngagementCreateConfig>;
+};
+
+export type HubspotV1EngagementDeleteNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1EngagementDeleteConfig>;
+};
+
+export type HubspotV1EngagementGetNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1EngagementGetConfig>;
+};
+
+export type HubspotV1EngagementGetAllNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1EngagementGetAllConfig>;
+};
+
+export type HubspotV1FormGetFieldsNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1FormGetFieldsConfig>;
+};
+
+export type HubspotV1FormSubmitNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1FormSubmitConfig>;
+};
+
+export type HubspotV1TicketCreateNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1TicketCreateConfig>;
+};
+
+export type HubspotV1TicketDeleteNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1TicketDeleteConfig>;
+};
+
+export type HubspotV1TicketGetNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1TicketGetConfig>;
+};
+
+export type HubspotV1TicketGetAllNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1TicketGetAllConfig>;
+};
+
+export type HubspotV1TicketUpdateNode = HubspotV1NodeBase & {
+	config: NodeConfig<HubspotV1TicketUpdateConfig>;
+};
+
+export type HubspotV1Node =
+	| HubspotV1CompanyCreateNode
+	| HubspotV1CompanyDeleteNode
+	| HubspotV1CompanyGetNode
+	| HubspotV1CompanyGetAllNode
+	| HubspotV1CompanyGetRecentlyCreatedNode
+	| HubspotV1CompanyGetRecentlyModifiedNode
+	| HubspotV1CompanySearchByDomainNode
+	| HubspotV1CompanyUpdateNode
+	| HubspotV1ContactUpsertNode
+	| HubspotV1ContactDeleteNode
+	| HubspotV1ContactGetNode
+	| HubspotV1ContactGetAllNode
+	| HubspotV1ContactGetRecentlyCreatedUpdatedNode
+	| HubspotV1ContactSearchNode
+	| HubspotV1ContactListAddNode
+	| HubspotV1ContactListRemoveNode
+	| HubspotV1DealCreateNode
+	| HubspotV1DealDeleteNode
+	| HubspotV1DealGetNode
+	| HubspotV1DealGetAllNode
+	| HubspotV1DealGetRecentlyCreatedNode
+	| HubspotV1DealGetRecentlyModifiedNode
+	| HubspotV1DealSearchNode
+	| HubspotV1DealUpdateNode
+	| HubspotV1EngagementCreateNode
+	| HubspotV1EngagementDeleteNode
+	| HubspotV1EngagementGetNode
+	| HubspotV1EngagementGetAllNode
+	| HubspotV1FormGetFieldsNode
+	| HubspotV1FormSubmitNode
+	| HubspotV1TicketCreateNode
+	| HubspotV1TicketDeleteNode
+	| HubspotV1TicketGetNode
+	| HubspotV1TicketGetAllNode
+	| HubspotV1TicketUpdateNode
+	;

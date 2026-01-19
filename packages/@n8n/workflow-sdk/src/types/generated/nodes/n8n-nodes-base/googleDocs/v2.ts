@@ -1,8 +1,6 @@
 /**
  * Google Docs Node - Version 2
  * Consume Google Docs API.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -272,11 +270,6 @@ export type GoogleDocsV2DocumentUpdateConfig = {
 	};
 };
 
-export type GoogleDocsV2Params =
-	| GoogleDocsV2DocumentCreateConfig
-	| GoogleDocsV2DocumentGetConfig
-	| GoogleDocsV2DocumentUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -288,12 +281,29 @@ export interface GoogleDocsV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleDocsV2Node = {
+interface GoogleDocsV2NodeBase {
 	type: 'n8n-nodes-base.googleDocs';
 	version: 2;
-	config: NodeConfig<GoogleDocsV2Params>;
 	credentials?: GoogleDocsV2Credentials;
+}
+
+export type GoogleDocsV2DocumentCreateNode = GoogleDocsV2NodeBase & {
+	config: NodeConfig<GoogleDocsV2DocumentCreateConfig>;
 };
+
+export type GoogleDocsV2DocumentGetNode = GoogleDocsV2NodeBase & {
+	config: NodeConfig<GoogleDocsV2DocumentGetConfig>;
+};
+
+export type GoogleDocsV2DocumentUpdateNode = GoogleDocsV2NodeBase & {
+	config: NodeConfig<GoogleDocsV2DocumentUpdateConfig>;
+};
+
+export type GoogleDocsV2Node =
+	| GoogleDocsV2DocumentCreateNode
+	| GoogleDocsV2DocumentGetNode
+	| GoogleDocsV2DocumentUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Mattermost Node - Version 1
  * Sends data to Mattermost
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -361,27 +359,39 @@ export type MattermostV1UserInviteConfig = {
 		emails: string | Expression<string>;
 };
 
-export type MattermostV1Params =
-	| MattermostV1ChannelAddUserConfig
-	| MattermostV1ChannelCreateConfig
-	| MattermostV1ChannelDeleteConfig
-	| MattermostV1ChannelMembersConfig
-	| MattermostV1ChannelRestoreConfig
-	| MattermostV1ChannelSearchConfig
-	| MattermostV1ChannelStatisticsConfig
-	| MattermostV1MessageDeleteConfig
-	| MattermostV1MessagePostConfig
-	| MattermostV1MessagePostEphemeralConfig
-	| MattermostV1ReactionCreateConfig
-	| MattermostV1ReactionDeleteConfig
-	| MattermostV1ReactionGetAllConfig
-	| MattermostV1UserCreateConfig
-	| MattermostV1UserDeactiveConfig
-	| MattermostV1UserGetByEmailConfig
-	| MattermostV1UserGetByIdConfig
-	| MattermostV1UserGetAllConfig
-	| MattermostV1UserInviteConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type MattermostV1MessagePostOutput = {
+	channel_id?: string;
+	create_at?: number;
+	delete_at?: number;
+	edit_at?: number;
+	hashtags?: string;
+	id?: string;
+	is_pinned?: boolean;
+	last_reply_at?: number;
+	message?: string;
+	metadata?: {
+		embeds?: Array<{
+			type?: string;
+		}>;
+	};
+	original_id?: string;
+	participants?: null;
+	pending_post_id?: string;
+	props?: {
+		from_bot?: string;
+	};
+	remote_id?: string;
+	reply_count?: number;
+	root_id?: string;
+	type?: string;
+	update_at?: number;
+	user_id?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -392,12 +402,110 @@ export interface MattermostV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MattermostV1Node = {
+interface MattermostV1NodeBase {
 	type: 'n8n-nodes-base.mattermost';
 	version: 1;
-	config: NodeConfig<MattermostV1Params>;
 	credentials?: MattermostV1Credentials;
+}
+
+export type MattermostV1ChannelAddUserNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1ChannelAddUserConfig>;
 };
+
+export type MattermostV1ChannelCreateNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1ChannelCreateConfig>;
+};
+
+export type MattermostV1ChannelDeleteNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1ChannelDeleteConfig>;
+};
+
+export type MattermostV1ChannelMembersNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1ChannelMembersConfig>;
+};
+
+export type MattermostV1ChannelRestoreNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1ChannelRestoreConfig>;
+};
+
+export type MattermostV1ChannelSearchNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1ChannelSearchConfig>;
+};
+
+export type MattermostV1ChannelStatisticsNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1ChannelStatisticsConfig>;
+};
+
+export type MattermostV1MessageDeleteNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1MessageDeleteConfig>;
+};
+
+export type MattermostV1MessagePostNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1MessagePostConfig>;
+	output?: MattermostV1MessagePostOutput;
+};
+
+export type MattermostV1MessagePostEphemeralNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1MessagePostEphemeralConfig>;
+};
+
+export type MattermostV1ReactionCreateNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1ReactionCreateConfig>;
+};
+
+export type MattermostV1ReactionDeleteNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1ReactionDeleteConfig>;
+};
+
+export type MattermostV1ReactionGetAllNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1ReactionGetAllConfig>;
+};
+
+export type MattermostV1UserCreateNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1UserCreateConfig>;
+};
+
+export type MattermostV1UserDeactiveNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1UserDeactiveConfig>;
+};
+
+export type MattermostV1UserGetByEmailNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1UserGetByEmailConfig>;
+};
+
+export type MattermostV1UserGetByIdNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1UserGetByIdConfig>;
+};
+
+export type MattermostV1UserGetAllNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1UserGetAllConfig>;
+};
+
+export type MattermostV1UserInviteNode = MattermostV1NodeBase & {
+	config: NodeConfig<MattermostV1UserInviteConfig>;
+};
+
+export type MattermostV1Node =
+	| MattermostV1ChannelAddUserNode
+	| MattermostV1ChannelCreateNode
+	| MattermostV1ChannelDeleteNode
+	| MattermostV1ChannelMembersNode
+	| MattermostV1ChannelRestoreNode
+	| MattermostV1ChannelSearchNode
+	| MattermostV1ChannelStatisticsNode
+	| MattermostV1MessageDeleteNode
+	| MattermostV1MessagePostNode
+	| MattermostV1MessagePostEphemeralNode
+	| MattermostV1ReactionCreateNode
+	| MattermostV1ReactionDeleteNode
+	| MattermostV1ReactionGetAllNode
+	| MattermostV1UserCreateNode
+	| MattermostV1UserDeactiveNode
+	| MattermostV1UserGetByEmailNode
+	| MattermostV1UserGetByIdNode
+	| MattermostV1UserGetAllNode
+	| MattermostV1UserInviteNode
+	;

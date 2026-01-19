@@ -1,8 +1,6 @@
 /**
  * SeaTable Trigger Node - Version 2
  * Starts the workflow when SeaTable events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SeaTableTriggerV2Params {
+export interface SeaTableTriggerV2Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -88,13 +86,18 @@ export interface SeaTableTriggerV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SeaTableTriggerV2Node = {
+interface SeaTableTriggerV2NodeBase {
 	type: 'n8n-nodes-base.seaTableTrigger';
 	version: 2;
-	config: NodeConfig<SeaTableTriggerV2Params>;
 	credentials?: SeaTableTriggerV2Credentials;
 	isTrigger: true;
+}
+
+export type SeaTableTriggerV2Node = SeaTableTriggerV2NodeBase & {
+	config: NodeConfig<SeaTableTriggerV2Config>;
 };
+
+export type SeaTableTriggerV2Node = SeaTableTriggerV2Node;

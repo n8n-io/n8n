@@ -1,8 +1,6 @@
 /**
  * AWS ELB Node - Version 1
  * Sends data to AWS ELB API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -150,15 +148,6 @@ export type AwsElbV1LoadBalancerGetManyConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type AwsElbV1Params =
-	| AwsElbV1ListenerCertificateAddConfig
-	| AwsElbV1ListenerCertificateGetManyConfig
-	| AwsElbV1ListenerCertificateRemoveConfig
-	| AwsElbV1LoadBalancerCreateConfig
-	| AwsElbV1LoadBalancerDeleteConfig
-	| AwsElbV1LoadBalancerGetConfig
-	| AwsElbV1LoadBalancerGetManyConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -170,12 +159,49 @@ export interface AwsElbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsElbV1Node = {
+interface AwsElbV1NodeBase {
 	type: 'n8n-nodes-base.awsElb';
 	version: 1;
-	config: NodeConfig<AwsElbV1Params>;
 	credentials?: AwsElbV1Credentials;
+}
+
+export type AwsElbV1ListenerCertificateAddNode = AwsElbV1NodeBase & {
+	config: NodeConfig<AwsElbV1ListenerCertificateAddConfig>;
 };
+
+export type AwsElbV1ListenerCertificateGetManyNode = AwsElbV1NodeBase & {
+	config: NodeConfig<AwsElbV1ListenerCertificateGetManyConfig>;
+};
+
+export type AwsElbV1ListenerCertificateRemoveNode = AwsElbV1NodeBase & {
+	config: NodeConfig<AwsElbV1ListenerCertificateRemoveConfig>;
+};
+
+export type AwsElbV1LoadBalancerCreateNode = AwsElbV1NodeBase & {
+	config: NodeConfig<AwsElbV1LoadBalancerCreateConfig>;
+};
+
+export type AwsElbV1LoadBalancerDeleteNode = AwsElbV1NodeBase & {
+	config: NodeConfig<AwsElbV1LoadBalancerDeleteConfig>;
+};
+
+export type AwsElbV1LoadBalancerGetNode = AwsElbV1NodeBase & {
+	config: NodeConfig<AwsElbV1LoadBalancerGetConfig>;
+};
+
+export type AwsElbV1LoadBalancerGetManyNode = AwsElbV1NodeBase & {
+	config: NodeConfig<AwsElbV1LoadBalancerGetManyConfig>;
+};
+
+export type AwsElbV1Node =
+	| AwsElbV1ListenerCertificateAddNode
+	| AwsElbV1ListenerCertificateGetManyNode
+	| AwsElbV1ListenerCertificateRemoveNode
+	| AwsElbV1LoadBalancerCreateNode
+	| AwsElbV1LoadBalancerDeleteNode
+	| AwsElbV1LoadBalancerGetNode
+	| AwsElbV1LoadBalancerGetManyNode
+	;

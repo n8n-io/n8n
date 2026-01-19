@@ -1,8 +1,6 @@
 /**
  * Mocean Node - Version 1
  * Send SMS and voice messages via Mocean
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -57,10 +55,6 @@ export type MoceanV1VoiceSendConfig = {
 		message: string | Expression<string>;
 };
 
-export type MoceanV1Params =
-	| MoceanV1SmsSendConfig
-	| MoceanV1VoiceSendConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -71,12 +65,24 @@ export interface MoceanV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MoceanV1Node = {
+interface MoceanV1NodeBase {
 	type: 'n8n-nodes-base.mocean';
 	version: 1;
-	config: NodeConfig<MoceanV1Params>;
 	credentials?: MoceanV1Credentials;
+}
+
+export type MoceanV1SmsSendNode = MoceanV1NodeBase & {
+	config: NodeConfig<MoceanV1SmsSendConfig>;
 };
+
+export type MoceanV1VoiceSendNode = MoceanV1NodeBase & {
+	config: NodeConfig<MoceanV1VoiceSendConfig>;
+};
+
+export type MoceanV1Node =
+	| MoceanV1SmsSendNode
+	| MoceanV1VoiceSendNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Redis Chat Memory Node - Version 1.5
  * Stores the chat history in Redis.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryRedisChatV15Params {
+export interface LcMemoryRedisChatV15Config {
 /**
  * The key to use to store session ID in the memory
  * @displayOptions.show { sessionIdType: ["customKey"] }
@@ -36,13 +34,18 @@ export interface LcMemoryRedisChatV15Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryRedisChatV15Node = {
+interface LcMemoryRedisChatV15NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryRedisChat';
 	version: 1.5;
-	config: NodeConfig<LcMemoryRedisChatV15Params>;
 	credentials?: LcMemoryRedisChatV15Credentials;
 	isTrigger: true;
+}
+
+export type LcMemoryRedisChatV15Node = LcMemoryRedisChatV15NodeBase & {
+	config: NodeConfig<LcMemoryRedisChatV15Config>;
 };
+
+export type LcMemoryRedisChatV15Node = LcMemoryRedisChatV15Node;

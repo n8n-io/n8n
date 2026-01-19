@@ -1,8 +1,6 @@
 /**
  * Error Trigger Node - Version 1
  * Triggers the workflow when another workflow has an error
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ErrorTriggerV1Params {
+export interface ErrorTriggerV1Config {
 }
 
 // ===========================================================================
@@ -21,13 +19,17 @@ export interface ErrorTriggerV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ErrorTriggerV1Node = {
+interface ErrorTriggerV1NodeBase {
 	type: 'n8n-nodes-base.errorTrigger';
 	version: 1;
-	config: NodeConfig<ErrorTriggerV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type ErrorTriggerV1Node = ErrorTriggerV1NodeBase & {
+	config: NodeConfig<ErrorTriggerV1Config>;
 };
+
+export type ErrorTriggerV1Node = ErrorTriggerV1Node;

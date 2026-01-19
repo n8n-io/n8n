@@ -1,8 +1,6 @@
 /**
  * Webflow Node - Version 1
  * Consume the Webflow API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -147,13 +145,6 @@ export type WebflowV1ItemUpdateConfig = {
 	};
 };
 
-export type WebflowV1Params =
-	| WebflowV1ItemCreateConfig
-	| WebflowV1ItemDeleteConfig
-	| WebflowV1ItemGetConfig
-	| WebflowV1ItemGetAllConfig
-	| WebflowV1ItemUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -165,12 +156,39 @@ export interface WebflowV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WebflowV1Node = {
+interface WebflowV1NodeBase {
 	type: 'n8n-nodes-base.webflow';
 	version: 1;
-	config: NodeConfig<WebflowV1Params>;
 	credentials?: WebflowV1Credentials;
+}
+
+export type WebflowV1ItemCreateNode = WebflowV1NodeBase & {
+	config: NodeConfig<WebflowV1ItemCreateConfig>;
 };
+
+export type WebflowV1ItemDeleteNode = WebflowV1NodeBase & {
+	config: NodeConfig<WebflowV1ItemDeleteConfig>;
+};
+
+export type WebflowV1ItemGetNode = WebflowV1NodeBase & {
+	config: NodeConfig<WebflowV1ItemGetConfig>;
+};
+
+export type WebflowV1ItemGetAllNode = WebflowV1NodeBase & {
+	config: NodeConfig<WebflowV1ItemGetAllConfig>;
+};
+
+export type WebflowV1ItemUpdateNode = WebflowV1NodeBase & {
+	config: NodeConfig<WebflowV1ItemUpdateConfig>;
+};
+
+export type WebflowV1Node =
+	| WebflowV1ItemCreateNode
+	| WebflowV1ItemDeleteNode
+	| WebflowV1ItemGetNode
+	| WebflowV1ItemGetAllNode
+	| WebflowV1ItemUpdateNode
+	;

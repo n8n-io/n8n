@@ -1,8 +1,6 @@
 /**
  * ConvertKit Node - Version 1
  * Consume ConvertKit API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -288,23 +286,41 @@ export type ConvertKitV1TagSubscriberDeleteConfig = {
 		email: string | Expression<string>;
 };
 
-export type ConvertKitV1Params =
-	| ConvertKitV1CustomFieldCreateConfig
-	| ConvertKitV1CustomFieldDeleteConfig
-	| ConvertKitV1CustomFieldGetAllConfig
-	| ConvertKitV1CustomFieldUpdateConfig
-	| ConvertKitV1FormAddSubscriberConfig
-	| ConvertKitV1FormGetAllConfig
-	| ConvertKitV1FormGetSubscriptionsConfig
-	| ConvertKitV1SequenceAddSubscriberConfig
-	| ConvertKitV1SequenceGetAllConfig
-	| ConvertKitV1SequenceGetSubscriptionsConfig
-	| ConvertKitV1TagCreateConfig
-	| ConvertKitV1TagGetAllConfig
-	| ConvertKitV1TagSubscriberAddConfig
-	| ConvertKitV1TagSubscriberGetAllConfig
-	| ConvertKitV1TagSubscriberDeleteConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type ConvertKitV1FormAddSubscriberOutput = {
+	created_at?: string;
+	id?: number;
+	referrer?: null;
+	state?: string;
+	subscribable_id?: number;
+	subscribable_type?: string;
+	subscriber?: {
+		created_at?: string;
+		email_address?: string;
+		id?: number;
+		state?: string;
+	};
+};
+
+export type ConvertKitV1TagSubscriberAddOutput = {
+	created_at?: string;
+	id?: number;
+	referrer?: null;
+	source?: string | null;
+	state?: string;
+	subscribable_id?: number;
+	subscribable_type?: string;
+	subscriber?: {
+		created_at?: string;
+		email_address?: string;
+		id?: number;
+		state?: string;
+	};
+};
 
 // ===========================================================================
 // Credentials
@@ -315,12 +331,91 @@ export interface ConvertKitV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ConvertKitV1Node = {
+interface ConvertKitV1NodeBase {
 	type: 'n8n-nodes-base.convertKit';
 	version: 1;
-	config: NodeConfig<ConvertKitV1Params>;
 	credentials?: ConvertKitV1Credentials;
+}
+
+export type ConvertKitV1CustomFieldCreateNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1CustomFieldCreateConfig>;
 };
+
+export type ConvertKitV1CustomFieldDeleteNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1CustomFieldDeleteConfig>;
+};
+
+export type ConvertKitV1CustomFieldGetAllNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1CustomFieldGetAllConfig>;
+};
+
+export type ConvertKitV1CustomFieldUpdateNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1CustomFieldUpdateConfig>;
+};
+
+export type ConvertKitV1FormAddSubscriberNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1FormAddSubscriberConfig>;
+	output?: ConvertKitV1FormAddSubscriberOutput;
+};
+
+export type ConvertKitV1FormGetAllNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1FormGetAllConfig>;
+};
+
+export type ConvertKitV1FormGetSubscriptionsNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1FormGetSubscriptionsConfig>;
+};
+
+export type ConvertKitV1SequenceAddSubscriberNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1SequenceAddSubscriberConfig>;
+};
+
+export type ConvertKitV1SequenceGetAllNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1SequenceGetAllConfig>;
+};
+
+export type ConvertKitV1SequenceGetSubscriptionsNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1SequenceGetSubscriptionsConfig>;
+};
+
+export type ConvertKitV1TagCreateNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1TagCreateConfig>;
+};
+
+export type ConvertKitV1TagGetAllNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1TagGetAllConfig>;
+};
+
+export type ConvertKitV1TagSubscriberAddNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1TagSubscriberAddConfig>;
+	output?: ConvertKitV1TagSubscriberAddOutput;
+};
+
+export type ConvertKitV1TagSubscriberGetAllNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1TagSubscriberGetAllConfig>;
+};
+
+export type ConvertKitV1TagSubscriberDeleteNode = ConvertKitV1NodeBase & {
+	config: NodeConfig<ConvertKitV1TagSubscriberDeleteConfig>;
+};
+
+export type ConvertKitV1Node =
+	| ConvertKitV1CustomFieldCreateNode
+	| ConvertKitV1CustomFieldDeleteNode
+	| ConvertKitV1CustomFieldGetAllNode
+	| ConvertKitV1CustomFieldUpdateNode
+	| ConvertKitV1FormAddSubscriberNode
+	| ConvertKitV1FormGetAllNode
+	| ConvertKitV1FormGetSubscriptionsNode
+	| ConvertKitV1SequenceAddSubscriberNode
+	| ConvertKitV1SequenceGetAllNode
+	| ConvertKitV1SequenceGetSubscriptionsNode
+	| ConvertKitV1TagCreateNode
+	| ConvertKitV1TagGetAllNode
+	| ConvertKitV1TagSubscriberAddNode
+	| ConvertKitV1TagSubscriberGetAllNode
+	| ConvertKitV1TagSubscriberDeleteNode
+	;

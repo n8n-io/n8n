@@ -1,8 +1,6 @@
 /**
  * Webhook Node - Version 2.1
  * Starts the workflow when a webhook is called
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WebhookV21Params {
+export interface WebhookV21Config {
 /**
  * Whether to allow the webhook to listen for multiple HTTP methods
  * @default false
@@ -65,13 +63,18 @@ export interface WebhookV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WebhookV21Node = {
+interface WebhookV21NodeBase {
 	type: 'n8n-nodes-base.webhook';
 	version: 2.1;
-	config: NodeConfig<WebhookV21Params>;
 	credentials?: WebhookV21Credentials;
 	isTrigger: true;
+}
+
+export type WebhookV21Node = WebhookV21NodeBase & {
+	config: NodeConfig<WebhookV21Config>;
 };
+
+export type WebhookV21Node = WebhookV21Node;

@@ -1,8 +1,6 @@
 /**
  * PostHog Node - Version 1
  * Consume PostHog API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -85,13 +83,14 @@ export type PostHogV1TrackScreenConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PostHogV1Params =
-	| PostHogV1AliasCreateConfig
-	| PostHogV1EventCreateConfig
-	| PostHogV1IdentityCreateConfig
-	| PostHogV1TrackPageConfig
-	| PostHogV1TrackScreenConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type PostHogV1EventCreateOutput = {
+	status?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -102,12 +101,40 @@ export interface PostHogV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostHogV1Node = {
+interface PostHogV1NodeBase {
 	type: 'n8n-nodes-base.postHog';
 	version: 1;
-	config: NodeConfig<PostHogV1Params>;
 	credentials?: PostHogV1Credentials;
+}
+
+export type PostHogV1AliasCreateNode = PostHogV1NodeBase & {
+	config: NodeConfig<PostHogV1AliasCreateConfig>;
 };
+
+export type PostHogV1EventCreateNode = PostHogV1NodeBase & {
+	config: NodeConfig<PostHogV1EventCreateConfig>;
+	output?: PostHogV1EventCreateOutput;
+};
+
+export type PostHogV1IdentityCreateNode = PostHogV1NodeBase & {
+	config: NodeConfig<PostHogV1IdentityCreateConfig>;
+};
+
+export type PostHogV1TrackPageNode = PostHogV1NodeBase & {
+	config: NodeConfig<PostHogV1TrackPageConfig>;
+};
+
+export type PostHogV1TrackScreenNode = PostHogV1NodeBase & {
+	config: NodeConfig<PostHogV1TrackScreenConfig>;
+};
+
+export type PostHogV1Node =
+	| PostHogV1AliasCreateNode
+	| PostHogV1EventCreateNode
+	| PostHogV1IdentityCreateNode
+	| PostHogV1TrackPageNode
+	| PostHogV1TrackScreenNode
+	;

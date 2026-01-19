@@ -1,8 +1,6 @@
 /**
  * Taiga Node - Version 1
  * Consume Taiga API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -317,28 +315,6 @@ export type TaigaV1UserStoryUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type TaigaV1Params =
-	| TaigaV1EpicCreateConfig
-	| TaigaV1EpicDeleteConfig
-	| TaigaV1EpicGetConfig
-	| TaigaV1EpicGetAllConfig
-	| TaigaV1EpicUpdateConfig
-	| TaigaV1IssueCreateConfig
-	| TaigaV1IssueDeleteConfig
-	| TaigaV1IssueGetConfig
-	| TaigaV1IssueGetAllConfig
-	| TaigaV1IssueUpdateConfig
-	| TaigaV1TaskCreateConfig
-	| TaigaV1TaskDeleteConfig
-	| TaigaV1TaskGetConfig
-	| TaigaV1TaskGetAllConfig
-	| TaigaV1TaskUpdateConfig
-	| TaigaV1UserStoryCreateConfig
-	| TaigaV1UserStoryDeleteConfig
-	| TaigaV1UserStoryGetConfig
-	| TaigaV1UserStoryGetAllConfig
-	| TaigaV1UserStoryUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -349,12 +325,114 @@ export interface TaigaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TaigaV1Node = {
+interface TaigaV1NodeBase {
 	type: 'n8n-nodes-base.taiga';
 	version: 1;
-	config: NodeConfig<TaigaV1Params>;
 	credentials?: TaigaV1Credentials;
+}
+
+export type TaigaV1EpicCreateNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1EpicCreateConfig>;
 };
+
+export type TaigaV1EpicDeleteNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1EpicDeleteConfig>;
+};
+
+export type TaigaV1EpicGetNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1EpicGetConfig>;
+};
+
+export type TaigaV1EpicGetAllNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1EpicGetAllConfig>;
+};
+
+export type TaigaV1EpicUpdateNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1EpicUpdateConfig>;
+};
+
+export type TaigaV1IssueCreateNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1IssueCreateConfig>;
+};
+
+export type TaigaV1IssueDeleteNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1IssueDeleteConfig>;
+};
+
+export type TaigaV1IssueGetNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1IssueGetConfig>;
+};
+
+export type TaigaV1IssueGetAllNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1IssueGetAllConfig>;
+};
+
+export type TaigaV1IssueUpdateNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1IssueUpdateConfig>;
+};
+
+export type TaigaV1TaskCreateNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1TaskCreateConfig>;
+};
+
+export type TaigaV1TaskDeleteNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1TaskDeleteConfig>;
+};
+
+export type TaigaV1TaskGetNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1TaskGetConfig>;
+};
+
+export type TaigaV1TaskGetAllNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1TaskGetAllConfig>;
+};
+
+export type TaigaV1TaskUpdateNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1TaskUpdateConfig>;
+};
+
+export type TaigaV1UserStoryCreateNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1UserStoryCreateConfig>;
+};
+
+export type TaigaV1UserStoryDeleteNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1UserStoryDeleteConfig>;
+};
+
+export type TaigaV1UserStoryGetNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1UserStoryGetConfig>;
+};
+
+export type TaigaV1UserStoryGetAllNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1UserStoryGetAllConfig>;
+};
+
+export type TaigaV1UserStoryUpdateNode = TaigaV1NodeBase & {
+	config: NodeConfig<TaigaV1UserStoryUpdateConfig>;
+};
+
+export type TaigaV1Node =
+	| TaigaV1EpicCreateNode
+	| TaigaV1EpicDeleteNode
+	| TaigaV1EpicGetNode
+	| TaigaV1EpicGetAllNode
+	| TaigaV1EpicUpdateNode
+	| TaigaV1IssueCreateNode
+	| TaigaV1IssueDeleteNode
+	| TaigaV1IssueGetNode
+	| TaigaV1IssueGetAllNode
+	| TaigaV1IssueUpdateNode
+	| TaigaV1TaskCreateNode
+	| TaigaV1TaskDeleteNode
+	| TaigaV1TaskGetNode
+	| TaigaV1TaskGetAllNode
+	| TaigaV1TaskUpdateNode
+	| TaigaV1UserStoryCreateNode
+	| TaigaV1UserStoryDeleteNode
+	| TaigaV1UserStoryGetNode
+	| TaigaV1UserStoryGetAllNode
+	| TaigaV1UserStoryUpdateNode
+	;

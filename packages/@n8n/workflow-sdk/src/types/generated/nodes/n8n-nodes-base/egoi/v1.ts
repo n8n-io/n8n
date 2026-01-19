@@ -1,8 +1,6 @@
 /**
  * E-goi Node - Version 1
  * Consume E-goi API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface EgoiV1Params {
+export interface EgoiV1Config {
 	resource: 'contact' | Expression<string>;
 	operation: 'create' | 'get' | 'getAll' | 'update' | Expression<string>;
 /**
@@ -74,12 +72,17 @@ export interface EgoiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EgoiV1Node = {
+interface EgoiV1NodeBase {
 	type: 'n8n-nodes-base.egoi';
 	version: 1;
-	config: NodeConfig<EgoiV1Params>;
 	credentials?: EgoiV1Credentials;
+}
+
+export type EgoiV1Node = EgoiV1NodeBase & {
+	config: NodeConfig<EgoiV1Config>;
 };
+
+export type EgoiV1Node = EgoiV1Node;

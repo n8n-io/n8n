@@ -1,8 +1,6 @@
 /**
  * MailerLite Trigger Node - Version 1
  * Starts the workflow when MailerLite events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MailerLiteTriggerV1Params {
+export interface MailerLiteTriggerV1Config {
 /**
  * The events to listen to
  * @default []
@@ -30,13 +28,18 @@ export interface MailerLiteTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailerLiteTriggerV1Node = {
+interface MailerLiteTriggerV1NodeBase {
 	type: 'n8n-nodes-base.mailerLiteTrigger';
 	version: 1;
-	config: NodeConfig<MailerLiteTriggerV1Params>;
 	credentials?: MailerLiteTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MailerLiteTriggerV1Node = MailerLiteTriggerV1NodeBase & {
+	config: NodeConfig<MailerLiteTriggerV1Config>;
 };
+
+export type MailerLiteTriggerV1Node = MailerLiteTriggerV1Node;

@@ -1,8 +1,6 @@
 /**
  * MySQL Node - Version 2.5
  * Get, add and update data in MySQL
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MySqlV25Params {
+export interface MySqlV25Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -128,12 +126,17 @@ export interface MySqlV25Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MySqlV25Node = {
+interface MySqlV25NodeBase {
 	type: 'n8n-nodes-base.mySql';
 	version: 2.5;
-	config: NodeConfig<MySqlV25Params>;
 	credentials?: MySqlV25Credentials;
+}
+
+export type MySqlV25Node = MySqlV25NodeBase & {
+	config: NodeConfig<MySqlV25Config>;
 };
+
+export type MySqlV25Node = MySqlV25Node;

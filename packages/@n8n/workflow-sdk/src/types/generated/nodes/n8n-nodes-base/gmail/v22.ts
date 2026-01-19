@@ -1,8 +1,6 @@
 /**
  * Gmail Node - Version 2.2
  * Consume the Gmail API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -352,34 +350,6 @@ export type GmailV22ThreadUntrashConfig = {
 		threadId: string | Expression<string>;
 };
 
-export type GmailV22Params =
-	| GmailV22MessageAddLabelsConfig
-	| GmailV22MessageDeleteConfig
-	| GmailV22MessageGetConfig
-	| GmailV22MessageGetAllConfig
-	| GmailV22MessageMarkAsReadConfig
-	| GmailV22MessageMarkAsUnreadConfig
-	| GmailV22MessageRemoveLabelsConfig
-	| GmailV22MessageReplyConfig
-	| GmailV22MessageSendConfig
-	| GmailV22MessageSendAndWaitConfig
-	| GmailV22LabelCreateConfig
-	| GmailV22LabelDeleteConfig
-	| GmailV22LabelGetConfig
-	| GmailV22LabelGetAllConfig
-	| GmailV22DraftCreateConfig
-	| GmailV22DraftDeleteConfig
-	| GmailV22DraftGetConfig
-	| GmailV22DraftGetAllConfig
-	| GmailV22ThreadAddLabelsConfig
-	| GmailV22ThreadDeleteConfig
-	| GmailV22ThreadGetConfig
-	| GmailV22ThreadGetAllConfig
-	| GmailV22ThreadRemoveLabelsConfig
-	| GmailV22ThreadReplyConfig
-	| GmailV22ThreadTrashConfig
-	| GmailV22ThreadUntrashConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -391,12 +361,144 @@ export interface GmailV22Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GmailV22Node = {
+interface GmailV22NodeBase {
 	type: 'n8n-nodes-base.gmail';
 	version: 2.2;
-	config: NodeConfig<GmailV22Params>;
 	credentials?: GmailV22Credentials;
+}
+
+export type GmailV22MessageAddLabelsNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22MessageAddLabelsConfig>;
 };
+
+export type GmailV22MessageDeleteNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22MessageDeleteConfig>;
+};
+
+export type GmailV22MessageGetNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22MessageGetConfig>;
+};
+
+export type GmailV22MessageGetAllNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22MessageGetAllConfig>;
+};
+
+export type GmailV22MessageMarkAsReadNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22MessageMarkAsReadConfig>;
+};
+
+export type GmailV22MessageMarkAsUnreadNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22MessageMarkAsUnreadConfig>;
+};
+
+export type GmailV22MessageRemoveLabelsNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22MessageRemoveLabelsConfig>;
+};
+
+export type GmailV22MessageReplyNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22MessageReplyConfig>;
+};
+
+export type GmailV22MessageSendNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22MessageSendConfig>;
+};
+
+export type GmailV22MessageSendAndWaitNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22MessageSendAndWaitConfig>;
+};
+
+export type GmailV22LabelCreateNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22LabelCreateConfig>;
+};
+
+export type GmailV22LabelDeleteNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22LabelDeleteConfig>;
+};
+
+export type GmailV22LabelGetNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22LabelGetConfig>;
+};
+
+export type GmailV22LabelGetAllNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22LabelGetAllConfig>;
+};
+
+export type GmailV22DraftCreateNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22DraftCreateConfig>;
+};
+
+export type GmailV22DraftDeleteNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22DraftDeleteConfig>;
+};
+
+export type GmailV22DraftGetNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22DraftGetConfig>;
+};
+
+export type GmailV22DraftGetAllNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22DraftGetAllConfig>;
+};
+
+export type GmailV22ThreadAddLabelsNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22ThreadAddLabelsConfig>;
+};
+
+export type GmailV22ThreadDeleteNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22ThreadDeleteConfig>;
+};
+
+export type GmailV22ThreadGetNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22ThreadGetConfig>;
+};
+
+export type GmailV22ThreadGetAllNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22ThreadGetAllConfig>;
+};
+
+export type GmailV22ThreadRemoveLabelsNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22ThreadRemoveLabelsConfig>;
+};
+
+export type GmailV22ThreadReplyNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22ThreadReplyConfig>;
+};
+
+export type GmailV22ThreadTrashNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22ThreadTrashConfig>;
+};
+
+export type GmailV22ThreadUntrashNode = GmailV22NodeBase & {
+	config: NodeConfig<GmailV22ThreadUntrashConfig>;
+};
+
+export type GmailV22Node =
+	| GmailV22MessageAddLabelsNode
+	| GmailV22MessageDeleteNode
+	| GmailV22MessageGetNode
+	| GmailV22MessageGetAllNode
+	| GmailV22MessageMarkAsReadNode
+	| GmailV22MessageMarkAsUnreadNode
+	| GmailV22MessageRemoveLabelsNode
+	| GmailV22MessageReplyNode
+	| GmailV22MessageSendNode
+	| GmailV22MessageSendAndWaitNode
+	| GmailV22LabelCreateNode
+	| GmailV22LabelDeleteNode
+	| GmailV22LabelGetNode
+	| GmailV22LabelGetAllNode
+	| GmailV22DraftCreateNode
+	| GmailV22DraftDeleteNode
+	| GmailV22DraftGetNode
+	| GmailV22DraftGetAllNode
+	| GmailV22ThreadAddLabelsNode
+	| GmailV22ThreadDeleteNode
+	| GmailV22ThreadGetNode
+	| GmailV22ThreadGetAllNode
+	| GmailV22ThreadRemoveLabelsNode
+	| GmailV22ThreadReplyNode
+	| GmailV22ThreadTrashNode
+	| GmailV22ThreadUntrashNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Cloudflare Node - Version 1
  * Consume Cloudflare API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -78,12 +76,6 @@ export type CloudflareV1ZoneCertificateUploadConfig = {
 	privateKey: string | Expression<string>;
 };
 
-export type CloudflareV1Params =
-	| CloudflareV1ZoneCertificateDeleteConfig
-	| CloudflareV1ZoneCertificateGetConfig
-	| CloudflareV1ZoneCertificateGetManyConfig
-	| CloudflareV1ZoneCertificateUploadConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -94,12 +86,34 @@ export interface CloudflareV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CloudflareV1Node = {
+interface CloudflareV1NodeBase {
 	type: 'n8n-nodes-base.cloudflare';
 	version: 1;
-	config: NodeConfig<CloudflareV1Params>;
 	credentials?: CloudflareV1Credentials;
+}
+
+export type CloudflareV1ZoneCertificateDeleteNode = CloudflareV1NodeBase & {
+	config: NodeConfig<CloudflareV1ZoneCertificateDeleteConfig>;
 };
+
+export type CloudflareV1ZoneCertificateGetNode = CloudflareV1NodeBase & {
+	config: NodeConfig<CloudflareV1ZoneCertificateGetConfig>;
+};
+
+export type CloudflareV1ZoneCertificateGetManyNode = CloudflareV1NodeBase & {
+	config: NodeConfig<CloudflareV1ZoneCertificateGetManyConfig>;
+};
+
+export type CloudflareV1ZoneCertificateUploadNode = CloudflareV1NodeBase & {
+	config: NodeConfig<CloudflareV1ZoneCertificateUploadConfig>;
+};
+
+export type CloudflareV1Node =
+	| CloudflareV1ZoneCertificateDeleteNode
+	| CloudflareV1ZoneCertificateGetNode
+	| CloudflareV1ZoneCertificateGetManyNode
+	| CloudflareV1ZoneCertificateUploadNode
+	;

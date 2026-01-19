@@ -1,8 +1,6 @@
 /**
  * Xata Node - Version 1.1
  * Use Xata Memory
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryXataV11Params {
+export interface LcMemoryXataV11Config {
 /**
  * The key to use to store the memory
  * @default ={{ $json.sessionId }}
@@ -36,13 +34,18 @@ export interface LcMemoryXataV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryXataV11Node = {
+interface LcMemoryXataV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryXata';
 	version: 1.1;
-	config: NodeConfig<LcMemoryXataV11Params>;
 	credentials?: LcMemoryXataV11Credentials;
 	isTrigger: true;
+}
+
+export type LcMemoryXataV11Node = LcMemoryXataV11NodeBase & {
+	config: NodeConfig<LcMemoryXataV11Config>;
 };
+
+export type LcMemoryXataV11Node = LcMemoryXataV11Node;

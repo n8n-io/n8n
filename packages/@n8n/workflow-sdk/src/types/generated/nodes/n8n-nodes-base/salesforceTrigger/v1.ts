@@ -1,8 +1,6 @@
 /**
  * Salesforce Trigger Node - Version 1
  * Fetches data from Salesforce and starts the workflow on specified polling intervals.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SalesforceTriggerV1Params {
+export interface SalesforceTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -81,13 +79,18 @@ export interface SalesforceTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SalesforceTriggerV1Node = {
+interface SalesforceTriggerV1NodeBase {
 	type: 'n8n-nodes-base.salesforceTrigger';
 	version: 1;
-	config: NodeConfig<SalesforceTriggerV1Params>;
 	credentials?: SalesforceTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type SalesforceTriggerV1Node = SalesforceTriggerV1NodeBase & {
+	config: NodeConfig<SalesforceTriggerV1Config>;
 };
+
+export type SalesforceTriggerV1Node = SalesforceTriggerV1Node;

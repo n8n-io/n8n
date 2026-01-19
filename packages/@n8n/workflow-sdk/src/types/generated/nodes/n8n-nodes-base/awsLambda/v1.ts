@@ -1,8 +1,6 @@
 /**
  * AWS Lambda Node - Version 1
  * Invoke functions on AWS Lambda
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AwsLambdaV1Params {
+export interface AwsLambdaV1Config {
 	authentication?: 'iam' | 'assumeRole' | Expression<string>;
 	operation?: 'invoke' | Expression<string>;
 /**
@@ -50,12 +48,17 @@ export interface AwsLambdaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsLambdaV1Node = {
+interface AwsLambdaV1NodeBase {
 	type: 'n8n-nodes-base.awsLambda';
 	version: 1;
-	config: NodeConfig<AwsLambdaV1Params>;
 	credentials?: AwsLambdaV1Credentials;
+}
+
+export type AwsLambdaV1Node = AwsLambdaV1NodeBase & {
+	config: NodeConfig<AwsLambdaV1Config>;
 };
+
+export type AwsLambdaV1Node = AwsLambdaV1Node;

@@ -1,8 +1,6 @@
 /**
  * Eventbrite Trigger Node - Version 1
  * Handle Eventbrite events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface EventbriteTriggerV1Params {
+export interface EventbriteTriggerV1Config {
 	authentication?: 'privateKey' | 'oAuth2' | Expression<string>;
 /**
  * The Eventbrite Organization to work on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -45,13 +43,18 @@ export interface EventbriteTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EventbriteTriggerV1Node = {
+interface EventbriteTriggerV1NodeBase {
 	type: 'n8n-nodes-base.eventbriteTrigger';
 	version: 1;
-	config: NodeConfig<EventbriteTriggerV1Params>;
 	credentials?: EventbriteTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type EventbriteTriggerV1Node = EventbriteTriggerV1NodeBase & {
+	config: NodeConfig<EventbriteTriggerV1Config>;
 };
+
+export type EventbriteTriggerV1Node = EventbriteTriggerV1Node;

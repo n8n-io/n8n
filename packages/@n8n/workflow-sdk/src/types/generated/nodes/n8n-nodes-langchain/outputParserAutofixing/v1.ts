@@ -1,8 +1,6 @@
 /**
  * Auto-fixing Output Parser Node - Version 1
  * Deprecated, use structured output parser
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcOutputParserAutofixingV1Params {
+export interface LcOutputParserAutofixingV1Config {
 	options?: Record<string, unknown>;
 }
 
@@ -22,13 +20,17 @@ export interface LcOutputParserAutofixingV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOutputParserAutofixingV1Node = {
+interface LcOutputParserAutofixingV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.outputParserAutofixing';
 	version: 1;
-	config: NodeConfig<LcOutputParserAutofixingV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcOutputParserAutofixingV1Node = LcOutputParserAutofixingV1NodeBase & {
+	config: NodeConfig<LcOutputParserAutofixingV1Config>;
 };
+
+export type LcOutputParserAutofixingV1Node = LcOutputParserAutofixingV1Node;

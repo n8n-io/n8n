@@ -1,8 +1,6 @@
 /**
  * Basic LLM Chain Node - Version 1.1
  * A simple chain to prompt a large language model
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -125,23 +123,34 @@ export type LcChainLlmV11DefineConfig = {
 	};
 };
 
-export type LcChainLlmV11Params =
-	| LcChainLlmV11AutoConfig
-	| LcChainLlmV11GuardrailsConfig
-	| LcChainLlmV11DefineConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChainLlmV11Node = {
+interface LcChainLlmV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chainLlm';
 	version: 1.1;
-	config: NodeConfig<LcChainLlmV11Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcChainLlmV11AutoNode = LcChainLlmV11NodeBase & {
+	config: NodeConfig<LcChainLlmV11AutoConfig>;
 };
+
+export type LcChainLlmV11GuardrailsNode = LcChainLlmV11NodeBase & {
+	config: NodeConfig<LcChainLlmV11GuardrailsConfig>;
+};
+
+export type LcChainLlmV11DefineNode = LcChainLlmV11NodeBase & {
+	config: NodeConfig<LcChainLlmV11DefineConfig>;
+};
+
+export type LcChainLlmV11Node =
+	| LcChainLlmV11AutoNode
+	| LcChainLlmV11GuardrailsNode
+	| LcChainLlmV11DefineNode
+	;

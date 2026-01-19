@@ -1,8 +1,6 @@
 /**
  * Mistral AI Node - Version 1
  * Consume Mistral AI API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -50,9 +48,42 @@ export type MistralAiV1DocumentExtractTextConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MistralAiV1Params =
-	| MistralAiV1DocumentExtractTextConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type MistralAiV1DocumentExtractTextOutput = {
+	document_annotation?: null;
+	extractedText?: string;
+	model?: string;
+	pageCount?: number;
+	pages?: Array<{
+		dimensions?: {
+			dpi?: number;
+			height?: number;
+			width?: number;
+		};
+		footer?: null;
+		header?: null;
+		hyperlinks?: Array<string>;
+		images?: Array<{
+			bottom_right_x?: number;
+			bottom_right_y?: number;
+			id?: string;
+			image_annotation?: null;
+			image_base64?: null;
+			top_left_x?: number;
+			top_left_y?: number;
+		}>;
+		index?: number;
+		markdown?: string;
+	}>;
+	usage_info?: {
+		doc_size_bytes?: number;
+		pages_processed?: number;
+	};
+};
 
 // ===========================================================================
 // Credentials
@@ -63,12 +94,18 @@ export interface MistralAiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MistralAiV1Node = {
+interface MistralAiV1NodeBase {
 	type: 'n8n-nodes-base.mistralAi';
 	version: 1;
-	config: NodeConfig<MistralAiV1Params>;
 	credentials?: MistralAiV1Credentials;
+}
+
+export type MistralAiV1DocumentExtractTextNode = MistralAiV1NodeBase & {
+	config: NodeConfig<MistralAiV1DocumentExtractTextConfig>;
+	output?: MistralAiV1DocumentExtractTextOutput;
 };
+
+export type MistralAiV1Node = MistralAiV1DocumentExtractTextNode;

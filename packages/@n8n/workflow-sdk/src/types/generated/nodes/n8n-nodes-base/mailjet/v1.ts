@@ -1,8 +1,6 @@
 /**
  * Mailjet Node - Version 1
  * Consume Mailjet API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -123,11 +121,56 @@ export type MailjetV1SmsSendConfig = {
 	text: string | Expression<string>;
 };
 
-export type MailjetV1Params =
-	| MailjetV1EmailSendConfig
-	| MailjetV1EmailSendTemplateConfig
-	| MailjetV1SmsSendConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type MailjetV1EmailSendOutput = {
+	Bcc?: Array<{
+		Email?: string;
+		MessageHref?: string;
+		MessageID?: number;
+		MessageUUID?: string;
+	}>;
+	Cc?: Array<{
+		Email?: string;
+		MessageHref?: string;
+		MessageID?: number;
+		MessageUUID?: string;
+	}>;
+	CustomID?: string;
+	Status?: string;
+	To?: Array<{
+		Email?: string;
+		MessageHref?: string;
+		MessageID?: number;
+		MessageUUID?: string;
+	}>;
+};
+
+export type MailjetV1EmailSendTemplateOutput = {
+	Bcc?: Array<{
+		Email?: string;
+		MessageHref?: string;
+		MessageID?: number;
+		MessageUUID?: string;
+	}>;
+	Cc?: Array<{
+		Email?: string;
+		MessageHref?: string;
+		MessageID?: number;
+		MessageUUID?: string;
+	}>;
+	CustomID?: string;
+	Status?: string;
+	To?: Array<{
+		Email?: string;
+		MessageHref?: string;
+		MessageID?: number;
+		MessageUUID?: string;
+	}>;
+};
 
 // ===========================================================================
 // Credentials
@@ -139,12 +182,31 @@ export interface MailjetV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailjetV1Node = {
+interface MailjetV1NodeBase {
 	type: 'n8n-nodes-base.mailjet';
 	version: 1;
-	config: NodeConfig<MailjetV1Params>;
 	credentials?: MailjetV1Credentials;
+}
+
+export type MailjetV1EmailSendNode = MailjetV1NodeBase & {
+	config: NodeConfig<MailjetV1EmailSendConfig>;
+	output?: MailjetV1EmailSendOutput;
 };
+
+export type MailjetV1EmailSendTemplateNode = MailjetV1NodeBase & {
+	config: NodeConfig<MailjetV1EmailSendTemplateConfig>;
+	output?: MailjetV1EmailSendTemplateOutput;
+};
+
+export type MailjetV1SmsSendNode = MailjetV1NodeBase & {
+	config: NodeConfig<MailjetV1SmsSendConfig>;
+};
+
+export type MailjetV1Node =
+	| MailjetV1EmailSendNode
+	| MailjetV1EmailSendTemplateNode
+	| MailjetV1SmsSendNode
+	;

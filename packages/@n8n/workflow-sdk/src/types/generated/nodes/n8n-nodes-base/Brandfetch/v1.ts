@@ -1,8 +1,6 @@
 /**
  * Brandfetch Node - Version 1
  * Consume Brandfetch API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface BrandfetchV1Params {
+export interface BrandfetchV1Config {
 	operation?: 'color' | 'company' | 'font' | 'industry' | 'logo' | Expression<string>;
 /**
  * The domain name of the company
@@ -43,12 +41,17 @@ export interface BrandfetchV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BrandfetchV1Node = {
+interface BrandfetchV1NodeBase {
 	type: 'n8n-nodes-base.Brandfetch';
 	version: 1;
-	config: NodeConfig<BrandfetchV1Params>;
 	credentials?: BrandfetchV1Credentials;
+}
+
+export type BrandfetchV1Node = BrandfetchV1NodeBase & {
+	config: NodeConfig<BrandfetchV1Config>;
 };
+
+export type BrandfetchV1Node = BrandfetchV1Node;

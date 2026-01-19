@@ -1,8 +1,6 @@
 /**
  * Azure AI Search Vector Store Node - Version 1.2
  * Work with your data in Azure AI Search Vector Store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -129,13 +127,6 @@ export type LcVectorStoreAzureAISearchV12UpdateConfig = {
 		id: string | Expression<string>;
 };
 
-export type LcVectorStoreAzureAISearchV12Params =
-	| LcVectorStoreAzureAISearchV12LoadConfig
-	| LcVectorStoreAzureAISearchV12InsertConfig
-	| LcVectorStoreAzureAISearchV12RetrieveConfig
-	| LcVectorStoreAzureAISearchV12RetrieveAsToolConfig
-	| LcVectorStoreAzureAISearchV12UpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -146,12 +137,39 @@ export interface LcVectorStoreAzureAISearchV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreAzureAISearchV12Node = {
+interface LcVectorStoreAzureAISearchV12NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreAzureAISearch';
 	version: 1.2;
-	config: NodeConfig<LcVectorStoreAzureAISearchV12Params>;
 	credentials?: LcVectorStoreAzureAISearchV12Credentials;
+}
+
+export type LcVectorStoreAzureAISearchV12LoadNode = LcVectorStoreAzureAISearchV12NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV12LoadConfig>;
 };
+
+export type LcVectorStoreAzureAISearchV12InsertNode = LcVectorStoreAzureAISearchV12NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV12InsertConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV12RetrieveNode = LcVectorStoreAzureAISearchV12NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV12RetrieveConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV12RetrieveAsToolNode = LcVectorStoreAzureAISearchV12NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV12RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV12UpdateNode = LcVectorStoreAzureAISearchV12NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV12UpdateConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV12Node =
+	| LcVectorStoreAzureAISearchV12LoadNode
+	| LcVectorStoreAzureAISearchV12InsertNode
+	| LcVectorStoreAzureAISearchV12RetrieveNode
+	| LcVectorStoreAzureAISearchV12RetrieveAsToolNode
+	| LcVectorStoreAzureAISearchV12UpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Slack Trigger Node - Version 1
  * Handle Slack events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface SlackTriggerV1Params {
+export interface SlackTriggerV1Config {
 	authentication?: unknown;
 	trigger?: Array<'any_event' | 'app_mention' | 'file_public' | 'file_share' | 'message' | 'channel_created' | 'team_join' | 'reaction_added'>;
 /**
@@ -49,13 +47,18 @@ export interface SlackTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SlackTriggerV1Node = {
+interface SlackTriggerV1NodeBase {
 	type: 'n8n-nodes-base.slackTrigger';
 	version: 1;
-	config: NodeConfig<SlackTriggerV1Params>;
 	credentials?: SlackTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type SlackTriggerV1Node = SlackTriggerV1NodeBase & {
+	config: NodeConfig<SlackTriggerV1Config>;
 };
+
+export type SlackTriggerV1Node = SlackTriggerV1Node;

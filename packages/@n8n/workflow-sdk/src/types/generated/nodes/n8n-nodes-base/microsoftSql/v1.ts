@@ -1,8 +1,6 @@
 /**
  * Microsoft SQL Node - Version 1
  * Get, add and update data in Microsoft SQL
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MicrosoftSqlV1Params {
+export interface MicrosoftSqlV1Config {
 	operation?: 'executeQuery' | 'insert' | 'update' | 'delete' | Expression<string>;
 /**
  * The SQL query to execute
@@ -53,12 +51,17 @@ export interface MicrosoftSqlV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftSqlV1Node = {
+interface MicrosoftSqlV1NodeBase {
 	type: 'n8n-nodes-base.microsoftSql';
 	version: 1;
-	config: NodeConfig<MicrosoftSqlV1Params>;
 	credentials?: MicrosoftSqlV1Credentials;
+}
+
+export type MicrosoftSqlV1Node = MicrosoftSqlV1NodeBase & {
+	config: NodeConfig<MicrosoftSqlV1Config>;
 };
+
+export type MicrosoftSqlV1Node = MicrosoftSqlV1Node;

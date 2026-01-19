@@ -1,8 +1,6 @@
 /**
  * Todoist Node - Version 2.2
  * Consume Todoist API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -401,44 +399,77 @@ export type TodoistV22ReminderUpdateConfig = {
 	reminderUpdateFields?: Record<string, unknown>;
 };
 
-export type TodoistV22Params =
-	| TodoistV22TaskCloseConfig
-	| TodoistV22TaskCreateConfig
-	| TodoistV22TaskDeleteConfig
-	| TodoistV22TaskGetConfig
-	| TodoistV22TaskGetAllConfig
-	| TodoistV22TaskMoveConfig
-	| TodoistV22TaskQuickAddConfig
-	| TodoistV22TaskReopenConfig
-	| TodoistV22TaskUpdateConfig
-	| TodoistV22ProjectArchiveConfig
-	| TodoistV22ProjectCreateConfig
-	| TodoistV22ProjectDeleteConfig
-	| TodoistV22ProjectGetConfig
-	| TodoistV22ProjectGetCollaboratorsConfig
-	| TodoistV22ProjectGetAllConfig
-	| TodoistV22ProjectUnarchiveConfig
-	| TodoistV22ProjectUpdateConfig
-	| TodoistV22SectionCreateConfig
-	| TodoistV22SectionDeleteConfig
-	| TodoistV22SectionGetConfig
-	| TodoistV22SectionGetAllConfig
-	| TodoistV22SectionUpdateConfig
-	| TodoistV22CommentCreateConfig
-	| TodoistV22CommentDeleteConfig
-	| TodoistV22CommentGetConfig
-	| TodoistV22CommentGetAllConfig
-	| TodoistV22CommentUpdateConfig
-	| TodoistV22LabelCreateConfig
-	| TodoistV22LabelDeleteConfig
-	| TodoistV22LabelGetConfig
-	| TodoistV22LabelGetAllConfig
-	| TodoistV22LabelUpdateConfig
-	| TodoistV22ReminderCreateConfig
-	| TodoistV22ReminderDeleteConfig
-	| TodoistV22ReminderGetAllConfig
-	| TodoistV22ReminderUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type TodoistV22TaskCloseOutput = {
+	success?: boolean;
+};
+
+export type TodoistV22TaskCreateOutput = {
+	assignee_id?: null;
+	assigner_id?: null;
+	comment_count?: number;
+	content?: string;
+	created_at?: string;
+	creator_id?: string;
+	deadline?: null;
+	description?: string;
+	duration?: null;
+	id?: string;
+	is_completed?: boolean;
+	labels?: Array<string>;
+	order?: number;
+	priority?: number;
+	project_id?: string;
+	url?: string;
+};
+
+export type TodoistV22TaskGetOutput = {
+	comment_count?: number;
+	content?: string;
+	created_at?: string;
+	creator_id?: string;
+	description?: string;
+	due?: {
+		date?: string;
+		is_recurring?: boolean;
+		lang?: string;
+		string?: string;
+	};
+	id?: string;
+	is_completed?: boolean;
+	labels?: Array<string>;
+	order?: number;
+	priority?: number;
+	project_id?: string;
+	url?: string;
+};
+
+export type TodoistV22TaskGetAllOutput = {
+	comment_count?: number;
+	content?: string;
+	created_at?: string;
+	creator_id?: string;
+	description?: string;
+	id?: string;
+	is_completed?: boolean;
+	labels?: Array<string>;
+	order?: number;
+	priority?: number;
+	project_id?: string;
+	url?: string;
+};
+
+export type TodoistV22TaskMoveOutput = {
+	success?: boolean;
+};
+
+export type TodoistV22TaskUpdateOutput = {
+	success?: boolean;
+};
 
 // ===========================================================================
 // Credentials
@@ -450,12 +481,200 @@ export interface TodoistV22Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TodoistV22Node = {
+interface TodoistV22NodeBase {
 	type: 'n8n-nodes-base.todoist';
 	version: 2.2;
-	config: NodeConfig<TodoistV22Params>;
 	credentials?: TodoistV22Credentials;
+}
+
+export type TodoistV22TaskCloseNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22TaskCloseConfig>;
+	output?: TodoistV22TaskCloseOutput;
 };
+
+export type TodoistV22TaskCreateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22TaskCreateConfig>;
+	output?: TodoistV22TaskCreateOutput;
+};
+
+export type TodoistV22TaskDeleteNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22TaskDeleteConfig>;
+};
+
+export type TodoistV22TaskGetNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22TaskGetConfig>;
+	output?: TodoistV22TaskGetOutput;
+};
+
+export type TodoistV22TaskGetAllNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22TaskGetAllConfig>;
+	output?: TodoistV22TaskGetAllOutput;
+};
+
+export type TodoistV22TaskMoveNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22TaskMoveConfig>;
+	output?: TodoistV22TaskMoveOutput;
+};
+
+export type TodoistV22TaskQuickAddNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22TaskQuickAddConfig>;
+};
+
+export type TodoistV22TaskReopenNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22TaskReopenConfig>;
+};
+
+export type TodoistV22TaskUpdateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22TaskUpdateConfig>;
+	output?: TodoistV22TaskUpdateOutput;
+};
+
+export type TodoistV22ProjectArchiveNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ProjectArchiveConfig>;
+};
+
+export type TodoistV22ProjectCreateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ProjectCreateConfig>;
+};
+
+export type TodoistV22ProjectDeleteNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ProjectDeleteConfig>;
+};
+
+export type TodoistV22ProjectGetNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ProjectGetConfig>;
+};
+
+export type TodoistV22ProjectGetCollaboratorsNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ProjectGetCollaboratorsConfig>;
+};
+
+export type TodoistV22ProjectGetAllNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ProjectGetAllConfig>;
+};
+
+export type TodoistV22ProjectUnarchiveNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ProjectUnarchiveConfig>;
+};
+
+export type TodoistV22ProjectUpdateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ProjectUpdateConfig>;
+};
+
+export type TodoistV22SectionCreateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22SectionCreateConfig>;
+};
+
+export type TodoistV22SectionDeleteNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22SectionDeleteConfig>;
+};
+
+export type TodoistV22SectionGetNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22SectionGetConfig>;
+};
+
+export type TodoistV22SectionGetAllNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22SectionGetAllConfig>;
+};
+
+export type TodoistV22SectionUpdateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22SectionUpdateConfig>;
+};
+
+export type TodoistV22CommentCreateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22CommentCreateConfig>;
+};
+
+export type TodoistV22CommentDeleteNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22CommentDeleteConfig>;
+};
+
+export type TodoistV22CommentGetNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22CommentGetConfig>;
+};
+
+export type TodoistV22CommentGetAllNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22CommentGetAllConfig>;
+};
+
+export type TodoistV22CommentUpdateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22CommentUpdateConfig>;
+};
+
+export type TodoistV22LabelCreateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22LabelCreateConfig>;
+};
+
+export type TodoistV22LabelDeleteNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22LabelDeleteConfig>;
+};
+
+export type TodoistV22LabelGetNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22LabelGetConfig>;
+};
+
+export type TodoistV22LabelGetAllNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22LabelGetAllConfig>;
+};
+
+export type TodoistV22LabelUpdateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22LabelUpdateConfig>;
+};
+
+export type TodoistV22ReminderCreateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ReminderCreateConfig>;
+};
+
+export type TodoistV22ReminderDeleteNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ReminderDeleteConfig>;
+};
+
+export type TodoistV22ReminderGetAllNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ReminderGetAllConfig>;
+};
+
+export type TodoistV22ReminderUpdateNode = TodoistV22NodeBase & {
+	config: NodeConfig<TodoistV22ReminderUpdateConfig>;
+};
+
+export type TodoistV22Node =
+	| TodoistV22TaskCloseNode
+	| TodoistV22TaskCreateNode
+	| TodoistV22TaskDeleteNode
+	| TodoistV22TaskGetNode
+	| TodoistV22TaskGetAllNode
+	| TodoistV22TaskMoveNode
+	| TodoistV22TaskQuickAddNode
+	| TodoistV22TaskReopenNode
+	| TodoistV22TaskUpdateNode
+	| TodoistV22ProjectArchiveNode
+	| TodoistV22ProjectCreateNode
+	| TodoistV22ProjectDeleteNode
+	| TodoistV22ProjectGetNode
+	| TodoistV22ProjectGetCollaboratorsNode
+	| TodoistV22ProjectGetAllNode
+	| TodoistV22ProjectUnarchiveNode
+	| TodoistV22ProjectUpdateNode
+	| TodoistV22SectionCreateNode
+	| TodoistV22SectionDeleteNode
+	| TodoistV22SectionGetNode
+	| TodoistV22SectionGetAllNode
+	| TodoistV22SectionUpdateNode
+	| TodoistV22CommentCreateNode
+	| TodoistV22CommentDeleteNode
+	| TodoistV22CommentGetNode
+	| TodoistV22CommentGetAllNode
+	| TodoistV22CommentUpdateNode
+	| TodoistV22LabelCreateNode
+	| TodoistV22LabelDeleteNode
+	| TodoistV22LabelGetNode
+	| TodoistV22LabelGetAllNode
+	| TodoistV22LabelUpdateNode
+	| TodoistV22ReminderCreateNode
+	| TodoistV22ReminderDeleteNode
+	| TodoistV22ReminderGetAllNode
+	| TodoistV22ReminderUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Customer Datastore (n8n training) Node - Version 1
  * Dummy node used for n8n training
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface N8nTrainingCustomerDatastoreV1Params {
+export interface N8nTrainingCustomerDatastoreV1Config {
 	operation?: 'getOnePerson' | 'getAllPeople' | Expression<string>;
 /**
  * Whether to return all results or only up to a given limit
@@ -34,12 +32,16 @@ export interface N8nTrainingCustomerDatastoreV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type N8nTrainingCustomerDatastoreV1Node = {
+interface N8nTrainingCustomerDatastoreV1NodeBase {
 	type: 'n8n-nodes-base.n8nTrainingCustomerDatastore';
 	version: 1;
-	config: NodeConfig<N8nTrainingCustomerDatastoreV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type N8nTrainingCustomerDatastoreV1Node = N8nTrainingCustomerDatastoreV1NodeBase & {
+	config: NodeConfig<N8nTrainingCustomerDatastoreV1Config>;
 };
+
+export type N8nTrainingCustomerDatastoreV1Node = N8nTrainingCustomerDatastoreV1Node;

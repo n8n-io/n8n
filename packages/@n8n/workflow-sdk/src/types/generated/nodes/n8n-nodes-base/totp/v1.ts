@@ -1,8 +1,6 @@
 /**
  * TOTP Node - Version 1
  * Generate a time-based one-time password
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface TotpV1Params {
+export interface TotpV1Config {
 	operation?: 'generateSecret' | Expression<string>;
 	options?: Record<string, unknown>;
 }
@@ -27,12 +25,17 @@ export interface TotpV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TotpV1Node = {
+interface TotpV1NodeBase {
 	type: 'n8n-nodes-base.totp';
 	version: 1;
-	config: NodeConfig<TotpV1Params>;
 	credentials?: TotpV1Credentials;
+}
+
+export type TotpV1Node = TotpV1NodeBase & {
+	config: NodeConfig<TotpV1Config>;
 };
+
+export type TotpV1Node = TotpV1Node;

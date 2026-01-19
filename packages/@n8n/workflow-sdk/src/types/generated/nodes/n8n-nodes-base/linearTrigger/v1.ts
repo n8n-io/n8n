@@ -1,8 +1,6 @@
 /**
  * Linear Trigger Node - Version 1
  * Starts the workflow when Linear events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LinearTriggerV1Params {
+export interface LinearTriggerV1Config {
 	authentication?: 'apiToken' | 'oAuth2' | Expression<string>;
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
@@ -32,13 +30,18 @@ export interface LinearTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LinearTriggerV1Node = {
+interface LinearTriggerV1NodeBase {
 	type: 'n8n-nodes-base.linearTrigger';
 	version: 1;
-	config: NodeConfig<LinearTriggerV1Params>;
 	credentials?: LinearTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type LinearTriggerV1Node = LinearTriggerV1NodeBase & {
+	config: NodeConfig<LinearTriggerV1Config>;
 };
+
+export type LinearTriggerV1Node = LinearTriggerV1Node;

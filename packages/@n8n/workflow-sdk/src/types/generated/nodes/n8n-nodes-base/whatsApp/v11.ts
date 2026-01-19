@@ -1,8 +1,6 @@
 /**
  * WhatsApp Business Cloud Node - Version 1.1
  * Access WhatsApp API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -295,14 +293,52 @@ export type WhatsAppV11MediaMediaDeleteConfig = {
 		mediaDeleteId: string | Expression<string>;
 };
 
-export type WhatsAppV11Params =
-	| WhatsAppV11MessageSendConfig
-	| WhatsAppV11MessageSendAndWaitConfig
-	| WhatsAppV11MessageSendTemplateConfig
-	| WhatsAppV11MediaMediaUploadConfig
-	| WhatsAppV11MediaMediaUrlGetConfig
-	| WhatsAppV11MediaMediaDeleteConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type WhatsAppV11MessageSendOutput = {
+	contacts?: Array<{
+		input?: string;
+		wa_id?: string;
+	}>;
+	messages?: Array<{
+		id?: string;
+	}>;
+	messaging_product?: string;
+};
+
+export type WhatsAppV11MessageSendAndWaitOutput = {
+	data?: {
+		text?: string;
+	};
+};
+
+export type WhatsAppV11MessageSendTemplateOutput = {
+	contacts?: Array<{
+		input?: string;
+		wa_id?: string;
+	}>;
+	messages?: Array<{
+		id?: string;
+		message_status?: string;
+	}>;
+	messaging_product?: string;
+};
+
+export type WhatsAppV11MediaMediaUploadOutput = {
+	id?: string;
+};
+
+export type WhatsAppV11MediaMediaUrlGetOutput = {
+	file_size?: number;
+	id?: string;
+	messaging_product?: string;
+	mime_type?: string;
+	sha256?: string;
+	url?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -313,12 +349,49 @@ export interface WhatsAppV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WhatsAppV11Node = {
+interface WhatsAppV11NodeBase {
 	type: 'n8n-nodes-base.whatsApp';
 	version: 1.1;
-	config: NodeConfig<WhatsAppV11Params>;
 	credentials?: WhatsAppV11Credentials;
+}
+
+export type WhatsAppV11MessageSendNode = WhatsAppV11NodeBase & {
+	config: NodeConfig<WhatsAppV11MessageSendConfig>;
+	output?: WhatsAppV11MessageSendOutput;
 };
+
+export type WhatsAppV11MessageSendAndWaitNode = WhatsAppV11NodeBase & {
+	config: NodeConfig<WhatsAppV11MessageSendAndWaitConfig>;
+	output?: WhatsAppV11MessageSendAndWaitOutput;
+};
+
+export type WhatsAppV11MessageSendTemplateNode = WhatsAppV11NodeBase & {
+	config: NodeConfig<WhatsAppV11MessageSendTemplateConfig>;
+	output?: WhatsAppV11MessageSendTemplateOutput;
+};
+
+export type WhatsAppV11MediaMediaUploadNode = WhatsAppV11NodeBase & {
+	config: NodeConfig<WhatsAppV11MediaMediaUploadConfig>;
+	output?: WhatsAppV11MediaMediaUploadOutput;
+};
+
+export type WhatsAppV11MediaMediaUrlGetNode = WhatsAppV11NodeBase & {
+	config: NodeConfig<WhatsAppV11MediaMediaUrlGetConfig>;
+	output?: WhatsAppV11MediaMediaUrlGetOutput;
+};
+
+export type WhatsAppV11MediaMediaDeleteNode = WhatsAppV11NodeBase & {
+	config: NodeConfig<WhatsAppV11MediaMediaDeleteConfig>;
+};
+
+export type WhatsAppV11Node =
+	| WhatsAppV11MessageSendNode
+	| WhatsAppV11MessageSendAndWaitNode
+	| WhatsAppV11MessageSendTemplateNode
+	| WhatsAppV11MediaMediaUploadNode
+	| WhatsAppV11MediaMediaUrlGetNode
+	| WhatsAppV11MediaMediaDeleteNode
+	;

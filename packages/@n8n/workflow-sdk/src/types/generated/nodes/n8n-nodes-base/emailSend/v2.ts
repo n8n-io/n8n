@@ -1,8 +1,6 @@
 /**
  * Send Email Node - Version 2
  * Sends an email using SMTP protocol
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface EmailSendV2Params {
+export interface EmailSendV2Config {
 	resource?: unknown;
 	operation?: 'send' | 'sendAndWait' | Expression<string>;
 /**
@@ -87,12 +85,17 @@ export interface EmailSendV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EmailSendV2Node = {
+interface EmailSendV2NodeBase {
 	type: 'n8n-nodes-base.emailSend';
 	version: 2;
-	config: NodeConfig<EmailSendV2Params>;
 	credentials?: EmailSendV2Credentials;
+}
+
+export type EmailSendV2Node = EmailSendV2NodeBase & {
+	config: NodeConfig<EmailSendV2Config>;
 };
+
+export type EmailSendV2Node = EmailSendV2Node;

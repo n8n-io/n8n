@@ -1,8 +1,6 @@
 /**
  * Gong Node - Version 1
  * Interact with Gong API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -74,12 +72,95 @@ export type GongV1UserGetAllConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type GongV1Params =
-	| GongV1CallGetConfig
-	| GongV1CallGetAllConfig
-	| GongV1UserGetConfig
-	| GongV1UserGetAllConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type GongV1CallGetOutput = {
+	metaData?: {
+		customData?: null;
+		direction?: string;
+		duration?: number;
+		id?: string;
+		isPrivate?: boolean;
+		language?: string;
+		media?: string;
+		meetingUrl?: string;
+		primaryUserId?: string;
+		purpose?: null;
+		scheduled?: string;
+		scope?: string;
+		started?: string;
+		system?: string;
+		title?: string;
+		url?: string;
+		workspaceId?: string;
+	};
+	parties?: Array<{
+		affiliation?: string;
+		emailAddress?: string;
+		id?: string;
+		methods?: Array<string>;
+		name?: string;
+		phoneNumber?: string;
+		title?: string;
+		userId?: string;
+	}>;
+	transcript?: Array<{
+		sentences?: Array<{
+			end?: number;
+			start?: number;
+			text?: string;
+		}>;
+		speakerId?: string;
+	}>;
+};
+
+export type GongV1CallGetAllOutput = {
+	customData?: null;
+	direction?: string;
+	duration?: number;
+	id?: string;
+	isPrivate?: boolean;
+	language?: string;
+	media?: string;
+	meetingUrl?: string;
+	primaryUserId?: string;
+	purpose?: null;
+	scheduled?: string;
+	scope?: string;
+	started?: string;
+	system?: string;
+	title?: string;
+	url?: string;
+	workspaceId?: string;
+};
+
+export type GongV1UserGetOutput = {
+	active?: boolean;
+	created?: string;
+	emailAddress?: string;
+	emailAliases?: Array<string>;
+	extension?: null;
+	firstName?: string;
+	id?: string;
+	lastName?: string;
+	settings?: {
+		emailsImported?: boolean;
+		gongConnectEnabled?: boolean;
+		nonRecordedMeetingsImported?: boolean;
+		preventEmailImport?: boolean;
+		preventWebConferenceRecording?: boolean;
+		telephonyCallsImported?: boolean;
+		webConferencesRecorded?: boolean;
+	};
+	spokenLanguages?: Array<{
+		language?: string;
+		primary?: boolean;
+	}>;
+	trustedEmailAddress?: null;
+};
 
 // ===========================================================================
 // Credentials
@@ -91,12 +172,37 @@ export interface GongV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GongV1Node = {
+interface GongV1NodeBase {
 	type: 'n8n-nodes-base.gong';
 	version: 1;
-	config: NodeConfig<GongV1Params>;
 	credentials?: GongV1Credentials;
+}
+
+export type GongV1CallGetNode = GongV1NodeBase & {
+	config: NodeConfig<GongV1CallGetConfig>;
+	output?: GongV1CallGetOutput;
 };
+
+export type GongV1CallGetAllNode = GongV1NodeBase & {
+	config: NodeConfig<GongV1CallGetAllConfig>;
+	output?: GongV1CallGetAllOutput;
+};
+
+export type GongV1UserGetNode = GongV1NodeBase & {
+	config: NodeConfig<GongV1UserGetConfig>;
+	output?: GongV1UserGetOutput;
+};
+
+export type GongV1UserGetAllNode = GongV1NodeBase & {
+	config: NodeConfig<GongV1UserGetAllConfig>;
+};
+
+export type GongV1Node =
+	| GongV1CallGetNode
+	| GongV1CallGetAllNode
+	| GongV1UserGetNode
+	| GongV1UserGetAllNode
+	;

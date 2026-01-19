@@ -1,8 +1,6 @@
 /**
  * Coda Node - Version 1.1
  * Consume Coda API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -426,26 +424,93 @@ export type CodaV11ViewUpdateViewRowConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type CodaV11Params =
-	| CodaV11ControlGetConfig
-	| CodaV11ControlGetAllConfig
-	| CodaV11FormulaGetConfig
-	| CodaV11FormulaGetAllConfig
-	| CodaV11TableCreateRowConfig
-	| CodaV11TableDeleteRowConfig
-	| CodaV11TableGetAllColumnsConfig
-	| CodaV11TableGetAllRowsConfig
-	| CodaV11TableGetColumnConfig
-	| CodaV11TableGetRowConfig
-	| CodaV11TablePushButtonConfig
-	| CodaV11ViewDeleteViewRowConfig
-	| CodaV11ViewGetConfig
-	| CodaV11ViewGetAllViewColumnsConfig
-	| CodaV11ViewGetAllConfig
-	| CodaV11ViewGetAllViewRowsConfig
-	| CodaV11ViewPushViewButtonConfig
-	| CodaV11ViewUpdateViewRowConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type CodaV11TableGetAllColumnsOutput = {
+	display?: boolean;
+	format?: {
+		isArray?: boolean;
+		type?: string;
+	};
+	href?: string;
+	id?: string;
+	name?: string;
+	type?: string;
+};
+
+export type CodaV11TableGetAllRowsOutput = {
+	id?: string;
+};
+
+export type CodaV11TableGetRowOutput = {
+	id?: string;
+};
+
+export type CodaV11TablePushButtonOutput = {
+	columnId?: string;
+	requestId?: string;
+	rowId?: string;
+};
+
+export type CodaV11ViewGetOutput = {
+	href?: string;
+	items?: Array<{
+		browserLink?: string;
+		href?: string;
+		id?: string;
+		name?: string;
+		parent?: {
+			browserLink?: string;
+			href?: string;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		tableType?: string;
+		type?: string;
+	}>;
+};
+
+export type CodaV11ViewGetAllOutput = {
+	browserLink?: string;
+	href?: string;
+	id?: string;
+	name?: string;
+	parent?: {
+		browserLink?: string;
+		href?: string;
+		id?: string;
+		name?: string;
+		type?: string;
+	};
+	tableType?: string;
+	type?: string;
+};
+
+export type CodaV11ViewGetAllViewRowsOutput = {
+	'Contract ID'?: string;
+	'Contract Link'?: string;
+	'Contract Notes'?: string;
+	'Contract Signature Date'?: string;
+	contractTextOutput?: string;
+	'Created on'?: string;
+	'Do not use name/logo?'?: boolean;
+	extractText?: string;
+	fileSize?: string;
+	'Full Deletion Required?'?: boolean;
+	id?: string;
+	'IT Addendum?'?: boolean;
+	lastUpdated?: string;
+	'over4MB?'?: boolean;
+	'Processing Organization'?: string;
+	rowID?: number;
+	'Status Date'?: string;
+	Summarize?: string;
+	Summary?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -456,12 +521,111 @@ export interface CodaV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CodaV11Node = {
+interface CodaV11NodeBase {
 	type: 'n8n-nodes-base.coda';
 	version: 1.1;
-	config: NodeConfig<CodaV11Params>;
 	credentials?: CodaV11Credentials;
+}
+
+export type CodaV11ControlGetNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11ControlGetConfig>;
 };
+
+export type CodaV11ControlGetAllNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11ControlGetAllConfig>;
+};
+
+export type CodaV11FormulaGetNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11FormulaGetConfig>;
+};
+
+export type CodaV11FormulaGetAllNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11FormulaGetAllConfig>;
+};
+
+export type CodaV11TableCreateRowNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11TableCreateRowConfig>;
+};
+
+export type CodaV11TableDeleteRowNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11TableDeleteRowConfig>;
+};
+
+export type CodaV11TableGetAllColumnsNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11TableGetAllColumnsConfig>;
+	output?: CodaV11TableGetAllColumnsOutput;
+};
+
+export type CodaV11TableGetAllRowsNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11TableGetAllRowsConfig>;
+	output?: CodaV11TableGetAllRowsOutput;
+};
+
+export type CodaV11TableGetColumnNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11TableGetColumnConfig>;
+};
+
+export type CodaV11TableGetRowNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11TableGetRowConfig>;
+	output?: CodaV11TableGetRowOutput;
+};
+
+export type CodaV11TablePushButtonNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11TablePushButtonConfig>;
+	output?: CodaV11TablePushButtonOutput;
+};
+
+export type CodaV11ViewDeleteViewRowNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11ViewDeleteViewRowConfig>;
+};
+
+export type CodaV11ViewGetNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11ViewGetConfig>;
+	output?: CodaV11ViewGetOutput;
+};
+
+export type CodaV11ViewGetAllViewColumnsNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11ViewGetAllViewColumnsConfig>;
+};
+
+export type CodaV11ViewGetAllNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11ViewGetAllConfig>;
+	output?: CodaV11ViewGetAllOutput;
+};
+
+export type CodaV11ViewGetAllViewRowsNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11ViewGetAllViewRowsConfig>;
+	output?: CodaV11ViewGetAllViewRowsOutput;
+};
+
+export type CodaV11ViewPushViewButtonNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11ViewPushViewButtonConfig>;
+};
+
+export type CodaV11ViewUpdateViewRowNode = CodaV11NodeBase & {
+	config: NodeConfig<CodaV11ViewUpdateViewRowConfig>;
+};
+
+export type CodaV11Node =
+	| CodaV11ControlGetNode
+	| CodaV11ControlGetAllNode
+	| CodaV11FormulaGetNode
+	| CodaV11FormulaGetAllNode
+	| CodaV11TableCreateRowNode
+	| CodaV11TableDeleteRowNode
+	| CodaV11TableGetAllColumnsNode
+	| CodaV11TableGetAllRowsNode
+	| CodaV11TableGetColumnNode
+	| CodaV11TableGetRowNode
+	| CodaV11TablePushButtonNode
+	| CodaV11ViewDeleteViewRowNode
+	| CodaV11ViewGetNode
+	| CodaV11ViewGetAllViewColumnsNode
+	| CodaV11ViewGetAllNode
+	| CodaV11ViewGetAllViewRowsNode
+	| CodaV11ViewPushViewButtonNode
+	| CodaV11ViewUpdateViewRowNode
+	;

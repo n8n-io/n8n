@@ -1,8 +1,6 @@
 /**
  * OpenAI Node - Version 2.1
  * Message an assistant or GPT, analyze images, generate audio, etc.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -391,24 +389,6 @@ export type LcOpenAiV21VideoGenerateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcOpenAiV21Params =
-	| LcOpenAiV21TextResponseConfig
-	| LcOpenAiV21TextClassifyConfig
-	| LcOpenAiV21ImageAnalyzeConfig
-	| LcOpenAiV21ImageGenerateConfig
-	| LcOpenAiV21ImageEditConfig
-	| LcOpenAiV21AudioGenerateConfig
-	| LcOpenAiV21AudioTranscribeConfig
-	| LcOpenAiV21AudioTranslateConfig
-	| LcOpenAiV21FileDeleteFileConfig
-	| LcOpenAiV21FileListConfig
-	| LcOpenAiV21FileUploadConfig
-	| LcOpenAiV21ConversationCreateConfig
-	| LcOpenAiV21ConversationGetConfig
-	| LcOpenAiV21ConversationRemoveConfig
-	| LcOpenAiV21ConversationUpdateConfig
-	| LcOpenAiV21VideoGenerateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -419,12 +399,94 @@ export interface LcOpenAiV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOpenAiV21Node = {
+interface LcOpenAiV21NodeBase {
 	type: '@n8n/n8n-nodes-langchain.openAi';
 	version: 2.1;
-	config: NodeConfig<LcOpenAiV21Params>;
 	credentials?: LcOpenAiV21Credentials;
+}
+
+export type LcOpenAiV21TextResponseNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21TextResponseConfig>;
 };
+
+export type LcOpenAiV21TextClassifyNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21TextClassifyConfig>;
+};
+
+export type LcOpenAiV21ImageAnalyzeNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21ImageAnalyzeConfig>;
+};
+
+export type LcOpenAiV21ImageGenerateNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21ImageGenerateConfig>;
+};
+
+export type LcOpenAiV21ImageEditNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21ImageEditConfig>;
+};
+
+export type LcOpenAiV21AudioGenerateNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21AudioGenerateConfig>;
+};
+
+export type LcOpenAiV21AudioTranscribeNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21AudioTranscribeConfig>;
+};
+
+export type LcOpenAiV21AudioTranslateNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21AudioTranslateConfig>;
+};
+
+export type LcOpenAiV21FileDeleteFileNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21FileDeleteFileConfig>;
+};
+
+export type LcOpenAiV21FileListNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21FileListConfig>;
+};
+
+export type LcOpenAiV21FileUploadNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21FileUploadConfig>;
+};
+
+export type LcOpenAiV21ConversationCreateNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21ConversationCreateConfig>;
+};
+
+export type LcOpenAiV21ConversationGetNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21ConversationGetConfig>;
+};
+
+export type LcOpenAiV21ConversationRemoveNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21ConversationRemoveConfig>;
+};
+
+export type LcOpenAiV21ConversationUpdateNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21ConversationUpdateConfig>;
+};
+
+export type LcOpenAiV21VideoGenerateNode = LcOpenAiV21NodeBase & {
+	config: NodeConfig<LcOpenAiV21VideoGenerateConfig>;
+};
+
+export type LcOpenAiV21Node =
+	| LcOpenAiV21TextResponseNode
+	| LcOpenAiV21TextClassifyNode
+	| LcOpenAiV21ImageAnalyzeNode
+	| LcOpenAiV21ImageGenerateNode
+	| LcOpenAiV21ImageEditNode
+	| LcOpenAiV21AudioGenerateNode
+	| LcOpenAiV21AudioTranscribeNode
+	| LcOpenAiV21AudioTranslateNode
+	| LcOpenAiV21FileDeleteFileNode
+	| LcOpenAiV21FileListNode
+	| LcOpenAiV21FileUploadNode
+	| LcOpenAiV21ConversationCreateNode
+	| LcOpenAiV21ConversationGetNode
+	| LcOpenAiV21ConversationRemoveNode
+	| LcOpenAiV21ConversationUpdateNode
+	| LcOpenAiV21VideoGenerateNode
+	;

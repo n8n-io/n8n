@@ -1,8 +1,6 @@
 /**
  * Customer.io Node - Version 1
  * Consume Customer.io API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -151,17 +149,18 @@ export type CustomerIoV1SegmentRemoveConfig = {
 		customerIds: string | Expression<string>;
 };
 
-export type CustomerIoV1Params =
-	| CustomerIoV1CustomerUpsertConfig
-	| CustomerIoV1CustomerDeleteConfig
-	| CustomerIoV1EventTrackConfig
-	| CustomerIoV1EventTrackAnonymousConfig
-	| CustomerIoV1CampaignGetConfig
-	| CustomerIoV1CampaignGetAllConfig
-	| CustomerIoV1CampaignGetMetricsConfig
-	| CustomerIoV1SegmentAddConfig
-	| CustomerIoV1SegmentRemoveConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type CustomerIoV1CustomerUpsertOutput = {
+	email?: string;
+};
+
+export type CustomerIoV1EventTrackOutput = {
+	success?: boolean;
+};
 
 // ===========================================================================
 // Credentials
@@ -172,12 +171,61 @@ export interface CustomerIoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CustomerIoV1Node = {
+interface CustomerIoV1NodeBase {
 	type: 'n8n-nodes-base.customerIo';
 	version: 1;
-	config: NodeConfig<CustomerIoV1Params>;
 	credentials?: CustomerIoV1Credentials;
+}
+
+export type CustomerIoV1CustomerUpsertNode = CustomerIoV1NodeBase & {
+	config: NodeConfig<CustomerIoV1CustomerUpsertConfig>;
+	output?: CustomerIoV1CustomerUpsertOutput;
 };
+
+export type CustomerIoV1CustomerDeleteNode = CustomerIoV1NodeBase & {
+	config: NodeConfig<CustomerIoV1CustomerDeleteConfig>;
+};
+
+export type CustomerIoV1EventTrackNode = CustomerIoV1NodeBase & {
+	config: NodeConfig<CustomerIoV1EventTrackConfig>;
+	output?: CustomerIoV1EventTrackOutput;
+};
+
+export type CustomerIoV1EventTrackAnonymousNode = CustomerIoV1NodeBase & {
+	config: NodeConfig<CustomerIoV1EventTrackAnonymousConfig>;
+};
+
+export type CustomerIoV1CampaignGetNode = CustomerIoV1NodeBase & {
+	config: NodeConfig<CustomerIoV1CampaignGetConfig>;
+};
+
+export type CustomerIoV1CampaignGetAllNode = CustomerIoV1NodeBase & {
+	config: NodeConfig<CustomerIoV1CampaignGetAllConfig>;
+};
+
+export type CustomerIoV1CampaignGetMetricsNode = CustomerIoV1NodeBase & {
+	config: NodeConfig<CustomerIoV1CampaignGetMetricsConfig>;
+};
+
+export type CustomerIoV1SegmentAddNode = CustomerIoV1NodeBase & {
+	config: NodeConfig<CustomerIoV1SegmentAddConfig>;
+};
+
+export type CustomerIoV1SegmentRemoveNode = CustomerIoV1NodeBase & {
+	config: NodeConfig<CustomerIoV1SegmentRemoveConfig>;
+};
+
+export type CustomerIoV1Node =
+	| CustomerIoV1CustomerUpsertNode
+	| CustomerIoV1CustomerDeleteNode
+	| CustomerIoV1EventTrackNode
+	| CustomerIoV1EventTrackAnonymousNode
+	| CustomerIoV1CampaignGetNode
+	| CustomerIoV1CampaignGetAllNode
+	| CustomerIoV1CampaignGetMetricsNode
+	| CustomerIoV1SegmentAddNode
+	| CustomerIoV1SegmentRemoveNode
+	;

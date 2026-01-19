@@ -1,8 +1,6 @@
 /**
  * Hunter Node - Version 1
  * Consume Hunter API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface HunterV1Params {
+export interface HunterV1Config {
 /**
  * Operation to consume
  * @default domainSearch
@@ -69,12 +67,17 @@ export interface HunterV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HunterV1Node = {
+interface HunterV1NodeBase {
 	type: 'n8n-nodes-base.hunter';
 	version: 1;
-	config: NodeConfig<HunterV1Params>;
 	credentials?: HunterV1Credentials;
+}
+
+export type HunterV1Node = HunterV1NodeBase & {
+	config: NodeConfig<HunterV1Config>;
 };
+
+export type HunterV1Node = HunterV1Node;

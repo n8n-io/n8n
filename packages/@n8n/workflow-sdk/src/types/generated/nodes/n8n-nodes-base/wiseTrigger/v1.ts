@@ -1,8 +1,6 @@
 /**
  * Wise Trigger Node - Version 1
  * Handle Wise events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WiseTriggerV1Params {
+export interface WiseTriggerV1Config {
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
  */
@@ -30,13 +28,18 @@ export interface WiseTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WiseTriggerV1Node = {
+interface WiseTriggerV1NodeBase {
 	type: 'n8n-nodes-base.wiseTrigger';
 	version: 1;
-	config: NodeConfig<WiseTriggerV1Params>;
 	credentials?: WiseTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type WiseTriggerV1Node = WiseTriggerV1NodeBase & {
+	config: NodeConfig<WiseTriggerV1Config>;
 };
+
+export type WiseTriggerV1Node = WiseTriggerV1Node;

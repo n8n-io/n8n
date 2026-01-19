@@ -1,8 +1,6 @@
 /**
  * Google Chat Node - Version 1
  * Consume Google Chat API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -181,17 +179,6 @@ export type GoogleChatV1SpaceGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type GoogleChatV1Params =
-	| GoogleChatV1MemberGetConfig
-	| GoogleChatV1MemberGetAllConfig
-	| GoogleChatV1MessageCreateConfig
-	| GoogleChatV1MessageDeleteConfig
-	| GoogleChatV1MessageGetConfig
-	| GoogleChatV1MessageSendAndWaitConfig
-	| GoogleChatV1MessageUpdateConfig
-	| GoogleChatV1SpaceGetConfig
-	| GoogleChatV1SpaceGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -203,12 +190,59 @@ export interface GoogleChatV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleChatV1Node = {
+interface GoogleChatV1NodeBase {
 	type: 'n8n-nodes-base.googleChat';
 	version: 1;
-	config: NodeConfig<GoogleChatV1Params>;
 	credentials?: GoogleChatV1Credentials;
+}
+
+export type GoogleChatV1MemberGetNode = GoogleChatV1NodeBase & {
+	config: NodeConfig<GoogleChatV1MemberGetConfig>;
 };
+
+export type GoogleChatV1MemberGetAllNode = GoogleChatV1NodeBase & {
+	config: NodeConfig<GoogleChatV1MemberGetAllConfig>;
+};
+
+export type GoogleChatV1MessageCreateNode = GoogleChatV1NodeBase & {
+	config: NodeConfig<GoogleChatV1MessageCreateConfig>;
+};
+
+export type GoogleChatV1MessageDeleteNode = GoogleChatV1NodeBase & {
+	config: NodeConfig<GoogleChatV1MessageDeleteConfig>;
+};
+
+export type GoogleChatV1MessageGetNode = GoogleChatV1NodeBase & {
+	config: NodeConfig<GoogleChatV1MessageGetConfig>;
+};
+
+export type GoogleChatV1MessageSendAndWaitNode = GoogleChatV1NodeBase & {
+	config: NodeConfig<GoogleChatV1MessageSendAndWaitConfig>;
+};
+
+export type GoogleChatV1MessageUpdateNode = GoogleChatV1NodeBase & {
+	config: NodeConfig<GoogleChatV1MessageUpdateConfig>;
+};
+
+export type GoogleChatV1SpaceGetNode = GoogleChatV1NodeBase & {
+	config: NodeConfig<GoogleChatV1SpaceGetConfig>;
+};
+
+export type GoogleChatV1SpaceGetAllNode = GoogleChatV1NodeBase & {
+	config: NodeConfig<GoogleChatV1SpaceGetAllConfig>;
+};
+
+export type GoogleChatV1Node =
+	| GoogleChatV1MemberGetNode
+	| GoogleChatV1MemberGetAllNode
+	| GoogleChatV1MessageCreateNode
+	| GoogleChatV1MessageDeleteNode
+	| GoogleChatV1MessageGetNode
+	| GoogleChatV1MessageSendAndWaitNode
+	| GoogleChatV1MessageUpdateNode
+	| GoogleChatV1SpaceGetNode
+	| GoogleChatV1SpaceGetAllNode
+	;

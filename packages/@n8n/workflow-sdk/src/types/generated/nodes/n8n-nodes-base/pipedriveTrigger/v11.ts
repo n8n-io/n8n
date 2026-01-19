@@ -1,8 +1,6 @@
 /**
  * Pipedrive Trigger Node - Version 1.1
  * Starts the workflow when Pipedrive events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface PipedriveTriggerV11Params {
+export interface PipedriveTriggerV11Config {
 	authentication?: 'apiToken' | 'oAuth2' | Expression<string>;
 /**
  * If authentication should be activated for the webhook (makes it more secure)
@@ -48,13 +46,18 @@ export interface PipedriveTriggerV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PipedriveTriggerV11Node = {
+interface PipedriveTriggerV11NodeBase {
 	type: 'n8n-nodes-base.pipedriveTrigger';
 	version: 1.1;
-	config: NodeConfig<PipedriveTriggerV11Params>;
 	credentials?: PipedriveTriggerV11Credentials;
 	isTrigger: true;
+}
+
+export type PipedriveTriggerV11Node = PipedriveTriggerV11NodeBase & {
+	config: NodeConfig<PipedriveTriggerV11Config>;
 };
+
+export type PipedriveTriggerV11Node = PipedriveTriggerV11Node;

@@ -1,8 +1,6 @@
 /**
  * Affinity Trigger Node - Version 1
  * Handle Affinity events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface AffinityTriggerV1Params {
+export interface AffinityTriggerV1Config {
 /**
  * Webhook events that will be enabled for that endpoint
  * @default []
@@ -30,13 +28,18 @@ export interface AffinityTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AffinityTriggerV1Node = {
+interface AffinityTriggerV1NodeBase {
 	type: 'n8n-nodes-base.affinityTrigger';
 	version: 1;
-	config: NodeConfig<AffinityTriggerV1Params>;
 	credentials?: AffinityTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type AffinityTriggerV1Node = AffinityTriggerV1NodeBase & {
+	config: NodeConfig<AffinityTriggerV1Config>;
 };
+
+export type AffinityTriggerV1Node = AffinityTriggerV1Node;

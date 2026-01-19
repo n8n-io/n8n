@@ -1,8 +1,6 @@
 /**
  * Marketstack Node - Version 1
  * Consume Marketstack API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -59,11 +57,34 @@ export type MarketstackV1TickerGetConfig = {
 		symbol: string | Expression<string>;
 };
 
-export type MarketstackV1Params =
-	| MarketstackV1EndOfDayDataGetAllConfig
-	| MarketstackV1ExchangeGetConfig
-	| MarketstackV1TickerGetConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type MarketstackV1EndOfDayDataGetAllOutput = {
+	date?: string;
+	exchange?: string;
+	split_factor?: number;
+	symbol?: string;
+	volume?: number;
+};
+
+export type MarketstackV1TickerGetOutput = {
+	country?: null;
+	has_eod?: boolean;
+	has_intraday?: boolean;
+	name?: string;
+	stock_exchange?: {
+		acronym?: string;
+		city?: string;
+		country_code?: string;
+		mic?: string;
+		name?: string;
+		website?: string;
+	};
+	symbol?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -74,12 +95,31 @@ export interface MarketstackV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MarketstackV1Node = {
+interface MarketstackV1NodeBase {
 	type: 'n8n-nodes-base.marketstack';
 	version: 1;
-	config: NodeConfig<MarketstackV1Params>;
 	credentials?: MarketstackV1Credentials;
+}
+
+export type MarketstackV1EndOfDayDataGetAllNode = MarketstackV1NodeBase & {
+	config: NodeConfig<MarketstackV1EndOfDayDataGetAllConfig>;
+	output?: MarketstackV1EndOfDayDataGetAllOutput;
 };
+
+export type MarketstackV1ExchangeGetNode = MarketstackV1NodeBase & {
+	config: NodeConfig<MarketstackV1ExchangeGetConfig>;
+};
+
+export type MarketstackV1TickerGetNode = MarketstackV1NodeBase & {
+	config: NodeConfig<MarketstackV1TickerGetConfig>;
+	output?: MarketstackV1TickerGetOutput;
+};
+
+export type MarketstackV1Node =
+	| MarketstackV1EndOfDayDataGetAllNode
+	| MarketstackV1ExchangeGetNode
+	| MarketstackV1TickerGetNode
+	;

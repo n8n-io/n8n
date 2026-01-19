@@ -1,8 +1,6 @@
 /**
  * Motorhead Node - Version 1
  * Use Motorhead Memory
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryMotorheadV1Params {
+export interface LcMemoryMotorheadV1Config {
 	sessionId: string | Expression<string>;
 /**
  * The key to use to store session ID in the memory
@@ -31,13 +29,18 @@ export interface LcMemoryMotorheadV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryMotorheadV1Node = {
+interface LcMemoryMotorheadV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryMotorhead';
 	version: 1;
-	config: NodeConfig<LcMemoryMotorheadV1Params>;
 	credentials?: LcMemoryMotorheadV1Credentials;
 	isTrigger: true;
+}
+
+export type LcMemoryMotorheadV1Node = LcMemoryMotorheadV1NodeBase & {
+	config: NodeConfig<LcMemoryMotorheadV1Config>;
 };
+
+export type LcMemoryMotorheadV1Node = LcMemoryMotorheadV1Node;

@@ -1,8 +1,6 @@
 /**
  * S3 Node - Version 1
  * Sends data to any S3-compatible service
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -202,20 +200,64 @@ export type S3V1FolderGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type S3V1Params =
-	| S3V1BucketCreateConfig
-	| S3V1BucketDeleteConfig
-	| S3V1BucketGetAllConfig
-	| S3V1BucketSearchConfig
-	| S3V1FileCopyConfig
-	| S3V1FileDeleteConfig
-	| S3V1FileDownloadConfig
-	| S3V1FileGetAllConfig
-	| S3V1FileUploadConfig
-	| S3V1FolderCreateConfig
-	| S3V1FolderDeleteConfig
-	| S3V1FolderGetAllConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type S3V1BucketCreateOutput = {
+	success?: boolean;
+};
+
+export type S3V1BucketGetAllOutput = {
+	CreationDate?: string;
+	Name?: string;
+};
+
+export type S3V1BucketSearchOutput = {
+	ETag?: string;
+	Key?: string;
+	LastModified?: string;
+	Size?: string;
+	StorageClass?: string;
+};
+
+export type S3V1FileDeleteOutput = {
+	success?: boolean;
+};
+
+export type S3V1FileDownloadOutput = {
+	ETag?: string;
+	Key?: string;
+	LastModified?: string;
+	Size?: string;
+	StorageClass?: string;
+};
+
+export type S3V1FileGetAllOutput = {
+	ETag?: string;
+	Key?: string;
+	LastModified?: string;
+	Size?: string;
+	StorageClass?: string;
+};
+
+export type S3V1FileUploadOutput = {
+	success?: boolean;
+};
+
+export type S3V1FolderCreateOutput = {
+	success?: boolean;
+};
+
+export type S3V1FolderGetAllOutput = {
+	ETag?: string;
+	Key?: string;
+	LastModified?: string;
+	Size?: string;
+	StorageClass?: string;
+	Type?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -226,12 +268,83 @@ export interface S3V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type S3V1Node = {
+interface S3V1NodeBase {
 	type: 'n8n-nodes-base.s3';
 	version: 1;
-	config: NodeConfig<S3V1Params>;
 	credentials?: S3V1Credentials;
+}
+
+export type S3V1BucketCreateNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1BucketCreateConfig>;
+	output?: S3V1BucketCreateOutput;
 };
+
+export type S3V1BucketDeleteNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1BucketDeleteConfig>;
+};
+
+export type S3V1BucketGetAllNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1BucketGetAllConfig>;
+	output?: S3V1BucketGetAllOutput;
+};
+
+export type S3V1BucketSearchNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1BucketSearchConfig>;
+	output?: S3V1BucketSearchOutput;
+};
+
+export type S3V1FileCopyNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1FileCopyConfig>;
+};
+
+export type S3V1FileDeleteNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1FileDeleteConfig>;
+	output?: S3V1FileDeleteOutput;
+};
+
+export type S3V1FileDownloadNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1FileDownloadConfig>;
+	output?: S3V1FileDownloadOutput;
+};
+
+export type S3V1FileGetAllNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1FileGetAllConfig>;
+	output?: S3V1FileGetAllOutput;
+};
+
+export type S3V1FileUploadNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1FileUploadConfig>;
+	output?: S3V1FileUploadOutput;
+};
+
+export type S3V1FolderCreateNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1FolderCreateConfig>;
+	output?: S3V1FolderCreateOutput;
+};
+
+export type S3V1FolderDeleteNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1FolderDeleteConfig>;
+};
+
+export type S3V1FolderGetAllNode = S3V1NodeBase & {
+	config: NodeConfig<S3V1FolderGetAllConfig>;
+	output?: S3V1FolderGetAllOutput;
+};
+
+export type S3V1Node =
+	| S3V1BucketCreateNode
+	| S3V1BucketDeleteNode
+	| S3V1BucketGetAllNode
+	| S3V1BucketSearchNode
+	| S3V1FileCopyNode
+	| S3V1FileDeleteNode
+	| S3V1FileDownloadNode
+	| S3V1FileGetAllNode
+	| S3V1FileUploadNode
+	| S3V1FolderCreateNode
+	| S3V1FolderDeleteNode
+	| S3V1FolderGetAllNode
+	;

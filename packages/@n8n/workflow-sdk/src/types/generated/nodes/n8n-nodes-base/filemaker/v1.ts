@@ -1,8 +1,6 @@
 /**
  * FileMaker Node - Version 1
  * Retrieve data from the FileMaker data API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FilemakerV1Params {
+export interface FilemakerV1Config {
 	action?: 'create' | 'delete' | 'duplicate' | 'edit' | 'find' | 'records' | 'record' | 'performscript' | Expression<string>;
 /**
  * FileMaker Layout Name. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -185,12 +183,17 @@ export interface FilemakerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FilemakerV1Node = {
+interface FilemakerV1NodeBase {
 	type: 'n8n-nodes-base.filemaker';
 	version: 1;
-	config: NodeConfig<FilemakerV1Params>;
 	credentials?: FilemakerV1Credentials;
+}
+
+export type FilemakerV1Node = FilemakerV1NodeBase & {
+	config: NodeConfig<FilemakerV1Config>;
 };
+
+export type FilemakerV1Node = FilemakerV1Node;

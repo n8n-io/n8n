@@ -1,8 +1,6 @@
 /**
  * AI Agent Node - Version 1.2
  * Generates an action plan and executes it. Can use external tools.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -40,11 +38,6 @@ export type LcAgentV12DefineConfig = {
 	binaryPropertyName: string | Expression<string>;
 };
 
-export type LcAgentV12Params =
-	| LcAgentV12AutoConfig
-	| LcAgentV12GuardrailsConfig
-	| LcAgentV12DefineConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -56,12 +49,29 @@ export interface LcAgentV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcAgentV12Node = {
+interface LcAgentV12NodeBase {
 	type: '@n8n/n8n-nodes-langchain.agent';
 	version: 1.2;
-	config: NodeConfig<LcAgentV12Params>;
 	credentials?: LcAgentV12Credentials;
+}
+
+export type LcAgentV12AutoNode = LcAgentV12NodeBase & {
+	config: NodeConfig<LcAgentV12AutoConfig>;
 };
+
+export type LcAgentV12GuardrailsNode = LcAgentV12NodeBase & {
+	config: NodeConfig<LcAgentV12GuardrailsConfig>;
+};
+
+export type LcAgentV12DefineNode = LcAgentV12NodeBase & {
+	config: NodeConfig<LcAgentV12DefineConfig>;
+};
+
+export type LcAgentV12Node =
+	| LcAgentV12AutoNode
+	| LcAgentV12GuardrailsNode
+	| LcAgentV12DefineNode
+	;

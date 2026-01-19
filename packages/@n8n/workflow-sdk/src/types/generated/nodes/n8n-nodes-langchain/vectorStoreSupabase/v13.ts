@@ -1,8 +1,6 @@
 /**
  * Supabase Vector Store Node - Version 1.3
  * Work with your data in Supabase Vector Store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -113,13 +111,6 @@ export type LcVectorStoreSupabaseV13UpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStoreSupabaseV13Params =
-	| LcVectorStoreSupabaseV13LoadConfig
-	| LcVectorStoreSupabaseV13InsertConfig
-	| LcVectorStoreSupabaseV13RetrieveConfig
-	| LcVectorStoreSupabaseV13RetrieveAsToolConfig
-	| LcVectorStoreSupabaseV13UpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -130,12 +121,39 @@ export interface LcVectorStoreSupabaseV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreSupabaseV13Node = {
+interface LcVectorStoreSupabaseV13NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase';
 	version: 1.3;
-	config: NodeConfig<LcVectorStoreSupabaseV13Params>;
 	credentials?: LcVectorStoreSupabaseV13Credentials;
+}
+
+export type LcVectorStoreSupabaseV13LoadNode = LcVectorStoreSupabaseV13NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV13LoadConfig>;
 };
+
+export type LcVectorStoreSupabaseV13InsertNode = LcVectorStoreSupabaseV13NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV13InsertConfig>;
+};
+
+export type LcVectorStoreSupabaseV13RetrieveNode = LcVectorStoreSupabaseV13NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV13RetrieveConfig>;
+};
+
+export type LcVectorStoreSupabaseV13RetrieveAsToolNode = LcVectorStoreSupabaseV13NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV13RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreSupabaseV13UpdateNode = LcVectorStoreSupabaseV13NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV13UpdateConfig>;
+};
+
+export type LcVectorStoreSupabaseV13Node =
+	| LcVectorStoreSupabaseV13LoadNode
+	| LcVectorStoreSupabaseV13InsertNode
+	| LcVectorStoreSupabaseV13RetrieveNode
+	| LcVectorStoreSupabaseV13RetrieveAsToolNode
+	| LcVectorStoreSupabaseV13UpdateNode
+	;

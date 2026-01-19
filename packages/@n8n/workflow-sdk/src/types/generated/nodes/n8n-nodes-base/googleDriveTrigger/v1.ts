@@ -1,8 +1,6 @@
 /**
  * Google Drive Trigger Node - Version 1
  * Starts the workflow when Google Drive events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface GoogleDriveTriggerV1Params {
+export interface GoogleDriveTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -93,13 +91,18 @@ export interface GoogleDriveTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleDriveTriggerV1Node = {
+interface GoogleDriveTriggerV1NodeBase {
 	type: 'n8n-nodes-base.googleDriveTrigger';
 	version: 1;
-	config: NodeConfig<GoogleDriveTriggerV1Params>;
 	credentials?: GoogleDriveTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type GoogleDriveTriggerV1Node = GoogleDriveTriggerV1NodeBase & {
+	config: NodeConfig<GoogleDriveTriggerV1Config>;
 };
+
+export type GoogleDriveTriggerV1Node = GoogleDriveTriggerV1Node;

@@ -1,8 +1,6 @@
 /**
  * Hugging Face Inference Model Node - Version 1
  * Language Model HuggingFaceInference
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmOpenHuggingFaceInferenceV1Params {
+export interface LcLmOpenHuggingFaceInferenceV1Config {
 	model?: string | Expression<string>;
 /**
  * Additional options to add
@@ -31,13 +29,18 @@ export interface LcLmOpenHuggingFaceInferenceV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmOpenHuggingFaceInferenceV1Node = {
+interface LcLmOpenHuggingFaceInferenceV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmOpenHuggingFaceInference';
 	version: 1;
-	config: NodeConfig<LcLmOpenHuggingFaceInferenceV1Params>;
 	credentials?: LcLmOpenHuggingFaceInferenceV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmOpenHuggingFaceInferenceV1Node = LcLmOpenHuggingFaceInferenceV1NodeBase & {
+	config: NodeConfig<LcLmOpenHuggingFaceInferenceV1Config>;
 };
+
+export type LcLmOpenHuggingFaceInferenceV1Node = LcLmOpenHuggingFaceInferenceV1Node;

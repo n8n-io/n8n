@@ -1,8 +1,6 @@
 /**
  * Keap Trigger Node - Version 1
  * Starts the workflow when Infusionsoft events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface KeapTriggerV1Params {
+export interface KeapTriggerV1Config {
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
  */
@@ -34,13 +32,18 @@ export interface KeapTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KeapTriggerV1Node = {
+interface KeapTriggerV1NodeBase {
 	type: 'n8n-nodes-base.keapTrigger';
 	version: 1;
-	config: NodeConfig<KeapTriggerV1Params>;
 	credentials?: KeapTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type KeapTriggerV1Node = KeapTriggerV1NodeBase & {
+	config: NodeConfig<KeapTriggerV1Config>;
 };
+
+export type KeapTriggerV1Node = KeapTriggerV1Node;

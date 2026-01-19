@@ -1,8 +1,6 @@
 /**
  * Vector Store Retriever Node - Version 1
  * Use a Vector Store as Retriever
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcRetrieverVectorStoreV1Params {
+export interface LcRetrieverVectorStoreV1Config {
 /**
  * The maximum number of results to return
  * @default 4
@@ -26,13 +24,17 @@ export interface LcRetrieverVectorStoreV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcRetrieverVectorStoreV1Node = {
+interface LcRetrieverVectorStoreV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.retrieverVectorStore';
 	version: 1;
-	config: NodeConfig<LcRetrieverVectorStoreV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcRetrieverVectorStoreV1Node = LcRetrieverVectorStoreV1NodeBase & {
+	config: NodeConfig<LcRetrieverVectorStoreV1Config>;
 };
+
+export type LcRetrieverVectorStoreV1Node = LcRetrieverVectorStoreV1Node;

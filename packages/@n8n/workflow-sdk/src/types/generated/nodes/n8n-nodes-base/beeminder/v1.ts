@@ -1,8 +1,6 @@
 /**
  * Beeminder Node - Version 1
  * Consume Beeminder API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -250,26 +248,6 @@ export type BeeminderV1UserGetConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type BeeminderV1Params =
-	| BeeminderV1ChargeCreateConfig
-	| BeeminderV1DatapointCreateConfig
-	| BeeminderV1DatapointCreateAllConfig
-	| BeeminderV1DatapointDeleteConfig
-	| BeeminderV1DatapointGetConfig
-	| BeeminderV1DatapointGetAllConfig
-	| BeeminderV1DatapointUpdateConfig
-	| BeeminderV1GoalCreateConfig
-	| BeeminderV1GoalGetConfig
-	| BeeminderV1GoalGetAllConfig
-	| BeeminderV1GoalGetArchivedConfig
-	| BeeminderV1GoalUpdateConfig
-	| BeeminderV1GoalRefreshConfig
-	| BeeminderV1GoalShortCircuitConfig
-	| BeeminderV1GoalStepDownConfig
-	| BeeminderV1GoalCancelStepDownConfig
-	| BeeminderV1GoalUncleConfig
-	| BeeminderV1UserGetConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -281,12 +259,104 @@ export interface BeeminderV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BeeminderV1Node = {
+interface BeeminderV1NodeBase {
 	type: 'n8n-nodes-base.beeminder';
 	version: 1;
-	config: NodeConfig<BeeminderV1Params>;
 	credentials?: BeeminderV1Credentials;
+}
+
+export type BeeminderV1ChargeCreateNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1ChargeCreateConfig>;
 };
+
+export type BeeminderV1DatapointCreateNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1DatapointCreateConfig>;
+};
+
+export type BeeminderV1DatapointCreateAllNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1DatapointCreateAllConfig>;
+};
+
+export type BeeminderV1DatapointDeleteNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1DatapointDeleteConfig>;
+};
+
+export type BeeminderV1DatapointGetNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1DatapointGetConfig>;
+};
+
+export type BeeminderV1DatapointGetAllNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1DatapointGetAllConfig>;
+};
+
+export type BeeminderV1DatapointUpdateNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1DatapointUpdateConfig>;
+};
+
+export type BeeminderV1GoalCreateNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1GoalCreateConfig>;
+};
+
+export type BeeminderV1GoalGetNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1GoalGetConfig>;
+};
+
+export type BeeminderV1GoalGetAllNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1GoalGetAllConfig>;
+};
+
+export type BeeminderV1GoalGetArchivedNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1GoalGetArchivedConfig>;
+};
+
+export type BeeminderV1GoalUpdateNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1GoalUpdateConfig>;
+};
+
+export type BeeminderV1GoalRefreshNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1GoalRefreshConfig>;
+};
+
+export type BeeminderV1GoalShortCircuitNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1GoalShortCircuitConfig>;
+};
+
+export type BeeminderV1GoalStepDownNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1GoalStepDownConfig>;
+};
+
+export type BeeminderV1GoalCancelStepDownNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1GoalCancelStepDownConfig>;
+};
+
+export type BeeminderV1GoalUncleNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1GoalUncleConfig>;
+};
+
+export type BeeminderV1UserGetNode = BeeminderV1NodeBase & {
+	config: NodeConfig<BeeminderV1UserGetConfig>;
+};
+
+export type BeeminderV1Node =
+	| BeeminderV1ChargeCreateNode
+	| BeeminderV1DatapointCreateNode
+	| BeeminderV1DatapointCreateAllNode
+	| BeeminderV1DatapointDeleteNode
+	| BeeminderV1DatapointGetNode
+	| BeeminderV1DatapointGetAllNode
+	| BeeminderV1DatapointUpdateNode
+	| BeeminderV1GoalCreateNode
+	| BeeminderV1GoalGetNode
+	| BeeminderV1GoalGetAllNode
+	| BeeminderV1GoalGetArchivedNode
+	| BeeminderV1GoalUpdateNode
+	| BeeminderV1GoalRefreshNode
+	| BeeminderV1GoalShortCircuitNode
+	| BeeminderV1GoalStepDownNode
+	| BeeminderV1GoalCancelStepDownNode
+	| BeeminderV1GoalUncleNode
+	| BeeminderV1UserGetNode
+	;

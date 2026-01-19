@@ -1,8 +1,6 @@
 /**
  * Odoo Node - Version 1
  * Consume Odoo API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -273,28 +271,66 @@ export type OdooV1OpportunityUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type OdooV1Params =
-	| OdooV1ContactCreateConfig
-	| OdooV1ContactDeleteConfig
-	| OdooV1ContactGetConfig
-	| OdooV1ContactGetAllConfig
-	| OdooV1ContactUpdateConfig
-	| OdooV1CustomCreateConfig
-	| OdooV1CustomDeleteConfig
-	| OdooV1CustomGetConfig
-	| OdooV1CustomGetAllConfig
-	| OdooV1CustomUpdateConfig
-	| OdooV1NoteCreateConfig
-	| OdooV1NoteDeleteConfig
-	| OdooV1NoteGetConfig
-	| OdooV1NoteGetAllConfig
-	| OdooV1NoteUpdateConfig
-	| OdooV1OpportunityCreateConfig
-	| OdooV1OpportunityDeleteConfig
-	| OdooV1OpportunityGetConfig
-	| OdooV1OpportunityGetAllConfig
-	| OdooV1OpportunityUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type OdooV1ContactCreateOutput = {
+	id?: number;
+};
+
+export type OdooV1ContactGetOutput = {
+	id?: number;
+};
+
+export type OdooV1ContactGetAllOutput = {
+	id?: number;
+};
+
+export type OdooV1CustomCreateOutput = {
+	id?: number;
+};
+
+export type OdooV1CustomDeleteOutput = {
+	success?: boolean;
+};
+
+export type OdooV1CustomGetOutput = {
+	id?: number;
+};
+
+export type OdooV1CustomGetAllOutput = {
+	id?: number;
+};
+
+export type OdooV1OpportunityCreateOutput = {
+	id?: number;
+};
+
+export type OdooV1OpportunityGetOutput = {
+	__last_update?: string;
+	active?: boolean;
+	id?: number;
+	kanban_state?: string;
+	lost_reason?: boolean;
+	name?: string;
+	order_ids?: Array<number>;
+	priority?: string;
+	sale_amount_total?: number;
+	sale_order_count?: number;
+	type?: string;
+	website_message_ids?: Array<number>;
+	won_status?: string;
+	write_date?: string;
+};
+
+export type OdooV1OpportunityGetAllOutput = {
+	create_date?: string;
+	display_name?: string;
+	id?: number;
+	name?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -305,12 +341,124 @@ export interface OdooV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OdooV1Node = {
+interface OdooV1NodeBase {
 	type: 'n8n-nodes-base.odoo';
 	version: 1;
-	config: NodeConfig<OdooV1Params>;
 	credentials?: OdooV1Credentials;
+}
+
+export type OdooV1ContactCreateNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1ContactCreateConfig>;
+	output?: OdooV1ContactCreateOutput;
 };
+
+export type OdooV1ContactDeleteNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1ContactDeleteConfig>;
+};
+
+export type OdooV1ContactGetNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1ContactGetConfig>;
+	output?: OdooV1ContactGetOutput;
+};
+
+export type OdooV1ContactGetAllNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1ContactGetAllConfig>;
+	output?: OdooV1ContactGetAllOutput;
+};
+
+export type OdooV1ContactUpdateNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1ContactUpdateConfig>;
+};
+
+export type OdooV1CustomCreateNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1CustomCreateConfig>;
+	output?: OdooV1CustomCreateOutput;
+};
+
+export type OdooV1CustomDeleteNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1CustomDeleteConfig>;
+	output?: OdooV1CustomDeleteOutput;
+};
+
+export type OdooV1CustomGetNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1CustomGetConfig>;
+	output?: OdooV1CustomGetOutput;
+};
+
+export type OdooV1CustomGetAllNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1CustomGetAllConfig>;
+	output?: OdooV1CustomGetAllOutput;
+};
+
+export type OdooV1CustomUpdateNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1CustomUpdateConfig>;
+};
+
+export type OdooV1NoteCreateNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1NoteCreateConfig>;
+};
+
+export type OdooV1NoteDeleteNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1NoteDeleteConfig>;
+};
+
+export type OdooV1NoteGetNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1NoteGetConfig>;
+};
+
+export type OdooV1NoteGetAllNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1NoteGetAllConfig>;
+};
+
+export type OdooV1NoteUpdateNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1NoteUpdateConfig>;
+};
+
+export type OdooV1OpportunityCreateNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1OpportunityCreateConfig>;
+	output?: OdooV1OpportunityCreateOutput;
+};
+
+export type OdooV1OpportunityDeleteNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1OpportunityDeleteConfig>;
+};
+
+export type OdooV1OpportunityGetNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1OpportunityGetConfig>;
+	output?: OdooV1OpportunityGetOutput;
+};
+
+export type OdooV1OpportunityGetAllNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1OpportunityGetAllConfig>;
+	output?: OdooV1OpportunityGetAllOutput;
+};
+
+export type OdooV1OpportunityUpdateNode = OdooV1NodeBase & {
+	config: NodeConfig<OdooV1OpportunityUpdateConfig>;
+};
+
+export type OdooV1Node =
+	| OdooV1ContactCreateNode
+	| OdooV1ContactDeleteNode
+	| OdooV1ContactGetNode
+	| OdooV1ContactGetAllNode
+	| OdooV1ContactUpdateNode
+	| OdooV1CustomCreateNode
+	| OdooV1CustomDeleteNode
+	| OdooV1CustomGetNode
+	| OdooV1CustomGetAllNode
+	| OdooV1CustomUpdateNode
+	| OdooV1NoteCreateNode
+	| OdooV1NoteDeleteNode
+	| OdooV1NoteGetNode
+	| OdooV1NoteGetAllNode
+	| OdooV1NoteUpdateNode
+	| OdooV1OpportunityCreateNode
+	| OdooV1OpportunityDeleteNode
+	| OdooV1OpportunityGetNode
+	| OdooV1OpportunityGetAllNode
+	| OdooV1OpportunityUpdateNode
+	;

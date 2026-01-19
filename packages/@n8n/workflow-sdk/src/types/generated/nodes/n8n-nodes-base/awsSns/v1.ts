@@ -1,8 +1,6 @@
 /**
  * AWS SNS Node - Version 1
  * Sends data to AWS SNS
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface AwsSnsV1Params {
+export interface AwsSnsV1Config {
 	authentication?: 'iam' | 'assumeRole' | Expression<string>;
 	operation?: 'create' | 'delete' | 'publish' | Expression<string>;
 	name: string | Expression<string>;
@@ -44,12 +42,17 @@ export interface AwsSnsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsSnsV1Node = {
+interface AwsSnsV1NodeBase {
 	type: 'n8n-nodes-base.awsSns';
 	version: 1;
-	config: NodeConfig<AwsSnsV1Params>;
 	credentials?: AwsSnsV1Credentials;
+}
+
+export type AwsSnsV1Node = AwsSnsV1NodeBase & {
+	config: NodeConfig<AwsSnsV1Config>;
 };
+
+export type AwsSnsV1Node = AwsSnsV1Node;

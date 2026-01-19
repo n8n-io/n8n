@@ -1,8 +1,6 @@
 /**
  * Weaviate Vector Store Node - Version 1
  * Work with your data in a Weaviate Cluster
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -100,12 +98,6 @@ export type LcVectorStoreWeaviateV1RetrieveAsToolConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStoreWeaviateV1Params =
-	| LcVectorStoreWeaviateV1LoadConfig
-	| LcVectorStoreWeaviateV1InsertConfig
-	| LcVectorStoreWeaviateV1RetrieveConfig
-	| LcVectorStoreWeaviateV1RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -116,12 +108,34 @@ export interface LcVectorStoreWeaviateV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreWeaviateV1Node = {
+interface LcVectorStoreWeaviateV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreWeaviate';
 	version: 1;
-	config: NodeConfig<LcVectorStoreWeaviateV1Params>;
 	credentials?: LcVectorStoreWeaviateV1Credentials;
+}
+
+export type LcVectorStoreWeaviateV1LoadNode = LcVectorStoreWeaviateV1NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV1LoadConfig>;
 };
+
+export type LcVectorStoreWeaviateV1InsertNode = LcVectorStoreWeaviateV1NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV1InsertConfig>;
+};
+
+export type LcVectorStoreWeaviateV1RetrieveNode = LcVectorStoreWeaviateV1NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV1RetrieveConfig>;
+};
+
+export type LcVectorStoreWeaviateV1RetrieveAsToolNode = LcVectorStoreWeaviateV1NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV1RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreWeaviateV1Node =
+	| LcVectorStoreWeaviateV1LoadNode
+	| LcVectorStoreWeaviateV1InsertNode
+	| LcVectorStoreWeaviateV1RetrieveNode
+	| LcVectorStoreWeaviateV1RetrieveAsToolNode
+	;

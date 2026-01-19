@@ -1,8 +1,6 @@
 /**
  * Google Sheets  Node - Version 1
  * Read, update and write data to Google Sheets
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -429,18 +427,6 @@ export type GoogleSheetsV1SheetUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleSheetsV1Params =
-	| GoogleSheetsV1SpreadsheetCreateConfig
-	| GoogleSheetsV1SheetAppendConfig
-	| GoogleSheetsV1SheetClearConfig
-	| GoogleSheetsV1SheetCreateConfig
-	| GoogleSheetsV1SheetUpsertConfig
-	| GoogleSheetsV1SheetDeleteConfig
-	| GoogleSheetsV1SheetLookupConfig
-	| GoogleSheetsV1SheetReadConfig
-	| GoogleSheetsV1SheetRemoveConfig
-	| GoogleSheetsV1SheetUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -452,12 +438,64 @@ export interface GoogleSheetsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleSheetsV1Node = {
+interface GoogleSheetsV1NodeBase {
 	type: 'n8n-nodes-base.googleSheets';
 	version: 1;
-	config: NodeConfig<GoogleSheetsV1Params>;
 	credentials?: GoogleSheetsV1Credentials;
+}
+
+export type GoogleSheetsV1SpreadsheetCreateNode = GoogleSheetsV1NodeBase & {
+	config: NodeConfig<GoogleSheetsV1SpreadsheetCreateConfig>;
 };
+
+export type GoogleSheetsV1SheetAppendNode = GoogleSheetsV1NodeBase & {
+	config: NodeConfig<GoogleSheetsV1SheetAppendConfig>;
+};
+
+export type GoogleSheetsV1SheetClearNode = GoogleSheetsV1NodeBase & {
+	config: NodeConfig<GoogleSheetsV1SheetClearConfig>;
+};
+
+export type GoogleSheetsV1SheetCreateNode = GoogleSheetsV1NodeBase & {
+	config: NodeConfig<GoogleSheetsV1SheetCreateConfig>;
+};
+
+export type GoogleSheetsV1SheetUpsertNode = GoogleSheetsV1NodeBase & {
+	config: NodeConfig<GoogleSheetsV1SheetUpsertConfig>;
+};
+
+export type GoogleSheetsV1SheetDeleteNode = GoogleSheetsV1NodeBase & {
+	config: NodeConfig<GoogleSheetsV1SheetDeleteConfig>;
+};
+
+export type GoogleSheetsV1SheetLookupNode = GoogleSheetsV1NodeBase & {
+	config: NodeConfig<GoogleSheetsV1SheetLookupConfig>;
+};
+
+export type GoogleSheetsV1SheetReadNode = GoogleSheetsV1NodeBase & {
+	config: NodeConfig<GoogleSheetsV1SheetReadConfig>;
+};
+
+export type GoogleSheetsV1SheetRemoveNode = GoogleSheetsV1NodeBase & {
+	config: NodeConfig<GoogleSheetsV1SheetRemoveConfig>;
+};
+
+export type GoogleSheetsV1SheetUpdateNode = GoogleSheetsV1NodeBase & {
+	config: NodeConfig<GoogleSheetsV1SheetUpdateConfig>;
+};
+
+export type GoogleSheetsV1Node =
+	| GoogleSheetsV1SpreadsheetCreateNode
+	| GoogleSheetsV1SheetAppendNode
+	| GoogleSheetsV1SheetClearNode
+	| GoogleSheetsV1SheetCreateNode
+	| GoogleSheetsV1SheetUpsertNode
+	| GoogleSheetsV1SheetDeleteNode
+	| GoogleSheetsV1SheetLookupNode
+	| GoogleSheetsV1SheetReadNode
+	| GoogleSheetsV1SheetRemoveNode
+	| GoogleSheetsV1SheetUpdateNode
+	;

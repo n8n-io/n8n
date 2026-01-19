@@ -1,8 +1,6 @@
 /**
  * Facebook Trigger Node - Version 1
  * Starts the workflow when Facebook events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FacebookTriggerV1Params {
+export interface FacebookTriggerV1Config {
 /**
  * Facebook APP ID
  */
@@ -40,13 +38,18 @@ export interface FacebookTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FacebookTriggerV1Node = {
+interface FacebookTriggerV1NodeBase {
 	type: 'n8n-nodes-base.facebookTrigger';
 	version: 1;
-	config: NodeConfig<FacebookTriggerV1Params>;
 	credentials?: FacebookTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type FacebookTriggerV1Node = FacebookTriggerV1NodeBase & {
+	config: NodeConfig<FacebookTriggerV1Config>;
 };
+
+export type FacebookTriggerV1Node = FacebookTriggerV1Node;

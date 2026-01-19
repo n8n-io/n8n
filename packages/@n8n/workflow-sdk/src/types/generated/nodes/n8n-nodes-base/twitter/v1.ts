@@ -1,8 +1,6 @@
 /**
  * X (Formerly Twitter) Node - Version 1
  * Consume Twitter API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -101,14 +99,6 @@ export type TwitterV1TweetSearchConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type TwitterV1Params =
-	| TwitterV1DirectMessageCreateConfig
-	| TwitterV1TweetCreateConfig
-	| TwitterV1TweetDeleteConfig
-	| TwitterV1TweetLikeConfig
-	| TwitterV1TweetRetweetConfig
-	| TwitterV1TweetSearchConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -119,12 +109,44 @@ export interface TwitterV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwitterV1Node = {
+interface TwitterV1NodeBase {
 	type: 'n8n-nodes-base.twitter';
 	version: 1;
-	config: NodeConfig<TwitterV1Params>;
 	credentials?: TwitterV1Credentials;
+}
+
+export type TwitterV1DirectMessageCreateNode = TwitterV1NodeBase & {
+	config: NodeConfig<TwitterV1DirectMessageCreateConfig>;
 };
+
+export type TwitterV1TweetCreateNode = TwitterV1NodeBase & {
+	config: NodeConfig<TwitterV1TweetCreateConfig>;
+};
+
+export type TwitterV1TweetDeleteNode = TwitterV1NodeBase & {
+	config: NodeConfig<TwitterV1TweetDeleteConfig>;
+};
+
+export type TwitterV1TweetLikeNode = TwitterV1NodeBase & {
+	config: NodeConfig<TwitterV1TweetLikeConfig>;
+};
+
+export type TwitterV1TweetRetweetNode = TwitterV1NodeBase & {
+	config: NodeConfig<TwitterV1TweetRetweetConfig>;
+};
+
+export type TwitterV1TweetSearchNode = TwitterV1NodeBase & {
+	config: NodeConfig<TwitterV1TweetSearchConfig>;
+};
+
+export type TwitterV1Node =
+	| TwitterV1DirectMessageCreateNode
+	| TwitterV1TweetCreateNode
+	| TwitterV1TweetDeleteNode
+	| TwitterV1TweetLikeNode
+	| TwitterV1TweetRetweetNode
+	| TwitterV1TweetSearchNode
+	;

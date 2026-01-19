@@ -1,8 +1,6 @@
 /**
  * Postgres PGVector Store Node - Version 1.2
  * Work with your data in Postgresql with the PGVector extension
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -113,12 +111,6 @@ export type LcVectorStorePGVectorV12RetrieveAsToolConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStorePGVectorV12Params =
-	| LcVectorStorePGVectorV12LoadConfig
-	| LcVectorStorePGVectorV12InsertConfig
-	| LcVectorStorePGVectorV12RetrieveConfig
-	| LcVectorStorePGVectorV12RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -129,12 +121,34 @@ export interface LcVectorStorePGVectorV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStorePGVectorV12Node = {
+interface LcVectorStorePGVectorV12NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStorePGVector';
 	version: 1.2;
-	config: NodeConfig<LcVectorStorePGVectorV12Params>;
 	credentials?: LcVectorStorePGVectorV12Credentials;
+}
+
+export type LcVectorStorePGVectorV12LoadNode = LcVectorStorePGVectorV12NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV12LoadConfig>;
 };
+
+export type LcVectorStorePGVectorV12InsertNode = LcVectorStorePGVectorV12NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV12InsertConfig>;
+};
+
+export type LcVectorStorePGVectorV12RetrieveNode = LcVectorStorePGVectorV12NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV12RetrieveConfig>;
+};
+
+export type LcVectorStorePGVectorV12RetrieveAsToolNode = LcVectorStorePGVectorV12NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV12RetrieveAsToolConfig>;
+};
+
+export type LcVectorStorePGVectorV12Node =
+	| LcVectorStorePGVectorV12LoadNode
+	| LcVectorStorePGVectorV12InsertNode
+	| LcVectorStorePGVectorV12RetrieveNode
+	| LcVectorStorePGVectorV12RetrieveAsToolNode
+	;

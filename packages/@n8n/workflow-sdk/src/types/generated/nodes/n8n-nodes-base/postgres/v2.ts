@@ -1,8 +1,6 @@
 /**
  * Postgres Node - Version 2
  * Get, add and update data in Postgres
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface PostgresV2Params {
+export interface PostgresV2Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -141,12 +139,17 @@ export interface PostgresV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostgresV2Node = {
+interface PostgresV2NodeBase {
 	type: 'n8n-nodes-base.postgres';
 	version: 2;
-	config: NodeConfig<PostgresV2Params>;
 	credentials?: PostgresV2Credentials;
+}
+
+export type PostgresV2Node = PostgresV2NodeBase & {
+	config: NodeConfig<PostgresV2Config>;
 };
+
+export type PostgresV2Node = PostgresV2Node;

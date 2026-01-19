@@ -1,8 +1,6 @@
 /**
  * Emelia Node - Version 1
  * Consume the Emelia API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -137,17 +135,6 @@ export type EmeliaV1ContactListGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type EmeliaV1Params =
-	| EmeliaV1CampaignAddContactConfig
-	| EmeliaV1CampaignCreateConfig
-	| EmeliaV1CampaignDuplicateConfig
-	| EmeliaV1CampaignGetConfig
-	| EmeliaV1CampaignGetAllConfig
-	| EmeliaV1CampaignPauseConfig
-	| EmeliaV1CampaignStartConfig
-	| EmeliaV1ContactListAddConfig
-	| EmeliaV1ContactListGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -158,12 +145,59 @@ export interface EmeliaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EmeliaV1Node = {
+interface EmeliaV1NodeBase {
 	type: 'n8n-nodes-base.emelia';
 	version: 1;
-	config: NodeConfig<EmeliaV1Params>;
 	credentials?: EmeliaV1Credentials;
+}
+
+export type EmeliaV1CampaignAddContactNode = EmeliaV1NodeBase & {
+	config: NodeConfig<EmeliaV1CampaignAddContactConfig>;
 };
+
+export type EmeliaV1CampaignCreateNode = EmeliaV1NodeBase & {
+	config: NodeConfig<EmeliaV1CampaignCreateConfig>;
+};
+
+export type EmeliaV1CampaignDuplicateNode = EmeliaV1NodeBase & {
+	config: NodeConfig<EmeliaV1CampaignDuplicateConfig>;
+};
+
+export type EmeliaV1CampaignGetNode = EmeliaV1NodeBase & {
+	config: NodeConfig<EmeliaV1CampaignGetConfig>;
+};
+
+export type EmeliaV1CampaignGetAllNode = EmeliaV1NodeBase & {
+	config: NodeConfig<EmeliaV1CampaignGetAllConfig>;
+};
+
+export type EmeliaV1CampaignPauseNode = EmeliaV1NodeBase & {
+	config: NodeConfig<EmeliaV1CampaignPauseConfig>;
+};
+
+export type EmeliaV1CampaignStartNode = EmeliaV1NodeBase & {
+	config: NodeConfig<EmeliaV1CampaignStartConfig>;
+};
+
+export type EmeliaV1ContactListAddNode = EmeliaV1NodeBase & {
+	config: NodeConfig<EmeliaV1ContactListAddConfig>;
+};
+
+export type EmeliaV1ContactListGetAllNode = EmeliaV1NodeBase & {
+	config: NodeConfig<EmeliaV1ContactListGetAllConfig>;
+};
+
+export type EmeliaV1Node =
+	| EmeliaV1CampaignAddContactNode
+	| EmeliaV1CampaignCreateNode
+	| EmeliaV1CampaignDuplicateNode
+	| EmeliaV1CampaignGetNode
+	| EmeliaV1CampaignGetAllNode
+	| EmeliaV1CampaignPauseNode
+	| EmeliaV1CampaignStartNode
+	| EmeliaV1ContactListAddNode
+	| EmeliaV1ContactListGetAllNode
+	;

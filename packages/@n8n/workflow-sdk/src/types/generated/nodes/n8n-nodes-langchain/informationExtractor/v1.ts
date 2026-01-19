@@ -1,8 +1,6 @@
 /**
  * Information Extractor Node - Version 1
  * Extract information from text in a structured format
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcInformationExtractorV1Params {
+export interface LcInformationExtractorV1Config {
 /**
  * The text to extract information from
  */
@@ -79,12 +77,16 @@ export interface LcInformationExtractorV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcInformationExtractorV1Node = {
+interface LcInformationExtractorV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.informationExtractor';
 	version: 1;
-	config: NodeConfig<LcInformationExtractorV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcInformationExtractorV1Node = LcInformationExtractorV1NodeBase & {
+	config: NodeConfig<LcInformationExtractorV1Config>;
 };
+
+export type LcInformationExtractorV1Node = LcInformationExtractorV1Node;

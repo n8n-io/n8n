@@ -1,8 +1,6 @@
 /**
  * YouTube Node - Version 1
  * Consume YouTube API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -333,28 +331,6 @@ export type YouTubeV1VideoCategoryGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type YouTubeV1Params =
-	| YouTubeV1ChannelGetConfig
-	| YouTubeV1ChannelGetAllConfig
-	| YouTubeV1ChannelUpdateConfig
-	| YouTubeV1ChannelUploadBannerConfig
-	| YouTubeV1PlaylistCreateConfig
-	| YouTubeV1PlaylistDeleteConfig
-	| YouTubeV1PlaylistGetConfig
-	| YouTubeV1PlaylistGetAllConfig
-	| YouTubeV1PlaylistUpdateConfig
-	| YouTubeV1PlaylistItemAddConfig
-	| YouTubeV1PlaylistItemDeleteConfig
-	| YouTubeV1PlaylistItemGetConfig
-	| YouTubeV1PlaylistItemGetAllConfig
-	| YouTubeV1VideoDeleteConfig
-	| YouTubeV1VideoGetConfig
-	| YouTubeV1VideoGetAllConfig
-	| YouTubeV1VideoRateConfig
-	| YouTubeV1VideoUpdateConfig
-	| YouTubeV1VideoUploadConfig
-	| YouTubeV1VideoCategoryGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -365,12 +341,114 @@ export interface YouTubeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type YouTubeV1Node = {
+interface YouTubeV1NodeBase {
 	type: 'n8n-nodes-base.youTube';
 	version: 1;
-	config: NodeConfig<YouTubeV1Params>;
 	credentials?: YouTubeV1Credentials;
+}
+
+export type YouTubeV1ChannelGetNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1ChannelGetConfig>;
 };
+
+export type YouTubeV1ChannelGetAllNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1ChannelGetAllConfig>;
+};
+
+export type YouTubeV1ChannelUpdateNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1ChannelUpdateConfig>;
+};
+
+export type YouTubeV1ChannelUploadBannerNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1ChannelUploadBannerConfig>;
+};
+
+export type YouTubeV1PlaylistCreateNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1PlaylistCreateConfig>;
+};
+
+export type YouTubeV1PlaylistDeleteNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1PlaylistDeleteConfig>;
+};
+
+export type YouTubeV1PlaylistGetNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1PlaylistGetConfig>;
+};
+
+export type YouTubeV1PlaylistGetAllNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1PlaylistGetAllConfig>;
+};
+
+export type YouTubeV1PlaylistUpdateNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1PlaylistUpdateConfig>;
+};
+
+export type YouTubeV1PlaylistItemAddNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1PlaylistItemAddConfig>;
+};
+
+export type YouTubeV1PlaylistItemDeleteNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1PlaylistItemDeleteConfig>;
+};
+
+export type YouTubeV1PlaylistItemGetNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1PlaylistItemGetConfig>;
+};
+
+export type YouTubeV1PlaylistItemGetAllNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1PlaylistItemGetAllConfig>;
+};
+
+export type YouTubeV1VideoDeleteNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1VideoDeleteConfig>;
+};
+
+export type YouTubeV1VideoGetNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1VideoGetConfig>;
+};
+
+export type YouTubeV1VideoGetAllNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1VideoGetAllConfig>;
+};
+
+export type YouTubeV1VideoRateNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1VideoRateConfig>;
+};
+
+export type YouTubeV1VideoUpdateNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1VideoUpdateConfig>;
+};
+
+export type YouTubeV1VideoUploadNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1VideoUploadConfig>;
+};
+
+export type YouTubeV1VideoCategoryGetAllNode = YouTubeV1NodeBase & {
+	config: NodeConfig<YouTubeV1VideoCategoryGetAllConfig>;
+};
+
+export type YouTubeV1Node =
+	| YouTubeV1ChannelGetNode
+	| YouTubeV1ChannelGetAllNode
+	| YouTubeV1ChannelUpdateNode
+	| YouTubeV1ChannelUploadBannerNode
+	| YouTubeV1PlaylistCreateNode
+	| YouTubeV1PlaylistDeleteNode
+	| YouTubeV1PlaylistGetNode
+	| YouTubeV1PlaylistGetAllNode
+	| YouTubeV1PlaylistUpdateNode
+	| YouTubeV1PlaylistItemAddNode
+	| YouTubeV1PlaylistItemDeleteNode
+	| YouTubeV1PlaylistItemGetNode
+	| YouTubeV1PlaylistItemGetAllNode
+	| YouTubeV1VideoDeleteNode
+	| YouTubeV1VideoGetNode
+	| YouTubeV1VideoGetAllNode
+	| YouTubeV1VideoRateNode
+	| YouTubeV1VideoUpdateNode
+	| YouTubeV1VideoUploadNode
+	| YouTubeV1VideoCategoryGetAllNode
+	;

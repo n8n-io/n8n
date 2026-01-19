@@ -1,8 +1,6 @@
 /**
  * Postgres Chat Memory Node - Version 1.1
  * Stores the chat history in Postgres table.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryPostgresChatV11Params {
+export interface LcMemoryPostgresChatV11Config {
 	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
 /**
  * The key to use to store session ID in the memory
@@ -37,13 +35,18 @@ export interface LcMemoryPostgresChatV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryPostgresChatV11Node = {
+interface LcMemoryPostgresChatV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryPostgresChat';
 	version: 1.1;
-	config: NodeConfig<LcMemoryPostgresChatV11Params>;
 	credentials?: LcMemoryPostgresChatV11Credentials;
 	isTrigger: true;
+}
+
+export type LcMemoryPostgresChatV11Node = LcMemoryPostgresChatV11NodeBase & {
+	config: NodeConfig<LcMemoryPostgresChatV11Config>;
 };
+
+export type LcMemoryPostgresChatV11Node = LcMemoryPostgresChatV11Node;

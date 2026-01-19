@@ -1,8 +1,6 @@
 /**
  * Brevo Node - Version 1
  * Consume Brevo API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -310,23 +308,6 @@ export type SendInBlueV1SenderGetAllConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type SendInBlueV1Params =
-	| SendInBlueV1ContactCreateConfig
-	| SendInBlueV1ContactUpsertConfig
-	| SendInBlueV1ContactDeleteConfig
-	| SendInBlueV1ContactGetConfig
-	| SendInBlueV1ContactGetAllConfig
-	| SendInBlueV1ContactUpdateConfig
-	| SendInBlueV1AttributeCreateConfig
-	| SendInBlueV1AttributeUpdateConfig
-	| SendInBlueV1AttributeDeleteConfig
-	| SendInBlueV1AttributeGetAllConfig
-	| SendInBlueV1EmailSendConfig
-	| SendInBlueV1EmailSendTemplateConfig
-	| SendInBlueV1SenderCreateConfig
-	| SendInBlueV1SenderDeleteConfig
-	| SendInBlueV1SenderGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -337,12 +318,89 @@ export interface SendInBlueV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SendInBlueV1Node = {
+interface SendInBlueV1NodeBase {
 	type: 'n8n-nodes-base.sendInBlue';
 	version: 1;
-	config: NodeConfig<SendInBlueV1Params>;
 	credentials?: SendInBlueV1Credentials;
+}
+
+export type SendInBlueV1ContactCreateNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1ContactCreateConfig>;
 };
+
+export type SendInBlueV1ContactUpsertNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1ContactUpsertConfig>;
+};
+
+export type SendInBlueV1ContactDeleteNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1ContactDeleteConfig>;
+};
+
+export type SendInBlueV1ContactGetNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1ContactGetConfig>;
+};
+
+export type SendInBlueV1ContactGetAllNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1ContactGetAllConfig>;
+};
+
+export type SendInBlueV1ContactUpdateNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1ContactUpdateConfig>;
+};
+
+export type SendInBlueV1AttributeCreateNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1AttributeCreateConfig>;
+};
+
+export type SendInBlueV1AttributeUpdateNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1AttributeUpdateConfig>;
+};
+
+export type SendInBlueV1AttributeDeleteNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1AttributeDeleteConfig>;
+};
+
+export type SendInBlueV1AttributeGetAllNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1AttributeGetAllConfig>;
+};
+
+export type SendInBlueV1EmailSendNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1EmailSendConfig>;
+};
+
+export type SendInBlueV1EmailSendTemplateNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1EmailSendTemplateConfig>;
+};
+
+export type SendInBlueV1SenderCreateNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1SenderCreateConfig>;
+};
+
+export type SendInBlueV1SenderDeleteNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1SenderDeleteConfig>;
+};
+
+export type SendInBlueV1SenderGetAllNode = SendInBlueV1NodeBase & {
+	config: NodeConfig<SendInBlueV1SenderGetAllConfig>;
+};
+
+export type SendInBlueV1Node =
+	| SendInBlueV1ContactCreateNode
+	| SendInBlueV1ContactUpsertNode
+	| SendInBlueV1ContactDeleteNode
+	| SendInBlueV1ContactGetNode
+	| SendInBlueV1ContactGetAllNode
+	| SendInBlueV1ContactUpdateNode
+	| SendInBlueV1AttributeCreateNode
+	| SendInBlueV1AttributeUpdateNode
+	| SendInBlueV1AttributeDeleteNode
+	| SendInBlueV1AttributeGetAllNode
+	| SendInBlueV1EmailSendNode
+	| SendInBlueV1EmailSendTemplateNode
+	| SendInBlueV1SenderCreateNode
+	| SendInBlueV1SenderDeleteNode
+	| SendInBlueV1SenderGetAllNode
+	;

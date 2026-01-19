@@ -1,8 +1,6 @@
 /**
  * MySQL Node - Version 2.3
  * Get, add and update data in MySQL
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MySqlV23Params {
+export interface MySqlV23Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -128,12 +126,17 @@ export interface MySqlV23Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MySqlV23Node = {
+interface MySqlV23NodeBase {
 	type: 'n8n-nodes-base.mySql';
 	version: 2.3;
-	config: NodeConfig<MySqlV23Params>;
 	credentials?: MySqlV23Credentials;
+}
+
+export type MySqlV23Node = MySqlV23NodeBase & {
+	config: NodeConfig<MySqlV23Config>;
 };
+
+export type MySqlV23Node = MySqlV23Node;

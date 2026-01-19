@@ -1,8 +1,6 @@
 /**
  * Invoice Ninja Trigger Node - Version 2
  * Starts the workflow when Invoice Ninja events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface InvoiceNinjaTriggerV2Params {
+export interface InvoiceNinjaTriggerV2Config {
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	event: 'create_client' | 'create_invoice' | 'create_payment' | 'create_quote' | 'create_vendor' | Expression<string>;
 }
@@ -27,13 +25,18 @@ export interface InvoiceNinjaTriggerV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type InvoiceNinjaTriggerV2Node = {
+interface InvoiceNinjaTriggerV2NodeBase {
 	type: 'n8n-nodes-base.invoiceNinjaTrigger';
 	version: 2;
-	config: NodeConfig<InvoiceNinjaTriggerV2Params>;
 	credentials?: InvoiceNinjaTriggerV2Credentials;
 	isTrigger: true;
+}
+
+export type InvoiceNinjaTriggerV2Node = InvoiceNinjaTriggerV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaTriggerV2Config>;
 };
+
+export type InvoiceNinjaTriggerV2Node = InvoiceNinjaTriggerV2Node;

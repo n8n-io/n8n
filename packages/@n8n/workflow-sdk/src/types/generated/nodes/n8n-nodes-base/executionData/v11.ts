@@ -1,8 +1,6 @@
 /**
  * Execution Data Node - Version 1.1
  * Add execution data for search
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ExecutionDataV11Params {
+export interface ExecutionDataV11Config {
 	operation?: 'save' | Expression<string>;
 	dataToSave?: {
 		values?: Array<{
@@ -32,12 +30,16 @@ export interface ExecutionDataV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ExecutionDataV11Node = {
+interface ExecutionDataV11NodeBase {
 	type: 'n8n-nodes-base.executionData';
 	version: 1.1;
-	config: NodeConfig<ExecutionDataV11Params>;
-	credentials?: Record<string, never>;
+}
+
+export type ExecutionDataV11Node = ExecutionDataV11NodeBase & {
+	config: NodeConfig<ExecutionDataV11Config>;
 };
+
+export type ExecutionDataV11Node = ExecutionDataV11Node;

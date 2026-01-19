@@ -1,8 +1,6 @@
 /**
  * PayPal Node - Version 1
  * Consume PayPal API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -105,12 +103,26 @@ export type PayPalV1PayoutItemGetConfig = {
 		payoutItemId: string | Expression<string>;
 };
 
-export type PayPalV1Params =
-	| PayPalV1PayoutCreateConfig
-	| PayPalV1PayoutGetConfig
-	| PayPalV1PayoutItemCancelConfig
-	| PayPalV1PayoutItemGetConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type PayPalV1PayoutCreateOutput = {
+	batch_header?: {
+		batch_status?: string;
+		payout_batch_id?: string;
+		sender_batch_header?: {
+			sender_batch_id?: string;
+		};
+	};
+	links?: Array<{
+		encType?: string;
+		href?: string;
+		method?: string;
+		rel?: string;
+	}>;
+};
 
 // ===========================================================================
 // Credentials
@@ -121,12 +133,35 @@ export interface PayPalV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PayPalV1Node = {
+interface PayPalV1NodeBase {
 	type: 'n8n-nodes-base.payPal';
 	version: 1;
-	config: NodeConfig<PayPalV1Params>;
 	credentials?: PayPalV1Credentials;
+}
+
+export type PayPalV1PayoutCreateNode = PayPalV1NodeBase & {
+	config: NodeConfig<PayPalV1PayoutCreateConfig>;
+	output?: PayPalV1PayoutCreateOutput;
 };
+
+export type PayPalV1PayoutGetNode = PayPalV1NodeBase & {
+	config: NodeConfig<PayPalV1PayoutGetConfig>;
+};
+
+export type PayPalV1PayoutItemCancelNode = PayPalV1NodeBase & {
+	config: NodeConfig<PayPalV1PayoutItemCancelConfig>;
+};
+
+export type PayPalV1PayoutItemGetNode = PayPalV1NodeBase & {
+	config: NodeConfig<PayPalV1PayoutItemGetConfig>;
+};
+
+export type PayPalV1Node =
+	| PayPalV1PayoutCreateNode
+	| PayPalV1PayoutGetNode
+	| PayPalV1PayoutItemCancelNode
+	| PayPalV1PayoutItemGetNode
+	;

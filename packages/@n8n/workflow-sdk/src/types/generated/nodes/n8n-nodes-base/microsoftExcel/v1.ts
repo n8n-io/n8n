@@ -1,8 +1,6 @@
 /**
  * Microsoft Excel Node - Version 1
  * Consume Microsoft Excel API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -263,16 +261,6 @@ export type MicrosoftExcelV1WorksheetGetContentConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type MicrosoftExcelV1Params =
-	| MicrosoftExcelV1TableAddRowConfig
-	| MicrosoftExcelV1TableGetColumnsConfig
-	| MicrosoftExcelV1TableGetRowsConfig
-	| MicrosoftExcelV1TableLookupConfig
-	| MicrosoftExcelV1WorkbookAddWorksheetConfig
-	| MicrosoftExcelV1WorkbookGetAllConfig
-	| MicrosoftExcelV1WorksheetGetAllConfig
-	| MicrosoftExcelV1WorksheetGetContentConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -283,12 +271,54 @@ export interface MicrosoftExcelV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftExcelV1Node = {
+interface MicrosoftExcelV1NodeBase {
 	type: 'n8n-nodes-base.microsoftExcel';
 	version: 1;
-	config: NodeConfig<MicrosoftExcelV1Params>;
 	credentials?: MicrosoftExcelV1Credentials;
+}
+
+export type MicrosoftExcelV1TableAddRowNode = MicrosoftExcelV1NodeBase & {
+	config: NodeConfig<MicrosoftExcelV1TableAddRowConfig>;
 };
+
+export type MicrosoftExcelV1TableGetColumnsNode = MicrosoftExcelV1NodeBase & {
+	config: NodeConfig<MicrosoftExcelV1TableGetColumnsConfig>;
+};
+
+export type MicrosoftExcelV1TableGetRowsNode = MicrosoftExcelV1NodeBase & {
+	config: NodeConfig<MicrosoftExcelV1TableGetRowsConfig>;
+};
+
+export type MicrosoftExcelV1TableLookupNode = MicrosoftExcelV1NodeBase & {
+	config: NodeConfig<MicrosoftExcelV1TableLookupConfig>;
+};
+
+export type MicrosoftExcelV1WorkbookAddWorksheetNode = MicrosoftExcelV1NodeBase & {
+	config: NodeConfig<MicrosoftExcelV1WorkbookAddWorksheetConfig>;
+};
+
+export type MicrosoftExcelV1WorkbookGetAllNode = MicrosoftExcelV1NodeBase & {
+	config: NodeConfig<MicrosoftExcelV1WorkbookGetAllConfig>;
+};
+
+export type MicrosoftExcelV1WorksheetGetAllNode = MicrosoftExcelV1NodeBase & {
+	config: NodeConfig<MicrosoftExcelV1WorksheetGetAllConfig>;
+};
+
+export type MicrosoftExcelV1WorksheetGetContentNode = MicrosoftExcelV1NodeBase & {
+	config: NodeConfig<MicrosoftExcelV1WorksheetGetContentConfig>;
+};
+
+export type MicrosoftExcelV1Node =
+	| MicrosoftExcelV1TableAddRowNode
+	| MicrosoftExcelV1TableGetColumnsNode
+	| MicrosoftExcelV1TableGetRowsNode
+	| MicrosoftExcelV1TableLookupNode
+	| MicrosoftExcelV1WorkbookAddWorksheetNode
+	| MicrosoftExcelV1WorkbookGetAllNode
+	| MicrosoftExcelV1WorksheetGetAllNode
+	| MicrosoftExcelV1WorksheetGetContentNode
+	;

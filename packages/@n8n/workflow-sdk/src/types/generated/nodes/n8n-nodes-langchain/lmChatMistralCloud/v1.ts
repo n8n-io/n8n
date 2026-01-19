@@ -1,8 +1,6 @@
 /**
  * Mistral Cloud Chat Model Node - Version 1
  * For advanced usage with an AI chain
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatMistralCloudV1Params {
+export interface LcLmChatMistralCloudV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://docs.mistral.ai/platform/endpoints/"&gt;Learn more&lt;/a&gt;.
  * @default mistral-small
@@ -35,13 +33,18 @@ export interface LcLmChatMistralCloudV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatMistralCloudV1Node = {
+interface LcLmChatMistralCloudV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatMistralCloud';
 	version: 1;
-	config: NodeConfig<LcLmChatMistralCloudV1Params>;
 	credentials?: LcLmChatMistralCloudV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatMistralCloudV1Node = LcLmChatMistralCloudV1NodeBase & {
+	config: NodeConfig<LcLmChatMistralCloudV1Config>;
 };
+
+export type LcLmChatMistralCloudV1Node = LcLmChatMistralCloudV1Node;

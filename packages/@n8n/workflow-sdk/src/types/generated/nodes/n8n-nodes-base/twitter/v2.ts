@@ -1,8 +1,6 @@
 /**
  * X (Formerly Twitter) Node - Version 2
  * Post, like, and search tweets, send messages, search users, and add users to lists
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -143,16 +141,41 @@ export type TwitterV2UserSearchUserConfig = {
 		me?: boolean | Expression<boolean>;
 };
 
-export type TwitterV2Params =
-	| TwitterV2DirectMessageCreateConfig
-	| TwitterV2ListAddConfig
-	| TwitterV2TweetCreateConfig
-	| TwitterV2TweetDeleteConfig
-	| TwitterV2TweetLikeConfig
-	| TwitterV2TweetRetweetConfig
-	| TwitterV2TweetSearchConfig
-	| TwitterV2UserSearchUserConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type TwitterV2TweetCreateOutput = {
+	edit_history_tweet_ids?: Array<string>;
+	id?: string;
+	text?: string;
+};
+
+export type TwitterV2TweetDeleteOutput = {
+	deleted?: boolean;
+};
+
+export type TwitterV2TweetLikeOutput = {
+	liked?: boolean;
+};
+
+export type TwitterV2TweetRetweetOutput = {
+	rest_id?: string;
+	retweeted?: boolean;
+};
+
+export type TwitterV2TweetSearchOutput = {
+	edit_history_tweet_ids?: Array<string>;
+	id?: string;
+	text?: string;
+};
+
+export type TwitterV2UserSearchUserOutput = {
+	id?: string;
+	name?: string;
+	username?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -163,12 +186,60 @@ export interface TwitterV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwitterV2Node = {
+interface TwitterV2NodeBase {
 	type: 'n8n-nodes-base.twitter';
 	version: 2;
-	config: NodeConfig<TwitterV2Params>;
 	credentials?: TwitterV2Credentials;
+}
+
+export type TwitterV2DirectMessageCreateNode = TwitterV2NodeBase & {
+	config: NodeConfig<TwitterV2DirectMessageCreateConfig>;
 };
+
+export type TwitterV2ListAddNode = TwitterV2NodeBase & {
+	config: NodeConfig<TwitterV2ListAddConfig>;
+};
+
+export type TwitterV2TweetCreateNode = TwitterV2NodeBase & {
+	config: NodeConfig<TwitterV2TweetCreateConfig>;
+	output?: TwitterV2TweetCreateOutput;
+};
+
+export type TwitterV2TweetDeleteNode = TwitterV2NodeBase & {
+	config: NodeConfig<TwitterV2TweetDeleteConfig>;
+	output?: TwitterV2TweetDeleteOutput;
+};
+
+export type TwitterV2TweetLikeNode = TwitterV2NodeBase & {
+	config: NodeConfig<TwitterV2TweetLikeConfig>;
+	output?: TwitterV2TweetLikeOutput;
+};
+
+export type TwitterV2TweetRetweetNode = TwitterV2NodeBase & {
+	config: NodeConfig<TwitterV2TweetRetweetConfig>;
+	output?: TwitterV2TweetRetweetOutput;
+};
+
+export type TwitterV2TweetSearchNode = TwitterV2NodeBase & {
+	config: NodeConfig<TwitterV2TweetSearchConfig>;
+	output?: TwitterV2TweetSearchOutput;
+};
+
+export type TwitterV2UserSearchUserNode = TwitterV2NodeBase & {
+	config: NodeConfig<TwitterV2UserSearchUserConfig>;
+	output?: TwitterV2UserSearchUserOutput;
+};
+
+export type TwitterV2Node =
+	| TwitterV2DirectMessageCreateNode
+	| TwitterV2ListAddNode
+	| TwitterV2TweetCreateNode
+	| TwitterV2TweetDeleteNode
+	| TwitterV2TweetLikeNode
+	| TwitterV2TweetRetweetNode
+	| TwitterV2TweetSearchNode
+	| TwitterV2UserSearchUserNode
+	;

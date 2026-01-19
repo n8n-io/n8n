@@ -1,8 +1,6 @@
 /**
  * Chargebee Node - Version 1
  * Retrieve data from Chargebee API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -102,13 +100,6 @@ export type ChargebeeV1SubscriptionDeleteConfig = {
 		subscriptionId: string | Expression<string>;
 };
 
-export type ChargebeeV1Params =
-	| ChargebeeV1CustomerCreateConfig
-	| ChargebeeV1InvoiceListConfig
-	| ChargebeeV1InvoicePdfUrlConfig
-	| ChargebeeV1SubscriptionCancelConfig
-	| ChargebeeV1SubscriptionDeleteConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -119,12 +110,39 @@ export interface ChargebeeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ChargebeeV1Node = {
+interface ChargebeeV1NodeBase {
 	type: 'n8n-nodes-base.chargebee';
 	version: 1;
-	config: NodeConfig<ChargebeeV1Params>;
 	credentials?: ChargebeeV1Credentials;
+}
+
+export type ChargebeeV1CustomerCreateNode = ChargebeeV1NodeBase & {
+	config: NodeConfig<ChargebeeV1CustomerCreateConfig>;
 };
+
+export type ChargebeeV1InvoiceListNode = ChargebeeV1NodeBase & {
+	config: NodeConfig<ChargebeeV1InvoiceListConfig>;
+};
+
+export type ChargebeeV1InvoicePdfUrlNode = ChargebeeV1NodeBase & {
+	config: NodeConfig<ChargebeeV1InvoicePdfUrlConfig>;
+};
+
+export type ChargebeeV1SubscriptionCancelNode = ChargebeeV1NodeBase & {
+	config: NodeConfig<ChargebeeV1SubscriptionCancelConfig>;
+};
+
+export type ChargebeeV1SubscriptionDeleteNode = ChargebeeV1NodeBase & {
+	config: NodeConfig<ChargebeeV1SubscriptionDeleteConfig>;
+};
+
+export type ChargebeeV1Node =
+	| ChargebeeV1CustomerCreateNode
+	| ChargebeeV1InvoiceListNode
+	| ChargebeeV1InvoicePdfUrlNode
+	| ChargebeeV1SubscriptionCancelNode
+	| ChargebeeV1SubscriptionDeleteNode
+	;

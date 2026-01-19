@@ -1,8 +1,6 @@
 /**
  * Google Slides Node - Version 1
  * Consume the Google Slides API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -127,14 +125,6 @@ export type GoogleSlidesV1PresentationReplaceTextConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleSlidesV1Params =
-	| GoogleSlidesV1PageGetConfig
-	| GoogleSlidesV1PageGetThumbnailConfig
-	| GoogleSlidesV1PresentationCreateConfig
-	| GoogleSlidesV1PresentationGetConfig
-	| GoogleSlidesV1PresentationGetSlidesConfig
-	| GoogleSlidesV1PresentationReplaceTextConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -146,12 +136,44 @@ export interface GoogleSlidesV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleSlidesV1Node = {
+interface GoogleSlidesV1NodeBase {
 	type: 'n8n-nodes-base.googleSlides';
 	version: 1;
-	config: NodeConfig<GoogleSlidesV1Params>;
 	credentials?: GoogleSlidesV1Credentials;
+}
+
+export type GoogleSlidesV1PageGetNode = GoogleSlidesV1NodeBase & {
+	config: NodeConfig<GoogleSlidesV1PageGetConfig>;
 };
+
+export type GoogleSlidesV1PageGetThumbnailNode = GoogleSlidesV1NodeBase & {
+	config: NodeConfig<GoogleSlidesV1PageGetThumbnailConfig>;
+};
+
+export type GoogleSlidesV1PresentationCreateNode = GoogleSlidesV1NodeBase & {
+	config: NodeConfig<GoogleSlidesV1PresentationCreateConfig>;
+};
+
+export type GoogleSlidesV1PresentationGetNode = GoogleSlidesV1NodeBase & {
+	config: NodeConfig<GoogleSlidesV1PresentationGetConfig>;
+};
+
+export type GoogleSlidesV1PresentationGetSlidesNode = GoogleSlidesV1NodeBase & {
+	config: NodeConfig<GoogleSlidesV1PresentationGetSlidesConfig>;
+};
+
+export type GoogleSlidesV1PresentationReplaceTextNode = GoogleSlidesV1NodeBase & {
+	config: NodeConfig<GoogleSlidesV1PresentationReplaceTextConfig>;
+};
+
+export type GoogleSlidesV1Node =
+	| GoogleSlidesV1PageGetNode
+	| GoogleSlidesV1PageGetThumbnailNode
+	| GoogleSlidesV1PresentationCreateNode
+	| GoogleSlidesV1PresentationGetNode
+	| GoogleSlidesV1PresentationGetSlidesNode
+	| GoogleSlidesV1PresentationReplaceTextNode
+	;

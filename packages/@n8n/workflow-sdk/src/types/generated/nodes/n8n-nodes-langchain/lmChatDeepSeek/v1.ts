@@ -1,8 +1,6 @@
 /**
  * DeepSeek Chat Model Node - Version 1
  * For advanced usage with an AI chain
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatDeepSeekV1Params {
+export interface LcLmChatDeepSeekV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://api-docs.deepseek.com/quick_start/pricing"&gt;Learn more&lt;/a&gt;.
  * @default deepseek-chat
@@ -35,13 +33,18 @@ export interface LcLmChatDeepSeekV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatDeepSeekV1Node = {
+interface LcLmChatDeepSeekV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatDeepSeek';
 	version: 1;
-	config: NodeConfig<LcLmChatDeepSeekV1Params>;
 	credentials?: LcLmChatDeepSeekV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatDeepSeekV1Node = LcLmChatDeepSeekV1NodeBase & {
+	config: NodeConfig<LcLmChatDeepSeekV1Config>;
 };
+
+export type LcLmChatDeepSeekV1Node = LcLmChatDeepSeekV1Node;

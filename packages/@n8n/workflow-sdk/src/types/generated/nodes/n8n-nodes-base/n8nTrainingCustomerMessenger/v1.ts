@@ -1,8 +1,6 @@
 /**
  * Customer Messenger (n8n training) Node - Version 1
  * Dummy node used for n8n training
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface N8nTrainingCustomerMessengerV1Params {
+export interface N8nTrainingCustomerMessengerV1Config {
 	customerId: string | Expression<string>;
 	message: string | Expression<string>;
 }
@@ -23,12 +21,16 @@ export interface N8nTrainingCustomerMessengerV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type N8nTrainingCustomerMessengerV1Node = {
+interface N8nTrainingCustomerMessengerV1NodeBase {
 	type: 'n8n-nodes-base.n8nTrainingCustomerMessenger';
 	version: 1;
-	config: NodeConfig<N8nTrainingCustomerMessengerV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type N8nTrainingCustomerMessengerV1Node = N8nTrainingCustomerMessengerV1NodeBase & {
+	config: NodeConfig<N8nTrainingCustomerMessengerV1Config>;
 };
+
+export type N8nTrainingCustomerMessengerV1Node = N8nTrainingCustomerMessengerV1Node;

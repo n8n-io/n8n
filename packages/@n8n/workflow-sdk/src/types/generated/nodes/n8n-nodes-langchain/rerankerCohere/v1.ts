@@ -1,8 +1,6 @@
 /**
  * Reranker Cohere Node - Version 1
  * Use Cohere Reranker to reorder documents after retrieval from a vector store by relevance to the given query.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcRerankerCohereV1Params {
+export interface LcRerankerCohereV1Config {
 /**
  * The model that should be used to rerank the documents. &lt;a href="https://docs.cohere.com/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default rerank-v3.5
@@ -35,13 +33,18 @@ export interface LcRerankerCohereV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcRerankerCohereV1Node = {
+interface LcRerankerCohereV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.rerankerCohere';
 	version: 1;
-	config: NodeConfig<LcRerankerCohereV1Params>;
 	credentials?: LcRerankerCohereV1Credentials;
 	isTrigger: true;
+}
+
+export type LcRerankerCohereV1Node = LcRerankerCohereV1NodeBase & {
+	config: NodeConfig<LcRerankerCohereV1Config>;
 };
+
+export type LcRerankerCohereV1Node = LcRerankerCohereV1Node;

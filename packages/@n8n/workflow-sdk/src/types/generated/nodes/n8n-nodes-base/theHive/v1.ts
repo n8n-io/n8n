@@ -1,8 +1,6 @@
 /**
  * TheHive Node - Version 1
  * Consume TheHive API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -83,12 +81,6 @@ export type TheHiveV1LogGetConfig = {
 	id: string | Expression<string>;
 };
 
-export type TheHiveV1Params =
-	| TheHiveV1LogCreateConfig
-	| TheHiveV1LogExecuteResponderConfig
-	| TheHiveV1LogGetAllConfig
-	| TheHiveV1LogGetConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -99,12 +91,34 @@ export interface TheHiveV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TheHiveV1Node = {
+interface TheHiveV1NodeBase {
 	type: 'n8n-nodes-base.theHive';
 	version: 1;
-	config: NodeConfig<TheHiveV1Params>;
 	credentials?: TheHiveV1Credentials;
+}
+
+export type TheHiveV1LogCreateNode = TheHiveV1NodeBase & {
+	config: NodeConfig<TheHiveV1LogCreateConfig>;
 };
+
+export type TheHiveV1LogExecuteResponderNode = TheHiveV1NodeBase & {
+	config: NodeConfig<TheHiveV1LogExecuteResponderConfig>;
+};
+
+export type TheHiveV1LogGetAllNode = TheHiveV1NodeBase & {
+	config: NodeConfig<TheHiveV1LogGetAllConfig>;
+};
+
+export type TheHiveV1LogGetNode = TheHiveV1NodeBase & {
+	config: NodeConfig<TheHiveV1LogGetConfig>;
+};
+
+export type TheHiveV1Node =
+	| TheHiveV1LogCreateNode
+	| TheHiveV1LogExecuteResponderNode
+	| TheHiveV1LogGetAllNode
+	| TheHiveV1LogGetNode
+	;

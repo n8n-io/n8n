@@ -1,8 +1,6 @@
 /**
  * Salesforce Node - Version 1
  * Consume Salesforce API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -1006,73 +1004,497 @@ export type SalesforceV1UserGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type SalesforceV1Params =
-	| SalesforceV1AccountAddNoteConfig
-	| SalesforceV1AccountCreateConfig
-	| SalesforceV1AccountUpsertConfig
-	| SalesforceV1AccountDeleteConfig
-	| SalesforceV1AccountGetConfig
-	| SalesforceV1AccountGetAllConfig
-	| SalesforceV1AccountGetSummaryConfig
-	| SalesforceV1AccountUpdateConfig
-	| SalesforceV1AttachmentCreateConfig
-	| SalesforceV1AttachmentDeleteConfig
-	| SalesforceV1AttachmentGetConfig
-	| SalesforceV1AttachmentGetAllConfig
-	| SalesforceV1AttachmentGetSummaryConfig
-	| SalesforceV1AttachmentUpdateConfig
-	| SalesforceV1CaseAddCommentConfig
-	| SalesforceV1CaseCreateConfig
-	| SalesforceV1CaseDeleteConfig
-	| SalesforceV1CaseGetConfig
-	| SalesforceV1CaseGetAllConfig
-	| SalesforceV1CaseGetSummaryConfig
-	| SalesforceV1CaseUpdateConfig
-	| SalesforceV1ContactAddToCampaignConfig
-	| SalesforceV1ContactAddNoteConfig
-	| SalesforceV1ContactCreateConfig
-	| SalesforceV1ContactUpsertConfig
-	| SalesforceV1ContactDeleteConfig
-	| SalesforceV1ContactGetConfig
-	| SalesforceV1ContactGetAllConfig
-	| SalesforceV1ContactGetSummaryConfig
-	| SalesforceV1ContactUpdateConfig
-	| SalesforceV1CustomObjectCreateConfig
-	| SalesforceV1CustomObjectUpsertConfig
-	| SalesforceV1CustomObjectDeleteConfig
-	| SalesforceV1CustomObjectGetConfig
-	| SalesforceV1CustomObjectGetAllConfig
-	| SalesforceV1CustomObjectUpdateConfig
-	| SalesforceV1DocumentUploadConfig
-	| SalesforceV1FlowGetAllConfig
-	| SalesforceV1FlowInvokeConfig
-	| SalesforceV1LeadAddToCampaignConfig
-	| SalesforceV1LeadAddNoteConfig
-	| SalesforceV1LeadCreateConfig
-	| SalesforceV1LeadUpsertConfig
-	| SalesforceV1LeadDeleteConfig
-	| SalesforceV1LeadGetConfig
-	| SalesforceV1LeadGetAllConfig
-	| SalesforceV1LeadGetSummaryConfig
-	| SalesforceV1LeadUpdateConfig
-	| SalesforceV1OpportunityAddNoteConfig
-	| SalesforceV1OpportunityCreateConfig
-	| SalesforceV1OpportunityUpsertConfig
-	| SalesforceV1OpportunityDeleteConfig
-	| SalesforceV1OpportunityGetConfig
-	| SalesforceV1OpportunityGetAllConfig
-	| SalesforceV1OpportunityGetSummaryConfig
-	| SalesforceV1OpportunityUpdateConfig
-	| SalesforceV1SearchQueryConfig
-	| SalesforceV1TaskCreateConfig
-	| SalesforceV1TaskDeleteConfig
-	| SalesforceV1TaskGetConfig
-	| SalesforceV1TaskGetAllConfig
-	| SalesforceV1TaskGetSummaryConfig
-	| SalesforceV1TaskUpdateConfig
-	| SalesforceV1UserGetConfig
-	| SalesforceV1UserGetAllConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type SalesforceV1AccountCreateOutput = {
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1AccountDeleteOutput = {
+	success?: boolean;
+};
+
+export type SalesforceV1AccountGetOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	BillingAddress?: {
+		geocodeAccuracy?: null;
+	};
+	BillingGeocodeAccuracy?: null;
+	CreatedById?: string;
+	CreatedDate?: string;
+	error?: string;
+	Id?: string;
+	IsDeleted?: boolean;
+	Jigsaw?: null;
+	JigsawCompanyId?: null;
+	LastModifiedById?: string;
+	LastModifiedDate?: string;
+	MasterRecordId?: null;
+	Name?: string;
+	OwnerId?: string;
+	ShippingGeocodeAccuracy?: null;
+	SicDesc?: null;
+	SystemModstamp?: string;
+};
+
+export type SalesforceV1AccountGetAllOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	Id?: string;
+	Name?: string;
+};
+
+export type SalesforceV1AccountUpdateOutput = {
+	success?: boolean;
+};
+
+export type SalesforceV1AttachmentGetAllOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	Id?: string;
+	Name?: string;
+};
+
+export type SalesforceV1CaseCreateOutput = {
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1CaseGetOutput = {
+	AssetId?: null;
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	BusinessHoursId?: string;
+	CaseNumber?: string;
+	Comments?: null;
+	CreatedById?: string;
+	CreatedDate?: string;
+	Id?: string;
+	IsClosed?: boolean;
+	IsDeleted?: boolean;
+	IsEscalated?: boolean;
+	Language?: null;
+	LastModifiedById?: string;
+	LastModifiedDate?: string;
+	MasterRecordId?: null;
+	OwnerId?: string;
+	RecordTypeId?: string;
+	Status?: string;
+	SystemModstamp?: string;
+};
+
+export type SalesforceV1CaseGetAllOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	Id?: string;
+	OwnerId?: string;
+	Status?: string;
+};
+
+export type SalesforceV1CaseUpdateOutput = {
+	success?: boolean;
+};
+
+export type SalesforceV1ContactAddToCampaignOutput = {
+	error?: string;
+};
+
+export type SalesforceV1ContactCreateOutput = {
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1ContactUpsertOutput = {
+	created?: boolean;
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1ContactDeleteOutput = {
+	success?: boolean;
+};
+
+export type SalesforceV1ContactGetOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	CreatedById?: string;
+	CreatedDate?: string;
+	HomePhone?: null;
+	Id?: string;
+	IsDeleted?: boolean;
+	IsEmailBounced?: boolean;
+	IsPriorityRecord?: boolean;
+	Jigsaw?: null;
+	JigsawContactId?: null;
+	LastCURequestDate?: null;
+	LastCUUpdateDate?: null;
+	LastModifiedById?: string;
+	LastModifiedDate?: string;
+	LastName?: string;
+	MasterRecordId?: null;
+	MiddleName?: null;
+	Name?: string;
+	OtherPhone?: null;
+	OwnerId?: string;
+	Suffix?: null;
+	SystemModstamp?: string;
+};
+
+export type SalesforceV1ContactGetAllOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	Id?: string;
+	LastName?: string;
+};
+
+export type SalesforceV1ContactUpdateOutput = {
+	success?: boolean;
+};
+
+export type SalesforceV1CustomObjectCreateOutput = {
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1CustomObjectUpsertOutput = {
+	created?: boolean;
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1CustomObjectDeleteOutput = {
+	success?: boolean;
+};
+
+export type SalesforceV1CustomObjectGetOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	CreatedById?: string;
+	CreatedDate?: string;
+	CurrencyIsoCode?: string;
+	Id?: string;
+	IsDeleted?: boolean;
+	LastModifiedById?: string;
+	LastModifiedDate?: string;
+	Name?: string;
+	OwnerId?: string;
+	SystemModstamp?: string;
+};
+
+export type SalesforceV1CustomObjectGetAllOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	Id?: string;
+};
+
+export type SalesforceV1CustomObjectUpdateOutput = {
+	success?: boolean;
+};
+
+export type SalesforceV1DocumentUploadOutput = {
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1FlowGetAllOutput = {
+	label?: string;
+	name?: string;
+	type?: string;
+	url?: string;
+};
+
+export type SalesforceV1FlowInvokeOutput = {
+	actionName?: string;
+	errors?: null;
+	invocationId?: null;
+	isSuccess?: boolean;
+	outcome?: null;
+	outputValues?: {
+		Flow__InterviewGuid?: string;
+		Flow__InterviewStatus?: string;
+		projects?: Array<{
+			attributes?: {
+				type?: string;
+				url?: string;
+			};
+			CreatedById?: string;
+			CreatedDate?: string;
+			Id?: string;
+			IsDeleted?: boolean;
+			LastActivityDate?: null;
+			LastModifiedById?: string;
+			LastModifiedDate?: string;
+			LastReferencedDate?: string;
+			LastViewedDate?: string;
+			Name?: string;
+			OwnerId?: string;
+			Projectcloseddate__c?: string;
+			Projectcreateddate__c?: null;
+			Projectdescription__c?: null;
+			Projectduedate__c?: null;
+			Projectlink__c?: null;
+			Projectmanager__c?: null;
+			Projectpriority__c?: null;
+			Projectstatus__c?: null;
+			Projecttitle__c?: string;
+			SystemModstamp?: string;
+		}>;
+	};
+	sortOrder?: number;
+	version?: number;
+};
+
+export type SalesforceV1LeadAddToCampaignOutput = {
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1LeadAddNoteOutput = {
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1LeadCreateOutput = {
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1LeadUpsertOutput = {
+	created?: boolean;
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1LeadGetOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	CreatedById?: string;
+	CreatedDate?: string;
+	EmailBouncedDate?: null;
+	EmailBouncedReason?: null;
+	GeocodeAccuracy?: null;
+	HasOptedOutOfEmail?: boolean;
+	Id?: string;
+	IndividualId?: null;
+	IsConverted?: boolean;
+	IsDeleted?: boolean;
+	IsPriorityRecord?: boolean;
+	IsUnreadByOwner?: boolean;
+	Jigsaw?: null;
+	JigsawContactId?: null;
+	LastModifiedById?: string;
+	LastModifiedDate?: string;
+	LastName?: string;
+	Latitude?: null;
+	Longitude?: null;
+	MasterRecordId?: null;
+	Name?: string;
+	OwnerId?: string;
+	Status?: string;
+	Suffix?: null;
+	SystemModstamp?: string;
+};
+
+export type SalesforceV1LeadGetAllOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	Id?: string;
+	Status?: string;
+};
+
+export type SalesforceV1LeadUpdateOutput = {
+	success?: boolean;
+};
+
+export type SalesforceV1OpportunityCreateOutput = {
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1OpportunityGetOutput = {
+	AccountId?: string;
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	CloseDate?: string;
+	CreatedById?: string;
+	CreatedDate?: string;
+	Fiscal?: string;
+	FiscalQuarter?: number;
+	FiscalYear?: number;
+	ForecastCategory?: string;
+	ForecastCategoryName?: string;
+	HasOpenActivity?: boolean;
+	HasOpportunityLineItem?: boolean;
+	HasOverdueTask?: boolean;
+	Id?: string;
+	IsClosed?: boolean;
+	IsDeleted?: boolean;
+	IsWon?: boolean;
+	LastModifiedById?: string;
+	LastModifiedDate?: string;
+	Name?: string;
+	OwnerId?: string;
+	Probability?: number;
+	PushCount?: number;
+	StageName?: string;
+	SystemModstamp?: string;
+};
+
+export type SalesforceV1OpportunityGetAllOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	Id?: string;
+	Name?: string;
+};
+
+export type SalesforceV1OpportunityGetSummaryOutput = {
+	objectDescribe?: {
+		activateable?: boolean;
+		associateEntityType?: null;
+		associateParentEntity?: null;
+		createable?: boolean;
+		custom?: boolean;
+		customSetting?: boolean;
+		deepCloneable?: boolean;
+		deletable?: boolean;
+		deprecatedAndHidden?: boolean;
+		feedEnabled?: boolean;
+		hasSubtypes?: boolean;
+		isInterface?: boolean;
+		isSubtype?: boolean;
+		keyPrefix?: string;
+		label?: string;
+		labelPlural?: string;
+		layoutable?: boolean;
+		mergeable?: boolean;
+		mruEnabled?: boolean;
+		name?: string;
+		queryable?: boolean;
+		replicateable?: boolean;
+		retrieveable?: boolean;
+		searchable?: boolean;
+		triggerable?: boolean;
+		undeletable?: boolean;
+		updateable?: boolean;
+		urls?: {
+			approvalLayouts?: string;
+			compactLayouts?: string;
+			describe?: string;
+			layouts?: string;
+			listviews?: string;
+			quickActions?: string;
+			rowTemplate?: string;
+			sobject?: string;
+		};
+	};
+	recentItems?: Array<{
+		attributes?: {
+			type?: string;
+			url?: string;
+		};
+		Id?: string;
+		Name?: string;
+	}>;
+};
+
+export type SalesforceV1OpportunityUpdateOutput = {
+	success?: boolean;
+};
+
+export type SalesforceV1SearchQueryOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	Id?: string;
+};
+
+export type SalesforceV1TaskCreateOutput = {
+	id?: string;
+	success?: boolean;
+};
+
+export type SalesforceV1TaskGetOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	CallDisposition?: null;
+	CallObject?: null;
+	CreatedById?: string;
+	CreatedDate?: string;
+	Id?: string;
+	IsArchived?: boolean;
+	IsClosed?: boolean;
+	IsDeleted?: boolean;
+	IsHighPriority?: boolean;
+	IsRecurrence?: boolean;
+	IsReminderSet?: boolean;
+	LastModifiedById?: string;
+	LastModifiedDate?: string;
+	OwnerId?: string;
+	Priority?: string;
+	RecurrenceDayOfMonth?: null;
+	RecurrenceInstance?: null;
+	RecurrenceMonthOfYear?: null;
+	RecurrenceRegeneratedType?: null;
+	Status?: string;
+	SystemModstamp?: string;
+	TaskSubtype?: string;
+};
+
+export type SalesforceV1TaskGetAllOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	Id?: string;
+};
+
+export type SalesforceV1TaskUpdateOutput = {
+	success?: boolean;
+};
+
+export type SalesforceV1UserGetAllOutput = {
+	attributes?: {
+		type?: string;
+		url?: string;
+	};
+	Email?: string;
+	Id?: string;
+	Name?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -1084,12 +1506,383 @@ export interface SalesforceV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SalesforceV1Node = {
+interface SalesforceV1NodeBase {
 	type: 'n8n-nodes-base.salesforce';
 	version: 1;
-	config: NodeConfig<SalesforceV1Params>;
 	credentials?: SalesforceV1Credentials;
+}
+
+export type SalesforceV1AccountAddNoteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AccountAddNoteConfig>;
 };
+
+export type SalesforceV1AccountCreateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AccountCreateConfig>;
+	output?: SalesforceV1AccountCreateOutput;
+};
+
+export type SalesforceV1AccountUpsertNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AccountUpsertConfig>;
+};
+
+export type SalesforceV1AccountDeleteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AccountDeleteConfig>;
+	output?: SalesforceV1AccountDeleteOutput;
+};
+
+export type SalesforceV1AccountGetNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AccountGetConfig>;
+	output?: SalesforceV1AccountGetOutput;
+};
+
+export type SalesforceV1AccountGetAllNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AccountGetAllConfig>;
+	output?: SalesforceV1AccountGetAllOutput;
+};
+
+export type SalesforceV1AccountGetSummaryNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AccountGetSummaryConfig>;
+};
+
+export type SalesforceV1AccountUpdateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AccountUpdateConfig>;
+	output?: SalesforceV1AccountUpdateOutput;
+};
+
+export type SalesforceV1AttachmentCreateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AttachmentCreateConfig>;
+};
+
+export type SalesforceV1AttachmentDeleteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AttachmentDeleteConfig>;
+};
+
+export type SalesforceV1AttachmentGetNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AttachmentGetConfig>;
+};
+
+export type SalesforceV1AttachmentGetAllNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AttachmentGetAllConfig>;
+	output?: SalesforceV1AttachmentGetAllOutput;
+};
+
+export type SalesforceV1AttachmentGetSummaryNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AttachmentGetSummaryConfig>;
+};
+
+export type SalesforceV1AttachmentUpdateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1AttachmentUpdateConfig>;
+};
+
+export type SalesforceV1CaseAddCommentNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CaseAddCommentConfig>;
+};
+
+export type SalesforceV1CaseCreateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CaseCreateConfig>;
+	output?: SalesforceV1CaseCreateOutput;
+};
+
+export type SalesforceV1CaseDeleteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CaseDeleteConfig>;
+};
+
+export type SalesforceV1CaseGetNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CaseGetConfig>;
+	output?: SalesforceV1CaseGetOutput;
+};
+
+export type SalesforceV1CaseGetAllNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CaseGetAllConfig>;
+	output?: SalesforceV1CaseGetAllOutput;
+};
+
+export type SalesforceV1CaseGetSummaryNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CaseGetSummaryConfig>;
+};
+
+export type SalesforceV1CaseUpdateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CaseUpdateConfig>;
+	output?: SalesforceV1CaseUpdateOutput;
+};
+
+export type SalesforceV1ContactAddToCampaignNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1ContactAddToCampaignConfig>;
+	output?: SalesforceV1ContactAddToCampaignOutput;
+};
+
+export type SalesforceV1ContactAddNoteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1ContactAddNoteConfig>;
+};
+
+export type SalesforceV1ContactCreateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1ContactCreateConfig>;
+	output?: SalesforceV1ContactCreateOutput;
+};
+
+export type SalesforceV1ContactUpsertNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1ContactUpsertConfig>;
+	output?: SalesforceV1ContactUpsertOutput;
+};
+
+export type SalesforceV1ContactDeleteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1ContactDeleteConfig>;
+	output?: SalesforceV1ContactDeleteOutput;
+};
+
+export type SalesforceV1ContactGetNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1ContactGetConfig>;
+	output?: SalesforceV1ContactGetOutput;
+};
+
+export type SalesforceV1ContactGetAllNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1ContactGetAllConfig>;
+	output?: SalesforceV1ContactGetAllOutput;
+};
+
+export type SalesforceV1ContactGetSummaryNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1ContactGetSummaryConfig>;
+};
+
+export type SalesforceV1ContactUpdateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1ContactUpdateConfig>;
+	output?: SalesforceV1ContactUpdateOutput;
+};
+
+export type SalesforceV1CustomObjectCreateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CustomObjectCreateConfig>;
+	output?: SalesforceV1CustomObjectCreateOutput;
+};
+
+export type SalesforceV1CustomObjectUpsertNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CustomObjectUpsertConfig>;
+	output?: SalesforceV1CustomObjectUpsertOutput;
+};
+
+export type SalesforceV1CustomObjectDeleteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CustomObjectDeleteConfig>;
+	output?: SalesforceV1CustomObjectDeleteOutput;
+};
+
+export type SalesforceV1CustomObjectGetNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CustomObjectGetConfig>;
+	output?: SalesforceV1CustomObjectGetOutput;
+};
+
+export type SalesforceV1CustomObjectGetAllNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CustomObjectGetAllConfig>;
+	output?: SalesforceV1CustomObjectGetAllOutput;
+};
+
+export type SalesforceV1CustomObjectUpdateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1CustomObjectUpdateConfig>;
+	output?: SalesforceV1CustomObjectUpdateOutput;
+};
+
+export type SalesforceV1DocumentUploadNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1DocumentUploadConfig>;
+	output?: SalesforceV1DocumentUploadOutput;
+};
+
+export type SalesforceV1FlowGetAllNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1FlowGetAllConfig>;
+	output?: SalesforceV1FlowGetAllOutput;
+};
+
+export type SalesforceV1FlowInvokeNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1FlowInvokeConfig>;
+	output?: SalesforceV1FlowInvokeOutput;
+};
+
+export type SalesforceV1LeadAddToCampaignNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1LeadAddToCampaignConfig>;
+	output?: SalesforceV1LeadAddToCampaignOutput;
+};
+
+export type SalesforceV1LeadAddNoteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1LeadAddNoteConfig>;
+	output?: SalesforceV1LeadAddNoteOutput;
+};
+
+export type SalesforceV1LeadCreateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1LeadCreateConfig>;
+	output?: SalesforceV1LeadCreateOutput;
+};
+
+export type SalesforceV1LeadUpsertNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1LeadUpsertConfig>;
+	output?: SalesforceV1LeadUpsertOutput;
+};
+
+export type SalesforceV1LeadDeleteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1LeadDeleteConfig>;
+};
+
+export type SalesforceV1LeadGetNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1LeadGetConfig>;
+	output?: SalesforceV1LeadGetOutput;
+};
+
+export type SalesforceV1LeadGetAllNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1LeadGetAllConfig>;
+	output?: SalesforceV1LeadGetAllOutput;
+};
+
+export type SalesforceV1LeadGetSummaryNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1LeadGetSummaryConfig>;
+};
+
+export type SalesforceV1LeadUpdateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1LeadUpdateConfig>;
+	output?: SalesforceV1LeadUpdateOutput;
+};
+
+export type SalesforceV1OpportunityAddNoteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1OpportunityAddNoteConfig>;
+};
+
+export type SalesforceV1OpportunityCreateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1OpportunityCreateConfig>;
+	output?: SalesforceV1OpportunityCreateOutput;
+};
+
+export type SalesforceV1OpportunityUpsertNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1OpportunityUpsertConfig>;
+};
+
+export type SalesforceV1OpportunityDeleteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1OpportunityDeleteConfig>;
+};
+
+export type SalesforceV1OpportunityGetNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1OpportunityGetConfig>;
+	output?: SalesforceV1OpportunityGetOutput;
+};
+
+export type SalesforceV1OpportunityGetAllNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1OpportunityGetAllConfig>;
+	output?: SalesforceV1OpportunityGetAllOutput;
+};
+
+export type SalesforceV1OpportunityGetSummaryNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1OpportunityGetSummaryConfig>;
+	output?: SalesforceV1OpportunityGetSummaryOutput;
+};
+
+export type SalesforceV1OpportunityUpdateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1OpportunityUpdateConfig>;
+	output?: SalesforceV1OpportunityUpdateOutput;
+};
+
+export type SalesforceV1SearchQueryNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1SearchQueryConfig>;
+	output?: SalesforceV1SearchQueryOutput;
+};
+
+export type SalesforceV1TaskCreateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1TaskCreateConfig>;
+	output?: SalesforceV1TaskCreateOutput;
+};
+
+export type SalesforceV1TaskDeleteNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1TaskDeleteConfig>;
+};
+
+export type SalesforceV1TaskGetNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1TaskGetConfig>;
+	output?: SalesforceV1TaskGetOutput;
+};
+
+export type SalesforceV1TaskGetAllNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1TaskGetAllConfig>;
+	output?: SalesforceV1TaskGetAllOutput;
+};
+
+export type SalesforceV1TaskGetSummaryNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1TaskGetSummaryConfig>;
+};
+
+export type SalesforceV1TaskUpdateNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1TaskUpdateConfig>;
+	output?: SalesforceV1TaskUpdateOutput;
+};
+
+export type SalesforceV1UserGetNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1UserGetConfig>;
+};
+
+export type SalesforceV1UserGetAllNode = SalesforceV1NodeBase & {
+	config: NodeConfig<SalesforceV1UserGetAllConfig>;
+	output?: SalesforceV1UserGetAllOutput;
+};
+
+export type SalesforceV1Node =
+	| SalesforceV1AccountAddNoteNode
+	| SalesforceV1AccountCreateNode
+	| SalesforceV1AccountUpsertNode
+	| SalesforceV1AccountDeleteNode
+	| SalesforceV1AccountGetNode
+	| SalesforceV1AccountGetAllNode
+	| SalesforceV1AccountGetSummaryNode
+	| SalesforceV1AccountUpdateNode
+	| SalesforceV1AttachmentCreateNode
+	| SalesforceV1AttachmentDeleteNode
+	| SalesforceV1AttachmentGetNode
+	| SalesforceV1AttachmentGetAllNode
+	| SalesforceV1AttachmentGetSummaryNode
+	| SalesforceV1AttachmentUpdateNode
+	| SalesforceV1CaseAddCommentNode
+	| SalesforceV1CaseCreateNode
+	| SalesforceV1CaseDeleteNode
+	| SalesforceV1CaseGetNode
+	| SalesforceV1CaseGetAllNode
+	| SalesforceV1CaseGetSummaryNode
+	| SalesforceV1CaseUpdateNode
+	| SalesforceV1ContactAddToCampaignNode
+	| SalesforceV1ContactAddNoteNode
+	| SalesforceV1ContactCreateNode
+	| SalesforceV1ContactUpsertNode
+	| SalesforceV1ContactDeleteNode
+	| SalesforceV1ContactGetNode
+	| SalesforceV1ContactGetAllNode
+	| SalesforceV1ContactGetSummaryNode
+	| SalesforceV1ContactUpdateNode
+	| SalesforceV1CustomObjectCreateNode
+	| SalesforceV1CustomObjectUpsertNode
+	| SalesforceV1CustomObjectDeleteNode
+	| SalesforceV1CustomObjectGetNode
+	| SalesforceV1CustomObjectGetAllNode
+	| SalesforceV1CustomObjectUpdateNode
+	| SalesforceV1DocumentUploadNode
+	| SalesforceV1FlowGetAllNode
+	| SalesforceV1FlowInvokeNode
+	| SalesforceV1LeadAddToCampaignNode
+	| SalesforceV1LeadAddNoteNode
+	| SalesforceV1LeadCreateNode
+	| SalesforceV1LeadUpsertNode
+	| SalesforceV1LeadDeleteNode
+	| SalesforceV1LeadGetNode
+	| SalesforceV1LeadGetAllNode
+	| SalesforceV1LeadGetSummaryNode
+	| SalesforceV1LeadUpdateNode
+	| SalesforceV1OpportunityAddNoteNode
+	| SalesforceV1OpportunityCreateNode
+	| SalesforceV1OpportunityUpsertNode
+	| SalesforceV1OpportunityDeleteNode
+	| SalesforceV1OpportunityGetNode
+	| SalesforceV1OpportunityGetAllNode
+	| SalesforceV1OpportunityGetSummaryNode
+	| SalesforceV1OpportunityUpdateNode
+	| SalesforceV1SearchQueryNode
+	| SalesforceV1TaskCreateNode
+	| SalesforceV1TaskDeleteNode
+	| SalesforceV1TaskGetNode
+	| SalesforceV1TaskGetAllNode
+	| SalesforceV1TaskGetSummaryNode
+	| SalesforceV1TaskUpdateNode
+	| SalesforceV1UserGetNode
+	| SalesforceV1UserGetAllNode
+	;

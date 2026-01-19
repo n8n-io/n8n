@@ -1,8 +1,6 @@
 /**
  * Drift Node - Version 1
  * Consume Drift API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -65,13 +63,6 @@ export type DriftV1ContactUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type DriftV1Params =
-	| DriftV1ContactCreateConfig
-	| DriftV1ContactGetCustomAttributesConfig
-	| DriftV1ContactDeleteConfig
-	| DriftV1ContactGetConfig
-	| DriftV1ContactUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -83,12 +74,39 @@ export interface DriftV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DriftV1Node = {
+interface DriftV1NodeBase {
 	type: 'n8n-nodes-base.drift';
 	version: 1;
-	config: NodeConfig<DriftV1Params>;
 	credentials?: DriftV1Credentials;
+}
+
+export type DriftV1ContactCreateNode = DriftV1NodeBase & {
+	config: NodeConfig<DriftV1ContactCreateConfig>;
 };
+
+export type DriftV1ContactGetCustomAttributesNode = DriftV1NodeBase & {
+	config: NodeConfig<DriftV1ContactGetCustomAttributesConfig>;
+};
+
+export type DriftV1ContactDeleteNode = DriftV1NodeBase & {
+	config: NodeConfig<DriftV1ContactDeleteConfig>;
+};
+
+export type DriftV1ContactGetNode = DriftV1NodeBase & {
+	config: NodeConfig<DriftV1ContactGetConfig>;
+};
+
+export type DriftV1ContactUpdateNode = DriftV1NodeBase & {
+	config: NodeConfig<DriftV1ContactUpdateConfig>;
+};
+
+export type DriftV1Node =
+	| DriftV1ContactCreateNode
+	| DriftV1ContactGetCustomAttributesNode
+	| DriftV1ContactDeleteNode
+	| DriftV1ContactGetNode
+	| DriftV1ContactUpdateNode
+	;

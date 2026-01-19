@@ -1,8 +1,6 @@
 /**
  * AMQP Trigger Node - Version 1
  * Listens to AMQP 1.0 Messages
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AmqpTriggerV1Params {
+export interface AmqpTriggerV1Config {
 /**
  * Name of the queue of topic to listen to
  */
@@ -40,13 +38,18 @@ export interface AmqpTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AmqpTriggerV1Node = {
+interface AmqpTriggerV1NodeBase {
 	type: 'n8n-nodes-base.amqpTrigger';
 	version: 1;
-	config: NodeConfig<AmqpTriggerV1Params>;
 	credentials?: AmqpTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type AmqpTriggerV1Node = AmqpTriggerV1NodeBase & {
+	config: NodeConfig<AmqpTriggerV1Config>;
 };
+
+export type AmqpTriggerV1Node = AmqpTriggerV1Node;

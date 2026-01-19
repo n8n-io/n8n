@@ -1,8 +1,6 @@
 /**
  * Stackby Node - Version 1
  * Read, write, and delete data in Stackby
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface StackbyV1Params {
+export interface StackbyV1Config {
 	operation?: 'append' | 'delete' | 'list' | 'read' | Expression<string>;
 /**
  * The ID of the stack to access
@@ -57,12 +55,17 @@ export interface StackbyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StackbyV1Node = {
+interface StackbyV1NodeBase {
 	type: 'n8n-nodes-base.stackby';
 	version: 1;
-	config: NodeConfig<StackbyV1Params>;
 	credentials?: StackbyV1Credentials;
+}
+
+export type StackbyV1Node = StackbyV1NodeBase & {
+	config: NodeConfig<StackbyV1Config>;
 };
+
+export type StackbyV1Node = StackbyV1Node;

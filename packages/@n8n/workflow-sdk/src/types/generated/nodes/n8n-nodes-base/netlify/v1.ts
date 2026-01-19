@@ -1,8 +1,6 @@
 /**
  * Netlify Node - Version 1
  * Consume Netlify API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -99,15 +97,6 @@ export type NetlifyV1SiteGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type NetlifyV1Params =
-	| NetlifyV1DeployCancelConfig
-	| NetlifyV1DeployCreateConfig
-	| NetlifyV1DeployGetConfig
-	| NetlifyV1DeployGetAllConfig
-	| NetlifyV1SiteDeleteConfig
-	| NetlifyV1SiteGetConfig
-	| NetlifyV1SiteGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -118,12 +107,49 @@ export interface NetlifyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NetlifyV1Node = {
+interface NetlifyV1NodeBase {
 	type: 'n8n-nodes-base.netlify';
 	version: 1;
-	config: NodeConfig<NetlifyV1Params>;
 	credentials?: NetlifyV1Credentials;
+}
+
+export type NetlifyV1DeployCancelNode = NetlifyV1NodeBase & {
+	config: NodeConfig<NetlifyV1DeployCancelConfig>;
 };
+
+export type NetlifyV1DeployCreateNode = NetlifyV1NodeBase & {
+	config: NodeConfig<NetlifyV1DeployCreateConfig>;
+};
+
+export type NetlifyV1DeployGetNode = NetlifyV1NodeBase & {
+	config: NodeConfig<NetlifyV1DeployGetConfig>;
+};
+
+export type NetlifyV1DeployGetAllNode = NetlifyV1NodeBase & {
+	config: NodeConfig<NetlifyV1DeployGetAllConfig>;
+};
+
+export type NetlifyV1SiteDeleteNode = NetlifyV1NodeBase & {
+	config: NodeConfig<NetlifyV1SiteDeleteConfig>;
+};
+
+export type NetlifyV1SiteGetNode = NetlifyV1NodeBase & {
+	config: NodeConfig<NetlifyV1SiteGetConfig>;
+};
+
+export type NetlifyV1SiteGetAllNode = NetlifyV1NodeBase & {
+	config: NodeConfig<NetlifyV1SiteGetAllConfig>;
+};
+
+export type NetlifyV1Node =
+	| NetlifyV1DeployCancelNode
+	| NetlifyV1DeployCreateNode
+	| NetlifyV1DeployGetNode
+	| NetlifyV1DeployGetAllNode
+	| NetlifyV1SiteDeleteNode
+	| NetlifyV1SiteGetNode
+	| NetlifyV1SiteGetAllNode
+	;

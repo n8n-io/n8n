@@ -1,8 +1,6 @@
 /**
  * Stripe Trigger Node - Version 1
  * Handle Stripe events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface StripeTriggerV1Params {
+export interface StripeTriggerV1Config {
 /**
  * The event to listen to
  * @default []
@@ -34,13 +32,18 @@ export interface StripeTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StripeTriggerV1Node = {
+interface StripeTriggerV1NodeBase {
 	type: 'n8n-nodes-base.stripeTrigger';
 	version: 1;
-	config: NodeConfig<StripeTriggerV1Params>;
 	credentials?: StripeTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type StripeTriggerV1Node = StripeTriggerV1NodeBase & {
+	config: NodeConfig<StripeTriggerV1Config>;
 };
+
+export type StripeTriggerV1Node = StripeTriggerV1Node;

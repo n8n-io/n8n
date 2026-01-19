@@ -1,8 +1,6 @@
 /**
  * Microsoft SharePoint Node - Version 1
  * Interact with Microsoft SharePoint API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -323,19 +321,6 @@ export type MicrosoftSharePointV1ListGetAllConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type MicrosoftSharePointV1Params =
-	| MicrosoftSharePointV1FileDownloadConfig
-	| MicrosoftSharePointV1FileUpdateConfig
-	| MicrosoftSharePointV1FileUploadConfig
-	| MicrosoftSharePointV1ItemCreateConfig
-	| MicrosoftSharePointV1ItemUpsertConfig
-	| MicrosoftSharePointV1ItemDeleteConfig
-	| MicrosoftSharePointV1ItemGetConfig
-	| MicrosoftSharePointV1ItemGetAllConfig
-	| MicrosoftSharePointV1ItemUpdateConfig
-	| MicrosoftSharePointV1ListGetConfig
-	| MicrosoftSharePointV1ListGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -346,12 +331,69 @@ export interface MicrosoftSharePointV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftSharePointV1Node = {
+interface MicrosoftSharePointV1NodeBase {
 	type: 'n8n-nodes-base.microsoftSharePoint';
 	version: 1;
-	config: NodeConfig<MicrosoftSharePointV1Params>;
 	credentials?: MicrosoftSharePointV1Credentials;
+}
+
+export type MicrosoftSharePointV1FileDownloadNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1FileDownloadConfig>;
 };
+
+export type MicrosoftSharePointV1FileUpdateNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1FileUpdateConfig>;
+};
+
+export type MicrosoftSharePointV1FileUploadNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1FileUploadConfig>;
+};
+
+export type MicrosoftSharePointV1ItemCreateNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1ItemCreateConfig>;
+};
+
+export type MicrosoftSharePointV1ItemUpsertNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1ItemUpsertConfig>;
+};
+
+export type MicrosoftSharePointV1ItemDeleteNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1ItemDeleteConfig>;
+};
+
+export type MicrosoftSharePointV1ItemGetNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1ItemGetConfig>;
+};
+
+export type MicrosoftSharePointV1ItemGetAllNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1ItemGetAllConfig>;
+};
+
+export type MicrosoftSharePointV1ItemUpdateNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1ItemUpdateConfig>;
+};
+
+export type MicrosoftSharePointV1ListGetNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1ListGetConfig>;
+};
+
+export type MicrosoftSharePointV1ListGetAllNode = MicrosoftSharePointV1NodeBase & {
+	config: NodeConfig<MicrosoftSharePointV1ListGetAllConfig>;
+};
+
+export type MicrosoftSharePointV1Node =
+	| MicrosoftSharePointV1FileDownloadNode
+	| MicrosoftSharePointV1FileUpdateNode
+	| MicrosoftSharePointV1FileUploadNode
+	| MicrosoftSharePointV1ItemCreateNode
+	| MicrosoftSharePointV1ItemUpsertNode
+	| MicrosoftSharePointV1ItemDeleteNode
+	| MicrosoftSharePointV1ItemGetNode
+	| MicrosoftSharePointV1ItemGetAllNode
+	| MicrosoftSharePointV1ItemUpdateNode
+	| MicrosoftSharePointV1ListGetNode
+	| MicrosoftSharePointV1ListGetAllNode
+	;

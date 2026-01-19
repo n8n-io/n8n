@@ -1,8 +1,6 @@
 /**
  * HTTP Request Node - Version 4.3
  * Makes an HTTP request and returns the response data
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -403,11 +401,6 @@ export type HttpRequestV43GenericCredentialTypeConfig = {
 	maxLength?: number | Expression<number>;
 };
 
-export type HttpRequestV43Params =
-	| HttpRequestV43NoneConfig
-	| HttpRequestV43PredefinedCredentialTypeConfig
-	| HttpRequestV43GenericCredentialTypeConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -418,12 +411,29 @@ export interface HttpRequestV43Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HttpRequestV43Node = {
+interface HttpRequestV43NodeBase {
 	type: 'n8n-nodes-base.httpRequest';
 	version: 4.3;
-	config: NodeConfig<HttpRequestV43Params>;
 	credentials?: HttpRequestV43Credentials;
+}
+
+export type HttpRequestV43NoneNode = HttpRequestV43NodeBase & {
+	config: NodeConfig<HttpRequestV43NoneConfig>;
 };
+
+export type HttpRequestV43PredefinedCredentialTypeNode = HttpRequestV43NodeBase & {
+	config: NodeConfig<HttpRequestV43PredefinedCredentialTypeConfig>;
+};
+
+export type HttpRequestV43GenericCredentialTypeNode = HttpRequestV43NodeBase & {
+	config: NodeConfig<HttpRequestV43GenericCredentialTypeConfig>;
+};
+
+export type HttpRequestV43Node =
+	| HttpRequestV43NoneNode
+	| HttpRequestV43PredefinedCredentialTypeNode
+	| HttpRequestV43GenericCredentialTypeNode
+	;

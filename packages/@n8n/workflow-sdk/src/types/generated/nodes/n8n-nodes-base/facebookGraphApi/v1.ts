@@ -1,8 +1,6 @@
 /**
  * Facebook Graph API Node - Version 1
  * Interacts with Facebook using the Graph API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FacebookGraphApiV1Params {
+export interface FacebookGraphApiV1Config {
 /**
  * The Host URL of the request. Almost all requests are passed to the graph.facebook.com host URL. The single exception is video uploads, which use graph-video.facebook.com.
  * @default graph.facebook.com
@@ -66,12 +64,17 @@ export interface FacebookGraphApiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FacebookGraphApiV1Node = {
+interface FacebookGraphApiV1NodeBase {
 	type: 'n8n-nodes-base.facebookGraphApi';
 	version: 1;
-	config: NodeConfig<FacebookGraphApiV1Params>;
 	credentials?: FacebookGraphApiV1Credentials;
+}
+
+export type FacebookGraphApiV1Node = FacebookGraphApiV1NodeBase & {
+	config: NodeConfig<FacebookGraphApiV1Config>;
 };
+
+export type FacebookGraphApiV1Node = FacebookGraphApiV1Node;

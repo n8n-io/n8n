@@ -1,8 +1,6 @@
 /**
  * Basic LLM Chain Node - Version 1.5
  * A simple chain to prompt a large language model
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -122,23 +120,34 @@ export type LcChainLlmV15DefineConfig = {
 	};
 };
 
-export type LcChainLlmV15Params =
-	| LcChainLlmV15AutoConfig
-	| LcChainLlmV15GuardrailsConfig
-	| LcChainLlmV15DefineConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChainLlmV15Node = {
+interface LcChainLlmV15NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chainLlm';
 	version: 1.5;
-	config: NodeConfig<LcChainLlmV15Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcChainLlmV15AutoNode = LcChainLlmV15NodeBase & {
+	config: NodeConfig<LcChainLlmV15AutoConfig>;
 };
+
+export type LcChainLlmV15GuardrailsNode = LcChainLlmV15NodeBase & {
+	config: NodeConfig<LcChainLlmV15GuardrailsConfig>;
+};
+
+export type LcChainLlmV15DefineNode = LcChainLlmV15NodeBase & {
+	config: NodeConfig<LcChainLlmV15DefineConfig>;
+};
+
+export type LcChainLlmV15Node =
+	| LcChainLlmV15AutoNode
+	| LcChainLlmV15GuardrailsNode
+	| LcChainLlmV15DefineNode
+	;

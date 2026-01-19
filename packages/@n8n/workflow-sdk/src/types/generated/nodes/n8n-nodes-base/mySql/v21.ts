@@ -1,8 +1,6 @@
 /**
  * MySQL Node - Version 2.1
  * Get, add and update data in MySQL
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MySqlV21Params {
+export interface MySqlV21Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -128,12 +126,17 @@ export interface MySqlV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MySqlV21Node = {
+interface MySqlV21NodeBase {
 	type: 'n8n-nodes-base.mySql';
 	version: 2.1;
-	config: NodeConfig<MySqlV21Params>;
 	credentials?: MySqlV21Credentials;
+}
+
+export type MySqlV21Node = MySqlV21NodeBase & {
+	config: NodeConfig<MySqlV21Config>;
 };
+
+export type MySqlV21Node = MySqlV21Node;

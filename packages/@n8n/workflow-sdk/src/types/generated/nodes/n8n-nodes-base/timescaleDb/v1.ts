@@ -1,8 +1,6 @@
 /**
  * TimescaleDB Node - Version 1
  * Add and update data in TimescaleDB
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface TimescaleDbV1Params {
+export interface TimescaleDbV1Config {
 	operation?: 'executeQuery' | 'insert' | 'update' | Expression<string>;
 /**
  * The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.
@@ -60,12 +58,17 @@ export interface TimescaleDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TimescaleDbV1Node = {
+interface TimescaleDbV1NodeBase {
 	type: 'n8n-nodes-base.timescaleDb';
 	version: 1;
-	config: NodeConfig<TimescaleDbV1Params>;
 	credentials?: TimescaleDbV1Credentials;
+}
+
+export type TimescaleDbV1Node = TimescaleDbV1NodeBase & {
+	config: NodeConfig<TimescaleDbV1Config>;
 };
+
+export type TimescaleDbV1Node = TimescaleDbV1Node;

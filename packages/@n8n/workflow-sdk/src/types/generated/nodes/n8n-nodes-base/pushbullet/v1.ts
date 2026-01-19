@@ -1,8 +1,6 @@
 /**
  * Pushbullet Node - Version 1
  * Consume Pushbullet API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -87,12 +85,27 @@ export type PushbulletV1PushUpdateConfig = {
 		dismissed: boolean | Expression<boolean>;
 };
 
-export type PushbulletV1Params =
-	| PushbulletV1PushCreateConfig
-	| PushbulletV1PushDeleteConfig
-	| PushbulletV1PushGetAllConfig
-	| PushbulletV1PushUpdateConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type PushbulletV1PushCreateOutput = {
+	active?: boolean;
+	body?: string;
+	client_iden?: string;
+	created?: number;
+	direction?: string;
+	dismissed?: boolean;
+	iden?: string;
+	modified?: number;
+	receiver_email?: string;
+	receiver_email_normalized?: string;
+	receiver_iden?: string;
+	sender_name?: string;
+	title?: string;
+	type?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -103,12 +116,35 @@ export interface PushbulletV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PushbulletV1Node = {
+interface PushbulletV1NodeBase {
 	type: 'n8n-nodes-base.pushbullet';
 	version: 1;
-	config: NodeConfig<PushbulletV1Params>;
 	credentials?: PushbulletV1Credentials;
+}
+
+export type PushbulletV1PushCreateNode = PushbulletV1NodeBase & {
+	config: NodeConfig<PushbulletV1PushCreateConfig>;
+	output?: PushbulletV1PushCreateOutput;
 };
+
+export type PushbulletV1PushDeleteNode = PushbulletV1NodeBase & {
+	config: NodeConfig<PushbulletV1PushDeleteConfig>;
+};
+
+export type PushbulletV1PushGetAllNode = PushbulletV1NodeBase & {
+	config: NodeConfig<PushbulletV1PushGetAllConfig>;
+};
+
+export type PushbulletV1PushUpdateNode = PushbulletV1NodeBase & {
+	config: NodeConfig<PushbulletV1PushUpdateConfig>;
+};
+
+export type PushbulletV1Node =
+	| PushbulletV1PushCreateNode
+	| PushbulletV1PushDeleteNode
+	| PushbulletV1PushGetAllNode
+	| PushbulletV1PushUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * AI Agent Node - Version 1.7
  * Generates an action plan and executes it. Can use external tools.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -38,11 +36,6 @@ export type LcAgentV17DefineConfig = {
 	binaryPropertyName: string | Expression<string>;
 };
 
-export type LcAgentV17Params =
-	| LcAgentV17AutoConfig
-	| LcAgentV17GuardrailsConfig
-	| LcAgentV17DefineConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -54,12 +47,29 @@ export interface LcAgentV17Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcAgentV17Node = {
+interface LcAgentV17NodeBase {
 	type: '@n8n/n8n-nodes-langchain.agent';
 	version: 1.7;
-	config: NodeConfig<LcAgentV17Params>;
 	credentials?: LcAgentV17Credentials;
+}
+
+export type LcAgentV17AutoNode = LcAgentV17NodeBase & {
+	config: NodeConfig<LcAgentV17AutoConfig>;
 };
+
+export type LcAgentV17GuardrailsNode = LcAgentV17NodeBase & {
+	config: NodeConfig<LcAgentV17GuardrailsConfig>;
+};
+
+export type LcAgentV17DefineNode = LcAgentV17NodeBase & {
+	config: NodeConfig<LcAgentV17DefineConfig>;
+};
+
+export type LcAgentV17Node =
+	| LcAgentV17AutoNode
+	| LcAgentV17GuardrailsNode
+	| LcAgentV17DefineNode
+	;

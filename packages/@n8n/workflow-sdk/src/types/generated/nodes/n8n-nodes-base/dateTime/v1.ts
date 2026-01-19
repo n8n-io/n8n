@@ -1,8 +1,6 @@
 /**
  * Date & Time Node - Version 1
  * Allows you to manipulate date and time values
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface DateTimeV1Params {
+export interface DateTimeV1Config {
 	action?: 'calculate' | 'format' | Expression<string>;
 /**
  * The value that should be converted
@@ -58,12 +56,16 @@ export interface DateTimeV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DateTimeV1Node = {
+interface DateTimeV1NodeBase {
 	type: 'n8n-nodes-base.dateTime';
 	version: 1;
-	config: NodeConfig<DateTimeV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type DateTimeV1Node = DateTimeV1NodeBase & {
+	config: NodeConfig<DateTimeV1Config>;
 };
+
+export type DateTimeV1Node = DateTimeV1Node;

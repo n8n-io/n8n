@@ -1,8 +1,6 @@
 /**
  * Webex by Cisco Node - Version 1
  * Consume the Cisco Webex API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -174,18 +172,6 @@ export type CiscoWebexV1MessageUpdateConfig = {
 		markdownText: string | Expression<string>;
 };
 
-export type CiscoWebexV1Params =
-	| CiscoWebexV1MeetingCreateConfig
-	| CiscoWebexV1MeetingDeleteConfig
-	| CiscoWebexV1MeetingGetConfig
-	| CiscoWebexV1MeetingGetAllConfig
-	| CiscoWebexV1MeetingUpdateConfig
-	| CiscoWebexV1MessageCreateConfig
-	| CiscoWebexV1MessageDeleteConfig
-	| CiscoWebexV1MessageGetConfig
-	| CiscoWebexV1MessageGetAllConfig
-	| CiscoWebexV1MessageUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -196,12 +182,64 @@ export interface CiscoWebexV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CiscoWebexV1Node = {
+interface CiscoWebexV1NodeBase {
 	type: 'n8n-nodes-base.ciscoWebex';
 	version: 1;
-	config: NodeConfig<CiscoWebexV1Params>;
 	credentials?: CiscoWebexV1Credentials;
+}
+
+export type CiscoWebexV1MeetingCreateNode = CiscoWebexV1NodeBase & {
+	config: NodeConfig<CiscoWebexV1MeetingCreateConfig>;
 };
+
+export type CiscoWebexV1MeetingDeleteNode = CiscoWebexV1NodeBase & {
+	config: NodeConfig<CiscoWebexV1MeetingDeleteConfig>;
+};
+
+export type CiscoWebexV1MeetingGetNode = CiscoWebexV1NodeBase & {
+	config: NodeConfig<CiscoWebexV1MeetingGetConfig>;
+};
+
+export type CiscoWebexV1MeetingGetAllNode = CiscoWebexV1NodeBase & {
+	config: NodeConfig<CiscoWebexV1MeetingGetAllConfig>;
+};
+
+export type CiscoWebexV1MeetingUpdateNode = CiscoWebexV1NodeBase & {
+	config: NodeConfig<CiscoWebexV1MeetingUpdateConfig>;
+};
+
+export type CiscoWebexV1MessageCreateNode = CiscoWebexV1NodeBase & {
+	config: NodeConfig<CiscoWebexV1MessageCreateConfig>;
+};
+
+export type CiscoWebexV1MessageDeleteNode = CiscoWebexV1NodeBase & {
+	config: NodeConfig<CiscoWebexV1MessageDeleteConfig>;
+};
+
+export type CiscoWebexV1MessageGetNode = CiscoWebexV1NodeBase & {
+	config: NodeConfig<CiscoWebexV1MessageGetConfig>;
+};
+
+export type CiscoWebexV1MessageGetAllNode = CiscoWebexV1NodeBase & {
+	config: NodeConfig<CiscoWebexV1MessageGetAllConfig>;
+};
+
+export type CiscoWebexV1MessageUpdateNode = CiscoWebexV1NodeBase & {
+	config: NodeConfig<CiscoWebexV1MessageUpdateConfig>;
+};
+
+export type CiscoWebexV1Node =
+	| CiscoWebexV1MeetingCreateNode
+	| CiscoWebexV1MeetingDeleteNode
+	| CiscoWebexV1MeetingGetNode
+	| CiscoWebexV1MeetingGetAllNode
+	| CiscoWebexV1MeetingUpdateNode
+	| CiscoWebexV1MessageCreateNode
+	| CiscoWebexV1MessageDeleteNode
+	| CiscoWebexV1MessageGetNode
+	| CiscoWebexV1MessageGetAllNode
+	| CiscoWebexV1MessageUpdateNode
+	;

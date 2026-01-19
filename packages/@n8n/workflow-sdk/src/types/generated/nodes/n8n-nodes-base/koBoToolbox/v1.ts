@@ -1,8 +1,6 @@
 /**
  * KoBoToolbox Node - Version 1
  * Work with KoBoToolbox forms and submissions
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -336,25 +334,54 @@ export type KoBoToolboxV1SubmissionSetValidationConfig = {
 		validationStatus: 'validation_status_approved' | 'validation_status_not_approved' | 'validation_status_on_hold' | Expression<string>;
 };
 
-export type KoBoToolboxV1Params =
-	| KoBoToolboxV1FileCreateConfig
-	| KoBoToolboxV1FileDeleteConfig
-	| KoBoToolboxV1FileGetConfig
-	| KoBoToolboxV1FileGetAllConfig
-	| KoBoToolboxV1FormGetConfig
-	| KoBoToolboxV1FormGetAllConfig
-	| KoBoToolboxV1FormRedeployConfig
-	| KoBoToolboxV1HookGetConfig
-	| KoBoToolboxV1HookGetAllConfig
-	| KoBoToolboxV1HookGetLogsConfig
-	| KoBoToolboxV1HookRetryAllConfig
-	| KoBoToolboxV1HookRetryOneConfig
-	| KoBoToolboxV1SubmissionDeleteConfig
-	| KoBoToolboxV1SubmissionGetConfig
-	| KoBoToolboxV1SubmissionGetAllConfig
-	| KoBoToolboxV1SubmissionGetValidationConfig
-	| KoBoToolboxV1SubmissionSetValidationConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type KoBoToolboxV1SubmissionGetAllOutput = {
+	__version__?: string;
+	_attachments?: Array<{
+		download_large_url?: string;
+		download_medium_url?: string;
+		download_small_url?: string;
+		download_url?: string;
+		filename?: string;
+		id?: number;
+		instance?: number;
+		mimetype?: string;
+		question_xpath?: string;
+		xform?: number;
+	}>;
+	_id?: number;
+	_status?: string;
+	_submission_time?: string;
+	_uuid?: string;
+	_validation_status?: {
+		by_whom?: string;
+		color?: string;
+		label?: string;
+		timestamp?: number;
+		uid?: string;
+	};
+	_xform_id_string?: string;
+	description?: string;
+	deviceid?: string;
+	end?: string;
+	'formhub/uuid'?: string;
+	gps_note?: string;
+	infra_categ?: string;
+	infra_subtype?: string;
+	location?: string;
+	'meta/instanceID'?: string;
+	personal_QR_code?: string;
+	pic1?: string;
+	pic2?: string;
+	q2nd_pic?: string;
+	start?: string;
+	today?: string;
+	username?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -365,12 +392,100 @@ export interface KoBoToolboxV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KoBoToolboxV1Node = {
+interface KoBoToolboxV1NodeBase {
 	type: 'n8n-nodes-base.koBoToolbox';
 	version: 1;
-	config: NodeConfig<KoBoToolboxV1Params>;
 	credentials?: KoBoToolboxV1Credentials;
+}
+
+export type KoBoToolboxV1FileCreateNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1FileCreateConfig>;
 };
+
+export type KoBoToolboxV1FileDeleteNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1FileDeleteConfig>;
+};
+
+export type KoBoToolboxV1FileGetNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1FileGetConfig>;
+};
+
+export type KoBoToolboxV1FileGetAllNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1FileGetAllConfig>;
+};
+
+export type KoBoToolboxV1FormGetNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1FormGetConfig>;
+};
+
+export type KoBoToolboxV1FormGetAllNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1FormGetAllConfig>;
+};
+
+export type KoBoToolboxV1FormRedeployNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1FormRedeployConfig>;
+};
+
+export type KoBoToolboxV1HookGetNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1HookGetConfig>;
+};
+
+export type KoBoToolboxV1HookGetAllNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1HookGetAllConfig>;
+};
+
+export type KoBoToolboxV1HookGetLogsNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1HookGetLogsConfig>;
+};
+
+export type KoBoToolboxV1HookRetryAllNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1HookRetryAllConfig>;
+};
+
+export type KoBoToolboxV1HookRetryOneNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1HookRetryOneConfig>;
+};
+
+export type KoBoToolboxV1SubmissionDeleteNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1SubmissionDeleteConfig>;
+};
+
+export type KoBoToolboxV1SubmissionGetNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1SubmissionGetConfig>;
+};
+
+export type KoBoToolboxV1SubmissionGetAllNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1SubmissionGetAllConfig>;
+	output?: KoBoToolboxV1SubmissionGetAllOutput;
+};
+
+export type KoBoToolboxV1SubmissionGetValidationNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1SubmissionGetValidationConfig>;
+};
+
+export type KoBoToolboxV1SubmissionSetValidationNode = KoBoToolboxV1NodeBase & {
+	config: NodeConfig<KoBoToolboxV1SubmissionSetValidationConfig>;
+};
+
+export type KoBoToolboxV1Node =
+	| KoBoToolboxV1FileCreateNode
+	| KoBoToolboxV1FileDeleteNode
+	| KoBoToolboxV1FileGetNode
+	| KoBoToolboxV1FileGetAllNode
+	| KoBoToolboxV1FormGetNode
+	| KoBoToolboxV1FormGetAllNode
+	| KoBoToolboxV1FormRedeployNode
+	| KoBoToolboxV1HookGetNode
+	| KoBoToolboxV1HookGetAllNode
+	| KoBoToolboxV1HookGetLogsNode
+	| KoBoToolboxV1HookRetryAllNode
+	| KoBoToolboxV1HookRetryOneNode
+	| KoBoToolboxV1SubmissionDeleteNode
+	| KoBoToolboxV1SubmissionGetNode
+	| KoBoToolboxV1SubmissionGetAllNode
+	| KoBoToolboxV1SubmissionGetValidationNode
+	| KoBoToolboxV1SubmissionSetValidationNode
+	;

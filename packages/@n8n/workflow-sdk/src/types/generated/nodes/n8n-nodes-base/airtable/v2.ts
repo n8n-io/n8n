@@ -1,8 +1,6 @@
 /**
  * Airtable Node - Version 2
  * Read, update, write and delete data from Airtable
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -157,16 +155,6 @@ export type AirtableV2RecordUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type AirtableV2Params =
-	| AirtableV2BaseGetManyConfig
-	| AirtableV2BaseGetSchemaConfig
-	| AirtableV2RecordCreateConfig
-	| AirtableV2RecordUpsertConfig
-	| AirtableV2RecordDeleteRecordConfig
-	| AirtableV2RecordGetConfig
-	| AirtableV2RecordSearchConfig
-	| AirtableV2RecordUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -178,12 +166,54 @@ export interface AirtableV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AirtableV2Node = {
+interface AirtableV2NodeBase {
 	type: 'n8n-nodes-base.airtable';
 	version: 2;
-	config: NodeConfig<AirtableV2Params>;
 	credentials?: AirtableV2Credentials;
+}
+
+export type AirtableV2BaseGetManyNode = AirtableV2NodeBase & {
+	config: NodeConfig<AirtableV2BaseGetManyConfig>;
 };
+
+export type AirtableV2BaseGetSchemaNode = AirtableV2NodeBase & {
+	config: NodeConfig<AirtableV2BaseGetSchemaConfig>;
+};
+
+export type AirtableV2RecordCreateNode = AirtableV2NodeBase & {
+	config: NodeConfig<AirtableV2RecordCreateConfig>;
+};
+
+export type AirtableV2RecordUpsertNode = AirtableV2NodeBase & {
+	config: NodeConfig<AirtableV2RecordUpsertConfig>;
+};
+
+export type AirtableV2RecordDeleteRecordNode = AirtableV2NodeBase & {
+	config: NodeConfig<AirtableV2RecordDeleteRecordConfig>;
+};
+
+export type AirtableV2RecordGetNode = AirtableV2NodeBase & {
+	config: NodeConfig<AirtableV2RecordGetConfig>;
+};
+
+export type AirtableV2RecordSearchNode = AirtableV2NodeBase & {
+	config: NodeConfig<AirtableV2RecordSearchConfig>;
+};
+
+export type AirtableV2RecordUpdateNode = AirtableV2NodeBase & {
+	config: NodeConfig<AirtableV2RecordUpdateConfig>;
+};
+
+export type AirtableV2Node =
+	| AirtableV2BaseGetManyNode
+	| AirtableV2BaseGetSchemaNode
+	| AirtableV2RecordCreateNode
+	| AirtableV2RecordUpsertNode
+	| AirtableV2RecordDeleteRecordNode
+	| AirtableV2RecordGetNode
+	| AirtableV2RecordSearchNode
+	| AirtableV2RecordUpdateNode
+	;

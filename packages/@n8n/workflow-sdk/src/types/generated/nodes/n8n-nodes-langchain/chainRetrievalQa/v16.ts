@@ -1,8 +1,6 @@
 /**
  * Question and Answer Chain Node - Version 1.6
  * Answer questions about retrieved documents
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -32,23 +30,34 @@ export type LcChainRetrievalQaV16DefineConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcChainRetrievalQaV16Params =
-	| LcChainRetrievalQaV16AutoConfig
-	| LcChainRetrievalQaV16GuardrailsConfig
-	| LcChainRetrievalQaV16DefineConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChainRetrievalQaV16Node = {
+interface LcChainRetrievalQaV16NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chainRetrievalQa';
 	version: 1.6;
-	config: NodeConfig<LcChainRetrievalQaV16Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcChainRetrievalQaV16AutoNode = LcChainRetrievalQaV16NodeBase & {
+	config: NodeConfig<LcChainRetrievalQaV16AutoConfig>;
 };
+
+export type LcChainRetrievalQaV16GuardrailsNode = LcChainRetrievalQaV16NodeBase & {
+	config: NodeConfig<LcChainRetrievalQaV16GuardrailsConfig>;
+};
+
+export type LcChainRetrievalQaV16DefineNode = LcChainRetrievalQaV16NodeBase & {
+	config: NodeConfig<LcChainRetrievalQaV16DefineConfig>;
+};
+
+export type LcChainRetrievalQaV16Node =
+	| LcChainRetrievalQaV16AutoNode
+	| LcChainRetrievalQaV16GuardrailsNode
+	| LcChainRetrievalQaV16DefineNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Zep Vector Store Node - Version 1.2
  * Work with your data in Zep Vector Store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -97,12 +95,6 @@ export type LcVectorStoreZepV12RetrieveAsToolConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStoreZepV12Params =
-	| LcVectorStoreZepV12LoadConfig
-	| LcVectorStoreZepV12InsertConfig
-	| LcVectorStoreZepV12RetrieveConfig
-	| LcVectorStoreZepV12RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -113,12 +105,34 @@ export interface LcVectorStoreZepV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreZepV12Node = {
+interface LcVectorStoreZepV12NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreZep';
 	version: 1.2;
-	config: NodeConfig<LcVectorStoreZepV12Params>;
 	credentials?: LcVectorStoreZepV12Credentials;
+}
+
+export type LcVectorStoreZepV12LoadNode = LcVectorStoreZepV12NodeBase & {
+	config: NodeConfig<LcVectorStoreZepV12LoadConfig>;
 };
+
+export type LcVectorStoreZepV12InsertNode = LcVectorStoreZepV12NodeBase & {
+	config: NodeConfig<LcVectorStoreZepV12InsertConfig>;
+};
+
+export type LcVectorStoreZepV12RetrieveNode = LcVectorStoreZepV12NodeBase & {
+	config: NodeConfig<LcVectorStoreZepV12RetrieveConfig>;
+};
+
+export type LcVectorStoreZepV12RetrieveAsToolNode = LcVectorStoreZepV12NodeBase & {
+	config: NodeConfig<LcVectorStoreZepV12RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreZepV12Node =
+	| LcVectorStoreZepV12LoadNode
+	| LcVectorStoreZepV12InsertNode
+	| LcVectorStoreZepV12RetrieveNode
+	| LcVectorStoreZepV12RetrieveAsToolNode
+	;

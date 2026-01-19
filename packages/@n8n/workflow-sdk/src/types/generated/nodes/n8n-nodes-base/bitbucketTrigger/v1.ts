@@ -1,8 +1,6 @@
 /**
  * Bitbucket Trigger Node - Version 1
  * Handle Bitbucket events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface BitbucketTriggerV1Params {
+export interface BitbucketTriggerV1Config {
 	authentication?: 'password' | 'accessToken' | Expression<string>;
 	resource: 'repository' | 'workspace' | Expression<string>;
 /**
@@ -44,13 +42,18 @@ export interface BitbucketTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BitbucketTriggerV1Node = {
+interface BitbucketTriggerV1NodeBase {
 	type: 'n8n-nodes-base.bitbucketTrigger';
 	version: 1;
-	config: NodeConfig<BitbucketTriggerV1Params>;
 	credentials?: BitbucketTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type BitbucketTriggerV1Node = BitbucketTriggerV1NodeBase & {
+	config: NodeConfig<BitbucketTriggerV1Config>;
 };
+
+export type BitbucketTriggerV1Node = BitbucketTriggerV1Node;

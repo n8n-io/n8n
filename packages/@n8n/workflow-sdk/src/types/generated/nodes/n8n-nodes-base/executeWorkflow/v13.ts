@@ -1,8 +1,6 @@
 /**
  * Execute Sub-workflow Node - Version 1.3
  * Execute another workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ExecuteWorkflowV13Params {
+export interface ExecuteWorkflowV13Config {
 	operation?: unknown;
 /**
  * The path to local JSON workflow file to execute
@@ -44,12 +42,16 @@ export interface ExecuteWorkflowV13Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ExecuteWorkflowV13Node = {
+interface ExecuteWorkflowV13NodeBase {
 	type: 'n8n-nodes-base.executeWorkflow';
 	version: 1.3;
-	config: NodeConfig<ExecuteWorkflowV13Params>;
-	credentials?: Record<string, never>;
+}
+
+export type ExecuteWorkflowV13Node = ExecuteWorkflowV13NodeBase & {
+	config: NodeConfig<ExecuteWorkflowV13Config>;
 };
+
+export type ExecuteWorkflowV13Node = ExecuteWorkflowV13Node;

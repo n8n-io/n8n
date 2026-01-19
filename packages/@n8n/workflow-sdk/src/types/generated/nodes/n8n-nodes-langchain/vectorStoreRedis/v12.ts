@@ -1,8 +1,6 @@
 /**
  * Redis Vector Store Node - Version 1.2
  * Work with your data in a Redis vector index
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -112,13 +110,6 @@ export type LcVectorStoreRedisV12UpdateConfig = {
 		id: string | Expression<string>;
 };
 
-export type LcVectorStoreRedisV12Params =
-	| LcVectorStoreRedisV12LoadConfig
-	| LcVectorStoreRedisV12InsertConfig
-	| LcVectorStoreRedisV12RetrieveConfig
-	| LcVectorStoreRedisV12RetrieveAsToolConfig
-	| LcVectorStoreRedisV12UpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -129,12 +120,39 @@ export interface LcVectorStoreRedisV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreRedisV12Node = {
+interface LcVectorStoreRedisV12NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreRedis';
 	version: 1.2;
-	config: NodeConfig<LcVectorStoreRedisV12Params>;
 	credentials?: LcVectorStoreRedisV12Credentials;
+}
+
+export type LcVectorStoreRedisV12LoadNode = LcVectorStoreRedisV12NodeBase & {
+	config: NodeConfig<LcVectorStoreRedisV12LoadConfig>;
 };
+
+export type LcVectorStoreRedisV12InsertNode = LcVectorStoreRedisV12NodeBase & {
+	config: NodeConfig<LcVectorStoreRedisV12InsertConfig>;
+};
+
+export type LcVectorStoreRedisV12RetrieveNode = LcVectorStoreRedisV12NodeBase & {
+	config: NodeConfig<LcVectorStoreRedisV12RetrieveConfig>;
+};
+
+export type LcVectorStoreRedisV12RetrieveAsToolNode = LcVectorStoreRedisV12NodeBase & {
+	config: NodeConfig<LcVectorStoreRedisV12RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreRedisV12UpdateNode = LcVectorStoreRedisV12NodeBase & {
+	config: NodeConfig<LcVectorStoreRedisV12UpdateConfig>;
+};
+
+export type LcVectorStoreRedisV12Node =
+	| LcVectorStoreRedisV12LoadNode
+	| LcVectorStoreRedisV12InsertNode
+	| LcVectorStoreRedisV12RetrieveNode
+	| LcVectorStoreRedisV12RetrieveAsToolNode
+	| LcVectorStoreRedisV12UpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Limit Node - Version 1
  * Restrict the number of items
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LimitV1Params {
+export interface LimitV1Config {
 /**
  * If there are more items than this number, some are removed
  * @default 1
@@ -31,12 +29,16 @@ export interface LimitV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LimitV1Node = {
+interface LimitV1NodeBase {
 	type: 'n8n-nodes-base.limit';
 	version: 1;
-	config: NodeConfig<LimitV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LimitV1Node = LimitV1NodeBase & {
+	config: NodeConfig<LimitV1Config>;
 };
+
+export type LimitV1Node = LimitV1Node;

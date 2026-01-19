@@ -1,8 +1,6 @@
 /**
  * GoToWebinar Node - Version 1
  * Consume the GoToWebinar API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -441,30 +439,6 @@ export type GoToWebinarV1WebinarUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type GoToWebinarV1Params =
-	| GoToWebinarV1AttendeeGetConfig
-	| GoToWebinarV1AttendeeGetAllConfig
-	| GoToWebinarV1AttendeeGetDetailsConfig
-	| GoToWebinarV1CoorganizerCreateConfig
-	| GoToWebinarV1CoorganizerDeleteConfig
-	| GoToWebinarV1CoorganizerGetAllConfig
-	| GoToWebinarV1CoorganizerReinviteConfig
-	| GoToWebinarV1PanelistCreateConfig
-	| GoToWebinarV1PanelistDeleteConfig
-	| GoToWebinarV1PanelistGetAllConfig
-	| GoToWebinarV1PanelistReinviteConfig
-	| GoToWebinarV1RegistrantCreateConfig
-	| GoToWebinarV1RegistrantDeleteConfig
-	| GoToWebinarV1RegistrantGetConfig
-	| GoToWebinarV1RegistrantGetAllConfig
-	| GoToWebinarV1SessionGetConfig
-	| GoToWebinarV1SessionGetAllConfig
-	| GoToWebinarV1SessionGetDetailsConfig
-	| GoToWebinarV1WebinarCreateConfig
-	| GoToWebinarV1WebinarGetConfig
-	| GoToWebinarV1WebinarGetAllConfig
-	| GoToWebinarV1WebinarUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -475,12 +449,124 @@ export interface GoToWebinarV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoToWebinarV1Node = {
+interface GoToWebinarV1NodeBase {
 	type: 'n8n-nodes-base.goToWebinar';
 	version: 1;
-	config: NodeConfig<GoToWebinarV1Params>;
 	credentials?: GoToWebinarV1Credentials;
+}
+
+export type GoToWebinarV1AttendeeGetNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1AttendeeGetConfig>;
 };
+
+export type GoToWebinarV1AttendeeGetAllNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1AttendeeGetAllConfig>;
+};
+
+export type GoToWebinarV1AttendeeGetDetailsNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1AttendeeGetDetailsConfig>;
+};
+
+export type GoToWebinarV1CoorganizerCreateNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1CoorganizerCreateConfig>;
+};
+
+export type GoToWebinarV1CoorganizerDeleteNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1CoorganizerDeleteConfig>;
+};
+
+export type GoToWebinarV1CoorganizerGetAllNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1CoorganizerGetAllConfig>;
+};
+
+export type GoToWebinarV1CoorganizerReinviteNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1CoorganizerReinviteConfig>;
+};
+
+export type GoToWebinarV1PanelistCreateNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1PanelistCreateConfig>;
+};
+
+export type GoToWebinarV1PanelistDeleteNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1PanelistDeleteConfig>;
+};
+
+export type GoToWebinarV1PanelistGetAllNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1PanelistGetAllConfig>;
+};
+
+export type GoToWebinarV1PanelistReinviteNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1PanelistReinviteConfig>;
+};
+
+export type GoToWebinarV1RegistrantCreateNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1RegistrantCreateConfig>;
+};
+
+export type GoToWebinarV1RegistrantDeleteNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1RegistrantDeleteConfig>;
+};
+
+export type GoToWebinarV1RegistrantGetNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1RegistrantGetConfig>;
+};
+
+export type GoToWebinarV1RegistrantGetAllNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1RegistrantGetAllConfig>;
+};
+
+export type GoToWebinarV1SessionGetNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1SessionGetConfig>;
+};
+
+export type GoToWebinarV1SessionGetAllNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1SessionGetAllConfig>;
+};
+
+export type GoToWebinarV1SessionGetDetailsNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1SessionGetDetailsConfig>;
+};
+
+export type GoToWebinarV1WebinarCreateNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1WebinarCreateConfig>;
+};
+
+export type GoToWebinarV1WebinarGetNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1WebinarGetConfig>;
+};
+
+export type GoToWebinarV1WebinarGetAllNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1WebinarGetAllConfig>;
+};
+
+export type GoToWebinarV1WebinarUpdateNode = GoToWebinarV1NodeBase & {
+	config: NodeConfig<GoToWebinarV1WebinarUpdateConfig>;
+};
+
+export type GoToWebinarV1Node =
+	| GoToWebinarV1AttendeeGetNode
+	| GoToWebinarV1AttendeeGetAllNode
+	| GoToWebinarV1AttendeeGetDetailsNode
+	| GoToWebinarV1CoorganizerCreateNode
+	| GoToWebinarV1CoorganizerDeleteNode
+	| GoToWebinarV1CoorganizerGetAllNode
+	| GoToWebinarV1CoorganizerReinviteNode
+	| GoToWebinarV1PanelistCreateNode
+	| GoToWebinarV1PanelistDeleteNode
+	| GoToWebinarV1PanelistGetAllNode
+	| GoToWebinarV1PanelistReinviteNode
+	| GoToWebinarV1RegistrantCreateNode
+	| GoToWebinarV1RegistrantDeleteNode
+	| GoToWebinarV1RegistrantGetNode
+	| GoToWebinarV1RegistrantGetAllNode
+	| GoToWebinarV1SessionGetNode
+	| GoToWebinarV1SessionGetAllNode
+	| GoToWebinarV1SessionGetDetailsNode
+	| GoToWebinarV1WebinarCreateNode
+	| GoToWebinarV1WebinarGetNode
+	| GoToWebinarV1WebinarGetAllNode
+	| GoToWebinarV1WebinarUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * If Node - Version 2.3
  * Route items to different branches (true/false)
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: s
 // Parameters
 // ===========================================================================
 
-export interface IfV23Params {
+export interface IfV23Config {
 	conditions?: FilterValue;
 	options?: Record<string, unknown>;
 }
@@ -26,12 +24,16 @@ export interface IfV23Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type IfV23Node = {
+interface IfV23NodeBase {
 	type: 'n8n-nodes-base.if';
 	version: 2.3;
-	config: NodeConfig<IfV23Params>;
-	credentials?: Record<string, never>;
+}
+
+export type IfV23Node = IfV23NodeBase & {
+	config: NodeConfig<IfV23Config>;
 };
+
+export type IfV23Node = IfV23Node;

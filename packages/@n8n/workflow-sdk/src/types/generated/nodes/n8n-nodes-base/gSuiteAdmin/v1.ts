@@ -1,8 +1,6 @@
 /**
  * Google Workspace Admin Node - Version 1
  * Consume Google Workspace Admin API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -366,24 +364,6 @@ export type GSuiteAdminV1UserUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type GSuiteAdminV1Params =
-	| GSuiteAdminV1DeviceGetConfig
-	| GSuiteAdminV1DeviceGetAllConfig
-	| GSuiteAdminV1DeviceUpdateConfig
-	| GSuiteAdminV1DeviceChangeStatusConfig
-	| GSuiteAdminV1GroupCreateConfig
-	| GSuiteAdminV1GroupDeleteConfig
-	| GSuiteAdminV1GroupGetConfig
-	| GSuiteAdminV1GroupGetAllConfig
-	| GSuiteAdminV1GroupUpdateConfig
-	| GSuiteAdminV1UserAddToGroupConfig
-	| GSuiteAdminV1UserCreateConfig
-	| GSuiteAdminV1UserDeleteConfig
-	| GSuiteAdminV1UserGetConfig
-	| GSuiteAdminV1UserGetAllConfig
-	| GSuiteAdminV1UserRemoveFromGroupConfig
-	| GSuiteAdminV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -394,12 +374,94 @@ export interface GSuiteAdminV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GSuiteAdminV1Node = {
+interface GSuiteAdminV1NodeBase {
 	type: 'n8n-nodes-base.gSuiteAdmin';
 	version: 1;
-	config: NodeConfig<GSuiteAdminV1Params>;
 	credentials?: GSuiteAdminV1Credentials;
+}
+
+export type GSuiteAdminV1DeviceGetNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1DeviceGetConfig>;
 };
+
+export type GSuiteAdminV1DeviceGetAllNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1DeviceGetAllConfig>;
+};
+
+export type GSuiteAdminV1DeviceUpdateNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1DeviceUpdateConfig>;
+};
+
+export type GSuiteAdminV1DeviceChangeStatusNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1DeviceChangeStatusConfig>;
+};
+
+export type GSuiteAdminV1GroupCreateNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1GroupCreateConfig>;
+};
+
+export type GSuiteAdminV1GroupDeleteNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1GroupDeleteConfig>;
+};
+
+export type GSuiteAdminV1GroupGetNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1GroupGetConfig>;
+};
+
+export type GSuiteAdminV1GroupGetAllNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1GroupGetAllConfig>;
+};
+
+export type GSuiteAdminV1GroupUpdateNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1GroupUpdateConfig>;
+};
+
+export type GSuiteAdminV1UserAddToGroupNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1UserAddToGroupConfig>;
+};
+
+export type GSuiteAdminV1UserCreateNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1UserCreateConfig>;
+};
+
+export type GSuiteAdminV1UserDeleteNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1UserDeleteConfig>;
+};
+
+export type GSuiteAdminV1UserGetNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1UserGetConfig>;
+};
+
+export type GSuiteAdminV1UserGetAllNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1UserGetAllConfig>;
+};
+
+export type GSuiteAdminV1UserRemoveFromGroupNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1UserRemoveFromGroupConfig>;
+};
+
+export type GSuiteAdminV1UserUpdateNode = GSuiteAdminV1NodeBase & {
+	config: NodeConfig<GSuiteAdminV1UserUpdateConfig>;
+};
+
+export type GSuiteAdminV1Node =
+	| GSuiteAdminV1DeviceGetNode
+	| GSuiteAdminV1DeviceGetAllNode
+	| GSuiteAdminV1DeviceUpdateNode
+	| GSuiteAdminV1DeviceChangeStatusNode
+	| GSuiteAdminV1GroupCreateNode
+	| GSuiteAdminV1GroupDeleteNode
+	| GSuiteAdminV1GroupGetNode
+	| GSuiteAdminV1GroupGetAllNode
+	| GSuiteAdminV1GroupUpdateNode
+	| GSuiteAdminV1UserAddToGroupNode
+	| GSuiteAdminV1UserCreateNode
+	| GSuiteAdminV1UserDeleteNode
+	| GSuiteAdminV1UserGetNode
+	| GSuiteAdminV1UserGetAllNode
+	| GSuiteAdminV1UserRemoveFromGroupNode
+	| GSuiteAdminV1UserUpdateNode
+	;

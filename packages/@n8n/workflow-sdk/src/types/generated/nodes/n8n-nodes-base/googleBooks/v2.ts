@@ -1,8 +1,6 @@
 /**
  * Google Books Node - Version 2
  * Read data from Google Books
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -184,17 +182,6 @@ export type GoogleBooksV2VolumeGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type GoogleBooksV2Params =
-	| GoogleBooksV2BookshelfGetConfig
-	| GoogleBooksV2BookshelfGetAllConfig
-	| GoogleBooksV2BookshelfVolumeAddConfig
-	| GoogleBooksV2BookshelfVolumeClearConfig
-	| GoogleBooksV2BookshelfVolumeGetAllConfig
-	| GoogleBooksV2BookshelfVolumeMoveConfig
-	| GoogleBooksV2BookshelfVolumeRemoveConfig
-	| GoogleBooksV2VolumeGetConfig
-	| GoogleBooksV2VolumeGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -206,12 +193,59 @@ export interface GoogleBooksV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleBooksV2Node = {
+interface GoogleBooksV2NodeBase {
 	type: 'n8n-nodes-base.googleBooks';
 	version: 2;
-	config: NodeConfig<GoogleBooksV2Params>;
 	credentials?: GoogleBooksV2Credentials;
+}
+
+export type GoogleBooksV2BookshelfGetNode = GoogleBooksV2NodeBase & {
+	config: NodeConfig<GoogleBooksV2BookshelfGetConfig>;
 };
+
+export type GoogleBooksV2BookshelfGetAllNode = GoogleBooksV2NodeBase & {
+	config: NodeConfig<GoogleBooksV2BookshelfGetAllConfig>;
+};
+
+export type GoogleBooksV2BookshelfVolumeAddNode = GoogleBooksV2NodeBase & {
+	config: NodeConfig<GoogleBooksV2BookshelfVolumeAddConfig>;
+};
+
+export type GoogleBooksV2BookshelfVolumeClearNode = GoogleBooksV2NodeBase & {
+	config: NodeConfig<GoogleBooksV2BookshelfVolumeClearConfig>;
+};
+
+export type GoogleBooksV2BookshelfVolumeGetAllNode = GoogleBooksV2NodeBase & {
+	config: NodeConfig<GoogleBooksV2BookshelfVolumeGetAllConfig>;
+};
+
+export type GoogleBooksV2BookshelfVolumeMoveNode = GoogleBooksV2NodeBase & {
+	config: NodeConfig<GoogleBooksV2BookshelfVolumeMoveConfig>;
+};
+
+export type GoogleBooksV2BookshelfVolumeRemoveNode = GoogleBooksV2NodeBase & {
+	config: NodeConfig<GoogleBooksV2BookshelfVolumeRemoveConfig>;
+};
+
+export type GoogleBooksV2VolumeGetNode = GoogleBooksV2NodeBase & {
+	config: NodeConfig<GoogleBooksV2VolumeGetConfig>;
+};
+
+export type GoogleBooksV2VolumeGetAllNode = GoogleBooksV2NodeBase & {
+	config: NodeConfig<GoogleBooksV2VolumeGetAllConfig>;
+};
+
+export type GoogleBooksV2Node =
+	| GoogleBooksV2BookshelfGetNode
+	| GoogleBooksV2BookshelfGetAllNode
+	| GoogleBooksV2BookshelfVolumeAddNode
+	| GoogleBooksV2BookshelfVolumeClearNode
+	| GoogleBooksV2BookshelfVolumeGetAllNode
+	| GoogleBooksV2BookshelfVolumeMoveNode
+	| GoogleBooksV2BookshelfVolumeRemoveNode
+	| GoogleBooksV2VolumeGetNode
+	| GoogleBooksV2VolumeGetAllNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Chat Trigger Node - Version 1.1
  * Runs the workflow when an n8n generated webchat is submitted
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -52,10 +50,6 @@ export type LcChatTriggerV11WebhookConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcChatTriggerV11Params =
-	| LcChatTriggerV11HostedChatConfig
-	| LcChatTriggerV11WebhookConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -66,12 +60,24 @@ export interface LcChatTriggerV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChatTriggerV11Node = {
+interface LcChatTriggerV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chatTrigger';
 	version: 1.1;
-	config: NodeConfig<LcChatTriggerV11Params>;
 	credentials?: LcChatTriggerV11Credentials;
+}
+
+export type LcChatTriggerV11HostedChatNode = LcChatTriggerV11NodeBase & {
+	config: NodeConfig<LcChatTriggerV11HostedChatConfig>;
 };
+
+export type LcChatTriggerV11WebhookNode = LcChatTriggerV11NodeBase & {
+	config: NodeConfig<LcChatTriggerV11WebhookConfig>;
+};
+
+export type LcChatTriggerV11Node =
+	| LcChatTriggerV11HostedChatNode
+	| LcChatTriggerV11WebhookNode
+	;

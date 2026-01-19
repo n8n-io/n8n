@@ -1,8 +1,6 @@
 /**
  * JWT Node - Version 1
  * JWT
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface JwtV1Params {
+export interface JwtV1Config {
 	operation?: 'decode' | 'sign' | 'verify' | Expression<string>;
 /**
  * Whether to use JSON to build the claims
@@ -50,12 +48,17 @@ export interface JwtV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JwtV1Node = {
+interface JwtV1NodeBase {
 	type: 'n8n-nodes-base.jwt';
 	version: 1;
-	config: NodeConfig<JwtV1Params>;
 	credentials?: JwtV1Credentials;
+}
+
+export type JwtV1Node = JwtV1NodeBase & {
+	config: NodeConfig<JwtV1Config>;
 };
+
+export type JwtV1Node = JwtV1Node;

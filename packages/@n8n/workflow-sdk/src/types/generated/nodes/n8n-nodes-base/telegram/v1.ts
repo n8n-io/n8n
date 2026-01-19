@@ -1,8 +1,6 @@
 /**
  * Telegram Node - Version 1
  * Sends data to Telegram
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -1542,32 +1540,459 @@ export type TelegramV1MessageUnpinChatMessageConfig = {
 	replyKeyboardRemove?: Record<string, unknown>;
 };
 
-export type TelegramV1Params =
-	| TelegramV1ChatGetConfig
-	| TelegramV1ChatAdministratorsConfig
-	| TelegramV1ChatMemberConfig
-	| TelegramV1ChatLeaveConfig
-	| TelegramV1ChatSetDescriptionConfig
-	| TelegramV1ChatSetTitleConfig
-	| TelegramV1CallbackAnswerQueryConfig
-	| TelegramV1CallbackAnswerInlineQueryConfig
-	| TelegramV1FileGetConfig
-	| TelegramV1MessageDeleteMessageConfig
-	| TelegramV1MessageEditMessageTextConfig
-	| TelegramV1MessagePinChatMessageConfig
-	| TelegramV1MessageSendAnimationConfig
-	| TelegramV1MessageSendAudioConfig
-	| TelegramV1MessageSendChatActionConfig
-	| TelegramV1MessageSendDocumentConfig
-	| TelegramV1MessageSendLocationConfig
-	| TelegramV1MessageSendMediaGroupConfig
-	| TelegramV1MessageSendMessageConfig
-	| TelegramV1MessageSendAndWaitConfig
-	| TelegramV1MessageSendPhotoConfig
-	| TelegramV1MessageSendStickerConfig
-	| TelegramV1MessageSendVideoConfig
-	| TelegramV1MessageUnpinChatMessageConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type TelegramV1ChatGetOutput = {
+	ok?: boolean;
+	result?: {
+		accent_color_id?: number;
+		accepted_gift_types?: {
+			limited_gifts?: boolean;
+			premium_subscription?: boolean;
+			unique_gifts?: boolean;
+			unlimited_gifts?: boolean;
+		};
+		active_usernames?: Array<string>;
+		can_send_gift?: boolean;
+		first_name?: string;
+		id?: number;
+		max_reaction_count?: number;
+		type?: string;
+		username?: string;
+	};
+};
+
+export type TelegramV1ChatAdministratorsOutput = {
+	can_be_edited?: boolean;
+	can_change_info?: boolean;
+	can_delete_messages?: boolean;
+	can_delete_stories?: boolean;
+	can_edit_stories?: boolean;
+	can_invite_users?: boolean;
+	can_manage_chat?: boolean;
+	can_manage_topics?: boolean;
+	can_manage_video_chats?: boolean;
+	can_manage_voice_chats?: boolean;
+	can_pin_messages?: boolean;
+	can_post_stories?: boolean;
+	can_promote_members?: boolean;
+	can_restrict_members?: boolean;
+	is_anonymous?: boolean;
+	status?: string;
+	user?: {
+		first_name?: string;
+		id?: number;
+		is_bot?: boolean;
+		language_code?: string;
+		last_name?: string;
+		username?: string;
+	};
+};
+
+export type TelegramV1ChatMemberOutput = {
+	ok?: boolean;
+	result?: {
+		is_anonymous?: boolean;
+		status?: string;
+		user?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			language_code?: string;
+			username?: string;
+		};
+	};
+};
+
+export type TelegramV1ChatLeaveOutput = {
+	ok?: boolean;
+	result?: boolean;
+};
+
+export type TelegramV1CallbackAnswerQueryOutput = {
+	ok?: boolean;
+	result?: boolean;
+};
+
+export type TelegramV1FileGetOutput = {
+	ok?: boolean;
+	result?: {
+		file_id?: string;
+		file_path?: string;
+		file_size?: number;
+		file_unique_id?: string;
+	};
+};
+
+export type TelegramV1MessageDeleteMessageOutput = {
+	ok?: boolean;
+	result?: boolean;
+};
+
+export type TelegramV1MessageEditMessageTextOutput = {
+	ok?: boolean;
+	result?: {
+		chat?: {
+			first_name?: string;
+			id?: number;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		edit_date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+		text?: string;
+	};
+};
+
+export type TelegramV1MessagePinChatMessageOutput = {
+	ok?: boolean;
+	result?: boolean;
+};
+
+export type TelegramV1MessageSendAnimationOutput = {
+	ok?: boolean;
+	result?: {
+		animation?: {
+			duration?: number;
+			file_id?: string;
+			file_name?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			height?: number;
+			mime_type?: string;
+			thumb?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			thumbnail?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			width?: number;
+		};
+		chat?: {
+			first_name?: string;
+			id?: number;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		document?: {
+			file_id?: string;
+			file_name?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			mime_type?: string;
+			thumb?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			thumbnail?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+		};
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+	};
+};
+
+export type TelegramV1MessageSendAudioOutput = {
+	ok?: boolean;
+	result?: {
+		audio?: {
+			duration?: number;
+			file_id?: string;
+			file_name?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			mime_type?: string;
+		};
+		chat?: {
+			first_name?: string;
+			id?: number;
+			last_name?: string;
+			type?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+	};
+};
+
+export type TelegramV1MessageSendChatActionOutput = {
+	ok?: boolean;
+	result?: boolean;
+};
+
+export type TelegramV1MessageSendDocumentOutput = {
+	ok?: boolean;
+	result?: {
+		chat?: {
+			first_name?: string;
+			id?: number;
+			last_name?: string;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		document?: {
+			file_id?: string;
+			file_name?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			mime_type?: string;
+		};
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+	};
+};
+
+export type TelegramV1MessageSendLocationOutput = {
+	ok?: boolean;
+	result?: {
+		chat?: {
+			first_name?: string;
+			id?: number;
+			last_name?: string;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		location?: {
+			latitude?: number;
+			longitude?: number;
+		};
+		message_id?: number;
+	};
+};
+
+export type TelegramV1MessageSendMediaGroupOutput = {
+	ok?: boolean;
+	result?: Array<{
+		caption?: string;
+		chat?: {
+			first_name?: string;
+			id?: number;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+		photo?: Array<{
+			file_id?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			height?: number;
+			width?: number;
+		}>;
+	}>;
+};
+
+export type TelegramV1MessageSendMessageOutput = {
+	ok?: boolean;
+	result?: {
+		chat?: {
+			first_name?: string;
+			id?: number;
+			last_name?: string;
+			type?: string;
+		};
+		date?: number;
+		entities?: Array<{
+			length?: number;
+			offset?: number;
+			type?: string;
+			url?: string;
+		}>;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		link_preview_options?: {
+			is_disabled?: boolean;
+		};
+		message_id?: number;
+		text?: string;
+	};
+};
+
+export type TelegramV1MessageSendAndWaitOutput = {
+	data?: {
+		text?: string;
+	};
+};
+
+export type TelegramV1MessageSendPhotoOutput = {
+	ok?: boolean;
+	result?: {
+		caption?: string;
+		chat?: {
+			first_name?: string;
+			id?: number;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+		photo?: Array<{
+			file_id?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			height?: number;
+			width?: number;
+		}>;
+	};
+};
+
+export type TelegramV1MessageSendStickerOutput = {
+	ok?: boolean;
+	result?: {
+		chat?: {
+			first_name?: string;
+			id?: number;
+			last_name?: string;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+		sticker?: {
+			emoji?: string;
+			file_id?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			height?: number;
+			is_animated?: boolean;
+			is_video?: boolean;
+			set_name?: string;
+			thumb?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			thumbnail?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			type?: string;
+			width?: number;
+		};
+	};
+};
+
+export type TelegramV1MessageSendVideoOutput = {
+	ok?: boolean;
+	result?: {
+		caption?: string;
+		chat?: {
+			first_name?: string;
+			id?: number;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+		video?: {
+			duration?: number;
+			file_id?: string;
+			file_name?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			height?: number;
+			mime_type?: string;
+			thumb?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			thumbnail?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			width?: number;
+		};
+	};
+};
 
 // ===========================================================================
 // Credentials
@@ -1578,12 +2003,154 @@ export interface TelegramV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TelegramV1Node = {
+interface TelegramV1NodeBase {
 	type: 'n8n-nodes-base.telegram';
 	version: 1;
-	config: NodeConfig<TelegramV1Params>;
 	credentials?: TelegramV1Credentials;
+}
+
+export type TelegramV1ChatGetNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1ChatGetConfig>;
+	output?: TelegramV1ChatGetOutput;
 };
+
+export type TelegramV1ChatAdministratorsNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1ChatAdministratorsConfig>;
+	output?: TelegramV1ChatAdministratorsOutput;
+};
+
+export type TelegramV1ChatMemberNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1ChatMemberConfig>;
+	output?: TelegramV1ChatMemberOutput;
+};
+
+export type TelegramV1ChatLeaveNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1ChatLeaveConfig>;
+	output?: TelegramV1ChatLeaveOutput;
+};
+
+export type TelegramV1ChatSetDescriptionNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1ChatSetDescriptionConfig>;
+};
+
+export type TelegramV1ChatSetTitleNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1ChatSetTitleConfig>;
+};
+
+export type TelegramV1CallbackAnswerQueryNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1CallbackAnswerQueryConfig>;
+	output?: TelegramV1CallbackAnswerQueryOutput;
+};
+
+export type TelegramV1CallbackAnswerInlineQueryNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1CallbackAnswerInlineQueryConfig>;
+};
+
+export type TelegramV1FileGetNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1FileGetConfig>;
+	output?: TelegramV1FileGetOutput;
+};
+
+export type TelegramV1MessageDeleteMessageNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageDeleteMessageConfig>;
+	output?: TelegramV1MessageDeleteMessageOutput;
+};
+
+export type TelegramV1MessageEditMessageTextNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageEditMessageTextConfig>;
+	output?: TelegramV1MessageEditMessageTextOutput;
+};
+
+export type TelegramV1MessagePinChatMessageNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessagePinChatMessageConfig>;
+	output?: TelegramV1MessagePinChatMessageOutput;
+};
+
+export type TelegramV1MessageSendAnimationNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendAnimationConfig>;
+	output?: TelegramV1MessageSendAnimationOutput;
+};
+
+export type TelegramV1MessageSendAudioNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendAudioConfig>;
+	output?: TelegramV1MessageSendAudioOutput;
+};
+
+export type TelegramV1MessageSendChatActionNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendChatActionConfig>;
+	output?: TelegramV1MessageSendChatActionOutput;
+};
+
+export type TelegramV1MessageSendDocumentNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendDocumentConfig>;
+	output?: TelegramV1MessageSendDocumentOutput;
+};
+
+export type TelegramV1MessageSendLocationNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendLocationConfig>;
+	output?: TelegramV1MessageSendLocationOutput;
+};
+
+export type TelegramV1MessageSendMediaGroupNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendMediaGroupConfig>;
+	output?: TelegramV1MessageSendMediaGroupOutput;
+};
+
+export type TelegramV1MessageSendMessageNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendMessageConfig>;
+	output?: TelegramV1MessageSendMessageOutput;
+};
+
+export type TelegramV1MessageSendAndWaitNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendAndWaitConfig>;
+	output?: TelegramV1MessageSendAndWaitOutput;
+};
+
+export type TelegramV1MessageSendPhotoNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendPhotoConfig>;
+	output?: TelegramV1MessageSendPhotoOutput;
+};
+
+export type TelegramV1MessageSendStickerNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendStickerConfig>;
+	output?: TelegramV1MessageSendStickerOutput;
+};
+
+export type TelegramV1MessageSendVideoNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageSendVideoConfig>;
+	output?: TelegramV1MessageSendVideoOutput;
+};
+
+export type TelegramV1MessageUnpinChatMessageNode = TelegramV1NodeBase & {
+	config: NodeConfig<TelegramV1MessageUnpinChatMessageConfig>;
+};
+
+export type TelegramV1Node =
+	| TelegramV1ChatGetNode
+	| TelegramV1ChatAdministratorsNode
+	| TelegramV1ChatMemberNode
+	| TelegramV1ChatLeaveNode
+	| TelegramV1ChatSetDescriptionNode
+	| TelegramV1ChatSetTitleNode
+	| TelegramV1CallbackAnswerQueryNode
+	| TelegramV1CallbackAnswerInlineQueryNode
+	| TelegramV1FileGetNode
+	| TelegramV1MessageDeleteMessageNode
+	| TelegramV1MessageEditMessageTextNode
+	| TelegramV1MessagePinChatMessageNode
+	| TelegramV1MessageSendAnimationNode
+	| TelegramV1MessageSendAudioNode
+	| TelegramV1MessageSendChatActionNode
+	| TelegramV1MessageSendDocumentNode
+	| TelegramV1MessageSendLocationNode
+	| TelegramV1MessageSendMediaGroupNode
+	| TelegramV1MessageSendMessageNode
+	| TelegramV1MessageSendAndWaitNode
+	| TelegramV1MessageSendPhotoNode
+	| TelegramV1MessageSendStickerNode
+	| TelegramV1MessageSendVideoNode
+	| TelegramV1MessageUnpinChatMessageNode
+	;

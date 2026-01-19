@@ -1,8 +1,6 @@
 /**
  * Xata Node - Version 1.4
  * Use Xata Memory
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryXataV14Params {
+export interface LcMemoryXataV14Config {
 /**
  * The key to use to store session ID in the memory
  * @displayOptions.show { sessionIdType: ["customKey"] }
@@ -31,13 +29,18 @@ export interface LcMemoryXataV14Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryXataV14Node = {
+interface LcMemoryXataV14NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryXata';
 	version: 1.4;
-	config: NodeConfig<LcMemoryXataV14Params>;
 	credentials?: LcMemoryXataV14Credentials;
 	isTrigger: true;
+}
+
+export type LcMemoryXataV14Node = LcMemoryXataV14NodeBase & {
+	config: NodeConfig<LcMemoryXataV14Config>;
 };
+
+export type LcMemoryXataV14Node = LcMemoryXataV14Node;

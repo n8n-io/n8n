@@ -1,8 +1,6 @@
 /**
  * If Node - Version 2.2
  * Route items to different branches (true/false)
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: s
 // Parameters
 // ===========================================================================
 
-export interface IfV22Params {
+export interface IfV22Config {
 	conditions?: FilterValue;
 	options?: Record<string, unknown>;
 }
@@ -26,12 +24,16 @@ export interface IfV22Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type IfV22Node = {
+interface IfV22NodeBase {
 	type: 'n8n-nodes-base.if';
 	version: 2.2;
-	config: NodeConfig<IfV22Params>;
-	credentials?: Record<string, never>;
+}
+
+export type IfV22Node = IfV22NodeBase & {
+	config: NodeConfig<IfV22Config>;
 };
+
+export type IfV22Node = IfV22Node;

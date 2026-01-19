@@ -1,8 +1,6 @@
 /**
  * Airtop Node - Version 1.1
  * Scrape and control any site with Airtop
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -738,32 +736,149 @@ export type AirtopV11WindowTakeScreenshotConfig = {
 		outputImageAsBinary?: boolean | Expression<boolean>;
 };
 
-export type AirtopV11Params =
-	| AirtopV11AgentRunConfig
-	| AirtopV11ExtractionQueryConfig
-	| AirtopV11ExtractionGetPaginatedConfig
-	| AirtopV11ExtractionScrapeConfig
-	| AirtopV11FileDeleteFileConfig
-	| AirtopV11FileGetConfig
-	| AirtopV11FileGetManyConfig
-	| AirtopV11FileLoadConfig
-	| AirtopV11FileUploadConfig
-	| AirtopV11InteractionClickConfig
-	| AirtopV11InteractionFillConfig
-	| AirtopV11InteractionHoverConfig
-	| AirtopV11InteractionScrollConfig
-	| AirtopV11InteractionTypeConfig
-	| AirtopV11SessionCreateConfig
-	| AirtopV11SessionSaveConfig
-	| AirtopV11SessionTerminateConfig
-	| AirtopV11SessionWaitForDownloadConfig
-	| AirtopV11WindowCloseConfig
-	| AirtopV11WindowCreateConfig
-	| AirtopV11WindowGetLiveViewConfig
-	| AirtopV11WindowListConfig
-	| AirtopV11WindowLoadConfig
-	| AirtopV11WindowTakeScreenshotConfig
-	;
+
+// ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type AirtopV11ExtractionQueryOutput = {
+	data?: {
+		modelResponse?: string;
+	};
+	meta?: {
+		requestId?: string;
+		status?: string;
+		usage?: {
+			credits?: number;
+			id?: string;
+		};
+	};
+	warnings?: Array<{
+		message?: string;
+	}>;
+};
+
+export type AirtopV11ExtractionGetPaginatedOutput = {
+	data?: {
+		modelResponse?: string;
+	};
+	meta?: {
+		requestId?: string;
+		status?: string;
+		usage?: {
+			credits?: number;
+			id?: string;
+		};
+	};
+	sessionId?: string;
+	windowId?: string;
+};
+
+export type AirtopV11ExtractionScrapeOutput = {
+	data?: {
+		modelResponse?: {
+			scrapedContent?: {
+				contentType?: string;
+				text?: string;
+			};
+			title?: string;
+		};
+	};
+	meta?: {
+		requestId?: string;
+		status?: string;
+		usage?: {
+			credits?: number;
+			id?: string;
+		};
+	};
+	sessionId?: string;
+	windowId?: string;
+};
+
+export type AirtopV11InteractionClickOutput = {
+	data?: {
+		modelResponse?: string;
+	};
+	meta?: {
+		actionId?: string;
+		requestId?: string;
+		status?: string;
+		usage?: {
+			credits?: number;
+			id?: string;
+		};
+	};
+	sessionId?: string;
+	warnings?: Array<{
+		message?: string;
+	}>;
+	windowId?: string;
+};
+
+export type AirtopV11InteractionTypeOutput = {
+	data?: {
+		modelResponse?: string;
+	};
+	meta?: {
+		actionId?: string;
+		requestId?: string;
+		status?: string;
+		usage?: {
+			credits?: number;
+			id?: string;
+		};
+	};
+	sessionId?: string;
+	warnings?: Array<{
+		message?: string;
+	}>;
+	windowId?: string;
+};
+
+export type AirtopV11SessionCreateOutput = {
+	data?: {
+		cdpUrl?: string;
+		cdpWsUrl?: string;
+		chromedriverUrl?: string;
+		configuration?: {
+			baseProfileId?: string;
+			timeoutMinutes?: number;
+		};
+		dateCreated?: string;
+		id?: string;
+		lastActivity?: string;
+		status?: string;
+	};
+	errors?: null;
+	meta?: {
+		requestId?: string;
+	};
+	sessionId?: string;
+	warnings?: Array<{
+		code?: string;
+		message?: string;
+	}>;
+};
+
+export type AirtopV11SessionTerminateOutput = {
+	success?: boolean;
+};
+
+export type AirtopV11WindowCreateOutput = {
+	data?: {
+		liveViewUrl?: string;
+		targetId?: string;
+		windowId?: string;
+	};
+	errors?: null;
+	meta?: {
+		requestId?: string;
+	};
+	sessionId?: string;
+	warnings?: null;
+	windowId?: string;
+};
 
 // ===========================================================================
 // Credentials
@@ -774,12 +889,142 @@ export interface AirtopV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AirtopV11Node = {
+interface AirtopV11NodeBase {
 	type: 'n8n-nodes-base.airtop';
 	version: 1.1;
-	config: NodeConfig<AirtopV11Params>;
 	credentials?: AirtopV11Credentials;
+}
+
+export type AirtopV11AgentRunNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11AgentRunConfig>;
 };
+
+export type AirtopV11ExtractionQueryNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11ExtractionQueryConfig>;
+	output?: AirtopV11ExtractionQueryOutput;
+};
+
+export type AirtopV11ExtractionGetPaginatedNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11ExtractionGetPaginatedConfig>;
+	output?: AirtopV11ExtractionGetPaginatedOutput;
+};
+
+export type AirtopV11ExtractionScrapeNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11ExtractionScrapeConfig>;
+	output?: AirtopV11ExtractionScrapeOutput;
+};
+
+export type AirtopV11FileDeleteFileNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11FileDeleteFileConfig>;
+};
+
+export type AirtopV11FileGetNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11FileGetConfig>;
+};
+
+export type AirtopV11FileGetManyNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11FileGetManyConfig>;
+};
+
+export type AirtopV11FileLoadNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11FileLoadConfig>;
+};
+
+export type AirtopV11FileUploadNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11FileUploadConfig>;
+};
+
+export type AirtopV11InteractionClickNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11InteractionClickConfig>;
+	output?: AirtopV11InteractionClickOutput;
+};
+
+export type AirtopV11InteractionFillNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11InteractionFillConfig>;
+};
+
+export type AirtopV11InteractionHoverNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11InteractionHoverConfig>;
+};
+
+export type AirtopV11InteractionScrollNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11InteractionScrollConfig>;
+};
+
+export type AirtopV11InteractionTypeNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11InteractionTypeConfig>;
+	output?: AirtopV11InteractionTypeOutput;
+};
+
+export type AirtopV11SessionCreateNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11SessionCreateConfig>;
+	output?: AirtopV11SessionCreateOutput;
+};
+
+export type AirtopV11SessionSaveNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11SessionSaveConfig>;
+};
+
+export type AirtopV11SessionTerminateNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11SessionTerminateConfig>;
+	output?: AirtopV11SessionTerminateOutput;
+};
+
+export type AirtopV11SessionWaitForDownloadNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11SessionWaitForDownloadConfig>;
+};
+
+export type AirtopV11WindowCloseNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11WindowCloseConfig>;
+};
+
+export type AirtopV11WindowCreateNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11WindowCreateConfig>;
+	output?: AirtopV11WindowCreateOutput;
+};
+
+export type AirtopV11WindowGetLiveViewNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11WindowGetLiveViewConfig>;
+};
+
+export type AirtopV11WindowListNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11WindowListConfig>;
+};
+
+export type AirtopV11WindowLoadNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11WindowLoadConfig>;
+};
+
+export type AirtopV11WindowTakeScreenshotNode = AirtopV11NodeBase & {
+	config: NodeConfig<AirtopV11WindowTakeScreenshotConfig>;
+};
+
+export type AirtopV11Node =
+	| AirtopV11AgentRunNode
+	| AirtopV11ExtractionQueryNode
+	| AirtopV11ExtractionGetPaginatedNode
+	| AirtopV11ExtractionScrapeNode
+	| AirtopV11FileDeleteFileNode
+	| AirtopV11FileGetNode
+	| AirtopV11FileGetManyNode
+	| AirtopV11FileLoadNode
+	| AirtopV11FileUploadNode
+	| AirtopV11InteractionClickNode
+	| AirtopV11InteractionFillNode
+	| AirtopV11InteractionHoverNode
+	| AirtopV11InteractionScrollNode
+	| AirtopV11InteractionTypeNode
+	| AirtopV11SessionCreateNode
+	| AirtopV11SessionSaveNode
+	| AirtopV11SessionTerminateNode
+	| AirtopV11SessionWaitForDownloadNode
+	| AirtopV11WindowCloseNode
+	| AirtopV11WindowCreateNode
+	| AirtopV11WindowGetLiveViewNode
+	| AirtopV11WindowListNode
+	| AirtopV11WindowLoadNode
+	| AirtopV11WindowTakeScreenshotNode
+	;

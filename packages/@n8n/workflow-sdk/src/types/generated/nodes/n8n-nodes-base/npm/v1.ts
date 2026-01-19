@@ -1,8 +1,6 @@
 /**
  * Npm Node - Version 1
  * Consume NPM registry API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -72,13 +70,6 @@ export type NpmV1DistTagUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type NpmV1Params =
-	| NpmV1PackageGetMetadataConfig
-	| NpmV1PackageGetVersionsConfig
-	| NpmV1PackageSearchConfig
-	| NpmV1DistTagGetManyConfig
-	| NpmV1DistTagUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -89,12 +80,39 @@ export interface NpmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NpmV1Node = {
+interface NpmV1NodeBase {
 	type: 'n8n-nodes-base.npm';
 	version: 1;
-	config: NodeConfig<NpmV1Params>;
 	credentials?: NpmV1Credentials;
+}
+
+export type NpmV1PackageGetMetadataNode = NpmV1NodeBase & {
+	config: NodeConfig<NpmV1PackageGetMetadataConfig>;
 };
+
+export type NpmV1PackageGetVersionsNode = NpmV1NodeBase & {
+	config: NodeConfig<NpmV1PackageGetVersionsConfig>;
+};
+
+export type NpmV1PackageSearchNode = NpmV1NodeBase & {
+	config: NodeConfig<NpmV1PackageSearchConfig>;
+};
+
+export type NpmV1DistTagGetManyNode = NpmV1NodeBase & {
+	config: NodeConfig<NpmV1DistTagGetManyConfig>;
+};
+
+export type NpmV1DistTagUpdateNode = NpmV1NodeBase & {
+	config: NodeConfig<NpmV1DistTagUpdateConfig>;
+};
+
+export type NpmV1Node =
+	| NpmV1PackageGetMetadataNode
+	| NpmV1PackageGetVersionsNode
+	| NpmV1PackageSearchNode
+	| NpmV1DistTagGetManyNode
+	| NpmV1DistTagUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Autopilot Trigger Node - Version 1
  * Handle Autopilot events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AutopilotTriggerV1Params {
+export interface AutopilotTriggerV1Config {
 	event: 'contactAdded' | 'contactAddedToList' | 'contactEnteredSegment' | 'contactLeftSegment' | 'contactRemovedFromList' | 'contactUnsubscribed' | 'contactUpdated' | Expression<string>;
 }
 
@@ -26,13 +24,18 @@ export interface AutopilotTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AutopilotTriggerV1Node = {
+interface AutopilotTriggerV1NodeBase {
 	type: 'n8n-nodes-base.autopilotTrigger';
 	version: 1;
-	config: NodeConfig<AutopilotTriggerV1Params>;
 	credentials?: AutopilotTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type AutopilotTriggerV1Node = AutopilotTriggerV1NodeBase & {
+	config: NodeConfig<AutopilotTriggerV1Config>;
 };
+
+export type AutopilotTriggerV1Node = AutopilotTriggerV1Node;

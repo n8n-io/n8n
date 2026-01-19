@@ -1,8 +1,6 @@
 /**
  * PagerDuty Node - Version 1
  * Consume PagerDuty API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -187,17 +185,6 @@ export type PagerDutyV1UserGetConfig = {
 		userId: string | Expression<string>;
 };
 
-export type PagerDutyV1Params =
-	| PagerDutyV1IncidentCreateConfig
-	| PagerDutyV1IncidentGetConfig
-	| PagerDutyV1IncidentGetAllConfig
-	| PagerDutyV1IncidentUpdateConfig
-	| PagerDutyV1IncidentNoteCreateConfig
-	| PagerDutyV1IncidentNoteGetAllConfig
-	| PagerDutyV1LogEntryGetConfig
-	| PagerDutyV1LogEntryGetAllConfig
-	| PagerDutyV1UserGetConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -209,12 +196,59 @@ export interface PagerDutyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PagerDutyV1Node = {
+interface PagerDutyV1NodeBase {
 	type: 'n8n-nodes-base.pagerDuty';
 	version: 1;
-	config: NodeConfig<PagerDutyV1Params>;
 	credentials?: PagerDutyV1Credentials;
+}
+
+export type PagerDutyV1IncidentCreateNode = PagerDutyV1NodeBase & {
+	config: NodeConfig<PagerDutyV1IncidentCreateConfig>;
 };
+
+export type PagerDutyV1IncidentGetNode = PagerDutyV1NodeBase & {
+	config: NodeConfig<PagerDutyV1IncidentGetConfig>;
+};
+
+export type PagerDutyV1IncidentGetAllNode = PagerDutyV1NodeBase & {
+	config: NodeConfig<PagerDutyV1IncidentGetAllConfig>;
+};
+
+export type PagerDutyV1IncidentUpdateNode = PagerDutyV1NodeBase & {
+	config: NodeConfig<PagerDutyV1IncidentUpdateConfig>;
+};
+
+export type PagerDutyV1IncidentNoteCreateNode = PagerDutyV1NodeBase & {
+	config: NodeConfig<PagerDutyV1IncidentNoteCreateConfig>;
+};
+
+export type PagerDutyV1IncidentNoteGetAllNode = PagerDutyV1NodeBase & {
+	config: NodeConfig<PagerDutyV1IncidentNoteGetAllConfig>;
+};
+
+export type PagerDutyV1LogEntryGetNode = PagerDutyV1NodeBase & {
+	config: NodeConfig<PagerDutyV1LogEntryGetConfig>;
+};
+
+export type PagerDutyV1LogEntryGetAllNode = PagerDutyV1NodeBase & {
+	config: NodeConfig<PagerDutyV1LogEntryGetAllConfig>;
+};
+
+export type PagerDutyV1UserGetNode = PagerDutyV1NodeBase & {
+	config: NodeConfig<PagerDutyV1UserGetConfig>;
+};
+
+export type PagerDutyV1Node =
+	| PagerDutyV1IncidentCreateNode
+	| PagerDutyV1IncidentGetNode
+	| PagerDutyV1IncidentGetAllNode
+	| PagerDutyV1IncidentUpdateNode
+	| PagerDutyV1IncidentNoteCreateNode
+	| PagerDutyV1IncidentNoteGetAllNode
+	| PagerDutyV1LogEntryGetNode
+	| PagerDutyV1LogEntryGetAllNode
+	| PagerDutyV1UserGetNode
+	;

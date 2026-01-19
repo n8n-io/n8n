@@ -1,8 +1,6 @@
 /**
  * Git Node - Version 1.1
  * Control git.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GitV11Params {
+export interface GitV11Config {
 /**
  * The way to authenticate
  * @displayOptions.show { operation: ["clone", "push"] }
@@ -80,12 +78,17 @@ export interface GitV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GitV11Node = {
+interface GitV11NodeBase {
 	type: 'n8n-nodes-base.git';
 	version: 1.1;
-	config: NodeConfig<GitV11Params>;
 	credentials?: GitV11Credentials;
+}
+
+export type GitV11Node = GitV11NodeBase & {
+	config: NodeConfig<GitV11Config>;
 };
+
+export type GitV11Node = GitV11Node;

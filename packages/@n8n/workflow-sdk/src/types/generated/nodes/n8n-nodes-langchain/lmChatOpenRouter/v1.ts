@@ -1,8 +1,6 @@
 /**
  * OpenRouter Chat Model Node - Version 1
  * For advanced usage with an AI chain
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatOpenRouterV1Params {
+export interface LcLmChatOpenRouterV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://openrouter.ai/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default openai/gpt-4.1-mini
@@ -35,13 +33,18 @@ export interface LcLmChatOpenRouterV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatOpenRouterV1Node = {
+interface LcLmChatOpenRouterV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatOpenRouter';
 	version: 1;
-	config: NodeConfig<LcLmChatOpenRouterV1Params>;
 	credentials?: LcLmChatOpenRouterV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatOpenRouterV1Node = LcLmChatOpenRouterV1NodeBase & {
+	config: NodeConfig<LcLmChatOpenRouterV1Config>;
 };
+
+export type LcLmChatOpenRouterV1Node = LcLmChatOpenRouterV1Node;

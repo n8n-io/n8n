@@ -1,8 +1,6 @@
 /**
  * Merge Node - Version 1
  * Merges data of multiple streams once data from both is available
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -107,28 +105,59 @@ export type MergeV1WaitConfig = {
 	mode: 'wait';
 };
 
-export type MergeV1Params =
-	| MergeV1AppendConfig
-	| MergeV1KeepKeyMatchesConfig
-	| MergeV1MergeByIndexConfig
-	| MergeV1MergeByKeyConfig
-	| MergeV1MultiplexConfig
-	| MergeV1PassThroughConfig
-	| MergeV1RemoveKeyMatchesConfig
-	| MergeV1WaitConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MergeV1Node = {
+interface MergeV1NodeBase {
 	type: 'n8n-nodes-base.merge';
 	version: 1;
-	config: NodeConfig<MergeV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type MergeV1AppendNode = MergeV1NodeBase & {
+	config: NodeConfig<MergeV1AppendConfig>;
 };
+
+export type MergeV1KeepKeyMatchesNode = MergeV1NodeBase & {
+	config: NodeConfig<MergeV1KeepKeyMatchesConfig>;
+};
+
+export type MergeV1MergeByIndexNode = MergeV1NodeBase & {
+	config: NodeConfig<MergeV1MergeByIndexConfig>;
+};
+
+export type MergeV1MergeByKeyNode = MergeV1NodeBase & {
+	config: NodeConfig<MergeV1MergeByKeyConfig>;
+};
+
+export type MergeV1MultiplexNode = MergeV1NodeBase & {
+	config: NodeConfig<MergeV1MultiplexConfig>;
+};
+
+export type MergeV1PassThroughNode = MergeV1NodeBase & {
+	config: NodeConfig<MergeV1PassThroughConfig>;
+};
+
+export type MergeV1RemoveKeyMatchesNode = MergeV1NodeBase & {
+	config: NodeConfig<MergeV1RemoveKeyMatchesConfig>;
+};
+
+export type MergeV1WaitNode = MergeV1NodeBase & {
+	config: NodeConfig<MergeV1WaitConfig>;
+};
+
+export type MergeV1Node =
+	| MergeV1AppendNode
+	| MergeV1KeepKeyMatchesNode
+	| MergeV1MergeByIndexNode
+	| MergeV1MergeByKeyNode
+	| MergeV1MultiplexNode
+	| MergeV1PassThroughNode
+	| MergeV1RemoveKeyMatchesNode
+	| MergeV1WaitNode
+	;

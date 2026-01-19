@@ -1,8 +1,6 @@
 /**
  * Embeddings Google Vertex Node - Version 1
  * Use Google Vertex Embeddings
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsGoogleVertexV1Params {
+export interface LcEmbeddingsGoogleVertexV1Config {
 /**
  * Select or enter your Google Cloud project ID
  * @default {"mode":"list","value":""}
@@ -38,13 +36,18 @@ export interface LcEmbeddingsGoogleVertexV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsGoogleVertexV1Node = {
+interface LcEmbeddingsGoogleVertexV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.embeddingsGoogleVertex';
 	version: 1;
-	config: NodeConfig<LcEmbeddingsGoogleVertexV1Params>;
 	credentials?: LcEmbeddingsGoogleVertexV1Credentials;
 	isTrigger: true;
+}
+
+export type LcEmbeddingsGoogleVertexV1Node = LcEmbeddingsGoogleVertexV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsGoogleVertexV1Config>;
 };
+
+export type LcEmbeddingsGoogleVertexV1Node = LcEmbeddingsGoogleVertexV1Node;

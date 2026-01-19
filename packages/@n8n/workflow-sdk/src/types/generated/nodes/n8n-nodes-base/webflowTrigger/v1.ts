@@ -1,8 +1,6 @@
 /**
  * Webflow Trigger Node - Version 1
  * Handle Webflow events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WebflowTriggerV1Params {
+export interface WebflowTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 /**
  * Site that will trigger the events. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -32,13 +30,18 @@ export interface WebflowTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WebflowTriggerV1Node = {
+interface WebflowTriggerV1NodeBase {
 	type: 'n8n-nodes-base.webflowTrigger';
 	version: 1;
-	config: NodeConfig<WebflowTriggerV1Params>;
 	credentials?: WebflowTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type WebflowTriggerV1Node = WebflowTriggerV1NodeBase & {
+	config: NodeConfig<WebflowTriggerV1Config>;
 };
+
+export type WebflowTriggerV1Node = WebflowTriggerV1Node;

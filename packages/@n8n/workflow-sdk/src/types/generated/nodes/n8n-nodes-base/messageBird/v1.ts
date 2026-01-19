@@ -1,8 +1,6 @@
 /**
  * MessageBird Node - Version 1
  * Sends SMS via MessageBird
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -41,10 +39,6 @@ export type MessageBirdV1BalanceGetConfig = {
 	operation: 'get';
 };
 
-export type MessageBirdV1Params =
-	| MessageBirdV1SmsSendConfig
-	| MessageBirdV1BalanceGetConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -55,12 +49,24 @@ export interface MessageBirdV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MessageBirdV1Node = {
+interface MessageBirdV1NodeBase {
 	type: 'n8n-nodes-base.messageBird';
 	version: 1;
-	config: NodeConfig<MessageBirdV1Params>;
 	credentials?: MessageBirdV1Credentials;
+}
+
+export type MessageBirdV1SmsSendNode = MessageBirdV1NodeBase & {
+	config: NodeConfig<MessageBirdV1SmsSendConfig>;
 };
+
+export type MessageBirdV1BalanceGetNode = MessageBirdV1NodeBase & {
+	config: NodeConfig<MessageBirdV1BalanceGetConfig>;
+};
+
+export type MessageBirdV1Node =
+	| MessageBirdV1SmsSendNode
+	| MessageBirdV1BalanceGetNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Compare Datasets Node - Version 2.2
  * Compare two inputs for changes
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface CompareDatasetsV22Params {
+export interface CompareDatasetsV22Config {
 	mergeByFields?: {
 		values?: Array<{
 			/** Input A Field
@@ -42,12 +40,16 @@ export interface CompareDatasetsV22Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CompareDatasetsV22Node = {
+interface CompareDatasetsV22NodeBase {
 	type: 'n8n-nodes-base.compareDatasets';
 	version: 2.2;
-	config: NodeConfig<CompareDatasetsV22Params>;
-	credentials?: Record<string, never>;
+}
+
+export type CompareDatasetsV22Node = CompareDatasetsV22NodeBase & {
+	config: NodeConfig<CompareDatasetsV22Config>;
 };
+
+export type CompareDatasetsV22Node = CompareDatasetsV22Node;

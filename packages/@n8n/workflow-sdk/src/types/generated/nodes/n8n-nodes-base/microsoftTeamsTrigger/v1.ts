@@ -1,8 +1,6 @@
 /**
  * Microsoft Teams Trigger Node - Version 1
  * Triggers workflows in n8n based on events from Microsoft Teams, such as new messages or team updates, using specified configurations.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MicrosoftTeamsTriggerV1Params {
+export interface MicrosoftTeamsTriggerV1Config {
 /**
  * Select the event to trigger the workflow
  * @default newChannelMessage
@@ -69,13 +67,18 @@ export interface MicrosoftTeamsTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftTeamsTriggerV1Node = {
+interface MicrosoftTeamsTriggerV1NodeBase {
 	type: 'n8n-nodes-base.microsoftTeamsTrigger';
 	version: 1;
-	config: NodeConfig<MicrosoftTeamsTriggerV1Params>;
 	credentials?: MicrosoftTeamsTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MicrosoftTeamsTriggerV1Node = MicrosoftTeamsTriggerV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsTriggerV1Config>;
 };
+
+export type MicrosoftTeamsTriggerV1Node = MicrosoftTeamsTriggerV1Node;

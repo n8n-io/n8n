@@ -1,8 +1,6 @@
 /**
  * Groq Chat Model Node - Version 1
  * Language Model Groq
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatGroqV1Params {
+export interface LcLmChatGroqV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://console.groq.com/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default llama3-8b-8192
@@ -35,13 +33,18 @@ export interface LcLmChatGroqV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatGroqV1Node = {
+interface LcLmChatGroqV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatGroq';
 	version: 1;
-	config: NodeConfig<LcLmChatGroqV1Params>;
 	credentials?: LcLmChatGroqV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatGroqV1Node = LcLmChatGroqV1NodeBase & {
+	config: NodeConfig<LcLmChatGroqV1Config>;
 };
+
+export type LcLmChatGroqV1Node = LcLmChatGroqV1Node;

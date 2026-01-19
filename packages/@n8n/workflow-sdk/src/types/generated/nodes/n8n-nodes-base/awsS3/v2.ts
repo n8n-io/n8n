@@ -1,8 +1,6 @@
 /**
  * AWS S3 Node - Version 2
  * Sends data to AWS S3
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -202,20 +200,6 @@ export type AwsS3V2FolderGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type AwsS3V2Params =
-	| AwsS3V2BucketCreateConfig
-	| AwsS3V2BucketDeleteConfig
-	| AwsS3V2BucketGetAllConfig
-	| AwsS3V2BucketSearchConfig
-	| AwsS3V2FileCopyConfig
-	| AwsS3V2FileDeleteConfig
-	| AwsS3V2FileDownloadConfig
-	| AwsS3V2FileGetAllConfig
-	| AwsS3V2FileUploadConfig
-	| AwsS3V2FolderCreateConfig
-	| AwsS3V2FolderDeleteConfig
-	| AwsS3V2FolderGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -227,12 +211,74 @@ export interface AwsS3V2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsS3V2Node = {
+interface AwsS3V2NodeBase {
 	type: 'n8n-nodes-base.awsS3';
 	version: 2;
-	config: NodeConfig<AwsS3V2Params>;
 	credentials?: AwsS3V2Credentials;
+}
+
+export type AwsS3V2BucketCreateNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2BucketCreateConfig>;
 };
+
+export type AwsS3V2BucketDeleteNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2BucketDeleteConfig>;
+};
+
+export type AwsS3V2BucketGetAllNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2BucketGetAllConfig>;
+};
+
+export type AwsS3V2BucketSearchNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2BucketSearchConfig>;
+};
+
+export type AwsS3V2FileCopyNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2FileCopyConfig>;
+};
+
+export type AwsS3V2FileDeleteNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2FileDeleteConfig>;
+};
+
+export type AwsS3V2FileDownloadNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2FileDownloadConfig>;
+};
+
+export type AwsS3V2FileGetAllNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2FileGetAllConfig>;
+};
+
+export type AwsS3V2FileUploadNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2FileUploadConfig>;
+};
+
+export type AwsS3V2FolderCreateNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2FolderCreateConfig>;
+};
+
+export type AwsS3V2FolderDeleteNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2FolderDeleteConfig>;
+};
+
+export type AwsS3V2FolderGetAllNode = AwsS3V2NodeBase & {
+	config: NodeConfig<AwsS3V2FolderGetAllConfig>;
+};
+
+export type AwsS3V2Node =
+	| AwsS3V2BucketCreateNode
+	| AwsS3V2BucketDeleteNode
+	| AwsS3V2BucketGetAllNode
+	| AwsS3V2BucketSearchNode
+	| AwsS3V2FileCopyNode
+	| AwsS3V2FileDeleteNode
+	| AwsS3V2FileDownloadNode
+	| AwsS3V2FileGetAllNode
+	| AwsS3V2FileUploadNode
+	| AwsS3V2FolderCreateNode
+	| AwsS3V2FolderDeleteNode
+	| AwsS3V2FolderGetAllNode
+	;

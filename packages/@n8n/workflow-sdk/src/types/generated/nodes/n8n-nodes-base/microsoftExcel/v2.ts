@@ -1,8 +1,6 @@
 /**
  * Microsoft Excel 365 Node - Version 2
  * Consume Microsoft Excel API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -375,25 +373,6 @@ export type MicrosoftExcelV2WorksheetUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MicrosoftExcelV2Params =
-	| MicrosoftExcelV2TableAppendConfig
-	| MicrosoftExcelV2TableConvertToRangeConfig
-	| MicrosoftExcelV2TableAddTableConfig
-	| MicrosoftExcelV2TableDeleteTableConfig
-	| MicrosoftExcelV2TableGetColumnsConfig
-	| MicrosoftExcelV2TableGetRowsConfig
-	| MicrosoftExcelV2TableLookupConfig
-	| MicrosoftExcelV2WorkbookAddWorksheetConfig
-	| MicrosoftExcelV2WorkbookDeleteWorkbookConfig
-	| MicrosoftExcelV2WorkbookGetAllConfig
-	| MicrosoftExcelV2WorksheetAppendConfig
-	| MicrosoftExcelV2WorksheetUpsertConfig
-	| MicrosoftExcelV2WorksheetClearConfig
-	| MicrosoftExcelV2WorksheetDeleteWorksheetConfig
-	| MicrosoftExcelV2WorksheetGetAllConfig
-	| MicrosoftExcelV2WorksheetReadRowsConfig
-	| MicrosoftExcelV2WorksheetUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -404,12 +383,99 @@ export interface MicrosoftExcelV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftExcelV2Node = {
+interface MicrosoftExcelV2NodeBase {
 	type: 'n8n-nodes-base.microsoftExcel';
 	version: 2;
-	config: NodeConfig<MicrosoftExcelV2Params>;
 	credentials?: MicrosoftExcelV2Credentials;
+}
+
+export type MicrosoftExcelV2TableAppendNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2TableAppendConfig>;
 };
+
+export type MicrosoftExcelV2TableConvertToRangeNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2TableConvertToRangeConfig>;
+};
+
+export type MicrosoftExcelV2TableAddTableNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2TableAddTableConfig>;
+};
+
+export type MicrosoftExcelV2TableDeleteTableNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2TableDeleteTableConfig>;
+};
+
+export type MicrosoftExcelV2TableGetColumnsNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2TableGetColumnsConfig>;
+};
+
+export type MicrosoftExcelV2TableGetRowsNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2TableGetRowsConfig>;
+};
+
+export type MicrosoftExcelV2TableLookupNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2TableLookupConfig>;
+};
+
+export type MicrosoftExcelV2WorkbookAddWorksheetNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2WorkbookAddWorksheetConfig>;
+};
+
+export type MicrosoftExcelV2WorkbookDeleteWorkbookNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2WorkbookDeleteWorkbookConfig>;
+};
+
+export type MicrosoftExcelV2WorkbookGetAllNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2WorkbookGetAllConfig>;
+};
+
+export type MicrosoftExcelV2WorksheetAppendNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2WorksheetAppendConfig>;
+};
+
+export type MicrosoftExcelV2WorksheetUpsertNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2WorksheetUpsertConfig>;
+};
+
+export type MicrosoftExcelV2WorksheetClearNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2WorksheetClearConfig>;
+};
+
+export type MicrosoftExcelV2WorksheetDeleteWorksheetNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2WorksheetDeleteWorksheetConfig>;
+};
+
+export type MicrosoftExcelV2WorksheetGetAllNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2WorksheetGetAllConfig>;
+};
+
+export type MicrosoftExcelV2WorksheetReadRowsNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2WorksheetReadRowsConfig>;
+};
+
+export type MicrosoftExcelV2WorksheetUpdateNode = MicrosoftExcelV2NodeBase & {
+	config: NodeConfig<MicrosoftExcelV2WorksheetUpdateConfig>;
+};
+
+export type MicrosoftExcelV2Node =
+	| MicrosoftExcelV2TableAppendNode
+	| MicrosoftExcelV2TableConvertToRangeNode
+	| MicrosoftExcelV2TableAddTableNode
+	| MicrosoftExcelV2TableDeleteTableNode
+	| MicrosoftExcelV2TableGetColumnsNode
+	| MicrosoftExcelV2TableGetRowsNode
+	| MicrosoftExcelV2TableLookupNode
+	| MicrosoftExcelV2WorkbookAddWorksheetNode
+	| MicrosoftExcelV2WorkbookDeleteWorkbookNode
+	| MicrosoftExcelV2WorkbookGetAllNode
+	| MicrosoftExcelV2WorksheetAppendNode
+	| MicrosoftExcelV2WorksheetUpsertNode
+	| MicrosoftExcelV2WorksheetClearNode
+	| MicrosoftExcelV2WorksheetDeleteWorksheetNode
+	| MicrosoftExcelV2WorksheetGetAllNode
+	| MicrosoftExcelV2WorksheetReadRowsNode
+	| MicrosoftExcelV2WorksheetUpdateNode
+	;

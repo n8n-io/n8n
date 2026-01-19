@@ -1,8 +1,6 @@
 /**
  * Form.io Trigger Node - Version 1
  * Handle form.io events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FormIoTriggerV1Params {
+export interface FormIoTriggerV1Config {
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
  */
@@ -39,13 +37,18 @@ export interface FormIoTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FormIoTriggerV1Node = {
+interface FormIoTriggerV1NodeBase {
 	type: 'n8n-nodes-base.formIoTrigger';
 	version: 1;
-	config: NodeConfig<FormIoTriggerV1Params>;
 	credentials?: FormIoTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type FormIoTriggerV1Node = FormIoTriggerV1NodeBase & {
+	config: NodeConfig<FormIoTriggerV1Config>;
 };
+
+export type FormIoTriggerV1Node = FormIoTriggerV1Node;

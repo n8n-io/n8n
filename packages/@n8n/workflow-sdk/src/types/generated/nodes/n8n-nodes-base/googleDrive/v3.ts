@@ -1,8 +1,6 @@
 /**
  * Google Drive Node - Version 3
  * Access data on Google Drive
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -402,25 +400,6 @@ export type GoogleDriveV3DriveUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleDriveV3Params =
-	| GoogleDriveV3FileCopyConfig
-	| GoogleDriveV3FileCreateFromTextConfig
-	| GoogleDriveV3FileDeleteFileConfig
-	| GoogleDriveV3FileDownloadConfig
-	| GoogleDriveV3FileMoveConfig
-	| GoogleDriveV3FileShareConfig
-	| GoogleDriveV3FileUpdateConfig
-	| GoogleDriveV3FileUploadConfig
-	| GoogleDriveV3FileFolderSearchConfig
-	| GoogleDriveV3FolderCreateConfig
-	| GoogleDriveV3FolderDeleteFolderConfig
-	| GoogleDriveV3FolderShareConfig
-	| GoogleDriveV3DriveCreateConfig
-	| GoogleDriveV3DriveDeleteDriveConfig
-	| GoogleDriveV3DriveGetConfig
-	| GoogleDriveV3DriveListConfig
-	| GoogleDriveV3DriveUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -432,12 +411,99 @@ export interface GoogleDriveV3Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleDriveV3Node = {
+interface GoogleDriveV3NodeBase {
 	type: 'n8n-nodes-base.googleDrive';
 	version: 3;
-	config: NodeConfig<GoogleDriveV3Params>;
 	credentials?: GoogleDriveV3Credentials;
+}
+
+export type GoogleDriveV3FileCopyNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FileCopyConfig>;
 };
+
+export type GoogleDriveV3FileCreateFromTextNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FileCreateFromTextConfig>;
+};
+
+export type GoogleDriveV3FileDeleteFileNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FileDeleteFileConfig>;
+};
+
+export type GoogleDriveV3FileDownloadNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FileDownloadConfig>;
+};
+
+export type GoogleDriveV3FileMoveNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FileMoveConfig>;
+};
+
+export type GoogleDriveV3FileShareNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FileShareConfig>;
+};
+
+export type GoogleDriveV3FileUpdateNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FileUpdateConfig>;
+};
+
+export type GoogleDriveV3FileUploadNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FileUploadConfig>;
+};
+
+export type GoogleDriveV3FileFolderSearchNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FileFolderSearchConfig>;
+};
+
+export type GoogleDriveV3FolderCreateNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FolderCreateConfig>;
+};
+
+export type GoogleDriveV3FolderDeleteFolderNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FolderDeleteFolderConfig>;
+};
+
+export type GoogleDriveV3FolderShareNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3FolderShareConfig>;
+};
+
+export type GoogleDriveV3DriveCreateNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3DriveCreateConfig>;
+};
+
+export type GoogleDriveV3DriveDeleteDriveNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3DriveDeleteDriveConfig>;
+};
+
+export type GoogleDriveV3DriveGetNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3DriveGetConfig>;
+};
+
+export type GoogleDriveV3DriveListNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3DriveListConfig>;
+};
+
+export type GoogleDriveV3DriveUpdateNode = GoogleDriveV3NodeBase & {
+	config: NodeConfig<GoogleDriveV3DriveUpdateConfig>;
+};
+
+export type GoogleDriveV3Node =
+	| GoogleDriveV3FileCopyNode
+	| GoogleDriveV3FileCreateFromTextNode
+	| GoogleDriveV3FileDeleteFileNode
+	| GoogleDriveV3FileDownloadNode
+	| GoogleDriveV3FileMoveNode
+	| GoogleDriveV3FileShareNode
+	| GoogleDriveV3FileUpdateNode
+	| GoogleDriveV3FileUploadNode
+	| GoogleDriveV3FileFolderSearchNode
+	| GoogleDriveV3FolderCreateNode
+	| GoogleDriveV3FolderDeleteFolderNode
+	| GoogleDriveV3FolderShareNode
+	| GoogleDriveV3DriveCreateNode
+	| GoogleDriveV3DriveDeleteDriveNode
+	| GoogleDriveV3DriveGetNode
+	| GoogleDriveV3DriveListNode
+	| GoogleDriveV3DriveUpdateNode
+	;

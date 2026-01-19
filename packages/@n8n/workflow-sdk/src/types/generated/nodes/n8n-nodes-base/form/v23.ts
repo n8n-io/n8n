@@ -1,8 +1,6 @@
 /**
  * n8n Form Node - Version 2.3
  * Generate webforms in n8n and pass their responses to the workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface FormV23Params {
+export interface FormV23Config {
 	operation?: 'page' | 'completion' | Expression<string>;
 	defineForm?: 'fields' | 'json' | Expression<string>;
 	jsonOutput?: IDataObject | string | Expression<string>;
@@ -71,12 +69,16 @@ export interface FormV23Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FormV23Node = {
+interface FormV23NodeBase {
 	type: 'n8n-nodes-base.form';
 	version: 2.3;
-	config: NodeConfig<FormV23Params>;
-	credentials?: Record<string, never>;
+}
+
+export type FormV23Node = FormV23NodeBase & {
+	config: NodeConfig<FormV23Config>;
 };
+
+export type FormV23Node = FormV23Node;

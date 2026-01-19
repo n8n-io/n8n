@@ -1,8 +1,6 @@
 /**
  * SurveyMonkey Trigger Node - Version 1
  * Starts the workflow when Survey Monkey events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SurveyMonkeyTriggerV1Params {
+export interface SurveyMonkeyTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 	objectType: 'collector' | 'survey' | Expression<string>;
 	event: 'collector_created' | 'collector_deleted' | 'collector_updated' | 'response_completed' | 'response_created' | 'response_deleted' | 'response_disqualified' | 'response_overquota' | 'response_updated' | 'survey_created' | 'survey_deleted' | 'survey_updated' | Expression<string>;
@@ -60,13 +58,18 @@ export interface SurveyMonkeyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SurveyMonkeyTriggerV1Node = {
+interface SurveyMonkeyTriggerV1NodeBase {
 	type: 'n8n-nodes-base.surveyMonkeyTrigger';
 	version: 1;
-	config: NodeConfig<SurveyMonkeyTriggerV1Params>;
 	credentials?: SurveyMonkeyTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type SurveyMonkeyTriggerV1Node = SurveyMonkeyTriggerV1NodeBase & {
+	config: NodeConfig<SurveyMonkeyTriggerV1Config>;
 };
+
+export type SurveyMonkeyTriggerV1Node = SurveyMonkeyTriggerV1Node;

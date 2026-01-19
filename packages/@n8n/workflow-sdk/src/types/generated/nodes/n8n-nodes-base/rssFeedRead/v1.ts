@@ -1,8 +1,6 @@
 /**
  * RSS Read Node - Version 1
  * Reads data from an RSS Feed
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface RssFeedReadV1Params {
+export interface RssFeedReadV1Config {
 /**
  * URL of the RSS feed
  */
@@ -26,12 +24,16 @@ export interface RssFeedReadV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RssFeedReadV1Node = {
+interface RssFeedReadV1NodeBase {
 	type: 'n8n-nodes-base.rssFeedRead';
 	version: 1;
-	config: NodeConfig<RssFeedReadV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type RssFeedReadV1Node = RssFeedReadV1NodeBase & {
+	config: NodeConfig<RssFeedReadV1Config>;
 };
+
+export type RssFeedReadV1Node = RssFeedReadV1Node;

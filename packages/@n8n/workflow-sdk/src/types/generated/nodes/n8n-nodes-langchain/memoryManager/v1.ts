@@ -1,8 +1,6 @@
 /**
  * Chat Memory Manager Node - Version 1
  * Manage chat messages memory and use it in the workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -73,23 +71,34 @@ export type LcMemoryManagerV1DeleteConfig = {
 		lastMessagesCount?: number | Expression<number>;
 };
 
-export type LcMemoryManagerV1Params =
-	| LcMemoryManagerV1LoadConfig
-	| LcMemoryManagerV1InsertConfig
-	| LcMemoryManagerV1DeleteConfig
-	;
 
 // ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryManagerV1Node = {
+interface LcMemoryManagerV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryManager';
 	version: 1;
-	config: NodeConfig<LcMemoryManagerV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcMemoryManagerV1LoadNode = LcMemoryManagerV1NodeBase & {
+	config: NodeConfig<LcMemoryManagerV1LoadConfig>;
 };
+
+export type LcMemoryManagerV1InsertNode = LcMemoryManagerV1NodeBase & {
+	config: NodeConfig<LcMemoryManagerV1InsertConfig>;
+};
+
+export type LcMemoryManagerV1DeleteNode = LcMemoryManagerV1NodeBase & {
+	config: NodeConfig<LcMemoryManagerV1DeleteConfig>;
+};
+
+export type LcMemoryManagerV1Node =
+	| LcMemoryManagerV1LoadNode
+	| LcMemoryManagerV1InsertNode
+	| LcMemoryManagerV1DeleteNode
+	;

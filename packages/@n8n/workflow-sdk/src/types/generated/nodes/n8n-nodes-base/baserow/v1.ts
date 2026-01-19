@@ -1,8 +1,6 @@
 /**
  * Baserow Node - Version 1
  * Consume the Baserow API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -153,13 +151,6 @@ export type BaserowV1RowUpdateConfig = {
 	};
 };
 
-export type BaserowV1Params =
-	| BaserowV1RowCreateConfig
-	| BaserowV1RowDeleteConfig
-	| BaserowV1RowGetConfig
-	| BaserowV1RowGetAllConfig
-	| BaserowV1RowUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -170,12 +161,39 @@ export interface BaserowV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BaserowV1Node = {
+interface BaserowV1NodeBase {
 	type: 'n8n-nodes-base.baserow';
 	version: 1;
-	config: NodeConfig<BaserowV1Params>;
 	credentials?: BaserowV1Credentials;
+}
+
+export type BaserowV1RowCreateNode = BaserowV1NodeBase & {
+	config: NodeConfig<BaserowV1RowCreateConfig>;
 };
+
+export type BaserowV1RowDeleteNode = BaserowV1NodeBase & {
+	config: NodeConfig<BaserowV1RowDeleteConfig>;
+};
+
+export type BaserowV1RowGetNode = BaserowV1NodeBase & {
+	config: NodeConfig<BaserowV1RowGetConfig>;
+};
+
+export type BaserowV1RowGetAllNode = BaserowV1NodeBase & {
+	config: NodeConfig<BaserowV1RowGetAllConfig>;
+};
+
+export type BaserowV1RowUpdateNode = BaserowV1NodeBase & {
+	config: NodeConfig<BaserowV1RowUpdateConfig>;
+};
+
+export type BaserowV1Node =
+	| BaserowV1RowCreateNode
+	| BaserowV1RowDeleteNode
+	| BaserowV1RowGetNode
+	| BaserowV1RowGetAllNode
+	| BaserowV1RowUpdateNode
+	;

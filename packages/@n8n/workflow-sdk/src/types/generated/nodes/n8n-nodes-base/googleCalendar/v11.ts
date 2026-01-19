@@ -1,8 +1,6 @@
 /**
  * Google Calendar Node - Version 1.1
  * Consume Google Calendar API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -143,14 +141,6 @@ export type GoogleCalendarV11EventUpdateConfig = {
 	};
 };
 
-export type GoogleCalendarV11Params =
-	| GoogleCalendarV11CalendarAvailabilityConfig
-	| GoogleCalendarV11EventCreateConfig
-	| GoogleCalendarV11EventDeleteConfig
-	| GoogleCalendarV11EventGetConfig
-	| GoogleCalendarV11EventGetAllConfig
-	| GoogleCalendarV11EventUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials
@@ -161,12 +151,44 @@ export interface GoogleCalendarV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleCalendarV11Node = {
+interface GoogleCalendarV11NodeBase {
 	type: 'n8n-nodes-base.googleCalendar';
 	version: 1.1;
-	config: NodeConfig<GoogleCalendarV11Params>;
 	credentials?: GoogleCalendarV11Credentials;
+}
+
+export type GoogleCalendarV11CalendarAvailabilityNode = GoogleCalendarV11NodeBase & {
+	config: NodeConfig<GoogleCalendarV11CalendarAvailabilityConfig>;
 };
+
+export type GoogleCalendarV11EventCreateNode = GoogleCalendarV11NodeBase & {
+	config: NodeConfig<GoogleCalendarV11EventCreateConfig>;
+};
+
+export type GoogleCalendarV11EventDeleteNode = GoogleCalendarV11NodeBase & {
+	config: NodeConfig<GoogleCalendarV11EventDeleteConfig>;
+};
+
+export type GoogleCalendarV11EventGetNode = GoogleCalendarV11NodeBase & {
+	config: NodeConfig<GoogleCalendarV11EventGetConfig>;
+};
+
+export type GoogleCalendarV11EventGetAllNode = GoogleCalendarV11NodeBase & {
+	config: NodeConfig<GoogleCalendarV11EventGetAllConfig>;
+};
+
+export type GoogleCalendarV11EventUpdateNode = GoogleCalendarV11NodeBase & {
+	config: NodeConfig<GoogleCalendarV11EventUpdateConfig>;
+};
+
+export type GoogleCalendarV11Node =
+	| GoogleCalendarV11CalendarAvailabilityNode
+	| GoogleCalendarV11EventCreateNode
+	| GoogleCalendarV11EventDeleteNode
+	| GoogleCalendarV11EventGetNode
+	| GoogleCalendarV11EventGetAllNode
+	| GoogleCalendarV11EventUpdateNode
+	;

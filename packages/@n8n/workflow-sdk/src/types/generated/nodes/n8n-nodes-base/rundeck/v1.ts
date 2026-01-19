@@ -1,8 +1,6 @@
 /**
  * Rundeck Node - Version 1
  * Manage Rundeck API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface RundeckV1Params {
+export interface RundeckV1Config {
 	resource?: 'job' | Expression<string>;
 	operation?: 'execute' | 'getMetadata' | Expression<string>;
 /**
@@ -47,12 +45,17 @@ export interface RundeckV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RundeckV1Node = {
+interface RundeckV1NodeBase {
 	type: 'n8n-nodes-base.rundeck';
 	version: 1;
-	config: NodeConfig<RundeckV1Params>;
 	credentials?: RundeckV1Credentials;
+}
+
+export type RundeckV1Node = RundeckV1NodeBase & {
+	config: NodeConfig<RundeckV1Config>;
 };
+
+export type RundeckV1Node = RundeckV1Node;

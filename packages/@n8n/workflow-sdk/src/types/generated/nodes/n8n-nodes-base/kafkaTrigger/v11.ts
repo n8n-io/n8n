@@ -1,8 +1,6 @@
 /**
  * Kafka Trigger Node - Version 1.1
  * Consume messages from a Kafka topic
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface KafkaTriggerV11Params {
+export interface KafkaTriggerV11Config {
 /**
  * Name of the queue of topic to consume from
  */
@@ -44,13 +42,18 @@ export interface KafkaTriggerV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KafkaTriggerV11Node = {
+interface KafkaTriggerV11NodeBase {
 	type: 'n8n-nodes-base.kafkaTrigger';
 	version: 1.1;
-	config: NodeConfig<KafkaTriggerV11Params>;
 	credentials?: KafkaTriggerV11Credentials;
 	isTrigger: true;
+}
+
+export type KafkaTriggerV11Node = KafkaTriggerV11NodeBase & {
+	config: NodeConfig<KafkaTriggerV11Config>;
 };
+
+export type KafkaTriggerV11Node = KafkaTriggerV11Node;

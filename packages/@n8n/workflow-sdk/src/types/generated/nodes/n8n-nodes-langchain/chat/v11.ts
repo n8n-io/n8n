@@ -1,8 +1,6 @@
 /**
  * Chat Node - Version 1.1
  * Send a message into the chat
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -14,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcChatV11Params {
+export interface LcChatV11Config {
 	message: string | Expression<string>;
 	responseType?: 'approval' | 'freeTextChat' | Expression<string>;
 /**
@@ -61,12 +59,16 @@ export interface LcChatV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChatV11Node = {
+interface LcChatV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chat';
 	version: 1.1;
-	config: NodeConfig<LcChatV11Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcChatV11Node = LcChatV11NodeBase & {
+	config: NodeConfig<LcChatV11Config>;
 };
+
+export type LcChatV11Node = LcChatV11Node;

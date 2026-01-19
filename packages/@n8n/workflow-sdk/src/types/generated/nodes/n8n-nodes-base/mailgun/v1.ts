@@ -1,8 +1,6 @@
 /**
  * Mailgun Node - Version 1
  * Sends an email via Mailgun
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MailgunV1Params {
+export interface MailgunV1Config {
 /**
  * Email address of the sender optional with name
  */
@@ -57,12 +55,17 @@ export interface MailgunV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailgunV1Node = {
+interface MailgunV1NodeBase {
 	type: 'n8n-nodes-base.mailgun';
 	version: 1;
-	config: NodeConfig<MailgunV1Params>;
 	credentials?: MailgunV1Credentials;
+}
+
+export type MailgunV1Node = MailgunV1NodeBase & {
+	config: NodeConfig<MailgunV1Config>;
 };
+
+export type MailgunV1Node = MailgunV1Node;

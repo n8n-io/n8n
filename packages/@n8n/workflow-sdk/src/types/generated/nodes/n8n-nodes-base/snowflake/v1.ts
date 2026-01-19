@@ -1,8 +1,6 @@
 /**
  * Snowflake Node - Version 1
  * Get, add and update data in Snowflake
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SnowflakeV1Params {
+export interface SnowflakeV1Config {
 	operation?: 'executeQuery' | 'insert' | 'update' | Expression<string>;
 /**
  * The SQL query to execute
@@ -47,12 +45,17 @@ export interface SnowflakeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SnowflakeV1Node = {
+interface SnowflakeV1NodeBase {
 	type: 'n8n-nodes-base.snowflake';
 	version: 1;
-	config: NodeConfig<SnowflakeV1Params>;
 	credentials?: SnowflakeV1Credentials;
+}
+
+export type SnowflakeV1Node = SnowflakeV1NodeBase & {
+	config: NodeConfig<SnowflakeV1Config>;
 };
+
+export type SnowflakeV1Node = SnowflakeV1Node;

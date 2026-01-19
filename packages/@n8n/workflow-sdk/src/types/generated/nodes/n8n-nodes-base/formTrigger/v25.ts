@@ -1,8 +1,6 @@
 /**
  * n8n Form Trigger Node - Version 2.5
  * Generate webforms in n8n and pass their responses to the workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FormTriggerV25Params {
+export interface FormTriggerV25Config {
 	authentication?: 'basicAuth' | 'none' | Expression<string>;
 /**
  * Shown at the top of the form
@@ -35,13 +33,18 @@ export interface FormTriggerV25Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FormTriggerV25Node = {
+interface FormTriggerV25NodeBase {
 	type: 'n8n-nodes-base.formTrigger';
 	version: 2.5;
-	config: NodeConfig<FormTriggerV25Params>;
 	credentials?: FormTriggerV25Credentials;
 	isTrigger: true;
+}
+
+export type FormTriggerV25Node = FormTriggerV25NodeBase & {
+	config: NodeConfig<FormTriggerV25Config>;
 };
+
+export type FormTriggerV25Node = FormTriggerV25Node;

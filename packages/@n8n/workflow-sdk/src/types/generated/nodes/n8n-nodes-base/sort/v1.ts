@@ -1,8 +1,6 @@
 /**
  * Sort Node - Version 1
  * Change items order
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface SortV1Params {
+export interface SortV1Config {
 /**
  * The type of sorting to perform
  * @default simple
@@ -64,12 +62,16 @@ export interface SortV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SortV1Node = {
+interface SortV1NodeBase {
 	type: 'n8n-nodes-base.sort';
 	version: 1;
-	config: NodeConfig<SortV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type SortV1Node = SortV1NodeBase & {
+	config: NodeConfig<SortV1Config>;
 };
+
+export type SortV1Node = SortV1Node;

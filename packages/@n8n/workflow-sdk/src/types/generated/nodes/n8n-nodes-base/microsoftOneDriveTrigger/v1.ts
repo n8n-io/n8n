@@ -1,8 +1,6 @@
 /**
  * Microsoft OneDrive Trigger Node - Version 1
  * Trigger for Microsoft OneDrive API.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MicrosoftOneDriveTriggerV1Params {
+export interface MicrosoftOneDriveTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -106,13 +104,18 @@ export interface MicrosoftOneDriveTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOneDriveTriggerV1Node = {
+interface MicrosoftOneDriveTriggerV1NodeBase {
 	type: 'n8n-nodes-base.microsoftOneDriveTrigger';
 	version: 1;
-	config: NodeConfig<MicrosoftOneDriveTriggerV1Params>;
 	credentials?: MicrosoftOneDriveTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MicrosoftOneDriveTriggerV1Node = MicrosoftOneDriveTriggerV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveTriggerV1Config>;
 };
+
+export type MicrosoftOneDriveTriggerV1Node = MicrosoftOneDriveTriggerV1Node;

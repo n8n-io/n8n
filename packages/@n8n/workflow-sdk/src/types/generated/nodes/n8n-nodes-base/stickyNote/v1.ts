@@ -1,8 +1,6 @@
 /**
  * Sticky Note Node - Version 1
  * Make your workflow easier to understand
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface StickyNoteV1Params {
+export interface StickyNoteV1Config {
 	content?: string | Expression<string>;
 	height: number | Expression<number>;
 	width: number | Expression<number>;
@@ -25,13 +23,17 @@ export interface StickyNoteV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StickyNoteV1Node = {
+interface StickyNoteV1NodeBase {
 	type: 'n8n-nodes-base.stickyNote';
 	version: 1;
-	config: NodeConfig<StickyNoteV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type StickyNoteV1Node = StickyNoteV1NodeBase & {
+	config: NodeConfig<StickyNoteV1Config>;
 };
+
+export type StickyNoteV1Node = StickyNoteV1Node;

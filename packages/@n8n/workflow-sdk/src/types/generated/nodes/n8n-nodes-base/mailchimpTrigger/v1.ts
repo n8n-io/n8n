@@ -1,8 +1,6 @@
 /**
  * Mailchimp Trigger Node - Version 1
  * Handle Mailchimp events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MailchimpTriggerV1Params {
+export interface MailchimpTriggerV1Config {
 	authentication?: 'apiKey' | 'oAuth2' | Expression<string>;
 /**
  * The list that is gonna fire the event. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -41,13 +39,18 @@ export interface MailchimpTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailchimpTriggerV1Node = {
+interface MailchimpTriggerV1NodeBase {
 	type: 'n8n-nodes-base.mailchimpTrigger';
 	version: 1;
-	config: NodeConfig<MailchimpTriggerV1Params>;
 	credentials?: MailchimpTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MailchimpTriggerV1Node = MailchimpTriggerV1NodeBase & {
+	config: NodeConfig<MailchimpTriggerV1Config>;
 };
+
+export type MailchimpTriggerV1Node = MailchimpTriggerV1Node;

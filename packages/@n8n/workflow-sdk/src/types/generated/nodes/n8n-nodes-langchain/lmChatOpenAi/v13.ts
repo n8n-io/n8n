@@ -1,8 +1,6 @@
 /**
  * OpenAI Chat Model Node - Version 1.3
  * For advanced usage with an AI chain
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -16,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatOpenAiV13Params {
+export interface LcLmChatOpenAiV13Config {
 /**
  * The model which will generate the completion. &lt;a href="https://beta.openai.com/docs/models/overview"&gt;Learn more&lt;/a&gt;.
  * @default gpt-5-mini
@@ -38,13 +36,18 @@ export interface LcLmChatOpenAiV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatOpenAiV13Node = {
+interface LcLmChatOpenAiV13NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatOpenAi';
 	version: 1.3;
-	config: NodeConfig<LcLmChatOpenAiV13Params>;
 	credentials?: LcLmChatOpenAiV13Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatOpenAiV13Node = LcLmChatOpenAiV13NodeBase & {
+	config: NodeConfig<LcLmChatOpenAiV13Config>;
 };
+
+export type LcLmChatOpenAiV13Node = LcLmChatOpenAiV13Node;

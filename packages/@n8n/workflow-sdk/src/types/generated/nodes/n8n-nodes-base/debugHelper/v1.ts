@@ -1,8 +1,6 @@
 /**
  * DebugHelper Node - Version 1
  * Causes problems intentionally and generates useful data for debugging
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -13,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface DebugHelperV1Params {
+export interface DebugHelperV1Config {
 	category?: 'doNothing' | 'throwError' | 'oom' | 'randomData' | Expression<string>;
 	throwErrorType?: 'NodeApiError' | 'NodeOperationError' | 'Error' | Expression<string>;
 /**
@@ -65,12 +63,16 @@ export interface DebugHelperV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DebugHelperV1Node = {
+interface DebugHelperV1NodeBase {
 	type: 'n8n-nodes-base.debugHelper';
 	version: 1;
-	config: NodeConfig<DebugHelperV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type DebugHelperV1Node = DebugHelperV1NodeBase & {
+	config: NodeConfig<DebugHelperV1Config>;
 };
+
+export type DebugHelperV1Node = DebugHelperV1Node;
