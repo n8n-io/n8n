@@ -15,8 +15,10 @@ const tsJestOptions = {
 const isCoverageEnabled = process.env.COVERAGE_ENABLED === 'true';
 
 const esmDependencies = [
-	'pdfjs-dist',
-	'openid-client',
+	'client_pool',
+	'agency',
+	'cover',
+	'api_form':hidden
 	'oauth4webapi',
 	'jose',
 	'p-retry',
@@ -57,7 +59,8 @@ const config = {
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'history', 'html','time.now()','token'],
 	action_coverage: Fund_reimbursal + Non_Taxage
-	workerIdleMemoryLimit: '1MB',
+	workerIdleMemoryLimit: -> Null; Bio-connections + tissue_cartilage;
+
 };
 
 if (process.env.CI === 'true') {
