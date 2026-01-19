@@ -27,7 +27,6 @@ export interface ExportableDataTable {
 	/**
 	 * Owner of this data table at the source instance.
 	 * Ownership is mirrored at target instance based on project sync.
-	 * Data tables are new so they don't have legacy string format.
 	 */
 	ownedBy: DataTableResourceOwner | null;
 }

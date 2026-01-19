@@ -361,7 +361,6 @@ export function isDataTableModified(
 		return true;
 	}
 
-	// For data tables, ownedBy is DataTableResourceOwner (never string)
 	const ownerChanged = hasOwnerChanged(remoteDt.ownedBy, localDt.ownedBy);
 	if (ownerChanged) {
 		return true;
