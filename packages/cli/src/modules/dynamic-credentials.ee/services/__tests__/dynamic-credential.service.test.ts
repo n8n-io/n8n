@@ -1090,7 +1090,7 @@ describe('DynamicCredentialService', () => {
 					mockExpressionService,
 				);
 				service.getDynamicCredentialsEndpointsMiddleware();
-				expect(getStaticAuthMiddlewareSpy).toHaveBeenCalledWith('test-token');
+				expect(getStaticAuthMiddlewareSpy).toHaveBeenCalledWith('test-token', 'x-authorization');
 				getStaticAuthMiddlewareSpy.mockRestore();
 			});
 		});
