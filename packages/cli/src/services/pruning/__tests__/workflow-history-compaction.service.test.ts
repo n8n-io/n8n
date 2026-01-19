@@ -121,11 +121,6 @@ describe('WorkflowHistoryCompactionService', () => {
 			mock(),
 		);
 
-		const trimLongRunningHistoriesSpy = jest
-			// @ts-expect-error Private method
-			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation();
-
 		jest
 			// @ts-expect-error Private method
 			.spyOn(compactingService, 'compactRecentHistories')
