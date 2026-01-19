@@ -170,21 +170,23 @@ describe('v2/components/Button', () => {
 				expect(button?.className).toContain('disabled');
 			});
 
-			it('should prevent click on disabled link button', async () => {
-				const handleClick = vi.fn();
+			it('should prevent navigation on disabled link button', async () => {
 				const wrapper = render(Button, {
 					props: {
 						href: 'https://example.com',
 						disabled: true,
-						onClick: handleClick,
 					},
 					slots: { default: 'Link' },
 					global: { stubs },
 				});
-				const link = wrapper.container.querySelector('a');
-				await userEvent.click(link!);
-				// The click handler is called but event.preventDefault() is triggered
-				expect(link).toHaveAttribute('aria-disabled', 'true');
+				const link = wrapper.container.querySelector('a')!;
+
+				const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+				const preventDefaultSpy = vi.spyOn(clickEvent, 'preventDefault');
+
+				link.dispatchEvent(clickEvent);
+
+				expect(preventDefaultSpy).toHaveBeenCalled();
 			});
 		});
 

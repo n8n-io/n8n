@@ -199,13 +199,13 @@ const handleClick = (event: MouseEvent) => {
 	}
 
 	&.subtle {
-		--button--color--background: light-dark(var(--color--neutral-100), var(--color--neutral-800));
+		--button--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-800));
 		--button--color--background-hover: light-dark(
-			var(--color--neutral-250),
+			var(--color--neutral-200),
 			var(--color--neutral-700)
 		);
 		--button--color--background-active: light-dark(
-			var(--color--neutral-300),
+			var(--color--neutral-250),
 			var(--color--neutral-600)
 		);
 		--button--shadow:
