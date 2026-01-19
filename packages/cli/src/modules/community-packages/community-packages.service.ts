@@ -327,19 +327,27 @@ export class CommunityPackagesService {
 				missingPackages: [...missingPackages],
 			});
 			const environment = process.env.ENVIRONMENT === 'staging' ? 'staging' : 'production';
-			const vettedPackages = await getCommunityNodeTypes(environment);
-
-			const checksums = new Map<string, Map<string, string>>();
-			for (const p of vettedPackages) {
-				const versionMap = new Map<string, string>();
-				versionMap.set(p.npmVersion, p.checksum);
-				for (const v of p.nodeVersions ?? []) versionMap.set(v.npmVersion, v.checksum);
-				checksums.set(p.packageName, versionMap);
-			}
 
 			for (const missingPackage of missingPackages) {
 				try {
-					const checksum = checksums.get(missingPackage.packageName)?.get(missingPackage.version);
+					const [vettedPackage] = await getCommunityNodeTypes(environment, {
+						filters: { packageName: { $eq: missingPackage.packageName } },
+						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
+					});
+
+					let checksum: string | undefined;
+					if (vettedPackage) {
+						// Get the checksum if the required version is latest
+						if (vettedPackage.npmVersion === missingPackage.version) {
+							checksum = vettedPackage.checksum;
+						} else {
+							// Get the checksum if the required version is not latest
+							checksum = vettedPackage.nodeVersions?.find(
+								(v) => v.npmVersion === missingPackage.version,
+							)?.checksum;
+						}
+					}
+
 					await this.installPackage(missingPackage.packageName, missingPackage.version, checksum);
 					missingPackages.delete(missingPackage);
 				} catch (error) {

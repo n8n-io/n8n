@@ -25,19 +25,29 @@ interface Pagination {
 	total: number;
 }
 
+interface PaginationRequestOptions {
+	includeEntryId?: boolean;
+}
+
+interface PaginationRequestParams {
+	filters?: IDataObject;
+	fields?: string[];
+	pagination: {
+		page: number;
+		pageSize: number;
+	};
+}
+
 const REQUEST_TIMEOUT_MS = 3000;
 
-export async function paginatedRequest<T>(url: string, qs: IDataObject = {}): Promise<T[]> {
+export async function paginatedRequest<T>(
+	url: string,
+	params: PaginationRequestParams,
+	options?: PaginationRequestOptions,
+): Promise<T[]> {
 	let returnData: T[] = [];
 	let responseData: T[] | undefined = [];
-
-	const params = {
-		...qs,
-		pagination: {
-			page: 1,
-			pageSize: 25,
-		},
-	};
+	const { includeEntryId } = options || {};
 
 	do {
 		let response;
@@ -57,7 +67,9 @@ export async function paginatedRequest<T>(url: string, qs: IDataObject = {}): Pr
 			break;
 		}
 
-		responseData = response?.data?.data?.map((item) => item.attributes);
+		responseData = response?.data?.data?.map((item) =>
+			includeEntryId ? { id: item.id, ...item.attributes } : item.attributes,
+		);
 
 		if (!responseData?.length) break;
 
@@ -66,46 +78,13 @@ export async function paginatedRequest<T>(url: string, qs: IDataObject = {}): Pr
 		if (response?.data?.meta?.pagination) {
 			const { page, pageCount } = response?.data.meta.pagination;
 
-			if (page === pageCount) {
-				break;
-			}
+			if (page === pageCount) break;
 		}
 
 		params.pagination.page++;
 	} while (responseData?.length);
 
 	return returnData;
-}
-
-export async function metadataRequest<T>(url: string): Promise<T[]> {
-	let response;
-
-	const params = {
-		fields: ['npmVersion', 'name'],
-		pagination: {
-			pageSize: 1000,
-		},
-	};
-
-	try {
-		response = await axios.get<ResponseData<T>>(url, {
-			headers: { 'Content-Type': 'application/json' },
-			params,
-			timeout: REQUEST_TIMEOUT_MS,
-		});
-	} catch (error) {
-		Container.get(ErrorReporter).error(error, {
-			tags: { source: 'communityNodesMetadataRequest' },
-		});
-		Container.get(Logger).error(
-			`Error while fetching community nodes metadata: ${(error as Error).message}`,
-		);
-	}
-
-	const responseData: T[] =
-		response?.data?.data?.map((item) => ({ id: item.id, ...item.attributes })) || [];
-
-	return responseData;
 }
 
 export function buildStrapiUpdateQuery(ids: number[]): IDataObject {

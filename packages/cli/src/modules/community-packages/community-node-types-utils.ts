@@ -1,6 +1,6 @@
 import type { IDataObject, INodeTypeDescription } from 'n8n-workflow';
 
-import { metadataRequest, paginatedRequest } from './strapi-utils';
+import { paginatedRequest } from './strapi-utils';
 
 export type StrapiCommunityNodeType = {
 	authorGithubUrl: string;
@@ -21,7 +21,10 @@ export type StrapiCommunityNodeType = {
 	nodeVersions?: Array<{ npmVersion: string; checksum: string }>;
 };
 
-export type CommunityNodesMetadata = Pick<StrapiCommunityNodeType, 'name' | 'npmVersion'> & {
+export type CommunityNodesMetadata = Pick<
+	StrapiCommunityNodeType,
+	'name' | 'npmVersion' | 'updatedAt'
+> & {
 	id: number;
 };
 
@@ -36,15 +39,29 @@ function getUrl(environment: 'staging' | 'production'): string {
 
 export async function getCommunityNodeTypes(
 	environment: 'staging' | 'production',
-	qs?: IDataObject,
+	qs: { filters?: IDataObject; fields?: string[] } = {},
 ): Promise<StrapiCommunityNodeType[]> {
 	const url = getUrl(environment);
-	return await paginatedRequest<StrapiCommunityNodeType>(url, qs);
+	const params = {
+		...qs,
+		pagination: {
+			page: 1,
+			pageSize: 25,
+		},
+	};
+	return await paginatedRequest<StrapiCommunityNodeType>(url, params);
 }
 
 export async function getCommunityNodesMetadata(
 	environment: 'staging' | 'production',
 ): Promise<CommunityNodesMetadata[]> {
 	const url = getUrl(environment);
-	return await metadataRequest<CommunityNodesMetadata>(url);
+	const params = {
+		fields: ['npmVersion', 'name', 'updatedAt'],
+		pagination: {
+			page: 1,
+			pageSize: 500,
+		},
+	};
+	return await paginatedRequest<CommunityNodesMetadata>(url, params, { includeEntryId: true });
 }
