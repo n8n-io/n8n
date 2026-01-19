@@ -21,6 +21,7 @@ import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
+import ExtensionPoint from '@/app/components/ExtensionPoint.vue';
 
 import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
@@ -411,6 +412,10 @@ const onSelect = (action: string) => {
 
 <template>
 	<div>
+		<ExtensionPoint
+			name="views.projects.header.button"
+			:context="{ hasActiveCallouts: props.hasActiveCallouts }"
+		/>
 		<div ref="projectHeaderRef" :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />

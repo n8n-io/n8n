@@ -2014,9 +2014,15 @@ importers:
 
   packages/cloud-extensions/test-extension:
     dependencies:
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../../frontend/@n8n/design-system
       '@n8n/extension-sdk':
         specifier: workspace:*
         version: link:../../@n8n/extension-sdk
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../../frontend/@n8n/i18n
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../@n8n/utils
