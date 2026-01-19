@@ -409,14 +409,22 @@ const emptyListDescription = computed(() => {
 });
 
 const emptyListHeading = computed(() => {
+	const firstName = currentUser.value.firstName;
+
 	if (showRecommendedTemplatesInline.value) {
-		return i18n.baseText('workflows.empty.heading', {
-			interpolate: { name: currentUser.value.firstName ?? '' },
-		});
+		if (firstName) {
+			return i18n.baseText('workflows.empty.heading', {
+				interpolate: { name: firstName },
+			});
+		}
+		return i18n.baseText('workflows.empty.heading.userNotSetup');
 	} else {
-		return i18n.baseText('workflows.empty.headingWithIcon', {
-			interpolate: { name: currentUser.value.firstName ?? '' },
-		});
+		if (firstName) {
+			return i18n.baseText('workflows.empty.headingWithIcon', {
+				interpolate: { name: firstName },
+			});
+		}
+		return i18n.baseText('workflows.empty.headingWithIcon.userNotSetup');
 	}
 });
 

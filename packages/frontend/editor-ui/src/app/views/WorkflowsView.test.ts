@@ -121,7 +121,7 @@ describe('WorkflowsView', () => {
 		it('for non setup user', async () => {
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
-			expect(getByText('👋 Welcome !')).toBeVisible();
+			expect(getByText('👋 Welcome!')).toBeVisible();
 		});
 
 		it('for currentUser user', async () => {
@@ -131,7 +131,7 @@ describe('WorkflowsView', () => {
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByText('👋 Welcome John!')).toBeVisible();
+			expect(getByText('👋 Welcome, John!')).toBeVisible();
 		});
 
 		describe('when onboardingExperiment -> False', () => {
