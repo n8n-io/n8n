@@ -156,6 +156,19 @@ export class AuthService {
 		};
 	}
 
+	getCookieToken(req: AuthenticatedRequest) {
+		return req.cookies[AUTH_COOKIE_NAME];
+	}
+
+	getBrowserIdIfApplicable(req: AuthenticatedRequest) {
+		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
+		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+			this.logger.debug(`Skipped browserId check on ${endpoint}`);
+			return;
+		}
+		return req.browserId;
+	}
+
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
 	}

@@ -813,4 +813,85 @@ describe('AuthService', () => {
 			});
 		});
 	});
+
+	describe('getCookieToken', () => {
+		it('should return token from cookies', () => {
+			const req = {
+				cookies: { [AUTH_COOKIE_NAME]: 'test-token-123' },
+			} as AuthenticatedRequest;
+
+			const token = authService.getCookieToken(req);
+
+			expect(token).toBe('test-token-123');
+		});
+
+		it('should return undefined when cookie not present', () => {
+			const req = {
+				cookies: {},
+			} as AuthenticatedRequest;
+
+			const token = authService.getCookieToken(req);
+
+			expect(token).toBeUndefined();
+		});
+	});
+
+	describe('getBrowserIdIfApplicable', () => {
+		it('should return browserId for POST requests', () => {
+			const req = {
+				method: 'POST',
+				baseUrl: '/api',
+				route: { path: '/chat/message' },
+				browserId: 'browser-123',
+			} as AuthenticatedRequest;
+
+			const browserId = authService.getBrowserIdIfApplicable(req);
+
+			expect(browserId).toBe('browser-123');
+		});
+
+		it('should return undefined for GET on skip endpoints', () => {
+			const req = {
+				method: 'GET',
+				baseUrl: '/api',
+				route: { path: '/chat/sessions' },
+				browserId: 'browser-123',
+			} as AuthenticatedRequest;
+
+			// Mock skipBrowserIdCheckEndpoints to include this endpoint
+			(authService as any).skipBrowserIdCheckEndpoints = ['/api/chat/sessions'];
+
+			const browserId = authService.getBrowserIdIfApplicable(req);
+
+			expect(browserId).toBeUndefined();
+		});
+
+		it('should return browserId for POST on skip endpoints', () => {
+			const req = {
+				method: 'POST',
+				baseUrl: '/api',
+				route: { path: '/chat/sessions' },
+				browserId: 'browser-123',
+			} as AuthenticatedRequest;
+
+			// Mock skipBrowserIdCheckEndpoints to include this endpoint
+			(authService as any).skipBrowserIdCheckEndpoints = ['/api/chat/sessions'];
+
+			const browserId = authService.getBrowserIdIfApplicable(req);
+
+			expect(browserId).toBe('browser-123');
+		});
+
+		it('should return browserId when no route is present', () => {
+			const req = {
+				method: 'POST',
+				baseUrl: '/api',
+				browserId: 'browser-123',
+			} as AuthenticatedRequest;
+
+			const browserId = authService.getBrowserIdIfApplicable(req);
+
+			expect(browserId).toBe('browser-123');
+		});
+	});
 });

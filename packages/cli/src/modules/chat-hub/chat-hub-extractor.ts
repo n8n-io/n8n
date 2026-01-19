@@ -6,7 +6,13 @@ import {
 	HookDescription,
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
+import { Cipher } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
+
+const EncryptedMetadataSchema = z.object({
+	encryptedMetadata: z.string(),
+});
 
 const ChatHubTriggerItemSchema = z.object({
 	authToken: z.string(),
@@ -14,13 +20,17 @@ const ChatHubTriggerItemSchema = z.object({
 });
 
 export type ChatHubTriggerItem = z.output<typeof ChatHubTriggerItemSchema>;
+export const CHATHUB_EXTRACTOR_NAME = 'ChatHubExtractor';
 
 @ContextEstablishmentHook()
 export class ChatHubExtractor implements IContextEstablishmentHook {
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly cipher: Cipher,
+	) {}
 
 	hookDescription: HookDescription = {
-		name: 'ChatHubExtractor',
+		name: CHATHUB_EXTRACTOR_NAME,
 		displayName: 'Chat Hub Extractor',
 		options: [],
 	};
@@ -38,26 +48,38 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 		}
 		const [triggerItem] = options.triggerItems;
 
-		const chatHubInformation = ChatHubTriggerItemSchema.safeParse(triggerItem.json);
+		const encryptedMetadataResult = EncryptedMetadataSchema.safeParse(triggerItem);
 
-		// Always delete the authToken and browserId from the item
-		delete triggerItem.json.authToken;
-		delete triggerItem.json.browserId;
+		// Always delete encryptedMetadata from the item
+		delete triggerItem.encryptedMetadata;
 
-		if (chatHubInformation.success) {
-			return {
-				triggerItems: options.triggerItems,
-				contextUpdate: {
-					credentials: {
-						version: 1,
-						identity: chatHubInformation.data.authToken,
-						metadata: {
-							source: 'chat-hub-injected',
-							browserId: chatHubInformation.data.browserId ?? null,
+		if (encryptedMetadataResult.success) {
+			try {
+				const decrypted = this.cipher.decrypt(encryptedMetadataResult.data.encryptedMetadata);
+				const parsed = jsonParse(decrypted);
+				const chatHubInformation = ChatHubTriggerItemSchema.safeParse(parsed);
+				if (chatHubInformation.success) {
+					return {
+						triggerItems: options.triggerItems,
+						contextUpdate: {
+							credentials: {
+								version: 1,
+								identity: chatHubInformation.data.authToken,
+								metadata: {
+									source: 'chat-hub-injected',
+									browserId: chatHubInformation.data.browserId ?? null,
+								},
+							},
 						},
-					},
-				},
-			};
+					};
+				} else {
+					this.logger.warn('Invalid format for encryptedMetadata in chathub extractor');
+				}
+			} catch (error) {
+				this.logger.error('Failed to decrypt/parse encrypted chat metadata', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 		return {};
 	}

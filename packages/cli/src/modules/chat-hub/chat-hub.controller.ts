@@ -39,6 +39,9 @@ import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
+import { ChatHubTriggerItem } from './chat-hub-extractor';
+import { AuthService } from '@/auth/auth.service';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 @RestController('/chat')
 export class ChatHubController {
@@ -48,6 +51,7 @@ export class ChatHubController {
 		private readonly chatAgentService: ChatHubAgentService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
 		private readonly logger: Logger,
+		private readonly authService: AuthService,
 	) {}
 
 	@Post('/models')
@@ -136,10 +140,15 @@ export class ChatHubController {
 	) {
 		let shouldRethrow = false;
 		try {
-			await this.chatService.sendHumanMessage(res, req.user, {
-				...payload,
-				userId: req.user.id,
-			});
+			await this.chatService.sendHumanMessage(
+				res,
+				req.user,
+				{
+					...payload,
+					userId: req.user.id,
+				},
+				this.extractChatHubTrigger(req),
+			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
 
@@ -180,12 +189,17 @@ export class ChatHubController {
 	) {
 		let shouldRethrow = false;
 		try {
-			await this.chatService.editMessage(res, req.user, {
-				...payload,
-				sessionId,
-				editId,
-				userId: req.user.id,
-			});
+			await this.chatService.editMessage(
+				res,
+				req.user,
+				{
+					...payload,
+					sessionId,
+					editId,
+					userId: req.user.id,
+				},
+				this.extractChatHubTrigger(req),
+			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
 
@@ -226,12 +240,17 @@ export class ChatHubController {
 	) {
 		let shouldRethrow = false;
 		try {
-			await this.chatService.regenerateAIMessage(res, req.user, {
-				...payload,
-				sessionId,
-				retryId,
-				userId: req.user.id,
-			});
+			await this.chatService.regenerateAIMessage(
+				res,
+				req.user,
+				{
+					...payload,
+					sessionId,
+					retryId,
+					userId: req.user.id,
+				},
+				this.extractChatHubTrigger(req),
+			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
 
@@ -343,5 +362,17 @@ export class ChatHubController {
 		await this.chatAgentService.deleteAgent(agentId, req.user.id);
 
 		res.status(204).send();
+	}
+
+	private extractChatHubTrigger(req: AuthenticatedRequest): ChatHubTriggerItem {
+		const authToken = this.authService.getCookieToken(req);
+		if (!authToken) {
+			throw new UnauthenticatedError('No authentication token found');
+		}
+		const browserId = this.authService.getBrowserIdIfApplicable(req);
+		return {
+			authToken,
+			browserId,
+		};
 	}
 }

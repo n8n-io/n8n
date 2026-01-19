@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
-import { InstanceSettings, BinaryDataService } from 'n8n-core';
+import { InstanceSettings, BinaryDataService, Cipher } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_NODE_TYPE,
@@ -32,6 +32,8 @@ import { ChatHubSessionRepository } from '../chat-session.repository';
 
 mockInstance(BinaryDataService);
 mockInstance(WorkflowExecutionService);
+const mockCipher = mockInstance(Cipher);
+mockCipher.encrypt.mockReturnValue('encrypted-metadata');
 
 beforeAll(async () => {
 	await testModules.loadModules(['chat-hub']);

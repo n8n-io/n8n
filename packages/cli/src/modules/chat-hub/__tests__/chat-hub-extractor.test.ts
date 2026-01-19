@@ -1,24 +1,27 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { Cipher } from 'n8n-core';
+import type { INodeExecutionData } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
 
 import { ChatHubExtractor } from '../chat-hub-extractor';
 
 // Helper function to create trigger items
-const createTriggerItem = (data: IDataObject): INodeExecutionData => ({
-	json: data,
+const createTriggerItem = (data: Record<string, unknown>): INodeExecutionData => ({
+	json: {},
+	...data,
 	pairedItem: { item: 0 },
 });
 
 describe('ChatHubExtractor', () => {
 	let extractor: ChatHubExtractor;
 	let mockLogger: jest.Mocked<Logger>;
+	let mockCipher: jest.Mocked<Cipher>;
 
 	beforeEach(() => {
-		mockLogger = {
-			debug: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
-		extractor = new ChatHubExtractor(mockLogger);
+		mockLogger = mock<Logger>();
+		mockCipher = mock<Cipher>();
+		extractor = new ChatHubExtractor(mockLogger, mockCipher);
 	});
 
 	describe('execute', () => {
@@ -48,11 +51,15 @@ describe('ChatHubExtractor', () => {
 			);
 		});
 
-		it('should extract authToken and browserId successfully', async () => {
+		it('should decrypt and extract authToken and browserId successfully', async () => {
+			const metadata = { authToken: 'test-auth-token-123', browserId: 'browser-id-456' };
+			const encryptedData = 'encrypted-string';
+
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(metadata));
+
 			const triggerItem = createTriggerItem({
-				authToken: 'test-auth-token-123',
-				browserId: 'browser-id-456',
-				otherField: 'value',
+				encryptedMetadata: encryptedData,
+				json: { otherField: 'value' },
 			});
 			const options = {
 				triggerItems: [triggerItem],
@@ -60,8 +67,9 @@ describe('ChatHubExtractor', () => {
 
 			const result = await extractor.execute(options);
 
+			expect(mockCipher.decrypt).toHaveBeenCalledWith(encryptedData);
 			expect(result).toEqual({
-				triggerItems: [createTriggerItem({ otherField: 'value' })],
+				triggerItems: [triggerItem],
 				contextUpdate: {
 					credentials: {
 						version: 1,
@@ -76,9 +84,12 @@ describe('ChatHubExtractor', () => {
 		});
 
 		it('should extract authToken without browserId', async () => {
+			const metadata = { authToken: 'test-auth-token-123' };
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(metadata));
+
 			const triggerItem = createTriggerItem({
-				authToken: 'test-auth-token-123',
-				otherField: 'value',
+				encryptedMetadata: 'encrypted',
+				json: { otherField: 'value' },
 			});
 			const options = {
 				triggerItems: [triggerItem],
@@ -87,7 +98,7 @@ describe('ChatHubExtractor', () => {
 			const result = await extractor.execute(options);
 
 			expect(result).toEqual({
-				triggerItems: [createTriggerItem({ otherField: 'value' })],
+				triggerItems: [triggerItem],
 				contextUpdate: {
 					credentials: {
 						version: 1,
@@ -101,11 +112,13 @@ describe('ChatHubExtractor', () => {
 			});
 		});
 
-		it('should delete authToken and browserId from trigger item', async () => {
+		it('should delete encryptedMetadata from trigger item', async () => {
+			const metadata = { authToken: 'test-auth-token-123', browserId: 'browser-id-456' };
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(metadata));
+
 			const triggerItem = createTriggerItem({
-				authToken: 'test-auth-token-123',
-				browserId: 'browser-id-456',
-				otherField: 'value',
+				encryptedMetadata: 'encrypted',
+				json: { otherField: 'value' },
 			});
 			const options = {
 				triggerItems: [triggerItem],
@@ -113,16 +126,18 @@ describe('ChatHubExtractor', () => {
 
 			await extractor.execute(options);
 
-			// Verify sensitive fields are removed
-			expect(triggerItem.json).not.toHaveProperty('authToken');
-			expect(triggerItem.json).not.toHaveProperty('browserId');
+			// Verify encryptedMetadata is removed
+			expect(triggerItem).not.toHaveProperty('encryptedMetadata');
 			expect(triggerItem.json).toHaveProperty('otherField', 'value');
 		});
 
-		it('should return empty object when authToken is missing', async () => {
+		it('should return empty object when decryption fails', async () => {
+			mockCipher.decrypt.mockImplementation(() => {
+				throw new Error('Decryption failed');
+			});
+
 			const triggerItem = createTriggerItem({
-				browserId: 'browser-id-456',
-				otherField: 'value',
+				encryptedMetadata: 'invalid-encrypted',
 			});
 			const options = {
 				triggerItems: [triggerItem],
@@ -131,16 +146,17 @@ describe('ChatHubExtractor', () => {
 			const result = await extractor.execute(options);
 
 			expect(result).toEqual({});
-			// Verify fields are still deleted even on validation failure
-			expect(triggerItem.json).not.toHaveProperty('authToken');
-			expect(triggerItem.json).not.toHaveProperty('browserId');
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				'Failed to decrypt/parse encrypted chat metadata',
+				expect.objectContaining({ error: 'Decryption failed' }),
+			);
 		});
 
-		it('should return empty object when authToken is not a string', async () => {
+		it('should return empty object when JSON parsing fails', async () => {
+			mockCipher.decrypt.mockReturnValue('invalid-json{]');
+
 			const triggerItem = createTriggerItem({
-				authToken: 12345,
-				browserId: 'browser-id-456',
-				otherField: 'value',
+				encryptedMetadata: 'encrypted',
 			});
 			const options = {
 				triggerItems: [triggerItem],
@@ -149,33 +165,56 @@ describe('ChatHubExtractor', () => {
 			const result = await extractor.execute(options);
 
 			expect(result).toEqual({});
-			// Verify fields are still deleted even on validation failure
-			expect(triggerItem.json).not.toHaveProperty('authToken');
-			expect(triggerItem.json).not.toHaveProperty('browserId');
+			expect(mockLogger.error).toHaveBeenCalled();
 		});
 
-		it('should only process first trigger item', async () => {
-			const triggerItem1 = createTriggerItem({
-				authToken: 'token-1',
-				browserId: 'browser-1',
-			});
-			const triggerItem2 = createTriggerItem({
-				authToken: 'token-2',
-				browserId: 'browser-2',
+		it('should return empty object when authToken is missing in decrypted data', async () => {
+			mockCipher.decrypt.mockReturnValue(JSON.stringify({ browserId: 'browser-id-456' }));
+
+			const triggerItem = createTriggerItem({
+				encryptedMetadata: 'encrypted',
 			});
 			const options = {
-				triggerItems: [triggerItem1, triggerItem2],
+				triggerItems: [triggerItem],
 			} as ContextEstablishmentOptions;
 
 			const result = await extractor.execute(options);
 
-			expect(result.contextUpdate?.credentials?.identity).toBe('token-1');
-			// First item should have sensitive fields deleted
-			expect(triggerItem1.json).not.toHaveProperty('authToken');
-			expect(triggerItem1.json).not.toHaveProperty('browserId');
-			// Second item should remain unchanged
-			expect(triggerItem2.json).toHaveProperty('authToken', 'token-2');
-			expect(triggerItem2.json).toHaveProperty('browserId', 'browser-2');
+			expect(result).toEqual({});
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Invalid format for encryptedMetadata in chathub extractor',
+			);
+		});
+
+		it('should always delete encryptedMetadata even on error', async () => {
+			mockCipher.decrypt.mockImplementation(() => {
+				throw new Error('fail');
+			});
+
+			const triggerItem = createTriggerItem({
+				encryptedMetadata: 'encrypted',
+			});
+			const options = {
+				triggerItems: [triggerItem],
+			} as ContextEstablishmentOptions;
+
+			await extractor.execute(options);
+
+			expect(triggerItem).not.toHaveProperty('encryptedMetadata');
+		});
+
+		it('should return empty object when no encryptedMetadata field', async () => {
+			const triggerItem = createTriggerItem({
+				json: { someField: 'value' },
+			});
+			const options = {
+				triggerItems: [triggerItem],
+			} as ContextEstablishmentOptions;
+
+			const result = await extractor.execute(options);
+
+			expect(result).toEqual({});
+			expect(mockCipher.decrypt).not.toHaveBeenCalled();
 		});
 	});
 
