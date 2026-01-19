@@ -1,6 +1,5 @@
 import { inProduction } from '@n8n/backend-common';
 
-import { getCommunityNodeTypes } from '../community-node-types-utils';
 import { CommunityNodeTypesService } from '../community-node-types.service';
 
 jest.mock('@n8n/backend-common', () => ({
@@ -8,9 +7,22 @@ jest.mock('@n8n/backend-common', () => ({
 	inProduction: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock('../community-node-types-utils', () => ({
-	getCommunityNodeTypes: jest.fn().mockResolvedValue([]),
+jest.mock('fs', () => ({
+	...jest.requireActual('fs'),
+	readFileSync: jest.fn().mockReturnValue('[]'),
 }));
+
+jest.mock('fs/promises', () => ({
+	...jest.requireActual('fs/promises'),
+	writeFile: jest.fn().mockResolvedValue(undefined),
+	rename: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../community-node-types-utils', () => ({
+	getCommunityNodesMetadata: jest.fn().mockResolvedValue([]),
+}));
+
+const mockReadFileSync = jest.requireMock('fs').readFileSync;
 
 const mockDateNow = jest.spyOn(Date, 'now');
 const mockMathRandom = jest.spyOn(Math, 'random');
@@ -23,10 +35,11 @@ describe('CommunityNodeTypesService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockReadFileSync.mockReturnValue('[]');
 
 		delete process.env.ENVIRONMENT;
 
-		loggerMock = { error: jest.fn() };
+		loggerMock = { error: jest.fn(), debug: jest.fn(), info: jest.fn() };
 		configMock = {
 			enabled: true,
 			verifiedEnabled: true,
@@ -41,32 +54,45 @@ describe('CommunityNodeTypesService', () => {
 
 	afterEach(() => {
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
 	describe('fetchNodeTypes', () => {
 		it('should use staging environment when ENVIRONMENT=staging', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
+			expect(mockReadFileSync).toHaveBeenCalledWith(
+				expect.stringContaining('staging-node-types.json'),
+				'utf-8',
+			);
 		});
 
 		it('should use production environment when inProduction=true', async () => {
 			(inProduction as unknown as jest.Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production');
+			expect(mockReadFileSync).toHaveBeenCalledWith(
+				expect.stringContaining('production-node-types.json'),
+				'utf-8',
+			);
 		});
 
 		it('should use production environment when ENVIRONMENT=production', async () => {
 			process.env.ENVIRONMENT = 'production';
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production');
+			expect(mockReadFileSync).toHaveBeenCalledWith(
+				expect.stringContaining('production-node-types.json'),
+				'utf-8',
+			);
 		});
 
 		it('should prioritize ENVIRONMENT=staging over inProduction=true', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			(inProduction as unknown as jest.Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
+			expect(mockReadFileSync).toHaveBeenCalledWith(
+				expect.stringContaining('staging-node-types.json'),
+				'utf-8',
+			);
 		});
 	});
 
@@ -106,12 +132,12 @@ describe('CommunityNodeTypesService', () => {
 		});
 
 		it('should return early when nodeTypes is empty without updating communityNodeTypes', () => {
-			const resetCommunityNodeTypesSpy = jest.spyOn(service as any, 'resetCommunityNodeTypes');
+			const setCommunityNodeTypesSpy = jest.spyOn(service as any, 'setCommunityNodeTypes');
 			const initialNodeTypes = (service as any).communityNodeTypes;
 
 			(service as any).updateCommunityNodeTypes([]);
 
-			expect(resetCommunityNodeTypesSpy).not.toHaveBeenCalled();
+			expect(setCommunityNodeTypesSpy).not.toHaveBeenCalled();
 			expect((service as any).communityNodeTypes).toBe(initialNodeTypes);
 
 			expect((service as any).lastUpdateTimestamp).not.toBe(1000000);
@@ -122,11 +148,11 @@ describe('CommunityNodeTypesService', () => {
 				{ name: 'test-node-1', version: '1.0.0' },
 				{ name: 'test-node-2', version: '1.1.0' },
 			];
-			const resetCommunityNodeTypesSpy = jest.spyOn(service as any, 'resetCommunityNodeTypes');
+			const setCommunityNodeTypesSpy = jest.spyOn(service as any, 'setCommunityNodeTypes');
 
 			(service as any).updateCommunityNodeTypes(mockNodeTypes);
 
-			expect(resetCommunityNodeTypesSpy).toHaveBeenCalledTimes(1);
+			expect(setCommunityNodeTypesSpy).toHaveBeenCalledTimes(1);
 			expect((service as any).communityNodeTypes.size).toBe(2);
 			expect((service as any).communityNodeTypes.get('test-node-1')).toEqual(mockNodeTypes[0]);
 			expect((service as any).communityNodeTypes.get('test-node-2')).toEqual(mockNodeTypes[1]);
@@ -258,7 +284,7 @@ describe('CommunityNodeTypesService', () => {
 		});
 
 		it('should return undefined when communityNodeTypes is empty', () => {
-			(service as any).resetCommunityNodeTypes();
+			(service as any).communityNodeTypes.clear();
 
 			const result = service.findVetted('n8n-nodes-air');
 

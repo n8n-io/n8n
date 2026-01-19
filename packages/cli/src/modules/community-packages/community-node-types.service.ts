@@ -1,5 +1,5 @@
 import type { CommunityNodeType } from '@n8n/api-types';
-import { Logger, inProduction } from '@n8n/backend-common';
+import { Logger, inProduction, inTest } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from 'n8n-workflow';
 import { readFileSync } from 'fs';
@@ -129,11 +129,13 @@ export class CommunityNodeTypesService {
 			this.communityNodeTypes.set(nodeType.name, nodeType);
 		}
 
-		this.persistNodeTypesToFile(nodeTypes).catch((error) => {
-			this.logger.error('Failed to persist community node types to file', {
-				error: ensureError(error),
+		if (!inTest) {
+			this.persistNodeTypesToFile(nodeTypes).catch((error) => {
+				this.logger.error('Failed to persist community node types to file', {
+					error: ensureError(error),
+				});
 			});
-		});
+		}
 	}
 
 	private async persistNodeTypesToFile(nodeTypes: StrapiCommunityNodeType[]) {

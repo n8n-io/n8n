@@ -58,6 +58,7 @@ describe('Strapi utils', () => {
 
 			const result = await paginatedRequest<(typeof page1)[number]['attributes']>(
 				'https://strapi.test/api/nodes',
+				{ pagination: { page: 1, pageSize: 25 } },
 			);
 
 			expect(result).toHaveLength(2);
@@ -81,7 +82,7 @@ describe('Strapi utils', () => {
 					},
 				});
 
-			const result = await paginatedRequest(baseUrl);
+			const result = await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 			expect(result).toEqual([]);
 		});
 
@@ -111,7 +112,9 @@ describe('Strapi utils', () => {
 					},
 				});
 
-			const result = await paginatedRequest<(typeof singlePage)[number]['attributes']>(baseUrl);
+			const result = await paginatedRequest<(typeof singlePage)[number]['attributes']>(baseUrl, {
+				pagination: { page: 1, pageSize: 25 },
+			});
 			expect(result).toHaveLength(1);
 			expect(result[0].name).toBe('NodeSingle');
 		});
@@ -121,7 +124,9 @@ describe('Strapi utils', () => {
 
 			nock(baseUrl).get(endpoint).query(true).replyWithError('Request failed');
 
-			const result = await paginatedRequest(`${baseUrl}${endpoint}`);
+			const result = await paginatedRequest(`${baseUrl}${endpoint}`, {
+				pagination: { page: 1, pageSize: 25 },
+			});
 
 			expect(result).toEqual([]);
 		});
@@ -144,7 +149,7 @@ describe('Strapi utils', () => {
 					},
 				});
 
-			await paginatedRequest(baseUrl);
+			await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
 			expect(axiosGetSpy).toHaveBeenCalledWith(
 				baseUrl,
@@ -167,7 +172,7 @@ describe('Strapi utils', () => {
 				.delayConnection(4000) // Delay longer than timeout
 				.reply(200, { data: [] });
 
-			const result = await paginatedRequest(baseUrl);
+			const result = await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
 			expect(result).toEqual([]);
 		});
@@ -181,7 +186,7 @@ describe('Strapi utils', () => {
 				}),
 			);
 
-			const result = await paginatedRequest(baseUrl);
+			const result = await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
 			expect(result).toEqual([]);
 			expect(axiosGetSpy).toHaveBeenCalledWith(
