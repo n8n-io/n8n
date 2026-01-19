@@ -915,7 +915,12 @@ export class SourceControlImportService {
 			existingWorkflowIds.has(String(mapping.workflowId)),
 		);
 
-		// Use transaction to ensure atomic delete + upsert (prevents data loss if upserts fail)
+		/**
+		 * Use a transaction here as we "delete" them all and then "create" them again.
+		 *
+		 * Without a transaction we run the risk of deleting them all, then experiencing a failure on the "create" and
+		 * leaving the customer with a partial tag/workflow import
+		 */
 		await this.workflowTagMappingRepository.manager.transaction(async (transactionManager) => {
 			if (workflowIdsInImport.length > 0) {
 				await transactionManager.delete(WorkflowTagMapping, {
@@ -923,18 +928,19 @@ export class SourceControlImportService {
 				});
 			}
 
-			await Promise.all(
-				mappingsToImport.map(async (mapping) => {
-					await transactionManager.upsert(
-						WorkflowTagMapping,
-						{ tagId: String(mapping.tagId), workflowId: String(mapping.workflowId) },
-						{
-							skipUpdateIfNoValuesChanged: true,
-							conflictPaths: { tagId: true, workflowId: true },
-						},
-					);
-				}),
-			);
+			if (mappingsToImport.length > 0) {
+				await transactionManager.upsert(
+					WorkflowTagMapping,
+					mappingsToImport.map((mapping) => ({
+						tagId: String(mapping.tagId),
+						workflowId: String(mapping.workflowId),
+					})),
+					{
+						skipUpdateIfNoValuesChanged: true,
+						conflictPaths: { tagId: true, workflowId: true },
+					},
+				);
+			}
 		});
 
 		return mappedTags;
