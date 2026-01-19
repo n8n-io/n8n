@@ -3650,6 +3650,8 @@
 	"dataTable.addColumn.alreadyExistsDescription": "Column name already exists, choose a different name",
 	"dataTable.addColumn.testingColumnDescription": "This column is used for testing, choose a different name",
 	"dataTable.search.dateSearchInfo": "Date searches use UTC format, while the table displays dates in your local timezone",
+	"dataTable.cell.oversized": "Value too large to display",
+	"dataTable.cell.oversized.tooltip": "The value can be modified using the data table node",
 	"settings.ldap": "LDAP",
 	"settings.ldap.note": "LDAP allows users to authenticate with their centralized account. It's compatible with services that provide an LDAP interface like Active Directory, Okta and Jumpcloud.",
 	"settings.ldap.infoTip": "Learn more about <a href='https://docs.n8n.io/user-management/ldap/' target='_blank'>LDAP in the Docs</a>",
