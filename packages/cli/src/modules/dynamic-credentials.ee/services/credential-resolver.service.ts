@@ -27,6 +27,7 @@ export interface UpdateResolverParams {
 	name?: string;
 	type?: string;
 	config?: CredentialResolverConfiguration;
+	clearCredentials?: boolean;
 	user: User;
 }
 
@@ -130,6 +131,22 @@ export class DynamicCredentialResolverService {
 
 		if (params.name !== undefined) {
 			existing.name = params.name;
+		}
+
+		if (params.clearCredentials === true) {
+			const resolver = this.registry.getResolverByTypename(existing.type);
+
+			if (!resolver) {
+				throw new CredentialResolverValidationError(`Unknown resolver type: ${existing.type}`);
+			}
+
+			if ('deleteAllSecrets' in resolver && typeof resolver.deleteAllSecrets === 'function') {
+				await resolver.deleteAllSecrets({
+					resolverId: id,
+					resolverName: resolver.metadata.name,
+					configuration: this.decryptConfig(existing.config),
+				});
+			}
 		}
 
 		const saved = await this.repository.save(existing);

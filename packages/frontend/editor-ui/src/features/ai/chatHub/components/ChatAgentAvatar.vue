@@ -28,7 +28,7 @@ const i18n = useI18n();
 		<template #content>{{
 			agent?.name || i18n.baseText('chatHub.agent.unavailableAgent')
 		}}</template>
-		<div :class="$style.container">
+		<div :class="[$style.container, $attrs.class]">
 			<span v-if="agent?.icon?.type === 'emoji'" :class="[$style.emoji, $style[size]]">
 				{{ agent.icon.value }}
 			</span>
@@ -56,9 +56,6 @@ const i18n = useI18n();
 <style lang="scss" module>
 .container {
 	position: relative;
-	width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	min-width: var(--spacing--lg);
 	display: flex;
 	align-items: center;
 	justify-content: center;

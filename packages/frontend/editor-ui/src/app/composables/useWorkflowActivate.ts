@@ -8,6 +8,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -17,6 +18,7 @@ export function useWorkflowActivate() {
 	const telemetry = useTelemetry();
 	const toast = useToast();
 	const i18n = useI18n();
+	const collaborationStore = useCollaborationStore();
 
 	const publishWorkflow = async (
 		workflowId: string,
@@ -24,6 +26,9 @@ export function useWorkflowActivate() {
 		options?: { name?: string; description?: string },
 	) => {
 		updatingWorkflowActivation.value = true;
+
+		collaborationStore.requestWriteAccess();
+
 		const workflow = workflowsStore.getWorkflowById(workflowId);
 		const hadPublishedVersion = !!workflow.activeVersion;
 
@@ -86,6 +91,8 @@ export function useWorkflowActivate() {
 
 	const unpublishWorkflowFromHistory = async (workflowId: string) => {
 		updatingWorkflowActivation.value = true;
+
+		collaborationStore.requestWriteAccess();
 
 		const workflow = workflowsStore.getWorkflowById(workflowId);
 		const wasPublished = !!workflow.activeVersion;
