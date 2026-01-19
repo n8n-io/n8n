@@ -418,7 +418,6 @@ onMounted(() => {
 							{{ data.project?.name ?? i18n.baseText('variables.table.scope.global') }}
 						</div>
 					</N8nBadge>
-					<div><h1>HELLO</h1></div>
 				</td>
 				<td v-if="isFeatureEnabled" align="right">
 					<div class="action-buttons">
