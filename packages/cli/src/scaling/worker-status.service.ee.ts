@@ -1,5 +1,6 @@
 import { WorkerStatus } from '@n8n/api-types';
 import { OnPubSubEvent } from '@n8n/decorators';
+import { In, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import os from 'node:os';
@@ -7,6 +8,7 @@ import process from 'node:process';
 
 import { N8N_VERSION } from '@/constants';
 import { Push } from '@/push';
+import { RoleService } from '@/services/role.service';
 
 import { JobProcessor } from './job-processor';
 import { Publisher } from './pubsub/publisher.service';
@@ -18,6 +20,8 @@ export class WorkerStatusService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly push: Push,
+		private readonly roleService: RoleService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	async requestWorkerStatus() {
@@ -27,14 +31,44 @@ export class WorkerStatusService {
 	}
 
 	@OnPubSubEvent('response-to-get-worker-status', { instanceType: 'main' })
-	handleWorkerStatusResponse(payload: WorkerStatus) {
-		this.push.broadcast({
-			type: 'sendWorkerStatusMessage',
-			data: {
-				workerId: payload.senderId,
-				status: payload,
+	async handleWorkerStatusResponse(payload: WorkerStatus) {
+		// Get list of users authorized to view worker status
+		const authorizedUserIds = await this.getAuthorizedUserIds();
+
+		if (authorizedUserIds.length === 0) {
+			return;
+		}
+
+		// Send only to authorized users
+		this.push.sendToUsers(
+			{
+				type: 'sendWorkerStatusMessage',
+				data: {
+					workerId: payload.senderId,
+					status: payload,
+				},
+			},
+			authorizedUserIds,
+		);
+	}
+
+	private async getAuthorizedUserIds(): Promise<string[]> {
+		const rolesWithScope = await this.roleService.rolesWithScope('global', 'orchestration:read');
+
+		if (rolesWithScope.length === 0) {
+			return [];
+		}
+
+		const users = await this.userRepository.find({
+			select: ['id'],
+			where: {
+				role: {
+					slug: In(rolesWithScope),
+				},
 			},
 		});
+
+		return users.map((u) => u.id);
 	}
 
 	@OnPubSubEvent('get-worker-status', { instanceType: 'worker' })
