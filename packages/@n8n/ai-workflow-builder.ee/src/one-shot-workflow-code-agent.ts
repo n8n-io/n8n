@@ -36,6 +36,37 @@ import type { ChatPayload } from './workflow-builder-agent';
 /** Maximum iterations for the agentic loop to prevent infinite loops */
 const MAX_AGENT_ITERATIONS = 50;
 
+/** Claude Sonnet 4.5 pricing per million tokens (USD) */
+const SONNET_4_5_PRICING = {
+	inputPerMillion: 3,
+	outputPerMillion: 15,
+};
+
+/**
+ * Calculate cost estimate based on token usage
+ */
+function calculateCost(inputTokens: number, outputTokens: number): number {
+	const inputCost = (inputTokens / 1_000_000) * SONNET_4_5_PRICING.inputPerMillion;
+	const outputCost = (outputTokens / 1_000_000) * SONNET_4_5_PRICING.outputPerMillion;
+	return inputCost + outputCost;
+}
+
+/**
+ * Format duration in a human-readable way
+ */
+function formatDuration(ms: number): string {
+	if (ms < 1000) {
+		return `${ms}ms`;
+	}
+	const seconds = ms / 1000;
+	if (seconds < 60) {
+		return `${seconds.toFixed(1)}s`;
+	}
+	const minutes = Math.floor(seconds / 60);
+	const remainingSeconds = seconds % 60;
+	return `${minutes}m ${remainingSeconds.toFixed(0)}s`;
+}
+
 /**
  * Debug logging helper - logs to console with timestamp and prefix
  * Uses util.inspect for terminal-friendly output with full depth
@@ -196,6 +227,8 @@ export class OneShotWorkflowCodeAgent {
 			debugLog('CHAT', 'Starting agentic loop...');
 			let iteration = 0;
 			let finalResult: WorkflowCodeOutput | null = null;
+			let totalInputTokens = 0;
+			let totalOutputTokens = 0;
 
 			while (iteration < MAX_AGENT_ITERATIONS) {
 				iteration++;
@@ -212,11 +245,24 @@ export class OneShotWorkflowCodeAgent {
 				const llmStartTime = Date.now();
 				const response = await llmWithTools.invoke(messages, { signal: abortSignal });
 				const llmDuration = Date.now() - llmStartTime;
+				// Extract token usage from response metadata
+				const responseMetadata = response.response_metadata as
+					| { usage?: { input_tokens?: number; output_tokens?: number } }
+					| undefined;
+				const inputTokens = responseMetadata?.usage?.input_tokens ?? 0;
+				const outputTokens = responseMetadata?.usage?.output_tokens ?? 0;
+				totalInputTokens += inputTokens;
+				totalOutputTokens += outputTokens;
+
 				debugLog('CHAT', 'LLM response received', {
 					llmDurationMs: llmDuration,
 					responseId: response.id,
 					hasToolCalls: response.tool_calls && response.tool_calls.length > 0,
 					toolCallCount: response.tool_calls?.length ?? 0,
+					inputTokens,
+					outputTokens,
+					totalInputTokens,
+					totalOutputTokens,
 				});
 
 				// Extract text content from response
@@ -316,6 +362,31 @@ export class OneShotWorkflowCodeAgent {
 				iterations: iteration,
 			});
 
+			// Calculate stats
+			const totalDuration = Date.now() - startTime;
+			const totalTokens = totalInputTokens + totalOutputTokens;
+			const estimatedCost = calculateCost(totalInputTokens, totalOutputTokens);
+
+			debugLog('CHAT', 'Request stats', {
+				totalDurationMs: totalDuration,
+				totalInputTokens,
+				totalOutputTokens,
+				totalTokens,
+				estimatedCostUsd: estimatedCost,
+			});
+
+			// Stream stats message
+			const statsMessage = `Generated workflow in ${formatDuration(totalDuration)} | ${totalTokens.toLocaleString()} tokens (${totalInputTokens.toLocaleString()} in, ${totalOutputTokens.toLocaleString()} out) | Est. cost: $${estimatedCost.toFixed(4)}`;
+			yield {
+				messages: [
+					{
+						role: 'assistant',
+						type: 'message',
+						text: statsMessage,
+					} as AgentMessageChunk,
+				],
+			};
+
 			// Stream workflow update
 			debugLog('CHAT', 'Streaming workflow update');
 			yield {
@@ -328,10 +399,11 @@ export class OneShotWorkflowCodeAgent {
 				],
 			};
 
-			const totalDuration = Date.now() - startTime;
 			debugLog('CHAT', '========== CHAT COMPLETE ==========', {
 				totalDurationMs: totalDuration,
-				llmDurationMs: llmDuration,
+				totalInputTokens,
+				totalOutputTokens,
+				estimatedCostUsd: estimatedCost,
 				parseDurationMs: parseDuration,
 				nodeCount: workflow.nodes.length,
 				iterations: iteration,
