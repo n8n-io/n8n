@@ -174,6 +174,9 @@ catalogs:
     vitest-mock-extended:
       specifier: ^3.1.0
       version: 3.1.0
+    vm2:
+      specifier: ^3.10.2
+      version: 3.10.2
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -1230,7 +1233,7 @@ importers:
         version: 1.0.1(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.0.5(43cd0b9ca6a69e4bd7bb100334a2019b)
+        version: 1.0.5(aaf2dd98ddfff4f561ccd27ca0800556)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1297,9 +1300,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      '@n8n/vm2':
-        specifier: 3.9.25
-        version: 3.9.25
       '@pinecone-database/pinecone':
         specifier: ^5.0.2
         version: 5.1.2
@@ -1321,6 +1321,9 @@ importers:
       cheerio:
         specifier: 1.0.0
         version: 1.0.0
+      chromadb:
+        specifier: ^3.0.15
+        version: 3.2.0
       cohere-ai:
         specifier: 7.14.0
         version: 7.14.0(encoding@0.1.13)
@@ -1402,6 +1405,9 @@ importers:
       undici:
         specifier: ^6.21.0
         version: 6.21.3
+      vm2:
+        specifier: 'catalog:'
+        version: 3.10.2
       weaviate-client:
         specifier: 3.9.0
         version: 3.9.0(encoding@0.1.13)
@@ -2617,9 +2623,24 @@ importers:
       '@n8n/chat':
         specifier: workspace:*
         version: link:../chat
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../composables
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../design-system
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@n8n/stores':
+        specifier: workspace:*
+        version: link:../stores
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      pinia:
+        specifier: catalog:frontend
+        version: 2.2.4(typescript@5.9.2)(vue@3.5.26(typescript@5.9.2))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@5.9.2)
@@ -3106,9 +3127,6 @@ importers:
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
-      '@n8n/vm2':
-        specifier: 3.9.25
-        version: 3.9.25
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12
@@ -3298,6 +3316,9 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
+      vm2:
+        specifier: 'catalog:'
+        version: 3.10.2
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -6511,11 +6532,6 @@ packages:
       sqlite3:
         optional: true
 
-  '@n8n/vm2@3.9.25':
-    resolution: {integrity: sha512-qoGLFzyHBW7HKpwXkl05QKsIh3GkDw6lOiTOWYlUDnOIQ1b7EgM+O5EMjrMGy7r+kz52+Q7o6GLxBIcxVI8rEg==}
-    engines: {node: '>=18.10', pnpm: '>=9.6'}
-    hasBin: true
-
   '@n8n_io/ai-assistant-sdk@1.20.0':
     resolution: {integrity: sha512-uXa6EDufQIV46tvqQ222441dWZYLnT219HC5H8grfAVd6Mpp2Rs4NoBM6YPWnGFWBp8XVsgXUud0EKRbJsw0eA==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
@@ -9486,11 +9502,6 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  acorn@8.12.1:
-    resolution: {integrity: sha512-tcpGyI9zbizT9JbV6oYE477V6mTlXvvi0T0G3SNIYE2apm/G5huBa1+K89VGeovbg+jycCrfhl3ADxErOuO6Jg==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
   acorn@8.14.0:
     resolution: {integrity: sha512-cl669nCJTZBsL97OF4kUQm5g5hC2uihk0NxY3WENAC0TYdILVkAyHymAntgxGkl7K+t0cXIrH5siy5S4XkFycA==}
     engines: {node: '>=0.4.0'}
@@ -10347,6 +10358,43 @@ packages:
   chownr@2.0.0:
     resolution: {integrity: sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==}
     engines: {node: '>=10'}
+
+  chromadb-js-bindings-darwin-arm64@1.2.0:
+    resolution: {integrity: sha512-CZ44yAQ5ny6sn279jeOBMGseVHg9/GNNA6kAiEl6g0MqD3MhaauuROkiF2Rw6FSoup1MzuIeBvzg3yLoojFXSQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  chromadb-js-bindings-darwin-x64@1.2.0:
+    resolution: {integrity: sha512-QGH9aP3EtmozRZHtzPU650Ta6+QJdJUUsM0x781i9zWASMZzmtleu+57FuDLpXNch0OV9AkmPVlLzBYOPw3N2Q==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+
+  chromadb-js-bindings-linux-arm64-gnu@1.2.0:
+    resolution: {integrity: sha512-dIKKXN0vW7JNg0da/oueLooxZkc7rd6rcN5eb/Fx8K2Tx9r8SM+8vmqm2weF3DzgJkGGiwU8QyE68KU564o/7Q==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  chromadb-js-bindings-linux-x64-gnu@1.2.0:
+    resolution: {integrity: sha512-0E65eSuWICoD2jhQ+ZLi5Me08+VxICG0f5lZ4ceiMPXTemc60QmkmhtKQVK5lEhqRWu2CLSYXqlusnD5qEoa1Q==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  chromadb-js-bindings-win32-x64-msvc@1.2.0:
+    resolution: {integrity: sha512-1gmVdgw/spSSYvbc7Ogms9FXf+Zad41Cp7Enqfvrp7m9qQ+Nz4NqZINfOEX5OVzPHEj6cfXA11NdGeNHTPPHOg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+
+  chromadb@3.2.0:
+    resolution: {integrity: sha512-PtyHAWgtKVuD2YQ0/tFZU/q0vzmAdngDJNJPZJpB3tlwD8PZJNB4Lms3KGEDvq09cGQiMwZc7fo91MR/GLN4OA==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   chromatic@13.3.4:
     resolution: {integrity: sha512-TR5rvyH0ESXobBB3bV8jc87AEAFQC7/n+Eb4XWhJz6hW3YNxIQPVjcbgLv+a4oKHEl1dUBueWSoIQsOVGTd+RQ==}
@@ -18168,6 +18216,11 @@ packages:
   vm-browserify@1.1.2:
     resolution: {integrity: sha512-2ham8XPWTONajOR0ohOKOHXkm3+gaBmGut3SRuu75xLd/RRaY6vqgh8NBYYk7+RW3u5AtzPQZG8F10LHkl0lAQ==}
 
+  vm2@3.10.2:
+    resolution: {integrity: sha512-qTnbvpada8qlEEyIPFwhTcF5Ns+k83fVlOSE8XvAtHkhcQ+okMnbvryVQBfP/ExRT1CRsQpYusdATR+FBJfrnQ==}
+    engines: {node: '>=6.0'}
+    hasBin: true
+
   void-elements@3.1.0:
     resolution: {integrity: sha512-Dhxzh5HZuiHQhbvTW9AMetFfBHDMYpo23Uo9btPXgdYP+3T5S+p+jgNy7spra+veYhBP2dCSgxR/i2Y02h5/6w==}
     engines: {node: '>=0.10.0'}
@@ -22631,7 +22684,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.0.5(43cd0b9ca6a69e4bd7bb100334a2019b)':
+  '@langchain/community@1.0.5(aaf2dd98ddfff4f561ccd27ca0800556)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.57.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.2.3)(encoding@0.1.13)(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -22668,6 +22721,7 @@ snapshots:
       '@xata.io/client': 0.28.4(typescript@5.9.2)
       '@zilliz/milvus2-sdk-node': 2.5.7
       cheerio: 1.0.0
+      chromadb: 3.2.0
       cohere-ai: 7.14.0(encoding@0.1.13)
       crypto-js: 4.2.0
       d3-dsv: 2.0.0
@@ -23029,11 +23083,6 @@ snapshots:
       sqlite3: 5.1.7
     transitivePeerDependencies:
       - supports-color
-
-  '@n8n/vm2@3.9.25':
-    dependencies:
-      acorn: 8.12.1
-      acorn-walk: 8.3.4
 
   '@n8n_io/ai-assistant-sdk@1.20.0': {}
 
@@ -26709,8 +26758,6 @@ snapshots:
 
   acorn@7.4.1: {}
 
-  acorn@8.12.1: {}
-
   acorn@8.14.0: {}
 
   acorn@8.15.0: {}
@@ -27773,6 +27820,31 @@ snapshots:
   chownr@1.1.4: {}
 
   chownr@2.0.0: {}
+
+  chromadb-js-bindings-darwin-arm64@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-darwin-x64@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-linux-arm64-gnu@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-linux-x64-gnu@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-win32-x64-msvc@1.2.0:
+    optional: true
+
+  chromadb@3.2.0:
+    dependencies:
+      semver: 7.7.3
+    optionalDependencies:
+      chromadb-js-bindings-darwin-arm64: 1.2.0
+      chromadb-js-bindings-darwin-x64: 1.2.0
+      chromadb-js-bindings-linux-arm64-gnu: 1.2.0
+      chromadb-js-bindings-linux-x64-gnu: 1.2.0
+      chromadb-js-bindings-win32-x64-msvc: 1.2.0
 
   chromatic@13.3.4: {}
 
@@ -30601,7 +30673,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30611,7 +30683,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0)
+      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -35042,7 +35114,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0):
+  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
     dependencies:
       axios: 1.12.0
 
@@ -37403,6 +37475,11 @@ snapshots:
       - yaml
 
   vm-browserify@1.1.2: {}
+
+  vm2@3.10.2:
+    dependencies:
+      acorn: 8.15.0
+      acorn-walk: 8.3.4
 
   void-elements@3.1.0: {}
 
