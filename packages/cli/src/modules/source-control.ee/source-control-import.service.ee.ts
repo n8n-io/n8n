@@ -7,7 +7,6 @@ import type {
 	User,
 	Variables,
 	WorkflowEntity,
-	WorkflowTagMapping,
 } from '@n8n/db';
 import {
 	CredentialsRepository,
@@ -20,6 +19,7 @@ import {
 	UserRepository,
 	VariablesRepository,
 	WorkflowRepository,
+	WorkflowTagMapping,
 	WorkflowTagMappingRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
@@ -907,18 +907,35 @@ export class SourceControlImportService {
 			}),
 		);
 
-		await Promise.all(
-			mappedTags.mappings.map(async (mapping) => {
-				if (!existingWorkflowIds.has(String(mapping.workflowId))) return;
-				await this.workflowTagMappingRepository.upsert(
-					{ tagId: String(mapping.tagId), workflowId: String(mapping.workflowId) },
-					{
-						skipUpdateIfNoValuesChanged: true,
-						conflictPaths: { tagId: true, workflowId: true },
-					},
-				);
-			}),
+		const workflowIdsInImport = [
+			...new Set(mappedTags.mappings.map((mapping) => String(mapping.workflowId))),
+		].filter((workflowId) => existingWorkflowIds.has(workflowId));
+
+		const mappingsToImport = mappedTags.mappings.filter((mapping) =>
+			existingWorkflowIds.has(String(mapping.workflowId)),
 		);
+
+		// Use transaction to ensure atomic delete + upsert (prevents data loss if upserts fail)
+		await this.workflowTagMappingRepository.manager.transaction(async (transactionManager) => {
+			if (workflowIdsInImport.length > 0) {
+				await transactionManager.delete(WorkflowTagMapping, {
+					workflowId: In(workflowIdsInImport),
+				});
+			}
+
+			await Promise.all(
+				mappingsToImport.map(async (mapping) => {
+					await transactionManager.upsert(
+						WorkflowTagMapping,
+						{ tagId: String(mapping.tagId), workflowId: String(mapping.workflowId) },
+						{
+							skipUpdateIfNoValuesChanged: true,
+							conflictPaths: { tagId: true, workflowId: true },
+						},
+					);
+				}),
+			);
+		});
 
 		return mappedTags;
 	}

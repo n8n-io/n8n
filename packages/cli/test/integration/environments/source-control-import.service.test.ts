@@ -1102,6 +1102,83 @@ describe('SourceControlImportService', () => {
 		});
 	});
 
+	describe('importTagsFromWorkFolder()', () => {
+		const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
+		const fsReadFile = jest.spyOn(fsp, 'readFile');
+		const mockTagsFile = '/mock/tags.json';
+
+		const standardTags = [
+			{ id: 'tag-1', name: 'Tag 1' },
+			{ id: 'tag-2', name: 'Tag 2' },
+		];
+
+		function setupTagsFileMock(mappings: Array<{ tagId: string; workflowId: string }>): void {
+			globMock.mockResolvedValue([mockTagsFile]);
+			fsReadFile.mockResolvedValue(JSON.stringify({ tags: standardTags, mappings }));
+		}
+
+		function createTagsCandidate(): ReturnType<typeof mock<SourceControlledFile>> {
+			return mock<SourceControlledFile>({ id: 'tags', file: mockTagsFile, type: 'tags' });
+		}
+
+		async function getMappingsForWorkflow(workflowId: string) {
+			return await workflowTagMappingRepository.findBy({ workflowId });
+		}
+
+		it('should remove tags from workflows when they are removed in source control', async () => {
+			const teamProject = await createTeamProject('Team 1');
+			const workflow1 = await createWorkflowWithHistory(
+				{ id: 'workflow-1', name: 'Workflow 1' },
+				teamProject,
+			);
+			const [tag1, tag2] = await Promise.all([
+				createTag({ id: 'tag-1', name: 'Tag 1' }),
+				createTag({ id: 'tag-2', name: 'Tag 2' }),
+			]);
+
+			await assignTagToWorkflow(tag1, workflow1);
+			await assignTagToWorkflow(tag2, workflow1);
+			expect(await getMappingsForWorkflow(workflow1.id)).toHaveLength(2);
+
+			setupTagsFileMock([{ tagId: 'tag-1', workflowId: 'workflow-1' }]);
+			await service.importTagsFromWorkFolder(createTagsCandidate());
+
+			const finalMappings = await getMappingsForWorkflow(workflow1.id);
+			expect(finalMappings).toHaveLength(1);
+			expect(finalMappings[0].tagId).toBe('tag-1');
+
+			const tagsInDb = await tagRepository.find();
+			expect(tagsInDb).toHaveLength(2);
+		});
+
+		it('should only delete mappings for workflows present in the imported data', async () => {
+			const teamProject = await createTeamProject('Team 1');
+			const [workflow1, workflow2] = await Promise.all([
+				createWorkflowWithHistory({ id: 'workflow-1', name: 'Workflow 1' }, teamProject),
+				createWorkflowWithHistory({ id: 'workflow-2', name: 'Workflow 2' }, teamProject),
+			]);
+			const [tag1, tag2] = await Promise.all([
+				createTag({ id: 'tag-1', name: 'Tag 1' }),
+				createTag({ id: 'tag-2', name: 'Tag 2' }),
+			]);
+
+			await assignTagToWorkflow(tag1, workflow1);
+			await assignTagToWorkflow(tag2, workflow1);
+			await assignTagToWorkflow(tag1, workflow2);
+
+			setupTagsFileMock([{ tagId: 'tag-1', workflowId: 'workflow-1' }]);
+			await service.importTagsFromWorkFolder(createTagsCandidate());
+
+			const workflow1Mappings = await getMappingsForWorkflow(workflow1.id);
+			expect(workflow1Mappings).toHaveLength(1);
+			expect(workflow1Mappings[0].tagId).toBe('tag-1');
+
+			const workflow2Mappings = await getMappingsForWorkflow(workflow2.id);
+			expect(workflow2Mappings).toHaveLength(1);
+			expect(workflow2Mappings[0].tagId).toBe('tag-1');
+		});
+	});
+
 	describe('importCredentialsFromWorkFolder()', () => {
 		describe('if user email specified by `ownedBy` exists at target instance', () => {
 			it('should assign credential ownership to original user', async () => {
