@@ -31,6 +31,7 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('vue-router')>();
 	return {
 		...actual,
@@ -41,8 +42,8 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 describe('useWorkflowExtraction', () => {
-	let workflowsStore: any;
-	let nodeTypesStore: any;
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
@@ -58,18 +59,18 @@ describe('useWorkflowExtraction', () => {
 			active: false,
 			settings: {},
 			homeProject: { id: 'project-1' },
-		} as any;
+		} as unknown as typeof workflowsStore.workflow;
 
 		workflowsStore.workflowObject = {
 			nodes: {},
 			connectionsBySourceNode: {},
 			getNode: vi.fn(),
 			getChildNodes: vi.fn(() => []),
-		} as any;
+		} as unknown as typeof workflowsStore.workflowObject;
 	});
 
 	describe('makeSubworkflow - Start Node Connection', () => {
-		it('should create start node connection when start node is explicitly defined', async () => {
+		it('should create start node connection when start node is explicitly defined', () => {
 			const nodes: INodeUi[] = [
 				{
 					id: 'node-1',
@@ -106,29 +107,29 @@ describe('useWorkflowExtraction', () => {
 			workflowsStore.workflow.nodes = nodes;
 			workflowsStore.workflow.connections = connections;
 
-			// Mock createNewWorkflow to capture the workflow data
-			workflowsStore.createNewWorkflow = vi.fn((data) => {
-				return Promise.resolve({
-					id: 'new-workflow-id',
-					versionId: 'version-1',
-					...data,
-				} as any);
-			});
+			// Mock createNewWorkflow
+			workflowsStore.createNewWorkflow = vi.fn(async (data) => ({
+				id: 'new-workflow-id',
+				versionId: 'version-1',
+				...data,
+			})) as typeof workflowsStore.createNewWorkflow;
 
-			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve({} as any));
+			workflowsStore.publishWorkflow = vi.fn(
+				async () => ({}),
+			) as typeof workflowsStore.publishWorkflow;
 
 			// Mock node type descriptions
-			nodeTypesStore.getNodeType = vi.fn((type: string) => ({
-				name: type,
+			nodeTypesStore.getNodeType = vi.fn(() => ({
+				name: 'n8n-nodes-base.code',
 				version: 1,
 				group: [],
-				inputs: ['main'],
-				outputs: ['main'],
+				inputs: ['main'] as const,
+				outputs: ['main'] as const,
 				displayName: 'Code',
 				description: 'Run custom code',
 				defaults: {},
 				properties: [],
-			}));
+			})) as unknown as typeof nodeTypesStore.getNodeType;
 
 			const { tryExtractNodesIntoSubworkflow } = useWorkflowExtraction();
 
@@ -141,7 +142,7 @@ describe('useWorkflowExtraction', () => {
 			expect(result).toBeDefined();
 		});
 
-		it('should create start node connection when start node is NOT explicitly defined', async () => {
+		it('should create start node connection when start node is NOT explicitly defined', () => {
 			// This tests the bug fix - when there's no explicit start node,
 			// the connection should still be created to the first node (topmost by Y position)
 			const nodes: INodeUi[] = [
@@ -181,40 +182,42 @@ describe('useWorkflowExtraction', () => {
 			workflowsStore.workflow.connections = connections;
 
 			// Mock createNewWorkflow
-			workflowsStore.createNewWorkflow = vi.fn((data) => {
+			workflowsStore.createNewWorkflow = vi.fn(async (data) => {
 				// Verify that the Start node is connected to Code 2 (topmost node)
 				expect(data.connections).toHaveProperty('Start');
-				expect(data.connections.Start).toHaveProperty('main');
-				expect(data.connections.Start.main[0][0].node).toBe('Code 2');
+				expect(data.connections?.Start).toHaveProperty('main');
+				expect(data.connections?.Start?.main?.[0]?.[0]?.node).toBe('Code 2');
 
-				return Promise.resolve({
+				return {
 					id: 'new-workflow-id',
 					versionId: 'version-1',
 					...data,
-				} as any);
-			});
+				};
+			}) as typeof workflowsStore.createNewWorkflow;
 
-			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve({} as any));
+			workflowsStore.publishWorkflow = vi.fn(
+				async () => ({}),
+			) as typeof workflowsStore.publishWorkflow;
 
 			// Mock node type descriptions
-			nodeTypesStore.getNodeType = vi.fn((type: string) => ({
-				name: type,
+			nodeTypesStore.getNodeType = vi.fn(() => ({
+				name: 'n8n-nodes-base.code',
 				version: 1,
 				group: [],
-				inputs: ['main'],
-				outputs: ['main'],
+				inputs: ['main'] as const,
+				outputs: ['main'] as const,
 				displayName: 'Code',
 				description: 'Run custom code',
 				defaults: {},
 				properties: [],
-			}));
+			})) as unknown as typeof nodeTypesStore.getNodeType;
 
 			const { tryExtractNodesIntoSubworkflow } = useWorkflowExtraction();
 			const result = tryExtractNodesIntoSubworkflow(['node-1', 'node-2']);
 			expect(result).toBeDefined();
 		});
 
-		it('should connect start node to the correct first node based on Y position', async () => {
+		it('should connect start node to the correct first node based on Y position', () => {
 			// Create nodes with different Y positions to verify sorting works correctly
 			const nodes: INodeUi[] = [
 				{
@@ -271,30 +274,32 @@ describe('useWorkflowExtraction', () => {
 			workflowsStore.workflow.nodes = nodes;
 			workflowsStore.workflow.connections = connections;
 
-			workflowsStore.createNewWorkflow = vi.fn((data) => {
+			workflowsStore.createNewWorkflow = vi.fn(async (data) => {
 				// Start node should connect to Top Node (Y=100, smallest position)
-				expect(data.connections.Start.main[0][0].node).toBe('Top Node');
+				expect(data.connections?.Start?.main?.[0]?.[0]?.node).toBe('Top Node');
 
-				return Promise.resolve({
+				return {
 					id: 'new-workflow-id',
 					versionId: 'version-1',
 					...data,
-				} as any);
-			});
+				};
+			}) as typeof workflowsStore.createNewWorkflow;
 
-			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve({} as any));
+			workflowsStore.publishWorkflow = vi.fn(
+				async () => ({}),
+			) as typeof workflowsStore.publishWorkflow;
 
-			nodeTypesStore.getNodeType = vi.fn((type: string) => ({
-				name: type,
+			nodeTypesStore.getNodeType = vi.fn(() => ({
+				name: 'n8n-nodes-base.code',
 				version: 1,
 				group: [],
-				inputs: ['main'],
-				outputs: ['main'],
+				inputs: ['main'] as const,
+				outputs: ['main'] as const,
 				displayName: 'Code',
 				description: 'Run custom code',
 				defaults: {},
 				properties: [],
-			}));
+			})) as unknown as typeof nodeTypesStore.getNodeType;
 
 			const { tryExtractNodesIntoSubworkflow } = useWorkflowExtraction();
 			tryExtractNodesIntoSubworkflow(['node-1', 'node-2', 'node-3']);
