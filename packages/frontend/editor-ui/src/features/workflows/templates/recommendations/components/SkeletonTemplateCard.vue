@@ -21,6 +21,9 @@ import { N8nCard, N8nLoading } from '@n8n/design-system';
 			<div :class="$style.title">
 				<N8nLoading variant="custom" />
 			</div>
+			<div :class="$style.title">
+				<N8nLoading variant="custom" />
+			</div>
 			<div :class="$style.stats">
 				<div :class="$style.statItem">
 					<N8nLoading variant="custom" />

@@ -5,7 +5,7 @@ import { type ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { useRecommendedTemplatesStore } from '../recommendedTemplates.store';
 import { useRouter } from 'vue-router';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import { N8nCard, N8nIcon, N8nTag, N8nText } from '@n8n/design-system';
 import {
 	keyFromCredentialTypeAndName,
@@ -130,7 +130,7 @@ onBeforeUnmount(() => {
 			<N8nText size="large" :bold="true">
 				{{ template.name }}
 			</N8nText>
-			<div v-if="showDetails && template.user" :class="$style.userInfo">
+			<div v-if="template.user" :class="$style.userInfo">
 				<img
 					v-if="template.user.avatar"
 					:src="template.user.avatar"
