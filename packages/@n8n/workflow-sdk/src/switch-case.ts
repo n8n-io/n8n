@@ -4,6 +4,7 @@ import type {
 	NodeInstance,
 	NodeConfig,
 	DeclaredConnection,
+	NodeChain,
 } from './types/base';
 import type {
 	SwitchV34RulesConfig,
@@ -47,7 +48,10 @@ class SwitchNodeInstance implements NodeInstance<'n8n-nodes-base.switch', string
 		return new SwitchNodeInstance({ ...this.config, ...config } as NodeConfig<SwitchV34Config>);
 	}
 
-	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
+	then<T extends NodeInstance<string, string, unknown>>(
+		_target: T,
+		_outputIndex?: number,
+	): NodeChain<NodeInstance<'n8n-nodes-base.switch', string, unknown>, T> {
 		throw new Error('Switch node connections are managed by SwitchCaseComposite');
 	}
 

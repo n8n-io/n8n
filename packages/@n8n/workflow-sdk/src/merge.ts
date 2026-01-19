@@ -6,6 +6,7 @@ import type {
 	NodeInstance,
 	NodeConfig,
 	DeclaredConnection,
+	NodeChain,
 } from './types/base';
 
 /**
@@ -44,7 +45,10 @@ class MergeNodeInstance implements NodeInstance<'n8n-nodes-base.merge', string, 
 		);
 	}
 
-	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
+	then<T extends NodeInstance<string, string, unknown>>(
+		_target: T,
+		_outputIndex?: number,
+	): NodeChain<NodeInstance<'n8n-nodes-base.merge', string, unknown>, T> {
 		throw new Error('Merge node connections are managed by MergeComposite');
 	}
 

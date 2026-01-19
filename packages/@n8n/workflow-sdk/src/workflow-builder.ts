@@ -14,7 +14,9 @@ import type {
 	SubnodeConfig,
 	IConnections,
 	IDataObject,
+	NodeChain,
 } from './types/base';
+import { isNodeChain } from './types/base';
 
 /**
  * Default horizontal spacing between nodes
@@ -90,10 +92,29 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return builder;
 	}
 
-	add<N extends NodeInstance<string, string, unknown> | TriggerInstance<string, string, unknown>>(
-		node: N,
-	): WorkflowBuilder {
+	add<
+		N extends
+			| NodeInstance<string, string, unknown>
+			| TriggerInstance<string, string, unknown>
+			| NodeChain,
+	>(node: N): WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
+
+		// Check if this is a NodeChain
+		if (isNodeChain(node)) {
+			// Add all nodes from the chain
+			for (const chainNode of node.allNodes) {
+				this.addNodeWithSubnodes(newNodes, chainNode);
+			}
+			// Set currentNode to the tail (last node in the chain)
+			return this.clone({
+				nodes: newNodes,
+				currentNode: node.tail.name,
+				currentOutput: 0,
+			});
+		}
+
+		// Regular node or trigger
 		this.addNodeWithSubnodes(newNodes, node);
 		return this.clone({
 			nodes: newNodes,

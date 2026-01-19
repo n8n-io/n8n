@@ -276,6 +276,53 @@ export interface DeclaredConnection {
 }
 
 /**
+ * NodeChain represents a chain of connected nodes created via .then().
+ * It contains all nodes from head to tail and their connections.
+ *
+ * NodeChain proxies NodeInstance properties to the tail node,
+ * so it can be used anywhere a NodeInstance is expected.
+ */
+export interface NodeChain<
+	THead extends NodeInstance<string, string, unknown> = NodeInstance<string, string, unknown>,
+	TTail extends NodeInstance<string, string, unknown> = NodeInstance<string, string, unknown>,
+> extends NodeInstance<TTail['type'], TTail['version'], TTail['_outputType']> {
+	/** Marker identifying this as a NodeChain */
+	readonly _isChain: true;
+	/** The first node in the chain */
+	readonly head: THead;
+	/** The last node in the chain (where further .then() calls connect from) */
+	readonly tail: TTail;
+	/** All nodes in the chain, in order from head to tail */
+	readonly allNodes: NodeInstance<string, string, unknown>[];
+
+	/**
+	 * Continue the chain by connecting the tail to another node.
+	 * Returns a new chain containing all nodes.
+	 */
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T,
+		outputIndex?: number,
+	): NodeChain<THead, T>;
+}
+
+/**
+ * Type guard to check if a value is a NodeChain
+ */
+export function isNodeChain(
+	value: unknown,
+): value is NodeChain<
+	NodeInstance<string, string, unknown>,
+	NodeInstance<string, string, unknown>
+> {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		'_isChain' in value &&
+		(value as { _isChain: unknown })._isChain === true
+	);
+}
+
+/**
  * Node instance representing a configured node in the workflow
  */
 export interface NodeInstance<TType extends string, TVersion extends string, TOutput = unknown> {
@@ -302,9 +349,12 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * Can be called multiple times for fan-out patterns.
 	 * @param target - The target node to connect to
 	 * @param outputIndex - The output index to connect from (default: 0)
-	 * @returns The target node (for chaining)
+	 * @returns A NodeChain containing this node and the target (for chaining)
 	 */
-	then<T extends NodeInstance<string, string, unknown>>(target: T, outputIndex?: number): T;
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T,
+		outputIndex?: number,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
 
 	/**
 	 * Connect this node's error output to an error handler node.
@@ -534,11 +584,15 @@ export interface WorkflowBuilder {
 	readonly name: string;
 
 	/**
-	 * Add a node to the workflow (typically the trigger)
+	 * Add a node or chain of nodes to the workflow.
+	 * When adding a NodeChain, all nodes in the chain are added and connections are preserved.
 	 */
-	add<N extends NodeInstance<string, string, unknown> | TriggerInstance<string, string, unknown>>(
-		node: N,
-	): WorkflowBuilder;
+	add<
+		N extends
+			| NodeInstance<string, string, unknown>
+			| TriggerInstance<string, string, unknown>
+			| NodeChain,
+	>(node: N): WorkflowBuilder;
 
 	/**
 	 * Chain a node after the current node

@@ -7,6 +7,7 @@ import type {
 	SplitInBatchesDoneChain,
 	SplitInBatchesEachChain,
 	DeclaredConnection,
+	NodeChain,
 } from './types/base';
 
 /**
@@ -41,7 +42,10 @@ class SplitInBatchesNodeInstance
 		} as SplitInBatchesConfig);
 	}
 
-	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
+	then<T extends NodeInstance<string, string, unknown>>(
+		_target: T,
+		_outputIndex?: number,
+	): NodeChain<NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>, T> {
 		throw new Error('SplitInBatches node connections are managed by SplitInBatchesBuilder');
 	}
 
