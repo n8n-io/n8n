@@ -60,6 +60,7 @@ describe('compacting cycle', () => {
 
 		compactionService = new WorkflowHistoryCompactionService(
 			Container.get(GlobalConfig).workflowHistoryCompaction,
+			Container.get(GlobalConfig),
 			mockLogger(),
 			instanceSettings,
 			Container.get(DbConnection),
@@ -71,7 +72,7 @@ describe('compacting cycle', () => {
 		await testDb.terminate();
 	});
 
-	it('compacts select workflow versions', async () => {
+	it('optimizes select workflow versions', async () => {
 		// ARRANGE
 		const wf1 = await createWorkflow({ versionId: wf1_versions[0] });
 
@@ -119,7 +120,7 @@ describe('compacting cycle', () => {
 		}
 
 		// ACT
-		await compactionService['compactRecentHistories']();
+		await compactionService['optimizeHistories']();
 
 		// ASSERT
 		const allHistories = await Container.get(WorkflowHistoryRepository).find({});
@@ -191,8 +192,9 @@ describe('compacting cycle', () => {
 				...Container.get(GlobalConfig).workflowHistoryCompaction,
 				batchDelayMs: 10_000,
 				batchSize: 5,
-				compactingMinimumAgeHours: 24,
+				optimizingMinimumAgeHours: 24,
 			},
+			Container.get(GlobalConfig),
 			mockLogger(),
 			instanceSettings,
 			Container.get(DbConnection),
@@ -200,7 +202,7 @@ describe('compacting cycle', () => {
 		);
 
 		// Expect wf1 and wf2 to be handled in the first batch, with wf3 untouched due to the long delay after batching
-		void compactionService['compactRecentHistories']();
+		void compactionService['optimizeHistories']();
 		await sleep(500);
 
 		// ASSERT
