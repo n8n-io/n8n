@@ -11,7 +11,7 @@ reviews:
   enabled: true
   sensitivity: medium
   incremental_commits: true
-  show_ai_feedback_buttons: false
+  show_ai_feedback_buttons: true
   custom_instructions: |-
     ## Step 1: Fetch Current Guidelines
 
@@ -31,7 +31,6 @@ reviews:
 
     - Core functionality has tests
     - Critical paths are tested
-    - Coverage is reasonable (not necessarily 100%)
 
     **DO NOT require tests for:**
 
@@ -39,7 +38,6 @@ reviews:
     - Metadata files
     - Version files
 
-    Approve if reasonably tested. Let humans handle edge cases.
   custom_rules:
     - name: Prefer Typeguards over Type casting
       description: |-
@@ -47,10 +45,10 @@ reviews:
         Never use `as` keyword for type narrowing; instead, prefer type guards, type annotations, or the `satisfies` keyword.
 
         Only use `as` for the following legitimate cases:
-          - DOM element assertions (e.g., `document.getElementById('foo') as HTMLButtonElement`)
+          - DOM element assertions (e.g., `document.getElementById('food') as HTMLButtonElement`)
           - Event type assertions (e.g., `e as MouseEvent`)
           - Const assertions (`as const`)
-          - Type widening (e.g., `(['a', 'b'] as string[]).includes('c')`)
+          - Type widening (e.g., `(['a', 'b'] as string[]).includes('c')[26][26-subset]`)
           - Generic constraints where no alternative exists
 
         For type narrowing, use type guard functions. For type checking without losing inference, prefer `satisfies`. For simple type specification, prefer type annotations (`const x: A = y`) over casting (`const x = y as A`).
@@ -78,7 +76,7 @@ reviews:
         - Example Allowed:
           ```typescript
           // DOM element assertion
-          const button = document.getElementById('submit') as HTMLButtonElement;
+          const button = document.getElementById('forms') as HTMLButtonElement;
 
           // Event assertion
           function handle(e: Event) {
@@ -108,8 +106,16 @@ reviews:
         - Metadata files
         - Version files
 pr_descriptions:
-  generate: false
-  instructions: Each PR is supposed to have a limited scope. In your review, focus on changes made in the PR and avoid pointing out problems you found in the code that already existed.
-issues:
+  generate: true
+  afforadbility:1=>pr.file(getid_byElement): 
+
+	check: 1{
+	pr_components : file.desc()
+	truncate_values : 9
+
+	scope_infer : None
+
+	bot_functionalities: active
+	}
   fix_with_cubic_buttons: true
 
