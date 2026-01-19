@@ -518,6 +518,164 @@ return workflow('test-id', 'AI Agent')
 		});
 	});
 
+	describe('parses switchCase composite with pinData', () => {
+		it('should parse workflow with switchCase and pinData without errors', () => {
+			// This code reproduces a bug where switchCase with pinData fails with
+			// "Cannot read properties of undefined (reading 'subnodes')"
+			const code = `return workflow('AlNAxHXOpfimqHPOGVuNg', 'My workflow 23')
+  .add(
+    trigger({
+      type: 'n8n-nodes-base.manualTrigger',
+      version: 1,
+      config: {
+        name: 'Start',
+        position: [240, 300]
+      }
+    })
+    .then(
+      node({
+        type: 'n8n-nodes-base.linear',
+        version: 1.1,
+        config: {
+          name: 'Get Linear Issues',
+          parameters: {
+            resource: 'issue',
+            operation: 'getAll',
+            returnAll: false,
+            limit: 50
+          },
+          credentials: {
+            linearApi: newCredential('Linear API')
+          },
+          position: [540, 300],
+          onError: 'continueErrorOutput',
+          pinData: [
+            {
+              id: 'ISS-123',
+              identifier: 'ISS-123',
+              title: 'Application crashes on startup',
+              priority: 1,
+              state: { id: 'state-1', name: 'Todo' },
+              createdAt: '2024-01-15T10:00:00Z',
+              creator: { id: 'user-1', displayName: 'John Doe' }
+            }
+          ]
+        }
+      })
+      .onError(
+        node({
+          type: 'n8n-nodes-base.slack',
+          version: 2.4,
+          config: {
+            name: 'Send Error to Slack',
+            parameters: {
+              resource: 'message',
+              operation: 'post',
+              select: 'channel',
+              channelId: { mode: 'list', value: '', __rl: true },
+              messageType: 'text',
+              text: 'Error occurred'
+            },
+            credentials: {
+              slackApi: newCredential('Slack Bot')
+            },
+            position: [840, 500]
+          }
+        })
+      )
+    )
+    .then(
+      switchCase([
+        node({
+          type: 'n8n-nodes-base.linear',
+          version: 1.1,
+          config: {
+            name: 'Tag as Bug',
+            parameters: {
+              resource: 'issue',
+              operation: 'update',
+              issueId: '={{ $json.id }}',
+              updateFields: {
+                labelIds: ['bug-label-id']
+              }
+            },
+            credentials: {
+              linearApi: newCredential('Linear API')
+            },
+            position: [1140, 200]
+          }
+        }),
+        node({
+          type: 'n8n-nodes-base.linear',
+          version: 1.1,
+          config: {
+            name: 'Tag as Feature',
+            parameters: {
+              resource: 'issue',
+              operation: 'update',
+              issueId: '={{ $json.id }}',
+              updateFields: {
+                labelIds: ['feature-label-id']
+              }
+            },
+            credentials: {
+              linearApi: newCredential('Linear API')
+            },
+            position: [1140, 400]
+          }
+        })
+      ], {
+        name: 'Triage Issues',
+        parameters: {
+          mode: 'rules',
+          rules: {
+            values: [
+              {
+                conditions: {
+                  options: {
+                    caseSensitive: false,
+                    leftValue: '',
+                    typeValidation: 'loose'
+                  },
+                  conditions: [
+                    {
+                      leftValue: '={{ $json.title.toLowerCase() }}',
+                      rightValue: '',
+                      operator: {
+                        type: 'string',
+                        operation: 'contains',
+                        rightType: 'any',
+                        singleValue: 'bug'
+                      }
+                    }
+                  ],
+                  combinator: 'or'
+                },
+                renameOutput: true,
+                outputKey: 'Bug'
+              },
+              {
+                conditions: {},
+                renameOutput: true,
+                outputKey: 'Feature/Enhancement'
+              }
+            ]
+          }
+        },
+        position: [840, 300]
+      })
+    )
+  );`;
+
+			// This should not throw an error
+			const parsedJson = parseWorkflowCode(code);
+
+			expect(parsedJson.id).toBe('AlNAxHXOpfimqHPOGVuNg');
+			expect(parsedJson.name).toBe('My workflow 23');
+			expect(parsedJson.nodes.length).toBeGreaterThanOrEqual(5); // trigger + linear + slack + switch + 2 case nodes
+		});
+	});
+
 	describe('parses Code node jsCode with template literals', () => {
 		it('should parse Code node with properly escaped template literals', () => {
 			// When template literals are properly escaped with \$, they should work

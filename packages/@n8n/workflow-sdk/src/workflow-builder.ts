@@ -117,15 +117,55 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private collectPinDataFromChain(chain: NodeChain): Record<string, IDataObject[]> | undefined {
 		let pinData = this._pinData;
 		for (const chainNode of chain.allNodes) {
-			const nodePinData = chainNode.config.pinData;
-			if (nodePinData && nodePinData.length > 0) {
-				pinData = {
-					...pinData,
-					[chainNode.name]: nodePinData,
-				};
+			// Handle composites that may be in the chain (they don't have a config property)
+			if (this.isSwitchCaseComposite(chainNode)) {
+				const composite = chainNode as unknown as SwitchCaseComposite;
+				pinData = this.collectPinDataFromNode(composite.switchNode, pinData);
+				for (const caseNode of composite.cases) {
+					pinData = this.collectPinDataFromNode(caseNode, pinData);
+				}
+			} else if (this.isIfBranchComposite(chainNode)) {
+				const composite = chainNode as unknown as IfBranchComposite;
+				pinData = this.collectPinDataFromNode(composite.ifNode, pinData);
+				pinData = this.collectPinDataFromNode(composite.trueBranch, pinData);
+				if (composite.falseBranch) {
+					pinData = this.collectPinDataFromNode(composite.falseBranch, pinData);
+				}
+			} else if (this.isMergeComposite(chainNode)) {
+				const composite = chainNode as unknown as MergeComposite;
+				pinData = this.collectPinDataFromNode(composite.mergeNode, pinData);
+				for (const branch of composite.branches as NodeInstance<string, string, unknown>[]) {
+					pinData = this.collectPinDataFromNode(branch, pinData);
+				}
+			} else {
+				// Regular node
+				const nodePinData = chainNode.config?.pinData;
+				if (nodePinData && nodePinData.length > 0) {
+					pinData = {
+						...pinData,
+						[chainNode.name]: nodePinData,
+					};
+				}
 			}
 		}
 		return pinData;
+	}
+
+	/**
+	 * Helper to collect pinData from a single node and merge with existing pinData
+	 */
+	private collectPinDataFromNode(
+		node: NodeInstance<string, string, unknown>,
+		existingPinData: Record<string, IDataObject[]> | undefined,
+	): Record<string, IDataObject[]> | undefined {
+		const nodePinData = node.config?.pinData;
+		if (nodePinData && nodePinData.length > 0) {
+			return {
+				...existingPinData,
+				[node.name]: nodePinData,
+			};
+		}
+		return existingPinData;
 	}
 
 	add<
@@ -138,9 +178,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Check if this is a NodeChain
 		if (isNodeChain(node)) {
-			// Add all nodes from the chain
+			// Add all nodes from the chain, handling composites that may have been chained
 			for (const chainNode of node.allNodes) {
-				this.addNodeWithSubnodes(newNodes, chainNode);
+				// Check if chainNode is a SwitchCaseComposite (can happen via chain.then(switchCase(...)))
+				if (this.isSwitchCaseComposite(chainNode)) {
+					this.addSwitchCaseNodes(newNodes, chainNode as unknown as SwitchCaseComposite);
+				} else if (this.isIfBranchComposite(chainNode)) {
+					this.addIfBranchNodes(newNodes, chainNode as unknown as IfBranchComposite);
+				} else if (this.isMergeComposite(chainNode)) {
+					this.addMergeNodes(newNodes, chainNode as unknown as MergeComposite);
+				} else {
+					this.addNodeWithSubnodes(newNodes, chainNode);
+				}
 			}
 			// Collect pinData from all nodes in the chain
 			const chainPinData = this.collectPinDataFromChain(node);
@@ -433,6 +482,70 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			_eachNodes: NodeInstance<string, string, unknown>[];
 			_hasLoop: boolean;
 		};
+	}
+
+	/**
+	 * Check if value is a SwitchCaseComposite
+	 */
+	private isSwitchCaseComposite(value: unknown): boolean {
+		if (value === null || typeof value !== 'object') return false;
+		return 'switchNode' in value && 'cases' in value;
+	}
+
+	/**
+	 * Check if value is an IfBranchComposite
+	 */
+	private isIfBranchComposite(value: unknown): boolean {
+		if (value === null || typeof value !== 'object') return false;
+		return 'ifNode' in value && 'trueBranch' in value;
+	}
+
+	/**
+	 * Check if value is a MergeComposite
+	 */
+	private isMergeComposite(value: unknown): boolean {
+		if (value === null || typeof value !== 'object') return false;
+		return 'mergeNode' in value && 'branches' in value;
+	}
+
+	/**
+	 * Add nodes from a SwitchCaseComposite to the nodes map
+	 */
+	private addSwitchCaseNodes(nodes: Map<string, GraphNode>, composite: SwitchCaseComposite): void {
+		// Add the switch node
+		this.addNodeWithSubnodes(nodes, composite.switchNode);
+
+		// Add all case nodes
+		for (const caseNode of composite.cases) {
+			this.addNodeWithSubnodes(nodes, caseNode);
+		}
+	}
+
+	/**
+	 * Add nodes from an IfBranchComposite to the nodes map
+	 */
+	private addIfBranchNodes(nodes: Map<string, GraphNode>, composite: IfBranchComposite): void {
+		// Add the IF node
+		this.addNodeWithSubnodes(nodes, composite.ifNode);
+
+		// Add branch nodes
+		this.addNodeWithSubnodes(nodes, composite.trueBranch);
+		if (composite.falseBranch) {
+			this.addNodeWithSubnodes(nodes, composite.falseBranch);
+		}
+	}
+
+	/**
+	 * Add nodes from a MergeComposite to the nodes map
+	 */
+	private addMergeNodes(nodes: Map<string, GraphNode>, composite: MergeComposite): void {
+		// Add the merge node
+		this.addNodeWithSubnodes(nodes, composite.mergeNode);
+
+		// Add all branch nodes
+		for (const branch of composite.branches as NodeInstance<string, string, unknown>[]) {
+			this.addNodeWithSubnodes(nodes, branch);
+		}
 	}
 
 	/**

@@ -34,7 +34,7 @@ import type {
 import type { ChatPayload } from './workflow-builder-agent';
 
 /** Maximum iterations for the agentic loop to prevent infinite loops */
-const MAX_AGENT_ITERATIONS = 10;
+const MAX_AGENT_ITERATIONS = 50;
 
 /**
  * Debug logging helper - logs to console with timestamp and prefix
