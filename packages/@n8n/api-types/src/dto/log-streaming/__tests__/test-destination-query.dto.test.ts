@@ -21,6 +21,24 @@ describe('TestDestinationQueryDto', () => {
 					id: '123e4567-e89b-12d3-a456-426614174000',
 				},
 			},
+			{
+				name: 'non-UUID string (backward compatibility)',
+				request: {
+					id: 'e2e-tls-test',
+				},
+				parsedResult: {
+					id: 'e2e-tls-test',
+				},
+			},
+			{
+				name: 'short string',
+				request: {
+					id: '550e8400-e29b-41d4',
+				},
+				parsedResult: {
+					id: '550e8400-e29b-41d4',
+				},
+			},
 		])('should validate $name', ({ request, parsedResult }) => {
 			const result = TestDestinationQueryDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -33,13 +51,6 @@ describe('TestDestinationQueryDto', () => {
 			{
 				name: 'missing id',
 				request: {},
-				expectedErrorPaths: ['id'],
-			},
-			{
-				name: 'invalid UUID format',
-				request: {
-					id: 'not-a-uuid',
-				},
 				expectedErrorPaths: ['id'],
 			},
 			{
@@ -60,13 +71,6 @@ describe('TestDestinationQueryDto', () => {
 				name: 'null value',
 				request: {
 					id: null,
-				},
-				expectedErrorPaths: ['id'],
-			},
-			{
-				name: 'invalid UUID (too short)',
-				request: {
-					id: '550e8400-e29b-41d4',
 				},
 				expectedErrorPaths: ['id'],
 			},

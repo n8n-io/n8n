@@ -275,15 +275,6 @@ describe('CreateDestinationDto', () => {
 				expectedErrorPaths: ['url'],
 			},
 			{
-				name: 'webhook with invalid id format',
-				request: {
-					__type: '$$MessageEventBusDestinationWebhook',
-					url: 'https://example.com/webhook',
-					id: 'not-a-uuid',
-				},
-				expectedErrorPaths: ['id'],
-			},
-			{
 				name: 'webhook with invalid authentication type',
 				request: {
 					__type: '$$MessageEventBusDestinationWebhook',
