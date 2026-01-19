@@ -314,10 +314,10 @@ export function useWorkflowUpdate() {
 
 			// Merge pin data from workflow data with existing pin data
 			if (workflowData.pinData) {
-				workflowsStore.workflow.pinData = {
+				workflowsStore.setWorkflowPinData({
 					...workflowsStore.workflow.pinData,
 					...workflowData.pinData,
-				};
+				});
 			}
 
 			builderStore.setBuilderMadeEdits(true);
