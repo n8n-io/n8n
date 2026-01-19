@@ -245,6 +245,6 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	getDynamicCredentialsEndpointsMiddleware() {
 		const { endpointAuthToken } = this.dynamicCredentialConfig;
 
-		return StaticAuthService.getStaticAuthMiddleware(endpointAuthToken);
+		return StaticAuthService.getStaticAuthMiddleware(endpointAuthToken, 'x-authorization');
 	}
 }

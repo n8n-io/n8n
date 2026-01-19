@@ -5,13 +5,15 @@ import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import * as utils from '../shared/utils/';
+import * as utils from '../shared/utils';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { Telemetry } from '@/telemetry';
-import { createCredentials } from '../shared/db/credentials';
+import { saveCredential } from '../shared/db/credentials';
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
+import { CredentialsHelper } from '@/credentials-helper';
 
 import { createUser } from '../shared/db/users';
+import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
 
 mockInstance(Telemetry);
 
@@ -28,10 +30,13 @@ mockInstance(DynamicCredentialsConfig, {
 });
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['credentials'],
+	endpointGroups: ['credentials', 'oauth2'],
 	enabledFeatures: ['feat:externalSecrets'],
 	modules: ['dynamic-credentials'],
 });
+
+CredentialsHelper.prototype.applyDefaultsAndOverwrites = async (_, decryptedDataOriginal) =>
+	decryptedDataOriginal;
 
 const setupWorkflow = async () => {
 	const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
@@ -46,26 +51,35 @@ const setupWorkflow = async () => {
 
 	const personalProject = await getPersonalProject(owner);
 
-	const savedCredential = await createCredentials(
+	const savedCredential = await saveCredential(
 		{
 			name: 'Test Dynamic Credential',
-			type: 'oauth2',
-			data: '',
+			type: 'oAuth2Api',
 			isResolvable: true,
-			resolverId: resolver.id,
+			data: {
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				authUrl: 'https://test.domain/oauth2/auth',
+				accessTokenUrl: 'https://test.domain/oauth2/token',
+				grantType: 'authorizationCode',
+			},
 		},
-		personalProject,
+		{
+			project: personalProject,
+			role: 'credential:owner',
+		},
 	);
-	return savedCredential;
+	return { savedCredential, resolver };
 };
 
 describe('Workflow Status API', () => {
 	let savedCredential: CredentialsEntity;
+	let resolver: DynamicCredentialResolver;
 
 	beforeAll(async () => {
 		await testDb.truncate(['User', 'CredentialsEntity', 'DynamicCredentialResolver']);
 
-		savedCredential = await setupWorkflow();
+		({ savedCredential, resolver } = await setupWorkflow());
 	});
 
 	afterAll(async () => {
@@ -75,14 +89,16 @@ describe('Workflow Status API', () => {
 
 	describe('GET /credentials/:id/authorize', () => {
 		describe('when no static auth token is provided', () => {
-			it('should return the execution status of a workflow', async () => {
+			it('should return the authorization URL for a credential', async () => {
 				const response = await testServer.authlessAgent
 					.post(`/credentials/${savedCredential.id}/authorize`)
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token')
 					.expect(200);
 
-				expect(response.body.data).toMatchObject({
-					authorizationUrl: expect.any(String),
-				});
+				expect(response.body.data).toBeDefined();
+				expect(typeof response.body.data).toBe('string');
+				expect(response.body.data).toContain('https://test.domain/oauth2/auth');
 			});
 		});
 	});

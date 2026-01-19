@@ -31,7 +31,10 @@ export class DynamicCredentialsController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		if (!credential.type.includes('OAuth2') && !credential.type.includes('OAuth1')) {
+		if (
+			!credential.type.toLowerCase().includes('oauth2') &&
+			!credential.type.toLowerCase().includes('oauth1')
+		) {
 			throw new BadRequestError('Credential type not supported');
 		}
 		return credential;
@@ -141,11 +144,11 @@ export class DynamicCredentialsController {
 			},
 		];
 
-		if (credential.type.includes('OAuth2')) {
+		if (credential.type.toLowerCase().includes('oauth2')) {
 			return await this.oauthService.generateAOauth2AuthUri(...callerData);
 		}
 
-		if (credential.type.includes('OAuth1')) {
+		if (credential.type.toLowerCase().includes('oauth1')) {
 			return await this.oauthService.generateAOauth1AuthUri(...callerData);
 		}
 

@@ -12,7 +12,7 @@ import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
-import * as utils from '../shared/utils/';
+import * as utils from '../shared/utils';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { Telemetry } from '@/telemetry';
 import { createCredentials } from '../shared/db/credentials';
@@ -27,18 +27,17 @@ licenseMock.isLicensed.mockReturnValue(true);
 Container.set(LicenseState, licenseMock);
 
 process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
-// process.env.N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN = 'test-token';
-
-mockInstance(DynamicCredentialsConfig, {
-	corsOrigin: 'https://app.example.com',
-	corsAllowCredentials: false,
-	endpointAuthToken: 'test-token',
-});
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
 	enabledFeatures: ['feat:externalSecrets'],
 	modules: ['dynamic-credentials'],
+});
+
+mockInstance(DynamicCredentialsConfig, {
+	corsOrigin: 'https://app.example.com',
+	corsAllowCredentials: false,
+	endpointAuthToken: 'static-test-token',
 });
 
 const setupWorkflow = async () => {
@@ -57,7 +56,7 @@ const setupWorkflow = async () => {
 	const savedCredential = await createCredentials(
 		{
 			name: 'Test Dynamic Credential',
-			type: 'oauth2',
+			type: 'OAuth2',
 			data: '',
 			isResolvable: true,
 			resolverId: resolver.id,
@@ -127,6 +126,7 @@ describe('Workflow Status API', () => {
 				const response = await testServer.authlessAgent
 					.get(`/workflows/${savedWorkflow.id}/execution-status`)
 					.set('Authorization', 'Bearer test-token')
+					.set('X-Authorization', 'Bearer static-test-token')
 					.expect(200);
 
 				expect(response.body.data).toMatchObject({
@@ -143,25 +143,35 @@ describe('Workflow Status API', () => {
 				});
 			});
 
-			it('should return 401 if the auth token is invalid', async () => {
+			it('should return 401 if the static auth token is invalid', async () => {
 				await testServer.authlessAgent
 					.get(`/workflows/${savedWorkflow.id}/execution-status`)
-					.set('Authorization', 'Bearer invalid-token')
+					.set('Authorization', 'Bearer test-token')
+					.set('X-Authorization', 'Bearer invalid-token')
 					.expect(401);
 			});
 
-			it('should return 401 if the auth token is missing', async () => {
+			it('should return 401 if the static auth token is missing', async () => {
 				await testServer.authlessAgent
 					.get(`/workflows/${savedWorkflow.id}/execution-status`)
+					.set('Authorization', 'Bearer test-token')
 					.expect(401);
 			});
 
-			it('should return 401 if the auth token is empty', async () => {
+			it('should return 401 if the static auth token is empty', async () => {
 				await testServer.authlessAgent
 					.get(`/workflows/${savedWorkflow.id}/execution-status`)
-					.set('Authorization', 'Bearer ')
+					.set('Authorization', 'Bearer test-token')
+					.set('X-Authorization', 'Bearer ')
 					.expect(401);
 			});
+		});
+
+		it('should return 401 if the authorization header is missing', async () => {
+			await testServer.authlessAgent
+				.get(`/workflows/${savedWorkflow.id}/execution-status`)
+				.set('X-Authorization', 'Bearer static-test-token')
+				.expect(401);
 		});
 	});
 });

@@ -11,7 +11,7 @@ export class StaticAuthService {
 	 * @param endpointAuthToken The expected authentication token for the endpoint
 	 * @returns Middleware function or null if no token is configured
 	 */
-	static getStaticAuthMiddleware(endpointAuthToken: string) {
+	static getStaticAuthMiddleware(endpointAuthToken: string, headerName: string = 'authorization') {
 		if (!endpointAuthToken?.trim()) {
 			return null;
 		}
@@ -19,7 +19,7 @@ export class StaticAuthService {
 		const expectedAuthorizationHeaderValue = `Bearer ${endpointAuthToken.trim()}`;
 
 		return (req: Request, res: Response, next: NextFunction) => {
-			if (req.headers.authorization !== expectedAuthorizationHeaderValue) {
+			if (req.headers[headerName] !== expectedAuthorizationHeaderValue) {
 				res.status(401).send('Unauthorized');
 				return;
 			}

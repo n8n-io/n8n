@@ -27,7 +27,6 @@ licenseMock.isLicensed.mockReturnValue(true);
 Container.set(LicenseState, licenseMock);
 
 process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
-// process.env.N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN = 'test-token';
 
 mockInstance(DynamicCredentialsConfig, {
 	corsOrigin: 'https://app.example.com',
@@ -124,15 +123,9 @@ describe('Workflow Status API', () => {
 	describe('GET /workflows/:workflowId/execution-status', () => {
 		describe('when no static auth token is provided', () => {
 			it('should return the execution status of a workflow', async () => {
-				mockInstance(DynamicCredentialsConfig, {
-					endpointAuthToken: '',
-				});
-
-				const config = Container.get(DynamicCredentialsConfig);
-				config.endpointAuthToken = '';
-
 				const response = await testServer.authlessAgent
 					.get(`/workflows/${savedWorkflow.id}/execution-status`)
+					.set('Authorization', 'Bearer test-token')
 					.expect(200);
 
 				expect(response.body.data).toMatchObject({
