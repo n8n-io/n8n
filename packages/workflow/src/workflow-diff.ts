@@ -193,12 +193,12 @@ function makeMergeDependingOnSizeRule<W extends DiffableWorkflow>(mapping: Map<n
 		_wcs: WorkflowChangeSet<N>,
 		metaData: DiffMetaData,
 	) => {
-		if (metaData.workflowSizeChars === undefined) {
+		if (metaData.workflowSizeScore === undefined) {
 			console.warn('Called mergeDependingOnSizeRule rule without providing required metaData');
 			return false;
 		}
 		for (const [count, time] of pairs) {
-			if (metaData.workflowSizeChars > count) return time(prev, next);
+			if (metaData.workflowSizeScore > count) return time(prev, next);
 		}
 		return false;
 	};
@@ -223,7 +223,7 @@ export const SKIP_RULES = {
 
 // MetaData fields are only included if requested
 export type DiffMetaData = Partial<{
-	workflowSizeChars: number;
+	workflowSizeScore: number;
 }>;
 
 export type DiffRule<
@@ -238,20 +238,20 @@ export function determineNodeSize(parameters: INodeParameters | NodeParameterVal
 
 	if (typeof parameters === 'string') {
 		return parameters.length;
-	} else if (parameters === null || typeof parameters !== 'object' || parameters instanceof Date) {
+	} else if (typeof parameters !== 'object' || parameters instanceof Date) {
 		return 1;
 	} else if (Array.isArray(parameters)) {
-		return parameters.reduce<number>((acc, v) => acc + determineNodeSize(v as INodeParameters), 0);
+		return parameters.reduce<number>((acc, v) => acc + determineNodeSize(v as INodeParameters), 1);
 	} else {
 		// Record case
 		return Object.values(parameters).reduce<number>(
 			(acc, v) => acc + determineNodeSize(v as NodeParameterValueType),
-			0,
+			1,
 		);
 	}
 }
 
-function determineWorkflowSize<W extends WorkflowDiffBase>(workflow: W) {
+function determineNodeParametersSize<W extends WorkflowDiffBase>(workflow: W) {
 	return workflow.nodes.reduce((acc, x) => acc + determineNodeSize(x.parameters), 0);
 }
 
@@ -277,10 +277,10 @@ export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 	const metaData = {
 		// check latest and an "average" workflow to get a somewhat accurate representation
 		// without counting through the entire history
-		workflowSizeChars: metaDataFields?.workflowSizeChars
+		workflowSizeScore: metaDataFields?.workflowSizeScore
 			? Math.max(
-					determineWorkflowSize(workflows[Math.floor(workflows.length / 2)]),
-					determineWorkflowSize(workflows[workflows.length - 1]),
+					determineNodeParametersSize(workflows[Math.floor(workflows.length / 2)]),
+					determineNodeParametersSize(workflows[workflows.length - 1]),
 				)
 			: undefined,
 	} satisfies DiffMetaData;

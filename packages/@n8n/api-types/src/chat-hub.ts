@@ -1,9 +1,9 @@
 import type { Scope } from '@n8n/permissions';
 import {
-	type StructuredChunk,
 	type JINA_AI_TOOL_NODE_TYPE,
 	type SERP_API_TOOL_NODE_TYPE,
 	type INode,
+	type ChunkType,
 	INodeSchema,
 } from 'n8n-workflow';
 import { z } from 'zod';
@@ -369,7 +369,7 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
-export type ChatHubMessageStatus = 'success' | 'error' | 'running' | 'cancelled';
+export type ChatHubMessageStatus = 'success' | 'error' | 'running' | 'cancelled' | 'waiting';
 
 export type ChatSessionId = string; // UUID
 export type ChatMessageId = string; // UUID
@@ -470,8 +470,11 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	tools: z.array(INodeSchema).optional(),
 }) {}
 
-export interface EnrichedStructuredChunk extends StructuredChunk {
-	metadata: StructuredChunk['metadata'] & {
+export interface MessageChunk {
+	type: ChunkType;
+	content?: string;
+	metadata: {
+		timestamp: number;
 		messageId: ChatMessageId;
 		previousMessageId: ChatMessageId | null;
 		retryOfMessageId: ChatMessageId | null;

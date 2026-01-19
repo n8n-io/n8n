@@ -40,7 +40,7 @@ export class WorkflowHistoryCompactionConfig {
 	 *
 	 * The workflow versions we compare and trim are those with
 	 * a `createdAt` value between `trimmingMinimumAgeDays - trimmingTimeWindowDays`
-	 * and `trimmingMinimumAgeHours`
+	 * and `trimmingMinimumAgeDays`
 
 	 */
 	@Env('N8N_WORKFLOW_HISTORY_TRIMMING_MINIMUM_AGE_DAYS')
@@ -51,7 +51,7 @@ export class WorkflowHistoryCompactionConfig {
 	 *
 	 * The workflow versions we compare and trim are those with
 	 * a `createdAt` value between `trimmingMinimumAgeDays - trimmingTimeWindowDays`
-	 * and `trimmingMinimumDays`.
+	 * and `trimmingMinimumAgeDays`.
 	 *
 	 * Trimming will happen once a day.
 	 */

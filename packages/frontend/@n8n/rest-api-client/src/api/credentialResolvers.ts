@@ -32,7 +32,12 @@ export async function createCredentialResolver(
 export async function updateCredentialResolver(
 	context: IRestApiContext,
 	resolverId: string,
-	payload: { name: string; type: string; config: Record<string, unknown> },
+	payload: {
+		name: string;
+		type: string;
+		config: Record<string, unknown>;
+		clearCredentials?: boolean;
+	},
 ): Promise<CredentialResolver> {
 	return await makeRestApiRequest(context, 'PATCH', `/credential-resolvers/${resolverId}`, payload);
 }
