@@ -123,7 +123,7 @@ class SubnodeInstanceImpl<
 		throw new Error('Subnode connections are managed by parent node SubnodeConfig');
 	}
 
-	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): T {
+	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): this {
 		throw new Error('Subnode error handling is managed by parent node SubnodeConfig');
 	}
 

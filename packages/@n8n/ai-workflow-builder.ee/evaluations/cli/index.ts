@@ -9,7 +9,9 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
+import { OneShotWorkflowCodeAgent } from '@/one-shot-workflow-code-agent';
 import type { SimpleWorkflow } from '@/types/workflow';
+import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import {
@@ -38,8 +40,15 @@ import {
 import { consumeGenerator, getChatPayload } from '../harness/evaluation-helpers';
 import { createLogger } from '../harness/logger';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
-import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
+import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
 import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
+
+/**
+ * Type guard for workflow update chunks from streaming output.
+ */
+function isWorkflowUpdateChunk(chunk: StreamChunk): chunk is WorkflowUpdateChunk {
+	return chunk.type === 'workflow-updated';
+}
 
 /**
  * Create a workflow generator function.
@@ -82,6 +91,48 @@ function createWorkflowGenerator(
 		}
 
 		return state.values.workflowJSON;
+	};
+}
+
+/**
+ * Create a one-shot workflow generator function.
+ * Uses the OneShotWorkflowCodeAgent which generates workflows via TypeScript SDK code
+ * and emits workflow JSON directly in the stream.
+ */
+function createOneShotWorkflowGenerator(
+	parsedNodeTypes: INodeTypeDescription[],
+	llms: ResolvedStageLLMs,
+): (prompt: string, callbacks?: Callbacks) => Promise<SimpleWorkflow> {
+	return async (prompt: string): Promise<SimpleWorkflow> => {
+		const runId = generateRunId();
+
+		const agent = new OneShotWorkflowCodeAgent({
+			llm: llms.builder,
+			nodeTypes: parsedNodeTypes,
+		});
+
+		const payload = getChatPayload({
+			evalType: EVAL_TYPES.LANGSMITH,
+			message: prompt,
+			workflowId: runId,
+			featureFlags: { oneShotAgent: true },
+		});
+
+		let workflow: SimpleWorkflow | null = null;
+
+		for await (const output of agent.chat(payload, EVAL_USERS.LANGSMITH)) {
+			for (const message of output.messages) {
+				if (isWorkflowUpdateChunk(message)) {
+					workflow = JSON.parse(message.codeSnippet) as SimpleWorkflow;
+				}
+			}
+		}
+
+		if (!workflow) {
+			throw new Error('One-shot agent did not produce a workflow');
+		}
+
+		return workflow;
 	};
 }
 
@@ -157,12 +208,11 @@ export async function runV2Evaluation(): Promise<void> {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
 	}
 
-	// Create workflow generator with per-stage LLMs
-	const generateWorkflow = createWorkflowGenerator(
-		env.parsedNodeTypes,
-		env.llms,
-		args.featureFlags,
-	);
+	// Create workflow generator based on agent type
+	const generateWorkflow =
+		args.agent === AGENT_TYPES.ONE_SHOT
+			? createOneShotWorkflowGenerator(env.parsedNodeTypes, env.llms)
+			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
 	// Create evaluators based on mode (using judge LLM for evaluation)
 	const evaluators: Array<Evaluator<EvaluationContext>> = [];

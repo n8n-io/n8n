@@ -48,7 +48,7 @@ class MergeNodeInstance implements NodeInstance<'n8n-nodes-base.merge', string, 
 		throw new Error('Merge node connections are managed by MergeComposite');
 	}
 
-	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): T {
+	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): this {
 		throw new Error('Merge node error handling is managed by MergeComposite');
 	}
 

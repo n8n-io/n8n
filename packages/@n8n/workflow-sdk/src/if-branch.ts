@@ -40,7 +40,7 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 		throw new Error('IF node connections are managed by IfBranchComposite');
 	}
 
-	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): T {
+	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): this {
 		throw new Error('IF node error handling is managed by IfBranchComposite');
 	}
 
