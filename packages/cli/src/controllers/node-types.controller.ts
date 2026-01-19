@@ -2,9 +2,9 @@ import { GetNodeTypesByIdentifierRequestDto } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Body, Post, RestController } from '@n8n/decorators';
 import { Request } from 'express';
-import { readFile } from 'fs/promises';
 import get from 'lodash/get';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
+import { coerce } from 'semver';
 
 import { NodeTypes } from '@/node-types';
 
@@ -18,12 +18,12 @@ function parseNodeTypeIdentifier(identifier: string): { name: string; version: n
 	if (atIndex === -1) return null;
 
 	const name = identifier.substring(0, atIndex);
+	if (!name) return null;
+
 	const versionStr = identifier.substring(atIndex + 1);
-	const version = parseFloat(versionStr);
+	if (!coerce(versionStr)) return null;
 
-	if (!name || isNaN(version)) return null;
-
-	return { name, version };
+	return { name, version: parseFloat(versionStr) };
 }
 
 @RestController('/node-types')
@@ -36,49 +36,15 @@ export class NodeTypesController {
 	@Post('/')
 	async getNodeInfo(req: Request) {
 		const nodeInfos = get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
-
 		const defaultLocale = this.globalConfig.defaultLocale;
 
-		if (defaultLocale === 'en') {
-			return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
-				const { description } = this.nodeTypes.getByNameAndVersion(name, version);
-				acc.push(description);
-				return acc;
-			}, []);
-		}
-
-		const populateTranslation = async (
-			name: string,
-			version: number,
-			nodeTypes: INodeTypeDescription[],
-		) => {
-			const { description, sourcePath } = this.nodeTypes.getWithSourcePath(name, version);
-			const translationPath = await this.nodeTypes.getNodeTranslationPath({
-				nodeSourcePath: sourcePath,
-				longNodeType: description.name,
-				locale: defaultLocale,
-			});
-
-			try {
-				const translation = await readFile(translationPath, 'utf8');
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				description.translation = JSON.parse(translation);
-			} catch {
-				// ignore - no translation exists at path
-			}
-
-			nodeTypes.push(description);
-		};
-
-		const nodeTypes: INodeTypeDescription[] = [];
-
-		const promises = nodeInfos.map(
-			async ({ name, version }) => await populateTranslation(name, version, nodeTypes),
+		const descriptions = await Promise.all(
+			nodeInfos.map(async ({ name, version }) => {
+				return await this.nodeTypes.getDescriptionWithTranslation(name, version, defaultLocale);
+			}),
 		);
 
-		await Promise.all(promises);
-
-		return nodeTypes;
+		return descriptions;
 	}
 
 	/**
@@ -90,7 +56,6 @@ export class NodeTypesController {
 		@Body payload: GetNodeTypesByIdentifierRequestDto,
 	): Promise<INodeTypeDescription[]> {
 		const { identifiers = [] } = payload;
-
 		const defaultLocale = this.globalConfig.defaultLocale;
 		const nodeTypes: INodeTypeDescription[] = [];
 
@@ -99,30 +64,12 @@ export class NodeTypesController {
 			if (!parsed) continue;
 
 			try {
-				if (defaultLocale === 'en') {
-					const { description } = this.nodeTypes.getByNameAndVersion(parsed.name, parsed.version);
-					nodeTypes.push(description);
-				} else {
-					const { description, sourcePath } = this.nodeTypes.getWithSourcePath(
-						parsed.name,
-						parsed.version,
-					);
-					const translationPath = await this.nodeTypes.getNodeTranslationPath({
-						nodeSourcePath: sourcePath,
-						longNodeType: description.name,
-						locale: defaultLocale,
-					});
-
-					try {
-						const translation = await readFile(translationPath, 'utf8');
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						description.translation = JSON.parse(translation);
-					} catch {
-						// ignore - no translation exists at path
-					}
-
-					nodeTypes.push(description);
-				}
+				const description = await this.nodeTypes.getDescriptionWithTranslation(
+					parsed.name,
+					parsed.version,
+					defaultLocale,
+				);
+				nodeTypes.push(description);
 			} catch {
 				// Skip node types that don't exist (may have been removed)
 			}
