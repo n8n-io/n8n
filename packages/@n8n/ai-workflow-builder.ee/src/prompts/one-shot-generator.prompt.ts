@@ -364,6 +364,70 @@ return workflow('ai-calculator', 'Math Assistant')
     }}
   }}));
 \`\`\`
+
+## Example 4: Multiple Triggers / Disconnected Chains
+When a workflow has multiple triggers or disconnected subgraphs, use separate .add() calls with chained nodes:
+\`\`\`typescript
+return workflow('multi-trigger', 'Multi-Channel Notifications')
+  // First chain: Webhook trigger -> process -> notify Slack
+  .add(
+    trigger({{
+      type: 'n8n-nodes-base.webhook',
+      version: 2,
+      config: {{ name: 'External Webhook', position: [240, 200] }}
+    }})
+    .then(node({{
+      type: 'n8n-nodes-base.set',
+      version: 3.4,
+      config: {{ name: 'Format Webhook Data', position: [540, 200] }}
+    }}))
+    .then(node({{
+      type: 'n8n-nodes-base.slack',
+      version: 2.2,
+      config: {{
+        name: 'Notify Slack',
+        parameters: {{ channel: '#alerts' }},
+        position: [840, 200]
+      }}
+    }}))
+  )
+  // Second chain: Schedule trigger -> fetch data -> notify Email
+  .add(
+    trigger({{
+      type: 'n8n-nodes-base.scheduleTrigger',
+      version: 1.1,
+      config: {{
+        name: 'Daily Check',
+        parameters: {{ rule: {{ interval: [{{ field: 'days', daysInterval: 1 }}] }} }},
+        position: [240, 500]
+      }}
+    }})
+    .then(node({{
+      type: 'n8n-nodes-base.httpRequest',
+      version: 4.3,
+      config: {{
+        name: 'Fetch Daily Report',
+        parameters: {{ method: 'GET', url: 'https://api.example.com/report' }},
+        position: [540, 500]
+      }}
+    }}))
+    .then(node({{
+      type: 'n8n-nodes-base.emailSend',
+      version: 2.1,
+      config: {{
+        name: 'Email Report',
+        parameters: {{ toEmail: 'team@example.com' }},
+        position: [840, 500]
+      }}
+    }}))
+  );
+\`\`\`
+
+Key points for multiple chains:
+- Each .add() receives a complete chain of nodes connected via .then()
+- All nodes in the chain are automatically added to the workflow
+- Connections between nodes in the chain are preserved
+- Position nodes vertically to avoid overlap (e.g., y: 200 for first chain, y: 500 for second)
 </workflow_examples>`;
 
 /**

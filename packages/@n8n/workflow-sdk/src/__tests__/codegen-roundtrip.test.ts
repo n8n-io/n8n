@@ -7,11 +7,11 @@ import type { WorkflowJSON } from '../types/base';
 const FIXTURES_DIR = path.resolve(__dirname, '../../test-fixtures/real-workflows');
 
 // Workflows with complex topologies that codegen doesn't fully support yet:
-// - Multiple disconnected triggers/subgraphs
+// - Multiple disconnected triggers/subgraphs with AI subnodes
 // - Nodes not reachable from main trigger chain
 // - Multi-output nodes not handled by IF/Switch/Merge composites
 const SKIP_WORKFLOWS = new Set([
-	// Disconnected subgraphs / multiple triggers
+	// Disconnected subgraphs / multiple triggers (AI subnodes get lost)
 	'8500', // Jarvis: multiple MCP triggers with disconnected tool nodes
 	'4968', // LinkedIn content: disconnected subgraph
 	'12325', // LinkedIn posts: disconnected subgraph
