@@ -65,6 +65,8 @@ on:
         required: false
       N8N_ENCRYPTION_KEY:
         required: false
+      CONTAINER_TELEMETRY_WEBHOOK:
+        required: false
 
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
@@ -143,6 +145,7 @@ jobs:
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+          CONTAINER_TELEMETRY_WEBHOOK: ${{secrets.CONTAINER_TELEMETRY_WEBHOOK}}
 
       - name: Upload Failure Artifacts
         if: ${{ failure() && inputs.upload-failure-artifacts }}
