@@ -1,7 +1,7 @@
 import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
-import { Cipher, type BinaryDataService } from 'n8n-core';
+import type { Cipher, BinaryDataService } from 'n8n-core';
 import type { IBinaryData } from 'n8n-workflow';
 
 import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
@@ -657,7 +657,7 @@ describe('ChatHubWorkflowService', () => {
 			);
 
 			expect(mockCipher.encrypt).toHaveBeenCalledWith(executionMetadata);
-			expect(result[0].data.main[0][0]).toMatchObject({
+			expect(result[0].data.main[0]![0]).toMatchObject({
 				encryptedMetadata: 'encrypted-metadata',
 				json: {
 					sessionId: 'session-123',
@@ -715,8 +715,8 @@ describe('ChatHubWorkflowService', () => {
 					id: 'attachment-1',
 					mimeType: 'image/png',
 					fileName: 'test.png',
-					fileSize: 1024,
-					data: Buffer.from('test'),
+					fileSize: '1024',
+					data: 'test',
 				},
 			];
 
@@ -728,7 +728,7 @@ describe('ChatHubWorkflowService', () => {
 				defaultExecutionMetadata,
 			);
 
-			expect(result[0].data.main[0][0].json.files).toEqual([
+			expect(result[0].data.main[0]![0].json.files).toEqual([
 				{
 					id: 'attachment-1',
 					mimeType: 'image/png',
@@ -736,7 +736,7 @@ describe('ChatHubWorkflowService', () => {
 					fileSize: 1024,
 				},
 			]);
-			expect(result[0].data.main[0][0].binary).toHaveProperty('data0');
+			expect(result[0].data.main[0]![0].binary).toHaveProperty('data0');
 		});
 	});
 });

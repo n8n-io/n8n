@@ -2,13 +2,13 @@ import type { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { AuthService } from '@/auth/auth.service';
+import type { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 
 import { ChatHubController } from '../chat-hub.controller';
 import type { ChatHubService } from '../chat-hub.service';
 import type { ChatHubModelsService } from '../chat-hub.models.service';
-import type { ChatHubAgentService } from '../chat-hub.agent.service';
+import type { ChatHubAgentService } from '../chat-hub-agent.service';
 import type { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 
 describe('ChatHubController', () => {

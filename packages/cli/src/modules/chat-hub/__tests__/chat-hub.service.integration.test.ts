@@ -985,19 +985,26 @@ describe('chatHub', () => {
 				// Second call: title generation (don't care in this test)
 				spyExecute.mockRejectedValue(Error());
 
-				await chatHubService.sendHumanMessage(mockResponse, member, {
-					userId: member.id,
-					sessionId,
-					messageId,
-					message: 'Test message',
-					model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
-					credentials: {
-						anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+				await chatHubService.sendHumanMessage(
+					mockResponse,
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						messageId,
+						message: 'Test message',
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+						previousMessageId: null,
+						tools: [],
+						attachments: [],
 					},
-					previousMessageId: null,
-					tools: [],
-					attachments: [],
-				});
+					{
+						authToken: 'authtoken',
+					},
+				);
 
 				const messages = await retryUntil(async () => {
 					const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -1060,19 +1067,26 @@ describe('chatHub', () => {
 				// Second call: title generation (don't care in this test)
 				spyExecute.mockRejectedValue(Error());
 
-				await chatHubService.sendHumanMessage(mockResponse, member, {
-					userId: member.id,
-					sessionId,
-					messageId,
-					message: 'Test message',
-					model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
-					credentials: {
-						anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+				await chatHubService.sendHumanMessage(
+					mockResponse,
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						messageId,
+						message: 'Test message',
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+						previousMessageId: null,
+						tools: [],
+						attachments: [],
 					},
-					previousMessageId: null,
-					tools: [],
-					attachments: [],
-				});
+					{
+						authToken: 'authtoken',
+					},
+				);
 
 				const messages = await retryUntil(async () => {
 					const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -1145,19 +1159,26 @@ describe('chatHub', () => {
 				// Second call: title generation (don't care in this test)
 				spyExecute.mockRejectedValue(Error());
 
-				await chatHubService.sendHumanMessage(mockResponse, member, {
-					userId: member.id,
-					sessionId,
-					messageId,
-					message: 'Test message',
-					model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
-					credentials: {
-						anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+				await chatHubService.sendHumanMessage(
+					mockResponse,
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						messageId,
+						message: 'Test message',
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+						previousMessageId: null,
+						tools: [],
+						attachments: [],
 					},
-					previousMessageId: null,
-					tools: [],
-					attachments: [],
-				});
+					{
+						authToken: 'authtoken',
+					},
+				);
 
 				const messages = await retryUntil(async () => {
 					const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -1244,19 +1265,26 @@ describe('chatHub', () => {
 				// Second call: title generation (don't care in this test)
 				spyExecute.mockRejectedValue(Error());
 
-				await chatHubService.sendHumanMessage(mockResponse, member, {
-					userId: member.id,
-					sessionId,
-					messageId,
-					message: 'Test message',
-					model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
-					credentials: {
-						anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+				await chatHubService.sendHumanMessage(
+					mockResponse,
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						messageId,
+						message: 'Test message',
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+						previousMessageId: null,
+						tools: [],
+						attachments: [],
 					},
-					previousMessageId: null,
-					tools: [],
-					attachments: [],
-				});
+					{
+						authToken: 'authtoken',
+					},
+				);
 
 				// Verify clearTimeout was called with the captured timeout ID
 				expect(capturedTimeoutId).not.toBeNull();
@@ -1323,19 +1351,26 @@ describe('chatHub', () => {
 				// Second call: title generation (don't care in this test)
 				spyExecute.mockRejectedValue(Error());
 
-				const messagePromise = chatHubService.sendHumanMessage(mockResponse, member, {
-					userId: member.id,
-					sessionId,
-					messageId,
-					message: 'Test message',
-					model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
-					credentials: {
-						anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+				const messagePromise = chatHubService.sendHumanMessage(
+					mockResponse,
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						messageId,
+						message: 'Test message',
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+						previousMessageId: null,
+						tools: [],
+						attachments: [],
 					},
-					previousMessageId: null,
-					tools: [],
-					attachments: [],
-				});
+					{
+						authToken: 'authtoken',
+					},
+				);
 
 				// Wait for the execution to be set up
 				await new Promise((resolve) => originalSetTimeout(resolve, 150));
@@ -1497,17 +1532,24 @@ describe('chatHub', () => {
 						return { executionId };
 					});
 
-					await chatHubService.sendHumanMessage(mockResponse, member, {
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'n8n', workflowId: workflow.id },
-						credentials: {},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					});
+					await chatHubService.sendHumanMessage(
+						mockResponse,
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+						},
+					);
 
 					const messages = await retryUntil(async () => {
 						const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -1607,17 +1649,24 @@ describe('chatHub', () => {
 						return { executionId };
 					});
 
-					await chatHubService.sendHumanMessage(mockResponse, member, {
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'n8n', workflowId: workflow.id },
-						credentials: {},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					});
+					await chatHubService.sendHumanMessage(
+						mockResponse,
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+						},
+					);
 
 					const messages = await retryUntil(async () => {
 						const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -1724,17 +1773,24 @@ describe('chatHub', () => {
 						return { executionId };
 					});
 
-					await chatHubService.sendHumanMessage(mockResponse, member, {
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'n8n', workflowId: workflow.id },
-						credentials: {},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					});
+					await chatHubService.sendHumanMessage(
+						mockResponse,
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+						},
+					);
 
 					const messages = await retryUntil(async () => {
 						const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -1876,17 +1932,24 @@ describe('chatHub', () => {
 						});
 					});
 
-					await chatHubService.sendHumanMessage(mockResponse, member, {
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'n8n', workflowId: workflow.id },
-						credentials: {},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					});
+					await chatHubService.sendHumanMessage(
+						mockResponse,
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+						},
+					);
 
 					const messages = await retryUntil(async () => {
 						const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -1988,17 +2051,24 @@ describe('chatHub', () => {
 						return { executionId };
 					});
 
-					await chatHubService.sendHumanMessage(mockResponse, member, {
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'n8n', workflowId: workflow.id },
-						credentials: {},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					});
+					await chatHubService.sendHumanMessage(
+						mockResponse,
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+						},
+					);
 
 					const messages = await retryUntil(async () => {
 						const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -2042,17 +2112,24 @@ describe('chatHub', () => {
 					);
 
 					await expect(
-						chatHubService.sendHumanMessage(mockResponse, member, {
-							userId: member.id,
-							sessionId,
-							messageId,
-							message: 'Test message',
-							model: { provider: 'n8n', workflowId: workflow.id },
-							credentials: {},
-							previousMessageId: null,
-							tools: [],
-							attachments: [],
-						}),
+						chatHubService.sendHumanMessage(
+							mockResponse,
+							member,
+							{
+								userId: member.id,
+								sessionId,
+								messageId,
+								message: 'Test message',
+								model: { provider: 'n8n', workflowId: workflow.id },
+								credentials: {},
+								previousMessageId: null,
+								tools: [],
+								attachments: [],
+							},
+							{
+								authToken: 'authtoken',
+							},
+						),
 					).rejects.toThrow('Chat Trigger node response mode must be set to');
 				});
 			});
