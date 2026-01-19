@@ -102,4 +102,16 @@ describe('Workflow Status API', () => {
 			});
 		});
 	});
+
+	describe('DELETE /credentials/:id/revoke', () => {
+		describe('when no static auth token is provided', () => {
+			it('should revoke a credential', async () => {
+				await testServer.authlessAgent
+					.delete(`/credentials/${savedCredential.id}/revoke`)
+					.set('Authorization', 'Bearer test-token')
+					.query({ resolverId: resolver.id })
+					.expect(204);
+			});
+		});
+	});
 });

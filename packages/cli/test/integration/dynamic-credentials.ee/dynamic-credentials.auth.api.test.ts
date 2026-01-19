@@ -88,23 +88,6 @@ describe('Workflow Status API', () => {
 	});
 
 	describe('GET /credentials/:id/authorize', () => {
-		// 	it('should return the authorization URL for a credential', async () => {
-		// 		mockInstance(DynamicCredentialsConfig, {
-		// 			endpointAuthToken: 'test-token',
-		// 			corsOrigin: 'https://app.example.com',
-		// 			corsAllowCredentials: false,
-		// 		});
-		// 		const response = await testServer.authlessAgent
-		// 			.post(`/credentials/${savedCredential.id}/authorize`)
-		// 			.query({ resolverId: resolver.id })
-		// 			.set('Authorization', 'Bearer test-token')
-		// 			.expect(200);
-
-		// 		expect(response.body.data).toMatchObject({
-		// 			authorizationUrl: expect.any(String),
-		// 		});
-		// 	});
-		// });
 		describe('when a static auth token is provided', () => {
 			it('should return the authorization URL for a credential', async () => {
 				const response = await testServer.authlessAgent
@@ -145,12 +128,52 @@ describe('Workflow Status API', () => {
 					.expect(401);
 			});
 		});
+
 		it('should return 401 if the authorization header is missing', async () => {
 			await testServer.authlessAgent
 				.post(`/credentials/${savedCredential.id}/authorize`)
 				.query({ resolverId: resolver.id })
 				.set('X-Authorization', 'Bearer static-test-token')
 				.expect(401);
+		});
+	});
+
+	describe('DELETE /credentials/:id/revoke', () => {
+		describe('when a static auth token is provided', () => {
+			it('should revoke a credential', async () => {
+				await testServer.authlessAgent
+					.delete(`/credentials/${savedCredential.id}/revoke`)
+					.query({ resolverId: resolver.id })
+					.set('X-Authorization', 'Bearer static-test-token')
+					.set('Authorization', 'Bearer test-token')
+					.expect(204);
+			});
+
+			it('should return 401 if the static auth token is invalid', async () => {
+				await testServer.authlessAgent
+					.delete(`/credentials/${savedCredential.id}/revoke`)
+					.query({ resolverId: resolver.id })
+					.set('X-Authorization', 'Bearer invalid-token')
+					.set('Authorization', 'Bearer test-token')
+					.expect(401);
+			});
+
+			it('should return 401 if the static auth token is missing', async () => {
+				await testServer.authlessAgent
+					.delete(`/credentials/${savedCredential.id}/revoke`)
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token')
+					.expect(401);
+			});
+
+			it('should return 401 if the static auth token is empty', async () => {
+				await testServer.authlessAgent
+					.delete(`/credentials/${savedCredential.id}/revoke`)
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token')
+					.set('X-Authorization', 'Bearer ')
+					.expect(401);
+			});
 		});
 	});
 });
