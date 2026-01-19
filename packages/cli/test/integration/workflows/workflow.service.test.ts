@@ -13,6 +13,8 @@ import {
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { DataSource } from '@n8n/typeorm';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
@@ -70,6 +72,7 @@ beforeAll(async () => {
 		workflowPublishHistoryRepository,
 		workflowValidationService,
 		nodeTypes,
+		Container.get(DataSource),
 	);
 });
 
