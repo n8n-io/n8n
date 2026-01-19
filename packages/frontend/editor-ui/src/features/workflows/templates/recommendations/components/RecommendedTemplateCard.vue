@@ -141,7 +141,7 @@ onBeforeUnmount(() => {
 					:node-type="nodeType"
 				/>
 			</div>
-			<N8nText size="large" :bold="true">
+			<N8nText size="large" :bold="true" :class="$style.title">
 				{{ template.name }}
 			</N8nText>
 			<div v-if="template.user" :class="$style.userInfo">
@@ -203,6 +203,11 @@ onBeforeUnmount(() => {
 
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
+
+		.title {
+			color: var(--color--primary);
+			text-decoration: underline;
+		}
 	}
 }
 
