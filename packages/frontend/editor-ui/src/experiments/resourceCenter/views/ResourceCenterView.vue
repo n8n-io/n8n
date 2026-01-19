@@ -42,7 +42,7 @@ const handleSeeMore = async (sectionKey: string) => {
 
 const handleViewAllTemplates = () => {
 	resourceCenterStore.trackTemplateRepoVisit();
-	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
+	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank', 'noopener,noreferrer');
 };
 
 const loadTemplates = async () => {

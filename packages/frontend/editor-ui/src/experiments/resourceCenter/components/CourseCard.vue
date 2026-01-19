@@ -19,7 +19,7 @@ const { trackTileClick } = useResourceCenterStore();
 
 const openCourse = () => {
 	trackTileClick(props.section, 'video', props.course.url);
-	window.open(props.course.url, '_blank');
+	window.open(props.course.url, '_blank', 'noopener,noreferrer');
 };
 </script>
 

@@ -29,7 +29,10 @@ const sortBy = ref<'alphabetical' | 'newest'>('alphabetical');
 const templates = ref<ITemplatesWorkflowFull[]>([]);
 const isLoadingTemplates = ref(false);
 
-const sectionKey = computed(() => route.params.sectionId as string);
+const sectionKey = computed(() => {
+	const id = route.params.sectionId;
+	return Array.isArray(id) ? (id[0] ?? '') : (id ?? '');
+});
 
 const sectionConfig = computed(() => {
 	const configs: Record<string, { title: string; type: 'video' | 'template' }> = {
@@ -113,7 +116,7 @@ const goBack = async () => {
 
 const handleViewAllTemplates = () => {
 	resourceCenterStore.trackTemplateRepoVisit();
-	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
+	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank', 'noopener,noreferrer');
 };
 
 // Map section keys to tracking section values

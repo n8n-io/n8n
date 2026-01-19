@@ -22,7 +22,7 @@ const { trackTileClick } = useResourceCenterStore();
 const openVideo = () => {
 	const videoUrl = `https://www.youtube.com/watch?v=${props.video.videoId}`;
 	trackTileClick(props.section, 'video', videoUrl);
-	window.open(videoUrl, '_blank');
+	window.open(videoUrl, '_blank', 'noopener,noreferrer');
 };
 </script>
 

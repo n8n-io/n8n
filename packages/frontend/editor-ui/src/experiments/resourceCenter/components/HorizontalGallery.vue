@@ -12,6 +12,7 @@ defineProps<{
 		<div :class="$style.header">
 			<component
 				:is="onTitleClick ? 'button' : 'div'"
+				:type="onTitleClick ? 'button' : undefined"
 				:class="[$style.titleWrapper, onTitleClick && $style.clickable]"
 				@click="onTitleClick"
 			>
