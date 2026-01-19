@@ -157,10 +157,10 @@ export const useDataTableColumns = ({
 					cellClass: (params) =>
 						params.data?.id === ADD_ROW_ROW_ID ? 'add-row-cell' : 'id-column',
 					cellRendererSelector: (params: ICellRendererParams) => {
-						if (params.value === ADD_ROW_ROW_ID && !readOnly?.value) {
+						if (params.value === ADD_ROW_ROW_ID) {
 							return {
 								component: AddRowButton,
-								params: { onClick: onAddRowClick },
+								params: { onClick: onAddRowClick, disabled: readOnly?.value ?? false },
 							};
 						}
 						return undefined;

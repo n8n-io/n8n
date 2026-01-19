@@ -495,6 +495,9 @@ export class SourceControlService {
 
 		// IMPORTANT: Make sure the projects and folders get processed first as the workflows depend on them
 		const projectsToBeImported = getNonDeletedResources(statusResult, 'project');
+		this.logger.debug(
+			`[Project Debug] Found ${projectsToBeImported.length} projects to import: ${JSON.stringify(projectsToBeImported.map((p) => ({ id: p.id, name: p.name })))}`,
+		);
 		await this.sourceControlImportService.importTeamProjectsFromWorkFolder(
 			projectsToBeImported,
 			user.id,

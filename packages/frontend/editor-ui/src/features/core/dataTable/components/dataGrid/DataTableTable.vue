@@ -56,7 +56,7 @@ const defaultColDef = computed(() => ({
 const agGrid = useAgGrid<DataTableRow>({
 	gridContainerRef,
 	defaultSortColumn: DEFAULT_ID_COLUMN_NAME,
-	pinnedBottomRowId: props.readOnly ? undefined : ADD_ROW_ROW_ID,
+	pinnedBottomRowId: ADD_ROW_ROW_ID,
 	defaultColDef: defaultColDef.value,
 });
 

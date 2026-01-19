@@ -471,10 +471,6 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		this.logger.debug(
-			`[DataTable Debug] Found ${dataTableFiles.length} data table files in remote`,
-		);
-
 		if (dataTableFiles.length === 0) {
 			return [];
 		}
@@ -484,10 +480,6 @@ export class SourceControlImportService {
 				try {
 					const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 					const parsed = jsonParse<ExportableDataTable>(fileContent);
-					this.logger.debug(
-						`[DataTable Debug] Parsed remote table ${parsed.id} (${parsed.name}), owner:`,
-						parsed.ownedBy,
-					);
 					return parsed;
 				} catch (error) {
 					this.logger.debug(`Failed to parse data table from file ${file}: ${error.message}`);
@@ -503,14 +495,14 @@ export class SourceControlImportService {
 	async getLocalDataTablesFromDb(): Promise<StatusExportableDataTable[]> {
 		try {
 			const dataTables = await this.dataTableRepository.find({
-				relations: ['columns', 'project'],
+				relations: [
+					'columns',
+					'project',
+					'project.projectRelations',
+					'project.projectRelations.role',
+				],
 			});
-			this.logger.debug(`[DataTable Debug] Found ${dataTables.length} data tables in DB`);
 			return dataTables.map((table) => {
-				this.logger.debug(
-					`[DataTable Debug] Processing table ${table.id} (${table.name}), project:`,
-					table.project,
-				);
 				let ownedBy: StatusResourceOwner | null = null;
 				if (table.project?.type === 'personal') {
 					const ownerRelation = table.project.projectRelations?.find(
@@ -530,7 +522,6 @@ export class SourceControlImportService {
 						projectName: table.project.name,
 					};
 				}
-				this.logger.debug(`[DataTable Debug] Table ${table.id} resolved owner:`, ownedBy);
 
 				return {
 					id: table.id,
@@ -1219,25 +1210,47 @@ export class SourceControlImportService {
 				}
 
 				// Find the target project based on owner information
-				const targetProjectId = dataTable.ownedBy?.projectId;
+				// Use the same logic as workflows/credentials to handle both team and personal projects
+				let targetProject: Project | null = null;
 
-				if (!targetProjectId) {
-					this.logger.warn(`No project owner found for data table ${dataTable.name}. Skipping.`);
-					continue;
+				if (dataTable.ownedBy) {
+					if (dataTable.ownedBy.type === 'personal') {
+						// For personal projects, extract email from projectName (format: "Name <email>")
+						const emailMatch = dataTable.ownedBy.projectName.match(/<([^>]+)>/);
+						const personalEmail = emailMatch ? emailMatch[1] : null;
+
+						if (personalEmail) {
+							const user = await this.userRepository.findOne({ where: { email: personalEmail } });
+							if (user) {
+								targetProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+									user.id,
+								);
+							}
+						}
+					} else if (dataTable.ownedBy.type === 'team') {
+						// For team projects, find or create
+						targetProject = await this.projectRepository.findOne({
+							where: { id: dataTable.ownedBy.projectId },
+						});
+
+						if (!targetProject) {
+							targetProject = await this.createTeamProject({
+								type: 'team',
+								teamId: dataTable.ownedBy.projectId,
+								teamName: dataTable.ownedBy.projectName,
+							});
+						}
+					}
 				}
-
-				// Check if project exists locally
-				const targetProject = await this.projectRepository.findOne({
-					where: { id: targetProjectId },
-				});
 
 				if (!targetProject) {
 					this.logger.warn(
-						`Project ${targetProjectId} not found for data table ${dataTable.name}. ` +
-							'The data table will be associated once the project is synced.',
+						`No valid project found for data table ${dataTable.name}. Owner: ${JSON.stringify(dataTable.ownedBy)}. Skipping.`,
 					);
-					// Use the projectId anyway - the project should be synced before data tables
+					continue;
 				}
+
+				const targetProjectId = targetProject.id;
 
 				// Check if data table already exists
 				const existingDataTable = await this.dataTableRepository.findOne({
@@ -1327,7 +1340,6 @@ export class SourceControlImportService {
 			}
 		}
 
-		this.logger.info(`Imported ${result.imported.length} data tables`);
 		return result;
 	}
 
