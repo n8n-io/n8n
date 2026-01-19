@@ -1,5 +1,11 @@
 import { v4 as uuid } from 'uuid';
-import type { IfBranchComposite, NodeInstance, NodeConfig, DeclaredConnection } from './types/base';
+import type {
+	IfBranchComposite,
+	NodeInstance,
+	NodeConfig,
+	DeclaredConnection,
+	NodeChain,
+} from './types/base';
 import type { IfV23Config } from './types/generated/nodes/n8n-nodes-base/if';
 
 /**
@@ -36,7 +42,10 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 		return new IfNodeInstance({ ...this.config, ...config } as NodeConfig<IfV23Config>);
 	}
 
-	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
+	then<T extends NodeInstance<string, string, unknown>>(
+		_target: T,
+		_outputIndex?: number,
+	): NodeChain<NodeInstance<'n8n-nodes-base.if', string, unknown>, T> {
 		throw new Error('IF node connections are managed by IfBranchComposite');
 	}
 

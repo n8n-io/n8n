@@ -45,6 +45,7 @@ import type {
 	DocumentLoaderInstance,
 	TextSplitterInstance,
 	DeclaredConnection,
+	NodeChain,
 } from './types/base';
 
 // =============================================================================
@@ -119,7 +120,10 @@ class SubnodeInstanceImpl<
 		);
 	}
 
-	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
+	then<T extends NodeInstance<string, string, unknown>>(
+		_target: T,
+		_outputIndex?: number,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
 		throw new Error('Subnode connections are managed by parent node SubnodeConfig');
 	}
 

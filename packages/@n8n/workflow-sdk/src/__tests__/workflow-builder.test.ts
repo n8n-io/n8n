@@ -44,6 +44,37 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 			expect(json.nodes).toHaveLength(2);
 		});
+
+		it('should add a NodeChain and include all nodes', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const n1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP Request' },
+			});
+			const n2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'Set Data' } });
+
+			// Create a chain via .then()
+			const chain = t.then(n1).then(n2);
+
+			// Add the chain to workflow
+			const wf = workflow('test-id', 'Test Workflow').add(chain);
+			const json = wf.toJSON();
+
+			// All three nodes should be in the workflow
+			expect(json.nodes).toHaveLength(3);
+			expect(json.nodes.map((n) => n.name).sort()).toEqual(
+				['HTTP Request', 'Set Data', 'Start'].sort(),
+			);
+
+			// Connections should be preserved
+			expect(json.connections['Start'].main[0]![0]!.node).toBe('HTTP Request');
+			expect(json.connections['HTTP Request'].main[0]![0]!.node).toBe('Set Data');
+		});
 	});
 
 	describe('.then()', () => {
@@ -167,9 +198,7 @@ describe('Workflow Builder', () => {
 			// This chained syntax: .then(node.onError(handler))
 			// Should result in: trigger -> slack -> (error) -> telegram
 			// NOT: trigger -> telegram (which happens if onError returns handler)
-			const wf = workflow('test-id', 'Test')
-				.add(t)
-				.then(slackNode.onError(telegramNode));
+			const wf = workflow('test-id', 'Test').add(t).then(slackNode.onError(telegramNode));
 
 			const json = wf.toJSON();
 
@@ -622,14 +651,20 @@ describe('Workflow Builder', () => {
 			expect(json.connections['If Check'].main[1][0].node).toBe('False Path');
 		});
 
-		it('should return target node for chaining', () => {
+		it('should return NodeChain for chaining', () => {
 			const nodeA = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'A' } });
 			const nodeB = node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'B' } });
 
 			const result = nodeA.then(nodeB);
 
-			// .then() should return the target node for chaining
-			expect(result).toBe(nodeB);
+			// .then() should return a NodeChain containing both nodes
+			expect(result._isChain).toBe(true);
+			expect(result.head).toBe(nodeA);
+			expect(result.tail).toBe(nodeB);
+			expect(result.allNodes).toEqual([nodeA, nodeB]);
+			// Chain should proxy tail properties
+			expect(result.name).toBe(nodeB.name);
+			expect(result.type).toBe(nodeB.type);
 		});
 
 		it('should allow getting declared connections', () => {

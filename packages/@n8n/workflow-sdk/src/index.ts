@@ -8,6 +8,7 @@ export type {
 	NodeJSON,
 	NodeInstance,
 	TriggerInstance,
+	NodeChain,
 	NodeConfig,
 	NodeInput,
 	TriggerInput,
@@ -83,6 +84,9 @@ export type {
 
 // Generated node types
 export * from './types/generated';
+
+// Type guard for NodeChain
+export { isNodeChain } from './types/base';
 
 // Workflow builder
 export { workflow } from './workflow-builder';

@@ -9,6 +9,7 @@ import type {
 	PlaceholderValue,
 	NewCredentialValue,
 	DeclaredConnection,
+	NodeChain,
 } from './types/base';
 
 /**
@@ -85,9 +86,12 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		);
 	}
 
-	then<T extends NodeInstance<string, string, unknown>>(target: T, outputIndex: number = 0): T {
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T,
+		outputIndex: number = 0,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
 		this._connections.push({ target, outputIndex });
-		return target;
+		return new NodeChainImpl(this, target, [this, target]);
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
@@ -134,6 +138,83 @@ class TriggerInstanceImpl<TType extends string, TVersion extends string, TOutput
 	implements TriggerInstance<TType, TVersion, TOutput>
 {
 	readonly isTrigger: true = true;
+}
+
+/**
+ * Internal NodeChain implementation
+ *
+ * Proxies NodeInstance properties to the tail node while tracking all nodes in the chain.
+ */
+class NodeChainImpl<
+	THead extends NodeInstance<string, string, unknown>,
+	TTail extends NodeInstance<string, string, unknown>,
+> implements NodeChain<THead, TTail>
+{
+	readonly _isChain: true = true;
+	readonly head: THead;
+	readonly tail: TTail;
+	readonly allNodes: NodeInstance<string, string, unknown>[];
+
+	constructor(head: THead, tail: TTail, allNodes: NodeInstance<string, string, unknown>[]) {
+		this.head = head;
+		this.tail = tail;
+		this.allNodes = allNodes;
+	}
+
+	// Proxy NodeInstance properties to tail
+	get type(): TTail['type'] {
+		return this.tail.type;
+	}
+
+	get version(): TTail['version'] {
+		return this.tail.version;
+	}
+
+	get config(): NodeConfig {
+		return this.tail.config;
+	}
+
+	get id(): string {
+		return this.tail.id;
+	}
+
+	get name(): string {
+		return this.tail.name;
+	}
+
+	get _outputType(): TTail['_outputType'] {
+		return this.tail._outputType;
+	}
+
+	update(
+		config: Partial<NodeConfig>,
+	): NodeInstance<TTail['type'], TTail['version'], TTail['_outputType']> {
+		return this.tail.update(config);
+	}
+
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T,
+		outputIndex: number = 0,
+	): NodeChain<THead, T> {
+		// Connect tail to target
+		this.tail.then(target, outputIndex);
+		// Return new chain with all nodes plus the new target
+		return new NodeChainImpl(this.head, target, [...this.allNodes, target]);
+	}
+
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
+		this.tail.onError(handler);
+		return this;
+	}
+
+	getConnections(): DeclaredConnection[] {
+		// Aggregate connections from all nodes in the chain
+		const allConnections: DeclaredConnection[] = [];
+		for (const node of this.allNodes) {
+			allConnections.push(...node.getConnections());
+		}
+		return allConnections;
+	}
 }
 
 /**
@@ -237,7 +318,10 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		return new StickyNoteInstance(newContent as string, newConfig);
 	}
 
-	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {
+	then<T extends NodeInstance<string, string, unknown>>(
+		_target: T,
+		_outputIndex?: number,
+	): NodeChain<NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>, T> {
 		throw new Error('Sticky notes do not support connections');
 	}
 
