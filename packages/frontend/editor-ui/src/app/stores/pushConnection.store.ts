@@ -102,14 +102,73 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		}
 	}
 
+	/**
+	 * Debounce window in ms for disconnect. If pushConnect is called within this
+	 * window (before or after pushDisconnect), the connection is kept.
+	 */
+	const DISCONNECT_DEBOUNCE_MS = 500;
+
+	/**
+	 * Tracks whether a connect was recently requested. Used to handle race conditions
+	 * during route transitions where disconnect/connect may be called in quick succession.
+	 * Connect always wins within the debounce window.
+	 */
+	let recentConnectIntent = false;
+
+	/**
+	 * Timeout to reset recentConnectIntent after the debounce window.
+	 */
+	let connectIntentTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	/**
+	 * Timeout for debounced disconnect.
+	 */
+	let disconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
 	const pushConnect = () => {
+		recentConnectIntent = true;
+
+		// Reset recentConnectIntent after debounce window
+		if (connectIntentTimeout) {
+			clearTimeout(connectIntentTimeout);
+		}
+		connectIntentTimeout = setTimeout(() => {
+			recentConnectIntent = false;
+			connectIntentTimeout = null;
+		}, DISCONNECT_DEBOUNCE_MS);
+
+		// Cancel any pending disconnect timeout
+		if (disconnectTimeout) {
+			clearTimeout(disconnectTimeout);
+			disconnectTimeout = null;
+		}
+
 		isConnectionRequested.value = true;
 		client.value.connect();
 	};
 
 	const pushDisconnect = () => {
-		isConnectionRequested.value = false;
-		client.value.disconnect();
+		// If connect was called recently, don't disconnect
+		// (handles race condition where new view mounts before old view unmounts)
+		if (recentConnectIntent) {
+			return;
+		}
+
+		// Cancel any existing timeout and schedule a new one
+		if (disconnectTimeout) {
+			clearTimeout(disconnectTimeout);
+		}
+
+		disconnectTimeout = setTimeout(() => {
+			// Double-check in case connect was called while we were waiting
+			if (recentConnectIntent) {
+				disconnectTimeout = null;
+				return;
+			}
+			isConnectionRequested.value = false;
+			client.value.disconnect();
+			disconnectTimeout = null;
+		}, DISCONNECT_DEBOUNCE_MS);
 	};
 
 	watch(
