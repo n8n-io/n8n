@@ -11,6 +11,7 @@ type Props = {
 	disabled?: boolean;
 	canDrop?: boolean;
 	stickyPosition?: XYPosition | null;
+	/** Minimum distance in pixels the mouse must move before drag operation starts. Prevents accidental drags. */
 	dragThreshold?: number;
 };
 
