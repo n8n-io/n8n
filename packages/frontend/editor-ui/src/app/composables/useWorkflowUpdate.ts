@@ -312,6 +312,14 @@ export function useWorkflowUpdate() {
 			await updateConnections(workflowData.connections ?? {});
 			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
 
+			// Merge pin data from workflow data with existing pin data
+			if (workflowData.pinData) {
+				workflowsStore.workflow.pinData = {
+					...workflowsStore.workflow.pinData,
+					...workflowData.pinData,
+				};
+			}
+
 			builderStore.setBuilderMadeEdits(true);
 
 			// Combine newly added node IDs with any additional IDs from previous messages
