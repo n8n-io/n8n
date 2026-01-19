@@ -182,6 +182,10 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 		await this.storage.deleteCredentialData(credentialId, key, handle.resolverId, parsedOptions);
 	}
 
+	async deleteAllSecrets(handle: CredentialResolverHandle): Promise<void> {
+		await this.storage.deleteAllCredentialData(handle);
+	}
+
 	private async parseOptions(options: CredentialResolverConfiguration) {
 		const result = await OAuthCredentialResolverOptionsSchema.safeParseAsync(options);
 		if (result.error) {
@@ -217,5 +221,17 @@ export class OAuthCredentialResolver implements ICredentialResolver {
 	): Promise<string> {
 		const [identifier, parsedOptions] = await this.getIdentifier(options);
 		return await identifier.resolve(context, parsedOptions);
+	}
+
+	async validateIdentity(identity: string, handle: CredentialResolverHandle): Promise<void> {
+		const parsedOptions = await this.parseOptions(handle.configuration);
+		await this.resolveIdentifier(
+			{
+				identity,
+				version: 1,
+				metadata: {},
+			},
+			parsedOptions,
+		);
 	}
 }

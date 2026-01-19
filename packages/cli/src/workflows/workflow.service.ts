@@ -27,7 +27,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
-import type { INode, INodes } from 'n8n-workflow';
+import type { INode, INodes, IWorkflowSettings, JsonValue } from 'n8n-workflow';
 import { NodeApiError, PROJECT_ROOT, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -306,32 +306,19 @@ export class WorkflowService {
 			};
 		}
 
+		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
+
+		if (workflowUpdateData.settings) {
+			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
+				workflowUpdateData.settings,
+				this.globalConfig.executions.timeout,
+			);
+		}
+
 		// Check if settings actually changed
 		const settingsChanged =
 			workflowUpdateData.settings !== undefined &&
 			!isEqual(workflow.settings, workflowUpdateData.settings);
-
-		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
-
-		const workflowSettings = workflowUpdateData.settings ?? {};
-		const keysAllowingDefault = [
-			'timezone',
-			'saveDataErrorExecution',
-			'saveDataSuccessExecution',
-			'saveManualExecutions',
-			'saveExecutionProgress',
-		] as const;
-		for (const key of keysAllowingDefault) {
-			// Do not save the default value
-			if (workflowSettings[key] === 'DEFAULT') {
-				delete workflowSettings[key];
-			}
-		}
-
-		if (workflowSettings.executionTimeout === this.globalConfig.executions.timeout) {
-			// Do not save when default got set
-			delete workflowSettings.executionTimeout;
-		}
 
 		// Always set updatedAt to get millisecond precision
 		workflowUpdateData.updatedAt = new Date();
@@ -417,12 +404,19 @@ export class WorkflowService {
 			});
 		}
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+
+		const settingsChangesDetail = this.calculateSettingsChanges(
+			workflow.settings,
+			updatedWorkflow.settings,
+		);
+
 		this.eventService.emit('workflow-saved', {
 			user,
 			workflow: updatedWorkflow,
 			publicApi,
 			previousWorkflow: workflow,
 			aiBuilderAssisted,
+			...(settingsChangesDetail && { settingsChanged: settingsChangesDetail }),
 		});
 
 		// Activate workflow if requested, or
@@ -525,7 +519,7 @@ export class WorkflowService {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
-			['workflow:update'],
+			['workflow:publish'],
 			{ includeActiveVersion: true },
 		);
 
@@ -564,6 +558,7 @@ export class WorkflowService {
 		}
 
 		this._validateNodes(workflowId, versionToActivate.nodes);
+		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
@@ -645,7 +640,7 @@ export class WorkflowService {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
-			['workflow:update'],
+			['workflow:publish'],
 			{ includeActiveVersion: true },
 		);
 
@@ -939,6 +934,66 @@ export class WorkflowService {
 				error: validation.error,
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
+		}
+	}
+
+	/**
+	 * Calculates which workflow settings changed between two versions.
+	 * Returns an object with { settingKey: { from, to } } for each changed setting,
+	 * or undefined if no settings changed.
+	 */
+	private calculateSettingsChanges(
+		previousSettings: IWorkflowSettings | undefined,
+		newSettings: IWorkflowSettings | undefined,
+	): Record<string, { from: JsonValue; to: JsonValue }> | undefined {
+		const changes: Record<string, { from: JsonValue; to: JsonValue }> = {};
+
+		const prev = previousSettings ?? {};
+		const next = newSettings ?? {};
+
+		// Get all unique keys from both previous and new settings
+		const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+
+		for (const key of allKeys) {
+			const prevValue = prev[key as keyof IWorkflowSettings];
+			const nextValue = next[key as keyof IWorkflowSettings];
+
+			if (!isEqual(prevValue, nextValue)) {
+				const from: JsonValue = prevValue ?? null;
+				const to: JsonValue = nextValue ?? null;
+				changes[key] = { from, to };
+			}
+		}
+
+		return Object.keys(changes).length > 0 ? changes : undefined;
+	}
+
+	/**
+	 * Validates that all sub-workflow references in a workflow are published.
+	 * Prevents publishing a parent workflow that references draft-only sub-workflows.
+	 *
+	 * Note: A published workflow could still end up referencing draft-only sub-workflows if:
+	 * - A referenced sub-workflow gets unpublished after the parent workflow was published
+	 * - The workflow ID is provided via an expression (e.g., ={{ $json.workflowId }})
+	 * - The workflow source is not 'database' (e.g., URL, parameter, localFile)
+	 *
+	 * In these cases, the invariant is enforced at execution time, where the workflow will
+	 * fail with a clear error message if the sub-workflow is not published (for production
+	 * executions) or not found.
+	 */
+	private async _validateSubWorkflowReferences(workflowId: string, nodes: INode[]) {
+		const validation = await this.workflowValidationService.validateSubWorkflowReferences(
+			workflowId,
+			nodes,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed sub-workflow validation', {
+				workflowId,
+				error: validation.error,
+				invalidReferences: validation.invalidReferences,
+			});
+			throw new WorkflowValidationError(validation.error ?? 'Sub-workflow validation failed');
 		}
 	}
 }

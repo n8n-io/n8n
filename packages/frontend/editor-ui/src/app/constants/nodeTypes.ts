@@ -41,6 +41,7 @@ export const OPEN_AI_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
 export const OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE =
 	'@n8n/n8n-nodes-langchain.openAi.assistant.message';
 export const OPEN_AI_ASSISTANT_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAiAssistant';
+export const SIMPLE_MEMORY_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 export const BASIC_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
 export const QA_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainRetrievalQa';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
@@ -57,7 +58,6 @@ export const SERVICENOW_NODE_TYPE = 'n8n-nodes-base.serviceNow';
 export const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
 export const SPLIT_IN_BATCHES_NODE_TYPE = 'n8n-nodes-base.splitInBatches';
-export const START_NODE_TYPE = 'n8n-nodes-base.start';
 export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
 export const TELEGRAM_NODE_TYPE = 'n8n-nodes-base.telegram';
 export const THE_HIVE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.theHiveTrigger';
@@ -108,7 +108,6 @@ export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
-	START_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	CRON_NODE_TYPE,

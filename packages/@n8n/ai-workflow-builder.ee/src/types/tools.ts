@@ -1,7 +1,6 @@
 import type { INodeParameters } from 'n8n-workflow';
 import type { ZodIssue } from 'zod';
 
-import type { PromptCategorization } from './categorization';
 import type { AddedNode, NodeDetails, NodeSearchResult } from './nodes';
 import type { SimpleWorkflow } from './workflow';
 
@@ -148,16 +147,20 @@ export interface RemoveConnectionOutput {
 }
 
 /**
- * Output type for categorize prompt tool
+ * Output type for rename node tool
  */
-export interface CategorizePromptOutput {
-	categorization: PromptCategorization;
+export interface RenameNodeOutput {
+	nodeId: string;
+	oldName: string;
+	newName: string;
+	message: string;
 }
 
 /**
  * Description of a workflow example we have found
  */
 export interface WorkflowMetadata {
+	templateId: number;
 	name: string;
 	description?: string;
 	workflow: SimpleWorkflow;
@@ -188,5 +191,13 @@ export interface GetWorkflowExamplesOutput {
 		workflow: string;
 	}>;
 	totalResults: number;
-	nodeConfigurations: NodeConfigurationsMap;
+}
+
+/**
+ * Output type for get node configuration examples tool
+ */
+export interface GetNodeConfigurationExamplesOutput {
+	nodeType: string;
+	totalFound: number;
+	message: string;
 }

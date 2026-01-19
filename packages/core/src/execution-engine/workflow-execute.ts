@@ -66,7 +66,7 @@ import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
-import { ExecuteContext, PollContext } from './node-execution-context';
+import { ExecuteContext, PollContext, resolveSourceOverwrite } from './node-execution-context';
 import {
 	DirectedGraph,
 	findStartNodes,
@@ -82,6 +82,7 @@ import {
 import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
+import { convertBinaryData } from '../utils/convert-binary-data';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -1526,18 +1527,14 @@ export class WorkflowExecute {
 									// paired items. This is necessary because the workflow data
 									// proxy works on input data which normally scrubs paired
 									// item information before executing the node.
-									const isToolExecution = !!executionData.metadata?.preserveSourceOverwrite;
-									if (
-										isToolExecution &&
-										typeof item.pairedItem === 'object' &&
-										'sourceOverwrite' in item.pairedItem
-									) {
+									const sourceOverwrite = resolveSourceOverwrite(item, executionData);
+									if (sourceOverwrite) {
 										return {
 											...item,
 											pairedItem: {
 												item: itemIndex,
 												input: inputIndex || undefined,
-												sourceOverwrite: item.pairedItem.sourceOverwrite,
+												sourceOverwrite,
 											},
 										};
 									}
@@ -1707,6 +1704,13 @@ export class WorkflowExecute {
 									continue executionLoop;
 								}
 
+								runNodeData = await convertBinaryData(
+									workflow.id,
+									this.additionalData.executionId,
+									runNodeData,
+									workflow.settings.binaryMode,
+								);
+
 								nodeSuccessData = runNodeData.data;
 
 								if (runNodeData.hints?.length) {
@@ -1851,7 +1855,30 @@ export class WorkflowExecute {
 							}
 						} else {
 							// Node execution did fail so add error and stop execution
-							this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
+							// TODO: Remove when AI-723 lands.
+							// For AI tool nodes with rewireOutputLogTo, preserve inputOverride and set correct output type
+							if (executionNode.rewireOutputLogTo) {
+								taskData.inputOverride =
+									this.runExecutionData.resultData.runData[executionNode.name][runIndex]
+										?.inputOverride || {};
+								taskData.data = {
+									[executionNode.rewireOutputLogTo]: [
+										[{ json: { error: executionError.message } }],
+									],
+								} as ITaskDataConnections;
+							}
+
+							// TODO: Remove when AI-723 lands.
+							// Check if entry already exists (e.g., from requests-response.ts inputOverride)
+							const errorRunDataExists =
+								!!this.runExecutionData.resultData.runData[executionNode.name][runIndex];
+							if (errorRunDataExists) {
+								const currentTaskData =
+									this.runExecutionData.resultData.runData[executionNode.name][runIndex];
+								Object.assign(currentTaskData, taskData);
+							} else {
+								this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
+							}
 
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);

@@ -8,10 +8,16 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { buildConfiguratorPrompt, INSTANCE_URL_PROMPT } from '@/prompts/agents/configurator.prompt';
+import {
+	buildConfiguratorPrompt,
+	buildRecoveryModeContext,
+	INSTANCE_URL_PROMPT,
+} from '@/prompts/agents/configurator.prompt';
+import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
+import { createGetNodeConfigurationExamplesTool } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
@@ -19,20 +25,22 @@ import type { CoordinationLogEntry } from '../types/coordination';
 import { createConfiguratorMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import { isBaseMessage } from '../types/langchain';
+import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildWorkflowJsonBlock,
 	buildExecutionContextBlock,
+	buildDiscoveryContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
+import { cachedTemplatesReducer } from '../utils/state-reducers';
 import {
 	executeSubgraphTools,
 	extractUserRequest,
 	createStandardShouldContinue,
 } from '../utils/subgraph-helpers';
-import type { ChatPayload } from '../workflow-builder-agent';
 
 /**
  * Configurator Subgraph State
@@ -82,13 +90,22 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 		},
 		default: () => [],
 	}),
+
+	// Cached workflow templates (passed from parent, updated by tools)
+	cachedTemplates: Annotation<WorkflowMetadata[]>({
+		reducer: cachedTemplatesReducer,
+		default: () => [],
+	}),
 });
 
 export interface ConfiguratorSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
+	/** Separate LLM for parameter updater chain (defaults to llm if not provided) */
+	llmParameterUpdater?: BaseChatModel;
 	logger?: Logger;
 	instanceUrl?: string;
+	featureFlags?: BuilderFeatureFlags;
 }
 
 export class ConfiguratorSubgraph extends BaseSubgraph<
@@ -105,17 +122,29 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 
 	create(config: ConfiguratorSubgraphConfig) {
 		this.instanceUrl = config.instanceUrl ?? '';
-		// Create tools
-		const tools = [
+
+		// Check if template examples are enabled
+		const includeExamples = config.featureFlags?.templateExamples === true;
+
+		// Use separate LLM for parameter updater if provided
+		const parameterUpdaterLLM = config.llmParameterUpdater ?? config.llm;
+
+		// Create base tools
+		const baseTools = [
 			createUpdateNodeParametersTool(
 				config.parsedNodeTypes,
-				config.llm, // Uses same LLM for parameter updater chain
+				parameterUpdaterLLM, // Uses separate LLM for parameter updater chain
 				config.logger,
 				config.instanceUrl,
 			),
 			createGetNodeParameterTool(),
 			createValidateConfigurationTool(config.parsedNodeTypes),
 		];
+
+		// Conditionally add node configuration examples tool if feature flag is enabled
+		const tools = includeExamples
+			? [...baseTools, createGetNodeConfigurationExamplesTool(config.logger)]
+			: baseTools;
 		this.toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 		// Create agent with tools bound
 		const systemPromptTemplate = ChatPromptTemplate.fromMessages([
@@ -191,16 +220,38 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(userRequest);
 		}
 
-		// 2. Best practices only from discovery (not full nodes list)
-		if (parentState.discoveryContext?.bestPractices) {
-			contextParts.push(parentState.discoveryContext.bestPractices);
+		// 2. Discovery context - includes available resources/operations for each node type
+		if (parentState.discoveryContext) {
+			contextParts.push('=== DISCOVERY CONTEXT ===');
+			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, true));
 		}
 
-		// 3. Full workflow JSON (nodes to configure)
+		// 3. Check if this workflow came from a recovered builder recursion error (AI-1812)
+		const builderErrorEntry = parentState.coordinationLog?.find((entry) => {
+			if (entry.status !== 'error') return false;
+			if (entry.phase !== 'builder') return false;
+			return (
+				entry.metadata.phase === 'error' &&
+				'partialBuilderData' in entry.metadata &&
+				entry.metadata.partialBuilderData
+			);
+		});
+
+		if (
+			builderErrorEntry?.metadata.phase === 'error' &&
+			builderErrorEntry.metadata.partialBuilderData
+		) {
+			const { nodeCount, nodeNames } = builderErrorEntry.metadata.partialBuilderData;
+			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
+		}
+
+		// 4. Full workflow JSON (nodes to configure)
+		// Note: resource/operation are already set by Builder via initialParameters
+		// and filtering happens automatically in update_node_parameters
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
 		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
 
-		// 4. Full execution context (data + schema for parameter values)
+		// 5. Full execution context (data + schema for parameter values)
 		contextParts.push('=== EXECUTION CONTEXT ===');
 		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 
@@ -214,6 +265,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			userRequest,
 			discoveryContext: parentState.discoveryContext,
 			messages: [contextMessage],
+			cachedTemplates: parentState.cachedTemplates,
 		};
 	}
 
@@ -249,6 +301,8 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			coordinationLog: [logEntry],
+			// Propagate cached templates back to parent
+			cachedTemplates: subgraphOutput.cachedTemplates,
 			// NO messages - clean separation from user-facing conversation
 		};
 	}
