@@ -71,7 +71,6 @@ const globalPermissions = computed(
 const projectPermissions = computed(
 	() => getResourcePermissions(projectsStore.currentProject?.scopes).projectVariable,
 );
-
 const { isLoading, execute } = useAsyncState(environmentsStore.fetchAllVariables, [], {
 	immediate: true,
 });
@@ -419,15 +418,19 @@ onMounted(() => {
 							{{ data.project?.name ?? i18n.baseText('variables.table.scope.global') }}
 						</div>
 					</N8nBadge>
+					<div><h1>HELLO</h1></div>
 				</td>
 				<td v-if="isFeatureEnabled" align="right">
 					<div class="action-buttons">
-						<N8nTooltip :disabled="globalPermissions.update" placement="top">
+						<N8nTooltip
+							:disabled="globalPermissions.update ?? projectPermissions.update"
+							placement="top"
+						>
 							<N8nButton
 								data-test-id="variable-row-edit-button"
 								type="tertiary"
 								class="mr-xs"
-								:disabled="!globalPermissions.update"
+								:disabled="!(globalPermissions.update ?? projectPermissions.update)"
 								@click="openEditVariableModal(data)"
 							>
 								{{ i18n.baseText('variables.row.button.edit') }}
@@ -436,11 +439,14 @@ onMounted(() => {
 								{{ i18n.baseText('variables.row.button.edit.onlyRoleCanEdit') }}
 							</template>
 						</N8nTooltip>
-						<N8nTooltip :disabled="globalPermissions.delete" placement="top">
+						<N8nTooltip
+							:disabled="globalPermissions.delete ?? projectPermissions.delete"
+							placement="top"
+						>
 							<N8nButton
 								data-test-id="variable-row-delete-button"
 								type="tertiary"
-								:disabled="!globalPermissions.delete"
+								:disabled="!(globalPermissions.delete ?? projectPermissions.delete)"
 								@click="handleDeleteVariable(data)"
 							>
 								{{ i18n.baseText('variables.row.button.delete') }}
