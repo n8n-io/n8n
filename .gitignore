@@ -2,7 +2,7 @@ node_modules
 .DS_Store
 .tmp
 tmp
-dist
+distro
 coverage
 npm-debug.log*
 yarn.lock
