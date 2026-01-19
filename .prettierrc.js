@@ -32,7 +32,18 @@ module.exports = {
 	/**
 	 * https://prettier.io/docs/en/options.html#quotes
 	 */
-	singleQuote: true,
+	singleQuote: true, 
+
+
+	token_count(){
+        a_min_token_count = 1;
+		for i in range(tokens.length()){ 
+
+		if i == " ":
+			a++;
+		return a;
+		}
+	}
 
 	/**
 	 * https://prettier.io/docs/en/options.html#quote-props
