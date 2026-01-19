@@ -14,6 +14,7 @@ import type { SimpleWorkflow } from '@/types/workflow';
 
 // Store mocks for dependencies
 const mockParseEvaluationArgs = jest.fn();
+const mockArgsToStageModels = jest.fn();
 const mockSetupTestEnvironment = jest.fn();
 const mockCreateAgent = jest.fn();
 const mockGenerateRunId = jest.fn();
@@ -30,6 +31,7 @@ const mockCreatePairwiseEvaluator = jest.fn();
 // Mock all external modules
 jest.mock('../cli/argument-parser', () => ({
 	parseEvaluationArgs: (): unknown => mockParseEvaluationArgs(),
+	argsToStageModels: (...args: unknown[]): unknown => mockArgsToStageModels(...args),
 	getDefaultDatasetName: (suite: unknown): unknown =>
 		suite === 'pairwise' ? 'notion-pairwise-workflows' : 'workflow-builder-canvas-prompts',
 	getDefaultExperimentName: (suite: unknown): unknown =>
@@ -88,7 +90,6 @@ function createMockArgs(overrides: Record<string, unknown> = {}) {
 		dos: undefined,
 		donts: undefined,
 		numJudges: 3,
-		numGenerations: 1,
 		experimentName: undefined,
 		repetitions: 1,
 		concurrency: 4,
@@ -99,9 +100,19 @@ function createMockArgs(overrides: Record<string, unknown> = {}) {
 
 /** Helper to create mock environment */
 function createMockEnvironment() {
+	const mockLlm = mock<BaseChatModel>();
 	return {
 		parsedNodeTypes: [] as INodeTypeDescription[],
-		llm: mock<BaseChatModel>(),
+		llms: {
+			default: mockLlm,
+			supervisor: mockLlm,
+			responder: mockLlm,
+			discovery: mockLlm,
+			builder: mockLlm,
+			configurator: mockLlm,
+			parameterUpdater: mockLlm,
+			judge: mockLlm,
+		},
 		lsClient: mock<Client>(),
 	};
 }
@@ -148,6 +159,7 @@ describe('CLI', () => {
 
 		// Setup default mocks
 		mockParseEvaluationArgs.mockReturnValue(createMockArgs());
+		mockArgsToStageModels.mockReturnValue({ default: 'claude-sonnet-4.5' });
 		mockSetupTestEnvironment.mockResolvedValue(createMockEnvironment());
 		mockCreateAgent.mockReturnValue(createMockAgentInstance());
 		mockGenerateRunId.mockReturnValue('test-run-id');
@@ -276,9 +288,9 @@ describe('CLI', () => {
 				// Verify numJudges was passed correctly
 				const callArgs = mockCreatePairwiseEvaluator.mock.calls[0] as [
 					unknown,
-					{ numJudges: number; numGenerations: number },
+					{ numJudges: number },
 				];
-				expect(callArgs[1]).toEqual({ numJudges: 5, numGenerations: 1 });
+				expect(callArgs[1]).toEqual({ numJudges: 5 });
 				expect(mockCreateProgrammaticEvaluator).toHaveBeenCalled();
 				expect(mockCreateLLMJudgeEvaluator).not.toHaveBeenCalled();
 			});
@@ -388,7 +400,7 @@ describe('CLI', () => {
 		});
 
 		describe('exit codes', () => {
-			it('should exit with 0 when pass rate >= 70%', async () => {
+			it('should always exit with 0 on successful completion (pass/fail is informational)', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 7 }));
 
 				const { runV2Evaluation } = await import('../cli');
@@ -396,28 +408,20 @@ describe('CLI', () => {
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
 
-			it('should exit with 1 when pass rate < 70%', async () => {
+			it('should exit with 0 even when pass rate is low', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 5 }));
 
 				const { runV2Evaluation } = await import('../cli');
 
-				await expect(runV2Evaluation()).rejects.toThrow('process.exit(1)');
-			});
-
-			it('should exit with 0 when pass rate is exactly 70%', async () => {
-				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 10, passed: 7 }));
-
-				const { runV2Evaluation } = await import('../cli');
-
 				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
 
-			it('should exit with 1 when no examples', async () => {
+			it('should exit with 0 even when no examples', async () => {
 				mockRunEvaluation.mockResolvedValue(createMockSummary({ totalExamples: 0, passed: 0 }));
 
 				const { runV2Evaluation } = await import('../cli');
 
-				await expect(runV2Evaluation()).rejects.toThrow('process.exit(1)');
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
 			});
 		});
 

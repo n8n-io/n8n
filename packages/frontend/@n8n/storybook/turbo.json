@@ -3,6 +3,15 @@
 	"tasks": {
 		"build": {
 			"extends": false
+		},
+		"test": {
+			"extends": false
+		},
+		"test:unit": {
+			"extends": false
+		},
+		"test:integration": {
+			"extends": false
 		}
 	}
 }

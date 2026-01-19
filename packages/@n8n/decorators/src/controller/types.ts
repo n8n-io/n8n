@@ -7,6 +7,14 @@ export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'opt
 
 export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
 
+export interface CorsOptions {
+	allowedOrigins: string[];
+	allowedMethods: Method[];
+	allowedHeaders: string[];
+	allowCredentials?: boolean;
+	maxAge?: number;
+}
+
 export interface RateLimit {
 	/**
 	 * The maximum number of requests to allow during the `window` before rate limiting the client.
@@ -36,6 +44,7 @@ export interface RouteMetadata {
 	allowSkipPreviewAuth: boolean;
 	allowSkipMFA: boolean;
 	apiKeyAuth: boolean;
+	cors?: Partial<CorsOptions> | true;
 	rateLimit?: boolean | RateLimit;
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;

@@ -265,6 +265,10 @@ export class WorkflowService {
 			);
 		}
 
+		if (workflow.isArchived) {
+			throw new BadRequestError('Cannot update an archived workflow.');
+		}
+
 		if (!forceSave && expectedChecksum) {
 			await this._detectConflicts(workflow, expectedChecksum);
 		}
@@ -306,32 +310,19 @@ export class WorkflowService {
 			};
 		}
 
+		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
+
+		if (workflowUpdateData.settings) {
+			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
+				workflowUpdateData.settings,
+				this.globalConfig.executions.timeout,
+			);
+		}
+
 		// Check if settings actually changed
 		const settingsChanged =
 			workflowUpdateData.settings !== undefined &&
 			!isEqual(workflow.settings, workflowUpdateData.settings);
-
-		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
-
-		const workflowSettings = workflowUpdateData.settings ?? {};
-		const keysAllowingDefault = [
-			'timezone',
-			'saveDataErrorExecution',
-			'saveDataSuccessExecution',
-			'saveManualExecutions',
-			'saveExecutionProgress',
-		] as const;
-		for (const key of keysAllowingDefault) {
-			// Do not save the default value
-			if (workflowSettings[key] === 'DEFAULT') {
-				delete workflowSettings[key];
-			}
-		}
-
-		if (workflowSettings.executionTimeout === this.globalConfig.executions.timeout) {
-			// Do not save when default got set
-			delete workflowSettings.executionTimeout;
-		}
 
 		// Always set updatedAt to get millisecond precision
 		workflowUpdateData.updatedAt = new Date();
@@ -544,6 +535,10 @@ export class WorkflowService {
 			throw new NotFoundError(
 				'You do not have permission to activate this workflow. Ask the owner to share it with you.',
 			);
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError('Cannot activate an archived workflow.');
 		}
 
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;

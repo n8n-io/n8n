@@ -31,6 +31,7 @@ import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildWorkflowJsonBlock,
 	buildExecutionContextBlock,
+	buildDiscoveryContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -100,6 +101,8 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 export interface ConfiguratorSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
+	/** Separate LLM for parameter updater chain (defaults to llm if not provided) */
+	llmParameterUpdater?: BaseChatModel;
 	logger?: Logger;
 	instanceUrl?: string;
 	featureFlags?: BuilderFeatureFlags;
@@ -123,11 +126,14 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
 
+		// Use separate LLM for parameter updater if provided
+		const parameterUpdaterLLM = config.llmParameterUpdater ?? config.llm;
+
 		// Create base tools
 		const baseTools = [
 			createUpdateNodeParametersTool(
 				config.parsedNodeTypes,
-				config.llm, // Uses same LLM for parameter updater chain
+				parameterUpdaterLLM, // Uses separate LLM for parameter updater chain
 				config.logger,
 				config.instanceUrl,
 			),
@@ -214,9 +220,10 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(userRequest);
 		}
 
-		// 2. Best practices only from discovery (not full nodes list)
-		if (parentState.discoveryContext?.bestPractices) {
-			contextParts.push(parentState.discoveryContext.bestPractices);
+		// 2. Discovery context - includes available resources/operations for each node type
+		if (parentState.discoveryContext) {
+			contextParts.push('=== DISCOVERY CONTEXT ===');
+			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, true));
 		}
 
 		// 3. Check if this workflow came from a recovered builder recursion error (AI-1812)
@@ -239,6 +246,8 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		}
 
 		// 4. Full workflow JSON (nodes to configure)
+		// Note: resource/operation are already set by Builder via initialParameters
+		// and filtering happens automatically in update_node_parameters
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
 		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
 
