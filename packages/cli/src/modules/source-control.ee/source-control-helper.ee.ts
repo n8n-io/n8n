@@ -287,8 +287,14 @@ export function hasOwnerChanged(
 ): boolean {
 	// We only compare owners when there is at least one team owner
 	// because personal owners projects are not synced with source control
+
+	// If either is missing, check if the other is a team owner
 	if (!owner1 || !owner2) {
-		return false;
+		// If one exists and is a team owner, the absence of the other is a change
+		const existingOwner = owner1 || owner2;
+		if (!existingOwner) return false;
+		if (typeof existingOwner === 'string') return false;
+		return existingOwner.type === 'team';
 	}
 
 	// Handle string format (legacy personal email)

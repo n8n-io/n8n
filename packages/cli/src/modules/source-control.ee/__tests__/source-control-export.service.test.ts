@@ -680,7 +680,12 @@ describe('SourceControlExportService', () => {
 					],
 					createdAt: new Date('2024-01-01'),
 					updatedAt: new Date('2024-01-02'),
-					project: { id: 'project1' },
+					project: {
+						id: 'project1',
+						name: 'Team Project 1',
+						type: 'team',
+						projectRelations: [],
+					},
 				},
 				{
 					id: 'dt2',
@@ -689,7 +694,12 @@ describe('SourceControlExportService', () => {
 					columns: [{ id: 'col3', name: 'Column 3', type: 'boolean', index: 0 }],
 					createdAt: new Date('2024-01-03'),
 					updatedAt: new Date('2024-01-04'),
-					project: { id: 'project2' },
+					project: {
+						id: 'project2',
+						name: 'Team Project 2',
+						type: 'team',
+						projectRelations: [],
+					},
 				},
 			];
 
@@ -738,7 +748,11 @@ describe('SourceControlExportService', () => {
 			expect(exportedData1).toEqual({
 				id: 'dt1',
 				name: 'Test Table 1',
-				projectId: 'project1',
+				ownedBy: {
+					type: 'team',
+					teamId: 'project1',
+					teamName: 'Team Project 1',
+				},
 				columns: [
 					{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
 					{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
@@ -754,7 +768,11 @@ describe('SourceControlExportService', () => {
 			expect(exportedData2).toEqual({
 				id: 'dt2',
 				name: 'Test Table 2',
-				projectId: 'project2',
+				ownedBy: {
+					type: 'team',
+					teamId: 'project2',
+					teamName: 'Team Project 2',
+				},
 				columns: [{ id: 'col3', name: 'Column 3', type: 'boolean', index: 0 }],
 				createdAt: '2024-01-03T00:00:00.000Z',
 				updatedAt: '2024-01-04T00:00:00.000Z',
