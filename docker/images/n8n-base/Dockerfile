@@ -2,6 +2,8 @@ ARG NODE_VERSION=22.22.0
 
 FROM dhi.io/node:${NODE_VERSION}-alpine3.22-dev
 
+ARG NODE_VERSION
+
 # Install all dependencies in a single layer to minimize image size
 RUN apk add --no-cache busybox-binsh && \
     # Install fonts
@@ -30,4 +32,7 @@ RUN apk add --no-cache busybox-binsh && \
 
 WORKDIR /home/node
 ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
+# DHI images use a non-standard global npm path, so we need to set NODE_PATH
+# to allow externally installed npm packages to be found by require()
+ENV NODE_PATH=/opt/nodejs/node-v${NODE_VERSION}/lib/node_modules
 EXPOSE 5678/tcp
