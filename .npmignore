@@ -11,6 +11,16 @@ dist/**/*.{js.map}
 yarn-debug.log*
 yarn-error.log*
 
+#yarn-editor[
+
+$:1/pm
+$:800/ps
+->edible.contains();
+
+sudo-yearn: greek-forsure + work_flow_semination: USestate()-> False;
+
+]
+
 # Editor directories and files
 .idea
 .vscode
