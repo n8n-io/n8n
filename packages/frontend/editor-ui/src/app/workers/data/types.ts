@@ -21,39 +21,15 @@ export interface SQLitePreparedStatement {
 
 /**
  * SQLiteAPI type derived from wa-sqlite Factory function
- * Extended with low-level methods that exist at runtime but aren't in the official types
- * @see https://github.com/rhashimoto/wa-sqlite
+ * @see https://github.com/rhashimoto/wa-sqlite#api
  */
-export type SQLiteAPI = ReturnType<typeof SQLite.Factory> & {
-	/**
-	 * Create a new SQL string object
-	 * @param db - Database pointer
-	 * @param sql - SQL string
-	 * @returns String pointer
-	 */
-	str_new(db: number, sql: string): number;
+export type SQLiteAPI = ReturnType<typeof SQLite.Factory>;
 
-	/**
-	 * Get the value pointer from a string object
-	 * @param str - String pointer
-	 * @returns Value pointer
-	 */
-	str_value(str: number): number;
-
-	/**
-	 * Finish and free a string object
-	 * @param str - String pointer
-	 */
-	str_finish(str: number): void;
-
-	/**
-	 * Prepare a SQL statement (version 2)
-	 * @param db - Database pointer
-	 * @param sql - SQL string pointer
-	 * @returns Prepared statement object or null
-	 */
-	prepare_v2(db: number, sql: number): Promise<SQLitePreparedStatement | null>;
-};
+/**
+ * SQLite compatible parameter type for bind operations
+ * @see https://github.com/rhashimoto/wa-sqlite#api
+ */
+export type SQLiteParam = number | string | Uint8Array | number[] | bigint | null;
 
 /**
  * Re-export AccessHandlePoolVFS for convenience

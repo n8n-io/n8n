@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { MockInstance } from 'vitest';
 import * as Comlink from 'comlink';
-import type { CoordinatorState, TabConnection } from '../types';
-import type { DataWorkerApi } from '../../data/worker';
+import type { CoordinatorState, TabConnection } from './types';
+import type { DataWorkerApi } from '../data/worker';
 import {
 	generateTabId,
 	getActiveDataWorker,
@@ -38,7 +38,6 @@ describe('Coordinator Tab Operations', () => {
 			tabs: new Map(),
 			activeTabId: null,
 			initialized: false,
-			initPromise: null,
 			...overrides,
 		};
 	}

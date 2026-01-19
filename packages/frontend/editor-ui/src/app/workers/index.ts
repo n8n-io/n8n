@@ -10,7 +10,8 @@
  * - Only one dedicated worker accesses OPFS at a time (prevents corruption)
  */
 
-import { coordinator, registerTab, getTabId, getCoordinatorInfo } from './coordinator';
+import { coordinator, registerTab } from './coordinator';
+import type { SQLiteParam } from './data/types';
 
 export interface InitializeOptions {
 	baseUrl: string;
@@ -30,10 +31,9 @@ async function ensureRegistered(): Promise<void> {
  * @param options - Initialization options
  * @param options.baseUrl - The base URL for API requests (required for loading node types)
  */
-export async function initialize({ baseUrl }: InitializeOptions): Promise<void> {
+export async function initialize(): Promise<void> {
 	await ensureRegistered();
 	await coordinator.initialize();
-	await coordinator.loadNodeTypes(baseUrl);
 }
 
 /**
@@ -57,7 +57,7 @@ export async function query(sql: string): Promise<{ columns: string[]; rows: unk
  */
 export async function queryWithParams(
 	sql: string,
-	params: unknown[],
+	params: SQLiteParam[],
 ): Promise<{ columns: string[]; rows: unknown[][] }> {
 	await ensureRegistered();
 	return await coordinator.queryWithParams(sql, params);
@@ -70,20 +70,10 @@ export async function isInitialized(): Promise<boolean> {
 	return await coordinator.isInitialized();
 }
 
-// Re-export from coordinator
-export { coordinator, registerTab, getTabId, getCoordinatorInfo };
-
-// Re-export types
-export type { CoordinatorApi } from './coordinator';
-
-// Default export for backwards compatibility
-export default {
-	initialize,
-	exec,
-	query,
-	queryWithParams,
-	isInitialized,
-	registerTab,
-	getTabId,
-	getCoordinatorInfo,
-};
+/**
+ * Load node types from the server
+ */
+export async function loadNodeTypes(baseUrl: string): Promise<void> {
+	await ensureRegistered();
+	await coordinator.loadNodeTypes(baseUrl);
+}

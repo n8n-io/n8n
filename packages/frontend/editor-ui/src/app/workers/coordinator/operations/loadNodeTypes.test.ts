@@ -44,7 +44,6 @@ describe('Coordinator loadNodeTypes Operation', () => {
 			tabs: new Map(),
 			activeTabId: null,
 			initialized: false,
-			initPromise: null,
 			...overrides,
 		};
 	}

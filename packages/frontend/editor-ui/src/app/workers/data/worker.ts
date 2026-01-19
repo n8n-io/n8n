@@ -26,9 +26,9 @@ import {
 	queryWithParams as queryWithParamsOp,
 	close as closeOp,
 } from './operations/query';
-import type { DataWorkerState, QueryResult, SQLiteAPI } from './types';
+import type { DataWorkerState, QueryResult, SQLiteAPI, SQLiteParam } from './types';
 
-export type { DataWorkerState, QueryResult, SQLiteAPI } from './types';
+export type { DataWorkerState, QueryResult, SQLiteAPI, SQLiteParam } from './types';
 
 const state: DataWorkerState = {
 	initialized: false,
@@ -173,7 +173,7 @@ async function query(sql: string): Promise<QueryResult> {
 /**
  * Execute a SQL query with bound parameters
  */
-async function queryWithParams(sql: string, params: unknown[] = []): Promise<QueryResult> {
+async function queryWithParams(sql: string, params: SQLiteParam[] = []): Promise<QueryResult> {
 	return await queryWithParamsOp(state, sql, params);
 }
 

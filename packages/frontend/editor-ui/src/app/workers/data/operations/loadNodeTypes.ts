@@ -92,6 +92,8 @@ async function deleteNodeType(state: DataWorkerState, id: string): Promise<void>
  * @param baseUrl - The base URL for API requests
  */
 export async function loadNodeTypes(state: DataWorkerState, baseUrl: string): Promise<void> {
+	console.log('[DataWorker] loadNodeTypes');
+
 	if (!state.initialized) {
 		throw new Error('[DataWorker] Database not initialized');
 	}

@@ -17,13 +17,13 @@ declare const self: SharedWorkerGlobalScope;
 
 import * as Comlink from 'comlink';
 import type { CoordinatorState } from './types';
+import type { SQLiteParam } from '../data/types';
 import {
 	registerTab as registerTabOp,
 	unregisterTab as unregisterTabOp,
 	handleTabDisconnect,
-} from './operations/tabs';
+} from './tabs';
 import {
-	initialize as initializeOp,
 	exec as execOp,
 	query as queryOp,
 	queryWithParams as queryWithParamsOp,
@@ -32,12 +32,12 @@ import {
 	getTabCount as getTabCountOp,
 } from './operations/query';
 import { loadNodeTypes as loadNodeTypesOp } from './operations/loadNodeTypes';
+import { initialize as initializeOp } from './initialize';
 
 const state: CoordinatorState = {
 	tabs: new Map(),
 	activeTabId: null,
 	initialized: false,
-	initPromise: null,
 };
 
 // ============================================================================
@@ -83,7 +83,7 @@ const coordinatorApi = {
 	/**
 	 * Execute a SQL query with parameters (routes to active tab's worker)
 	 */
-	async queryWithParams(sql: string, params: unknown[] = []) {
+	async queryWithParams(sql: string, params: SQLiteParam[] = []) {
 		return await queryWithParamsOp(state, sql, params);
 	},
 

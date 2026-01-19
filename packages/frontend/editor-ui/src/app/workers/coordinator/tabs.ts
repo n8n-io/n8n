@@ -6,8 +6,8 @@
  */
 
 import * as Comlink from 'comlink';
-import type { DataWorkerApi } from '../../data/worker';
-import type { CoordinatorState, TabConnection } from '../types';
+import type { DataWorkerApi } from '../data/worker';
+import type { CoordinatorState, TabConnection } from './types';
 
 /**
  * Generate a unique tab ID
@@ -26,6 +26,23 @@ export function getActiveDataWorker(state: CoordinatorState): Comlink.Remote<Dat
 	if (!state.activeTabId) return null;
 	const tab = state.tabs.get(state.activeTabId);
 	return tab?.dataWorker ?? null;
+}
+
+/**
+ * Get the active data worker, throwing if not available
+ *
+ * @param state - The coordinator state
+ * @returns The active tab's data worker
+ * @throws Error if no active data worker is available
+ */
+export function getRequiredActiveDataWorker(
+	state: CoordinatorState,
+): Comlink.Remote<DataWorkerApi> {
+	const worker = getActiveDataWorker(state);
+	if (!worker) {
+		throw new Error('[Coordinator] No active data worker available');
+	}
+	return worker;
 }
 
 /**

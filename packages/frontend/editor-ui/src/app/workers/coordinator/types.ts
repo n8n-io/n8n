@@ -26,7 +26,6 @@ export interface CoordinatorState {
 	tabs: Map<string, TabConnection>;
 	activeTabId: string | null;
 	initialized: boolean;
-	initPromise: Promise<void> | null;
 }
 
 /**
