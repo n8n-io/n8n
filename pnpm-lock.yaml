@@ -2620,9 +2620,24 @@ importers:
       '@n8n/chat':
         specifier: workspace:*
         version: link:../chat
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../composables
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../design-system
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@n8n/stores':
+        specifier: workspace:*
+        version: link:../stores
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      pinia:
+        specifier: catalog:frontend
+        version: 2.2.4(typescript@5.9.2)(vue@3.5.26(typescript@5.9.2))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@5.9.2)
