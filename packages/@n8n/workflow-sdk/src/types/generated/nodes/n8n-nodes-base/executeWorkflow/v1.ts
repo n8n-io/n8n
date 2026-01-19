@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ExecuteWorkflowV1Params {
+export interface ExecuteWorkflowV1Config {
 	operation?: unknown;
 /**
  * Note on using an expression here: if this node is set to run once with all items, they will all be sent to the &lt;em&gt;same&lt;/em&gt; workflow. That workflow's ID will be calculated by evaluating the expression for the &lt;strong&gt;first input item&lt;/strong&gt;.
@@ -56,8 +56,8 @@ interface ExecuteWorkflowV1NodeBase {
 	version: 1;
 }
 
-export type ExecuteWorkflowV1ParamsNode = ExecuteWorkflowV1NodeBase & {
-	config: NodeConfig<ExecuteWorkflowV1Params>;
+export type ExecuteWorkflowV1Node = ExecuteWorkflowV1NodeBase & {
+	config: NodeConfig<ExecuteWorkflowV1Config>;
 };
 
-export type ExecuteWorkflowV1Node = ExecuteWorkflowV1ParamsNode;
+export type ExecuteWorkflowV1Node = ExecuteWorkflowV1Node;

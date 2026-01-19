@@ -62,10 +62,6 @@ export type LoneScaleV1ItemAddConfig = {
 	companyAdditionalFields?: Record<string, unknown>;
 };
 
-export type LoneScaleV1Params =
-	| LoneScaleV1ListCreateConfig
-	| LoneScaleV1ItemAddConfig
-	;
 
 // ===========================================================================
 // Credentials

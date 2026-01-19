@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsGoogleGeminiV1Params {
+export interface LcEmbeddingsGoogleGeminiV1Config {
 /**
  * The model which will generate the embeddings. &lt;a href="https://developers.generativeai.google/api/rest/generativelanguage/models/list"&gt;Learn more&lt;/a&gt;.
  * @default models/text-embedding-004
@@ -38,8 +38,8 @@ interface LcEmbeddingsGoogleGeminiV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcEmbeddingsGoogleGeminiV1ParamsNode = LcEmbeddingsGoogleGeminiV1NodeBase & {
-	config: NodeConfig<LcEmbeddingsGoogleGeminiV1Params>;
+export type LcEmbeddingsGoogleGeminiV1Node = LcEmbeddingsGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsGoogleGeminiV1Config>;
 };
 
-export type LcEmbeddingsGoogleGeminiV1Node = LcEmbeddingsGoogleGeminiV1ParamsNode;
+export type LcEmbeddingsGoogleGeminiV1Node = LcEmbeddingsGoogleGeminiV1Node;

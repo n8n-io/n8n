@@ -574,52 +574,6 @@ export type MispV1WarninglistGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type MispV1Params =
-	| MispV1AttributeCreateConfig
-	| MispV1AttributeDeleteConfig
-	| MispV1AttributeGetConfig
-	| MispV1AttributeGetAllConfig
-	| MispV1AttributeSearchConfig
-	| MispV1AttributeUpdateConfig
-	| MispV1EventCreateConfig
-	| MispV1EventDeleteConfig
-	| MispV1EventGetConfig
-	| MispV1EventGetAllConfig
-	| MispV1EventPublishConfig
-	| MispV1EventSearchConfig
-	| MispV1EventUnpublishConfig
-	| MispV1EventUpdateConfig
-	| MispV1EventTagAddConfig
-	| MispV1EventTagRemoveConfig
-	| MispV1FeedCreateConfig
-	| MispV1FeedDisableConfig
-	| MispV1FeedEnableConfig
-	| MispV1FeedGetConfig
-	| MispV1FeedGetAllConfig
-	| MispV1FeedUpdateConfig
-	| MispV1GalaxyDeleteConfig
-	| MispV1GalaxyGetConfig
-	| MispV1GalaxyGetAllConfig
-	| MispV1NoticelistGetConfig
-	| MispV1NoticelistGetAllConfig
-	| MispV1ObjectSearchConfig
-	| MispV1OrganisationCreateConfig
-	| MispV1OrganisationDeleteConfig
-	| MispV1OrganisationGetConfig
-	| MispV1OrganisationGetAllConfig
-	| MispV1OrganisationUpdateConfig
-	| MispV1TagCreateConfig
-	| MispV1TagDeleteConfig
-	| MispV1TagGetAllConfig
-	| MispV1TagUpdateConfig
-	| MispV1UserCreateConfig
-	| MispV1UserDeleteConfig
-	| MispV1UserGetConfig
-	| MispV1UserGetAllConfig
-	| MispV1UserUpdateConfig
-	| MispV1WarninglistGetConfig
-	| MispV1WarninglistGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -135,17 +135,6 @@ export type EmeliaV1ContactListGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type EmeliaV1Params =
-	| EmeliaV1CampaignAddContactConfig
-	| EmeliaV1CampaignCreateConfig
-	| EmeliaV1CampaignDuplicateConfig
-	| EmeliaV1CampaignGetConfig
-	| EmeliaV1CampaignGetAllConfig
-	| EmeliaV1CampaignPauseConfig
-	| EmeliaV1CampaignStartConfig
-	| EmeliaV1ContactListAddConfig
-	| EmeliaV1ContactListGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

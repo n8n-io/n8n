@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface AmqpV1Params {
+export interface AmqpV1Config {
 /**
  * Name of the queue of topic to publish to
  */
@@ -42,8 +42,8 @@ interface AmqpV1NodeBase {
 	credentials?: AmqpV1Credentials;
 }
 
-export type AmqpV1ParamsNode = AmqpV1NodeBase & {
-	config: NodeConfig<AmqpV1Params>;
+export type AmqpV1Node = AmqpV1NodeBase & {
+	config: NodeConfig<AmqpV1Config>;
 };
 
-export type AmqpV1Node = AmqpV1ParamsNode;
+export type AmqpV1Node = AmqpV1Node;

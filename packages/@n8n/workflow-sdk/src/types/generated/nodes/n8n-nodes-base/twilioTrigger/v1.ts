@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface TwilioTriggerV1Params {
+export interface TwilioTriggerV1Config {
 	updates: Array<'com.twilio.messaging.inbound-message.received' | 'com.twilio.voice.insights.call-summary.complete'>;
 }
 
@@ -34,8 +34,8 @@ interface TwilioTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type TwilioTriggerV1ParamsNode = TwilioTriggerV1NodeBase & {
-	config: NodeConfig<TwilioTriggerV1Params>;
+export type TwilioTriggerV1Node = TwilioTriggerV1NodeBase & {
+	config: NodeConfig<TwilioTriggerV1Config>;
 };
 
-export type TwilioTriggerV1Node = TwilioTriggerV1ParamsNode;
+export type TwilioTriggerV1Node = TwilioTriggerV1Node;

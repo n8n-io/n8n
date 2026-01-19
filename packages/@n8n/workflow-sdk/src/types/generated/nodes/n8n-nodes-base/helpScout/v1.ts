@@ -306,21 +306,6 @@ export type HelpScoutV1ThreadGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type HelpScoutV1Params =
-	| HelpScoutV1ConversationCreateConfig
-	| HelpScoutV1ConversationDeleteConfig
-	| HelpScoutV1ConversationGetConfig
-	| HelpScoutV1ConversationGetAllConfig
-	| HelpScoutV1CustomerCreateConfig
-	| HelpScoutV1CustomerGetConfig
-	| HelpScoutV1CustomerGetAllConfig
-	| HelpScoutV1CustomerPropertiesConfig
-	| HelpScoutV1CustomerUpdateConfig
-	| HelpScoutV1MailboxGetConfig
-	| HelpScoutV1MailboxGetAllConfig
-	| HelpScoutV1ThreadCreateConfig
-	| HelpScoutV1ThreadGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

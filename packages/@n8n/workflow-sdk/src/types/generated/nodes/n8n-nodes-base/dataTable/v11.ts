@@ -298,19 +298,6 @@ export type DataTableV11TableUpdateConfig = {
 		newName: string | Expression<string>;
 };
 
-export type DataTableV11Params =
-	| DataTableV11RowDeleteRowsConfig
-	| DataTableV11RowGetConfig
-	| DataTableV11RowRowExistsConfig
-	| DataTableV11RowRowNotExistsConfig
-	| DataTableV11RowInsertConfig
-	| DataTableV11RowUpdateConfig
-	| DataTableV11RowUpsertConfig
-	| DataTableV11TableCreateConfig
-	| DataTableV11TableDeleteConfig
-	| DataTableV11TableListConfig
-	| DataTableV11TableUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

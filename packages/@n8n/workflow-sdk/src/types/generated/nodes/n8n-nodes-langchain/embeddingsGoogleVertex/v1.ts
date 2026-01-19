@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsGoogleVertexV1Params {
+export interface LcEmbeddingsGoogleVertexV1Config {
 /**
  * Select or enter your Google Cloud project ID
  * @default {"mode":"list","value":""}
@@ -46,8 +46,8 @@ interface LcEmbeddingsGoogleVertexV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcEmbeddingsGoogleVertexV1ParamsNode = LcEmbeddingsGoogleVertexV1NodeBase & {
-	config: NodeConfig<LcEmbeddingsGoogleVertexV1Params>;
+export type LcEmbeddingsGoogleVertexV1Node = LcEmbeddingsGoogleVertexV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsGoogleVertexV1Config>;
 };
 
-export type LcEmbeddingsGoogleVertexV1Node = LcEmbeddingsGoogleVertexV1ParamsNode;
+export type LcEmbeddingsGoogleVertexV1Node = LcEmbeddingsGoogleVertexV1Node;

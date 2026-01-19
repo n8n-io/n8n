@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GristV1Params {
+export interface GristV1Config {
 	operation?: 'create' | 'delete' | 'getAll' | 'update' | Expression<string>;
 /**
  * In your document, click your profile icon, then Document Settings, then copy the value under "This document's ID"
@@ -80,8 +80,8 @@ interface GristV1NodeBase {
 	credentials?: GristV1Credentials;
 }
 
-export type GristV1ParamsNode = GristV1NodeBase & {
-	config: NodeConfig<GristV1Params>;
+export type GristV1Node = GristV1NodeBase & {
+	config: NodeConfig<GristV1Config>;
 };
 
-export type GristV1Node = GristV1ParamsNode;
+export type GristV1Node = GristV1Node;

@@ -79,11 +79,6 @@ export type CircleCiV1PipelineTriggerConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type CircleCiV1Params =
-	| CircleCiV1PipelineGetConfig
-	| CircleCiV1PipelineGetAllConfig
-	| CircleCiV1PipelineTriggerConfig
-	;
 
 // ===========================================================================
 // Credentials

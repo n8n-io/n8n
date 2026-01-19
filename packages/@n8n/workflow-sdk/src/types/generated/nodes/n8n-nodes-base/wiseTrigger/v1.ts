@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WiseTriggerV1Params {
+export interface WiseTriggerV1Config {
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
  */
@@ -38,8 +38,8 @@ interface WiseTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type WiseTriggerV1ParamsNode = WiseTriggerV1NodeBase & {
-	config: NodeConfig<WiseTriggerV1Params>;
+export type WiseTriggerV1Node = WiseTriggerV1NodeBase & {
+	config: NodeConfig<WiseTriggerV1Config>;
 };
 
-export type WiseTriggerV1Node = WiseTriggerV1ParamsNode;
+export type WiseTriggerV1Node = WiseTriggerV1Node;

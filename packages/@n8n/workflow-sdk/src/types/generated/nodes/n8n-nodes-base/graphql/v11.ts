@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface GraphqlV11Params {
+export interface GraphqlV11Config {
 /**
  * The way to authenticate
  * @default none
@@ -97,8 +97,8 @@ interface GraphqlV11NodeBase {
 	credentials?: GraphqlV11Credentials;
 }
 
-export type GraphqlV11ParamsNode = GraphqlV11NodeBase & {
-	config: NodeConfig<GraphqlV11Params>;
+export type GraphqlV11Node = GraphqlV11NodeBase & {
+	config: NodeConfig<GraphqlV11Config>;
 };
 
-export type GraphqlV11Node = GraphqlV11ParamsNode;
+export type GraphqlV11Node = GraphqlV11Node;

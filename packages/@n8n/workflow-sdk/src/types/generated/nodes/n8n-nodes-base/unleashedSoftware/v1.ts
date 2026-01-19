@@ -56,11 +56,6 @@ export type UnleashedSoftwareV1StockOnHandGetAllConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type UnleashedSoftwareV1Params =
-	| UnleashedSoftwareV1SalesOrderGetAllConfig
-	| UnleashedSoftwareV1StockOnHandGetConfig
-	| UnleashedSoftwareV1StockOnHandGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

@@ -305,28 +305,6 @@ export type MauticV1SegmentEmailSendConfig = {
 		segmentEmailId: string | Expression<string>;
 };
 
-export type MauticV1Params =
-	| MauticV1CampaignContactAddConfig
-	| MauticV1CampaignContactRemoveConfig
-	| MauticV1CompanyCreateConfig
-	| MauticV1CompanyDeleteConfig
-	| MauticV1CompanyGetConfig
-	| MauticV1CompanyGetAllConfig
-	| MauticV1CompanyUpdateConfig
-	| MauticV1CompanyContactAddConfig
-	| MauticV1CompanyContactRemoveConfig
-	| MauticV1ContactCreateConfig
-	| MauticV1ContactDeleteConfig
-	| MauticV1ContactEditContactPointConfig
-	| MauticV1ContactEditDoNotContactListConfig
-	| MauticV1ContactGetConfig
-	| MauticV1ContactGetAllConfig
-	| MauticV1ContactSendEmailConfig
-	| MauticV1ContactUpdateConfig
-	| MauticV1ContactSegmentAddConfig
-	| MauticV1ContactSegmentRemoveConfig
-	| MauticV1SegmentEmailSendConfig
-	;
 
 // ===========================================================================
 // Credentials

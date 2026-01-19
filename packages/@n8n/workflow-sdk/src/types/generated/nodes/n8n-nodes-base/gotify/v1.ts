@@ -46,11 +46,6 @@ export type GotifyV1MessageGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type GotifyV1Params =
-	| GotifyV1MessageCreateConfig
-	| GotifyV1MessageDeleteConfig
-	| GotifyV1MessageGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

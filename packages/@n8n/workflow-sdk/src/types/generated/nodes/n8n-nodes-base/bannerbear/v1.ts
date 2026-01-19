@@ -70,12 +70,6 @@ export type BannerbearV1TemplateGetAllConfig = {
 	operation: 'getAll';
 };
 
-export type BannerbearV1Params =
-	| BannerbearV1ImageCreateConfig
-	| BannerbearV1ImageGetConfig
-	| BannerbearV1TemplateGetConfig
-	| BannerbearV1TemplateGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

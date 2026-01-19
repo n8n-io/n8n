@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcRetrieverContextualCompressionV1Params {
+export interface LcRetrieverContextualCompressionV1Config {
 }
 
 // ===========================================================================
@@ -28,8 +28,8 @@ interface LcRetrieverContextualCompressionV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcRetrieverContextualCompressionV1ParamsNode = LcRetrieverContextualCompressionV1NodeBase & {
-	config: NodeConfig<LcRetrieverContextualCompressionV1Params>;
+export type LcRetrieverContextualCompressionV1Node = LcRetrieverContextualCompressionV1NodeBase & {
+	config: NodeConfig<LcRetrieverContextualCompressionV1Config>;
 };
 
-export type LcRetrieverContextualCompressionV1Node = LcRetrieverContextualCompressionV1ParamsNode;
+export type LcRetrieverContextualCompressionV1Node = LcRetrieverContextualCompressionV1Node;

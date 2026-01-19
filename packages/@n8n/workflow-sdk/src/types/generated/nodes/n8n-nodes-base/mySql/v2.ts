@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MySqlV2Params {
+export interface MySqlV2Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -135,8 +135,8 @@ interface MySqlV2NodeBase {
 	credentials?: MySqlV2Credentials;
 }
 
-export type MySqlV2ParamsNode = MySqlV2NodeBase & {
-	config: NodeConfig<MySqlV2Params>;
+export type MySqlV2Node = MySqlV2NodeBase & {
+	config: NodeConfig<MySqlV2Config>;
 };
 
-export type MySqlV2Node = MySqlV2ParamsNode;
+export type MySqlV2Node = MySqlV2Node;

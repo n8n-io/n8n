@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface PeekalinkV1Params {
+export interface PeekalinkV1Config {
 	operation?: 'isAvailable' | 'preview' | Expression<string>;
 	url: string | Expression<string>;
 }
@@ -34,8 +34,8 @@ interface PeekalinkV1NodeBase {
 	credentials?: PeekalinkV1Credentials;
 }
 
-export type PeekalinkV1ParamsNode = PeekalinkV1NodeBase & {
-	config: NodeConfig<PeekalinkV1Params>;
+export type PeekalinkV1Node = PeekalinkV1NodeBase & {
+	config: NodeConfig<PeekalinkV1Config>;
 };
 
-export type PeekalinkV1Node = PeekalinkV1ParamsNode;
+export type PeekalinkV1Node = PeekalinkV1Node;

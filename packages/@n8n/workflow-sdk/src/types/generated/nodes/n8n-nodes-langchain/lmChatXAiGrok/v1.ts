@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatXAiGrokV1Params {
+export interface LcLmChatXAiGrokV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://docs.x.ai/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default grok-2-vision-1212
@@ -43,8 +43,8 @@ interface LcLmChatXAiGrokV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatXAiGrokV1ParamsNode = LcLmChatXAiGrokV1NodeBase & {
-	config: NodeConfig<LcLmChatXAiGrokV1Params>;
+export type LcLmChatXAiGrokV1Node = LcLmChatXAiGrokV1NodeBase & {
+	config: NodeConfig<LcLmChatXAiGrokV1Config>;
 };
 
-export type LcLmChatXAiGrokV1Node = LcLmChatXAiGrokV1ParamsNode;
+export type LcLmChatXAiGrokV1Node = LcLmChatXAiGrokV1Node;

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmOpenHuggingFaceInferenceV1Params {
+export interface LcLmOpenHuggingFaceInferenceV1Config {
 	model?: string | Expression<string>;
 /**
  * Additional options to add
@@ -39,8 +39,8 @@ interface LcLmOpenHuggingFaceInferenceV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmOpenHuggingFaceInferenceV1ParamsNode = LcLmOpenHuggingFaceInferenceV1NodeBase & {
-	config: NodeConfig<LcLmOpenHuggingFaceInferenceV1Params>;
+export type LcLmOpenHuggingFaceInferenceV1Node = LcLmOpenHuggingFaceInferenceV1NodeBase & {
+	config: NodeConfig<LcLmOpenHuggingFaceInferenceV1Config>;
 };
 
-export type LcLmOpenHuggingFaceInferenceV1Node = LcLmOpenHuggingFaceInferenceV1ParamsNode;
+export type LcLmOpenHuggingFaceInferenceV1Node = LcLmOpenHuggingFaceInferenceV1Node;

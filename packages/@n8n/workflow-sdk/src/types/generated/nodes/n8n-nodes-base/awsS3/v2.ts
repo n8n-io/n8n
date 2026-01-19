@@ -200,20 +200,6 @@ export type AwsS3V2FolderGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type AwsS3V2Params =
-	| AwsS3V2BucketCreateConfig
-	| AwsS3V2BucketDeleteConfig
-	| AwsS3V2BucketGetAllConfig
-	| AwsS3V2BucketSearchConfig
-	| AwsS3V2FileCopyConfig
-	| AwsS3V2FileDeleteConfig
-	| AwsS3V2FileDownloadConfig
-	| AwsS3V2FileGetAllConfig
-	| AwsS3V2FileUploadConfig
-	| AwsS3V2FolderCreateConfig
-	| AwsS3V2FolderDeleteConfig
-	| AwsS3V2FolderGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

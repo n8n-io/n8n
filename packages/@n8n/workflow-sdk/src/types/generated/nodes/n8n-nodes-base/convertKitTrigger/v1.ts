@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface ConvertKitTriggerV1Params {
+export interface ConvertKitTriggerV1Config {
 /**
  * The events that can trigger the webhook and whether they are enabled
  */
@@ -58,8 +58,8 @@ interface ConvertKitTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type ConvertKitTriggerV1ParamsNode = ConvertKitTriggerV1NodeBase & {
-	config: NodeConfig<ConvertKitTriggerV1Params>;
+export type ConvertKitTriggerV1Node = ConvertKitTriggerV1NodeBase & {
+	config: NodeConfig<ConvertKitTriggerV1Config>;
 };
 
-export type ConvertKitTriggerV1Node = ConvertKitTriggerV1ParamsNode;
+export type ConvertKitTriggerV1Node = ConvertKitTriggerV1Node;

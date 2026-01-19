@@ -72,12 +72,6 @@ export type GongV1UserGetAllConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type GongV1Params =
-	| GongV1CallGetConfig
-	| GongV1CallGetAllConfig
-	| GongV1UserGetConfig
-	| GongV1UserGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

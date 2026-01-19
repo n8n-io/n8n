@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface InvoiceNinjaTriggerV2Params {
+export interface InvoiceNinjaTriggerV2Config {
 	apiVersion?: 'v4' | 'v5' | Expression<string>;
 	event: 'create_client' | 'create_invoice' | 'create_payment' | 'create_quote' | 'create_vendor' | Expression<string>;
 }
@@ -35,8 +35,8 @@ interface InvoiceNinjaTriggerV2NodeBase {
 	isTrigger: true;
 }
 
-export type InvoiceNinjaTriggerV2ParamsNode = InvoiceNinjaTriggerV2NodeBase & {
-	config: NodeConfig<InvoiceNinjaTriggerV2Params>;
+export type InvoiceNinjaTriggerV2Node = InvoiceNinjaTriggerV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaTriggerV2Config>;
 };
 
-export type InvoiceNinjaTriggerV2Node = InvoiceNinjaTriggerV2ParamsNode;
+export type InvoiceNinjaTriggerV2Node = InvoiceNinjaTriggerV2Node;

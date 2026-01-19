@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface AggregateV1Params {
+export interface AggregateV1Config {
 	aggregate?: 'aggregateIndividualFields' | 'aggregateAllItemData' | Expression<string>;
 	fieldsToAggregate?: {
 		fieldToAggregate?: Array<{
@@ -54,8 +54,8 @@ interface AggregateV1NodeBase {
 	version: 1;
 }
 
-export type AggregateV1ParamsNode = AggregateV1NodeBase & {
-	config: NodeConfig<AggregateV1Params>;
+export type AggregateV1Node = AggregateV1NodeBase & {
+	config: NodeConfig<AggregateV1Config>;
 };
 
-export type AggregateV1Node = AggregateV1ParamsNode;
+export type AggregateV1Node = AggregateV1Node;

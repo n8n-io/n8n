@@ -736,32 +736,6 @@ export type AirtopV1WindowTakeScreenshotConfig = {
 		outputImageAsBinary?: boolean | Expression<boolean>;
 };
 
-export type AirtopV1Params =
-	| AirtopV1AgentRunConfig
-	| AirtopV1ExtractionQueryConfig
-	| AirtopV1ExtractionGetPaginatedConfig
-	| AirtopV1ExtractionScrapeConfig
-	| AirtopV1FileDeleteFileConfig
-	| AirtopV1FileGetConfig
-	| AirtopV1FileGetManyConfig
-	| AirtopV1FileLoadConfig
-	| AirtopV1FileUploadConfig
-	| AirtopV1InteractionClickConfig
-	| AirtopV1InteractionFillConfig
-	| AirtopV1InteractionHoverConfig
-	| AirtopV1InteractionScrollConfig
-	| AirtopV1InteractionTypeConfig
-	| AirtopV1SessionCreateConfig
-	| AirtopV1SessionSaveConfig
-	| AirtopV1SessionTerminateConfig
-	| AirtopV1SessionWaitForDownloadConfig
-	| AirtopV1WindowCloseConfig
-	| AirtopV1WindowCreateConfig
-	| AirtopV1WindowGetLiveViewConfig
-	| AirtopV1WindowListConfig
-	| AirtopV1WindowLoadConfig
-	| AirtopV1WindowTakeScreenshotConfig
-	;
 
 // ===========================================================================
 // Output Types

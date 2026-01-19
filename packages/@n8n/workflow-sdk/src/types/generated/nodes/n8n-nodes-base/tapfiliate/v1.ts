@@ -226,20 +226,6 @@ export type TapfiliateV1ProgramAffiliateGetAllConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type TapfiliateV1Params =
-	| TapfiliateV1AffiliateCreateConfig
-	| TapfiliateV1AffiliateDeleteConfig
-	| TapfiliateV1AffiliateGetConfig
-	| TapfiliateV1AffiliateGetAllConfig
-	| TapfiliateV1AffiliateMetadataAddConfig
-	| TapfiliateV1AffiliateMetadataRemoveConfig
-	| TapfiliateV1AffiliateMetadataUpdateConfig
-	| TapfiliateV1ProgramAffiliateAddConfig
-	| TapfiliateV1ProgramAffiliateApproveConfig
-	| TapfiliateV1ProgramAffiliateDisapproveConfig
-	| TapfiliateV1ProgramAffiliateGetConfig
-	| TapfiliateV1ProgramAffiliateGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

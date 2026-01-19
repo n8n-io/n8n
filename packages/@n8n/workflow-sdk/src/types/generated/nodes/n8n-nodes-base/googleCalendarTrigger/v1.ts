@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface GoogleCalendarTriggerV1Params {
+export interface GoogleCalendarTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -90,8 +90,8 @@ interface GoogleCalendarTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type GoogleCalendarTriggerV1ParamsNode = GoogleCalendarTriggerV1NodeBase & {
-	config: NodeConfig<GoogleCalendarTriggerV1Params>;
+export type GoogleCalendarTriggerV1Node = GoogleCalendarTriggerV1NodeBase & {
+	config: NodeConfig<GoogleCalendarTriggerV1Config>;
 };
 
-export type GoogleCalendarTriggerV1Node = GoogleCalendarTriggerV1ParamsNode;
+export type GoogleCalendarTriggerV1Node = GoogleCalendarTriggerV1Node;

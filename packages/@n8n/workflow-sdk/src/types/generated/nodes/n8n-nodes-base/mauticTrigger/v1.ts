@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MauticTriggerV1Params {
+export interface MauticTriggerV1Config {
 	authentication?: 'credentials' | 'oAuth2' | Expression<string>;
 /**
  * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
@@ -45,8 +45,8 @@ interface MauticTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type MauticTriggerV1ParamsNode = MauticTriggerV1NodeBase & {
-	config: NodeConfig<MauticTriggerV1Params>;
+export type MauticTriggerV1Node = MauticTriggerV1NodeBase & {
+	config: NodeConfig<MauticTriggerV1Config>;
 };
 
-export type MauticTriggerV1Node = MauticTriggerV1ParamsNode;
+export type MauticTriggerV1Node = MauticTriggerV1Node;

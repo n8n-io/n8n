@@ -1,11 +1,11 @@
 import { v4 as uuid } from 'uuid';
 import type { IfBranchComposite, NodeInstance, NodeConfig, DeclaredConnection } from './types/base';
-import type { IfV23Params } from './types/generated/nodes/n8n-nodes-base/if';
+import type { IfV23Config } from './types/generated/nodes/n8n-nodes-base/if';
 
 /**
  * Extended config for IF branch that includes version and id
  */
-export interface IfBranchConfig extends NodeConfig<IfV23Params> {
+export interface IfBranchConfig extends NodeConfig<IfV23Config> {
 	/** Node version (defaults to 2.3) */
 	version?: number | string;
 	/** Node ID (auto-generated if omitted) */
@@ -33,7 +33,7 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 	}
 
 	update(config: Partial<NodeConfig>): NodeInstance<'n8n-nodes-base.if', string, unknown> {
-		return new IfNodeInstance({ ...this.config, ...config } as NodeConfig<IfV23Params>);
+		return new IfNodeInstance({ ...this.config, ...config } as NodeConfig<IfV23Config>);
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(_target: T, _outputIndex?: number): T {

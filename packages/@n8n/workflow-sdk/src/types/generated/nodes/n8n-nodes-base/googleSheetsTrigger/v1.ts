@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface GoogleSheetsTriggerV1Params {
+export interface GoogleSheetsTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -98,8 +98,8 @@ interface GoogleSheetsTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type GoogleSheetsTriggerV1ParamsNode = GoogleSheetsTriggerV1NodeBase & {
-	config: NodeConfig<GoogleSheetsTriggerV1Params>;
+export type GoogleSheetsTriggerV1Node = GoogleSheetsTriggerV1NodeBase & {
+	config: NodeConfig<GoogleSheetsTriggerV1Config>;
 };
 
-export type GoogleSheetsTriggerV1Node = GoogleSheetsTriggerV1ParamsNode;
+export type GoogleSheetsTriggerV1Node = GoogleSheetsTriggerV1Node;

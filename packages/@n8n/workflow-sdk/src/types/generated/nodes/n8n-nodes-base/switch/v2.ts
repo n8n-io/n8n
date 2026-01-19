@@ -65,10 +65,6 @@ export type SwitchV2RulesConfig = {
 		fallbackOutput?: string | Expression<string>;
 };
 
-export type SwitchV2Params =
-	| SwitchV2ExpressionConfig
-	| SwitchV2RulesConfig
-	;
 
 // ===========================================================================
 // Credentials

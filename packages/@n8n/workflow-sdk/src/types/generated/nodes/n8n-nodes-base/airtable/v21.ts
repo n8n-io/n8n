@@ -155,16 +155,6 @@ export type AirtableV21RecordUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type AirtableV21Params =
-	| AirtableV21BaseGetManyConfig
-	| AirtableV21BaseGetSchemaConfig
-	| AirtableV21RecordCreateConfig
-	| AirtableV21RecordUpsertConfig
-	| AirtableV21RecordDeleteRecordConfig
-	| AirtableV21RecordGetConfig
-	| AirtableV21RecordSearchConfig
-	| AirtableV21RecordUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

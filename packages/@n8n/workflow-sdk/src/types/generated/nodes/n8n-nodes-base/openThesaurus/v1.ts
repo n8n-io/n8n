@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface OpenThesaurusV1Params {
+export interface OpenThesaurusV1Config {
 	operation?: 'getSynonyms' | Expression<string>;
 /**
  * The word to get synonyms for
@@ -34,8 +34,8 @@ interface OpenThesaurusV1NodeBase {
 	version: 1;
 }
 
-export type OpenThesaurusV1ParamsNode = OpenThesaurusV1NodeBase & {
-	config: NodeConfig<OpenThesaurusV1Params>;
+export type OpenThesaurusV1Node = OpenThesaurusV1NodeBase & {
+	config: NodeConfig<OpenThesaurusV1Config>;
 };
 
-export type OpenThesaurusV1Node = OpenThesaurusV1ParamsNode;
+export type OpenThesaurusV1Node = OpenThesaurusV1Node;

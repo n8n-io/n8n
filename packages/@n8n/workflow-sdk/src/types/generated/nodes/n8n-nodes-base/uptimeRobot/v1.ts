@@ -321,29 +321,6 @@ export type UptimeRobotV1PublicStatusPageGetAllConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type UptimeRobotV1Params =
-	| UptimeRobotV1AccountGetConfig
-	| UptimeRobotV1AlertContactCreateConfig
-	| UptimeRobotV1AlertContactDeleteConfig
-	| UptimeRobotV1AlertContactGetConfig
-	| UptimeRobotV1AlertContactGetAllConfig
-	| UptimeRobotV1AlertContactUpdateConfig
-	| UptimeRobotV1MaintenanceWindowCreateConfig
-	| UptimeRobotV1MaintenanceWindowDeleteConfig
-	| UptimeRobotV1MaintenanceWindowGetConfig
-	| UptimeRobotV1MaintenanceWindowGetAllConfig
-	| UptimeRobotV1MaintenanceWindowUpdateConfig
-	| UptimeRobotV1MonitorCreateConfig
-	| UptimeRobotV1MonitorDeleteConfig
-	| UptimeRobotV1MonitorGetConfig
-	| UptimeRobotV1MonitorGetAllConfig
-	| UptimeRobotV1MonitorResetConfig
-	| UptimeRobotV1MonitorUpdateConfig
-	| UptimeRobotV1PublicStatusPageCreateConfig
-	| UptimeRobotV1PublicStatusPageDeleteConfig
-	| UptimeRobotV1PublicStatusPageGetConfig
-	| UptimeRobotV1PublicStatusPageGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

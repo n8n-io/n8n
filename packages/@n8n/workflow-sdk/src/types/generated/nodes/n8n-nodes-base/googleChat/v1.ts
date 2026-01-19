@@ -179,17 +179,6 @@ export type GoogleChatV1SpaceGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type GoogleChatV1Params =
-	| GoogleChatV1MemberGetConfig
-	| GoogleChatV1MemberGetAllConfig
-	| GoogleChatV1MessageCreateConfig
-	| GoogleChatV1MessageDeleteConfig
-	| GoogleChatV1MessageGetConfig
-	| GoogleChatV1MessageSendAndWaitConfig
-	| GoogleChatV1MessageUpdateConfig
-	| GoogleChatV1SpaceGetConfig
-	| GoogleChatV1SpaceGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

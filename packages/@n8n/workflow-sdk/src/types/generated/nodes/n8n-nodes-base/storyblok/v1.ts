@@ -66,10 +66,6 @@ export type StoryblokV1StoryGetAllConfig = {
 		space: string | Expression<string>;
 };
 
-export type StoryblokV1Params =
-	| StoryblokV1StoryGetConfig
-	| StoryblokV1StoryGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

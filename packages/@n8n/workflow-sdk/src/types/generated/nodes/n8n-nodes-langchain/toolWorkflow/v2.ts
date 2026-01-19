@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolWorkflowV2Params {
+export interface LcToolWorkflowV2Config {
 	description?: string | Expression<string>;
 /**
  * Where to get the workflow to execute from
@@ -52,8 +52,8 @@ interface LcToolWorkflowV2NodeBase {
 	isTrigger: true;
 }
 
-export type LcToolWorkflowV2ParamsNode = LcToolWorkflowV2NodeBase & {
-	config: NodeConfig<LcToolWorkflowV2Params>;
+export type LcToolWorkflowV2Node = LcToolWorkflowV2NodeBase & {
+	config: NodeConfig<LcToolWorkflowV2Config>;
 };
 
-export type LcToolWorkflowV2Node = LcToolWorkflowV2ParamsNode;
+export type LcToolWorkflowV2Node = LcToolWorkflowV2Node;

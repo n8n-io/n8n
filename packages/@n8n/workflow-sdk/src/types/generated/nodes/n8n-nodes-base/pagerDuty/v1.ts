@@ -185,17 +185,6 @@ export type PagerDutyV1UserGetConfig = {
 		userId: string | Expression<string>;
 };
 
-export type PagerDutyV1Params =
-	| PagerDutyV1IncidentCreateConfig
-	| PagerDutyV1IncidentGetConfig
-	| PagerDutyV1IncidentGetAllConfig
-	| PagerDutyV1IncidentUpdateConfig
-	| PagerDutyV1IncidentNoteCreateConfig
-	| PagerDutyV1IncidentNoteGetAllConfig
-	| PagerDutyV1LogEntryGetConfig
-	| PagerDutyV1LogEntryGetAllConfig
-	| PagerDutyV1UserGetConfig
-	;
 
 // ===========================================================================
 // Credentials

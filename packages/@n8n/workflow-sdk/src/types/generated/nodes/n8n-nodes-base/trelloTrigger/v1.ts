@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface TrelloTriggerV1Params {
+export interface TrelloTriggerV1Config {
 /**
  * ID of the model of which to subscribe to events
  */
@@ -37,8 +37,8 @@ interface TrelloTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type TrelloTriggerV1ParamsNode = TrelloTriggerV1NodeBase & {
-	config: NodeConfig<TrelloTriggerV1Params>;
+export type TrelloTriggerV1Node = TrelloTriggerV1NodeBase & {
+	config: NodeConfig<TrelloTriggerV1Config>;
 };
 
-export type TrelloTriggerV1Node = TrelloTriggerV1ParamsNode;
+export type TrelloTriggerV1Node = TrelloTriggerV1Node;

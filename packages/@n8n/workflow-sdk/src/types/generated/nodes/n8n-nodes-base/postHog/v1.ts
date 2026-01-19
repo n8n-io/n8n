@@ -83,13 +83,6 @@ export type PostHogV1TrackScreenConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PostHogV1Params =
-	| PostHogV1AliasCreateConfig
-	| PostHogV1EventCreateConfig
-	| PostHogV1IdentityCreateConfig
-	| PostHogV1TrackPageConfig
-	| PostHogV1TrackScreenConfig
-	;
 
 // ===========================================================================
 // Output Types

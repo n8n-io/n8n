@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcInformationExtractorV11Params {
+export interface LcInformationExtractorV11Config {
 /**
  * The text to extract information from
  */
@@ -85,8 +85,8 @@ interface LcInformationExtractorV11NodeBase {
 	version: 1.1;
 }
 
-export type LcInformationExtractorV11ParamsNode = LcInformationExtractorV11NodeBase & {
-	config: NodeConfig<LcInformationExtractorV11Params>;
+export type LcInformationExtractorV11Node = LcInformationExtractorV11NodeBase & {
+	config: NodeConfig<LcInformationExtractorV11Config>;
 };
 
-export type LcInformationExtractorV11Node = LcInformationExtractorV11ParamsNode;
+export type LcInformationExtractorV11Node = LcInformationExtractorV11Node;

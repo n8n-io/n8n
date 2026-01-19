@@ -715,45 +715,6 @@ export type OnfleetV1WorkerUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type OnfleetV1Params =
-	| OnfleetV1AdminCreateConfig
-	| OnfleetV1AdminDeleteConfig
-	| OnfleetV1AdminGetAllConfig
-	| OnfleetV1AdminUpdateConfig
-	| OnfleetV1ContainerAddTaskConfig
-	| OnfleetV1ContainerGetConfig
-	| OnfleetV1ContainerUpdateTaskConfig
-	| OnfleetV1DestinationCreateConfig
-	| OnfleetV1DestinationGetConfig
-	| OnfleetV1HubCreateConfig
-	| OnfleetV1HubGetAllConfig
-	| OnfleetV1HubUpdateConfig
-	| OnfleetV1OrganizationGetConfig
-	| OnfleetV1OrganizationGetDelegateeConfig
-	| OnfleetV1RecipientCreateConfig
-	| OnfleetV1RecipientGetConfig
-	| OnfleetV1RecipientUpdateConfig
-	| OnfleetV1TaskCloneConfig
-	| OnfleetV1TaskCompleteConfig
-	| OnfleetV1TaskCreateConfig
-	| OnfleetV1TaskDeleteConfig
-	| OnfleetV1TaskGetConfig
-	| OnfleetV1TaskGetAllConfig
-	| OnfleetV1TaskUpdateConfig
-	| OnfleetV1TeamAutoDispatchConfig
-	| OnfleetV1TeamCreateConfig
-	| OnfleetV1TeamDeleteConfig
-	| OnfleetV1TeamGetConfig
-	| OnfleetV1TeamGetAllConfig
-	| OnfleetV1TeamGetTimeEstimatesConfig
-	| OnfleetV1TeamUpdateConfig
-	| OnfleetV1WorkerCreateConfig
-	| OnfleetV1WorkerDeleteConfig
-	| OnfleetV1WorkerGetConfig
-	| OnfleetV1WorkerGetAllConfig
-	| OnfleetV1WorkerGetScheduleConfig
-	| OnfleetV1WorkerUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

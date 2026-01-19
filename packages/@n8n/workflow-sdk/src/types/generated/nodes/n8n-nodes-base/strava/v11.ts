@@ -190,17 +190,6 @@ export type StravaV11ActivityUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type StravaV11Params =
-	| StravaV11ActivityCreateConfig
-	| StravaV11ActivityGetConfig
-	| StravaV11ActivityGetCommentsConfig
-	| StravaV11ActivityGetKudosConfig
-	| StravaV11ActivityGetLapsConfig
-	| StravaV11ActivityGetAllConfig
-	| StravaV11ActivityGetStreamsConfig
-	| StravaV11ActivityGetZonesConfig
-	| StravaV11ActivityUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

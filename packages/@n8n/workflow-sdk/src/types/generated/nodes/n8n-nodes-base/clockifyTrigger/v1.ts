@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface ClockifyTriggerV1Params {
+export interface ClockifyTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -85,8 +85,8 @@ interface ClockifyTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type ClockifyTriggerV1ParamsNode = ClockifyTriggerV1NodeBase & {
-	config: NodeConfig<ClockifyTriggerV1Params>;
+export type ClockifyTriggerV1Node = ClockifyTriggerV1NodeBase & {
+	config: NodeConfig<ClockifyTriggerV1Config>;
 };
 
-export type ClockifyTriggerV1Node = ClockifyTriggerV1ParamsNode;
+export type ClockifyTriggerV1Node = ClockifyTriggerV1Node;

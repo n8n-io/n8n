@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MicrosoftOneDriveTriggerV1Params {
+export interface MicrosoftOneDriveTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -114,8 +114,8 @@ interface MicrosoftOneDriveTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type MicrosoftOneDriveTriggerV1ParamsNode = MicrosoftOneDriveTriggerV1NodeBase & {
-	config: NodeConfig<MicrosoftOneDriveTriggerV1Params>;
+export type MicrosoftOneDriveTriggerV1Node = MicrosoftOneDriveTriggerV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveTriggerV1Config>;
 };
 
-export type MicrosoftOneDriveTriggerV1Node = MicrosoftOneDriveTriggerV1ParamsNode;
+export type MicrosoftOneDriveTriggerV1Node = MicrosoftOneDriveTriggerV1Node;

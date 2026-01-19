@@ -79,13 +79,6 @@ export type GetResponseV1ContactUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type GetResponseV1Params =
-	| GetResponseV1ContactCreateConfig
-	| GetResponseV1ContactDeleteConfig
-	| GetResponseV1ContactGetConfig
-	| GetResponseV1ContactGetAllConfig
-	| GetResponseV1ContactUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

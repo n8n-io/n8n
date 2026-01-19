@@ -384,28 +384,6 @@ export type JiraV1UserGetConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type JiraV1Params =
-	| JiraV1IssueChangelogConfig
-	| JiraV1IssueCreateConfig
-	| JiraV1IssueDeleteConfig
-	| JiraV1IssueGetConfig
-	| JiraV1IssueGetAllConfig
-	| JiraV1IssueNotifyConfig
-	| JiraV1IssueTransitionsConfig
-	| JiraV1IssueUpdateConfig
-	| JiraV1IssueAttachmentAddConfig
-	| JiraV1IssueAttachmentGetConfig
-	| JiraV1IssueAttachmentGetAllConfig
-	| JiraV1IssueAttachmentRemoveConfig
-	| JiraV1IssueCommentAddConfig
-	| JiraV1IssueCommentGetConfig
-	| JiraV1IssueCommentGetAllConfig
-	| JiraV1IssueCommentRemoveConfig
-	| JiraV1IssueCommentUpdateConfig
-	| JiraV1UserCreateConfig
-	| JiraV1UserDeleteConfig
-	| JiraV1UserGetConfig
-	;
 
 // ===========================================================================
 // Output Types

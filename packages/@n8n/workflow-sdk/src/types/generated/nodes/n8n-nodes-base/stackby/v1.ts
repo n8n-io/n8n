@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface StackbyV1Params {
+export interface StackbyV1Config {
 	operation?: 'append' | 'delete' | 'list' | 'read' | Expression<string>;
 /**
  * The ID of the stack to access
@@ -64,8 +64,8 @@ interface StackbyV1NodeBase {
 	credentials?: StackbyV1Credentials;
 }
 
-export type StackbyV1ParamsNode = StackbyV1NodeBase & {
-	config: NodeConfig<StackbyV1Params>;
+export type StackbyV1Node = StackbyV1NodeBase & {
+	config: NodeConfig<StackbyV1Config>;
 };
 
-export type StackbyV1Node = StackbyV1ParamsNode;
+export type StackbyV1Node = StackbyV1Node;

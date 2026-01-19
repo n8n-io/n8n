@@ -1276,56 +1276,6 @@ export type TheHiveProjectV1LogSearchConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type TheHiveProjectV1Params =
-	| TheHiveProjectV1AlertCreateConfig
-	| TheHiveProjectV1AlertDeleteAlertConfig
-	| TheHiveProjectV1AlertExecuteResponderConfig
-	| TheHiveProjectV1AlertGetConfig
-	| TheHiveProjectV1AlertMergeConfig
-	| TheHiveProjectV1AlertPromoteConfig
-	| TheHiveProjectV1AlertSearchConfig
-	| TheHiveProjectV1AlertUpdateConfig
-	| TheHiveProjectV1AlertStatusConfig
-	| TheHiveProjectV1CaseAddAttachmentConfig
-	| TheHiveProjectV1CaseCreateConfig
-	| TheHiveProjectV1CaseDeleteAttachmentConfig
-	| TheHiveProjectV1CaseDeleteCaseConfig
-	| TheHiveProjectV1CaseExecuteResponderConfig
-	| TheHiveProjectV1CaseGetConfig
-	| TheHiveProjectV1CaseGetAttachmentConfig
-	| TheHiveProjectV1CaseGetTimelineConfig
-	| TheHiveProjectV1CaseSearchConfig
-	| TheHiveProjectV1CaseUpdateConfig
-	| TheHiveProjectV1CommentAddConfig
-	| TheHiveProjectV1CommentDeleteCommentConfig
-	| TheHiveProjectV1CommentSearchConfig
-	| TheHiveProjectV1CommentUpdateConfig
-	| TheHiveProjectV1ObservableCreateConfig
-	| TheHiveProjectV1ObservableDeleteObservableConfig
-	| TheHiveProjectV1ObservableExecuteAnalyzerConfig
-	| TheHiveProjectV1ObservableExecuteResponderConfig
-	| TheHiveProjectV1ObservableGetConfig
-	| TheHiveProjectV1ObservableSearchConfig
-	| TheHiveProjectV1ObservableUpdateConfig
-	| TheHiveProjectV1PageCreateConfig
-	| TheHiveProjectV1PageDeletePageConfig
-	| TheHiveProjectV1PageSearchConfig
-	| TheHiveProjectV1PageUpdateConfig
-	| TheHiveProjectV1QueryExecuteQueryConfig
-	| TheHiveProjectV1TaskCreateConfig
-	| TheHiveProjectV1TaskDeleteTaskConfig
-	| TheHiveProjectV1TaskExecuteResponderConfig
-	| TheHiveProjectV1TaskGetConfig
-	| TheHiveProjectV1TaskSearchConfig
-	| TheHiveProjectV1TaskUpdateConfig
-	| TheHiveProjectV1LogAddAttachmentConfig
-	| TheHiveProjectV1LogCreateConfig
-	| TheHiveProjectV1LogDeleteLogConfig
-	| TheHiveProjectV1LogDeleteAttachmentConfig
-	| TheHiveProjectV1LogExecuteResponderConfig
-	| TheHiveProjectV1LogGetConfig
-	| TheHiveProjectV1LogSearchConfig
-	;
 
 // ===========================================================================
 // Credentials

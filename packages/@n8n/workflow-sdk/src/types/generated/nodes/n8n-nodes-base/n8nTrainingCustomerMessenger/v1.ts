@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface N8nTrainingCustomerMessengerV1Params {
+export interface N8nTrainingCustomerMessengerV1Config {
 	customerId: string | Expression<string>;
 	message: string | Expression<string>;
 }
@@ -29,8 +29,8 @@ interface N8nTrainingCustomerMessengerV1NodeBase {
 	version: 1;
 }
 
-export type N8nTrainingCustomerMessengerV1ParamsNode = N8nTrainingCustomerMessengerV1NodeBase & {
-	config: NodeConfig<N8nTrainingCustomerMessengerV1Params>;
+export type N8nTrainingCustomerMessengerV1Node = N8nTrainingCustomerMessengerV1NodeBase & {
+	config: NodeConfig<N8nTrainingCustomerMessengerV1Config>;
 };
 
-export type N8nTrainingCustomerMessengerV1Node = N8nTrainingCustomerMessengerV1ParamsNode;
+export type N8nTrainingCustomerMessengerV1Node = N8nTrainingCustomerMessengerV1Node;

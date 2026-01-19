@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface NotionTriggerV1Params {
+export interface NotionTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -96,8 +96,8 @@ interface NotionTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type NotionTriggerV1ParamsNode = NotionTriggerV1NodeBase & {
-	config: NodeConfig<NotionTriggerV1Params>;
+export type NotionTriggerV1Node = NotionTriggerV1NodeBase & {
+	config: NodeConfig<NotionTriggerV1Config>;
 };
 
-export type NotionTriggerV1Node = NotionTriggerV1ParamsNode;
+export type NotionTriggerV1Node = NotionTriggerV1Node;

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface JiraTriggerV11Params {
+export interface JiraTriggerV11Config {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 /**
  * The events to listen to
@@ -43,8 +43,8 @@ interface JiraTriggerV11NodeBase {
 	isTrigger: true;
 }
 
-export type JiraTriggerV11ParamsNode = JiraTriggerV11NodeBase & {
-	config: NodeConfig<JiraTriggerV11Params>;
+export type JiraTriggerV11Node = JiraTriggerV11NodeBase & {
+	config: NodeConfig<JiraTriggerV11Config>;
 };
 
-export type JiraTriggerV11Node = JiraTriggerV11ParamsNode;
+export type JiraTriggerV11Node = JiraTriggerV11Node;

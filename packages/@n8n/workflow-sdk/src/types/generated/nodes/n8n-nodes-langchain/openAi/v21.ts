@@ -389,24 +389,6 @@ export type LcOpenAiV21VideoGenerateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcOpenAiV21Params =
-	| LcOpenAiV21TextResponseConfig
-	| LcOpenAiV21TextClassifyConfig
-	| LcOpenAiV21ImageAnalyzeConfig
-	| LcOpenAiV21ImageGenerateConfig
-	| LcOpenAiV21ImageEditConfig
-	| LcOpenAiV21AudioGenerateConfig
-	| LcOpenAiV21AudioTranscribeConfig
-	| LcOpenAiV21AudioTranslateConfig
-	| LcOpenAiV21FileDeleteFileConfig
-	| LcOpenAiV21FileListConfig
-	| LcOpenAiV21FileUploadConfig
-	| LcOpenAiV21ConversationCreateConfig
-	| LcOpenAiV21ConversationGetConfig
-	| LcOpenAiV21ConversationRemoveConfig
-	| LcOpenAiV21ConversationUpdateConfig
-	| LcOpenAiV21VideoGenerateConfig
-	;
 
 // ===========================================================================
 // Credentials

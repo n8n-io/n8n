@@ -226,20 +226,6 @@ export type MicrosoftEntraV1UserUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type MicrosoftEntraV1Params =
-	| MicrosoftEntraV1GroupCreateConfig
-	| MicrosoftEntraV1GroupDeleteConfig
-	| MicrosoftEntraV1GroupGetConfig
-	| MicrosoftEntraV1GroupGetAllConfig
-	| MicrosoftEntraV1GroupUpdateConfig
-	| MicrosoftEntraV1UserAddGroupConfig
-	| MicrosoftEntraV1UserCreateConfig
-	| MicrosoftEntraV1UserDeleteConfig
-	| MicrosoftEntraV1UserGetConfig
-	| MicrosoftEntraV1UserGetAllConfig
-	| MicrosoftEntraV1UserRemoveGroupConfig
-	| MicrosoftEntraV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

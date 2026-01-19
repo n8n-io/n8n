@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcOutputParserItemListV1Params {
+export interface LcOutputParserItemListV1Config {
 	options?: Record<string, unknown>;
 }
 
@@ -29,8 +29,8 @@ interface LcOutputParserItemListV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcOutputParserItemListV1ParamsNode = LcOutputParserItemListV1NodeBase & {
-	config: NodeConfig<LcOutputParserItemListV1Params>;
+export type LcOutputParserItemListV1Node = LcOutputParserItemListV1NodeBase & {
+	config: NodeConfig<LcOutputParserItemListV1Config>;
 };
 
-export type LcOutputParserItemListV1Node = LcOutputParserItemListV1ParamsNode;
+export type LcOutputParserItemListV1Node = LcOutputParserItemListV1Node;

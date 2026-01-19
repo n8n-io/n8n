@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface PostgresV2Params {
+export interface PostgresV2Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -148,8 +148,8 @@ interface PostgresV2NodeBase {
 	credentials?: PostgresV2Credentials;
 }
 
-export type PostgresV2ParamsNode = PostgresV2NodeBase & {
-	config: NodeConfig<PostgresV2Params>;
+export type PostgresV2Node = PostgresV2NodeBase & {
+	config: NodeConfig<PostgresV2Config>;
 };
 
-export type PostgresV2Node = PostgresV2ParamsNode;
+export type PostgresV2Node = PostgresV2Node;

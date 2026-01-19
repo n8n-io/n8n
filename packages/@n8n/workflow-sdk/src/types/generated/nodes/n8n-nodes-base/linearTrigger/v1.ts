@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LinearTriggerV1Params {
+export interface LinearTriggerV1Config {
 	authentication?: 'apiToken' | 'oAuth2' | Expression<string>;
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
@@ -40,8 +40,8 @@ interface LinearTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type LinearTriggerV1ParamsNode = LinearTriggerV1NodeBase & {
-	config: NodeConfig<LinearTriggerV1Params>;
+export type LinearTriggerV1Node = LinearTriggerV1NodeBase & {
+	config: NodeConfig<LinearTriggerV1Config>;
 };
 
-export type LinearTriggerV1Node = LinearTriggerV1ParamsNode;
+export type LinearTriggerV1Node = LinearTriggerV1Node;

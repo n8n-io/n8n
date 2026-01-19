@@ -182,17 +182,6 @@ export type GoogleBooksV1VolumeGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type GoogleBooksV1Params =
-	| GoogleBooksV1BookshelfGetConfig
-	| GoogleBooksV1BookshelfGetAllConfig
-	| GoogleBooksV1BookshelfVolumeAddConfig
-	| GoogleBooksV1BookshelfVolumeClearConfig
-	| GoogleBooksV1BookshelfVolumeGetAllConfig
-	| GoogleBooksV1BookshelfVolumeMoveConfig
-	| GoogleBooksV1BookshelfVolumeRemoveConfig
-	| GoogleBooksV1VolumeGetConfig
-	| GoogleBooksV1VolumeGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

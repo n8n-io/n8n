@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface EventbriteTriggerV1Params {
+export interface EventbriteTriggerV1Config {
 	authentication?: 'privateKey' | 'oAuth2' | Expression<string>;
 /**
  * The Eventbrite Organization to work on. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -53,8 +53,8 @@ interface EventbriteTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type EventbriteTriggerV1ParamsNode = EventbriteTriggerV1NodeBase & {
-	config: NodeConfig<EventbriteTriggerV1Params>;
+export type EventbriteTriggerV1Node = EventbriteTriggerV1NodeBase & {
+	config: NodeConfig<EventbriteTriggerV1Config>;
 };
 
-export type EventbriteTriggerV1Node = EventbriteTriggerV1ParamsNode;
+export type EventbriteTriggerV1Node = EventbriteTriggerV1Node;

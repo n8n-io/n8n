@@ -85,11 +85,6 @@ export type PlivoV1SmsSendConfig = {
 		message: string | Expression<string>;
 };
 
-export type PlivoV1Params =
-	| PlivoV1CallMakeConfig
-	| PlivoV1MmsSendConfig
-	| PlivoV1SmsSendConfig
-	;
 
 // ===========================================================================
 // Output Types

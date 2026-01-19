@@ -977,49 +977,6 @@ export type SlackV1UserProfileUpdateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type SlackV1Params =
-	| SlackV1ChannelArchiveConfig
-	| SlackV1ChannelCloseConfig
-	| SlackV1ChannelCreateConfig
-	| SlackV1ChannelGetConfig
-	| SlackV1ChannelGetAllConfig
-	| SlackV1ChannelHistoryConfig
-	| SlackV1ChannelInviteConfig
-	| SlackV1ChannelJoinConfig
-	| SlackV1ChannelKickConfig
-	| SlackV1ChannelLeaveConfig
-	| SlackV1ChannelMemberConfig
-	| SlackV1ChannelOpenConfig
-	| SlackV1ChannelRenameConfig
-	| SlackV1ChannelRepliesConfig
-	| SlackV1ChannelSetPurposeConfig
-	| SlackV1ChannelSetTopicConfig
-	| SlackV1ChannelUnarchiveConfig
-	| SlackV1FileGetConfig
-	| SlackV1FileGetAllConfig
-	| SlackV1FileUploadConfig
-	| SlackV1MessageDeleteConfig
-	| SlackV1MessageGetPermalinkConfig
-	| SlackV1MessagePostConfig
-	| SlackV1MessagePostEphemeralConfig
-	| SlackV1MessageUpdateConfig
-	| SlackV1ReactionAddConfig
-	| SlackV1ReactionGetConfig
-	| SlackV1ReactionRemoveConfig
-	| SlackV1StarAddConfig
-	| SlackV1StarDeleteConfig
-	| SlackV1StarGetAllConfig
-	| SlackV1UserInfoConfig
-	| SlackV1UserGetAllConfig
-	| SlackV1UserGetPresenceConfig
-	| SlackV1UserGroupCreateConfig
-	| SlackV1UserGroupDisableConfig
-	| SlackV1UserGroupEnableConfig
-	| SlackV1UserGroupGetAllConfig
-	| SlackV1UserGroupUpdateConfig
-	| SlackV1UserProfileGetConfig
-	| SlackV1UserProfileUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

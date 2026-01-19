@@ -484,22 +484,6 @@ export type DiscordV2MemberRoleRemoveConfig = {
 		role: string[];
 };
 
-export type DiscordV2Params =
-	| DiscordV2ChannelCreateConfig
-	| DiscordV2ChannelDeleteChannelConfig
-	| DiscordV2ChannelGetConfig
-	| DiscordV2ChannelGetAllConfig
-	| DiscordV2ChannelUpdateConfig
-	| DiscordV2MessageDeleteMessageConfig
-	| DiscordV2MessageGetConfig
-	| DiscordV2MessageGetAllConfig
-	| DiscordV2MessageReactConfig
-	| DiscordV2MessageSendConfig
-	| DiscordV2MessageSendAndWaitConfig
-	| DiscordV2MemberGetAllConfig
-	| DiscordV2MemberRoleAddConfig
-	| DiscordV2MemberRoleRemoveConfig
-	;
 
 // ===========================================================================
 // Output Types

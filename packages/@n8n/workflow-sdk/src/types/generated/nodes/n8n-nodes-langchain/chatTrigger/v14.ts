@@ -48,10 +48,6 @@ export type LcChatTriggerV14WebhookConfig = {
 		availableInChat?: boolean | Expression<boolean>;
 };
 
-export type LcChatTriggerV14Params =
-	| LcChatTriggerV14HostedChatConfig
-	| LcChatTriggerV14WebhookConfig
-	;
 
 // ===========================================================================
 // Credentials

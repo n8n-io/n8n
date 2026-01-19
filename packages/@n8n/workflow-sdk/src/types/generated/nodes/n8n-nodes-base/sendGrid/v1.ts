@@ -220,18 +220,6 @@ export type SendGridV1MailSendConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type SendGridV1Params =
-	| SendGridV1ContactUpsertConfig
-	| SendGridV1ContactDeleteConfig
-	| SendGridV1ContactGetConfig
-	| SendGridV1ContactGetAllConfig
-	| SendGridV1ListCreateConfig
-	| SendGridV1ListDeleteConfig
-	| SendGridV1ListGetConfig
-	| SendGridV1ListGetAllConfig
-	| SendGridV1ListUpdateConfig
-	| SendGridV1MailSendConfig
-	;
 
 // ===========================================================================
 // Output Types

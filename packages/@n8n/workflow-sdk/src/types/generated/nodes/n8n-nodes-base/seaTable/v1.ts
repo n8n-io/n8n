@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SeaTableV1Params {
+export interface SeaTableV1Config {
 	resource?: 'row' | Expression<string>;
 /**
  * The operation being performed
@@ -89,8 +89,8 @@ interface SeaTableV1NodeBase {
 	credentials?: SeaTableV1Credentials;
 }
 
-export type SeaTableV1ParamsNode = SeaTableV1NodeBase & {
-	config: NodeConfig<SeaTableV1Params>;
+export type SeaTableV1Node = SeaTableV1NodeBase & {
+	config: NodeConfig<SeaTableV1Config>;
 };
 
-export type SeaTableV1Node = SeaTableV1ParamsNode;
+export type SeaTableV1Node = SeaTableV1Node;

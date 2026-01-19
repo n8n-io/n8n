@@ -148,15 +148,6 @@ export type AwsElbV1LoadBalancerGetManyConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type AwsElbV1Params =
-	| AwsElbV1ListenerCertificateAddConfig
-	| AwsElbV1ListenerCertificateGetManyConfig
-	| AwsElbV1ListenerCertificateRemoveConfig
-	| AwsElbV1LoadBalancerCreateConfig
-	| AwsElbV1LoadBalancerDeleteConfig
-	| AwsElbV1LoadBalancerGetConfig
-	| AwsElbV1LoadBalancerGetManyConfig
-	;
 
 // ===========================================================================
 // Credentials

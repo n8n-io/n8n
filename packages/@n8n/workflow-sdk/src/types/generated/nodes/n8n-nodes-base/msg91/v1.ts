@@ -32,9 +32,6 @@ export type Msg91V1SmsSendConfig = {
 		message: string | Expression<string>;
 };
 
-export type Msg91V1Params =
-	| Msg91V1SmsSendConfig
-	;
 
 // ===========================================================================
 // Credentials

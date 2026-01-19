@@ -364,24 +364,6 @@ export type GSuiteAdminV1UserUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type GSuiteAdminV1Params =
-	| GSuiteAdminV1DeviceGetConfig
-	| GSuiteAdminV1DeviceGetAllConfig
-	| GSuiteAdminV1DeviceUpdateConfig
-	| GSuiteAdminV1DeviceChangeStatusConfig
-	| GSuiteAdminV1GroupCreateConfig
-	| GSuiteAdminV1GroupDeleteConfig
-	| GSuiteAdminV1GroupGetConfig
-	| GSuiteAdminV1GroupGetAllConfig
-	| GSuiteAdminV1GroupUpdateConfig
-	| GSuiteAdminV1UserAddToGroupConfig
-	| GSuiteAdminV1UserCreateConfig
-	| GSuiteAdminV1UserDeleteConfig
-	| GSuiteAdminV1UserGetConfig
-	| GSuiteAdminV1UserGetAllConfig
-	| GSuiteAdminV1UserRemoveFromGroupConfig
-	| GSuiteAdminV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

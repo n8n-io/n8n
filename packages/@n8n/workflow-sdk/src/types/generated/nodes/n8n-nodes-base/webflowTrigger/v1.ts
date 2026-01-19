@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WebflowTriggerV1Params {
+export interface WebflowTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 /**
  * Site that will trigger the events. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -40,8 +40,8 @@ interface WebflowTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type WebflowTriggerV1ParamsNode = WebflowTriggerV1NodeBase & {
-	config: NodeConfig<WebflowTriggerV1Params>;
+export type WebflowTriggerV1Node = WebflowTriggerV1NodeBase & {
+	config: NodeConfig<WebflowTriggerV1Config>;
 };
 
-export type WebflowTriggerV1Node = WebflowTriggerV1ParamsNode;
+export type WebflowTriggerV1Node = WebflowTriggerV1Node;

@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface FilterV1Params {
+export interface FilterV1Config {
 /**
  * The type of values to compare
  * @default {}
@@ -96,8 +96,8 @@ interface FilterV1NodeBase {
 	version: 1;
 }
 
-export type FilterV1ParamsNode = FilterV1NodeBase & {
-	config: NodeConfig<FilterV1Params>;
+export type FilterV1Node = FilterV1NodeBase & {
+	config: NodeConfig<FilterV1Config>;
 };
 
-export type FilterV1Node = FilterV1ParamsNode;
+export type FilterV1Node = FilterV1Node;

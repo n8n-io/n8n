@@ -34,10 +34,6 @@ export type Signl4V1AlertResolveConfig = {
 		externalId?: string | Expression<string>;
 };
 
-export type Signl4V1Params =
-	| Signl4V1AlertSendConfig
-	| Signl4V1AlertResolveConfig
-	;
 
 // ===========================================================================
 // Credentials

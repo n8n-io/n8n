@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AwsLambdaV1Params {
+export interface AwsLambdaV1Config {
 	authentication?: 'iam' | 'assumeRole' | Expression<string>;
 	operation?: 'invoke' | Expression<string>;
 /**
@@ -57,8 +57,8 @@ interface AwsLambdaV1NodeBase {
 	credentials?: AwsLambdaV1Credentials;
 }
 
-export type AwsLambdaV1ParamsNode = AwsLambdaV1NodeBase & {
-	config: NodeConfig<AwsLambdaV1Params>;
+export type AwsLambdaV1Node = AwsLambdaV1NodeBase & {
+	config: NodeConfig<AwsLambdaV1Config>;
 };
 
-export type AwsLambdaV1Node = AwsLambdaV1ParamsNode;
+export type AwsLambdaV1Node = AwsLambdaV1Node;

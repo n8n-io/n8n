@@ -95,12 +95,6 @@ export type LcVectorStoreZepV12RetrieveAsToolConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStoreZepV12Params =
-	| LcVectorStoreZepV12LoadConfig
-	| LcVectorStoreZepV12InsertConfig
-	| LcVectorStoreZepV12RetrieveConfig
-	| LcVectorStoreZepV12RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials

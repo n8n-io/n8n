@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface EmailSendV1Params {
+export interface EmailSendV1Config {
 /**
  * Email address of the sender optional with name
  */
@@ -65,8 +65,8 @@ interface EmailSendV1NodeBase {
 	credentials?: EmailSendV1Credentials;
 }
 
-export type EmailSendV1ParamsNode = EmailSendV1NodeBase & {
-	config: NodeConfig<EmailSendV1Params>;
+export type EmailSendV1Node = EmailSendV1NodeBase & {
+	config: NodeConfig<EmailSendV1Config>;
 };
 
-export type EmailSendV1Node = EmailSendV1ParamsNode;
+export type EmailSendV1Node = EmailSendV1Node;

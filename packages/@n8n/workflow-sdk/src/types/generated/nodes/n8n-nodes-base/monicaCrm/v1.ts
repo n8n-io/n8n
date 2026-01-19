@@ -796,60 +796,6 @@ export type MonicaCrmV1TaskUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type MonicaCrmV1Params =
-	| MonicaCrmV1ActivityCreateConfig
-	| MonicaCrmV1ActivityDeleteConfig
-	| MonicaCrmV1ActivityGetConfig
-	| MonicaCrmV1ActivityGetAllConfig
-	| MonicaCrmV1ActivityUpdateConfig
-	| MonicaCrmV1CallCreateConfig
-	| MonicaCrmV1CallDeleteConfig
-	| MonicaCrmV1CallGetConfig
-	| MonicaCrmV1CallGetAllConfig
-	| MonicaCrmV1CallUpdateConfig
-	| MonicaCrmV1ContactCreateConfig
-	| MonicaCrmV1ContactDeleteConfig
-	| MonicaCrmV1ContactGetConfig
-	| MonicaCrmV1ContactGetAllConfig
-	| MonicaCrmV1ContactUpdateConfig
-	| MonicaCrmV1ContactFieldCreateConfig
-	| MonicaCrmV1ContactFieldDeleteConfig
-	| MonicaCrmV1ContactFieldGetConfig
-	| MonicaCrmV1ContactFieldUpdateConfig
-	| MonicaCrmV1ContactTagAddConfig
-	| MonicaCrmV1ContactTagRemoveConfig
-	| MonicaCrmV1ConversationCreateConfig
-	| MonicaCrmV1ConversationDeleteConfig
-	| MonicaCrmV1ConversationGetConfig
-	| MonicaCrmV1ConversationUpdateConfig
-	| MonicaCrmV1ConversationMessageAddConfig
-	| MonicaCrmV1ConversationMessageUpdateConfig
-	| MonicaCrmV1JournalEntryCreateConfig
-	| MonicaCrmV1JournalEntryDeleteConfig
-	| MonicaCrmV1JournalEntryGetConfig
-	| MonicaCrmV1JournalEntryGetAllConfig
-	| MonicaCrmV1JournalEntryUpdateConfig
-	| MonicaCrmV1NoteCreateConfig
-	| MonicaCrmV1NoteDeleteConfig
-	| MonicaCrmV1NoteGetConfig
-	| MonicaCrmV1NoteGetAllConfig
-	| MonicaCrmV1NoteUpdateConfig
-	| MonicaCrmV1ReminderCreateConfig
-	| MonicaCrmV1ReminderDeleteConfig
-	| MonicaCrmV1ReminderGetConfig
-	| MonicaCrmV1ReminderGetAllConfig
-	| MonicaCrmV1ReminderUpdateConfig
-	| MonicaCrmV1TagCreateConfig
-	| MonicaCrmV1TagDeleteConfig
-	| MonicaCrmV1TagGetConfig
-	| MonicaCrmV1TagGetAllConfig
-	| MonicaCrmV1TagUpdateConfig
-	| MonicaCrmV1TaskCreateConfig
-	| MonicaCrmV1TaskDeleteConfig
-	| MonicaCrmV1TaskGetConfig
-	| MonicaCrmV1TaskGetAllConfig
-	| MonicaCrmV1TaskUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

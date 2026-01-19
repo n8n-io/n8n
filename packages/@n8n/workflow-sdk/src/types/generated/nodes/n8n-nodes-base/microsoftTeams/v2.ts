@@ -372,24 +372,6 @@ export type MicrosoftTeamsV2TaskUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type MicrosoftTeamsV2Params =
-	| MicrosoftTeamsV2ChannelCreateConfig
-	| MicrosoftTeamsV2ChannelDeleteChannelConfig
-	| MicrosoftTeamsV2ChannelGetConfig
-	| MicrosoftTeamsV2ChannelGetAllConfig
-	| MicrosoftTeamsV2ChannelUpdateConfig
-	| MicrosoftTeamsV2ChannelMessageCreateConfig
-	| MicrosoftTeamsV2ChannelMessageGetAllConfig
-	| MicrosoftTeamsV2ChatMessageCreateConfig
-	| MicrosoftTeamsV2ChatMessageGetConfig
-	| MicrosoftTeamsV2ChatMessageGetAllConfig
-	| MicrosoftTeamsV2ChatMessageSendAndWaitConfig
-	| MicrosoftTeamsV2TaskCreateConfig
-	| MicrosoftTeamsV2TaskDeleteTaskConfig
-	| MicrosoftTeamsV2TaskGetConfig
-	| MicrosoftTeamsV2TaskGetAllConfig
-	| MicrosoftTeamsV2TaskUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

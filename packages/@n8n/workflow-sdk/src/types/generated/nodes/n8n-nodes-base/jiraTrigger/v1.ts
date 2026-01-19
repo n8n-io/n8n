@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface JiraTriggerV1Params {
+export interface JiraTriggerV1Config {
 	jiraVersion?: 'cloud' | 'server' | 'serverPat' | Expression<string>;
 /**
  * If authentication should be activated for the webhook (makes it more secure)
@@ -48,8 +48,8 @@ interface JiraTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type JiraTriggerV1ParamsNode = JiraTriggerV1NodeBase & {
-	config: NodeConfig<JiraTriggerV1Params>;
+export type JiraTriggerV1Node = JiraTriggerV1NodeBase & {
+	config: NodeConfig<JiraTriggerV1Config>;
 };
 
-export type JiraTriggerV1Node = JiraTriggerV1ParamsNode;
+export type JiraTriggerV1Node = JiraTriggerV1Node;

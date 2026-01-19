@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface SplitOutV1Params {
+export interface SplitOutV1Config {
 /**
  * The name of the input fields to break out into separate items. Separate multiple field names by commas. For binary data, use $binary.
  * @hint Use $binary to split out the input item by binary data
@@ -43,8 +43,8 @@ interface SplitOutV1NodeBase {
 	version: 1;
 }
 
-export type SplitOutV1ParamsNode = SplitOutV1NodeBase & {
-	config: NodeConfig<SplitOutV1Params>;
+export type SplitOutV1Node = SplitOutV1NodeBase & {
+	config: NodeConfig<SplitOutV1Config>;
 };
 
-export type SplitOutV1Node = SplitOutV1ParamsNode;
+export type SplitOutV1Node = SplitOutV1Node;

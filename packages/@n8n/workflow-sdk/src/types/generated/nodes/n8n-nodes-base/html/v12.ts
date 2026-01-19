@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface HtmlV12Params {
+export interface HtmlV12Config {
 	operation?: 'generateHtmlTemplate' | 'extractHtmlContent' | 'convertToHtmlTable' | Expression<string>;
 /**
  * HTML template to render
@@ -83,8 +83,8 @@ interface HtmlV12NodeBase {
 	version: 1.2;
 }
 
-export type HtmlV12ParamsNode = HtmlV12NodeBase & {
-	config: NodeConfig<HtmlV12Params>;
+export type HtmlV12Node = HtmlV12NodeBase & {
+	config: NodeConfig<HtmlV12Config>;
 };
 
-export type HtmlV12Node = HtmlV12ParamsNode;
+export type HtmlV12Node = HtmlV12Node;

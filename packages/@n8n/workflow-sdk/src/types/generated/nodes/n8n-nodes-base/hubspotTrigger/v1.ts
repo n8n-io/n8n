@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface HubspotTriggerV1Params {
+export interface HubspotTriggerV1Config {
 	eventsUi?: {
 		eventValues?: Array<{
 			/** Name
@@ -54,8 +54,8 @@ interface HubspotTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type HubspotTriggerV1ParamsNode = HubspotTriggerV1NodeBase & {
-	config: NodeConfig<HubspotTriggerV1Params>;
+export type HubspotTriggerV1Node = HubspotTriggerV1NodeBase & {
+	config: NodeConfig<HubspotTriggerV1Config>;
 };
 
-export type HubspotTriggerV1Node = HubspotTriggerV1ParamsNode;
+export type HubspotTriggerV1Node = HubspotTriggerV1Node;

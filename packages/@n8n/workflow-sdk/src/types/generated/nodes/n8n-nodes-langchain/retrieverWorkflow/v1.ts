@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcRetrieverWorkflowV1Params {
+export interface LcRetrieverWorkflowV1Config {
 /**
  * Where to get the workflow to execute from
  * @default database
@@ -80,8 +80,8 @@ interface LcRetrieverWorkflowV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcRetrieverWorkflowV1ParamsNode = LcRetrieverWorkflowV1NodeBase & {
-	config: NodeConfig<LcRetrieverWorkflowV1Params>;
+export type LcRetrieverWorkflowV1Node = LcRetrieverWorkflowV1NodeBase & {
+	config: NodeConfig<LcRetrieverWorkflowV1Config>;
 };
 
-export type LcRetrieverWorkflowV1Node = LcRetrieverWorkflowV1ParamsNode;
+export type LcRetrieverWorkflowV1Node = LcRetrieverWorkflowV1Node;

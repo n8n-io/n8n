@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface DropcontactV1Params {
+export interface DropcontactV1Config {
 	resource: 'contact' | Expression<string>;
 	operation: 'enrich' | 'fetchRequest' | Expression<string>;
 	requestId: string | Expression<string>;
@@ -44,8 +44,8 @@ interface DropcontactV1NodeBase {
 	credentials?: DropcontactV1Credentials;
 }
 
-export type DropcontactV1ParamsNode = DropcontactV1NodeBase & {
-	config: NodeConfig<DropcontactV1Params>;
+export type DropcontactV1Node = DropcontactV1NodeBase & {
+	config: NodeConfig<DropcontactV1Config>;
 };
 
-export type DropcontactV1Node = DropcontactV1ParamsNode;
+export type DropcontactV1Node = DropcontactV1Node;

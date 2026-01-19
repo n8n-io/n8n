@@ -250,13 +250,6 @@ export type SupabaseV1RowUpdateConfig = {
 	};
 };
 
-export type SupabaseV1Params =
-	| SupabaseV1RowCreateConfig
-	| SupabaseV1RowDeleteConfig
-	| SupabaseV1RowGetConfig
-	| SupabaseV1RowGetAllConfig
-	| SupabaseV1RowUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

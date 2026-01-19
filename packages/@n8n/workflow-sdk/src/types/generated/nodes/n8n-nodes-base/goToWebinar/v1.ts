@@ -439,30 +439,6 @@ export type GoToWebinarV1WebinarUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type GoToWebinarV1Params =
-	| GoToWebinarV1AttendeeGetConfig
-	| GoToWebinarV1AttendeeGetAllConfig
-	| GoToWebinarV1AttendeeGetDetailsConfig
-	| GoToWebinarV1CoorganizerCreateConfig
-	| GoToWebinarV1CoorganizerDeleteConfig
-	| GoToWebinarV1CoorganizerGetAllConfig
-	| GoToWebinarV1CoorganizerReinviteConfig
-	| GoToWebinarV1PanelistCreateConfig
-	| GoToWebinarV1PanelistDeleteConfig
-	| GoToWebinarV1PanelistGetAllConfig
-	| GoToWebinarV1PanelistReinviteConfig
-	| GoToWebinarV1RegistrantCreateConfig
-	| GoToWebinarV1RegistrantDeleteConfig
-	| GoToWebinarV1RegistrantGetConfig
-	| GoToWebinarV1RegistrantGetAllConfig
-	| GoToWebinarV1SessionGetConfig
-	| GoToWebinarV1SessionGetAllConfig
-	| GoToWebinarV1SessionGetDetailsConfig
-	| GoToWebinarV1WebinarCreateConfig
-	| GoToWebinarV1WebinarGetConfig
-	| GoToWebinarV1WebinarGetAllConfig
-	| GoToWebinarV1WebinarUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

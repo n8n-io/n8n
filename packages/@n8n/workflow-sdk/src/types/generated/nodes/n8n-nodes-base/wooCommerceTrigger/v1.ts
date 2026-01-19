@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WooCommerceTriggerV1Params {
+export interface WooCommerceTriggerV1Config {
 /**
  * Determines which resource events the webhook is triggered for
  */
@@ -37,8 +37,8 @@ interface WooCommerceTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type WooCommerceTriggerV1ParamsNode = WooCommerceTriggerV1NodeBase & {
-	config: NodeConfig<WooCommerceTriggerV1Params>;
+export type WooCommerceTriggerV1Node = WooCommerceTriggerV1NodeBase & {
+	config: NodeConfig<WooCommerceTriggerV1Config>;
 };
 
-export type WooCommerceTriggerV1Node = WooCommerceTriggerV1ParamsNode;
+export type WooCommerceTriggerV1Node = WooCommerceTriggerV1Node;

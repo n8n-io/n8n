@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcGuardrailsV2Params {
+export interface LcGuardrailsV2Config {
 	operation?: 'classify' | 'sanitize' | Expression<string>;
 	text: string | Expression<string>;
 	guardrails?: Record<string, unknown>;
@@ -63,8 +63,8 @@ interface LcGuardrailsV2NodeBase {
 	version: 2;
 }
 
-export type LcGuardrailsV2ParamsNode = LcGuardrailsV2NodeBase & {
-	config: NodeConfig<LcGuardrailsV2Params>;
+export type LcGuardrailsV2Node = LcGuardrailsV2NodeBase & {
+	config: NodeConfig<LcGuardrailsV2Config>;
 };
 
-export type LcGuardrailsV2Node = LcGuardrailsV2ParamsNode;
+export type LcGuardrailsV2Node = LcGuardrailsV2Node;

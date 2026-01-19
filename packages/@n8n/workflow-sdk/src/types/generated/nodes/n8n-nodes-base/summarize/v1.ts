@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface SummarizeV1Params {
+export interface SummarizeV1Config {
 	fieldsToSummarize?: {
 		values?: Array<{
 			/** How to combine the values of the field you want to summarize
@@ -72,8 +72,8 @@ interface SummarizeV1NodeBase {
 	version: 1;
 }
 
-export type SummarizeV1ParamsNode = SummarizeV1NodeBase & {
-	config: NodeConfig<SummarizeV1Params>;
+export type SummarizeV1Node = SummarizeV1NodeBase & {
+	config: NodeConfig<SummarizeV1Config>;
 };
 
-export type SummarizeV1Node = SummarizeV1ParamsNode;
+export type SummarizeV1Node = SummarizeV1Node;

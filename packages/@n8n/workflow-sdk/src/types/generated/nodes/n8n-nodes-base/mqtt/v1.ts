@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MqttV1Params {
+export interface MqttV1Config {
 /**
  * The topic to publish to
  */
@@ -47,8 +47,8 @@ interface MqttV1NodeBase {
 	credentials?: MqttV1Credentials;
 }
 
-export type MqttV1ParamsNode = MqttV1NodeBase & {
-	config: NodeConfig<MqttV1Params>;
+export type MqttV1Node = MqttV1NodeBase & {
+	config: NodeConfig<MqttV1Config>;
 };
 
-export type MqttV1Node = MqttV1ParamsNode;
+export type MqttV1Node = MqttV1Node;

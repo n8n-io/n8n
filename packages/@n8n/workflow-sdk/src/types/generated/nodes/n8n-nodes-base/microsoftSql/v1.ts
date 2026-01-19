@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MicrosoftSqlV1Params {
+export interface MicrosoftSqlV1Config {
 	operation?: 'executeQuery' | 'insert' | 'update' | 'delete' | Expression<string>;
 /**
  * The SQL query to execute
@@ -60,8 +60,8 @@ interface MicrosoftSqlV1NodeBase {
 	credentials?: MicrosoftSqlV1Credentials;
 }
 
-export type MicrosoftSqlV1ParamsNode = MicrosoftSqlV1NodeBase & {
-	config: NodeConfig<MicrosoftSqlV1Params>;
+export type MicrosoftSqlV1Node = MicrosoftSqlV1NodeBase & {
+	config: NodeConfig<MicrosoftSqlV1Config>;
 };
 
-export type MicrosoftSqlV1Node = MicrosoftSqlV1ParamsNode;
+export type MicrosoftSqlV1Node = MicrosoftSqlV1Node;

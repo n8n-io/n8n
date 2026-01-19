@@ -84,14 +84,6 @@ export type PostBinV1RequestSendConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type PostBinV1Params =
-	| PostBinV1BinCreateConfig
-	| PostBinV1BinGetConfig
-	| PostBinV1BinDeleteConfig
-	| PostBinV1RequestGetConfig
-	| PostBinV1RequestRemoveFirstConfig
-	| PostBinV1RequestSendConfig
-	;
 
 // ===========================================================================
 // Output Types

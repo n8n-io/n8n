@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface PostgresV23Params {
+export interface PostgresV23Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -117,8 +117,8 @@ interface PostgresV23NodeBase {
 	credentials?: PostgresV23Credentials;
 }
 
-export type PostgresV23ParamsNode = PostgresV23NodeBase & {
-	config: NodeConfig<PostgresV23Params>;
+export type PostgresV23Node = PostgresV23NodeBase & {
+	config: NodeConfig<PostgresV23Config>;
 };
 
-export type PostgresV23Node = PostgresV23ParamsNode;
+export type PostgresV23Node = PostgresV23Node;

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FlowTriggerV1Params {
+export interface FlowTriggerV1Config {
 /**
  * Resource that triggers the webhook
  */
@@ -49,8 +49,8 @@ interface FlowTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type FlowTriggerV1ParamsNode = FlowTriggerV1NodeBase & {
-	config: NodeConfig<FlowTriggerV1Params>;
+export type FlowTriggerV1Node = FlowTriggerV1NodeBase & {
+	config: NodeConfig<FlowTriggerV1Config>;
 };
 
-export type FlowTriggerV1Node = FlowTriggerV1ParamsNode;
+export type FlowTriggerV1Node = FlowTriggerV1Node;

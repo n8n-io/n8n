@@ -125,14 +125,6 @@ export type GoogleSlidesV2PresentationReplaceTextConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleSlidesV2Params =
-	| GoogleSlidesV2PageGetConfig
-	| GoogleSlidesV2PageGetThumbnailConfig
-	| GoogleSlidesV2PresentationCreateConfig
-	| GoogleSlidesV2PresentationGetConfig
-	| GoogleSlidesV2PresentationGetSlidesConfig
-	| GoogleSlidesV2PresentationReplaceTextConfig
-	;
 
 // ===========================================================================
 // Credentials

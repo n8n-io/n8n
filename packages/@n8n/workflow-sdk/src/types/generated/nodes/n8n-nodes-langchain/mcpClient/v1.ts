@@ -145,13 +145,6 @@ export type LcMcpClientV1NoneConfig = {
 		options?: Record<string, unknown>;
 };
 
-export type LcMcpClientV1Params =
-	| LcMcpClientV1BearerAuthConfig
-	| LcMcpClientV1HeaderAuthConfig
-	| LcMcpClientV1McpOAuth2ApiConfig
-	| LcMcpClientV1MultipleHeadersAuthConfig
-	| LcMcpClientV1NoneConfig
-	;
 
 // ===========================================================================
 // Credentials

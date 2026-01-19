@@ -110,13 +110,6 @@ export type LcVectorStoreRedisV1UpdateConfig = {
 		id: string | Expression<string>;
 };
 
-export type LcVectorStoreRedisV1Params =
-	| LcVectorStoreRedisV1LoadConfig
-	| LcVectorStoreRedisV1InsertConfig
-	| LcVectorStoreRedisV1RetrieveConfig
-	| LcVectorStoreRedisV1RetrieveAsToolConfig
-	| LcVectorStoreRedisV1UpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

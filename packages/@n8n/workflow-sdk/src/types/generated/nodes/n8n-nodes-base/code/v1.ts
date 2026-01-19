@@ -43,10 +43,6 @@ export type CodeV1RunOnceForEachItemConfig = {
 		pythonCode?: string | Expression<string>;
 };
 
-export type CodeV1Params =
-	| CodeV1RunOnceForAllItemsConfig
-	| CodeV1RunOnceForEachItemConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -350,34 +350,6 @@ export type GmailV2ThreadUntrashConfig = {
 		threadId: string | Expression<string>;
 };
 
-export type GmailV2Params =
-	| GmailV2MessageAddLabelsConfig
-	| GmailV2MessageDeleteConfig
-	| GmailV2MessageGetConfig
-	| GmailV2MessageGetAllConfig
-	| GmailV2MessageMarkAsReadConfig
-	| GmailV2MessageMarkAsUnreadConfig
-	| GmailV2MessageRemoveLabelsConfig
-	| GmailV2MessageReplyConfig
-	| GmailV2MessageSendConfig
-	| GmailV2MessageSendAndWaitConfig
-	| GmailV2LabelCreateConfig
-	| GmailV2LabelDeleteConfig
-	| GmailV2LabelGetConfig
-	| GmailV2LabelGetAllConfig
-	| GmailV2DraftCreateConfig
-	| GmailV2DraftDeleteConfig
-	| GmailV2DraftGetConfig
-	| GmailV2DraftGetAllConfig
-	| GmailV2ThreadAddLabelsConfig
-	| GmailV2ThreadDeleteConfig
-	| GmailV2ThreadGetConfig
-	| GmailV2ThreadGetAllConfig
-	| GmailV2ThreadRemoveLabelsConfig
-	| GmailV2ThreadReplyConfig
-	| GmailV2ThreadTrashConfig
-	| GmailV2ThreadUntrashConfig
-	;
 
 // ===========================================================================
 // Credentials

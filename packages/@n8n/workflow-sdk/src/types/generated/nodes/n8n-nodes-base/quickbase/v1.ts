@@ -259,18 +259,6 @@ export type QuickbaseV1ReportRunConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type QuickbaseV1Params =
-	| QuickbaseV1FieldGetAllConfig
-	| QuickbaseV1FileDeleteConfig
-	| QuickbaseV1FileDownloadConfig
-	| QuickbaseV1RecordCreateConfig
-	| QuickbaseV1RecordUpsertConfig
-	| QuickbaseV1RecordDeleteConfig
-	| QuickbaseV1RecordGetAllConfig
-	| QuickbaseV1RecordUpdateConfig
-	| QuickbaseV1ReportGetConfig
-	| QuickbaseV1ReportRunConfig
-	;
 
 // ===========================================================================
 // Output Types

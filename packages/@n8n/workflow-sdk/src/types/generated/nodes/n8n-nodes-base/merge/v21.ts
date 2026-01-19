@@ -43,11 +43,6 @@ export type MergeV21ChooseBranchConfig = {
 	output?: 'input1' | 'input2' | 'empty' | Expression<string>;
 };
 
-export type MergeV21Params =
-	| MergeV21AppendConfig
-	| MergeV21CombineConfig
-	| MergeV21ChooseBranchConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -67,10 +67,6 @@ export type LcOllamaV1TextMessageConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcOllamaV1Params =
-	| LcOllamaV1ImageAnalyzeConfig
-	| LcOllamaV1TextMessageConfig
-	;
 
 // ===========================================================================
 // Credentials

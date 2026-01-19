@@ -102,13 +102,6 @@ export type GoogleContactsV1ContactUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type GoogleContactsV1Params =
-	| GoogleContactsV1ContactCreateConfig
-	| GoogleContactsV1ContactDeleteConfig
-	| GoogleContactsV1ContactGetConfig
-	| GoogleContactsV1ContactGetAllConfig
-	| GoogleContactsV1ContactUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

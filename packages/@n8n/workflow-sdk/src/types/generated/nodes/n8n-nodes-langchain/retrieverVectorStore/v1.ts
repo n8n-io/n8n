@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcRetrieverVectorStoreV1Params {
+export interface LcRetrieverVectorStoreV1Config {
 /**
  * The maximum number of results to return
  * @default 4
@@ -33,8 +33,8 @@ interface LcRetrieverVectorStoreV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcRetrieverVectorStoreV1ParamsNode = LcRetrieverVectorStoreV1NodeBase & {
-	config: NodeConfig<LcRetrieverVectorStoreV1Params>;
+export type LcRetrieverVectorStoreV1Node = LcRetrieverVectorStoreV1NodeBase & {
+	config: NodeConfig<LcRetrieverVectorStoreV1Config>;
 };
 
-export type LcRetrieverVectorStoreV1Node = LcRetrieverVectorStoreV1ParamsNode;
+export type LcRetrieverVectorStoreV1Node = LcRetrieverVectorStoreV1Node;

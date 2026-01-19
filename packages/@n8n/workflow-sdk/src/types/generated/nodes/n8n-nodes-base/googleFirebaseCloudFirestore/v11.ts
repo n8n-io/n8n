@@ -226,15 +226,6 @@ export type GoogleFirebaseCloudFirestoreV11CollectionGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type GoogleFirebaseCloudFirestoreV11Params =
-	| GoogleFirebaseCloudFirestoreV11DocumentCreateConfig
-	| GoogleFirebaseCloudFirestoreV11DocumentUpsertConfig
-	| GoogleFirebaseCloudFirestoreV11DocumentDeleteConfig
-	| GoogleFirebaseCloudFirestoreV11DocumentGetConfig
-	| GoogleFirebaseCloudFirestoreV11DocumentGetAllConfig
-	| GoogleFirebaseCloudFirestoreV11DocumentQueryConfig
-	| GoogleFirebaseCloudFirestoreV11CollectionGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryPostgresChatV11Params {
+export interface LcMemoryPostgresChatV11Config {
 	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
 /**
  * The key to use to store session ID in the memory
@@ -45,8 +45,8 @@ interface LcMemoryPostgresChatV11NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryPostgresChatV11ParamsNode = LcMemoryPostgresChatV11NodeBase & {
-	config: NodeConfig<LcMemoryPostgresChatV11Params>;
+export type LcMemoryPostgresChatV11Node = LcMemoryPostgresChatV11NodeBase & {
+	config: NodeConfig<LcMemoryPostgresChatV11Config>;
 };
 
-export type LcMemoryPostgresChatV11Node = LcMemoryPostgresChatV11ParamsNode;
+export type LcMemoryPostgresChatV11Node = LcMemoryPostgresChatV11Node;

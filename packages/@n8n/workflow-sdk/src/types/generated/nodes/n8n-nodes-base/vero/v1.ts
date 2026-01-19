@@ -184,16 +184,6 @@ export type VeroV1EventTrackConfig = {
 		extraAttributesJson?: IDataObject | string | Expression<string>;
 };
 
-export type VeroV1Params =
-	| VeroV1UserAddTagsConfig
-	| VeroV1UserAliasConfig
-	| VeroV1UserCreateConfig
-	| VeroV1UserDeleteConfig
-	| VeroV1UserResubscribeConfig
-	| VeroV1UserRemoveTagsConfig
-	| VeroV1UserUnsubscribeConfig
-	| VeroV1EventTrackConfig
-	;
 
 // ===========================================================================
 // Credentials

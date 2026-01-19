@@ -186,21 +186,6 @@ export type RaindropV1UserGetConfig = {
 		userId: string | Expression<string>;
 };
 
-export type RaindropV1Params =
-	| RaindropV1BookmarkCreateConfig
-	| RaindropV1BookmarkDeleteConfig
-	| RaindropV1BookmarkGetConfig
-	| RaindropV1BookmarkGetAllConfig
-	| RaindropV1BookmarkUpdateConfig
-	| RaindropV1CollectionCreateConfig
-	| RaindropV1CollectionDeleteConfig
-	| RaindropV1CollectionGetConfig
-	| RaindropV1CollectionGetAllConfig
-	| RaindropV1CollectionUpdateConfig
-	| RaindropV1TagDeleteConfig
-	| RaindropV1TagGetAllConfig
-	| RaindropV1UserGetConfig
-	;
 
 // ===========================================================================
 // Output Types

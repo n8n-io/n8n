@@ -162,13 +162,6 @@ export type CitrixAdcV1FileUploadConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type CitrixAdcV1Params =
-	| CitrixAdcV1CertificateCreateConfig
-	| CitrixAdcV1CertificateInstallConfig
-	| CitrixAdcV1FileDeleteConfig
-	| CitrixAdcV1FileDownloadConfig
-	| CitrixAdcV1FileUploadConfig
-	;
 
 // ===========================================================================
 // Credentials

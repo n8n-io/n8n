@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface TimescaleDbV1Params {
+export interface TimescaleDbV1Config {
 	operation?: 'executeQuery' | 'insert' | 'update' | Expression<string>;
 /**
  * The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.
@@ -67,8 +67,8 @@ interface TimescaleDbV1NodeBase {
 	credentials?: TimescaleDbV1Credentials;
 }
 
-export type TimescaleDbV1ParamsNode = TimescaleDbV1NodeBase & {
-	config: NodeConfig<TimescaleDbV1Params>;
+export type TimescaleDbV1Node = TimescaleDbV1NodeBase & {
+	config: NodeConfig<TimescaleDbV1Config>;
 };
 
-export type TimescaleDbV1Node = TimescaleDbV1ParamsNode;
+export type TimescaleDbV1Node = TimescaleDbV1Node;

@@ -36,11 +36,6 @@ export type LcAgentV13DefineConfig = {
 	binaryPropertyName: string | Expression<string>;
 };
 
-export type LcAgentV13Params =
-	| LcAgentV13AutoConfig
-	| LcAgentV13GuardrailsConfig
-	| LcAgentV13DefineConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -248,26 +248,6 @@ export type BeeminderV1UserGetConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type BeeminderV1Params =
-	| BeeminderV1ChargeCreateConfig
-	| BeeminderV1DatapointCreateConfig
-	| BeeminderV1DatapointCreateAllConfig
-	| BeeminderV1DatapointDeleteConfig
-	| BeeminderV1DatapointGetConfig
-	| BeeminderV1DatapointGetAllConfig
-	| BeeminderV1DatapointUpdateConfig
-	| BeeminderV1GoalCreateConfig
-	| BeeminderV1GoalGetConfig
-	| BeeminderV1GoalGetAllConfig
-	| BeeminderV1GoalGetArchivedConfig
-	| BeeminderV1GoalUpdateConfig
-	| BeeminderV1GoalRefreshConfig
-	| BeeminderV1GoalShortCircuitConfig
-	| BeeminderV1GoalStepDownConfig
-	| BeeminderV1GoalCancelStepDownConfig
-	| BeeminderV1GoalUncleConfig
-	| BeeminderV1UserGetConfig
-	;
 
 // ===========================================================================
 // Credentials

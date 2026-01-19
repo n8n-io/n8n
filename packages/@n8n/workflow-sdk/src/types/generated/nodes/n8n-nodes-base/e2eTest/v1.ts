@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface E2eTestV1Params {
+export interface E2eTestV1Config {
 	operation?: 'remoteOptions' | 'resourceLocator' | 'resourceMapper' | Expression<string>;
 	fieldId?: string | Expression<string>;
 /**
@@ -41,8 +41,8 @@ interface E2eTestV1NodeBase {
 	version: 1;
 }
 
-export type E2eTestV1ParamsNode = E2eTestV1NodeBase & {
-	config: NodeConfig<E2eTestV1Params>;
+export type E2eTestV1Node = E2eTestV1NodeBase & {
+	config: NodeConfig<E2eTestV1Config>;
 };
 
-export type E2eTestV1Node = E2eTestV1ParamsNode;
+export type E2eTestV1Node = E2eTestV1Node;

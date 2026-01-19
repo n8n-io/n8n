@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolSerpApiV1Params {
+export interface LcToolSerpApiV1Config {
 	options?: Record<string, unknown>;
 }
 
@@ -34,8 +34,8 @@ interface LcToolSerpApiV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcToolSerpApiV1ParamsNode = LcToolSerpApiV1NodeBase & {
-	config: NodeConfig<LcToolSerpApiV1Params>;
+export type LcToolSerpApiV1Node = LcToolSerpApiV1NodeBase & {
+	config: NodeConfig<LcToolSerpApiV1Config>;
 };
 
-export type LcToolSerpApiV1Node = LcToolSerpApiV1ParamsNode;
+export type LcToolSerpApiV1Node = LcToolSerpApiV1Node;

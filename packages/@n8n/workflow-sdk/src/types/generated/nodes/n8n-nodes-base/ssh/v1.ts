@@ -54,11 +54,6 @@ export type SshV1FileUploadConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type SshV1Params =
-	| SshV1CommandExecuteConfig
-	| SshV1FileDownloadConfig
-	| SshV1FileUploadConfig
-	;
 
 // ===========================================================================
 // Output Types

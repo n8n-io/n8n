@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ExecuteWorkflowV12Params {
+export interface ExecuteWorkflowV12Config {
 	operation?: unknown;
 /**
  * The path to local JSON workflow file to execute
@@ -50,8 +50,8 @@ interface ExecuteWorkflowV12NodeBase {
 	version: 1.2;
 }
 
-export type ExecuteWorkflowV12ParamsNode = ExecuteWorkflowV12NodeBase & {
-	config: NodeConfig<ExecuteWorkflowV12Params>;
+export type ExecuteWorkflowV12Node = ExecuteWorkflowV12NodeBase & {
+	config: NodeConfig<ExecuteWorkflowV12Config>;
 };
 
-export type ExecuteWorkflowV12Node = ExecuteWorkflowV12ParamsNode;
+export type ExecuteWorkflowV12Node = ExecuteWorkflowV12Node;

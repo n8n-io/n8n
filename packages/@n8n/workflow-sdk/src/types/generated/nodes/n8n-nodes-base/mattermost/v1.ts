@@ -359,27 +359,6 @@ export type MattermostV1UserInviteConfig = {
 		emails: string | Expression<string>;
 };
 
-export type MattermostV1Params =
-	| MattermostV1ChannelAddUserConfig
-	| MattermostV1ChannelCreateConfig
-	| MattermostV1ChannelDeleteConfig
-	| MattermostV1ChannelMembersConfig
-	| MattermostV1ChannelRestoreConfig
-	| MattermostV1ChannelSearchConfig
-	| MattermostV1ChannelStatisticsConfig
-	| MattermostV1MessageDeleteConfig
-	| MattermostV1MessagePostConfig
-	| MattermostV1MessagePostEphemeralConfig
-	| MattermostV1ReactionCreateConfig
-	| MattermostV1ReactionDeleteConfig
-	| MattermostV1ReactionGetAllConfig
-	| MattermostV1UserCreateConfig
-	| MattermostV1UserDeactiveConfig
-	| MattermostV1UserGetByEmailConfig
-	| MattermostV1UserGetByIdConfig
-	| MattermostV1UserGetAllConfig
-	| MattermostV1UserInviteConfig
-	;
 
 // ===========================================================================
 // Output Types

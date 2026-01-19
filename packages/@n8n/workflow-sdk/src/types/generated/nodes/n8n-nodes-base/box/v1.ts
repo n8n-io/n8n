@@ -265,21 +265,6 @@ export type BoxV1FolderUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type BoxV1Params =
-	| BoxV1FileCopyConfig
-	| BoxV1FileDeleteConfig
-	| BoxV1FileDownloadConfig
-	| BoxV1FileGetConfig
-	| BoxV1FileSearchConfig
-	| BoxV1FileShareConfig
-	| BoxV1FileUploadConfig
-	| BoxV1FolderCreateConfig
-	| BoxV1FolderDeleteConfig
-	| BoxV1FolderGetConfig
-	| BoxV1FolderSearchConfig
-	| BoxV1FolderShareConfig
-	| BoxV1FolderUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

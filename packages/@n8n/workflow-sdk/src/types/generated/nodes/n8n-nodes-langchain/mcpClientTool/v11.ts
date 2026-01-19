@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMcpClientToolV11Params {
+export interface LcMcpClientToolV11Config {
 /**
  * The transport used by your endpoint
  * @default sse
@@ -63,8 +63,8 @@ interface LcMcpClientToolV11NodeBase {
 	isTrigger: true;
 }
 
-export type LcMcpClientToolV11ParamsNode = LcMcpClientToolV11NodeBase & {
-	config: NodeConfig<LcMcpClientToolV11Params>;
+export type LcMcpClientToolV11Node = LcMcpClientToolV11NodeBase & {
+	config: NodeConfig<LcMcpClientToolV11Config>;
 };
 
-export type LcMcpClientToolV11Node = LcMcpClientToolV11ParamsNode;
+export type LcMcpClientToolV11Node = LcMcpClientToolV11Node;

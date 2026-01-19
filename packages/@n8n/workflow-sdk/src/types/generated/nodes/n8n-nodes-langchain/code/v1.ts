@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcCodeV1Params {
+export interface LcCodeV1Config {
 	code?: {
 		execute?: {
 			/** JavaScript - Execute
@@ -90,8 +90,8 @@ interface LcCodeV1NodeBase {
 	version: 1;
 }
 
-export type LcCodeV1ParamsNode = LcCodeV1NodeBase & {
-	config: NodeConfig<LcCodeV1Params>;
+export type LcCodeV1Node = LcCodeV1NodeBase & {
+	config: NodeConfig<LcCodeV1Config>;
 };
 
-export type LcCodeV1Node = LcCodeV1ParamsNode;
+export type LcCodeV1Node = LcCodeV1Node;

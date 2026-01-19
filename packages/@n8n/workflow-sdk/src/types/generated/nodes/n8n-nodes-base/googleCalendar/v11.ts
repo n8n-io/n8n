@@ -141,14 +141,6 @@ export type GoogleCalendarV11EventUpdateConfig = {
 	};
 };
 
-export type GoogleCalendarV11Params =
-	| GoogleCalendarV11CalendarAvailabilityConfig
-	| GoogleCalendarV11EventCreateConfig
-	| GoogleCalendarV11EventDeleteConfig
-	| GoogleCalendarV11EventGetConfig
-	| GoogleCalendarV11EventGetAllConfig
-	| GoogleCalendarV11EventUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

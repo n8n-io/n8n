@@ -27,9 +27,6 @@ export type GoogleTranslateV2LanguageTranslateConfig = {
 		translateTo: string | Expression<string>;
 };
 
-export type GoogleTranslateV2Params =
-	| GoogleTranslateV2LanguageTranslateConfig
-	;
 
 // ===========================================================================
 // Credentials

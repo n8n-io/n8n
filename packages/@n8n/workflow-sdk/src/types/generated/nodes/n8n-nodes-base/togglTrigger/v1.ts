@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface TogglTriggerV1Params {
+export interface TogglTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -81,8 +81,8 @@ interface TogglTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type TogglTriggerV1ParamsNode = TogglTriggerV1NodeBase & {
-	config: NodeConfig<TogglTriggerV1Params>;
+export type TogglTriggerV1Node = TogglTriggerV1NodeBase & {
+	config: NodeConfig<TogglTriggerV1Config>;
 };
 
-export type TogglTriggerV1Node = TogglTriggerV1ParamsNode;
+export type TogglTriggerV1Node = TogglTriggerV1Node;

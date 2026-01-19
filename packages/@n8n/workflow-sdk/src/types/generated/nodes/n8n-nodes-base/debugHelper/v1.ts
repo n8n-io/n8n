@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface DebugHelperV1Params {
+export interface DebugHelperV1Config {
 	category?: 'doNothing' | 'throwError' | 'oom' | 'randomData' | Expression<string>;
 	throwErrorType?: 'NodeApiError' | 'NodeOperationError' | 'Error' | Expression<string>;
 /**
@@ -71,8 +71,8 @@ interface DebugHelperV1NodeBase {
 	version: 1;
 }
 
-export type DebugHelperV1ParamsNode = DebugHelperV1NodeBase & {
-	config: NodeConfig<DebugHelperV1Params>;
+export type DebugHelperV1Node = DebugHelperV1NodeBase & {
+	config: NodeConfig<DebugHelperV1Config>;
 };
 
-export type DebugHelperV1Node = DebugHelperV1ParamsNode;
+export type DebugHelperV1Node = DebugHelperV1Node;

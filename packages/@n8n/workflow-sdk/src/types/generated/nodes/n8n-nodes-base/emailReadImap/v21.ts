@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface EmailReadImapV21Params {
+export interface EmailReadImapV21Config {
 	mailbox?: string | Expression<string>;
 /**
  * What to do after the email has been received. If "nothing" gets selected it will be processed multiple times.
@@ -57,8 +57,8 @@ interface EmailReadImapV21NodeBase {
 	isTrigger: true;
 }
 
-export type EmailReadImapV21ParamsNode = EmailReadImapV21NodeBase & {
-	config: NodeConfig<EmailReadImapV21Params>;
+export type EmailReadImapV21Node = EmailReadImapV21NodeBase & {
+	config: NodeConfig<EmailReadImapV21Config>;
 };
 
-export type EmailReadImapV21Node = EmailReadImapV21ParamsNode;
+export type EmailReadImapV21Node = EmailReadImapV21Node;

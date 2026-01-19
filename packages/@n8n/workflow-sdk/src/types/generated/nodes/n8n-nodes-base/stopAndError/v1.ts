@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface StopAndErrorV1Params {
+export interface StopAndErrorV1Config {
 /**
  * Type of error to throw
  * @default errorMessage
@@ -39,8 +39,8 @@ interface StopAndErrorV1NodeBase {
 	version: 1;
 }
 
-export type StopAndErrorV1ParamsNode = StopAndErrorV1NodeBase & {
-	config: NodeConfig<StopAndErrorV1Params>;
+export type StopAndErrorV1Node = StopAndErrorV1NodeBase & {
+	config: NodeConfig<StopAndErrorV1Config>;
 };
 
-export type StopAndErrorV1Node = StopAndErrorV1ParamsNode;
+export type StopAndErrorV1Node = StopAndErrorV1Node;

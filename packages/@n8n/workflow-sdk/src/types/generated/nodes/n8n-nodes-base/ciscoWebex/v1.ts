@@ -172,18 +172,6 @@ export type CiscoWebexV1MessageUpdateConfig = {
 		markdownText: string | Expression<string>;
 };
 
-export type CiscoWebexV1Params =
-	| CiscoWebexV1MeetingCreateConfig
-	| CiscoWebexV1MeetingDeleteConfig
-	| CiscoWebexV1MeetingGetConfig
-	| CiscoWebexV1MeetingGetAllConfig
-	| CiscoWebexV1MeetingUpdateConfig
-	| CiscoWebexV1MessageCreateConfig
-	| CiscoWebexV1MessageDeleteConfig
-	| CiscoWebexV1MessageGetConfig
-	| CiscoWebexV1MessageGetAllConfig
-	| CiscoWebexV1MessageUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

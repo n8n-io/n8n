@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface CustomerIoTriggerV1Params {
+export interface CustomerIoTriggerV1Config {
 /**
  * The events that can trigger the webhook and whether they are enabled
  * @default []
@@ -38,8 +38,8 @@ interface CustomerIoTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type CustomerIoTriggerV1ParamsNode = CustomerIoTriggerV1NodeBase & {
-	config: NodeConfig<CustomerIoTriggerV1Params>;
+export type CustomerIoTriggerV1Node = CustomerIoTriggerV1NodeBase & {
+	config: NodeConfig<CustomerIoTriggerV1Config>;
 };
 
-export type CustomerIoTriggerV1Node = CustomerIoTriggerV1ParamsNode;
+export type CustomerIoTriggerV1Node = CustomerIoTriggerV1Node;

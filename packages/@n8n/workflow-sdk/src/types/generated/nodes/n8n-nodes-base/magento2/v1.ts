@@ -259,23 +259,6 @@ export type Magento2V1ProductUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type Magento2V1Params =
-	| Magento2V1CustomerCreateConfig
-	| Magento2V1CustomerDeleteConfig
-	| Magento2V1CustomerGetConfig
-	| Magento2V1CustomerGetAllConfig
-	| Magento2V1CustomerUpdateConfig
-	| Magento2V1InvoiceCreateConfig
-	| Magento2V1OrderCancelConfig
-	| Magento2V1OrderGetConfig
-	| Magento2V1OrderGetAllConfig
-	| Magento2V1OrderShipConfig
-	| Magento2V1ProductCreateConfig
-	| Magento2V1ProductDeleteConfig
-	| Magento2V1ProductGetConfig
-	| Magento2V1ProductGetAllConfig
-	| Magento2V1ProductUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryRedisChatV1Params {
+export interface LcMemoryRedisChatV1Config {
 /**
  * The key to use to store the memory in the workflow data
  * @default chat_history
@@ -44,8 +44,8 @@ interface LcMemoryRedisChatV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryRedisChatV1ParamsNode = LcMemoryRedisChatV1NodeBase & {
-	config: NodeConfig<LcMemoryRedisChatV1Params>;
+export type LcMemoryRedisChatV1Node = LcMemoryRedisChatV1NodeBase & {
+	config: NodeConfig<LcMemoryRedisChatV1Config>;
 };
 
-export type LcMemoryRedisChatV1Node = LcMemoryRedisChatV1ParamsNode;
+export type LcMemoryRedisChatV1Node = LcMemoryRedisChatV1Node;

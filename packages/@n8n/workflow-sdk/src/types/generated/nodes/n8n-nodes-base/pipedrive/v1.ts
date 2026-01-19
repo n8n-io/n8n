@@ -820,53 +820,6 @@ export type PipedriveV1ProductGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type PipedriveV1Params =
-	| PipedriveV1ActivityCreateConfig
-	| PipedriveV1ActivityDeleteConfig
-	| PipedriveV1ActivityGetConfig
-	| PipedriveV1ActivityGetAllConfig
-	| PipedriveV1ActivityUpdateConfig
-	| PipedriveV1DealCreateConfig
-	| PipedriveV1DealDeleteConfig
-	| PipedriveV1DealDuplicateConfig
-	| PipedriveV1DealGetConfig
-	| PipedriveV1DealGetAllConfig
-	| PipedriveV1DealSearchConfig
-	| PipedriveV1DealUpdateConfig
-	| PipedriveV1DealActivityGetAllConfig
-	| PipedriveV1DealProductAddConfig
-	| PipedriveV1DealProductGetAllConfig
-	| PipedriveV1DealProductRemoveConfig
-	| PipedriveV1DealProductUpdateConfig
-	| PipedriveV1FileCreateConfig
-	| PipedriveV1FileDeleteConfig
-	| PipedriveV1FileDownloadConfig
-	| PipedriveV1FileGetConfig
-	| PipedriveV1FileUpdateConfig
-	| PipedriveV1LeadCreateConfig
-	| PipedriveV1LeadDeleteConfig
-	| PipedriveV1LeadGetConfig
-	| PipedriveV1LeadGetAllConfig
-	| PipedriveV1LeadUpdateConfig
-	| PipedriveV1NoteCreateConfig
-	| PipedriveV1NoteDeleteConfig
-	| PipedriveV1NoteGetConfig
-	| PipedriveV1NoteGetAllConfig
-	| PipedriveV1NoteUpdateConfig
-	| PipedriveV1OrganizationCreateConfig
-	| PipedriveV1OrganizationDeleteConfig
-	| PipedriveV1OrganizationGetConfig
-	| PipedriveV1OrganizationGetAllConfig
-	| PipedriveV1OrganizationSearchConfig
-	| PipedriveV1OrganizationUpdateConfig
-	| PipedriveV1PersonCreateConfig
-	| PipedriveV1PersonDeleteConfig
-	| PipedriveV1PersonGetConfig
-	| PipedriveV1PersonGetAllConfig
-	| PipedriveV1PersonSearchConfig
-	| PipedriveV1PersonUpdateConfig
-	| PipedriveV1ProductGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

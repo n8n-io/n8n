@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface PipedriveTriggerV1Params {
+export interface PipedriveTriggerV1Config {
 	authentication?: 'apiToken' | 'oAuth2' | Expression<string>;
 /**
  * If authentication should be activated for the webhook (makes it more secure)
@@ -56,8 +56,8 @@ interface PipedriveTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type PipedriveTriggerV1ParamsNode = PipedriveTriggerV1NodeBase & {
-	config: NodeConfig<PipedriveTriggerV1Params>;
+export type PipedriveTriggerV1Node = PipedriveTriggerV1NodeBase & {
+	config: NodeConfig<PipedriveTriggerV1Config>;
 };
 
-export type PipedriveTriggerV1Node = PipedriveTriggerV1ParamsNode;
+export type PipedriveTriggerV1Node = PipedriveTriggerV1Node;

@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcChatV1Params {
+export interface LcChatV1Config {
 	message: string | Expression<string>;
 	responseType?: 'approval' | 'freeTextChat' | Expression<string>;
 /**
@@ -67,8 +67,8 @@ interface LcChatV1NodeBase {
 	version: 1;
 }
 
-export type LcChatV1ParamsNode = LcChatV1NodeBase & {
-	config: NodeConfig<LcChatV1Params>;
+export type LcChatV1Node = LcChatV1NodeBase & {
+	config: NodeConfig<LcChatV1Config>;
 };
 
-export type LcChatV1Node = LcChatV1ParamsNode;
+export type LcChatV1Node = LcChatV1Node;

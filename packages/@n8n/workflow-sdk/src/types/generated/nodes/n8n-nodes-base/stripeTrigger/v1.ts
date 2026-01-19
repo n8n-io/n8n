@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface StripeTriggerV1Params {
+export interface StripeTriggerV1Config {
 /**
  * The event to listen to
  * @default []
@@ -42,8 +42,8 @@ interface StripeTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type StripeTriggerV1ParamsNode = StripeTriggerV1NodeBase & {
-	config: NodeConfig<StripeTriggerV1Params>;
+export type StripeTriggerV1Node = StripeTriggerV1NodeBase & {
+	config: NodeConfig<StripeTriggerV1Config>;
 };
 
-export type StripeTriggerV1Node = StripeTriggerV1ParamsNode;
+export type StripeTriggerV1Node = StripeTriggerV1Node;

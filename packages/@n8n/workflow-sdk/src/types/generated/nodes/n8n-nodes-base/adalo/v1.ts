@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AdaloV1Params {
+export interface AdaloV1Config {
 	resource?: 'collection' | Expression<string>;
 	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | Expression<string>;
 /**
@@ -80,8 +80,8 @@ interface AdaloV1NodeBase {
 	credentials?: AdaloV1Credentials;
 }
 
-export type AdaloV1ParamsNode = AdaloV1NodeBase & {
-	config: NodeConfig<AdaloV1Params>;
+export type AdaloV1Node = AdaloV1NodeBase & {
+	config: NodeConfig<AdaloV1Config>;
 };
 
-export type AdaloV1Node = AdaloV1ParamsNode;
+export type AdaloV1Node = AdaloV1Node;

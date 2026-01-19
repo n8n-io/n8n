@@ -341,21 +341,6 @@ export type AwsCognitoV1UserPoolGetConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type AwsCognitoV1Params =
-	| AwsCognitoV1GroupCreateConfig
-	| AwsCognitoV1GroupDeleteConfig
-	| AwsCognitoV1GroupGetConfig
-	| AwsCognitoV1GroupGetAllConfig
-	| AwsCognitoV1GroupUpdateConfig
-	| AwsCognitoV1UserAddToGroupConfig
-	| AwsCognitoV1UserCreateConfig
-	| AwsCognitoV1UserDeleteConfig
-	| AwsCognitoV1UserGetConfig
-	| AwsCognitoV1UserGetAllConfig
-	| AwsCognitoV1UserRemoveFromGroupConfig
-	| AwsCognitoV1UserUpdateConfig
-	| AwsCognitoV1UserPoolGetConfig
-	;
 
 // ===========================================================================
 // Credentials

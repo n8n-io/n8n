@@ -207,22 +207,6 @@ export type SplunkV1UserUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type SplunkV1Params =
-	| SplunkV1FiredAlertGetReportConfig
-	| SplunkV1SearchConfigurationDeleteConfig
-	| SplunkV1SearchConfigurationGetConfig
-	| SplunkV1SearchConfigurationGetAllConfig
-	| SplunkV1SearchJobCreateConfig
-	| SplunkV1SearchJobDeleteConfig
-	| SplunkV1SearchJobGetConfig
-	| SplunkV1SearchJobGetAllConfig
-	| SplunkV1SearchResultGetAllConfig
-	| SplunkV1UserCreateConfig
-	| SplunkV1UserDeleteConfig
-	| SplunkV1UserGetConfig
-	| SplunkV1UserGetAllConfig
-	| SplunkV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

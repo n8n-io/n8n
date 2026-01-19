@@ -65,12 +65,6 @@ export type MailerLiteV2SubscriberUpdateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type MailerLiteV2Params =
-	| MailerLiteV2SubscriberCreateConfig
-	| MailerLiteV2SubscriberGetConfig
-	| MailerLiteV2SubscriberGetAllConfig
-	| MailerLiteV2SubscriberUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

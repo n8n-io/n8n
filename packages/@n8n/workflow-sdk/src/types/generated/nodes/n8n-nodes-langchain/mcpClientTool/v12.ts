@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMcpClientToolV12Params {
+export interface LcMcpClientToolV12Config {
 /**
  * How to select the tools you want to be exposed to the AI Agent
  * @default all
@@ -58,8 +58,8 @@ interface LcMcpClientToolV12NodeBase {
 	isTrigger: true;
 }
 
-export type LcMcpClientToolV12ParamsNode = LcMcpClientToolV12NodeBase & {
-	config: NodeConfig<LcMcpClientToolV12Params>;
+export type LcMcpClientToolV12Node = LcMcpClientToolV12NodeBase & {
+	config: NodeConfig<LcMcpClientToolV12Config>;
 };
 
-export type LcMcpClientToolV12Node = LcMcpClientToolV12ParamsNode;
+export type LcMcpClientToolV12Node = LcMcpClientToolV12Node;

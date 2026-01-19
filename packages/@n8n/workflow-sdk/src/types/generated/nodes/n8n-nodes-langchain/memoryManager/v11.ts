@@ -71,11 +71,6 @@ export type LcMemoryManagerV11DeleteConfig = {
 		lastMessagesCount?: number | Expression<number>;
 };
 
-export type LcMemoryManagerV11Params =
-	| LcMemoryManagerV11LoadConfig
-	| LcMemoryManagerV11InsertConfig
-	| LcMemoryManagerV11DeleteConfig
-	;
 
 // ===========================================================================
 // Credentials

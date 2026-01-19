@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface CompareDatasetsV23Params {
+export interface CompareDatasetsV23Config {
 	mergeByFields?: {
 		values?: Array<{
 			/** Input A Field
@@ -48,8 +48,8 @@ interface CompareDatasetsV23NodeBase {
 	version: 2.3;
 }
 
-export type CompareDatasetsV23ParamsNode = CompareDatasetsV23NodeBase & {
-	config: NodeConfig<CompareDatasetsV23Params>;
+export type CompareDatasetsV23Node = CompareDatasetsV23NodeBase & {
+	config: NodeConfig<CompareDatasetsV23Config>;
 };
 
-export type CompareDatasetsV23Node = CompareDatasetsV23ParamsNode;
+export type CompareDatasetsV23Node = CompareDatasetsV23Node;

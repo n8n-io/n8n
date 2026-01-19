@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface HelpScoutTriggerV1Params {
+export interface HelpScoutTriggerV1Config {
 	events: Array<'convo.assigned' | 'convo.created' | 'convo.deleted' | 'convo.merged' | 'convo.moved' | 'convo.status' | 'convo.tags' | 'convo.agent.reply.created' | 'convo.customer.reply.created' | 'convo.note.created' | 'customer.created' | 'satisfaction.ratings'>;
 }
 
@@ -34,8 +34,8 @@ interface HelpScoutTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type HelpScoutTriggerV1ParamsNode = HelpScoutTriggerV1NodeBase & {
-	config: NodeConfig<HelpScoutTriggerV1Params>;
+export type HelpScoutTriggerV1Node = HelpScoutTriggerV1NodeBase & {
+	config: NodeConfig<HelpScoutTriggerV1Config>;
 };
 
-export type HelpScoutTriggerV1Node = HelpScoutTriggerV1ParamsNode;
+export type HelpScoutTriggerV1Node = HelpScoutTriggerV1Node;

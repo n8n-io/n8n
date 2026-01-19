@@ -131,14 +131,6 @@ export type SendyV1SubscriberStatusConfig = {
 		listId?: string | Expression<string>;
 };
 
-export type SendyV1Params =
-	| SendyV1CampaignCreateConfig
-	| SendyV1SubscriberAddConfig
-	| SendyV1SubscriberCountConfig
-	| SendyV1SubscriberDeleteConfig
-	| SendyV1SubscriberRemoveConfig
-	| SendyV1SubscriberStatusConfig
-	;
 
 // ===========================================================================
 // Credentials

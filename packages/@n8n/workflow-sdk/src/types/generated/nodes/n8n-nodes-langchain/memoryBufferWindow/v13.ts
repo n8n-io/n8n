@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryBufferWindowV13Params {
+export interface LcMemoryBufferWindowV13Config {
 /**
  * The key to use to store session ID in the memory
  * @displayOptions.show { sessionIdType: ["customKey"] }
@@ -34,8 +34,8 @@ interface LcMemoryBufferWindowV13NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryBufferWindowV13ParamsNode = LcMemoryBufferWindowV13NodeBase & {
-	config: NodeConfig<LcMemoryBufferWindowV13Params>;
+export type LcMemoryBufferWindowV13Node = LcMemoryBufferWindowV13NodeBase & {
+	config: NodeConfig<LcMemoryBufferWindowV13Config>;
 };
 
-export type LcMemoryBufferWindowV13Node = LcMemoryBufferWindowV13ParamsNode;
+export type LcMemoryBufferWindowV13Node = LcMemoryBufferWindowV13Node;

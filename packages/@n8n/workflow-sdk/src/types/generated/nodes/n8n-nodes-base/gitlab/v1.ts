@@ -499,26 +499,6 @@ export type GitlabV1UserGetRepositoriesConfig = {
 		owner: string | Expression<string>;
 };
 
-export type GitlabV1Params =
-	| GitlabV1FileCreateConfig
-	| GitlabV1FileDeleteConfig
-	| GitlabV1FileEditConfig
-	| GitlabV1FileGetConfig
-	| GitlabV1FileListConfig
-	| GitlabV1IssueCreateConfig
-	| GitlabV1IssueCreateCommentConfig
-	| GitlabV1IssueEditConfig
-	| GitlabV1IssueGetConfig
-	| GitlabV1IssueLockConfig
-	| GitlabV1ReleaseCreateConfig
-	| GitlabV1ReleaseDeleteConfig
-	| GitlabV1ReleaseGetConfig
-	| GitlabV1ReleaseGetAllConfig
-	| GitlabV1ReleaseUpdateConfig
-	| GitlabV1RepositoryGetConfig
-	| GitlabV1RepositoryGetIssuesConfig
-	| GitlabV1UserGetRepositoriesConfig
-	;
 
 // ===========================================================================
 // Output Types

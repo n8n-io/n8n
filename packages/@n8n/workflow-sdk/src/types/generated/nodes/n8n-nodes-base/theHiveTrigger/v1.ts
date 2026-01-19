@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface TheHiveTriggerV1Params {
+export interface TheHiveTriggerV1Config {
 /**
  * Events types
  * @default []
@@ -33,8 +33,8 @@ interface TheHiveTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type TheHiveTriggerV1ParamsNode = TheHiveTriggerV1NodeBase & {
-	config: NodeConfig<TheHiveTriggerV1Params>;
+export type TheHiveTriggerV1Node = TheHiveTriggerV1NodeBase & {
+	config: NodeConfig<TheHiveTriggerV1Config>;
 };
 
-export type TheHiveTriggerV1Node = TheHiveTriggerV1ParamsNode;
+export type TheHiveTriggerV1Node = TheHiveTriggerV1Node;

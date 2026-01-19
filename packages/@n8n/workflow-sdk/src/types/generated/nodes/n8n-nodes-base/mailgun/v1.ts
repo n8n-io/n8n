@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MailgunV1Params {
+export interface MailgunV1Config {
 /**
  * Email address of the sender optional with name
  */
@@ -64,8 +64,8 @@ interface MailgunV1NodeBase {
 	credentials?: MailgunV1Credentials;
 }
 
-export type MailgunV1ParamsNode = MailgunV1NodeBase & {
-	config: NodeConfig<MailgunV1Params>;
+export type MailgunV1Node = MailgunV1NodeBase & {
+	config: NodeConfig<MailgunV1Config>;
 };
 
-export type MailgunV1Node = MailgunV1ParamsNode;
+export type MailgunV1Node = MailgunV1Node;

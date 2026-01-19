@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsHuggingFaceInferenceV1Params {
+export interface LcEmbeddingsHuggingFaceInferenceV1Config {
 /**
  * The model name to use from HuggingFace library
  * @default sentence-transformers/distilbert-base-nli-mean-tokens
@@ -43,8 +43,8 @@ interface LcEmbeddingsHuggingFaceInferenceV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcEmbeddingsHuggingFaceInferenceV1ParamsNode = LcEmbeddingsHuggingFaceInferenceV1NodeBase & {
-	config: NodeConfig<LcEmbeddingsHuggingFaceInferenceV1Params>;
+export type LcEmbeddingsHuggingFaceInferenceV1Node = LcEmbeddingsHuggingFaceInferenceV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsHuggingFaceInferenceV1Config>;
 };
 
-export type LcEmbeddingsHuggingFaceInferenceV1Node = LcEmbeddingsHuggingFaceInferenceV1ParamsNode;
+export type LcEmbeddingsHuggingFaceInferenceV1Node = LcEmbeddingsHuggingFaceInferenceV1Node;

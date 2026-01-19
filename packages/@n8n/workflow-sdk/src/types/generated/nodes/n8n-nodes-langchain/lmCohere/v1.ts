@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcLmCohereV1Params {
+export interface LcLmCohereV1Config {
 /**
  * Additional options to add
  * @default {}
@@ -38,8 +38,8 @@ interface LcLmCohereV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmCohereV1ParamsNode = LcLmCohereV1NodeBase & {
-	config: NodeConfig<LcLmCohereV1Params>;
+export type LcLmCohereV1Node = LcLmCohereV1NodeBase & {
+	config: NodeConfig<LcLmCohereV1Config>;
 };
 
-export type LcLmCohereV1Node = LcLmCohereV1ParamsNode;
+export type LcLmCohereV1Node = LcLmCohereV1Node;

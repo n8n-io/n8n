@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MailjetTriggerV1Params {
+export interface MailjetTriggerV1Config {
 /**
  * Determines which resource events the webhook is triggered for
  * @default open
@@ -38,8 +38,8 @@ interface MailjetTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type MailjetTriggerV1ParamsNode = MailjetTriggerV1NodeBase & {
-	config: NodeConfig<MailjetTriggerV1Params>;
+export type MailjetTriggerV1Node = MailjetTriggerV1NodeBase & {
+	config: NodeConfig<MailjetTriggerV1Config>;
 };
 
-export type MailjetTriggerV1Node = MailjetTriggerV1ParamsNode;
+export type MailjetTriggerV1Node = MailjetTriggerV1Node;

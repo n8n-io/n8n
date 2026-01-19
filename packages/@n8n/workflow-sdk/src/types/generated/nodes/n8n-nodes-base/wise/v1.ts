@@ -258,22 +258,6 @@ export type WiseV1TransferGetAllConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type WiseV1Params =
-	| WiseV1AccountGetBalancesConfig
-	| WiseV1AccountGetCurrenciesConfig
-	| WiseV1AccountGetStatementConfig
-	| WiseV1ExchangeRateGetConfig
-	| WiseV1ProfileGetConfig
-	| WiseV1ProfileGetAllConfig
-	| WiseV1QuoteCreateConfig
-	| WiseV1QuoteGetConfig
-	| WiseV1RecipientGetAllConfig
-	| WiseV1TransferCreateConfig
-	| WiseV1TransferDeleteConfig
-	| WiseV1TransferExecuteConfig
-	| WiseV1TransferGetConfig
-	| WiseV1TransferGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

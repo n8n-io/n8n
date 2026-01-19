@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface TaigaTriggerV1Params {
+export interface TaigaTriggerV1Config {
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
  */
@@ -47,8 +47,8 @@ interface TaigaTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type TaigaTriggerV1ParamsNode = TaigaTriggerV1NodeBase & {
-	config: NodeConfig<TaigaTriggerV1Params>;
+export type TaigaTriggerV1Node = TaigaTriggerV1NodeBase & {
+	config: NodeConfig<TaigaTriggerV1Config>;
 };
 
-export type TaigaTriggerV1Node = TaigaTriggerV1ParamsNode;
+export type TaigaTriggerV1Node = TaigaTriggerV1Node;

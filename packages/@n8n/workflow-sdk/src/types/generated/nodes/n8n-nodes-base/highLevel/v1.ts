@@ -246,24 +246,6 @@ export type HighLevelV1TaskUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type HighLevelV1Params =
-	| HighLevelV1ContactCreateConfig
-	| HighLevelV1ContactDeleteConfig
-	| HighLevelV1ContactGetConfig
-	| HighLevelV1ContactGetAllConfig
-	| HighLevelV1ContactLookupConfig
-	| HighLevelV1ContactUpdateConfig
-	| HighLevelV1OpportunityCreateConfig
-	| HighLevelV1OpportunityDeleteConfig
-	| HighLevelV1OpportunityGetConfig
-	| HighLevelV1OpportunityGetAllConfig
-	| HighLevelV1OpportunityUpdateConfig
-	| HighLevelV1TaskCreateConfig
-	| HighLevelV1TaskDeleteConfig
-	| HighLevelV1TaskGetConfig
-	| HighLevelV1TaskGetAllConfig
-	| HighLevelV1TaskUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

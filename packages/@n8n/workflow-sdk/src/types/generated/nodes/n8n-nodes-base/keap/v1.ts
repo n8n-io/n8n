@@ -564,36 +564,6 @@ export type KeapV1FileUploadConfig = {
 	isPublic?: boolean | Expression<boolean>;
 };
 
-export type KeapV1Params =
-	| KeapV1CompanyCreateConfig
-	| KeapV1CompanyGetAllConfig
-	| KeapV1ContactUpsertConfig
-	| KeapV1ContactDeleteConfig
-	| KeapV1ContactGetConfig
-	| KeapV1ContactGetAllConfig
-	| KeapV1ContactNoteCreateConfig
-	| KeapV1ContactNoteDeleteConfig
-	| KeapV1ContactNoteGetConfig
-	| KeapV1ContactNoteGetAllConfig
-	| KeapV1ContactNoteUpdateConfig
-	| KeapV1ContactTagCreateConfig
-	| KeapV1ContactTagDeleteConfig
-	| KeapV1ContactTagGetAllConfig
-	| KeapV1EcommerceOrderCreateConfig
-	| KeapV1EcommerceOrderGetConfig
-	| KeapV1EcommerceOrderDeleteConfig
-	| KeapV1EcommerceOrderGetAllConfig
-	| KeapV1EcommerceProductCreateConfig
-	| KeapV1EcommerceProductDeleteConfig
-	| KeapV1EcommerceProductGetConfig
-	| KeapV1EcommerceProductGetAllConfig
-	| KeapV1EmailCreateRecordConfig
-	| KeapV1EmailGetAllConfig
-	| KeapV1EmailSendConfig
-	| KeapV1FileDeleteConfig
-	| KeapV1FileGetAllConfig
-	| KeapV1FileUploadConfig
-	;
 
 // ===========================================================================
 // Output Types

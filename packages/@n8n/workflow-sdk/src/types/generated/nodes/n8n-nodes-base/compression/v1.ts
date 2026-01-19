@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface CompressionV1Params {
+export interface CompressionV1Config {
 	operation?: 'compress' | 'decompress' | Expression<string>;
 /**
  * To process more than one file, use a comma-separated list of the binary fields names
@@ -52,8 +52,8 @@ interface CompressionV1NodeBase {
 	version: 1;
 }
 
-export type CompressionV1ParamsNode = CompressionV1NodeBase & {
-	config: NodeConfig<CompressionV1Params>;
+export type CompressionV1Node = CompressionV1NodeBase & {
+	config: NodeConfig<CompressionV1Config>;
 };
 
-export type CompressionV1Node = CompressionV1ParamsNode;
+export type CompressionV1Node = CompressionV1Node;

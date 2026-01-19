@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AutopilotTriggerV1Params {
+export interface AutopilotTriggerV1Config {
 	event: 'contactAdded' | 'contactAddedToList' | 'contactEnteredSegment' | 'contactLeftSegment' | 'contactRemovedFromList' | 'contactUnsubscribed' | 'contactUpdated' | Expression<string>;
 }
 
@@ -34,8 +34,8 @@ interface AutopilotTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type AutopilotTriggerV1ParamsNode = AutopilotTriggerV1NodeBase & {
-	config: NodeConfig<AutopilotTriggerV1Params>;
+export type AutopilotTriggerV1Node = AutopilotTriggerV1NodeBase & {
+	config: NodeConfig<AutopilotTriggerV1Config>;
 };
 
-export type AutopilotTriggerV1Node = AutopilotTriggerV1ParamsNode;
+export type AutopilotTriggerV1Node = AutopilotTriggerV1Node;

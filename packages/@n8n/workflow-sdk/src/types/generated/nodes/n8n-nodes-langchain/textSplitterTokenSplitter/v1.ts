@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcTextSplitterTokenSplitterV1Params {
+export interface LcTextSplitterTokenSplitterV1Config {
 /**
  * Maximum number of tokens per chunk
  * @default 1000
@@ -38,8 +38,8 @@ interface LcTextSplitterTokenSplitterV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcTextSplitterTokenSplitterV1ParamsNode = LcTextSplitterTokenSplitterV1NodeBase & {
-	config: NodeConfig<LcTextSplitterTokenSplitterV1Params>;
+export type LcTextSplitterTokenSplitterV1Node = LcTextSplitterTokenSplitterV1NodeBase & {
+	config: NodeConfig<LcTextSplitterTokenSplitterV1Config>;
 };
 
-export type LcTextSplitterTokenSplitterV1Node = LcTextSplitterTokenSplitterV1ParamsNode;
+export type LcTextSplitterTokenSplitterV1Node = LcTextSplitterTokenSplitterV1Node;

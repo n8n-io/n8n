@@ -120,11 +120,6 @@ export type LcChainLlmV17DefineConfig = {
 	};
 };
 
-export type LcChainLlmV17Params =
-	| LcChainLlmV17AutoConfig
-	| LcChainLlmV17GuardrailsConfig
-	| LcChainLlmV17DefineConfig
-	;
 
 // ===========================================================================
 // Credentials

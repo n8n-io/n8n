@@ -678,49 +678,6 @@ export type TrelloV1ListUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type TrelloV1Params =
-	| TrelloV1AttachmentCreateConfig
-	| TrelloV1AttachmentDeleteConfig
-	| TrelloV1AttachmentGetConfig
-	| TrelloV1AttachmentGetAllConfig
-	| TrelloV1BoardCreateConfig
-	| TrelloV1BoardDeleteConfig
-	| TrelloV1BoardGetConfig
-	| TrelloV1BoardUpdateConfig
-	| TrelloV1BoardMemberAddConfig
-	| TrelloV1BoardMemberGetAllConfig
-	| TrelloV1BoardMemberInviteConfig
-	| TrelloV1BoardMemberRemoveConfig
-	| TrelloV1CardCreateConfig
-	| TrelloV1CardDeleteConfig
-	| TrelloV1CardGetConfig
-	| TrelloV1CardUpdateConfig
-	| TrelloV1CardCommentCreateConfig
-	| TrelloV1CardCommentDeleteConfig
-	| TrelloV1CardCommentUpdateConfig
-	| TrelloV1ChecklistCreateConfig
-	| TrelloV1ChecklistCreateCheckItemConfig
-	| TrelloV1ChecklistDeleteConfig
-	| TrelloV1ChecklistDeleteCheckItemConfig
-	| TrelloV1ChecklistGetConfig
-	| TrelloV1ChecklistGetCheckItemConfig
-	| TrelloV1ChecklistCompletedCheckItemsConfig
-	| TrelloV1ChecklistGetAllConfig
-	| TrelloV1ChecklistUpdateCheckItemConfig
-	| TrelloV1LabelAddLabelConfig
-	| TrelloV1LabelCreateConfig
-	| TrelloV1LabelDeleteConfig
-	| TrelloV1LabelGetConfig
-	| TrelloV1LabelGetAllConfig
-	| TrelloV1LabelRemoveLabelConfig
-	| TrelloV1LabelUpdateConfig
-	| TrelloV1ListArchiveConfig
-	| TrelloV1ListCreateConfig
-	| TrelloV1ListGetConfig
-	| TrelloV1ListGetCardsConfig
-	| TrelloV1ListGetAllConfig
-	| TrelloV1ListUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

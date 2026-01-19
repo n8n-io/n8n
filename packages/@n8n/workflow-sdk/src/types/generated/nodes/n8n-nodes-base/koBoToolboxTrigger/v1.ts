@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface KoBoToolboxTriggerV1Params {
+export interface KoBoToolboxTriggerV1Config {
 /**
  * Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  */
@@ -39,8 +39,8 @@ interface KoBoToolboxTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type KoBoToolboxTriggerV1ParamsNode = KoBoToolboxTriggerV1NodeBase & {
-	config: NodeConfig<KoBoToolboxTriggerV1Params>;
+export type KoBoToolboxTriggerV1Node = KoBoToolboxTriggerV1NodeBase & {
+	config: NodeConfig<KoBoToolboxTriggerV1Config>;
 };
 
-export type KoBoToolboxTriggerV1Node = KoBoToolboxTriggerV1ParamsNode;
+export type KoBoToolboxTriggerV1Node = KoBoToolboxTriggerV1Node;

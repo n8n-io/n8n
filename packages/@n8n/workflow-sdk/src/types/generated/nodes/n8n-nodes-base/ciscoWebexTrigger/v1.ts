@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface CiscoWebexTriggerV1Params {
+export interface CiscoWebexTriggerV1Config {
 	resource: 'all' | 'attachmentAction' | 'meeting' | 'membership' | 'message' | 'recording' | 'room' | Expression<string>;
 	event: 'created' | 'deleted' | 'updated' | 'all' | Expression<string>;
 /**
@@ -42,8 +42,8 @@ interface CiscoWebexTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type CiscoWebexTriggerV1ParamsNode = CiscoWebexTriggerV1NodeBase & {
-	config: NodeConfig<CiscoWebexTriggerV1Params>;
+export type CiscoWebexTriggerV1Node = CiscoWebexTriggerV1NodeBase & {
+	config: NodeConfig<CiscoWebexTriggerV1Config>;
 };
 
-export type CiscoWebexTriggerV1Node = CiscoWebexTriggerV1ParamsNode;
+export type CiscoWebexTriggerV1Node = CiscoWebexTriggerV1Node;

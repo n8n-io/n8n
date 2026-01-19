@@ -111,13 +111,6 @@ export type LcVectorStoreSupabaseV12UpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStoreSupabaseV12Params =
-	| LcVectorStoreSupabaseV12LoadConfig
-	| LcVectorStoreSupabaseV12InsertConfig
-	| LcVectorStoreSupabaseV12RetrieveConfig
-	| LcVectorStoreSupabaseV12RetrieveAsToolConfig
-	| LcVectorStoreSupabaseV12UpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

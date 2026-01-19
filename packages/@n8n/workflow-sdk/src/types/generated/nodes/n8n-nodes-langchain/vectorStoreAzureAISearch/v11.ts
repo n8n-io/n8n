@@ -127,13 +127,6 @@ export type LcVectorStoreAzureAISearchV11UpdateConfig = {
 		id: string | Expression<string>;
 };
 
-export type LcVectorStoreAzureAISearchV11Params =
-	| LcVectorStoreAzureAISearchV11LoadConfig
-	| LcVectorStoreAzureAISearchV11InsertConfig
-	| LcVectorStoreAzureAISearchV11RetrieveConfig
-	| LcVectorStoreAzureAISearchV11RetrieveAsToolConfig
-	| LcVectorStoreAzureAISearchV11UpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

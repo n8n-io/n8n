@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryMotorheadV13Params {
+export interface LcMemoryMotorheadV13Config {
 /**
  * The key to use to store session ID in the memory
  * @displayOptions.show { sessionIdType: ["customKey"] }
@@ -38,8 +38,8 @@ interface LcMemoryMotorheadV13NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryMotorheadV13ParamsNode = LcMemoryMotorheadV13NodeBase & {
-	config: NodeConfig<LcMemoryMotorheadV13Params>;
+export type LcMemoryMotorheadV13Node = LcMemoryMotorheadV13NodeBase & {
+	config: NodeConfig<LcMemoryMotorheadV13Config>;
 };
 
-export type LcMemoryMotorheadV13Node = LcMemoryMotorheadV13ParamsNode;
+export type LcMemoryMotorheadV13Node = LcMemoryMotorheadV13Node;

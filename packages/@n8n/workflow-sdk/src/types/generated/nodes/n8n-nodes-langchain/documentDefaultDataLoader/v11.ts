@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcDocumentDefaultDataLoaderV11Params {
+export interface LcDocumentDefaultDataLoaderV11Config {
 	dataType: 'json' | 'binary' | Expression<string>;
 	jsonMode: 'allInputData' | 'expressionData' | Expression<string>;
 	binaryMode: 'allInputData' | 'specificField' | Expression<string>;
@@ -45,8 +45,8 @@ interface LcDocumentDefaultDataLoaderV11NodeBase {
 	version: 1.1;
 }
 
-export type LcDocumentDefaultDataLoaderV11ParamsNode = LcDocumentDefaultDataLoaderV11NodeBase & {
-	config: NodeConfig<LcDocumentDefaultDataLoaderV11Params>;
+export type LcDocumentDefaultDataLoaderV11Node = LcDocumentDefaultDataLoaderV11NodeBase & {
+	config: NodeConfig<LcDocumentDefaultDataLoaderV11Config>;
 };
 
-export type LcDocumentDefaultDataLoaderV11Node = LcDocumentDefaultDataLoaderV11ParamsNode;
+export type LcDocumentDefaultDataLoaderV11Node = LcDocumentDefaultDataLoaderV11Node;

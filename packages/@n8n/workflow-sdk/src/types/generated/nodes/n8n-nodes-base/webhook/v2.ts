@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WebhookV2Params {
+export interface WebhookV2Config {
 /**
  * Whether to allow the webhook to listen for multiple HTTP methods
  * @default false
@@ -73,8 +73,8 @@ interface WebhookV2NodeBase {
 	isTrigger: true;
 }
 
-export type WebhookV2ParamsNode = WebhookV2NodeBase & {
-	config: NodeConfig<WebhookV2Params>;
+export type WebhookV2Node = WebhookV2NodeBase & {
+	config: NodeConfig<WebhookV2Config>;
 };
 
-export type WebhookV2Node = WebhookV2ParamsNode;
+export type WebhookV2Node = WebhookV2Node;

@@ -308,23 +308,6 @@ export type SendInBlueV1SenderGetAllConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type SendInBlueV1Params =
-	| SendInBlueV1ContactCreateConfig
-	| SendInBlueV1ContactUpsertConfig
-	| SendInBlueV1ContactDeleteConfig
-	| SendInBlueV1ContactGetConfig
-	| SendInBlueV1ContactGetAllConfig
-	| SendInBlueV1ContactUpdateConfig
-	| SendInBlueV1AttributeCreateConfig
-	| SendInBlueV1AttributeUpdateConfig
-	| SendInBlueV1AttributeDeleteConfig
-	| SendInBlueV1AttributeGetAllConfig
-	| SendInBlueV1EmailSendConfig
-	| SendInBlueV1EmailSendTemplateConfig
-	| SendInBlueV1SenderCreateConfig
-	| SendInBlueV1SenderDeleteConfig
-	| SendInBlueV1SenderGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

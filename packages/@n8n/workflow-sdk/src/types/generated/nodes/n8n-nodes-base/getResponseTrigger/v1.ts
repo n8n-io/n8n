@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GetResponseTriggerV1Params {
+export interface GetResponseTriggerV1Config {
 	authentication?: 'apiKey' | 'oAuth2' | Expression<string>;
 	events: Array<'subscribe' | 'unsubscribe' | 'click' | 'open' | 'survey'>;
 /**
@@ -42,8 +42,8 @@ interface GetResponseTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type GetResponseTriggerV1ParamsNode = GetResponseTriggerV1NodeBase & {
-	config: NodeConfig<GetResponseTriggerV1Params>;
+export type GetResponseTriggerV1Node = GetResponseTriggerV1NodeBase & {
+	config: NodeConfig<GetResponseTriggerV1Config>;
 };
 
-export type GetResponseTriggerV1Node = GetResponseTriggerV1ParamsNode;
+export type GetResponseTriggerV1Node = GetResponseTriggerV1Node;

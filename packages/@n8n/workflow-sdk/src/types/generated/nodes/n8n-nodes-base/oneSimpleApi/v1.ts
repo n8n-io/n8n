@@ -159,18 +159,6 @@ export type OneSimpleApiV1WebsiteScreenshotConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type OneSimpleApiV1Params =
-	| OneSimpleApiV1InformationExchangeRateConfig
-	| OneSimpleApiV1InformationImageMetadataConfig
-	| OneSimpleApiV1SocialProfileInstagramProfileConfig
-	| OneSimpleApiV1SocialProfileSpotifyArtistProfileConfig
-	| OneSimpleApiV1UtilityExpandURLConfig
-	| OneSimpleApiV1UtilityQrCodeConfig
-	| OneSimpleApiV1UtilityValidateEmailConfig
-	| OneSimpleApiV1WebsitePdfConfig
-	| OneSimpleApiV1WebsiteSeoConfig
-	| OneSimpleApiV1WebsiteScreenshotConfig
-	;
 
 // ===========================================================================
 // Credentials

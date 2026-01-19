@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface PostgresV26Params {
+export interface PostgresV26Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -117,8 +117,8 @@ interface PostgresV26NodeBase {
 	credentials?: PostgresV26Credentials;
 }
 
-export type PostgresV26ParamsNode = PostgresV26NodeBase & {
-	config: NodeConfig<PostgresV26Params>;
+export type PostgresV26Node = PostgresV26NodeBase & {
+	config: NodeConfig<PostgresV26Config>;
 };
 
-export type PostgresV26Node = PostgresV26ParamsNode;
+export type PostgresV26Node = PostgresV26Node;

@@ -270,11 +270,6 @@ export type GoogleDocsV1DocumentUpdateConfig = {
 	};
 };
 
-export type GoogleDocsV1Params =
-	| GoogleDocsV1DocumentCreateConfig
-	| GoogleDocsV1DocumentGetConfig
-	| GoogleDocsV1DocumentUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

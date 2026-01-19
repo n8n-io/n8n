@@ -28,9 +28,6 @@ export type TwakeV1MessageSendConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type TwakeV1Params =
-	| TwakeV1MessageSendConfig
-	;
 
 // ===========================================================================
 // Credentials

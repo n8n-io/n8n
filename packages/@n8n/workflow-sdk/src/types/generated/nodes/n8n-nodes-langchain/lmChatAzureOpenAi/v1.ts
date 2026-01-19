@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatAzureOpenAiV1Params {
+export interface LcLmChatAzureOpenAiV1Config {
 	authentication?: 'azureOpenAiApi' | 'azureEntraCognitiveServicesOAuth2Api' | Expression<string>;
 /**
  * The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)
@@ -44,8 +44,8 @@ interface LcLmChatAzureOpenAiV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatAzureOpenAiV1ParamsNode = LcLmChatAzureOpenAiV1NodeBase & {
-	config: NodeConfig<LcLmChatAzureOpenAiV1Params>;
+export type LcLmChatAzureOpenAiV1Node = LcLmChatAzureOpenAiV1NodeBase & {
+	config: NodeConfig<LcLmChatAzureOpenAiV1Config>;
 };
 
-export type LcLmChatAzureOpenAiV1Node = LcLmChatAzureOpenAiV1ParamsNode;
+export type LcLmChatAzureOpenAiV1Node = LcLmChatAzureOpenAiV1Node;

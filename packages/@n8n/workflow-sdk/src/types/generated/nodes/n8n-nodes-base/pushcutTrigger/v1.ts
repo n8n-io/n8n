@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface PushcutTriggerV1Params {
+export interface PushcutTriggerV1Config {
 /**
  * Choose any name you would like. It will show up as a server action in the app.
  */
@@ -37,8 +37,8 @@ interface PushcutTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type PushcutTriggerV1ParamsNode = PushcutTriggerV1NodeBase & {
-	config: NodeConfig<PushcutTriggerV1Params>;
+export type PushcutTriggerV1Node = PushcutTriggerV1NodeBase & {
+	config: NodeConfig<PushcutTriggerV1Config>;
 };
 
-export type PushcutTriggerV1Node = PushcutTriggerV1ParamsNode;
+export type PushcutTriggerV1Node = PushcutTriggerV1Node;

@@ -639,43 +639,6 @@ export type HubspotV1TicketUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type HubspotV1Params =
-	| HubspotV1CompanyCreateConfig
-	| HubspotV1CompanyDeleteConfig
-	| HubspotV1CompanyGetConfig
-	| HubspotV1CompanyGetAllConfig
-	| HubspotV1CompanyGetRecentlyCreatedConfig
-	| HubspotV1CompanyGetRecentlyModifiedConfig
-	| HubspotV1CompanySearchByDomainConfig
-	| HubspotV1CompanyUpdateConfig
-	| HubspotV1ContactUpsertConfig
-	| HubspotV1ContactDeleteConfig
-	| HubspotV1ContactGetConfig
-	| HubspotV1ContactGetAllConfig
-	| HubspotV1ContactGetRecentlyCreatedUpdatedConfig
-	| HubspotV1ContactSearchConfig
-	| HubspotV1ContactListAddConfig
-	| HubspotV1ContactListRemoveConfig
-	| HubspotV1DealCreateConfig
-	| HubspotV1DealDeleteConfig
-	| HubspotV1DealGetConfig
-	| HubspotV1DealGetAllConfig
-	| HubspotV1DealGetRecentlyCreatedConfig
-	| HubspotV1DealGetRecentlyModifiedConfig
-	| HubspotV1DealSearchConfig
-	| HubspotV1DealUpdateConfig
-	| HubspotV1EngagementCreateConfig
-	| HubspotV1EngagementDeleteConfig
-	| HubspotV1EngagementGetConfig
-	| HubspotV1EngagementGetAllConfig
-	| HubspotV1FormGetFieldsConfig
-	| HubspotV1FormSubmitConfig
-	| HubspotV1TicketCreateConfig
-	| HubspotV1TicketDeleteConfig
-	| HubspotV1TicketGetConfig
-	| HubspotV1TicketGetAllConfig
-	| HubspotV1TicketUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MindeeV3Params {
+export interface MindeeV3Config {
 /**
  * Which Mindee API Version to use
  * @default 4
@@ -46,8 +46,8 @@ interface MindeeV3NodeBase {
 	credentials?: MindeeV3Credentials;
 }
 
-export type MindeeV3ParamsNode = MindeeV3NodeBase & {
-	config: NodeConfig<MindeeV3Params>;
+export type MindeeV3Node = MindeeV3NodeBase & {
+	config: NodeConfig<MindeeV3Config>;
 };
 
-export type MindeeV3Node = MindeeV3ParamsNode;
+export type MindeeV3Node = MindeeV3Node;

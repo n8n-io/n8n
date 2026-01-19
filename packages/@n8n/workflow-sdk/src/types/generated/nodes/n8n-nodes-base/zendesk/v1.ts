@@ -259,31 +259,6 @@ export type ZendeskV1OrganizationUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type ZendeskV1Params =
-	| ZendeskV1TicketCreateConfig
-	| ZendeskV1TicketDeleteConfig
-	| ZendeskV1TicketGetConfig
-	| ZendeskV1TicketGetAllConfig
-	| ZendeskV1TicketRecoverConfig
-	| ZendeskV1TicketUpdateConfig
-	| ZendeskV1TicketFieldGetConfig
-	| ZendeskV1TicketFieldGetAllConfig
-	| ZendeskV1UserCreateConfig
-	| ZendeskV1UserDeleteConfig
-	| ZendeskV1UserGetConfig
-	| ZendeskV1UserGetAllConfig
-	| ZendeskV1UserGetOrganizationsConfig
-	| ZendeskV1UserGetRelatedDataConfig
-	| ZendeskV1UserSearchConfig
-	| ZendeskV1UserUpdateConfig
-	| ZendeskV1OrganizationCountConfig
-	| ZendeskV1OrganizationCreateConfig
-	| ZendeskV1OrganizationDeleteConfig
-	| ZendeskV1OrganizationGetConfig
-	| ZendeskV1OrganizationGetAllConfig
-	| ZendeskV1OrganizationGetRelatedDataConfig
-	| ZendeskV1OrganizationUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

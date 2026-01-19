@@ -149,17 +149,6 @@ export type CustomerIoV1SegmentRemoveConfig = {
 		customerIds: string | Expression<string>;
 };
 
-export type CustomerIoV1Params =
-	| CustomerIoV1CustomerUpsertConfig
-	| CustomerIoV1CustomerDeleteConfig
-	| CustomerIoV1EventTrackConfig
-	| CustomerIoV1EventTrackAnonymousConfig
-	| CustomerIoV1CampaignGetConfig
-	| CustomerIoV1CampaignGetAllConfig
-	| CustomerIoV1CampaignGetMetricsConfig
-	| CustomerIoV1SegmentAddConfig
-	| CustomerIoV1SegmentRemoveConfig
-	;
 
 // ===========================================================================
 // Output Types

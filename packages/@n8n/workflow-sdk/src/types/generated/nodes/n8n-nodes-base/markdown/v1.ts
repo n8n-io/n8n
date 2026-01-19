@@ -45,10 +45,6 @@ export type MarkdownV1HtmlToMarkdownConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MarkdownV1Params =
-	| MarkdownV1MarkdownToHtmlConfig
-	| MarkdownV1HtmlToMarkdownConfig
-	;
 
 // ===========================================================================
 // Credentials

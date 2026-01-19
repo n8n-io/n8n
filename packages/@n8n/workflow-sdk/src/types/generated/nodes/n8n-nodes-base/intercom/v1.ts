@@ -379,23 +379,6 @@ export type IntercomV1UserUpdateConfig = {
 	};
 };
 
-export type IntercomV1Params =
-	| IntercomV1CompanyCreateConfig
-	| IntercomV1CompanyGetConfig
-	| IntercomV1CompanyGetAllConfig
-	| IntercomV1CompanyUpdateConfig
-	| IntercomV1CompanyUsersConfig
-	| IntercomV1LeadCreateConfig
-	| IntercomV1LeadDeleteConfig
-	| IntercomV1LeadGetConfig
-	| IntercomV1LeadGetAllConfig
-	| IntercomV1LeadUpdateConfig
-	| IntercomV1UserCreateConfig
-	| IntercomV1UserDeleteConfig
-	| IntercomV1UserGetConfig
-	| IntercomV1UserGetAllConfig
-	| IntercomV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

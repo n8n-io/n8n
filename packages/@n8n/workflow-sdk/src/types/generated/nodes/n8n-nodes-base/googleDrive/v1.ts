@@ -324,23 +324,6 @@ export type GoogleDriveV1FolderShareConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleDriveV1Params =
-	| GoogleDriveV1DriveCreateConfig
-	| GoogleDriveV1DriveDeleteConfig
-	| GoogleDriveV1DriveGetConfig
-	| GoogleDriveV1DriveListConfig
-	| GoogleDriveV1DriveUpdateConfig
-	| GoogleDriveV1FileCopyConfig
-	| GoogleDriveV1FileDeleteConfig
-	| GoogleDriveV1FileDownloadConfig
-	| GoogleDriveV1FileListConfig
-	| GoogleDriveV1FileShareConfig
-	| GoogleDriveV1FileUpdateConfig
-	| GoogleDriveV1FileUploadConfig
-	| GoogleDriveV1FolderCreateConfig
-	| GoogleDriveV1FolderDeleteConfig
-	| GoogleDriveV1FolderShareConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -32,9 +32,6 @@ export type RocketchatV1ChatPostMessageConfig = {
 	attachmentsJson?: IDataObject | string | Expression<string>;
 };
 
-export type RocketchatV1Params =
-	| RocketchatV1ChatPostMessageConfig
-	;
 
 // ===========================================================================
 // Output Types

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FormstackTriggerV1Params {
+export interface FormstackTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 /**
  * The Formstack form to monitor for new submissions. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -44,8 +44,8 @@ interface FormstackTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type FormstackTriggerV1ParamsNode = FormstackTriggerV1NodeBase & {
-	config: NodeConfig<FormstackTriggerV1Params>;
+export type FormstackTriggerV1Node = FormstackTriggerV1NodeBase & {
+	config: NodeConfig<FormstackTriggerV1Config>;
 };
 
-export type FormstackTriggerV1Node = FormstackTriggerV1ParamsNode;
+export type FormstackTriggerV1Node = FormstackTriggerV1Node;

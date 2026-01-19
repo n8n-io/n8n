@@ -59,10 +59,6 @@ export type GhostV1PostGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GhostV1Params =
-	| GhostV1PostGetConfig
-	| GhostV1PostGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

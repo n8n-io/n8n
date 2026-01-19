@@ -159,13 +159,6 @@ export type CockpitV1SingletonGetConfig = {
 		singleton: string | Expression<string>;
 };
 
-export type CockpitV1Params =
-	| CockpitV1CollectionCreateConfig
-	| CockpitV1CollectionGetAllConfig
-	| CockpitV1CollectionUpdateConfig
-	| CockpitV1FormSubmitConfig
-	| CockpitV1SingletonGetConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -344,11 +344,6 @@ export type HttpRequestV2GenericCredentialTypeConfig = {
 	};
 };
 
-export type HttpRequestV2Params =
-	| HttpRequestV2NoneConfig
-	| HttpRequestV2PredefinedCredentialTypeConfig
-	| HttpRequestV2GenericCredentialTypeConfig
-	;
 
 // ===========================================================================
 // Credentials

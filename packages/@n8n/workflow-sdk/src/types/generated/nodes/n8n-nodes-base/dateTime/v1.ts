@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface DateTimeV1Params {
+export interface DateTimeV1Config {
 	action?: 'calculate' | 'format' | Expression<string>;
 /**
  * The value that should be converted
@@ -64,8 +64,8 @@ interface DateTimeV1NodeBase {
 	version: 1;
 }
 
-export type DateTimeV1ParamsNode = DateTimeV1NodeBase & {
-	config: NodeConfig<DateTimeV1Params>;
+export type DateTimeV1Node = DateTimeV1NodeBase & {
+	config: NodeConfig<DateTimeV1Config>;
 };
 
-export type DateTimeV1Node = DateTimeV1ParamsNode;
+export type DateTimeV1Node = DateTimeV1Node;

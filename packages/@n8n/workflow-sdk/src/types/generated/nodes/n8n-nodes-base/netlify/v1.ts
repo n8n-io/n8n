@@ -97,15 +97,6 @@ export type NetlifyV1SiteGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type NetlifyV1Params =
-	| NetlifyV1DeployCancelConfig
-	| NetlifyV1DeployCreateConfig
-	| NetlifyV1DeployGetConfig
-	| NetlifyV1DeployGetAllConfig
-	| NetlifyV1SiteDeleteConfig
-	| NetlifyV1SiteGetConfig
-	| NetlifyV1SiteGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

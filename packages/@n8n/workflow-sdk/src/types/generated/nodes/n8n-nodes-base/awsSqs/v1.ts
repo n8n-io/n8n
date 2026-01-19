@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AwsSqsV1Params {
+export interface AwsSqsV1Config {
 	authentication?: 'iam' | 'assumeRole' | Expression<string>;
 	operation?: 'sendMessage' | Expression<string>;
 /**
@@ -57,8 +57,8 @@ interface AwsSqsV1NodeBase {
 	credentials?: AwsSqsV1Credentials;
 }
 
-export type AwsSqsV1ParamsNode = AwsSqsV1NodeBase & {
-	config: NodeConfig<AwsSqsV1Params>;
+export type AwsSqsV1Node = AwsSqsV1NodeBase & {
+	config: NodeConfig<AwsSqsV1Config>;
 };
 
-export type AwsSqsV1Node = AwsSqsV1ParamsNode;
+export type AwsSqsV1Node = AwsSqsV1Node;

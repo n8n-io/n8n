@@ -88,13 +88,6 @@ export type MicrosoftGraphSecurityV1SecureScoreControlProfileUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type MicrosoftGraphSecurityV1Params =
-	| MicrosoftGraphSecurityV1SecureScoreGetConfig
-	| MicrosoftGraphSecurityV1SecureScoreGetAllConfig
-	| MicrosoftGraphSecurityV1SecureScoreControlProfileGetConfig
-	| MicrosoftGraphSecurityV1SecureScoreControlProfileGetAllConfig
-	| MicrosoftGraphSecurityV1SecureScoreControlProfileUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

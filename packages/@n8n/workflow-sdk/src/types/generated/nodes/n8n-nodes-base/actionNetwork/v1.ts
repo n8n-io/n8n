@@ -489,31 +489,6 @@ export type ActionNetworkV1TagGetAllConfig = {
 		simple?: boolean | Expression<boolean>;
 };
 
-export type ActionNetworkV1Params =
-	| ActionNetworkV1AttendanceCreateConfig
-	| ActionNetworkV1AttendanceGetConfig
-	| ActionNetworkV1AttendanceGetAllConfig
-	| ActionNetworkV1EventCreateConfig
-	| ActionNetworkV1EventGetConfig
-	| ActionNetworkV1EventGetAllConfig
-	| ActionNetworkV1PersonCreateConfig
-	| ActionNetworkV1PersonGetConfig
-	| ActionNetworkV1PersonGetAllConfig
-	| ActionNetworkV1PersonUpdateConfig
-	| ActionNetworkV1PersonTagAddConfig
-	| ActionNetworkV1PersonTagRemoveConfig
-	| ActionNetworkV1PetitionCreateConfig
-	| ActionNetworkV1PetitionGetConfig
-	| ActionNetworkV1PetitionGetAllConfig
-	| ActionNetworkV1PetitionUpdateConfig
-	| ActionNetworkV1SignatureCreateConfig
-	| ActionNetworkV1SignatureGetConfig
-	| ActionNetworkV1SignatureGetAllConfig
-	| ActionNetworkV1SignatureUpdateConfig
-	| ActionNetworkV1TagCreateConfig
-	| ActionNetworkV1TagGetConfig
-	| ActionNetworkV1TagGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

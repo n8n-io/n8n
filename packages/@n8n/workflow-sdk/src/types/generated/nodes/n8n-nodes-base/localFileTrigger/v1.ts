@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LocalFileTriggerV1Params {
+export interface LocalFileTriggerV1Config {
 	triggerOn: 'file' | 'folder' | Expression<string>;
 	path?: string | Expression<string>;
 /**
@@ -37,8 +37,8 @@ interface LocalFileTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type LocalFileTriggerV1ParamsNode = LocalFileTriggerV1NodeBase & {
-	config: NodeConfig<LocalFileTriggerV1Params>;
+export type LocalFileTriggerV1Node = LocalFileTriggerV1NodeBase & {
+	config: NodeConfig<LocalFileTriggerV1Config>;
 };
 
-export type LocalFileTriggerV1Node = LocalFileTriggerV1ParamsNode;
+export type LocalFileTriggerV1Node = LocalFileTriggerV1Node;

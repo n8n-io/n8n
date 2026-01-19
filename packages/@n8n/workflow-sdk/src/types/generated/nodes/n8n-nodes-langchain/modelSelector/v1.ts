@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcModelSelectorV1Params {
+export interface LcModelSelectorV1Config {
 /**
  * The number of data inputs you want to merge. The node waits for all connected inputs to be executed.
  * @default 2
@@ -48,8 +48,8 @@ interface LcModelSelectorV1NodeBase {
 	version: 1;
 }
 
-export type LcModelSelectorV1ParamsNode = LcModelSelectorV1NodeBase & {
-	config: NodeConfig<LcModelSelectorV1Params>;
+export type LcModelSelectorV1Node = LcModelSelectorV1NodeBase & {
+	config: NodeConfig<LcModelSelectorV1Config>;
 };
 
-export type LcModelSelectorV1Node = LcModelSelectorV1ParamsNode;
+export type LcModelSelectorV1Node = LcModelSelectorV1Node;

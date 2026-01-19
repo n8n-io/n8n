@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface SlackTriggerV1Params {
+export interface SlackTriggerV1Config {
 	authentication?: unknown;
 	trigger?: Array<'any_event' | 'app_mention' | 'file_public' | 'file_share' | 'message' | 'channel_created' | 'team_join' | 'reaction_added'>;
 /**
@@ -57,8 +57,8 @@ interface SlackTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type SlackTriggerV1ParamsNode = SlackTriggerV1NodeBase & {
-	config: NodeConfig<SlackTriggerV1Params>;
+export type SlackTriggerV1Node = SlackTriggerV1NodeBase & {
+	config: NodeConfig<SlackTriggerV1Config>;
 };
 
-export type SlackTriggerV1Node = SlackTriggerV1ParamsNode;
+export type SlackTriggerV1Node = SlackTriggerV1Node;

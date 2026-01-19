@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsAzureOpenAiV1Params {
+export interface LcEmbeddingsAzureOpenAiV1Config {
 /**
  * The name of the model(deployment) to use
  */
@@ -42,8 +42,8 @@ interface LcEmbeddingsAzureOpenAiV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcEmbeddingsAzureOpenAiV1ParamsNode = LcEmbeddingsAzureOpenAiV1NodeBase & {
-	config: NodeConfig<LcEmbeddingsAzureOpenAiV1Params>;
+export type LcEmbeddingsAzureOpenAiV1Node = LcEmbeddingsAzureOpenAiV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsAzureOpenAiV1Config>;
 };
 
-export type LcEmbeddingsAzureOpenAiV1Node = LcEmbeddingsAzureOpenAiV1ParamsNode;
+export type LcEmbeddingsAzureOpenAiV1Node = LcEmbeddingsAzureOpenAiV1Node;

@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface N8nTriggerV1Params {
+export interface N8nTriggerV1Config {
 /**
  * Specifies under which conditions an execution should happen:
 				&lt;ul&gt;
@@ -38,8 +38,8 @@ interface N8nTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type N8nTriggerV1ParamsNode = N8nTriggerV1NodeBase & {
-	config: NodeConfig<N8nTriggerV1Params>;
+export type N8nTriggerV1Node = N8nTriggerV1NodeBase & {
+	config: NodeConfig<N8nTriggerV1Config>;
 };
 
-export type N8nTriggerV1Node = N8nTriggerV1ParamsNode;
+export type N8nTriggerV1Node = N8nTriggerV1Node;

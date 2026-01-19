@@ -43,11 +43,6 @@ export type MergeV2ChooseBranchConfig = {
 	output?: 'input1' | 'input2' | 'empty' | Expression<string>;
 };
 
-export type MergeV2Params =
-	| MergeV2AppendConfig
-	| MergeV2CombineConfig
-	| MergeV2ChooseBranchConfig
-	;
 
 // ===========================================================================
 // Credentials

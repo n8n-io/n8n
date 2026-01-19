@@ -110,13 +110,6 @@ export type OktaV1UserUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type OktaV1Params =
-	| OktaV1UserCreateConfig
-	| OktaV1UserDeleteConfig
-	| OktaV1UserGetConfig
-	| OktaV1UserGetAllConfig
-	| OktaV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

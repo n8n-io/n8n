@@ -227,23 +227,6 @@ export type MicrosoftToDoV1TaskUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type MicrosoftToDoV1Params =
-	| MicrosoftToDoV1LinkedResourceCreateConfig
-	| MicrosoftToDoV1LinkedResourceDeleteConfig
-	| MicrosoftToDoV1LinkedResourceGetConfig
-	| MicrosoftToDoV1LinkedResourceGetAllConfig
-	| MicrosoftToDoV1LinkedResourceUpdateConfig
-	| MicrosoftToDoV1ListCreateConfig
-	| MicrosoftToDoV1ListDeleteConfig
-	| MicrosoftToDoV1ListGetConfig
-	| MicrosoftToDoV1ListGetAllConfig
-	| MicrosoftToDoV1ListUpdateConfig
-	| MicrosoftToDoV1TaskCreateConfig
-	| MicrosoftToDoV1TaskDeleteConfig
-	| MicrosoftToDoV1TaskGetConfig
-	| MicrosoftToDoV1TaskGetAllConfig
-	| MicrosoftToDoV1TaskUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

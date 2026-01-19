@@ -81,12 +81,6 @@ export type TheHiveV1LogGetConfig = {
 	id: string | Expression<string>;
 };
 
-export type TheHiveV1Params =
-	| TheHiveV1LogCreateConfig
-	| TheHiveV1LogExecuteResponderConfig
-	| TheHiveV1LogGetAllConfig
-	| TheHiveV1LogGetConfig
-	;
 
 // ===========================================================================
 // Credentials

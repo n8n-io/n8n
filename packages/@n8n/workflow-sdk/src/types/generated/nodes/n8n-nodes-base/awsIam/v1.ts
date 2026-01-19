@@ -221,20 +221,6 @@ export type AwsIamV1GroupUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type AwsIamV1Params =
-	| AwsIamV1UserAddToGroupConfig
-	| AwsIamV1UserCreateConfig
-	| AwsIamV1UserDeleteConfig
-	| AwsIamV1UserGetConfig
-	| AwsIamV1UserGetAllConfig
-	| AwsIamV1UserRemoveFromGroupConfig
-	| AwsIamV1UserUpdateConfig
-	| AwsIamV1GroupCreateConfig
-	| AwsIamV1GroupDeleteConfig
-	| AwsIamV1GroupGetConfig
-	| AwsIamV1GroupGetAllConfig
-	| AwsIamV1GroupUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

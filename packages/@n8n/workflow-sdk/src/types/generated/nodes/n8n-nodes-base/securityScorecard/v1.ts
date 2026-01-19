@@ -349,27 +349,6 @@ export type SecurityScorecardV1ReportGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type SecurityScorecardV1Params =
-	| SecurityScorecardV1CompanyGetFactorConfig
-	| SecurityScorecardV1CompanyGetFactorHistoricalConfig
-	| SecurityScorecardV1CompanyGetHistoricalScoreConfig
-	| SecurityScorecardV1CompanyGetScorecardConfig
-	| SecurityScorecardV1CompanyGetScorePlanConfig
-	| SecurityScorecardV1IndustryGetFactorConfig
-	| SecurityScorecardV1IndustryGetFactorHistoricalConfig
-	| SecurityScorecardV1IndustryGetScoreConfig
-	| SecurityScorecardV1InviteCreateConfig
-	| SecurityScorecardV1PortfolioCreateConfig
-	| SecurityScorecardV1PortfolioDeleteConfig
-	| SecurityScorecardV1PortfolioGetAllConfig
-	| SecurityScorecardV1PortfolioUpdateConfig
-	| SecurityScorecardV1PortfolioCompanyAddConfig
-	| SecurityScorecardV1PortfolioCompanyGetAllConfig
-	| SecurityScorecardV1PortfolioCompanyRemoveConfig
-	| SecurityScorecardV1ReportDownloadConfig
-	| SecurityScorecardV1ReportGenerateConfig
-	| SecurityScorecardV1ReportGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

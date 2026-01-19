@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AwsRekognitionV1Params {
+export interface AwsRekognitionV1Config {
 	authentication?: 'iam' | 'assumeRole' | Expression<string>;
 	resource?: 'image' | Expression<string>;
 	operation?: 'analyze' | Expression<string>;
@@ -55,8 +55,8 @@ interface AwsRekognitionV1NodeBase {
 	credentials?: AwsRekognitionV1Credentials;
 }
 
-export type AwsRekognitionV1ParamsNode = AwsRekognitionV1NodeBase & {
-	config: NodeConfig<AwsRekognitionV1Params>;
+export type AwsRekognitionV1Node = AwsRekognitionV1NodeBase & {
+	config: NodeConfig<AwsRekognitionV1Config>;
 };
 
-export type AwsRekognitionV1Node = AwsRekognitionV1ParamsNode;
+export type AwsRekognitionV1Node = AwsRekognitionV1Node;

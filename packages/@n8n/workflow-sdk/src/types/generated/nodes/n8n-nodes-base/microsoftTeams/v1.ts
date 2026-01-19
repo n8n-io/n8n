@@ -309,23 +309,6 @@ export type MicrosoftTeamsV1TaskUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type MicrosoftTeamsV1Params =
-	| MicrosoftTeamsV1ChannelCreateConfig
-	| MicrosoftTeamsV1ChannelDeleteConfig
-	| MicrosoftTeamsV1ChannelGetConfig
-	| MicrosoftTeamsV1ChannelGetAllConfig
-	| MicrosoftTeamsV1ChannelUpdateConfig
-	| MicrosoftTeamsV1ChannelMessageCreateConfig
-	| MicrosoftTeamsV1ChannelMessageGetAllConfig
-	| MicrosoftTeamsV1ChatMessageCreateConfig
-	| MicrosoftTeamsV1ChatMessageGetConfig
-	| MicrosoftTeamsV1ChatMessageGetAllConfig
-	| MicrosoftTeamsV1TaskCreateConfig
-	| MicrosoftTeamsV1TaskDeleteConfig
-	| MicrosoftTeamsV1TaskGetConfig
-	| MicrosoftTeamsV1TaskGetAllConfig
-	| MicrosoftTeamsV1TaskUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

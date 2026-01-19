@@ -33,9 +33,6 @@ export type GoogleCloudNaturalLanguageV1DocumentAnalyzeSentimentConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleCloudNaturalLanguageV1Params =
-	| GoogleCloudNaturalLanguageV1DocumentAnalyzeSentimentConfig
-	;
 
 // ===========================================================================
 // Credentials

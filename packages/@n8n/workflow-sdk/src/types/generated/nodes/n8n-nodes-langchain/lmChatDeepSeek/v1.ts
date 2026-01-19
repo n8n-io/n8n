@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatDeepSeekV1Params {
+export interface LcLmChatDeepSeekV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://api-docs.deepseek.com/quick_start/pricing"&gt;Learn more&lt;/a&gt;.
  * @default deepseek-chat
@@ -43,8 +43,8 @@ interface LcLmChatDeepSeekV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatDeepSeekV1ParamsNode = LcLmChatDeepSeekV1NodeBase & {
-	config: NodeConfig<LcLmChatDeepSeekV1Params>;
+export type LcLmChatDeepSeekV1Node = LcLmChatDeepSeekV1NodeBase & {
+	config: NodeConfig<LcLmChatDeepSeekV1Config>;
 };
 
-export type LcLmChatDeepSeekV1Node = LcLmChatDeepSeekV1ParamsNode;
+export type LcLmChatDeepSeekV1Node = LcLmChatDeepSeekV1Node;

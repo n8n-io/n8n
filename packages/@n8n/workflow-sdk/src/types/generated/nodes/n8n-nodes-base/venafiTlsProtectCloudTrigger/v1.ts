@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface VenafiTlsProtectCloudTriggerV1Params {
+export interface VenafiTlsProtectCloudTriggerV1Config {
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  * @default []
@@ -43,8 +43,8 @@ interface VenafiTlsProtectCloudTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type VenafiTlsProtectCloudTriggerV1ParamsNode = VenafiTlsProtectCloudTriggerV1NodeBase & {
-	config: NodeConfig<VenafiTlsProtectCloudTriggerV1Params>;
+export type VenafiTlsProtectCloudTriggerV1Node = VenafiTlsProtectCloudTriggerV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectCloudTriggerV1Config>;
 };
 
-export type VenafiTlsProtectCloudTriggerV1Node = VenafiTlsProtectCloudTriggerV1ParamsNode;
+export type VenafiTlsProtectCloudTriggerV1Node = VenafiTlsProtectCloudTriggerV1Node;

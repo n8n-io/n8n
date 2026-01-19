@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcAgentV31Params {
+export interface LcAgentV31Config {
 	aiAgentStarterCallout?: unknown;
 	text: string | Expression<string>;
 	hasOutputParser?: boolean | Expression<boolean>;
@@ -32,8 +32,8 @@ interface LcAgentV31NodeBase {
 	version: 3.1;
 }
 
-export type LcAgentV31ParamsNode = LcAgentV31NodeBase & {
-	config: NodeConfig<LcAgentV31Params>;
+export type LcAgentV31Node = LcAgentV31NodeBase & {
+	config: NodeConfig<LcAgentV31Config>;
 };
 
-export type LcAgentV31Node = LcAgentV31ParamsNode;
+export type LcAgentV31Node = LcAgentV31Node;

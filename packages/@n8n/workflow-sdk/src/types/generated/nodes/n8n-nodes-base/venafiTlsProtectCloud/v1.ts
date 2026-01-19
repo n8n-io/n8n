@@ -133,16 +133,6 @@ export type VenafiTlsProtectCloudV1CertificateRequestGetManyConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type VenafiTlsProtectCloudV1Params =
-	| VenafiTlsProtectCloudV1CertificateDeleteConfig
-	| VenafiTlsProtectCloudV1CertificateDownloadConfig
-	| VenafiTlsProtectCloudV1CertificateGetConfig
-	| VenafiTlsProtectCloudV1CertificateGetManyConfig
-	| VenafiTlsProtectCloudV1CertificateRenewConfig
-	| VenafiTlsProtectCloudV1CertificateRequestCreateConfig
-	| VenafiTlsProtectCloudV1CertificateRequestGetConfig
-	| VenafiTlsProtectCloudV1CertificateRequestGetManyConfig
-	;
 
 // ===========================================================================
 // Credentials

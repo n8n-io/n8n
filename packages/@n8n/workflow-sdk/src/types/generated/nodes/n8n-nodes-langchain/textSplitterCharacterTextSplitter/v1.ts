@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcTextSplitterCharacterTextSplitterV1Params {
+export interface LcTextSplitterCharacterTextSplitterV1Config {
 	separator?: string | Expression<string>;
 /**
  * Maximum number of characters per chunk
@@ -39,8 +39,8 @@ interface LcTextSplitterCharacterTextSplitterV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcTextSplitterCharacterTextSplitterV1ParamsNode = LcTextSplitterCharacterTextSplitterV1NodeBase & {
-	config: NodeConfig<LcTextSplitterCharacterTextSplitterV1Params>;
+export type LcTextSplitterCharacterTextSplitterV1Node = LcTextSplitterCharacterTextSplitterV1NodeBase & {
+	config: NodeConfig<LcTextSplitterCharacterTextSplitterV1Config>;
 };
 
-export type LcTextSplitterCharacterTextSplitterV1Node = LcTextSplitterCharacterTextSplitterV1ParamsNode;
+export type LcTextSplitterCharacterTextSplitterV1Node = LcTextSplitterCharacterTextSplitterV1Node;

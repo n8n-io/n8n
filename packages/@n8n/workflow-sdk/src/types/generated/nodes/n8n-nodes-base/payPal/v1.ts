@@ -103,12 +103,6 @@ export type PayPalV1PayoutItemGetConfig = {
 		payoutItemId: string | Expression<string>;
 };
 
-export type PayPalV1Params =
-	| PayPalV1PayoutCreateConfig
-	| PayPalV1PayoutGetConfig
-	| PayPalV1PayoutItemCancelConfig
-	| PayPalV1PayoutItemGetConfig
-	;
 
 // ===========================================================================
 // Output Types

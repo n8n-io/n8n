@@ -35,10 +35,6 @@ export type XmlV1XmlToJsonConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type XmlV1Params =
-	| XmlV1JsonToxmlConfig
-	| XmlV1XmlToJsonConfig
-	;
 
 // ===========================================================================
 // Credentials

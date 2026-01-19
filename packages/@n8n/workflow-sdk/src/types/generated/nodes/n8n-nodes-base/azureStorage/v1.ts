@@ -171,16 +171,6 @@ export type AzureStorageV1ContainerGetAllConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type AzureStorageV1Params =
-	| AzureStorageV1BlobCreateConfig
-	| AzureStorageV1BlobDeleteConfig
-	| AzureStorageV1BlobGetConfig
-	| AzureStorageV1BlobGetAllConfig
-	| AzureStorageV1ContainerCreateConfig
-	| AzureStorageV1ContainerDeleteConfig
-	| AzureStorageV1ContainerGetConfig
-	| AzureStorageV1ContainerGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

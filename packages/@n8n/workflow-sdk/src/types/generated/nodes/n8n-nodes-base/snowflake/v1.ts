@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SnowflakeV1Params {
+export interface SnowflakeV1Config {
 	operation?: 'executeQuery' | 'insert' | 'update' | Expression<string>;
 /**
  * The SQL query to execute
@@ -54,8 +54,8 @@ interface SnowflakeV1NodeBase {
 	credentials?: SnowflakeV1Credentials;
 }
 
-export type SnowflakeV1ParamsNode = SnowflakeV1NodeBase & {
-	config: NodeConfig<SnowflakeV1Params>;
+export type SnowflakeV1Node = SnowflakeV1NodeBase & {
+	config: NodeConfig<SnowflakeV1Config>;
 };
 
-export type SnowflakeV1Node = SnowflakeV1ParamsNode;
+export type SnowflakeV1Node = SnowflakeV1Node;

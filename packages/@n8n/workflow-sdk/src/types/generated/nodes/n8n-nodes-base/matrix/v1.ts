@@ -190,19 +190,6 @@ export type MatrixV1RoomMemberGetAllConfig = {
 		filters?: Record<string, unknown>;
 };
 
-export type MatrixV1Params =
-	| MatrixV1AccountMeConfig
-	| MatrixV1EventGetConfig
-	| MatrixV1MediaUploadConfig
-	| MatrixV1MessageCreateConfig
-	| MatrixV1MessageGetAllConfig
-	| MatrixV1RoomCreateConfig
-	| MatrixV1RoomInviteConfig
-	| MatrixV1RoomJoinConfig
-	| MatrixV1RoomKickConfig
-	| MatrixV1RoomLeaveConfig
-	| MatrixV1RoomMemberGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

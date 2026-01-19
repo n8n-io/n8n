@@ -53,11 +53,6 @@ export type HackerNewsV1UserGetConfig = {
 		username: string | Expression<string>;
 };
 
-export type HackerNewsV1Params =
-	| HackerNewsV1AllGetAllConfig
-	| HackerNewsV1ArticleGetConfig
-	| HackerNewsV1UserGetConfig
-	;
 
 // ===========================================================================
 // Output Types

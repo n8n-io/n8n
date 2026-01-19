@@ -293,14 +293,6 @@ export type WhatsAppV1MediaMediaDeleteConfig = {
 		mediaDeleteId: string | Expression<string>;
 };
 
-export type WhatsAppV1Params =
-	| WhatsAppV1MessageSendConfig
-	| WhatsAppV1MessageSendAndWaitConfig
-	| WhatsAppV1MessageSendTemplateConfig
-	| WhatsAppV1MediaMediaUploadConfig
-	| WhatsAppV1MediaMediaUrlGetConfig
-	| WhatsAppV1MediaMediaDeleteConfig
-	;
 
 // ===========================================================================
 // Output Types

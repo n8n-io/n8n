@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WufooTriggerV1Params {
+export interface WufooTriggerV1Config {
 /**
  * The form upon which will trigger this node when a new entry is made. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  */
@@ -42,8 +42,8 @@ interface WufooTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type WufooTriggerV1ParamsNode = WufooTriggerV1NodeBase & {
-	config: NodeConfig<WufooTriggerV1Params>;
+export type WufooTriggerV1Node = WufooTriggerV1NodeBase & {
+	config: NodeConfig<WufooTriggerV1Config>;
 };
 
-export type WufooTriggerV1Node = WufooTriggerV1ParamsNode;
+export type WufooTriggerV1Node = WufooTriggerV1Node;

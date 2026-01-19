@@ -766,50 +766,6 @@ export type SlackV23UserGroupUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type SlackV23Params =
-	| SlackV23ChannelArchiveConfig
-	| SlackV23ChannelCloseConfig
-	| SlackV23ChannelCreateConfig
-	| SlackV23ChannelGetConfig
-	| SlackV23ChannelGetAllConfig
-	| SlackV23ChannelHistoryConfig
-	| SlackV23ChannelInviteConfig
-	| SlackV23ChannelJoinConfig
-	| SlackV23ChannelKickConfig
-	| SlackV23ChannelLeaveConfig
-	| SlackV23ChannelMemberConfig
-	| SlackV23ChannelOpenConfig
-	| SlackV23ChannelRenameConfig
-	| SlackV23ChannelRepliesConfig
-	| SlackV23ChannelSetPurposeConfig
-	| SlackV23ChannelSetTopicConfig
-	| SlackV23ChannelUnarchiveConfig
-	| SlackV23FileGetConfig
-	| SlackV23FileGetAllConfig
-	| SlackV23FileUploadConfig
-	| SlackV23MessageDeleteConfig
-	| SlackV23MessageGetPermalinkConfig
-	| SlackV23MessageSearchConfig
-	| SlackV23MessagePostConfig
-	| SlackV23MessageSendAndWaitConfig
-	| SlackV23MessageUpdateConfig
-	| SlackV23ReactionAddConfig
-	| SlackV23ReactionGetConfig
-	| SlackV23ReactionRemoveConfig
-	| SlackV23StarAddConfig
-	| SlackV23StarDeleteConfig
-	| SlackV23StarGetAllConfig
-	| SlackV23UserInfoConfig
-	| SlackV23UserGetAllConfig
-	| SlackV23UserGetProfileConfig
-	| SlackV23UserGetPresenceConfig
-	| SlackV23UserUpdateProfileConfig
-	| SlackV23UserGroupCreateConfig
-	| SlackV23UserGroupDisableConfig
-	| SlackV23UserGroupEnableConfig
-	| SlackV23UserGroupGetAllConfig
-	| SlackV23UserGroupUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

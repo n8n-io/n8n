@@ -410,40 +410,6 @@ export type CopperV1UserGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type CopperV1Params =
-	| CopperV1CompanyCreateConfig
-	| CopperV1CompanyDeleteConfig
-	| CopperV1CompanyGetConfig
-	| CopperV1CompanyGetAllConfig
-	| CopperV1CompanyUpdateConfig
-	| CopperV1CustomerSourceGetAllConfig
-	| CopperV1LeadCreateConfig
-	| CopperV1LeadDeleteConfig
-	| CopperV1LeadGetConfig
-	| CopperV1LeadGetAllConfig
-	| CopperV1LeadUpdateConfig
-	| CopperV1OpportunityCreateConfig
-	| CopperV1OpportunityDeleteConfig
-	| CopperV1OpportunityGetConfig
-	| CopperV1OpportunityGetAllConfig
-	| CopperV1OpportunityUpdateConfig
-	| CopperV1PersonCreateConfig
-	| CopperV1PersonDeleteConfig
-	| CopperV1PersonGetConfig
-	| CopperV1PersonGetAllConfig
-	| CopperV1PersonUpdateConfig
-	| CopperV1ProjectCreateConfig
-	| CopperV1ProjectDeleteConfig
-	| CopperV1ProjectGetConfig
-	| CopperV1ProjectGetAllConfig
-	| CopperV1ProjectUpdateConfig
-	| CopperV1TaskCreateConfig
-	| CopperV1TaskDeleteConfig
-	| CopperV1TaskGetConfig
-	| CopperV1TaskGetAllConfig
-	| CopperV1TaskUpdateConfig
-	| CopperV1UserGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

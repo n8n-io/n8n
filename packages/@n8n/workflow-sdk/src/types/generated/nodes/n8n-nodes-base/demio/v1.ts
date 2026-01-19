@@ -77,12 +77,6 @@ export type DemioV1ReportGetConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type DemioV1Params =
-	| DemioV1EventGetConfig
-	| DemioV1EventGetAllConfig
-	| DemioV1EventRegisterConfig
-	| DemioV1ReportGetConfig
-	;
 
 // ===========================================================================
 // Credentials

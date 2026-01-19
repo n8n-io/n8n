@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface RespondToWebhookV13Params {
+export interface RespondToWebhookV13Config {
 /**
  * The URL to redirect to
  * @displayOptions.show { respondWith: ["redirect"] }
@@ -62,8 +62,8 @@ interface RespondToWebhookV13NodeBase {
 	credentials?: RespondToWebhookV13Credentials;
 }
 
-export type RespondToWebhookV13ParamsNode = RespondToWebhookV13NodeBase & {
-	config: NodeConfig<RespondToWebhookV13Params>;
+export type RespondToWebhookV13Node = RespondToWebhookV13NodeBase & {
+	config: NodeConfig<RespondToWebhookV13Config>;
 };
 
-export type RespondToWebhookV13Node = RespondToWebhookV13ParamsNode;
+export type RespondToWebhookV13Node = RespondToWebhookV13Node;

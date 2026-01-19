@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface AirtableTriggerV1Params {
+export interface AirtableTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -107,8 +107,8 @@ interface AirtableTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type AirtableTriggerV1ParamsNode = AirtableTriggerV1NodeBase & {
-	config: NodeConfig<AirtableTriggerV1Params>;
+export type AirtableTriggerV1Node = AirtableTriggerV1NodeBase & {
+	config: NodeConfig<AirtableTriggerV1Config>;
 };
 
-export type AirtableTriggerV1Node = AirtableTriggerV1ParamsNode;
+export type AirtableTriggerV1Node = AirtableTriggerV1Node;

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface TypeformTriggerV1Params {
+export interface TypeformTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 /**
  * Form which should trigger workflow on submission. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -49,8 +49,8 @@ interface TypeformTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type TypeformTriggerV1ParamsNode = TypeformTriggerV1NodeBase & {
-	config: NodeConfig<TypeformTriggerV1Params>;
+export type TypeformTriggerV1Node = TypeformTriggerV1NodeBase & {
+	config: NodeConfig<TypeformTriggerV1Config>;
 };
 
-export type TypeformTriggerV1Node = TypeformTriggerV1ParamsNode;
+export type TypeformTriggerV1Node = TypeformTriggerV1Node;

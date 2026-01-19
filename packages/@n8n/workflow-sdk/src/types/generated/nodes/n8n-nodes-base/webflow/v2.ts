@@ -145,13 +145,6 @@ export type WebflowV2ItemUpdateConfig = {
 	};
 };
 
-export type WebflowV2Params =
-	| WebflowV2ItemCreateConfig
-	| WebflowV2ItemDeleteItemConfig
-	| WebflowV2ItemGetConfig
-	| WebflowV2ItemGetAllConfig
-	| WebflowV2ItemUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

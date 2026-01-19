@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WorkableTriggerV1Params {
+export interface WorkableTriggerV1Config {
 	triggerOn: 'candidateCreated' | 'candidateMoved' | Expression<string>;
 	filters?: Record<string, unknown>;
 }
@@ -35,8 +35,8 @@ interface WorkableTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type WorkableTriggerV1ParamsNode = WorkableTriggerV1NodeBase & {
-	config: NodeConfig<WorkableTriggerV1Params>;
+export type WorkableTriggerV1Node = WorkableTriggerV1NodeBase & {
+	config: NodeConfig<WorkableTriggerV1Config>;
 };
 
-export type WorkableTriggerV1Node = WorkableTriggerV1ParamsNode;
+export type WorkableTriggerV1Node = WorkableTriggerV1Node;

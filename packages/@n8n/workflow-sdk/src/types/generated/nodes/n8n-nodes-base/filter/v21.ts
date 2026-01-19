@@ -14,7 +14,7 @@ type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: s
 // Parameters
 // ===========================================================================
 
-export interface FilterV21Params {
+export interface FilterV21Config {
 	conditions?: FilterValue;
 	options?: Record<string, unknown>;
 }
@@ -32,8 +32,8 @@ interface FilterV21NodeBase {
 	version: 2.1;
 }
 
-export type FilterV21ParamsNode = FilterV21NodeBase & {
-	config: NodeConfig<FilterV21Params>;
+export type FilterV21Node = FilterV21NodeBase & {
+	config: NodeConfig<FilterV21Config>;
 };
 
-export type FilterV21Node = FilterV21ParamsNode;
+export type FilterV21Node = FilterV21Node;

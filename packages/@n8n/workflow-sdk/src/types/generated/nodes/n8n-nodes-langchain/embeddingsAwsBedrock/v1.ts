@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsAwsBedrockV1Params {
+export interface LcEmbeddingsAwsBedrockV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html"&gt;Learn more&lt;/a&gt;.
  */
@@ -37,8 +37,8 @@ interface LcEmbeddingsAwsBedrockV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcEmbeddingsAwsBedrockV1ParamsNode = LcEmbeddingsAwsBedrockV1NodeBase & {
-	config: NodeConfig<LcEmbeddingsAwsBedrockV1Params>;
+export type LcEmbeddingsAwsBedrockV1Node = LcEmbeddingsAwsBedrockV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsAwsBedrockV1Config>;
 };
 
-export type LcEmbeddingsAwsBedrockV1Node = LcEmbeddingsAwsBedrockV1ParamsNode;
+export type LcEmbeddingsAwsBedrockV1Node = LcEmbeddingsAwsBedrockV1Node;

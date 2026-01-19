@@ -151,13 +151,6 @@ export type BaserowV1RowUpdateConfig = {
 	};
 };
 
-export type BaserowV1Params =
-	| BaserowV1RowCreateConfig
-	| BaserowV1RowDeleteConfig
-	| BaserowV1RowGetConfig
-	| BaserowV1RowGetAllConfig
-	| BaserowV1RowUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

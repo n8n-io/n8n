@@ -160,23 +160,6 @@ export type NasaV1EarthImageryGetConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type NasaV1Params =
-	| NasaV1AsteroidNeoBrowseGetAllConfig
-	| NasaV1AsteroidNeoFeedGetConfig
-	| NasaV1AsteroidNeoLookupGetConfig
-	| NasaV1AstronomyPictureOfTheDayGetConfig
-	| NasaV1DonkiCoronalMassEjectionGetConfig
-	| NasaV1DonkiHighSpeedStreamGetConfig
-	| NasaV1DonkiInterplanetaryShockGetConfig
-	| NasaV1DonkiMagnetopauseCrossingGetConfig
-	| NasaV1DonkiNotificationsGetConfig
-	| NasaV1DonkiRadiationBeltEnhancementGetConfig
-	| NasaV1DonkiSolarEnergeticParticleGetConfig
-	| NasaV1DonkiSolarFlareGetConfig
-	| NasaV1DonkiWsaEnlilSimulationGetConfig
-	| NasaV1EarthAssetsGetConfig
-	| NasaV1EarthImageryGetConfig
-	;
 
 // ===========================================================================
 // Output Types

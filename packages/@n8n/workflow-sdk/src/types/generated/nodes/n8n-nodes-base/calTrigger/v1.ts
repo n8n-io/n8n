@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface CalTriggerV1Params {
+export interface CalTriggerV1Config {
 	events: Array<'BOOKING_CANCELLED' | 'BOOKING_CREATED' | 'BOOKING_RESCHEDULED' | 'MEETING_ENDED'>;
 	version?: 1 | 2 | Expression<number>;
 	options?: Record<string, unknown>;
@@ -36,8 +36,8 @@ interface CalTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type CalTriggerV1ParamsNode = CalTriggerV1NodeBase & {
-	config: NodeConfig<CalTriggerV1Params>;
+export type CalTriggerV1Node = CalTriggerV1NodeBase & {
+	config: NodeConfig<CalTriggerV1Config>;
 };
 
-export type CalTriggerV1Node = CalTriggerV1ParamsNode;
+export type CalTriggerV1Node = CalTriggerV1Node;

@@ -359,28 +359,6 @@ export type StripeV1TokenCreateConfig = {
 		expirationYear?: string | Expression<string>;
 };
 
-export type StripeV1Params =
-	| StripeV1BalanceGetConfig
-	| StripeV1ChargeCreateConfig
-	| StripeV1ChargeGetConfig
-	| StripeV1ChargeGetAllConfig
-	| StripeV1ChargeUpdateConfig
-	| StripeV1CouponCreateConfig
-	| StripeV1CouponGetAllConfig
-	| StripeV1CustomerCreateConfig
-	| StripeV1CustomerDeleteConfig
-	| StripeV1CustomerGetConfig
-	| StripeV1CustomerGetAllConfig
-	| StripeV1CustomerUpdateConfig
-	| StripeV1CustomerCardAddConfig
-	| StripeV1CustomerCardGetConfig
-	| StripeV1CustomerCardRemoveConfig
-	| StripeV1MeterEventCreateConfig
-	| StripeV1SourceCreateConfig
-	| StripeV1SourceDeleteConfig
-	| StripeV1SourceGetConfig
-	| StripeV1TokenCreateConfig
-	;
 
 // ===========================================================================
 // Output Types

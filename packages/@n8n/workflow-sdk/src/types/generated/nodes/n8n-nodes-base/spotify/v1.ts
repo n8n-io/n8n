@@ -479,38 +479,6 @@ export type SpotifyV1TrackSearchConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type SpotifyV1Params =
-	| SpotifyV1AlbumGetConfig
-	| SpotifyV1AlbumGetNewReleasesConfig
-	| SpotifyV1AlbumGetTracksConfig
-	| SpotifyV1AlbumSearchConfig
-	| SpotifyV1ArtistGetConfig
-	| SpotifyV1ArtistGetAlbumsConfig
-	| SpotifyV1ArtistGetRelatedArtistsConfig
-	| SpotifyV1ArtistGetTopTracksConfig
-	| SpotifyV1ArtistSearchConfig
-	| SpotifyV1LibraryGetLikedTracksConfig
-	| SpotifyV1MyDataGetFollowingArtistsConfig
-	| SpotifyV1PlayerAddSongToQueueConfig
-	| SpotifyV1PlayerCurrentlyPlayingConfig
-	| SpotifyV1PlayerNextSongConfig
-	| SpotifyV1PlayerPauseConfig
-	| SpotifyV1PlayerPreviousSongConfig
-	| SpotifyV1PlayerRecentlyPlayedConfig
-	| SpotifyV1PlayerResumeConfig
-	| SpotifyV1PlayerVolumeConfig
-	| SpotifyV1PlayerStartMusicConfig
-	| SpotifyV1PlaylistAddConfig
-	| SpotifyV1PlaylistCreateConfig
-	| SpotifyV1PlaylistGetConfig
-	| SpotifyV1PlaylistGetUserPlaylistsConfig
-	| SpotifyV1PlaylistGetTracksConfig
-	| SpotifyV1PlaylistDeleteConfig
-	| SpotifyV1PlaylistSearchConfig
-	| SpotifyV1TrackGetConfig
-	| SpotifyV1TrackGetAudioFeaturesConfig
-	| SpotifyV1TrackSearchConfig
-	;
 
 // ===========================================================================
 // Output Types

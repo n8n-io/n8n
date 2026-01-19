@@ -206,17 +206,6 @@ export type ElasticsearchV1IndexGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type ElasticsearchV1Params =
-	| ElasticsearchV1DocumentCreateConfig
-	| ElasticsearchV1DocumentDeleteConfig
-	| ElasticsearchV1DocumentGetConfig
-	| ElasticsearchV1DocumentGetAllConfig
-	| ElasticsearchV1DocumentUpdateConfig
-	| ElasticsearchV1IndexCreateConfig
-	| ElasticsearchV1IndexDeleteConfig
-	| ElasticsearchV1IndexGetConfig
-	| ElasticsearchV1IndexGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

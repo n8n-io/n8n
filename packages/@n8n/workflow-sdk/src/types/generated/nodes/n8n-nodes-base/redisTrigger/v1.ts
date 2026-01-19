@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface RedisTriggerV1Params {
+export interface RedisTriggerV1Config {
 /**
  * Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported.
  */
@@ -38,8 +38,8 @@ interface RedisTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type RedisTriggerV1ParamsNode = RedisTriggerV1NodeBase & {
-	config: NodeConfig<RedisTriggerV1Params>;
+export type RedisTriggerV1Node = RedisTriggerV1NodeBase & {
+	config: NodeConfig<RedisTriggerV1Config>;
 };
 
-export type RedisTriggerV1Node = RedisTriggerV1ParamsNode;
+export type RedisTriggerV1Node = RedisTriggerV1Node;

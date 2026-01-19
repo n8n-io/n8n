@@ -237,24 +237,6 @@ export type GrafanaV1UserUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type GrafanaV1Params =
-	| GrafanaV1DashboardCreateConfig
-	| GrafanaV1DashboardDeleteConfig
-	| GrafanaV1DashboardGetConfig
-	| GrafanaV1DashboardGetAllConfig
-	| GrafanaV1DashboardUpdateConfig
-	| GrafanaV1TeamCreateConfig
-	| GrafanaV1TeamDeleteConfig
-	| GrafanaV1TeamGetConfig
-	| GrafanaV1TeamGetAllConfig
-	| GrafanaV1TeamUpdateConfig
-	| GrafanaV1TeamMemberAddConfig
-	| GrafanaV1TeamMemberGetAllConfig
-	| GrafanaV1TeamMemberRemoveConfig
-	| GrafanaV1UserDeleteConfig
-	| GrafanaV1UserGetAllConfig
-	| GrafanaV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

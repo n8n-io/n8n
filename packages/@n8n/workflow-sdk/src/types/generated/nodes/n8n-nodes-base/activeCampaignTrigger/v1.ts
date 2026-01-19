@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ActiveCampaignTriggerV1Params {
+export interface ActiveCampaignTriggerV1Config {
 /**
  * Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
  * @default []
@@ -39,8 +39,8 @@ interface ActiveCampaignTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type ActiveCampaignTriggerV1ParamsNode = ActiveCampaignTriggerV1NodeBase & {
-	config: NodeConfig<ActiveCampaignTriggerV1Params>;
+export type ActiveCampaignTriggerV1Node = ActiveCampaignTriggerV1NodeBase & {
+	config: NodeConfig<ActiveCampaignTriggerV1Config>;
 };
 
-export type ActiveCampaignTriggerV1Node = ActiveCampaignTriggerV1ParamsNode;
+export type ActiveCampaignTriggerV1Node = ActiveCampaignTriggerV1Node;

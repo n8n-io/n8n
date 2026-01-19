@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface EgoiV1Params {
+export interface EgoiV1Config {
 	resource: 'contact' | Expression<string>;
 	operation: 'create' | 'get' | 'getAll' | 'update' | Expression<string>;
 /**
@@ -81,8 +81,8 @@ interface EgoiV1NodeBase {
 	credentials?: EgoiV1Credentials;
 }
 
-export type EgoiV1ParamsNode = EgoiV1NodeBase & {
-	config: NodeConfig<EgoiV1Params>;
+export type EgoiV1Node = EgoiV1NodeBase & {
+	config: NodeConfig<EgoiV1Config>;
 };
 
-export type EgoiV1Node = EgoiV1ParamsNode;
+export type EgoiV1Node = EgoiV1Node;

@@ -81,15 +81,6 @@ export type LinearV1IssueUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type LinearV1Params =
-	| LinearV1CommentAddCommentConfig
-	| LinearV1IssueAddLinkConfig
-	| LinearV1IssueCreateConfig
-	| LinearV1IssueDeleteConfig
-	| LinearV1IssueGetConfig
-	| LinearV1IssueGetAllConfig
-	| LinearV1IssueUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

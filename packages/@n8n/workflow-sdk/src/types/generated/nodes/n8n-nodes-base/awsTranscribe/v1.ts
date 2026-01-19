@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AwsTranscribeV1Params {
+export interface AwsTranscribeV1Config {
 	resource?: 'transcriptionJob' | Expression<string>;
 	operation?: 'create' | 'delete' | 'get' | 'getAll' | Expression<string>;
 /**
@@ -82,8 +82,8 @@ interface AwsTranscribeV1NodeBase {
 	credentials?: AwsTranscribeV1Credentials;
 }
 
-export type AwsTranscribeV1ParamsNode = AwsTranscribeV1NodeBase & {
-	config: NodeConfig<AwsTranscribeV1Params>;
+export type AwsTranscribeV1Node = AwsTranscribeV1NodeBase & {
+	config: NodeConfig<AwsTranscribeV1Config>;
 };
 
-export type AwsTranscribeV1Node = AwsTranscribeV1ParamsNode;
+export type AwsTranscribeV1Node = AwsTranscribeV1Node;

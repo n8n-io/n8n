@@ -428,8 +428,6 @@ export interface DiscriminatedUnionResult {
 	code: string;
 	/** Info about each config type generated */
 	configTypes: ConfigTypeInfo[];
-	/** The union type name (e.g., 'FreshserviceV1Params') */
-	unionTypeName: string;
 }
 
 // =============================================================================
@@ -940,8 +938,8 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 
 	if (combinations.length === 0) {
 		// No discriminators - generate simple interface
-		const interfaceName = `${nodeName}${versionSuffix}Params`;
-		lines.push(`export interface ${interfaceName} {`);
+		const configName = `${nodeName}${versionSuffix}Config`;
+		lines.push(`export interface ${configName} {`);
 
 		// Track seen property names to avoid duplicates
 		const seenNames = new Set<string>();
@@ -1019,15 +1017,6 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 		lines.push('};');
 		lines.push('');
 	}
-
-	// Generate union type
-	const unionName = `${nodeName}${versionSuffix}Params`;
-	lines.push(`export type ${unionName} =`);
-	for (let i = 0; i < configTypeNames.length; i++) {
-		const prefix = i === 0 ? '\t| ' : '\t| ';
-		lines.push(`${prefix}${configTypeNames[i]}`);
-	}
-	lines.push('\t;');
 
 	return lines.join('\n');
 }
@@ -1701,11 +1690,9 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 		return bHighest - aHighest;
 	});
 
-	const paramTypeNames: string[] = [];
 	for (const n of sortedNodes) {
 		const entryVersion = getHighestVersion(n.version);
 		const entryVersionSuffix = versionToTypeName(entryVersion);
-		paramTypeNames.push(`${nodeName}${entryVersionSuffix}Params`);
 		const unionResult = generateDiscriminatedUnionForEntry(n, nodeName, entryVersionSuffix);
 		lines.push(unionResult.code);
 		lines.push('');
@@ -1806,12 +1793,11 @@ function generateDiscriminatedUnionForEntry(
 	const combinations = extractDiscriminatorCombinations(node);
 	const lines: string[] = [];
 	const configTypes: ConfigTypeInfo[] = [];
-	const unionName = `${nodeName}${versionSuffix}Params`;
 
 	if (combinations.length === 0) {
 		// No discriminators - generate simple interface
-		const interfaceName = `${nodeName}${versionSuffix}Params`;
-		lines.push(`export interface ${interfaceName} {`);
+		const configName = `${nodeName}${versionSuffix}Config`;
+		lines.push(`export interface ${configName} {`);
 
 		// Track seen property names to avoid duplicates
 		const seenNames = new Set<string>();
@@ -1833,14 +1819,13 @@ function generateDiscriminatedUnionForEntry(
 
 		// Single config type with no discriminators
 		configTypes.push({
-			typeName: interfaceName,
+			typeName: configName,
 			discriminators: {},
 		});
 
 		return {
 			code: lines.join('\n'),
 			configTypes,
-			unionTypeName: unionName,
 		};
 	}
 
@@ -1916,18 +1901,9 @@ function generateDiscriminatedUnionForEntry(
 		lines.push('');
 	}
 
-	// Generate union type
-	lines.push(`export type ${unionName} =`);
-	for (let i = 0; i < configTypeNames.length; i++) {
-		const linePrefix = i === 0 ? '\t| ' : '\t| ';
-		lines.push(`${linePrefix}${configTypeNames[i]}`);
-	}
-	lines.push('\t;');
-
 	return {
 		code: lines.join('\n'),
 		configTypes,
-		unionTypeName: unionName,
 	};
 }
 

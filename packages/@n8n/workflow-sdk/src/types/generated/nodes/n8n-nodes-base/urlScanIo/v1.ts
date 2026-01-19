@@ -50,11 +50,6 @@ export type UrlScanIoV1ScanPerformConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type UrlScanIoV1Params =
-	| UrlScanIoV1ScanGetConfig
-	| UrlScanIoV1ScanGetAllConfig
-	| UrlScanIoV1ScanPerformConfig
-	;
 
 // ===========================================================================
 // Output Types

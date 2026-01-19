@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FigmaTriggerV1Params {
+export interface FigmaTriggerV1Config {
 /**
  * Trigger will monitor this Figma Team for changes. Team ID can be found in the URL of a Figma Team page when viewed in a web browser: figma.com/files/team/{TEAM-ID}/.
  */
@@ -38,8 +38,8 @@ interface FigmaTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type FigmaTriggerV1ParamsNode = FigmaTriggerV1NodeBase & {
-	config: NodeConfig<FigmaTriggerV1Params>;
+export type FigmaTriggerV1Node = FigmaTriggerV1NodeBase & {
+	config: NodeConfig<FigmaTriggerV1Config>;
 };
 
-export type FigmaTriggerV1Node = FigmaTriggerV1ParamsNode;
+export type FigmaTriggerV1Node = FigmaTriggerV1Node;

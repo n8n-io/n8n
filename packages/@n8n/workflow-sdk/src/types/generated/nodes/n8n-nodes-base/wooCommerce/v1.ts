@@ -721,23 +721,6 @@ export type WooCommerceV1ProductUpdateConfig = {
 	};
 };
 
-export type WooCommerceV1Params =
-	| WooCommerceV1CustomerCreateConfig
-	| WooCommerceV1CustomerDeleteConfig
-	| WooCommerceV1CustomerGetConfig
-	| WooCommerceV1CustomerGetAllConfig
-	| WooCommerceV1CustomerUpdateConfig
-	| WooCommerceV1OrderCreateConfig
-	| WooCommerceV1OrderDeleteConfig
-	| WooCommerceV1OrderGetConfig
-	| WooCommerceV1OrderGetAllConfig
-	| WooCommerceV1OrderUpdateConfig
-	| WooCommerceV1ProductCreateConfig
-	| WooCommerceV1ProductDeleteConfig
-	| WooCommerceV1ProductGetConfig
-	| WooCommerceV1ProductGetAllConfig
-	| WooCommerceV1ProductUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

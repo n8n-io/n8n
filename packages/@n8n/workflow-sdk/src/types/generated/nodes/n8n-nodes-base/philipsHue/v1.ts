@@ -61,12 +61,6 @@ export type PhilipsHueV1LightUpdateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PhilipsHueV1Params =
-	| PhilipsHueV1LightDeleteConfig
-	| PhilipsHueV1LightGetConfig
-	| PhilipsHueV1LightGetAllConfig
-	| PhilipsHueV1LightUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

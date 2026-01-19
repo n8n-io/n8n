@@ -318,31 +318,6 @@ export type MicrosoftOutlookV1MessageAttachmentGetAllConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type MicrosoftOutlookV1Params =
-	| MicrosoftOutlookV1DraftCreateConfig
-	| MicrosoftOutlookV1DraftDeleteConfig
-	| MicrosoftOutlookV1DraftGetConfig
-	| MicrosoftOutlookV1DraftSendConfig
-	| MicrosoftOutlookV1DraftUpdateConfig
-	| MicrosoftOutlookV1FolderCreateConfig
-	| MicrosoftOutlookV1FolderDeleteConfig
-	| MicrosoftOutlookV1FolderGetConfig
-	| MicrosoftOutlookV1FolderGetChildrenConfig
-	| MicrosoftOutlookV1FolderGetAllConfig
-	| MicrosoftOutlookV1FolderMessageGetAllConfig
-	| MicrosoftOutlookV1MessageDeleteConfig
-	| MicrosoftOutlookV1MessageGetConfig
-	| MicrosoftOutlookV1MessageGetAllConfig
-	| MicrosoftOutlookV1MessageGetMimeConfig
-	| MicrosoftOutlookV1MessageMoveConfig
-	| MicrosoftOutlookV1MessageReplyConfig
-	| MicrosoftOutlookV1MessageSendConfig
-	| MicrosoftOutlookV1MessageUpdateConfig
-	| MicrosoftOutlookV1MessageAttachmentAddConfig
-	| MicrosoftOutlookV1MessageAttachmentDownloadConfig
-	| MicrosoftOutlookV1MessageAttachmentGetConfig
-	| MicrosoftOutlookV1MessageAttachmentGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

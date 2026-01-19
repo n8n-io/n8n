@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LimitV1Params {
+export interface LimitV1Config {
 /**
  * If there are more items than this number, some are removed
  * @default 1
@@ -37,8 +37,8 @@ interface LimitV1NodeBase {
 	version: 1;
 }
 
-export type LimitV1ParamsNode = LimitV1NodeBase & {
-	config: NodeConfig<LimitV1Params>;
+export type LimitV1Node = LimitV1NodeBase & {
+	config: NodeConfig<LimitV1Config>;
 };
 
-export type LimitV1Node = LimitV1ParamsNode;
+export type LimitV1Node = LimitV1Node;

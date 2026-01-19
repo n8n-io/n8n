@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SurveyMonkeyTriggerV1Params {
+export interface SurveyMonkeyTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 	objectType: 'collector' | 'survey' | Expression<string>;
 	event: 'collector_created' | 'collector_deleted' | 'collector_updated' | 'response_completed' | 'response_created' | 'response_deleted' | 'response_disqualified' | 'response_overquota' | 'response_updated' | 'survey_created' | 'survey_deleted' | 'survey_updated' | Expression<string>;
@@ -68,8 +68,8 @@ interface SurveyMonkeyTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type SurveyMonkeyTriggerV1ParamsNode = SurveyMonkeyTriggerV1NodeBase & {
-	config: NodeConfig<SurveyMonkeyTriggerV1Params>;
+export type SurveyMonkeyTriggerV1Node = SurveyMonkeyTriggerV1NodeBase & {
+	config: NodeConfig<SurveyMonkeyTriggerV1Config>;
 };
 
-export type SurveyMonkeyTriggerV1Node = SurveyMonkeyTriggerV1ParamsNode;
+export type SurveyMonkeyTriggerV1Node = SurveyMonkeyTriggerV1Node;

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FacebookGraphApiV1Params {
+export interface FacebookGraphApiV1Config {
 /**
  * The Host URL of the request. Almost all requests are passed to the graph.facebook.com host URL. The single exception is video uploads, which use graph-video.facebook.com.
  * @default graph.facebook.com
@@ -73,8 +73,8 @@ interface FacebookGraphApiV1NodeBase {
 	credentials?: FacebookGraphApiV1Credentials;
 }
 
-export type FacebookGraphApiV1ParamsNode = FacebookGraphApiV1NodeBase & {
-	config: NodeConfig<FacebookGraphApiV1Params>;
+export type FacebookGraphApiV1Node = FacebookGraphApiV1NodeBase & {
+	config: NodeConfig<FacebookGraphApiV1Config>;
 };
 
-export type FacebookGraphApiV1Node = FacebookGraphApiV1ParamsNode;
+export type FacebookGraphApiV1Node = FacebookGraphApiV1Node;

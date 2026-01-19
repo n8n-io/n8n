@@ -78,10 +78,6 @@ export type GoogleBigQueryV1RecordGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleBigQueryV1Params =
-	| GoogleBigQueryV1RecordCreateConfig
-	| GoogleBigQueryV1RecordGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

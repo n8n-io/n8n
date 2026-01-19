@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ReadWriteFileV1Params {
+export interface ReadWriteFileV1Config {
 	operation?: 'read' | 'write' | Expression<string>;
 /**
  * Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows.
@@ -41,8 +41,8 @@ interface ReadWriteFileV1NodeBase {
 	version: 1;
 }
 
-export type ReadWriteFileV1ParamsNode = ReadWriteFileV1NodeBase & {
-	config: NodeConfig<ReadWriteFileV1Params>;
+export type ReadWriteFileV1Node = ReadWriteFileV1NodeBase & {
+	config: NodeConfig<ReadWriteFileV1Config>;
 };
 
-export type ReadWriteFileV1Node = ReadWriteFileV1ParamsNode;
+export type ReadWriteFileV1Node = ReadWriteFileV1Node;

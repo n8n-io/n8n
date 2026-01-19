@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface WaitV1Params {
+export interface WaitV1Config {
 /**
  * Determines the waiting mode to use before the workflow continues
  * @default timeInterval
@@ -271,8 +271,8 @@ interface WaitV1NodeBase {
 	credentials?: WaitV1Credentials;
 }
 
-export type WaitV1ParamsNode = WaitV1NodeBase & {
-	config: NodeConfig<WaitV1Params>;
+export type WaitV1Node = WaitV1NodeBase & {
+	config: NodeConfig<WaitV1Config>;
 };
 
-export type WaitV1Node = WaitV1ParamsNode;
+export type WaitV1Node = WaitV1Node;

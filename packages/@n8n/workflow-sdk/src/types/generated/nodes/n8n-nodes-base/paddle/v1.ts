@@ -220,17 +220,6 @@ export type PaddleV1UserGetAllConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PaddleV1Params =
-	| PaddleV1CouponCreateConfig
-	| PaddleV1CouponGetAllConfig
-	| PaddleV1CouponUpdateConfig
-	| PaddleV1PaymentGetAllConfig
-	| PaddleV1PaymentRescheduleConfig
-	| PaddleV1PlanGetConfig
-	| PaddleV1PlanGetAllConfig
-	| PaddleV1ProductGetAllConfig
-	| PaddleV1UserGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

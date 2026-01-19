@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcChainSummarizationV2Params {
+export interface LcChainSummarizationV2Config {
 /**
  * How to pass data into the summarization chain
  * @default nodeInputJson
@@ -51,8 +51,8 @@ interface LcChainSummarizationV2NodeBase {
 	version: 2;
 }
 
-export type LcChainSummarizationV2ParamsNode = LcChainSummarizationV2NodeBase & {
-	config: NodeConfig<LcChainSummarizationV2Params>;
+export type LcChainSummarizationV2Node = LcChainSummarizationV2NodeBase & {
+	config: NodeConfig<LcChainSummarizationV2Config>;
 };
 
-export type LcChainSummarizationV2Node = LcChainSummarizationV2ParamsNode;
+export type LcChainSummarizationV2Node = LcChainSummarizationV2Node;

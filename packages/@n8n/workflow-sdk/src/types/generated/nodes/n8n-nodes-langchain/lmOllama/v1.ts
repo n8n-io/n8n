@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmOllamaV1Params {
+export interface LcLmOllamaV1Config {
 /**
  * The model which will generate the completion. To download models, visit &lt;a href="https://ollama.ai/library"&gt;Ollama Models Library&lt;/a&gt;.
  * @default llama3.2
@@ -43,8 +43,8 @@ interface LcLmOllamaV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmOllamaV1ParamsNode = LcLmOllamaV1NodeBase & {
-	config: NodeConfig<LcLmOllamaV1Params>;
+export type LcLmOllamaV1Node = LcLmOllamaV1NodeBase & {
+	config: NodeConfig<LcLmOllamaV1Config>;
 };
 
-export type LcLmOllamaV1Node = LcLmOllamaV1ParamsNode;
+export type LcLmOllamaV1Node = LcLmOllamaV1Node;

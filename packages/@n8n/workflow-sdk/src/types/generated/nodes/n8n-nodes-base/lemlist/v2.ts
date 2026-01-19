@@ -197,23 +197,6 @@ export type LemlistV2UnsubscribeGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type LemlistV2Params =
-	| LemlistV2ActivityGetAllConfig
-	| LemlistV2CampaignGetAllConfig
-	| LemlistV2CampaignGetStatsConfig
-	| LemlistV2EnrichGetConfig
-	| LemlistV2EnrichEnrichLeadConfig
-	| LemlistV2EnrichEnrichPersonConfig
-	| LemlistV2LeadCreateConfig
-	| LemlistV2LeadDeleteConfig
-	| LemlistV2LeadGetConfig
-	| LemlistV2LeadUnsubscribeConfig
-	| LemlistV2TeamGetConfig
-	| LemlistV2TeamGetCreditsConfig
-	| LemlistV2UnsubscribeAddConfig
-	| LemlistV2UnsubscribeDeleteConfig
-	| LemlistV2UnsubscribeGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

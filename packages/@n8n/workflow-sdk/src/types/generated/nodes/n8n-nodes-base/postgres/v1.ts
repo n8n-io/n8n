@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface PostgresV1Params {
+export interface PostgresV1Config {
 	operation?: 'executeQuery' | 'insert' | 'update' | Expression<string>;
 /**
  * The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.
@@ -67,8 +67,8 @@ interface PostgresV1NodeBase {
 	credentials?: PostgresV1Credentials;
 }
 
-export type PostgresV1ParamsNode = PostgresV1NodeBase & {
-	config: NodeConfig<PostgresV1Params>;
+export type PostgresV1Node = PostgresV1NodeBase & {
+	config: NodeConfig<PostgresV1Config>;
 };
 
-export type PostgresV1Node = PostgresV1ParamsNode;
+export type PostgresV1Node = PostgresV1Node;

@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface FormTriggerV1Params {
+export interface FormTriggerV1Config {
 /**
  * The final segment of the form's URL, both for test and production
  */
@@ -184,8 +184,8 @@ interface FormTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type FormTriggerV1ParamsNode = FormTriggerV1NodeBase & {
-	config: NodeConfig<FormTriggerV1Params>;
+export type FormTriggerV1Node = FormTriggerV1NodeBase & {
+	config: NodeConfig<FormTriggerV1Config>;
 };
 
-export type FormTriggerV1Node = FormTriggerV1ParamsNode;
+export type FormTriggerV1Node = FormTriggerV1Node;

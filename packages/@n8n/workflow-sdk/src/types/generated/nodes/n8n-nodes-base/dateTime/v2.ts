@@ -113,10 +113,6 @@ export type DateTimeV2RoundUpConfig = {
 	part?: 'year' | 'month' | 'week' | 'day' | 'hour' | 'minute' | 'second' | Expression<string>;
 };
 
-export type DateTimeV2Params =
-	| DateTimeV2RoundDownConfig
-	| DateTimeV2RoundUpConfig
-	;
 
 // ===========================================================================
 // Credentials

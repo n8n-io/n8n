@@ -485,39 +485,6 @@ export type HubspotV2TicketUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type HubspotV2Params =
-	| HubspotV2CompanyCreateConfig
-	| HubspotV2CompanyDeleteConfig
-	| HubspotV2CompanyGetConfig
-	| HubspotV2CompanyGetAllConfig
-	| HubspotV2CompanyGetRecentlyCreatedUpdatedConfig
-	| HubspotV2CompanySearchByDomainConfig
-	| HubspotV2CompanyUpdateConfig
-	| HubspotV2ContactUpsertConfig
-	| HubspotV2ContactDeleteConfig
-	| HubspotV2ContactGetConfig
-	| HubspotV2ContactGetAllConfig
-	| HubspotV2ContactGetRecentlyCreatedUpdatedConfig
-	| HubspotV2ContactSearchConfig
-	| HubspotV2ContactListAddConfig
-	| HubspotV2ContactListRemoveConfig
-	| HubspotV2DealCreateConfig
-	| HubspotV2DealDeleteConfig
-	| HubspotV2DealGetConfig
-	| HubspotV2DealGetAllConfig
-	| HubspotV2DealGetRecentlyCreatedUpdatedConfig
-	| HubspotV2DealSearchConfig
-	| HubspotV2DealUpdateConfig
-	| HubspotV2EngagementCreateConfig
-	| HubspotV2EngagementDeleteConfig
-	| HubspotV2EngagementGetConfig
-	| HubspotV2EngagementGetAllConfig
-	| HubspotV2TicketCreateConfig
-	| HubspotV2TicketDeleteConfig
-	| HubspotV2TicketGetConfig
-	| HubspotV2TicketGetAllConfig
-	| HubspotV2TicketUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

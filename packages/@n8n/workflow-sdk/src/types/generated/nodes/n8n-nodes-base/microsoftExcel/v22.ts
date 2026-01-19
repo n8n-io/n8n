@@ -373,25 +373,6 @@ export type MicrosoftExcelV22WorksheetUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MicrosoftExcelV22Params =
-	| MicrosoftExcelV22TableAppendConfig
-	| MicrosoftExcelV22TableConvertToRangeConfig
-	| MicrosoftExcelV22TableAddTableConfig
-	| MicrosoftExcelV22TableDeleteTableConfig
-	| MicrosoftExcelV22TableGetColumnsConfig
-	| MicrosoftExcelV22TableGetRowsConfig
-	| MicrosoftExcelV22TableLookupConfig
-	| MicrosoftExcelV22WorkbookAddWorksheetConfig
-	| MicrosoftExcelV22WorkbookDeleteWorkbookConfig
-	| MicrosoftExcelV22WorkbookGetAllConfig
-	| MicrosoftExcelV22WorksheetAppendConfig
-	| MicrosoftExcelV22WorksheetUpsertConfig
-	| MicrosoftExcelV22WorksheetClearConfig
-	| MicrosoftExcelV22WorksheetDeleteWorksheetConfig
-	| MicrosoftExcelV22WorksheetGetAllConfig
-	| MicrosoftExcelV22WorksheetReadRowsConfig
-	| MicrosoftExcelV22WorksheetUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

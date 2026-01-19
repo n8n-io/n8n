@@ -95,12 +95,6 @@ export type DisqusV1ForumGetPostsConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type DisqusV1Params =
-	| DisqusV1ForumGetConfig
-	| DisqusV1ForumGetCategoriesConfig
-	| DisqusV1ForumGetThreadsConfig
-	| DisqusV1ForumGetPostsConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface UprocV1Params {
+export interface UprocV1Config {
 	group?: 'audio' | 'communication' | 'company' | 'finance' | 'geographic' | 'image' | 'internet' | 'personal' | 'product' | 'security' | 'text' | Expression<string>;
 /**
  * The Operation to consume
@@ -750,8 +750,8 @@ interface UprocV1NodeBase {
 	credentials?: UprocV1Credentials;
 }
 
-export type UprocV1ParamsNode = UprocV1NodeBase & {
-	config: NodeConfig<UprocV1Params>;
+export type UprocV1Node = UprocV1NodeBase & {
+	config: NodeConfig<UprocV1Config>;
 };
 
-export type UprocV1Node = UprocV1ParamsNode;
+export type UprocV1Node = UprocV1Node;

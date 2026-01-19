@@ -40,9 +40,6 @@ export type LinkedInV1PostCreateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type LinkedInV1Params =
-	| LinkedInV1PostCreateConfig
-	;
 
 // ===========================================================================
 // Output Types

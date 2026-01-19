@@ -401,11 +401,6 @@ export type HttpRequestV41GenericCredentialTypeConfig = {
 	maxLength?: number | Expression<number>;
 };
 
-export type HttpRequestV41Params =
-	| HttpRequestV41NoneConfig
-	| HttpRequestV41PredefinedCredentialTypeConfig
-	| HttpRequestV41GenericCredentialTypeConfig
-	;
 
 // ===========================================================================
 // Credentials

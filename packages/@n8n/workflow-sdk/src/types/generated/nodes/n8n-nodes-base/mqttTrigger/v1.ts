@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MqttTriggerV1Params {
+export interface MqttTriggerV1Config {
 /**
  * Topics to subscribe to, multiple can be defined with comma. Wildcard characters are supported (+ - for single level and # - for multi level). By default all subscription used QoS=0. To set a different QoS, write the QoS desired after the topic preceded by a colom. For Example: topicA:1,topicB:2
  */
@@ -38,8 +38,8 @@ interface MqttTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type MqttTriggerV1ParamsNode = MqttTriggerV1NodeBase & {
-	config: NodeConfig<MqttTriggerV1Params>;
+export type MqttTriggerV1Node = MqttTriggerV1NodeBase & {
+	config: NodeConfig<MqttTriggerV1Config>;
 };
 
-export type MqttTriggerV1Node = MqttTriggerV1ParamsNode;
+export type MqttTriggerV1Node = MqttTriggerV1Node;

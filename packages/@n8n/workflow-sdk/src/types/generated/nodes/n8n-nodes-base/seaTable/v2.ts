@@ -360,24 +360,6 @@ export type SeaTableV2AssetUploadConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type SeaTableV2Params =
-	| SeaTableV2RowCreateConfig
-	| SeaTableV2RowRemoveConfig
-	| SeaTableV2RowGetConfig
-	| SeaTableV2RowListConfig
-	| SeaTableV2RowLockConfig
-	| SeaTableV2RowSearchConfig
-	| SeaTableV2RowUnlockConfig
-	| SeaTableV2RowUpdateConfig
-	| SeaTableV2BaseSnapshotConfig
-	| SeaTableV2BaseMetadataConfig
-	| SeaTableV2BaseCollaboratorConfig
-	| SeaTableV2LinkAddConfig
-	| SeaTableV2LinkListConfig
-	| SeaTableV2LinkRemoveConfig
-	| SeaTableV2AssetGetPublicURLConfig
-	| SeaTableV2AssetUploadConfig
-	;
 
 // ===========================================================================
 // Output Types

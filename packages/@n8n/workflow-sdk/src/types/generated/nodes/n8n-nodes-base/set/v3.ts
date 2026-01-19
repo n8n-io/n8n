@@ -115,10 +115,6 @@ export type SetV3RawConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type SetV3Params =
-	| SetV3ManualConfig
-	| SetV3RawConfig
-	;
 
 // ===========================================================================
 // Credentials

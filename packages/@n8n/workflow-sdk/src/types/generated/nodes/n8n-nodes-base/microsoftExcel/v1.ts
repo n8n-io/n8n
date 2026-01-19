@@ -261,16 +261,6 @@ export type MicrosoftExcelV1WorksheetGetContentConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type MicrosoftExcelV1Params =
-	| MicrosoftExcelV1TableAddRowConfig
-	| MicrosoftExcelV1TableGetColumnsConfig
-	| MicrosoftExcelV1TableGetRowsConfig
-	| MicrosoftExcelV1TableLookupConfig
-	| MicrosoftExcelV1WorkbookAddWorksheetConfig
-	| MicrosoftExcelV1WorkbookGetAllConfig
-	| MicrosoftExcelV1WorksheetGetAllConfig
-	| MicrosoftExcelV1WorksheetGetContentConfig
-	;
 
 // ===========================================================================
 // Credentials

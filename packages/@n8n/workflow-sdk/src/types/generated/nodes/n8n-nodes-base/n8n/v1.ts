@@ -211,23 +211,6 @@ export type N8nV1WorkflowUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type N8nV1Params =
-	| N8nV1AuditGenerateConfig
-	| N8nV1CredentialCreateConfig
-	| N8nV1CredentialDeleteConfig
-	| N8nV1CredentialGetSchemaConfig
-	| N8nV1ExecutionGetConfig
-	| N8nV1ExecutionGetAllConfig
-	| N8nV1ExecutionDeleteConfig
-	| N8nV1WorkflowActivateConfig
-	| N8nV1WorkflowCreateConfig
-	| N8nV1WorkflowDeactivateConfig
-	| N8nV1WorkflowDeleteConfig
-	| N8nV1WorkflowGetConfig
-	| N8nV1WorkflowGetAllConfig
-	| N8nV1WorkflowGetVersionConfig
-	| N8nV1WorkflowUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

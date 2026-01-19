@@ -308,23 +308,6 @@ export type AgileCrmV1DealUpdateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type AgileCrmV1Params =
-	| AgileCrmV1CompanyCreateConfig
-	| AgileCrmV1CompanyDeleteConfig
-	| AgileCrmV1CompanyGetConfig
-	| AgileCrmV1CompanyGetAllConfig
-	| AgileCrmV1CompanyUpdateConfig
-	| AgileCrmV1ContactCreateConfig
-	| AgileCrmV1ContactDeleteConfig
-	| AgileCrmV1ContactGetConfig
-	| AgileCrmV1ContactGetAllConfig
-	| AgileCrmV1ContactUpdateConfig
-	| AgileCrmV1DealCreateConfig
-	| AgileCrmV1DealDeleteConfig
-	| AgileCrmV1DealGetConfig
-	| AgileCrmV1DealGetAllConfig
-	| AgileCrmV1DealUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

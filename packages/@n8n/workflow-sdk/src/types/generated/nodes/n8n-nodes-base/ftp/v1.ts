@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FtpV1Params {
+export interface FtpV1Config {
 /**
  * File transfer protocol
  * @default ftp
@@ -65,8 +65,8 @@ interface FtpV1NodeBase {
 	credentials?: FtpV1Credentials;
 }
 
-export type FtpV1ParamsNode = FtpV1NodeBase & {
-	config: NodeConfig<FtpV1Params>;
+export type FtpV1Node = FtpV1NodeBase & {
+	config: NodeConfig<FtpV1Config>;
 };
 
-export type FtpV1Node = FtpV1ParamsNode;
+export type FtpV1Node = FtpV1Node;

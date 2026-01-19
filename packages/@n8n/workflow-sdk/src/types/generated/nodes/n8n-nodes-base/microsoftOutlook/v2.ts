@@ -580,46 +580,6 @@ export type MicrosoftOutlookV2MessageAttachmentGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MicrosoftOutlookV2Params =
-	| MicrosoftOutlookV2CalendarCreateConfig
-	| MicrosoftOutlookV2CalendarDeleteConfig
-	| MicrosoftOutlookV2CalendarGetConfig
-	| MicrosoftOutlookV2CalendarGetAllConfig
-	| MicrosoftOutlookV2CalendarUpdateConfig
-	| MicrosoftOutlookV2ContactCreateConfig
-	| MicrosoftOutlookV2ContactDeleteConfig
-	| MicrosoftOutlookV2ContactGetConfig
-	| MicrosoftOutlookV2ContactGetAllConfig
-	| MicrosoftOutlookV2ContactUpdateConfig
-	| MicrosoftOutlookV2DraftCreateConfig
-	| MicrosoftOutlookV2DraftDeleteConfig
-	| MicrosoftOutlookV2DraftGetConfig
-	| MicrosoftOutlookV2DraftSendConfig
-	| MicrosoftOutlookV2DraftUpdateConfig
-	| MicrosoftOutlookV2EventCreateConfig
-	| MicrosoftOutlookV2EventDeleteConfig
-	| MicrosoftOutlookV2EventGetConfig
-	| MicrosoftOutlookV2EventGetAllConfig
-	| MicrosoftOutlookV2EventUpdateConfig
-	| MicrosoftOutlookV2FolderCreateConfig
-	| MicrosoftOutlookV2FolderDeleteConfig
-	| MicrosoftOutlookV2FolderGetConfig
-	| MicrosoftOutlookV2FolderGetAllConfig
-	| MicrosoftOutlookV2FolderUpdateConfig
-	| MicrosoftOutlookV2FolderMessageGetAllConfig
-	| MicrosoftOutlookV2MessageDeleteConfig
-	| MicrosoftOutlookV2MessageGetConfig
-	| MicrosoftOutlookV2MessageGetAllConfig
-	| MicrosoftOutlookV2MessageMoveConfig
-	| MicrosoftOutlookV2MessageReplyConfig
-	| MicrosoftOutlookV2MessageSendConfig
-	| MicrosoftOutlookV2MessageSendAndWaitConfig
-	| MicrosoftOutlookV2MessageUpdateConfig
-	| MicrosoftOutlookV2MessageAttachmentAddConfig
-	| MicrosoftOutlookV2MessageAttachmentDownloadConfig
-	| MicrosoftOutlookV2MessageAttachmentGetConfig
-	| MicrosoftOutlookV2MessageAttachmentGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

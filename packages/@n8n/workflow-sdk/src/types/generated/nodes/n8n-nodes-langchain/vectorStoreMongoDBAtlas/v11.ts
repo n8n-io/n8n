@@ -180,13 +180,6 @@ export type LcVectorStoreMongoDBAtlasV11UpdateConfig = {
 		id: string | Expression<string>;
 };
 
-export type LcVectorStoreMongoDBAtlasV11Params =
-	| LcVectorStoreMongoDBAtlasV11LoadConfig
-	| LcVectorStoreMongoDBAtlasV11InsertConfig
-	| LcVectorStoreMongoDBAtlasV11RetrieveConfig
-	| LcVectorStoreMongoDBAtlasV11RetrieveAsToolConfig
-	| LcVectorStoreMongoDBAtlasV11UpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

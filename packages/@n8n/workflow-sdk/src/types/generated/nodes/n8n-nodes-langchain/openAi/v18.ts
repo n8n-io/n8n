@@ -283,23 +283,6 @@ export type LcOpenAiV18FileUploadConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcOpenAiV18Params =
-	| LcOpenAiV18AssistantCreateConfig
-	| LcOpenAiV18AssistantDeleteAssistantConfig
-	| LcOpenAiV18AssistantListConfig
-	| LcOpenAiV18AssistantMessageConfig
-	| LcOpenAiV18AssistantUpdateConfig
-	| LcOpenAiV18TextMessageConfig
-	| LcOpenAiV18TextClassifyConfig
-	| LcOpenAiV18ImageAnalyzeConfig
-	| LcOpenAiV18ImageGenerateConfig
-	| LcOpenAiV18AudioGenerateConfig
-	| LcOpenAiV18AudioTranscribeConfig
-	| LcOpenAiV18AudioTranslateConfig
-	| LcOpenAiV18FileDeleteFileConfig
-	| LcOpenAiV18FileListConfig
-	| LcOpenAiV18FileUploadConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -201,22 +201,6 @@ export type MicrosoftOneDriveV11FolderShareConfig = {
 		scope?: 'anonymous' | 'organization' | Expression<string>;
 };
 
-export type MicrosoftOneDriveV11Params =
-	| MicrosoftOneDriveV11FileCopyConfig
-	| MicrosoftOneDriveV11FileDeleteConfig
-	| MicrosoftOneDriveV11FileDownloadConfig
-	| MicrosoftOneDriveV11FileGetConfig
-	| MicrosoftOneDriveV11FileRenameConfig
-	| MicrosoftOneDriveV11FileSearchConfig
-	| MicrosoftOneDriveV11FileShareConfig
-	| MicrosoftOneDriveV11FileUploadConfig
-	| MicrosoftOneDriveV11FolderCreateConfig
-	| MicrosoftOneDriveV11FolderDeleteConfig
-	| MicrosoftOneDriveV11FolderGetChildrenConfig
-	| MicrosoftOneDriveV11FolderRenameConfig
-	| MicrosoftOneDriveV11FolderSearchConfig
-	| MicrosoftOneDriveV11FolderShareConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcOutputParserAutofixingV1Params {
+export interface LcOutputParserAutofixingV1Config {
 	options?: Record<string, unknown>;
 }
 
@@ -29,8 +29,8 @@ interface LcOutputParserAutofixingV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcOutputParserAutofixingV1ParamsNode = LcOutputParserAutofixingV1NodeBase & {
-	config: NodeConfig<LcOutputParserAutofixingV1Params>;
+export type LcOutputParserAutofixingV1Node = LcOutputParserAutofixingV1NodeBase & {
+	config: NodeConfig<LcOutputParserAutofixingV1Config>;
 };
 
-export type LcOutputParserAutofixingV1Node = LcOutputParserAutofixingV1ParamsNode;
+export type LcOutputParserAutofixingV1Node = LcOutputParserAutofixingV1Node;

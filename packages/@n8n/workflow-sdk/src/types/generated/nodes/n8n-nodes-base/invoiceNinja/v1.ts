@@ -495,39 +495,6 @@ export type InvoiceNinjaV1TaskGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type InvoiceNinjaV1Params =
-	| InvoiceNinjaV1BankTransactionCreateConfig
-	| InvoiceNinjaV1BankTransactionDeleteConfig
-	| InvoiceNinjaV1BankTransactionGetConfig
-	| InvoiceNinjaV1BankTransactionGetAllConfig
-	| InvoiceNinjaV1BankTransactionMatchPaymentConfig
-	| InvoiceNinjaV1ClientCreateConfig
-	| InvoiceNinjaV1ClientDeleteConfig
-	| InvoiceNinjaV1ClientGetConfig
-	| InvoiceNinjaV1ClientGetAllConfig
-	| InvoiceNinjaV1ExpenseCreateConfig
-	| InvoiceNinjaV1ExpenseDeleteConfig
-	| InvoiceNinjaV1ExpenseGetConfig
-	| InvoiceNinjaV1ExpenseGetAllConfig
-	| InvoiceNinjaV1InvoiceCreateConfig
-	| InvoiceNinjaV1InvoiceDeleteConfig
-	| InvoiceNinjaV1InvoiceEmailConfig
-	| InvoiceNinjaV1InvoiceGetConfig
-	| InvoiceNinjaV1InvoiceGetAllConfig
-	| InvoiceNinjaV1PaymentCreateConfig
-	| InvoiceNinjaV1PaymentDeleteConfig
-	| InvoiceNinjaV1PaymentGetConfig
-	| InvoiceNinjaV1PaymentGetAllConfig
-	| InvoiceNinjaV1QuoteCreateConfig
-	| InvoiceNinjaV1QuoteDeleteConfig
-	| InvoiceNinjaV1QuoteEmailConfig
-	| InvoiceNinjaV1QuoteGetConfig
-	| InvoiceNinjaV1QuoteGetAllConfig
-	| InvoiceNinjaV1TaskCreateConfig
-	| InvoiceNinjaV1TaskDeleteConfig
-	| InvoiceNinjaV1TaskGetConfig
-	| InvoiceNinjaV1TaskGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

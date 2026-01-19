@@ -321,19 +321,6 @@ export type MicrosoftSharePointV1ListGetAllConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type MicrosoftSharePointV1Params =
-	| MicrosoftSharePointV1FileDownloadConfig
-	| MicrosoftSharePointV1FileUpdateConfig
-	| MicrosoftSharePointV1FileUploadConfig
-	| MicrosoftSharePointV1ItemCreateConfig
-	| MicrosoftSharePointV1ItemUpsertConfig
-	| MicrosoftSharePointV1ItemDeleteConfig
-	| MicrosoftSharePointV1ItemGetConfig
-	| MicrosoftSharePointV1ItemGetAllConfig
-	| MicrosoftSharePointV1ItemUpdateConfig
-	| MicrosoftSharePointV1ListGetConfig
-	| MicrosoftSharePointV1ListGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

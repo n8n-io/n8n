@@ -1540,32 +1540,6 @@ export type TelegramV12MessageUnpinChatMessageConfig = {
 	replyKeyboardRemove?: Record<string, unknown>;
 };
 
-export type TelegramV12Params =
-	| TelegramV12ChatGetConfig
-	| TelegramV12ChatAdministratorsConfig
-	| TelegramV12ChatMemberConfig
-	| TelegramV12ChatLeaveConfig
-	| TelegramV12ChatSetDescriptionConfig
-	| TelegramV12ChatSetTitleConfig
-	| TelegramV12CallbackAnswerQueryConfig
-	| TelegramV12CallbackAnswerInlineQueryConfig
-	| TelegramV12FileGetConfig
-	| TelegramV12MessageDeleteMessageConfig
-	| TelegramV12MessageEditMessageTextConfig
-	| TelegramV12MessagePinChatMessageConfig
-	| TelegramV12MessageSendAnimationConfig
-	| TelegramV12MessageSendAudioConfig
-	| TelegramV12MessageSendChatActionConfig
-	| TelegramV12MessageSendDocumentConfig
-	| TelegramV12MessageSendLocationConfig
-	| TelegramV12MessageSendMediaGroupConfig
-	| TelegramV12MessageSendMessageConfig
-	| TelegramV12MessageSendAndWaitConfig
-	| TelegramV12MessageSendPhotoConfig
-	| TelegramV12MessageSendStickerConfig
-	| TelegramV12MessageSendVideoConfig
-	| TelegramV12MessageUnpinChatMessageConfig
-	;
 
 // ===========================================================================
 // Output Types

@@ -253,18 +253,6 @@ export type LcAnthropicV1TextMessageConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcAnthropicV1Params =
-	| LcAnthropicV1DocumentAnalyzeConfig
-	| LcAnthropicV1FileUploadConfig
-	| LcAnthropicV1FileGetConfig
-	| LcAnthropicV1FileListConfig
-	| LcAnthropicV1FileDeleteFileConfig
-	| LcAnthropicV1ImageAnalyzeConfig
-	| LcAnthropicV1PromptGenerateConfig
-	| LcAnthropicV1PromptImproveConfig
-	| LcAnthropicV1PromptTemplatizeConfig
-	| LcAnthropicV1TextMessageConfig
-	;
 
 // ===========================================================================
 // Credentials

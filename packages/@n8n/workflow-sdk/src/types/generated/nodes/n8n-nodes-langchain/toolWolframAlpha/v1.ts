@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolWolframAlphaV1Params {
+export interface LcToolWolframAlphaV1Config {
 }
 
 // ===========================================================================
@@ -33,8 +33,8 @@ interface LcToolWolframAlphaV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcToolWolframAlphaV1ParamsNode = LcToolWolframAlphaV1NodeBase & {
-	config: NodeConfig<LcToolWolframAlphaV1Params>;
+export type LcToolWolframAlphaV1Node = LcToolWolframAlphaV1NodeBase & {
+	config: NodeConfig<LcToolWolframAlphaV1Config>;
 };
 
-export type LcToolWolframAlphaV1Node = LcToolWolframAlphaV1ParamsNode;
+export type LcToolWolframAlphaV1Node = LcToolWolframAlphaV1Node;

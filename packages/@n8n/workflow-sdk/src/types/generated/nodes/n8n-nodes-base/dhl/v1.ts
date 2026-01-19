@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface DhlV1Params {
+export interface DhlV1Config {
 	resource?: unknown;
 	operation?: 'get' | Expression<string>;
 	trackingNumber: string | Expression<string>;
@@ -36,8 +36,8 @@ interface DhlV1NodeBase {
 	credentials?: DhlV1Credentials;
 }
 
-export type DhlV1ParamsNode = DhlV1NodeBase & {
-	config: NodeConfig<DhlV1Params>;
+export type DhlV1Node = DhlV1NodeBase & {
+	config: NodeConfig<DhlV1Config>;
 };
 
-export type DhlV1Node = DhlV1ParamsNode;
+export type DhlV1Node = DhlV1Node;

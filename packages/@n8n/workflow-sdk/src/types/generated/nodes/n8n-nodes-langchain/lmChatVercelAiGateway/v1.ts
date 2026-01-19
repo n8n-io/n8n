@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatVercelAiGatewayV1Params {
+export interface LcLmChatVercelAiGatewayV1Config {
 /**
  * The model which will generate the completion
  * @default openai/gpt-4o
@@ -43,8 +43,8 @@ interface LcLmChatVercelAiGatewayV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatVercelAiGatewayV1ParamsNode = LcLmChatVercelAiGatewayV1NodeBase & {
-	config: NodeConfig<LcLmChatVercelAiGatewayV1Params>;
+export type LcLmChatVercelAiGatewayV1Node = LcLmChatVercelAiGatewayV1NodeBase & {
+	config: NodeConfig<LcLmChatVercelAiGatewayV1Config>;
 };
 
-export type LcLmChatVercelAiGatewayV1Node = LcLmChatVercelAiGatewayV1ParamsNode;
+export type LcLmChatVercelAiGatewayV1Node = LcLmChatVercelAiGatewayV1Node;

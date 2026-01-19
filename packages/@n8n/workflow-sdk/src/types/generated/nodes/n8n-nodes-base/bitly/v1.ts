@@ -66,11 +66,6 @@ export type BitlyV1LinkUpdateConfig = {
 	};
 };
 
-export type BitlyV1Params =
-	| BitlyV1LinkCreateConfig
-	| BitlyV1LinkGetConfig
-	| BitlyV1LinkUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

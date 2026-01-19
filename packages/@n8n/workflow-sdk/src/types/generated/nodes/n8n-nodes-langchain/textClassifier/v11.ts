@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcTextClassifierV11Params {
+export interface LcTextClassifierV11Config {
 /**
  * Use an expression to reference data in previous nodes or enter static text
  */
@@ -42,8 +42,8 @@ interface LcTextClassifierV11NodeBase {
 	version: 1.1;
 }
 
-export type LcTextClassifierV11ParamsNode = LcTextClassifierV11NodeBase & {
-	config: NodeConfig<LcTextClassifierV11Params>;
+export type LcTextClassifierV11Node = LcTextClassifierV11NodeBase & {
+	config: NodeConfig<LcTextClassifierV11Config>;
 };
 
-export type LcTextClassifierV11Node = LcTextClassifierV11ParamsNode;
+export type LcTextClassifierV11Node = LcTextClassifierV11Node;

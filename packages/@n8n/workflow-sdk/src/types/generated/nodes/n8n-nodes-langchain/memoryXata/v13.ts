@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryXataV13Params {
+export interface LcMemoryXataV13Config {
 /**
  * The key to use to store session ID in the memory
  * @displayOptions.show { sessionIdType: ["customKey"] }
@@ -39,8 +39,8 @@ interface LcMemoryXataV13NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryXataV13ParamsNode = LcMemoryXataV13NodeBase & {
-	config: NodeConfig<LcMemoryXataV13Params>;
+export type LcMemoryXataV13Node = LcMemoryXataV13NodeBase & {
+	config: NodeConfig<LcMemoryXataV13Config>;
 };
 
-export type LcMemoryXataV13Node = LcMemoryXataV13ParamsNode;
+export type LcMemoryXataV13Node = LcMemoryXataV13Node;

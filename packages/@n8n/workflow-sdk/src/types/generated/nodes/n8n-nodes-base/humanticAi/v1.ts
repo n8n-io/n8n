@@ -64,11 +64,6 @@ export type HumanticAiV1ProfileUpdateConfig = {
 	binaryPropertyName?: string | Expression<string>;
 };
 
-export type HumanticAiV1Params =
-	| HumanticAiV1ProfileCreateConfig
-	| HumanticAiV1ProfileGetConfig
-	| HumanticAiV1ProfileUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

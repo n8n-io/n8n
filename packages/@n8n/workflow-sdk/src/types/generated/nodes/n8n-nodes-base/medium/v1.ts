@@ -62,10 +62,6 @@ export type MediumV1PublicationGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type MediumV1Params =
-	| MediumV1PostCreateConfig
-	| MediumV1PublicationGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

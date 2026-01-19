@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcOutputParserStructuredV12Params {
+export interface LcOutputParserStructuredV12Config {
 /**
  * Example JSON object to use to generate the schema
  * @displayOptions.show { schemaType: ["fromJson"] }
@@ -90,8 +90,8 @@ interface LcOutputParserStructuredV12NodeBase {
 	version: 1.2;
 }
 
-export type LcOutputParserStructuredV12ParamsNode = LcOutputParserStructuredV12NodeBase & {
-	config: NodeConfig<LcOutputParserStructuredV12Params>;
+export type LcOutputParserStructuredV12Node = LcOutputParserStructuredV12NodeBase & {
+	config: NodeConfig<LcOutputParserStructuredV12Config>;
 };
 
-export type LcOutputParserStructuredV12Node = LcOutputParserStructuredV12ParamsNode;
+export type LcOutputParserStructuredV12Node = LcOutputParserStructuredV12Node;

@@ -925,59 +925,6 @@ export type HarvestV1UserUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type HarvestV1Params =
-	| HarvestV1ClientCreateConfig
-	| HarvestV1ClientDeleteConfig
-	| HarvestV1ClientGetConfig
-	| HarvestV1ClientGetAllConfig
-	| HarvestV1ClientUpdateConfig
-	| HarvestV1CompanyGetConfig
-	| HarvestV1ContactCreateConfig
-	| HarvestV1ContactDeleteConfig
-	| HarvestV1ContactGetConfig
-	| HarvestV1ContactGetAllConfig
-	| HarvestV1ContactUpdateConfig
-	| HarvestV1EstimateCreateConfig
-	| HarvestV1EstimateDeleteConfig
-	| HarvestV1EstimateGetConfig
-	| HarvestV1EstimateGetAllConfig
-	| HarvestV1EstimateUpdateConfig
-	| HarvestV1ExpenseCreateConfig
-	| HarvestV1ExpenseDeleteConfig
-	| HarvestV1ExpenseGetConfig
-	| HarvestV1ExpenseGetAllConfig
-	| HarvestV1ExpenseUpdateConfig
-	| HarvestV1InvoiceCreateConfig
-	| HarvestV1InvoiceDeleteConfig
-	| HarvestV1InvoiceGetConfig
-	| HarvestV1InvoiceGetAllConfig
-	| HarvestV1InvoiceUpdateConfig
-	| HarvestV1ProjectCreateConfig
-	| HarvestV1ProjectDeleteConfig
-	| HarvestV1ProjectGetConfig
-	| HarvestV1ProjectGetAllConfig
-	| HarvestV1ProjectUpdateConfig
-	| HarvestV1TaskCreateConfig
-	| HarvestV1TaskDeleteConfig
-	| HarvestV1TaskGetConfig
-	| HarvestV1TaskGetAllConfig
-	| HarvestV1TaskUpdateConfig
-	| HarvestV1TimeEntryCreateByDurationConfig
-	| HarvestV1TimeEntryCreateByStartEndConfig
-	| HarvestV1TimeEntryDeleteConfig
-	| HarvestV1TimeEntryDeleteExternalConfig
-	| HarvestV1TimeEntryGetConfig
-	| HarvestV1TimeEntryGetAllConfig
-	| HarvestV1TimeEntryRestartTimeConfig
-	| HarvestV1TimeEntryStopTimeConfig
-	| HarvestV1TimeEntryUpdateConfig
-	| HarvestV1UserCreateConfig
-	| HarvestV1UserDeleteConfig
-	| HarvestV1UserGetConfig
-	| HarvestV1UserGetAllConfig
-	| HarvestV1UserMeConfig
-	| HarvestV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

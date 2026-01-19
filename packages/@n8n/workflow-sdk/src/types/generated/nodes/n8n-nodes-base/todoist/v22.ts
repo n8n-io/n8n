@@ -399,44 +399,6 @@ export type TodoistV22ReminderUpdateConfig = {
 	reminderUpdateFields?: Record<string, unknown>;
 };
 
-export type TodoistV22Params =
-	| TodoistV22TaskCloseConfig
-	| TodoistV22TaskCreateConfig
-	| TodoistV22TaskDeleteConfig
-	| TodoistV22TaskGetConfig
-	| TodoistV22TaskGetAllConfig
-	| TodoistV22TaskMoveConfig
-	| TodoistV22TaskQuickAddConfig
-	| TodoistV22TaskReopenConfig
-	| TodoistV22TaskUpdateConfig
-	| TodoistV22ProjectArchiveConfig
-	| TodoistV22ProjectCreateConfig
-	| TodoistV22ProjectDeleteConfig
-	| TodoistV22ProjectGetConfig
-	| TodoistV22ProjectGetCollaboratorsConfig
-	| TodoistV22ProjectGetAllConfig
-	| TodoistV22ProjectUnarchiveConfig
-	| TodoistV22ProjectUpdateConfig
-	| TodoistV22SectionCreateConfig
-	| TodoistV22SectionDeleteConfig
-	| TodoistV22SectionGetConfig
-	| TodoistV22SectionGetAllConfig
-	| TodoistV22SectionUpdateConfig
-	| TodoistV22CommentCreateConfig
-	| TodoistV22CommentDeleteConfig
-	| TodoistV22CommentGetConfig
-	| TodoistV22CommentGetAllConfig
-	| TodoistV22CommentUpdateConfig
-	| TodoistV22LabelCreateConfig
-	| TodoistV22LabelDeleteConfig
-	| TodoistV22LabelGetConfig
-	| TodoistV22LabelGetAllConfig
-	| TodoistV22LabelUpdateConfig
-	| TodoistV22ReminderCreateConfig
-	| TodoistV22ReminderDeleteConfig
-	| TodoistV22ReminderGetAllConfig
-	| TodoistV22ReminderUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface QuickChartV1Params {
+export interface QuickChartV1Config {
 /**
  * The type of chart to create
  * @default bar
@@ -63,8 +63,8 @@ interface QuickChartV1NodeBase {
 	version: 1;
 }
 
-export type QuickChartV1ParamsNode = QuickChartV1NodeBase & {
-	config: NodeConfig<QuickChartV1Params>;
+export type QuickChartV1Node = QuickChartV1NodeBase & {
+	config: NodeConfig<QuickChartV1Config>;
 };
 
-export type QuickChartV1Node = QuickChartV1ParamsNode;
+export type QuickChartV1Node = QuickChartV1Node;

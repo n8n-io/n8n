@@ -100,13 +100,6 @@ export type ChargebeeV1SubscriptionDeleteConfig = {
 		subscriptionId: string | Expression<string>;
 };
 
-export type ChargebeeV1Params =
-	| ChargebeeV1CustomerCreateConfig
-	| ChargebeeV1InvoiceListConfig
-	| ChargebeeV1InvoicePdfUrlConfig
-	| ChargebeeV1SubscriptionCancelConfig
-	| ChargebeeV1SubscriptionDeleteConfig
-	;
 
 // ===========================================================================
 // Credentials

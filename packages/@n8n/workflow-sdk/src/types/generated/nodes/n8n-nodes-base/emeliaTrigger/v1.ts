@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface EmeliaTriggerV1Params {
+export interface EmeliaTriggerV1Config {
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
  */
@@ -38,8 +38,8 @@ interface EmeliaTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type EmeliaTriggerV1ParamsNode = EmeliaTriggerV1NodeBase & {
-	config: NodeConfig<EmeliaTriggerV1Params>;
+export type EmeliaTriggerV1Node = EmeliaTriggerV1NodeBase & {
+	config: NodeConfig<EmeliaTriggerV1Config>;
 };
 
-export type EmeliaTriggerV1Node = EmeliaTriggerV1ParamsNode;
+export type EmeliaTriggerV1Node = EmeliaTriggerV1Node;

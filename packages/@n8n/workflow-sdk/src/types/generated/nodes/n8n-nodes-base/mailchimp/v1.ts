@@ -298,22 +298,6 @@ export type MailchimpV1MemberTagDeleteConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MailchimpV1Params =
-	| MailchimpV1CampaignDeleteConfig
-	| MailchimpV1CampaignGetConfig
-	| MailchimpV1CampaignGetAllConfig
-	| MailchimpV1CampaignReplicateConfig
-	| MailchimpV1CampaignResendConfig
-	| MailchimpV1CampaignSendConfig
-	| MailchimpV1ListGroupGetAllConfig
-	| MailchimpV1MemberCreateConfig
-	| MailchimpV1MemberDeleteConfig
-	| MailchimpV1MemberGetConfig
-	| MailchimpV1MemberGetAllConfig
-	| MailchimpV1MemberUpdateConfig
-	| MailchimpV1MemberTagCreateConfig
-	| MailchimpV1MemberTagDeleteConfig
-	;
 
 // ===========================================================================
 // Output Types

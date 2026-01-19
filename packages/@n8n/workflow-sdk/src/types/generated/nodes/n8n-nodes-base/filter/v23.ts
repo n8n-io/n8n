@@ -14,7 +14,7 @@ type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: s
 // Parameters
 // ===========================================================================
 
-export interface FilterV23Params {
+export interface FilterV23Config {
 	conditions?: FilterValue;
 	options?: Record<string, unknown>;
 }
@@ -32,8 +32,8 @@ interface FilterV23NodeBase {
 	version: 2.3;
 }
 
-export type FilterV23ParamsNode = FilterV23NodeBase & {
-	config: NodeConfig<FilterV23Params>;
+export type FilterV23Node = FilterV23NodeBase & {
+	config: NodeConfig<FilterV23Config>;
 };
 
-export type FilterV23Node = FilterV23ParamsNode;
+export type FilterV23Node = FilterV23Node;

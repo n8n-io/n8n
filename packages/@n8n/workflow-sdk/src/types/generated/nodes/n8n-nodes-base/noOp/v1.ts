@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface NoOpV1Params {
+export interface NoOpV1Config {
 }
 
 // ===========================================================================
@@ -27,8 +27,8 @@ interface NoOpV1NodeBase {
 	version: 1;
 }
 
-export type NoOpV1ParamsNode = NoOpV1NodeBase & {
-	config: NodeConfig<NoOpV1Params>;
+export type NoOpV1Node = NoOpV1NodeBase & {
+	config: NodeConfig<NoOpV1Config>;
 };
 
-export type NoOpV1Node = NoOpV1ParamsNode;
+export type NoOpV1Node = NoOpV1Node;

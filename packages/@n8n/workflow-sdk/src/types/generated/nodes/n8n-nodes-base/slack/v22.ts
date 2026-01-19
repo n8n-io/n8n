@@ -766,50 +766,6 @@ export type SlackV22UserGroupUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type SlackV22Params =
-	| SlackV22ChannelArchiveConfig
-	| SlackV22ChannelCloseConfig
-	| SlackV22ChannelCreateConfig
-	| SlackV22ChannelGetConfig
-	| SlackV22ChannelGetAllConfig
-	| SlackV22ChannelHistoryConfig
-	| SlackV22ChannelInviteConfig
-	| SlackV22ChannelJoinConfig
-	| SlackV22ChannelKickConfig
-	| SlackV22ChannelLeaveConfig
-	| SlackV22ChannelMemberConfig
-	| SlackV22ChannelOpenConfig
-	| SlackV22ChannelRenameConfig
-	| SlackV22ChannelRepliesConfig
-	| SlackV22ChannelSetPurposeConfig
-	| SlackV22ChannelSetTopicConfig
-	| SlackV22ChannelUnarchiveConfig
-	| SlackV22FileGetConfig
-	| SlackV22FileGetAllConfig
-	| SlackV22FileUploadConfig
-	| SlackV22MessageDeleteConfig
-	| SlackV22MessageGetPermalinkConfig
-	| SlackV22MessageSearchConfig
-	| SlackV22MessagePostConfig
-	| SlackV22MessageSendAndWaitConfig
-	| SlackV22MessageUpdateConfig
-	| SlackV22ReactionAddConfig
-	| SlackV22ReactionGetConfig
-	| SlackV22ReactionRemoveConfig
-	| SlackV22StarAddConfig
-	| SlackV22StarDeleteConfig
-	| SlackV22StarGetAllConfig
-	| SlackV22UserInfoConfig
-	| SlackV22UserGetAllConfig
-	| SlackV22UserGetProfileConfig
-	| SlackV22UserGetPresenceConfig
-	| SlackV22UserUpdateProfileConfig
-	| SlackV22UserGroupCreateConfig
-	| SlackV22UserGroupDisableConfig
-	| SlackV22UserGroupEnableConfig
-	| SlackV22UserGroupGetAllConfig
-	| SlackV22UserGroupUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

@@ -89,13 +89,6 @@ export type GoogleTasksV1TaskUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type GoogleTasksV1Params =
-	| GoogleTasksV1TaskCreateConfig
-	| GoogleTasksV1TaskDeleteConfig
-	| GoogleTasksV1TaskGetConfig
-	| GoogleTasksV1TaskGetAllConfig
-	| GoogleTasksV1TaskUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

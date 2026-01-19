@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface RssFeedReadTriggerV1Params {
+export interface RssFeedReadTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -80,8 +80,8 @@ interface RssFeedReadTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type RssFeedReadTriggerV1ParamsNode = RssFeedReadTriggerV1NodeBase & {
-	config: NodeConfig<RssFeedReadTriggerV1Params>;
+export type RssFeedReadTriggerV1Node = RssFeedReadTriggerV1NodeBase & {
+	config: NodeConfig<RssFeedReadTriggerV1Config>;
 };
 
-export type RssFeedReadTriggerV1Node = RssFeedReadTriggerV1ParamsNode;
+export type RssFeedReadTriggerV1Node = RssFeedReadTriggerV1Node;

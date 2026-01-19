@@ -326,26 +326,6 @@ export type MondayComV1BoardItemMoveConfig = {
 		groupId: string | Expression<string>;
 };
 
-export type MondayComV1Params =
-	| MondayComV1BoardArchiveConfig
-	| MondayComV1BoardCreateConfig
-	| MondayComV1BoardGetConfig
-	| MondayComV1BoardGetAllConfig
-	| MondayComV1BoardColumnCreateConfig
-	| MondayComV1BoardColumnGetAllConfig
-	| MondayComV1BoardGroupDeleteConfig
-	| MondayComV1BoardGroupCreateConfig
-	| MondayComV1BoardGroupGetAllConfig
-	| MondayComV1BoardItemAddUpdateConfig
-	| MondayComV1BoardItemChangeColumnValueConfig
-	| MondayComV1BoardItemChangeMultipleColumnValuesConfig
-	| MondayComV1BoardItemCreateConfig
-	| MondayComV1BoardItemDeleteConfig
-	| MondayComV1BoardItemGetConfig
-	| MondayComV1BoardItemGetByColumnValueConfig
-	| MondayComV1BoardItemGetAllConfig
-	| MondayComV1BoardItemMoveConfig
-	;
 
 // ===========================================================================
 // Output Types

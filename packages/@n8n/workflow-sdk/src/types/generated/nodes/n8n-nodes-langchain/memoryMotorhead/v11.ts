@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryMotorheadV11Params {
+export interface LcMemoryMotorheadV11Config {
 /**
  * The key to use to store the memory
  * @default ={{ $json.sessionId }}
@@ -43,8 +43,8 @@ interface LcMemoryMotorheadV11NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryMotorheadV11ParamsNode = LcMemoryMotorheadV11NodeBase & {
-	config: NodeConfig<LcMemoryMotorheadV11Params>;
+export type LcMemoryMotorheadV11Node = LcMemoryMotorheadV11NodeBase & {
+	config: NodeConfig<LcMemoryMotorheadV11Config>;
 };
 
-export type LcMemoryMotorheadV11Node = LcMemoryMotorheadV11ParamsNode;
+export type LcMemoryMotorheadV11Node = LcMemoryMotorheadV11Node;

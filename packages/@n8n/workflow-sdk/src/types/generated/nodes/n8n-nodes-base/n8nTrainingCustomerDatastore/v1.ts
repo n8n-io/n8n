@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface N8nTrainingCustomerDatastoreV1Params {
+export interface N8nTrainingCustomerDatastoreV1Config {
 	operation?: 'getOnePerson' | 'getAllPeople' | Expression<string>;
 /**
  * Whether to return all results or only up to a given limit
@@ -40,8 +40,8 @@ interface N8nTrainingCustomerDatastoreV1NodeBase {
 	version: 1;
 }
 
-export type N8nTrainingCustomerDatastoreV1ParamsNode = N8nTrainingCustomerDatastoreV1NodeBase & {
-	config: NodeConfig<N8nTrainingCustomerDatastoreV1Params>;
+export type N8nTrainingCustomerDatastoreV1Node = N8nTrainingCustomerDatastoreV1NodeBase & {
+	config: NodeConfig<N8nTrainingCustomerDatastoreV1Config>;
 };
 
-export type N8nTrainingCustomerDatastoreV1Node = N8nTrainingCustomerDatastoreV1ParamsNode;
+export type N8nTrainingCustomerDatastoreV1Node = N8nTrainingCustomerDatastoreV1Node;

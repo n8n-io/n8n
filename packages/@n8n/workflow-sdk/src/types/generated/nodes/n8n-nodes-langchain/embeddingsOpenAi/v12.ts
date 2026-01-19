@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsOpenAiV12Params {
+export interface LcEmbeddingsOpenAiV12Config {
 /**
  * The model which will generate the embeddings. &lt;a href="https://platform.openai.com/docs/models/overview"&gt;Learn more&lt;/a&gt;.
  * @default text-embedding-3-small
@@ -43,8 +43,8 @@ interface LcEmbeddingsOpenAiV12NodeBase {
 	isTrigger: true;
 }
 
-export type LcEmbeddingsOpenAiV12ParamsNode = LcEmbeddingsOpenAiV12NodeBase & {
-	config: NodeConfig<LcEmbeddingsOpenAiV12Params>;
+export type LcEmbeddingsOpenAiV12Node = LcEmbeddingsOpenAiV12NodeBase & {
+	config: NodeConfig<LcEmbeddingsOpenAiV12Config>;
 };
 
-export type LcEmbeddingsOpenAiV12Node = LcEmbeddingsOpenAiV12ParamsNode;
+export type LcEmbeddingsOpenAiV12Node = LcEmbeddingsOpenAiV12Node;

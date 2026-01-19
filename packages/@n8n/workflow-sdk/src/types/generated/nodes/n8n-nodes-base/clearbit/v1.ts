@@ -46,11 +46,6 @@ export type ClearbitV1PersonEnrichConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type ClearbitV1Params =
-	| ClearbitV1CompanyAutocompleteConfig
-	| ClearbitV1CompanyEnrichConfig
-	| ClearbitV1PersonEnrichConfig
-	;
 
 // ===========================================================================
 // Output Types

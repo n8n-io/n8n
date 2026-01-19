@@ -70,13 +70,6 @@ export type NpmV1DistTagUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type NpmV1Params =
-	| NpmV1PackageGetMetadataConfig
-	| NpmV1PackageGetVersionsConfig
-	| NpmV1PackageSearchConfig
-	| NpmV1DistTagGetManyConfig
-	| NpmV1DistTagUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

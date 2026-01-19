@@ -84,13 +84,6 @@ export type PhantombusterV1AgentLaunchConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PhantombusterV1Params =
-	| PhantombusterV1AgentDeleteConfig
-	| PhantombusterV1AgentGetConfig
-	| PhantombusterV1AgentGetAllConfig
-	| PhantombusterV1AgentGetOutputConfig
-	| PhantombusterV1AgentLaunchConfig
-	;
 
 // ===========================================================================
 // Output Types

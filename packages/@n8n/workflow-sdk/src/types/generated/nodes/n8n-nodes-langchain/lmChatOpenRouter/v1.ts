@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatOpenRouterV1Params {
+export interface LcLmChatOpenRouterV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://openrouter.ai/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default openai/gpt-4.1-mini
@@ -43,8 +43,8 @@ interface LcLmChatOpenRouterV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatOpenRouterV1ParamsNode = LcLmChatOpenRouterV1NodeBase & {
-	config: NodeConfig<LcLmChatOpenRouterV1Params>;
+export type LcLmChatOpenRouterV1Node = LcLmChatOpenRouterV1NodeBase & {
+	config: NodeConfig<LcLmChatOpenRouterV1Config>;
 };
 
-export type LcLmChatOpenRouterV1Node = LcLmChatOpenRouterV1ParamsNode;
+export type LcLmChatOpenRouterV1Node = LcLmChatOpenRouterV1Node;

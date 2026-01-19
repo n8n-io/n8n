@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AwsComprehendV1Params {
+export interface AwsComprehendV1Config {
 	authentication?: 'iam' | 'assumeRole' | Expression<string>;
 /**
  * The resource to perform
@@ -58,8 +58,8 @@ interface AwsComprehendV1NodeBase {
 	credentials?: AwsComprehendV1Credentials;
 }
 
-export type AwsComprehendV1ParamsNode = AwsComprehendV1NodeBase & {
-	config: NodeConfig<AwsComprehendV1Params>;
+export type AwsComprehendV1Node = AwsComprehendV1NodeBase & {
+	config: NodeConfig<AwsComprehendV1Config>;
 };
 
-export type AwsComprehendV1Node = AwsComprehendV1ParamsNode;
+export type AwsComprehendV1Node = AwsComprehendV1Node;

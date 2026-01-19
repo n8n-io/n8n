@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface BoxTriggerV1Params {
+export interface BoxTriggerV1Config {
 /**
  * The events to listen to
  * @default []
@@ -46,8 +46,8 @@ interface BoxTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type BoxTriggerV1ParamsNode = BoxTriggerV1NodeBase & {
-	config: NodeConfig<BoxTriggerV1Params>;
+export type BoxTriggerV1Node = BoxTriggerV1NodeBase & {
+	config: NodeConfig<BoxTriggerV1Config>;
 };
 
-export type BoxTriggerV1Node = BoxTriggerV1ParamsNode;
+export type BoxTriggerV1Node = BoxTriggerV1Node;

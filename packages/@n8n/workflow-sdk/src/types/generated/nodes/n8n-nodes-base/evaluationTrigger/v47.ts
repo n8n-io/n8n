@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface EvaluationTriggerV47Params {
+export interface EvaluationTriggerV47Config {
 	authentication?: 'serviceAccount' | 'oAuth2' | Expression<string>;
 	documentId: ResourceLocatorValue;
 	sheetName: string | Expression<string>;
@@ -91,8 +91,8 @@ interface EvaluationTriggerV47NodeBase {
 	isTrigger: true;
 }
 
-export type EvaluationTriggerV47ParamsNode = EvaluationTriggerV47NodeBase & {
-	config: NodeConfig<EvaluationTriggerV47Params>;
+export type EvaluationTriggerV47Node = EvaluationTriggerV47NodeBase & {
+	config: NodeConfig<EvaluationTriggerV47Config>;
 };
 
-export type EvaluationTriggerV47Node = EvaluationTriggerV47ParamsNode;
+export type EvaluationTriggerV47Node = EvaluationTriggerV47Node;

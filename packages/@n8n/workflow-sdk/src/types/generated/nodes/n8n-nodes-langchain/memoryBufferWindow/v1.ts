@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryBufferWindowV1Params {
+export interface LcMemoryBufferWindowV1Config {
 /**
  * The key to use to store the memory in the workflow data
  * @default chat_history
@@ -34,8 +34,8 @@ interface LcMemoryBufferWindowV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryBufferWindowV1ParamsNode = LcMemoryBufferWindowV1NodeBase & {
-	config: NodeConfig<LcMemoryBufferWindowV1Params>;
+export type LcMemoryBufferWindowV1Node = LcMemoryBufferWindowV1NodeBase & {
+	config: NodeConfig<LcMemoryBufferWindowV1Config>;
 };
 
-export type LcMemoryBufferWindowV1Node = LcMemoryBufferWindowV1ParamsNode;
+export type LcMemoryBufferWindowV1Node = LcMemoryBufferWindowV1Node;

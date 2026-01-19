@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatAnthropicV1Params {
+export interface LcLmChatAnthropicV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://docs.anthropic.com/claude/docs/models-overview"&gt;Learn more&lt;/a&gt;.
  * @default claude-2
@@ -43,8 +43,8 @@ interface LcLmChatAnthropicV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatAnthropicV1ParamsNode = LcLmChatAnthropicV1NodeBase & {
-	config: NodeConfig<LcLmChatAnthropicV1Params>;
+export type LcLmChatAnthropicV1Node = LcLmChatAnthropicV1NodeBase & {
+	config: NodeConfig<LcLmChatAnthropicV1Config>;
 };
 
-export type LcLmChatAnthropicV1Node = LcLmChatAnthropicV1ParamsNode;
+export type LcLmChatAnthropicV1Node = LcLmChatAnthropicV1Node;

@@ -111,12 +111,6 @@ export type LcVectorStorePGVectorV1RetrieveAsToolConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStorePGVectorV1Params =
-	| LcVectorStorePGVectorV1LoadConfig
-	| LcVectorStorePGVectorV1InsertConfig
-	| LcVectorStorePGVectorV1RetrieveConfig
-	| LcVectorStorePGVectorV1RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials

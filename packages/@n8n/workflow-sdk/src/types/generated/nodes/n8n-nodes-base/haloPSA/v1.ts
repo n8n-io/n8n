@@ -285,28 +285,6 @@ export type HaloPSAV1UserUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type HaloPSAV1Params =
-	| HaloPSAV1ClientCreateConfig
-	| HaloPSAV1ClientDeleteConfig
-	| HaloPSAV1ClientGetConfig
-	| HaloPSAV1ClientGetAllConfig
-	| HaloPSAV1ClientUpdateConfig
-	| HaloPSAV1SiteCreateConfig
-	| HaloPSAV1SiteDeleteConfig
-	| HaloPSAV1SiteGetConfig
-	| HaloPSAV1SiteGetAllConfig
-	| HaloPSAV1SiteUpdateConfig
-	| HaloPSAV1TicketCreateConfig
-	| HaloPSAV1TicketDeleteConfig
-	| HaloPSAV1TicketGetConfig
-	| HaloPSAV1TicketGetAllConfig
-	| HaloPSAV1TicketUpdateConfig
-	| HaloPSAV1UserCreateConfig
-	| HaloPSAV1UserDeleteConfig
-	| HaloPSAV1UserGetConfig
-	| HaloPSAV1UserGetAllConfig
-	| HaloPSAV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

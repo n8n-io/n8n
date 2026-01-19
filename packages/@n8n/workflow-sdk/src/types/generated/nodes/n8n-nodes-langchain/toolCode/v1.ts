@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolCodeV1Params {
+export interface LcToolCodeV1Config {
 	name?: string | Expression<string>;
 	description?: string | Expression<string>;
 	language?: 'javaScript' | 'python' | Expression<string>;
@@ -82,8 +82,8 @@ interface LcToolCodeV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcToolCodeV1ParamsNode = LcToolCodeV1NodeBase & {
-	config: NodeConfig<LcToolCodeV1Params>;
+export type LcToolCodeV1Node = LcToolCodeV1NodeBase & {
+	config: NodeConfig<LcToolCodeV1Config>;
 };
 
-export type LcToolCodeV1Node = LcToolCodeV1ParamsNode;
+export type LcToolCodeV1Node = LcToolCodeV1Node;

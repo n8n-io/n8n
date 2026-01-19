@@ -210,12 +210,6 @@ export type AwsDynamoDbV1ItemGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type AwsDynamoDbV1Params =
-	| AwsDynamoDbV1ItemUpsertConfig
-	| AwsDynamoDbV1ItemDeleteConfig
-	| AwsDynamoDbV1ItemGetConfig
-	| AwsDynamoDbV1ItemGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -35,11 +35,6 @@ export type LcAgentV21DefineConfig = {
 	hasOutputParser?: boolean | Expression<boolean>;
 };
 
-export type LcAgentV21Params =
-	| LcAgentV21AutoConfig
-	| LcAgentV21GuardrailsConfig
-	| LcAgentV21DefineConfig
-	;
 
 // ===========================================================================
 // Credentials

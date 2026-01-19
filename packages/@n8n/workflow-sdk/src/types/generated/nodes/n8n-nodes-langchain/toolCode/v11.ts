@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolCodeV11Params {
+export interface LcToolCodeV11Config {
 /**
  * The name of the function to be called, could contain letters, numbers, and underscores only
  */
@@ -85,8 +85,8 @@ interface LcToolCodeV11NodeBase {
 	isTrigger: true;
 }
 
-export type LcToolCodeV11ParamsNode = LcToolCodeV11NodeBase & {
-	config: NodeConfig<LcToolCodeV11Params>;
+export type LcToolCodeV11Node = LcToolCodeV11NodeBase & {
+	config: NodeConfig<LcToolCodeV11Config>;
 };
 
-export type LcToolCodeV11Node = LcToolCodeV11ParamsNode;
+export type LcToolCodeV11Node = LcToolCodeV11Node;

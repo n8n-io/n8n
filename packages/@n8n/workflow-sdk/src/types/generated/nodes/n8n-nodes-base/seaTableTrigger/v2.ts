@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SeaTableTriggerV2Params {
+export interface SeaTableTriggerV2Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -96,8 +96,8 @@ interface SeaTableTriggerV2NodeBase {
 	isTrigger: true;
 }
 
-export type SeaTableTriggerV2ParamsNode = SeaTableTriggerV2NodeBase & {
-	config: NodeConfig<SeaTableTriggerV2Params>;
+export type SeaTableTriggerV2Node = SeaTableTriggerV2NodeBase & {
+	config: NodeConfig<SeaTableTriggerV2Config>;
 };
 
-export type SeaTableTriggerV2Node = SeaTableTriggerV2ParamsNode;
+export type SeaTableTriggerV2Node = SeaTableTriggerV2Node;

@@ -809,69 +809,6 @@ export type ZohoCrmV1VendorUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type ZohoCrmV1Params =
-	| ZohoCrmV1AccountCreateConfig
-	| ZohoCrmV1AccountUpsertConfig
-	| ZohoCrmV1AccountDeleteConfig
-	| ZohoCrmV1AccountGetConfig
-	| ZohoCrmV1AccountGetAllConfig
-	| ZohoCrmV1AccountUpdateConfig
-	| ZohoCrmV1ContactCreateConfig
-	| ZohoCrmV1ContactUpsertConfig
-	| ZohoCrmV1ContactDeleteConfig
-	| ZohoCrmV1ContactGetConfig
-	| ZohoCrmV1ContactGetAllConfig
-	| ZohoCrmV1ContactUpdateConfig
-	| ZohoCrmV1DealCreateConfig
-	| ZohoCrmV1DealUpsertConfig
-	| ZohoCrmV1DealDeleteConfig
-	| ZohoCrmV1DealGetConfig
-	| ZohoCrmV1DealGetAllConfig
-	| ZohoCrmV1DealUpdateConfig
-	| ZohoCrmV1InvoiceCreateConfig
-	| ZohoCrmV1InvoiceUpsertConfig
-	| ZohoCrmV1InvoiceDeleteConfig
-	| ZohoCrmV1InvoiceGetConfig
-	| ZohoCrmV1InvoiceGetAllConfig
-	| ZohoCrmV1InvoiceUpdateConfig
-	| ZohoCrmV1LeadCreateConfig
-	| ZohoCrmV1LeadUpsertConfig
-	| ZohoCrmV1LeadDeleteConfig
-	| ZohoCrmV1LeadGetConfig
-	| ZohoCrmV1LeadGetFieldsConfig
-	| ZohoCrmV1LeadGetAllConfig
-	| ZohoCrmV1LeadUpdateConfig
-	| ZohoCrmV1ProductCreateConfig
-	| ZohoCrmV1ProductUpsertConfig
-	| ZohoCrmV1ProductDeleteConfig
-	| ZohoCrmV1ProductGetConfig
-	| ZohoCrmV1ProductGetAllConfig
-	| ZohoCrmV1ProductUpdateConfig
-	| ZohoCrmV1PurchaseOrderCreateConfig
-	| ZohoCrmV1PurchaseOrderUpsertConfig
-	| ZohoCrmV1PurchaseOrderDeleteConfig
-	| ZohoCrmV1PurchaseOrderGetConfig
-	| ZohoCrmV1PurchaseOrderGetAllConfig
-	| ZohoCrmV1PurchaseOrderUpdateConfig
-	| ZohoCrmV1QuoteCreateConfig
-	| ZohoCrmV1QuoteUpsertConfig
-	| ZohoCrmV1QuoteDeleteConfig
-	| ZohoCrmV1QuoteGetConfig
-	| ZohoCrmV1QuoteGetAllConfig
-	| ZohoCrmV1QuoteUpdateConfig
-	| ZohoCrmV1SalesOrderCreateConfig
-	| ZohoCrmV1SalesOrderUpsertConfig
-	| ZohoCrmV1SalesOrderDeleteConfig
-	| ZohoCrmV1SalesOrderGetConfig
-	| ZohoCrmV1SalesOrderGetAllConfig
-	| ZohoCrmV1SalesOrderUpdateConfig
-	| ZohoCrmV1VendorCreateConfig
-	| ZohoCrmV1VendorUpsertConfig
-	| ZohoCrmV1VendorDeleteConfig
-	| ZohoCrmV1VendorGetConfig
-	| ZohoCrmV1VendorGetAllConfig
-	| ZohoCrmV1VendorUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

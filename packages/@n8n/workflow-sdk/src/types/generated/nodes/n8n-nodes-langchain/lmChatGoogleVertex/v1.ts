@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatGoogleVertexV1Params {
+export interface LcLmChatGoogleVertexV1Config {
 /**
  * Select or enter your Google Cloud project ID
  * @default {"mode":"list","value":""}
@@ -51,8 +51,8 @@ interface LcLmChatGoogleVertexV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatGoogleVertexV1ParamsNode = LcLmChatGoogleVertexV1NodeBase & {
-	config: NodeConfig<LcLmChatGoogleVertexV1Params>;
+export type LcLmChatGoogleVertexV1Node = LcLmChatGoogleVertexV1NodeBase & {
+	config: NodeConfig<LcLmChatGoogleVertexV1Config>;
 };
 
-export type LcLmChatGoogleVertexV1Node = LcLmChatGoogleVertexV1ParamsNode;
+export type LcLmChatGoogleVertexV1Node = LcLmChatGoogleVertexV1Node;

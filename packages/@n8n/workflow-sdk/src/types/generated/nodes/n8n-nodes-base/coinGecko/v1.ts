@@ -238,17 +238,6 @@ export type CoinGeckoV1EventGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type CoinGeckoV1Params =
-	| CoinGeckoV1CoinCandlestickConfig
-	| CoinGeckoV1CoinGetConfig
-	| CoinGeckoV1CoinGetAllConfig
-	| CoinGeckoV1CoinHistoryConfig
-	| CoinGeckoV1CoinMarketConfig
-	| CoinGeckoV1CoinMarketChartConfig
-	| CoinGeckoV1CoinPriceConfig
-	| CoinGeckoV1CoinTickerConfig
-	| CoinGeckoV1EventGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

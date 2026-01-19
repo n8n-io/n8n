@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface TimeSavedV1Params {
+export interface TimeSavedV1Config {
 	mode?: 'once' | 'perItem' | Expression<string>;
 /**
  * Number of minutes saved by this workflow execution
@@ -33,8 +33,8 @@ interface TimeSavedV1NodeBase {
 	version: 1;
 }
 
-export type TimeSavedV1ParamsNode = TimeSavedV1NodeBase & {
-	config: NodeConfig<TimeSavedV1Params>;
+export type TimeSavedV1Node = TimeSavedV1NodeBase & {
+	config: NodeConfig<TimeSavedV1Config>;
 };
 
-export type TimeSavedV1Node = TimeSavedV1ParamsNode;
+export type TimeSavedV1Node = TimeSavedV1Node;

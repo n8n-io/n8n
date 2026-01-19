@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryXataV1Params {
+export interface LcMemoryXataV1Config {
 	sessionId: string | Expression<string>;
 /**
  * The key to use to store session ID in the memory
@@ -40,8 +40,8 @@ interface LcMemoryXataV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryXataV1ParamsNode = LcMemoryXataV1NodeBase & {
-	config: NodeConfig<LcMemoryXataV1Params>;
+export type LcMemoryXataV1Node = LcMemoryXataV1NodeBase & {
+	config: NodeConfig<LcMemoryXataV1Config>;
 };
 
-export type LcMemoryXataV1Node = LcMemoryXataV1ParamsNode;
+export type LcMemoryXataV1Node = LcMemoryXataV1Node;

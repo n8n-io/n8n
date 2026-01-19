@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface KafkaV1Params {
+export interface KafkaV1Config {
 /**
  * Name of the queue of topic to publish to
  */
@@ -89,8 +89,8 @@ interface KafkaV1NodeBase {
 	credentials?: KafkaV1Credentials;
 }
 
-export type KafkaV1ParamsNode = KafkaV1NodeBase & {
-	config: NodeConfig<KafkaV1Params>;
+export type KafkaV1Node = KafkaV1NodeBase & {
+	config: NodeConfig<KafkaV1Config>;
 };
 
-export type KafkaV1Node = KafkaV1ParamsNode;
+export type KafkaV1Node = KafkaV1Node;

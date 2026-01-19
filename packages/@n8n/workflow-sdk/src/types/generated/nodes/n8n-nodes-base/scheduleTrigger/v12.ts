@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ScheduleTriggerV12Params {
+export interface ScheduleTriggerV12Config {
 	rule?: {
 		interval?: Array<{
 			/** Trigger Interval
@@ -96,8 +96,8 @@ interface ScheduleTriggerV12NodeBase {
 	isTrigger: true;
 }
 
-export type ScheduleTriggerV12ParamsNode = ScheduleTriggerV12NodeBase & {
-	config: NodeConfig<ScheduleTriggerV12Params>;
+export type ScheduleTriggerV12Node = ScheduleTriggerV12NodeBase & {
+	config: NodeConfig<ScheduleTriggerV12Config>;
 };
 
-export type ScheduleTriggerV12Node = ScheduleTriggerV12ParamsNode;
+export type ScheduleTriggerV12Node = ScheduleTriggerV12Node;

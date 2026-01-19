@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface CryptoV1Params {
+export interface CryptoV1Config {
 	action?: 'generate' | 'hash' | 'hmac' | 'sign' | Expression<string>;
 /**
  * The hash type to use
@@ -81,8 +81,8 @@ interface CryptoV1NodeBase {
 	version: 1;
 }
 
-export type CryptoV1ParamsNode = CryptoV1NodeBase & {
-	config: NodeConfig<CryptoV1Params>;
+export type CryptoV1Node = CryptoV1NodeBase & {
+	config: NodeConfig<CryptoV1Config>;
 };
 
-export type CryptoV1Node = CryptoV1ParamsNode;
+export type CryptoV1Node = CryptoV1Node;

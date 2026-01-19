@@ -57,11 +57,6 @@ export type MarketstackV1TickerGetConfig = {
 		symbol: string | Expression<string>;
 };
 
-export type MarketstackV1Params =
-	| MarketstackV1EndOfDayDataGetAllConfig
-	| MarketstackV1ExchangeGetConfig
-	| MarketstackV1TickerGetConfig
-	;
 
 // ===========================================================================
 // Output Types

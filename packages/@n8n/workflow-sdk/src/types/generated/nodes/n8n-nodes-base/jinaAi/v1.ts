@@ -64,11 +64,6 @@ export type JinaAiV1ResearchDeepResearchConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type JinaAiV1Params =
-	| JinaAiV1ReaderReadConfig
-	| JinaAiV1ReaderSearchConfig
-	| JinaAiV1ResearchDeepResearchConfig
-	;
 
 // ===========================================================================
 // Output Types

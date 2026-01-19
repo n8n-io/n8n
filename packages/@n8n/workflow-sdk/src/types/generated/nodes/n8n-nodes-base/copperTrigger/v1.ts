@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface CopperTriggerV1Params {
+export interface CopperTriggerV1Config {
 /**
  * The resource which will fire the event
  */
@@ -41,8 +41,8 @@ interface CopperTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type CopperTriggerV1ParamsNode = CopperTriggerV1NodeBase & {
-	config: NodeConfig<CopperTriggerV1Params>;
+export type CopperTriggerV1Node = CopperTriggerV1NodeBase & {
+	config: NodeConfig<CopperTriggerV1Config>;
 };
 
-export type CopperTriggerV1Node = CopperTriggerV1ParamsNode;
+export type CopperTriggerV1Node = CopperTriggerV1Node;

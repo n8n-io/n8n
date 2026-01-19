@@ -110,13 +110,6 @@ export type BubbleV1ObjectUpdateConfig = {
 	};
 };
 
-export type BubbleV1Params =
-	| BubbleV1ObjectCreateConfig
-	| BubbleV1ObjectDeleteConfig
-	| BubbleV1ObjectGetConfig
-	| BubbleV1ObjectGetAllConfig
-	| BubbleV1ObjectUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

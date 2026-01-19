@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsMistralCloudV1Params {
+export interface LcEmbeddingsMistralCloudV1Config {
 /**
  * The model which will compute the embeddings. &lt;a href="https://docs.mistral.ai/platform/endpoints/"&gt;Learn more&lt;/a&gt;.
  * @default mistral-embed
@@ -43,8 +43,8 @@ interface LcEmbeddingsMistralCloudV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcEmbeddingsMistralCloudV1ParamsNode = LcEmbeddingsMistralCloudV1NodeBase & {
-	config: NodeConfig<LcEmbeddingsMistralCloudV1Params>;
+export type LcEmbeddingsMistralCloudV1Node = LcEmbeddingsMistralCloudV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsMistralCloudV1Config>;
 };
 
-export type LcEmbeddingsMistralCloudV1Node = LcEmbeddingsMistralCloudV1ParamsNode;
+export type LcEmbeddingsMistralCloudV1Node = LcEmbeddingsMistralCloudV1Node;

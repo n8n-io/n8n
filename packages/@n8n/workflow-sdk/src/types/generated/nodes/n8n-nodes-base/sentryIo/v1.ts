@@ -468,33 +468,6 @@ export type SentryIoV1TeamUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type SentryIoV1Params =
-	| SentryIoV1EventGetConfig
-	| SentryIoV1EventGetAllConfig
-	| SentryIoV1IssueDeleteConfig
-	| SentryIoV1IssueGetConfig
-	| SentryIoV1IssueGetAllConfig
-	| SentryIoV1IssueUpdateConfig
-	| SentryIoV1OrganizationCreateConfig
-	| SentryIoV1OrganizationGetConfig
-	| SentryIoV1OrganizationGetAllConfig
-	| SentryIoV1OrganizationUpdateConfig
-	| SentryIoV1ProjectCreateConfig
-	| SentryIoV1ProjectDeleteConfig
-	| SentryIoV1ProjectGetConfig
-	| SentryIoV1ProjectGetAllConfig
-	| SentryIoV1ProjectUpdateConfig
-	| SentryIoV1ReleaseCreateConfig
-	| SentryIoV1ReleaseDeleteConfig
-	| SentryIoV1ReleaseGetConfig
-	| SentryIoV1ReleaseGetAllConfig
-	| SentryIoV1ReleaseUpdateConfig
-	| SentryIoV1TeamCreateConfig
-	| SentryIoV1TeamDeleteConfig
-	| SentryIoV1TeamGetConfig
-	| SentryIoV1TeamGetAllConfig
-	| SentryIoV1TeamUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

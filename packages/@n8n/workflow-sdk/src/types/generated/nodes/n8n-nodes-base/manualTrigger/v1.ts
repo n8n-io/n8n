@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ManualTriggerV1Params {
+export interface ManualTriggerV1Config {
 }
 
 // ===========================================================================
@@ -28,8 +28,8 @@ interface ManualTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type ManualTriggerV1ParamsNode = ManualTriggerV1NodeBase & {
-	config: NodeConfig<ManualTriggerV1Params>;
+export type ManualTriggerV1Node = ManualTriggerV1NodeBase & {
+	config: NodeConfig<ManualTriggerV1Config>;
 };
 
-export type ManualTriggerV1Node = ManualTriggerV1ParamsNode;
+export type ManualTriggerV1Node = ManualTriggerV1Node;

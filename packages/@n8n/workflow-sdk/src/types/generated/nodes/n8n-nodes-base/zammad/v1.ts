@@ -286,28 +286,6 @@ export type ZammadV1UserUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type ZammadV1Params =
-	| ZammadV1GroupCreateConfig
-	| ZammadV1GroupDeleteConfig
-	| ZammadV1GroupGetConfig
-	| ZammadV1GroupGetAllConfig
-	| ZammadV1GroupUpdateConfig
-	| ZammadV1OrganizationCreateConfig
-	| ZammadV1OrganizationDeleteConfig
-	| ZammadV1OrganizationGetConfig
-	| ZammadV1OrganizationGetAllConfig
-	| ZammadV1OrganizationUpdateConfig
-	| ZammadV1TicketCreateConfig
-	| ZammadV1TicketDeleteConfig
-	| ZammadV1TicketGetConfig
-	| ZammadV1TicketGetAllConfig
-	| ZammadV1UserCreateConfig
-	| ZammadV1UserDeleteConfig
-	| ZammadV1UserGetConfig
-	| ZammadV1UserGetAllConfig
-	| ZammadV1UserGetSelfConfig
-	| ZammadV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

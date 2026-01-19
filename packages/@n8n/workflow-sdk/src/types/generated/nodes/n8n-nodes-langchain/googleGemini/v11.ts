@@ -347,23 +347,6 @@ export type LcGoogleGeminiV11VideoDownloadConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcGoogleGeminiV11Params =
-	| LcGoogleGeminiV11AudioAnalyzeConfig
-	| LcGoogleGeminiV11AudioTranscribeConfig
-	| LcGoogleGeminiV11DocumentAnalyzeConfig
-	| LcGoogleGeminiV11FileSearchCreateStoreConfig
-	| LcGoogleGeminiV11FileSearchDeleteStoreConfig
-	| LcGoogleGeminiV11FileSearchListStoresConfig
-	| LcGoogleGeminiV11FileSearchUploadToStoreConfig
-	| LcGoogleGeminiV11ImageAnalyzeConfig
-	| LcGoogleGeminiV11ImageGenerateConfig
-	| LcGoogleGeminiV11ImageEditConfig
-	| LcGoogleGeminiV11FileUploadConfig
-	| LcGoogleGeminiV11TextMessageConfig
-	| LcGoogleGeminiV11VideoAnalyzeConfig
-	| LcGoogleGeminiV11VideoGenerateConfig
-	| LcGoogleGeminiV11VideoDownloadConfig
-	;
 
 // ===========================================================================
 // Credentials

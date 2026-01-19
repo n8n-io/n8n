@@ -78,13 +78,6 @@ export type ZoomV1MeetingUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type ZoomV1Params =
-	| ZoomV1MeetingCreateConfig
-	| ZoomV1MeetingDeleteConfig
-	| ZoomV1MeetingGetConfig
-	| ZoomV1MeetingGetAllConfig
-	| ZoomV1MeetingUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

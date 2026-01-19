@@ -779,50 +779,6 @@ export type SlackV21UserGroupUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type SlackV21Params =
-	| SlackV21ChannelArchiveConfig
-	| SlackV21ChannelCloseConfig
-	| SlackV21ChannelCreateConfig
-	| SlackV21ChannelGetConfig
-	| SlackV21ChannelGetAllConfig
-	| SlackV21ChannelHistoryConfig
-	| SlackV21ChannelInviteConfig
-	| SlackV21ChannelJoinConfig
-	| SlackV21ChannelKickConfig
-	| SlackV21ChannelLeaveConfig
-	| SlackV21ChannelMemberConfig
-	| SlackV21ChannelOpenConfig
-	| SlackV21ChannelRenameConfig
-	| SlackV21ChannelRepliesConfig
-	| SlackV21ChannelSetPurposeConfig
-	| SlackV21ChannelSetTopicConfig
-	| SlackV21ChannelUnarchiveConfig
-	| SlackV21FileGetConfig
-	| SlackV21FileGetAllConfig
-	| SlackV21FileUploadConfig
-	| SlackV21MessageDeleteConfig
-	| SlackV21MessageGetPermalinkConfig
-	| SlackV21MessageSearchConfig
-	| SlackV21MessagePostConfig
-	| SlackV21MessageSendAndWaitConfig
-	| SlackV21MessageUpdateConfig
-	| SlackV21ReactionAddConfig
-	| SlackV21ReactionGetConfig
-	| SlackV21ReactionRemoveConfig
-	| SlackV21StarAddConfig
-	| SlackV21StarDeleteConfig
-	| SlackV21StarGetAllConfig
-	| SlackV21UserInfoConfig
-	| SlackV21UserGetAllConfig
-	| SlackV21UserGetProfileConfig
-	| SlackV21UserGetPresenceConfig
-	| SlackV21UserUpdateProfileConfig
-	| SlackV21UserGroupCreateConfig
-	| SlackV21UserGroupDisableConfig
-	| SlackV21UserGroupEnableConfig
-	| SlackV21UserGroupGetAllConfig
-	| SlackV21UserGroupUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

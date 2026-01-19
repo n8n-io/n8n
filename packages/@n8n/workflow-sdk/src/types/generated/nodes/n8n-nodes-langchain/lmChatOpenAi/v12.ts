@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatOpenAiV12Params {
+export interface LcLmChatOpenAiV12Config {
 /**
  * The model which will generate the completion. &lt;a href="https://beta.openai.com/docs/models/overview"&gt;Learn more&lt;/a&gt;.
  * @default gpt-5-mini
@@ -46,8 +46,8 @@ interface LcLmChatOpenAiV12NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatOpenAiV12ParamsNode = LcLmChatOpenAiV12NodeBase & {
-	config: NodeConfig<LcLmChatOpenAiV12Params>;
+export type LcLmChatOpenAiV12Node = LcLmChatOpenAiV12NodeBase & {
+	config: NodeConfig<LcLmChatOpenAiV12Config>;
 };
 
-export type LcLmChatOpenAiV12Node = LcLmChatOpenAiV12ParamsNode;
+export type LcLmChatOpenAiV12Node = LcLmChatOpenAiV12Node;

@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ConvertToFileV11Params {
+export interface ConvertToFileV11Config {
 	operation?: 'csv' | 'html' | 'iCal' | 'toJson' | 'ods' | 'rtf' | 'toText' | 'xls' | 'xlsx' | 'toBinary' | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -55,8 +55,8 @@ interface ConvertToFileV11NodeBase {
 	version: 1.1;
 }
 
-export type ConvertToFileV11ParamsNode = ConvertToFileV11NodeBase & {
-	config: NodeConfig<ConvertToFileV11Params>;
+export type ConvertToFileV11Node = ConvertToFileV11NodeBase & {
+	config: NodeConfig<ConvertToFileV11Config>;
 };
 
-export type ConvertToFileV11Node = ConvertToFileV11ParamsNode;
+export type ConvertToFileV11Node = ConvertToFileV11Node;

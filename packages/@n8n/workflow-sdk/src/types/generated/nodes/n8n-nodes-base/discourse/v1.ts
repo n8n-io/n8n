@@ -293,24 +293,6 @@ export type DiscourseV1UserGroupRemoveConfig = {
 		groupId: string | Expression<string>;
 };
 
-export type DiscourseV1Params =
-	| DiscourseV1CategoryCreateConfig
-	| DiscourseV1CategoryGetAllConfig
-	| DiscourseV1CategoryUpdateConfig
-	| DiscourseV1GroupCreateConfig
-	| DiscourseV1GroupGetConfig
-	| DiscourseV1GroupGetAllConfig
-	| DiscourseV1GroupUpdateConfig
-	| DiscourseV1PostCreateConfig
-	| DiscourseV1PostGetConfig
-	| DiscourseV1PostGetAllConfig
-	| DiscourseV1PostUpdateConfig
-	| DiscourseV1UserCreateConfig
-	| DiscourseV1UserGetConfig
-	| DiscourseV1UserGetAllConfig
-	| DiscourseV1UserGroupAddConfig
-	| DiscourseV1UserGroupRemoveConfig
-	;
 
 // ===========================================================================
 // Credentials

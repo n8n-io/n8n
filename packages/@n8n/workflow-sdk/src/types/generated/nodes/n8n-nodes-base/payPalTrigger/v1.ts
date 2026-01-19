@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface PayPalTriggerV1Params {
+export interface PayPalTriggerV1Config {
 /**
  * The event to listen to. Choose from the list, or specify IDs using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  * @default []
@@ -38,8 +38,8 @@ interface PayPalTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type PayPalTriggerV1ParamsNode = PayPalTriggerV1NodeBase & {
-	config: NodeConfig<PayPalTriggerV1Params>;
+export type PayPalTriggerV1Node = PayPalTriggerV1NodeBase & {
+	config: NodeConfig<PayPalTriggerV1Config>;
 };
 
-export type PayPalTriggerV1Node = PayPalTriggerV1ParamsNode;
+export type PayPalTriggerV1Node = PayPalTriggerV1Node;

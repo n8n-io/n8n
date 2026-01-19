@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface StravaTriggerV1Params {
+export interface StravaTriggerV1Config {
 	object?: '*' | 'activity' | 'athlete' | Expression<string>;
 	event?: '*' | 'create' | 'delete' | 'update' | Expression<string>;
 /**
@@ -41,8 +41,8 @@ interface StravaTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type StravaTriggerV1ParamsNode = StravaTriggerV1NodeBase & {
-	config: NodeConfig<StravaTriggerV1Params>;
+export type StravaTriggerV1Node = StravaTriggerV1NodeBase & {
+	config: NodeConfig<StravaTriggerV1Config>;
 };
 
-export type StravaTriggerV1Node = StravaTriggerV1ParamsNode;
+export type StravaTriggerV1Node = StravaTriggerV1Node;

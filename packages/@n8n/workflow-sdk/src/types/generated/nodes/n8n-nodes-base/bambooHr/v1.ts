@@ -384,23 +384,6 @@ export type BambooHrV1FileUploadConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type BambooHrV1Params =
-	| BambooHrV1CompanyReportGetConfig
-	| BambooHrV1EmployeeCreateConfig
-	| BambooHrV1EmployeeGetConfig
-	| BambooHrV1EmployeeGetAllConfig
-	| BambooHrV1EmployeeUpdateConfig
-	| BambooHrV1EmployeeDocumentDeleteConfig
-	| BambooHrV1EmployeeDocumentDownloadConfig
-	| BambooHrV1EmployeeDocumentGetAllConfig
-	| BambooHrV1EmployeeDocumentUpdateConfig
-	| BambooHrV1EmployeeDocumentUploadConfig
-	| BambooHrV1FileDeleteConfig
-	| BambooHrV1FileDownloadConfig
-	| BambooHrV1FileGetAllConfig
-	| BambooHrV1FileUpdateConfig
-	| BambooHrV1FileUploadConfig
-	;
 
 // ===========================================================================
 // Output Types

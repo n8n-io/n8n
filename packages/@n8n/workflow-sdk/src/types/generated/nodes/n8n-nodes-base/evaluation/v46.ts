@@ -15,7 +15,7 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 // Parameters
 // ===========================================================================
 
-export interface EvaluationV46Params {
+export interface EvaluationV46Config {
 	operation?: 'setInputs' | 'setOutputs' | 'setMetrics' | 'checkIfEvaluating' | Expression<string>;
 	authentication?: 'serviceAccount' | 'oAuth2' | Expression<string>;
 	inputs?: {
@@ -161,8 +161,8 @@ interface EvaluationV46NodeBase {
 	credentials?: EvaluationV46Credentials;
 }
 
-export type EvaluationV46ParamsNode = EvaluationV46NodeBase & {
-	config: NodeConfig<EvaluationV46Params>;
+export type EvaluationV46Node = EvaluationV46NodeBase & {
+	config: NodeConfig<EvaluationV46Config>;
 };
 
-export type EvaluationV46Node = EvaluationV46ParamsNode;
+export type EvaluationV46Node = EvaluationV46Node;

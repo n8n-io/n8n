@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface TotpV1Params {
+export interface TotpV1Config {
 	operation?: 'generateSecret' | Expression<string>;
 	options?: Record<string, unknown>;
 }
@@ -34,8 +34,8 @@ interface TotpV1NodeBase {
 	credentials?: TotpV1Credentials;
 }
 
-export type TotpV1ParamsNode = TotpV1NodeBase & {
-	config: NodeConfig<TotpV1Params>;
+export type TotpV1Node = TotpV1NodeBase & {
+	config: NodeConfig<TotpV1Config>;
 };
 
-export type TotpV1Node = TotpV1ParamsNode;
+export type TotpV1Node = TotpV1Node;

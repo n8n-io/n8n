@@ -121,14 +121,6 @@ export type IterableV1UserListRemoveConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type IterableV1Params =
-	| IterableV1EventTrackConfig
-	| IterableV1UserUpsertConfig
-	| IterableV1UserDeleteConfig
-	| IterableV1UserGetConfig
-	| IterableV1UserListAddConfig
-	| IterableV1UserListRemoveConfig
-	;
 
 // ===========================================================================
 // Credentials

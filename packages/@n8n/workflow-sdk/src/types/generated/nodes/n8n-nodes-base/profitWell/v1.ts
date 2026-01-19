@@ -36,10 +36,6 @@ export type ProfitWellV1MetricGetConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type ProfitWellV1Params =
-	| ProfitWellV1CompanyGetSettingConfig
-	| ProfitWellV1MetricGetConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -67,10 +67,6 @@ export type RabbitmqV11ExchangeConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type RabbitmqV11Params =
-	| RabbitmqV11QueueConfig
-	| RabbitmqV11ExchangeConfig
-	;
 
 // ===========================================================================
 // Credentials

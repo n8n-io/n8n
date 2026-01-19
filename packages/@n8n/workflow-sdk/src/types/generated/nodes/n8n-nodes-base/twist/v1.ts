@@ -351,30 +351,6 @@ export type TwistV1ThreadUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type TwistV1Params =
-	| TwistV1ChannelArchiveConfig
-	| TwistV1ChannelCreateConfig
-	| TwistV1ChannelDeleteConfig
-	| TwistV1ChannelGetConfig
-	| TwistV1ChannelGetAllConfig
-	| TwistV1ChannelUnarchiveConfig
-	| TwistV1ChannelUpdateConfig
-	| TwistV1CommentCreateConfig
-	| TwistV1CommentDeleteConfig
-	| TwistV1CommentGetConfig
-	| TwistV1CommentGetAllConfig
-	| TwistV1CommentUpdateConfig
-	| TwistV1MessageConversationCreateConfig
-	| TwistV1MessageConversationDeleteConfig
-	| TwistV1MessageConversationGetConfig
-	| TwistV1MessageConversationGetAllConfig
-	| TwistV1MessageConversationUpdateConfig
-	| TwistV1ThreadCreateConfig
-	| TwistV1ThreadDeleteConfig
-	| TwistV1ThreadGetConfig
-	| TwistV1ThreadGetAllConfig
-	| TwistV1ThreadUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

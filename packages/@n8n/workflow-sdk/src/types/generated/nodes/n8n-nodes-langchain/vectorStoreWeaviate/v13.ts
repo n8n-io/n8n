@@ -98,12 +98,6 @@ export type LcVectorStoreWeaviateV13RetrieveAsToolConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStoreWeaviateV13Params =
-	| LcVectorStoreWeaviateV13LoadConfig
-	| LcVectorStoreWeaviateV13InsertConfig
-	| LcVectorStoreWeaviateV13RetrieveConfig
-	| LcVectorStoreWeaviateV13RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials

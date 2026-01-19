@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MicrosoftOutlookTriggerV1Params {
+export interface MicrosoftOutlookTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -90,8 +90,8 @@ interface MicrosoftOutlookTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type MicrosoftOutlookTriggerV1ParamsNode = MicrosoftOutlookTriggerV1NodeBase & {
-	config: NodeConfig<MicrosoftOutlookTriggerV1Params>;
+export type MicrosoftOutlookTriggerV1Node = MicrosoftOutlookTriggerV1NodeBase & {
+	config: NodeConfig<MicrosoftOutlookTriggerV1Config>;
 };
 
-export type MicrosoftOutlookTriggerV1Node = MicrosoftOutlookTriggerV1ParamsNode;
+export type MicrosoftOutlookTriggerV1Node = MicrosoftOutlookTriggerV1Node;

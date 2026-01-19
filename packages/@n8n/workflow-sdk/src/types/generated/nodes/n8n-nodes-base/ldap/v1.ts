@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LdapV1Params {
+export interface LdapV1Config {
 	operation?: 'compare' | 'create' | 'delete' | 'rename' | 'search' | 'update' | Expression<string>;
 	nodeDebug?: boolean | Expression<boolean>;
 /**
@@ -113,8 +113,8 @@ interface LdapV1NodeBase {
 	credentials?: LdapV1Credentials;
 }
 
-export type LdapV1ParamsNode = LdapV1NodeBase & {
-	config: NodeConfig<LdapV1Params>;
+export type LdapV1Node = LdapV1NodeBase & {
+	config: NodeConfig<LdapV1Config>;
 };
 
-export type LdapV1Node = LdapV1ParamsNode;
+export type LdapV1Node = LdapV1Node;

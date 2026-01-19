@@ -84,11 +84,6 @@ export type ApiTemplateIoV1PdfCreateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type ApiTemplateIoV1Params =
-	| ApiTemplateIoV1AccountGetConfig
-	| ApiTemplateIoV1ImageCreateConfig
-	| ApiTemplateIoV1PdfCreateConfig
-	;
 
 // ===========================================================================
 // Output Types

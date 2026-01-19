@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcAgentToolV22Params {
+export interface LcAgentToolV22Config {
 /**
  * Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often
  * @default AI Agent that can call other tools
@@ -35,8 +35,8 @@ interface LcAgentToolV22NodeBase {
 	version: 2.2;
 }
 
-export type LcAgentToolV22ParamsNode = LcAgentToolV22NodeBase & {
-	config: NodeConfig<LcAgentToolV22Params>;
+export type LcAgentToolV22Node = LcAgentToolV22NodeBase & {
+	config: NodeConfig<LcAgentToolV22Config>;
 };
 
-export type LcAgentToolV22Node = LcAgentToolV22ParamsNode;
+export type LcAgentToolV22Node = LcAgentToolV22Node;

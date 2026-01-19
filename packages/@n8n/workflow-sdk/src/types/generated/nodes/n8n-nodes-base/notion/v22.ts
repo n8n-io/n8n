@@ -2777,22 +2777,6 @@ export type NotionV22UserGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type NotionV22Params =
-	| NotionV22BlockAppendConfig
-	| NotionV22BlockGetAllConfig
-	| NotionV22DatabaseGetConfig
-	| NotionV22DatabaseGetAllConfig
-	| NotionV22DatabaseSearchConfig
-	| NotionV22DatabasePageCreateConfig
-	| NotionV22DatabasePageGetConfig
-	| NotionV22DatabasePageGetAllConfig
-	| NotionV22DatabasePageUpdateConfig
-	| NotionV22PageArchiveConfig
-	| NotionV22PageCreateConfig
-	| NotionV22PageSearchConfig
-	| NotionV22UserGetConfig
-	| NotionV22UserGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

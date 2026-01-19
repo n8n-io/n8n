@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MailerLiteTriggerV1Params {
+export interface MailerLiteTriggerV1Config {
 /**
  * The events to listen to
  * @default []
@@ -38,8 +38,8 @@ interface MailerLiteTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type MailerLiteTriggerV1ParamsNode = MailerLiteTriggerV1NodeBase & {
-	config: NodeConfig<MailerLiteTriggerV1Params>;
+export type MailerLiteTriggerV1Node = MailerLiteTriggerV1NodeBase & {
+	config: NodeConfig<MailerLiteTriggerV1Config>;
 };
 
-export type MailerLiteTriggerV1Node = MailerLiteTriggerV1ParamsNode;
+export type MailerLiteTriggerV1Node = MailerLiteTriggerV1Node;

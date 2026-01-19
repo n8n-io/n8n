@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface FormV1Params {
+export interface FormV1Config {
 	operation?: 'page' | 'completion' | Expression<string>;
 	defineForm?: 'fields' | 'json' | Expression<string>;
 	jsonOutput?: IDataObject | string | Expression<string>;
@@ -77,8 +77,8 @@ interface FormV1NodeBase {
 	version: 1;
 }
 
-export type FormV1ParamsNode = FormV1NodeBase & {
-	config: NodeConfig<FormV1Params>;
+export type FormV1Node = FormV1NodeBase & {
+	config: NodeConfig<FormV1Config>;
 };
 
-export type FormV1Node = FormV1ParamsNode;
+export type FormV1Node = FormV1Node;

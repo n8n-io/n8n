@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface HttpRequestV1Params {
+export interface HttpRequestV1Config {
 /**
  * The way to authenticate
  * @default none
@@ -149,8 +149,8 @@ interface HttpRequestV1NodeBase {
 	credentials?: HttpRequestV1Credentials;
 }
 
-export type HttpRequestV1ParamsNode = HttpRequestV1NodeBase & {
-	config: NodeConfig<HttpRequestV1Params>;
+export type HttpRequestV1Node = HttpRequestV1NodeBase & {
+	config: NodeConfig<HttpRequestV1Config>;
 };
 
-export type HttpRequestV1Node = HttpRequestV1ParamsNode;
+export type HttpRequestV1Node = HttpRequestV1Node;

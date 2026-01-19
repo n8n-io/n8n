@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface JotFormTriggerV1Params {
+export interface JotFormTriggerV1Config {
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
  */
@@ -47,8 +47,8 @@ interface JotFormTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type JotFormTriggerV1ParamsNode = JotFormTriggerV1NodeBase & {
-	config: NodeConfig<JotFormTriggerV1Params>;
+export type JotFormTriggerV1Node = JotFormTriggerV1NodeBase & {
+	config: NodeConfig<JotFormTriggerV1Config>;
 };
 
-export type JotFormTriggerV1Node = JotFormTriggerV1ParamsNode;
+export type JotFormTriggerV1Node = JotFormTriggerV1Node;

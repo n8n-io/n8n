@@ -331,28 +331,6 @@ export type YouTubeV1VideoCategoryGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type YouTubeV1Params =
-	| YouTubeV1ChannelGetConfig
-	| YouTubeV1ChannelGetAllConfig
-	| YouTubeV1ChannelUpdateConfig
-	| YouTubeV1ChannelUploadBannerConfig
-	| YouTubeV1PlaylistCreateConfig
-	| YouTubeV1PlaylistDeleteConfig
-	| YouTubeV1PlaylistGetConfig
-	| YouTubeV1PlaylistGetAllConfig
-	| YouTubeV1PlaylistUpdateConfig
-	| YouTubeV1PlaylistItemAddConfig
-	| YouTubeV1PlaylistItemDeleteConfig
-	| YouTubeV1PlaylistItemGetConfig
-	| YouTubeV1PlaylistItemGetAllConfig
-	| YouTubeV1VideoDeleteConfig
-	| YouTubeV1VideoGetConfig
-	| YouTubeV1VideoGetAllConfig
-	| YouTubeV1VideoRateConfig
-	| YouTubeV1VideoUpdateConfig
-	| YouTubeV1VideoUploadConfig
-	| YouTubeV1VideoCategoryGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

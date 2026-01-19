@@ -110,13 +110,6 @@ export type LcVectorStorePineconeV12UpdateConfig = {
 		id: string | Expression<string>;
 };
 
-export type LcVectorStorePineconeV12Params =
-	| LcVectorStorePineconeV12LoadConfig
-	| LcVectorStorePineconeV12InsertConfig
-	| LcVectorStorePineconeV12RetrieveConfig
-	| LcVectorStorePineconeV12RetrieveAsToolConfig
-	| LcVectorStorePineconeV12UpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

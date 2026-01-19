@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface PostmarkTriggerV1Params {
+export interface PostmarkTriggerV1Config {
 /**
  * Webhook events that will be enabled for that endpoint
  * @default []
@@ -50,8 +50,8 @@ interface PostmarkTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type PostmarkTriggerV1ParamsNode = PostmarkTriggerV1NodeBase & {
-	config: NodeConfig<PostmarkTriggerV1Params>;
+export type PostmarkTriggerV1Node = PostmarkTriggerV1NodeBase & {
+	config: NodeConfig<PostmarkTriggerV1Config>;
 };
 
-export type PostmarkTriggerV1Node = PostmarkTriggerV1ParamsNode;
+export type PostmarkTriggerV1Node = PostmarkTriggerV1Node;

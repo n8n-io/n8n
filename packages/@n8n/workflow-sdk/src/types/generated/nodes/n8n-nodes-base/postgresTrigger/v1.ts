@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface PostgresTriggerV1Params {
+export interface PostgresTriggerV1Config {
 	triggerMode?: 'createTrigger' | 'listenTrigger' | Expression<string>;
 	schema: ResourceLocatorValue;
 	tableName: ResourceLocatorValue;
@@ -47,8 +47,8 @@ interface PostgresTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type PostgresTriggerV1ParamsNode = PostgresTriggerV1NodeBase & {
-	config: NodeConfig<PostgresTriggerV1Params>;
+export type PostgresTriggerV1Node = PostgresTriggerV1NodeBase & {
+	config: NodeConfig<PostgresTriggerV1Config>;
 };
 
-export type PostgresTriggerV1Node = PostgresTriggerV1ParamsNode;
+export type PostgresTriggerV1Node = PostgresTriggerV1Node;

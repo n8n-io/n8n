@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MySqlV1Params {
+export interface MySqlV1Config {
 	operation?: 'executeQuery' | 'insert' | 'update' | Expression<string>;
 /**
  * The SQL query to execute
@@ -64,8 +64,8 @@ interface MySqlV1NodeBase {
 	credentials?: MySqlV1Credentials;
 }
 
-export type MySqlV1ParamsNode = MySqlV1NodeBase & {
-	config: NodeConfig<MySqlV1Params>;
+export type MySqlV1Node = MySqlV1NodeBase & {
+	config: NodeConfig<MySqlV1Config>;
 };
 
-export type MySqlV1Node = MySqlV1ParamsNode;
+export type MySqlV1Node = MySqlV1Node;

@@ -250,28 +250,6 @@ export type SyncroMspV1TicketUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type SyncroMspV1Params =
-	| SyncroMspV1ContactCreateConfig
-	| SyncroMspV1ContactDeleteConfig
-	| SyncroMspV1ContactGetConfig
-	| SyncroMspV1ContactGetAllConfig
-	| SyncroMspV1ContactUpdateConfig
-	| SyncroMspV1CustomerCreateConfig
-	| SyncroMspV1CustomerDeleteConfig
-	| SyncroMspV1CustomerGetConfig
-	| SyncroMspV1CustomerGetAllConfig
-	| SyncroMspV1CustomerUpdateConfig
-	| SyncroMspV1RmmCreateConfig
-	| SyncroMspV1RmmDeleteConfig
-	| SyncroMspV1RmmGetConfig
-	| SyncroMspV1RmmGetAllConfig
-	| SyncroMspV1RmmMuteConfig
-	| SyncroMspV1TicketCreateConfig
-	| SyncroMspV1TicketDeleteConfig
-	| SyncroMspV1TicketGetConfig
-	| SyncroMspV1TicketGetAllConfig
-	| SyncroMspV1TicketUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

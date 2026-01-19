@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AsanaTriggerV1Params {
+export interface AsanaTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 /**
  * The resource ID to subscribe to. The resource can be a task or project.
@@ -43,8 +43,8 @@ interface AsanaTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type AsanaTriggerV1ParamsNode = AsanaTriggerV1NodeBase & {
-	config: NodeConfig<AsanaTriggerV1Params>;
+export type AsanaTriggerV1Node = AsanaTriggerV1NodeBase & {
+	config: NodeConfig<AsanaTriggerV1Config>;
 };
 
-export type AsanaTriggerV1Node = AsanaTriggerV1ParamsNode;
+export type AsanaTriggerV1Node = AsanaTriggerV1Node;

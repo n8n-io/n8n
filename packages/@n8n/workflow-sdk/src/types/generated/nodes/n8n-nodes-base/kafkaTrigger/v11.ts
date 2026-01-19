@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface KafkaTriggerV11Params {
+export interface KafkaTriggerV11Config {
 /**
  * Name of the queue of topic to consume from
  */
@@ -52,8 +52,8 @@ interface KafkaTriggerV11NodeBase {
 	isTrigger: true;
 }
 
-export type KafkaTriggerV11ParamsNode = KafkaTriggerV11NodeBase & {
-	config: NodeConfig<KafkaTriggerV11Params>;
+export type KafkaTriggerV11Node = KafkaTriggerV11NodeBase & {
+	config: NodeConfig<KafkaTriggerV11Config>;
 };
 
-export type KafkaTriggerV11Node = KafkaTriggerV11ParamsNode;
+export type KafkaTriggerV11Node = KafkaTriggerV11Node;

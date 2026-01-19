@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolWikipediaV1Params {
+export interface LcToolWikipediaV1Config {
 }
 
 // ===========================================================================
@@ -28,8 +28,8 @@ interface LcToolWikipediaV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcToolWikipediaV1ParamsNode = LcToolWikipediaV1NodeBase & {
-	config: NodeConfig<LcToolWikipediaV1Params>;
+export type LcToolWikipediaV1Node = LcToolWikipediaV1NodeBase & {
+	config: NodeConfig<LcToolWikipediaV1Config>;
 };
 
-export type LcToolWikipediaV1Node = LcToolWikipediaV1ParamsNode;
+export type LcToolWikipediaV1Node = LcToolWikipediaV1Node;

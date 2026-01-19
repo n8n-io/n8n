@@ -45,11 +45,6 @@ export type YourlsV1UrlStatsConfig = {
 		shortUrl: string | Expression<string>;
 };
 
-export type YourlsV1Params =
-	| YourlsV1UrlExpandConfig
-	| YourlsV1UrlShortenConfig
-	| YourlsV1UrlStatsConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -144,19 +144,6 @@ export type JenkinsV1JobTriggerParamsConfig = {
 	};
 };
 
-export type JenkinsV1Params =
-	| JenkinsV1BuildGetAllConfig
-	| JenkinsV1InstanceCancelQuietDownConfig
-	| JenkinsV1InstanceQuietDownConfig
-	| JenkinsV1InstanceRestartConfig
-	| JenkinsV1InstanceSafeRestartConfig
-	| JenkinsV1InstanceSafeExitConfig
-	| JenkinsV1InstanceExitConfig
-	| JenkinsV1JobCopyConfig
-	| JenkinsV1JobCreateConfig
-	| JenkinsV1JobTriggerConfig
-	| JenkinsV1JobTriggerParamsConfig
-	;
 
 // ===========================================================================
 // Output Types

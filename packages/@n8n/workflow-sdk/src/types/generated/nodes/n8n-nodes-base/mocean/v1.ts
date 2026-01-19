@@ -55,10 +55,6 @@ export type MoceanV1VoiceSendConfig = {
 		message: string | Expression<string>;
 };
 
-export type MoceanV1Params =
-	| MoceanV1SmsSendConfig
-	| MoceanV1VoiceSendConfig
-	;
 
 // ===========================================================================
 // Credentials

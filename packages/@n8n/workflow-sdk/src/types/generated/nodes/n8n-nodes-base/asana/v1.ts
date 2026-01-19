@@ -388,30 +388,6 @@ export type AsanaV1UserGetAllConfig = {
 		workspace: string | Expression<string>;
 };
 
-export type AsanaV1Params =
-	| AsanaV1ProjectCreateConfig
-	| AsanaV1ProjectDeleteConfig
-	| AsanaV1ProjectGetConfig
-	| AsanaV1ProjectGetAllConfig
-	| AsanaV1ProjectUpdateConfig
-	| AsanaV1SubtaskCreateConfig
-	| AsanaV1SubtaskGetAllConfig
-	| AsanaV1TaskCreateConfig
-	| AsanaV1TaskDeleteConfig
-	| AsanaV1TaskGetConfig
-	| AsanaV1TaskGetAllConfig
-	| AsanaV1TaskMoveConfig
-	| AsanaV1TaskSearchConfig
-	| AsanaV1TaskUpdateConfig
-	| AsanaV1TaskCommentAddConfig
-	| AsanaV1TaskCommentRemoveConfig
-	| AsanaV1TaskProjectAddConfig
-	| AsanaV1TaskProjectRemoveConfig
-	| AsanaV1TaskTagAddConfig
-	| AsanaV1TaskTagRemoveConfig
-	| AsanaV1UserGetConfig
-	| AsanaV1UserGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

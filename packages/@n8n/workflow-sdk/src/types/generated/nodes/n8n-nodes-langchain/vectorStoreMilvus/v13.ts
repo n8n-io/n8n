@@ -95,12 +95,6 @@ export type LcVectorStoreMilvusV13RetrieveAsToolConfig = {
 		useReranker?: boolean | Expression<boolean>;
 };
 
-export type LcVectorStoreMilvusV13Params =
-	| LcVectorStoreMilvusV13LoadConfig
-	| LcVectorStoreMilvusV13InsertConfig
-	| LcVectorStoreMilvusV13RetrieveConfig
-	| LcVectorStoreMilvusV13RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials

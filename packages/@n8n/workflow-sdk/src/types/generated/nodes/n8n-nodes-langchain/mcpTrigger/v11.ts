@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMcpTriggerV11Params {
+export interface LcMcpTriggerV11Config {
 /**
  * The way to authenticate
  * @default none
@@ -43,8 +43,8 @@ interface LcMcpTriggerV11NodeBase {
 	isTrigger: true;
 }
 
-export type LcMcpTriggerV11ParamsNode = LcMcpTriggerV11NodeBase & {
-	config: NodeConfig<LcMcpTriggerV11Params>;
+export type LcMcpTriggerV11Node = LcMcpTriggerV11NodeBase & {
+	config: NodeConfig<LcMcpTriggerV11Config>;
 };
 
-export type LcMcpTriggerV11Node = LcMcpTriggerV11ParamsNode;
+export type LcMcpTriggerV11Node = LcMcpTriggerV11Node;

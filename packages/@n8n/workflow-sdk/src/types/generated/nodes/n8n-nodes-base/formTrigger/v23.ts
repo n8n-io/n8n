@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FormTriggerV23Params {
+export interface FormTriggerV23Config {
 	authentication?: 'basicAuth' | 'none' | Expression<string>;
 /**
  * Shown at the top of the form
@@ -43,8 +43,8 @@ interface FormTriggerV23NodeBase {
 	isTrigger: true;
 }
 
-export type FormTriggerV23ParamsNode = FormTriggerV23NodeBase & {
-	config: NodeConfig<FormTriggerV23Params>;
+export type FormTriggerV23Node = FormTriggerV23NodeBase & {
+	config: NodeConfig<FormTriggerV23Config>;
 };
 
-export type FormTriggerV23Node = FormTriggerV23ParamsNode;
+export type FormTriggerV23Node = FormTriggerV23Node;

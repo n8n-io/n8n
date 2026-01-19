@@ -89,12 +89,6 @@ export type CortexV1ResponderExecuteConfig = {
 	parameters?: string | Expression<string>;
 };
 
-export type CortexV1Params =
-	| CortexV1AnalyzerExecuteConfig
-	| CortexV1JobGetConfig
-	| CortexV1JobReportConfig
-	| CortexV1ResponderExecuteConfig
-	;
 
 // ===========================================================================
 // Credentials

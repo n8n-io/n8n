@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AwsTextractV1Params {
+export interface AwsTextractV1Config {
 	authentication?: 'iam' | 'assumeRole' | Expression<string>;
 	operation?: 'analyzeExpense' | Expression<string>;
 /**
@@ -47,8 +47,8 @@ interface AwsTextractV1NodeBase {
 	credentials?: AwsTextractV1Credentials;
 }
 
-export type AwsTextractV1ParamsNode = AwsTextractV1NodeBase & {
-	config: NodeConfig<AwsTextractV1Params>;
+export type AwsTextractV1Node = AwsTextractV1NodeBase & {
+	config: NodeConfig<AwsTextractV1Config>;
 };
 
-export type AwsTextractV1Node = AwsTextractV1ParamsNode;
+export type AwsTextractV1Node = AwsTextractV1Node;

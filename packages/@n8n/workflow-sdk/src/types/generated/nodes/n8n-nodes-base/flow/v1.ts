@@ -68,12 +68,6 @@ export type FlowV1TaskGetAllConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type FlowV1Params =
-	| FlowV1TaskCreateConfig
-	| FlowV1TaskUpdateConfig
-	| FlowV1TaskGetConfig
-	| FlowV1TaskGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

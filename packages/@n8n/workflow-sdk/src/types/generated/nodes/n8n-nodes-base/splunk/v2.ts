@@ -210,24 +210,6 @@ export type SplunkV2UserUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type SplunkV2Params =
-	| SplunkV2AlertGetReportConfig
-	| SplunkV2AlertGetMetricsConfig
-	| SplunkV2ReportCreateConfig
-	| SplunkV2ReportDeleteReportConfig
-	| SplunkV2ReportGetConfig
-	| SplunkV2ReportGetAllConfig
-	| SplunkV2SearchCreateConfig
-	| SplunkV2SearchDeleteJobConfig
-	| SplunkV2SearchGetConfig
-	| SplunkV2SearchGetAllConfig
-	| SplunkV2SearchGetResultConfig
-	| SplunkV2UserCreateConfig
-	| SplunkV2UserDeleteUserConfig
-	| SplunkV2UserGetConfig
-	| SplunkV2UserGetAllConfig
-	| SplunkV2UserUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

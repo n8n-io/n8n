@@ -53,10 +53,6 @@ export type UpleadV1PersonEnrichConfig = {
 		domain?: string | Expression<string>;
 };
 
-export type UpleadV1Params =
-	| UpleadV1CompanyEnrichConfig
-	| UpleadV1PersonEnrichConfig
-	;
 
 // ===========================================================================
 // Credentials

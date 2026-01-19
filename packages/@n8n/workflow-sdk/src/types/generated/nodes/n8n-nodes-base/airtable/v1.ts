@@ -203,11 +203,6 @@ export type AirtableV1AirtableApiConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type AirtableV1Params =
-	| AirtableV1AirtableTokenApiConfig
-	| AirtableV1AirtableOAuth2ApiConfig
-	| AirtableV1AirtableApiConfig
-	;
 
 // ===========================================================================
 // Credentials

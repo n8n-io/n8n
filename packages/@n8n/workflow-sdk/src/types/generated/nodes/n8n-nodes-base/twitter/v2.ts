@@ -141,16 +141,6 @@ export type TwitterV2UserSearchUserConfig = {
 		me?: boolean | Expression<boolean>;
 };
 
-export type TwitterV2Params =
-	| TwitterV2DirectMessageCreateConfig
-	| TwitterV2ListAddConfig
-	| TwitterV2TweetCreateConfig
-	| TwitterV2TweetDeleteConfig
-	| TwitterV2TweetLikeConfig
-	| TwitterV2TweetRetweetConfig
-	| TwitterV2TweetSearchConfig
-	| TwitterV2UserSearchUserConfig
-	;
 
 // ===========================================================================
 // Output Types

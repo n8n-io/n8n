@@ -147,18 +147,6 @@ export type LemlistV1UnsubscribeGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type LemlistV1Params =
-	| LemlistV1ActivityGetAllConfig
-	| LemlistV1CampaignGetAllConfig
-	| LemlistV1LeadCreateConfig
-	| LemlistV1LeadDeleteConfig
-	| LemlistV1LeadGetConfig
-	| LemlistV1LeadUnsubscribeConfig
-	| LemlistV1TeamGetConfig
-	| LemlistV1UnsubscribeAddConfig
-	| LemlistV1UnsubscribeDeleteConfig
-	| LemlistV1UnsubscribeGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface RedisV1Params {
+export interface RedisV1Config {
 	operation?: 'delete' | 'get' | 'incr' | 'info' | 'keys' | 'llen' | 'pop' | 'publish' | 'push' | 'set' | Expression<string>;
 /**
  * Name of the key to delete from Redis
@@ -106,8 +106,8 @@ interface RedisV1NodeBase {
 	credentials?: RedisV1Credentials;
 }
 
-export type RedisV1ParamsNode = RedisV1NodeBase & {
-	config: NodeConfig<RedisV1Params>;
+export type RedisV1Node = RedisV1NodeBase & {
+	config: NodeConfig<RedisV1Config>;
 };
 
-export type RedisV1Node = RedisV1ParamsNode;
+export type RedisV1Node = RedisV1Node;

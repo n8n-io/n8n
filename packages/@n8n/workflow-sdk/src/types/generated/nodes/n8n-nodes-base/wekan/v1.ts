@@ -601,32 +601,6 @@ export type WekanV1ListGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type WekanV1Params =
-	| WekanV1BoardCreateConfig
-	| WekanV1BoardDeleteConfig
-	| WekanV1BoardGetConfig
-	| WekanV1BoardGetAllConfig
-	| WekanV1CardCreateConfig
-	| WekanV1CardDeleteConfig
-	| WekanV1CardGetConfig
-	| WekanV1CardGetAllConfig
-	| WekanV1CardUpdateConfig
-	| WekanV1CardCommentCreateConfig
-	| WekanV1CardCommentDeleteConfig
-	| WekanV1CardCommentGetConfig
-	| WekanV1CardCommentGetAllConfig
-	| WekanV1ChecklistCreateConfig
-	| WekanV1ChecklistDeleteConfig
-	| WekanV1ChecklistGetConfig
-	| WekanV1ChecklistGetAllConfig
-	| WekanV1ChecklistItemDeleteConfig
-	| WekanV1ChecklistItemGetConfig
-	| WekanV1ChecklistItemUpdateConfig
-	| WekanV1ListCreateConfig
-	| WekanV1ListDeleteConfig
-	| WekanV1ListGetConfig
-	| WekanV1ListGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

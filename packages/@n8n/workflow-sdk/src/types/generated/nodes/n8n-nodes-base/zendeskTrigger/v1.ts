@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface ZendeskTriggerV1Params {
+export interface ZendeskTriggerV1Config {
 	authentication?: 'apiToken' | 'oAuth2' | Expression<string>;
 	service: 'support' | Expression<string>;
 	options?: Record<string, unknown>;
@@ -142,8 +142,8 @@ interface ZendeskTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type ZendeskTriggerV1ParamsNode = ZendeskTriggerV1NodeBase & {
-	config: NodeConfig<ZendeskTriggerV1Params>;
+export type ZendeskTriggerV1Node = ZendeskTriggerV1NodeBase & {
+	config: NodeConfig<ZendeskTriggerV1Config>;
 };
 
-export type ZendeskTriggerV1Node = ZendeskTriggerV1ParamsNode;
+export type ZendeskTriggerV1Node = ZendeskTriggerV1Node;

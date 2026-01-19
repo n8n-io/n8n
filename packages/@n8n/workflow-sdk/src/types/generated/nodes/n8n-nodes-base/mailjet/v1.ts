@@ -121,11 +121,6 @@ export type MailjetV1SmsSendConfig = {
 	text: string | Expression<string>;
 };
 
-export type MailjetV1Params =
-	| MailjetV1EmailSendConfig
-	| MailjetV1EmailSendTemplateConfig
-	| MailjetV1SmsSendConfig
-	;
 
 // ===========================================================================
 // Output Types

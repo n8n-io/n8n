@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MySqlV23Params {
+export interface MySqlV23Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -135,8 +135,8 @@ interface MySqlV23NodeBase {
 	credentials?: MySqlV23Credentials;
 }
 
-export type MySqlV23ParamsNode = MySqlV23NodeBase & {
-	config: NodeConfig<MySqlV23Params>;
+export type MySqlV23Node = MySqlV23NodeBase & {
+	config: NodeConfig<MySqlV23Config>;
 };
 
-export type MySqlV23Node = MySqlV23ParamsNode;
+export type MySqlV23Node = MySqlV23Node;

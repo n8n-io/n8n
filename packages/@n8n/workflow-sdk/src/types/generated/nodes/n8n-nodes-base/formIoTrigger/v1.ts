@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FormIoTriggerV1Params {
+export interface FormIoTriggerV1Config {
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
  */
@@ -47,8 +47,8 @@ interface FormIoTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type FormIoTriggerV1ParamsNode = FormIoTriggerV1NodeBase & {
-	config: NodeConfig<FormIoTriggerV1Params>;
+export type FormIoTriggerV1Node = FormIoTriggerV1NodeBase & {
+	config: NodeConfig<FormIoTriggerV1Config>;
 };
 
-export type FormIoTriggerV1Node = FormIoTriggerV1ParamsNode;
+export type FormIoTriggerV1Node = FormIoTriggerV1Node;

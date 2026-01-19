@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatGoogleGeminiV1Params {
+export interface LcLmChatGoogleGeminiV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://developers.generativeai.google/api/rest/generativelanguage/models/list"&gt;Learn more&lt;/a&gt;.
  * @default models/gemini-2.5-flash
@@ -43,8 +43,8 @@ interface LcLmChatGoogleGeminiV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatGoogleGeminiV1ParamsNode = LcLmChatGoogleGeminiV1NodeBase & {
-	config: NodeConfig<LcLmChatGoogleGeminiV1Params>;
+export type LcLmChatGoogleGeminiV1Node = LcLmChatGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcLmChatGoogleGeminiV1Config>;
 };
 
-export type LcLmChatGoogleGeminiV1Node = LcLmChatGoogleGeminiV1ParamsNode;
+export type LcLmChatGoogleGeminiV1Node = LcLmChatGoogleGeminiV1Node;

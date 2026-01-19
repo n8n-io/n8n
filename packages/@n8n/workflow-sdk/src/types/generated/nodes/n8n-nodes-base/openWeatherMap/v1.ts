@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface OpenWeatherMapV1Params {
+export interface OpenWeatherMapV1Config {
 	operation?: 'currentWeather' | '5DayForecast' | Expression<string>;
 /**
  * The format in which format the data should be returned
@@ -73,8 +73,8 @@ interface OpenWeatherMapV1NodeBase {
 	credentials?: OpenWeatherMapV1Credentials;
 }
 
-export type OpenWeatherMapV1ParamsNode = OpenWeatherMapV1NodeBase & {
-	config: NodeConfig<OpenWeatherMapV1Params>;
+export type OpenWeatherMapV1Node = OpenWeatherMapV1NodeBase & {
+	config: NodeConfig<OpenWeatherMapV1Config>;
 };
 
-export type OpenWeatherMapV1Node = OpenWeatherMapV1ParamsNode;
+export type OpenWeatherMapV1Node = OpenWeatherMapV1Node;

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GitV11Params {
+export interface GitV11Config {
 /**
  * The way to authenticate
  * @displayOptions.show { operation: ["clone", "push"] }
@@ -87,8 +87,8 @@ interface GitV11NodeBase {
 	credentials?: GitV11Credentials;
 }
 
-export type GitV11ParamsNode = GitV11NodeBase & {
-	config: NodeConfig<GitV11Params>;
+export type GitV11Node = GitV11NodeBase & {
+	config: NodeConfig<GitV11Config>;
 };
 
-export type GitV11Node = GitV11ParamsNode;
+export type GitV11Node = GitV11Node;

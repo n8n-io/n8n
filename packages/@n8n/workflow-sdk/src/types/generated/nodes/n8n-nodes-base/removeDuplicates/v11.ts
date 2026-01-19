@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface RemoveDuplicatesV11Params {
+export interface RemoveDuplicatesV11Config {
 /**
  * The fields of the input items to compare to see if they are the same
  * @default allFields
@@ -43,8 +43,8 @@ interface RemoveDuplicatesV11NodeBase {
 	version: 1.1;
 }
 
-export type RemoveDuplicatesV11ParamsNode = RemoveDuplicatesV11NodeBase & {
-	config: NodeConfig<RemoveDuplicatesV11Params>;
+export type RemoveDuplicatesV11Node = RemoveDuplicatesV11NodeBase & {
+	config: NodeConfig<RemoveDuplicatesV11Config>;
 };
 
-export type RemoveDuplicatesV11Node = RemoveDuplicatesV11ParamsNode;
+export type RemoveDuplicatesV11Node = RemoveDuplicatesV11Node;

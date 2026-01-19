@@ -932,65 +932,6 @@ export type ClickUpV1TimeEntryTagRemoveConfig = {
 		tagNames: string[];
 };
 
-export type ClickUpV1Params =
-	| ClickUpV1ChecklistCreateConfig
-	| ClickUpV1ChecklistDeleteConfig
-	| ClickUpV1ChecklistUpdateConfig
-	| ClickUpV1ChecklistItemCreateConfig
-	| ClickUpV1ChecklistItemDeleteConfig
-	| ClickUpV1ChecklistItemUpdateConfig
-	| ClickUpV1CommentCreateConfig
-	| ClickUpV1CommentDeleteConfig
-	| ClickUpV1CommentGetAllConfig
-	| ClickUpV1CommentUpdateConfig
-	| ClickUpV1FolderCreateConfig
-	| ClickUpV1FolderDeleteConfig
-	| ClickUpV1FolderGetConfig
-	| ClickUpV1FolderGetAllConfig
-	| ClickUpV1FolderUpdateConfig
-	| ClickUpV1GoalCreateConfig
-	| ClickUpV1GoalDeleteConfig
-	| ClickUpV1GoalGetConfig
-	| ClickUpV1GoalGetAllConfig
-	| ClickUpV1GoalUpdateConfig
-	| ClickUpV1GoalKeyResultCreateConfig
-	| ClickUpV1GoalKeyResultDeleteConfig
-	| ClickUpV1GoalKeyResultUpdateConfig
-	| ClickUpV1ListCreateConfig
-	| ClickUpV1ListCustomFieldsConfig
-	| ClickUpV1ListDeleteConfig
-	| ClickUpV1ListGetConfig
-	| ClickUpV1ListGetAllConfig
-	| ClickUpV1ListMemberConfig
-	| ClickUpV1ListUpdateConfig
-	| ClickUpV1SpaceTagCreateConfig
-	| ClickUpV1SpaceTagDeleteConfig
-	| ClickUpV1SpaceTagGetAllConfig
-	| ClickUpV1SpaceTagUpdateConfig
-	| ClickUpV1TaskCreateConfig
-	| ClickUpV1TaskDeleteConfig
-	| ClickUpV1TaskGetConfig
-	| ClickUpV1TaskGetAllConfig
-	| ClickUpV1TaskMemberConfig
-	| ClickUpV1TaskSetCustomFieldConfig
-	| ClickUpV1TaskUpdateConfig
-	| ClickUpV1TaskDependencyCreateConfig
-	| ClickUpV1TaskDependencyDeleteConfig
-	| ClickUpV1TaskListAddConfig
-	| ClickUpV1TaskListRemoveConfig
-	| ClickUpV1TaskTagAddConfig
-	| ClickUpV1TaskTagRemoveConfig
-	| ClickUpV1TimeEntryCreateConfig
-	| ClickUpV1TimeEntryDeleteConfig
-	| ClickUpV1TimeEntryGetConfig
-	| ClickUpV1TimeEntryGetAllConfig
-	| ClickUpV1TimeEntryStartConfig
-	| ClickUpV1TimeEntryStopConfig
-	| ClickUpV1TimeEntryUpdateConfig
-	| ClickUpV1TimeEntryTagAddConfig
-	| ClickUpV1TimeEntryTagGetAllConfig
-	| ClickUpV1TimeEntryTagRemoveConfig
-	;
 
 // ===========================================================================
 // Output Types

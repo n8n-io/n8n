@@ -202,19 +202,6 @@ export type DropboxV1SearchQueryConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type DropboxV1Params =
-	| DropboxV1FileCopyConfig
-	| DropboxV1FileDeleteConfig
-	| DropboxV1FileDownloadConfig
-	| DropboxV1FileMoveConfig
-	| DropboxV1FileUploadConfig
-	| DropboxV1FolderCopyConfig
-	| DropboxV1FolderCreateConfig
-	| DropboxV1FolderDeleteConfig
-	| DropboxV1FolderListConfig
-	| DropboxV1FolderMoveConfig
-	| DropboxV1SearchQueryConfig
-	;
 
 // ===========================================================================
 // Output Types

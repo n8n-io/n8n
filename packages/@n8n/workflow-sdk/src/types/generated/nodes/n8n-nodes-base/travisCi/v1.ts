@@ -81,13 +81,6 @@ export type TravisCiV1BuildTriggerConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type TravisCiV1Params =
-	| TravisCiV1BuildCancelConfig
-	| TravisCiV1BuildGetConfig
-	| TravisCiV1BuildGetAllConfig
-	| TravisCiV1BuildRestartConfig
-	| TravisCiV1BuildTriggerConfig
-	;
 
 // ===========================================================================
 // Credentials

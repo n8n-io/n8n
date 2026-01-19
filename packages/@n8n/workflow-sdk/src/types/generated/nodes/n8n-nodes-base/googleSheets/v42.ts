@@ -168,18 +168,6 @@ export type GoogleSheetsV42SheetUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleSheetsV42Params =
-	| GoogleSheetsV42SpreadsheetCreateConfig
-	| GoogleSheetsV42SpreadsheetDeleteSpreadsheetConfig
-	| GoogleSheetsV42SheetAppendOrUpdateConfig
-	| GoogleSheetsV42SheetAppendConfig
-	| GoogleSheetsV42SheetClearConfig
-	| GoogleSheetsV42SheetCreateConfig
-	| GoogleSheetsV42SheetRemoveConfig
-	| GoogleSheetsV42SheetDeleteConfig
-	| GoogleSheetsV42SheetReadConfig
-	| GoogleSheetsV42SheetUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

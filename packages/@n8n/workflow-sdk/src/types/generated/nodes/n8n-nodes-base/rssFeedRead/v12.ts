@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface RssFeedReadV12Params {
+export interface RssFeedReadV12Config {
 /**
  * URL of the RSS feed
  */
@@ -32,8 +32,8 @@ interface RssFeedReadV12NodeBase {
 	version: 1.2;
 }
 
-export type RssFeedReadV12ParamsNode = RssFeedReadV12NodeBase & {
-	config: NodeConfig<RssFeedReadV12Params>;
+export type RssFeedReadV12Node = RssFeedReadV12NodeBase & {
+	config: NodeConfig<RssFeedReadV12Config>;
 };
 
-export type RssFeedReadV12Node = RssFeedReadV12ParamsNode;
+export type RssFeedReadV12Node = RssFeedReadV12Node;

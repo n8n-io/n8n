@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface GoogleBigQueryV2Params {
+export interface GoogleBigQueryV2Config {
 	authentication?: 'oAuth2' | 'serviceAccount' | Expression<string>;
 	resource?: unknown;
 	operation?: 'executeQuery' | 'insert' | Expression<string>;
@@ -70,8 +70,8 @@ interface GoogleBigQueryV2NodeBase {
 	credentials?: GoogleBigQueryV2Credentials;
 }
 
-export type GoogleBigQueryV2ParamsNode = GoogleBigQueryV2NodeBase & {
-	config: NodeConfig<GoogleBigQueryV2Params>;
+export type GoogleBigQueryV2Node = GoogleBigQueryV2NodeBase & {
+	config: NodeConfig<GoogleBigQueryV2Config>;
 };
 
-export type GoogleBigQueryV2Node = GoogleBigQueryV2ParamsNode;
+export type GoogleBigQueryV2Node = GoogleBigQueryV2Node;

@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface TelegramTriggerV12Params {
+export interface TelegramTriggerV12Config {
 	updates: Array<'*' | 'callback_query' | 'channel_post' | 'edited_channel_post' | 'edited_message' | 'inline_query' | 'message' | 'poll' | 'pre_checkout_query' | 'shipping_query'>;
 	additionalFields?: Record<string, unknown>;
 }
@@ -35,8 +35,8 @@ interface TelegramTriggerV12NodeBase {
 	isTrigger: true;
 }
 
-export type TelegramTriggerV12ParamsNode = TelegramTriggerV12NodeBase & {
-	config: NodeConfig<TelegramTriggerV12Params>;
+export type TelegramTriggerV12Node = TelegramTriggerV12NodeBase & {
+	config: NodeConfig<TelegramTriggerV12Config>;
 };
 
-export type TelegramTriggerV12Node = TelegramTriggerV12ParamsNode;
+export type TelegramTriggerV12Node = TelegramTriggerV12Node;

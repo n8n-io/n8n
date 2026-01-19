@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryBufferWindowV11Params {
+export interface LcMemoryBufferWindowV11Config {
 /**
  * The key to use to store the memory
  * @default ={{ $json.sessionId }}
@@ -34,8 +34,8 @@ interface LcMemoryBufferWindowV11NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryBufferWindowV11ParamsNode = LcMemoryBufferWindowV11NodeBase & {
-	config: NodeConfig<LcMemoryBufferWindowV11Params>;
+export type LcMemoryBufferWindowV11Node = LcMemoryBufferWindowV11NodeBase & {
+	config: NodeConfig<LcMemoryBufferWindowV11Config>;
 };
 
-export type LcMemoryBufferWindowV11Node = LcMemoryBufferWindowV11ParamsNode;
+export type LcMemoryBufferWindowV11Node = LcMemoryBufferWindowV11Node;

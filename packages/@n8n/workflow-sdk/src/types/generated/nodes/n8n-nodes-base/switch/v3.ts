@@ -45,10 +45,6 @@ export type SwitchV3ExpressionConfig = {
 		output?: number | Expression<number>;
 };
 
-export type SwitchV3Params =
-	| SwitchV3RulesConfig
-	| SwitchV3ExpressionConfig
-	;
 
 // ===========================================================================
 // Credentials

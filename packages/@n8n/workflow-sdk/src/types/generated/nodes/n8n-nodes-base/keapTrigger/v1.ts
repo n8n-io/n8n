@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface KeapTriggerV1Params {
+export interface KeapTriggerV1Config {
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
  */
@@ -42,8 +42,8 @@ interface KeapTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type KeapTriggerV1ParamsNode = KeapTriggerV1NodeBase & {
-	config: NodeConfig<KeapTriggerV1Params>;
+export type KeapTriggerV1Node = KeapTriggerV1NodeBase & {
+	config: NodeConfig<KeapTriggerV1Config>;
 };
 
-export type KeapTriggerV1Node = KeapTriggerV1ParamsNode;
+export type KeapTriggerV1Node = KeapTriggerV1Node;

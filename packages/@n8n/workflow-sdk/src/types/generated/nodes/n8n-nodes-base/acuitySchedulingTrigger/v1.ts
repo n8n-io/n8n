@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AcuitySchedulingTriggerV1Params {
+export interface AcuitySchedulingTriggerV1Config {
 	authentication?: 'apiKey' | 'oAuth2' | Expression<string>;
 	event: 'appointment.canceled' | 'appointment.changed' | 'appointment.rescheduled' | 'appointment.scheduled' | 'order.completed' | Expression<string>;
 /**
@@ -41,8 +41,8 @@ interface AcuitySchedulingTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type AcuitySchedulingTriggerV1ParamsNode = AcuitySchedulingTriggerV1NodeBase & {
-	config: NodeConfig<AcuitySchedulingTriggerV1Params>;
+export type AcuitySchedulingTriggerV1Node = AcuitySchedulingTriggerV1NodeBase & {
+	config: NodeConfig<AcuitySchedulingTriggerV1Config>;
 };
 
-export type AcuitySchedulingTriggerV1Node = AcuitySchedulingTriggerV1ParamsNode;
+export type AcuitySchedulingTriggerV1Node = AcuitySchedulingTriggerV1Node;

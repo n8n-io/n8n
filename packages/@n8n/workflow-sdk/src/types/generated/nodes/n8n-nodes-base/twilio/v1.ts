@@ -62,10 +62,6 @@ export type TwilioV1SmsSendConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type TwilioV1Params =
-	| TwilioV1CallMakeConfig
-	| TwilioV1SmsSendConfig
-	;
 
 // ===========================================================================
 // Output Types

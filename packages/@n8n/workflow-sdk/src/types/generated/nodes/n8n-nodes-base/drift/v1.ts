@@ -63,13 +63,6 @@ export type DriftV1ContactUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type DriftV1Params =
-	| DriftV1ContactCreateConfig
-	| DriftV1ContactGetCustomAttributesConfig
-	| DriftV1ContactDeleteConfig
-	| DriftV1ContactGetConfig
-	| DriftV1ContactUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

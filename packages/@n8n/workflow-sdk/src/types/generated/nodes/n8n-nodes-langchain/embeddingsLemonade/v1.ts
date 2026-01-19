@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsLemonadeV1Params {
+export interface LcEmbeddingsLemonadeV1Config {
 /**
  * The model which will generate the completion. Models are loaded and managed through the Lemonade server.
  */
@@ -37,8 +37,8 @@ interface LcEmbeddingsLemonadeV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcEmbeddingsLemonadeV1ParamsNode = LcEmbeddingsLemonadeV1NodeBase & {
-	config: NodeConfig<LcEmbeddingsLemonadeV1Params>;
+export type LcEmbeddingsLemonadeV1Node = LcEmbeddingsLemonadeV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsLemonadeV1Config>;
 };
 
-export type LcEmbeddingsLemonadeV1Node = LcEmbeddingsLemonadeV1ParamsNode;
+export type LcEmbeddingsLemonadeV1Node = LcEmbeddingsLemonadeV1Node;

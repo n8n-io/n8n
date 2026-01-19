@@ -145,13 +145,6 @@ export type WebflowV1ItemUpdateConfig = {
 	};
 };
 
-export type WebflowV1Params =
-	| WebflowV1ItemCreateConfig
-	| WebflowV1ItemDeleteConfig
-	| WebflowV1ItemGetConfig
-	| WebflowV1ItemGetAllConfig
-	| WebflowV1ItemUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

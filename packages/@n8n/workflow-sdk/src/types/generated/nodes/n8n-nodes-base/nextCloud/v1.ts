@@ -305,25 +305,6 @@ export type NextCloudV1UserUpdateConfig = {
 	};
 };
 
-export type NextCloudV1Params =
-	| NextCloudV1FileCopyConfig
-	| NextCloudV1FileDeleteConfig
-	| NextCloudV1FileDownloadConfig
-	| NextCloudV1FileMoveConfig
-	| NextCloudV1FileShareConfig
-	| NextCloudV1FileUploadConfig
-	| NextCloudV1FolderCopyConfig
-	| NextCloudV1FolderCreateConfig
-	| NextCloudV1FolderDeleteConfig
-	| NextCloudV1FolderListConfig
-	| NextCloudV1FolderMoveConfig
-	| NextCloudV1FolderShareConfig
-	| NextCloudV1UserCreateConfig
-	| NextCloudV1UserDeleteConfig
-	| NextCloudV1UserGetConfig
-	| NextCloudV1UserGetAllConfig
-	| NextCloudV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

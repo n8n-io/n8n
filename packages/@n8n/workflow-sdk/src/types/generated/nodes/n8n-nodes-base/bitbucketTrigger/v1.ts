@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface BitbucketTriggerV1Params {
+export interface BitbucketTriggerV1Config {
 	authentication?: 'password' | 'accessToken' | Expression<string>;
 	resource: 'repository' | 'workspace' | Expression<string>;
 /**
@@ -52,8 +52,8 @@ interface BitbucketTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type BitbucketTriggerV1ParamsNode = BitbucketTriggerV1NodeBase & {
-	config: NodeConfig<BitbucketTriggerV1Params>;
+export type BitbucketTriggerV1Node = BitbucketTriggerV1NodeBase & {
+	config: NodeConfig<BitbucketTriggerV1Config>;
 };
 
-export type BitbucketTriggerV1Node = BitbucketTriggerV1ParamsNode;
+export type BitbucketTriggerV1Node = BitbucketTriggerV1Node;

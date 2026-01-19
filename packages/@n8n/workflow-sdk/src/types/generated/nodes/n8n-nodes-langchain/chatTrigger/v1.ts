@@ -50,10 +50,6 @@ export type LcChatTriggerV1WebhookConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcChatTriggerV1Params =
-	| LcChatTriggerV1HostedChatConfig
-	| LcChatTriggerV1WebhookConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -109,15 +109,6 @@ export type VenafiTlsProtectDatacenterV1PolicyGetConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type VenafiTlsProtectDatacenterV1Params =
-	| VenafiTlsProtectDatacenterV1CertificateCreateConfig
-	| VenafiTlsProtectDatacenterV1CertificateDeleteConfig
-	| VenafiTlsProtectDatacenterV1CertificateDownloadConfig
-	| VenafiTlsProtectDatacenterV1CertificateGetConfig
-	| VenafiTlsProtectDatacenterV1CertificateGetManyConfig
-	| VenafiTlsProtectDatacenterV1CertificateRenewConfig
-	| VenafiTlsProtectDatacenterV1PolicyGetConfig
-	;
 
 // ===========================================================================
 // Credentials

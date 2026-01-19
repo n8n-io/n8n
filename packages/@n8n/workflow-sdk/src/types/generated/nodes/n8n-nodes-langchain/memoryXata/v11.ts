@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryXataV11Params {
+export interface LcMemoryXataV11Config {
 /**
  * The key to use to store the memory
  * @default ={{ $json.sessionId }}
@@ -44,8 +44,8 @@ interface LcMemoryXataV11NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryXataV11ParamsNode = LcMemoryXataV11NodeBase & {
-	config: NodeConfig<LcMemoryXataV11Params>;
+export type LcMemoryXataV11Node = LcMemoryXataV11NodeBase & {
+	config: NodeConfig<LcMemoryXataV11Config>;
 };
 
-export type LcMemoryXataV11Node = LcMemoryXataV11ParamsNode;
+export type LcMemoryXataV11Node = LcMemoryXataV11Node;

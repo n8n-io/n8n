@@ -33,11 +33,6 @@ export type LcChainRetrievalQaV1DefineConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcChainRetrievalQaV1Params =
-	| LcChainRetrievalQaV1AutoConfig
-	| LcChainRetrievalQaV1GuardrailsConfig
-	| LcChainRetrievalQaV1DefineConfig
-	;
 
 // ===========================================================================
 // Credentials

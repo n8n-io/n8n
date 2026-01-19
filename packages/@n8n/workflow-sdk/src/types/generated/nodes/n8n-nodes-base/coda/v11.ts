@@ -424,26 +424,6 @@ export type CodaV11ViewUpdateViewRowConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type CodaV11Params =
-	| CodaV11ControlGetConfig
-	| CodaV11ControlGetAllConfig
-	| CodaV11FormulaGetConfig
-	| CodaV11FormulaGetAllConfig
-	| CodaV11TableCreateRowConfig
-	| CodaV11TableDeleteRowConfig
-	| CodaV11TableGetAllColumnsConfig
-	| CodaV11TableGetAllRowsConfig
-	| CodaV11TableGetColumnConfig
-	| CodaV11TableGetRowConfig
-	| CodaV11TablePushButtonConfig
-	| CodaV11ViewDeleteViewRowConfig
-	| CodaV11ViewGetConfig
-	| CodaV11ViewGetAllViewColumnsConfig
-	| CodaV11ViewGetAllConfig
-	| CodaV11ViewGetAllViewRowsConfig
-	| CodaV11ViewPushViewButtonConfig
-	| CodaV11ViewUpdateViewRowConfig
-	;
 
 // ===========================================================================
 // Output Types

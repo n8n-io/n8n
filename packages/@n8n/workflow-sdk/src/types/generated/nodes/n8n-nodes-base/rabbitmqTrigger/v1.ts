@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface RabbitmqTriggerV1Params {
+export interface RabbitmqTriggerV1Config {
 /**
  * The name of the queue to read from
  */
@@ -38,8 +38,8 @@ interface RabbitmqTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type RabbitmqTriggerV1ParamsNode = RabbitmqTriggerV1NodeBase & {
-	config: NodeConfig<RabbitmqTriggerV1Params>;
+export type RabbitmqTriggerV1Node = RabbitmqTriggerV1NodeBase & {
+	config: NodeConfig<RabbitmqTriggerV1Config>;
 };
 
-export type RabbitmqTriggerV1Node = RabbitmqTriggerV1ParamsNode;
+export type RabbitmqTriggerV1Node = RabbitmqTriggerV1Node;

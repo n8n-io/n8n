@@ -179,19 +179,6 @@ export type AutopilotV1ListGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type AutopilotV1Params =
-	| AutopilotV1ContactUpsertConfig
-	| AutopilotV1ContactDeleteConfig
-	| AutopilotV1ContactGetConfig
-	| AutopilotV1ContactGetAllConfig
-	| AutopilotV1ContactJourneyAddConfig
-	| AutopilotV1ContactListAddConfig
-	| AutopilotV1ContactListExistConfig
-	| AutopilotV1ContactListGetAllConfig
-	| AutopilotV1ContactListRemoveConfig
-	| AutopilotV1ListCreateConfig
-	| AutopilotV1ListGetAllConfig
-	;
 
 // ===========================================================================
 // Credentials

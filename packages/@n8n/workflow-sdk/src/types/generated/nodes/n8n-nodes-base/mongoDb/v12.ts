@@ -242,19 +242,6 @@ export type MongoDbV12DocumentUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MongoDbV12Params =
-	| MongoDbV12SearchIndexesCreateSearchIndexConfig
-	| MongoDbV12SearchIndexesDropSearchIndexConfig
-	| MongoDbV12SearchIndexesListSearchIndexesConfig
-	| MongoDbV12SearchIndexesUpdateSearchIndexConfig
-	| MongoDbV12DocumentAggregateConfig
-	| MongoDbV12DocumentDeleteConfig
-	| MongoDbV12DocumentFindConfig
-	| MongoDbV12DocumentFindOneAndReplaceConfig
-	| MongoDbV12DocumentFindOneAndUpdateConfig
-	| MongoDbV12DocumentInsertConfig
-	| MongoDbV12DocumentUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

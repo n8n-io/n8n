@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface GoogleBusinessProfileTriggerV1Params {
+export interface GoogleBusinessProfileTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -96,8 +96,8 @@ interface GoogleBusinessProfileTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type GoogleBusinessProfileTriggerV1ParamsNode = GoogleBusinessProfileTriggerV1NodeBase & {
-	config: NodeConfig<GoogleBusinessProfileTriggerV1Params>;
+export type GoogleBusinessProfileTriggerV1Node = GoogleBusinessProfileTriggerV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileTriggerV1Config>;
 };
 
-export type GoogleBusinessProfileTriggerV1Node = GoogleBusinessProfileTriggerV1ParamsNode;
+export type GoogleBusinessProfileTriggerV1Node = GoogleBusinessProfileTriggerV1Node;

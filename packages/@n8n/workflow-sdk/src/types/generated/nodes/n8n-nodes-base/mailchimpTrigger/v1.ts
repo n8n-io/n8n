@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface MailchimpTriggerV1Params {
+export interface MailchimpTriggerV1Config {
 	authentication?: 'apiKey' | 'oAuth2' | Expression<string>;
 /**
  * The list that is gonna fire the event. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -49,8 +49,8 @@ interface MailchimpTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type MailchimpTriggerV1ParamsNode = MailchimpTriggerV1NodeBase & {
-	config: NodeConfig<MailchimpTriggerV1Params>;
+export type MailchimpTriggerV1Node = MailchimpTriggerV1NodeBase & {
+	config: NodeConfig<MailchimpTriggerV1Config>;
 };
 
-export type MailchimpTriggerV1Node = MailchimpTriggerV1ParamsNode;
+export type MailchimpTriggerV1Node = MailchimpTriggerV1Node;

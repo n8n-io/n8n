@@ -48,9 +48,6 @@ export type MistralAiV1DocumentExtractTextConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MistralAiV1Params =
-	| MistralAiV1DocumentExtractTextConfig
-	;
 
 // ===========================================================================
 // Output Types

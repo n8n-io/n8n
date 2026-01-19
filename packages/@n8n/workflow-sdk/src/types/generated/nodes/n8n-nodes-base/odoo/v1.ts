@@ -271,28 +271,6 @@ export type OdooV1OpportunityUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type OdooV1Params =
-	| OdooV1ContactCreateConfig
-	| OdooV1ContactDeleteConfig
-	| OdooV1ContactGetConfig
-	| OdooV1ContactGetAllConfig
-	| OdooV1ContactUpdateConfig
-	| OdooV1CustomCreateConfig
-	| OdooV1CustomDeleteConfig
-	| OdooV1CustomGetConfig
-	| OdooV1CustomGetAllConfig
-	| OdooV1CustomUpdateConfig
-	| OdooV1NoteCreateConfig
-	| OdooV1NoteDeleteConfig
-	| OdooV1NoteGetConfig
-	| OdooV1NoteGetAllConfig
-	| OdooV1NoteUpdateConfig
-	| OdooV1OpportunityCreateConfig
-	| OdooV1OpportunityDeleteConfig
-	| OdooV1OpportunityGetConfig
-	| OdooV1OpportunityGetAllConfig
-	| OdooV1OpportunityUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

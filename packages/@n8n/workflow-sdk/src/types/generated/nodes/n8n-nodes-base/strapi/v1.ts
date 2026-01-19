@@ -105,13 +105,6 @@ export type StrapiV1EntryUpdateConfig = {
 		columns?: string | Expression<string>;
 };
 
-export type StrapiV1Params =
-	| StrapiV1EntryCreateConfig
-	| StrapiV1EntryDeleteConfig
-	| StrapiV1EntryGetConfig
-	| StrapiV1EntryGetAllConfig
-	| StrapiV1EntryUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

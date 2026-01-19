@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface AmqpTriggerV1Params {
+export interface AmqpTriggerV1Config {
 /**
  * Name of the queue of topic to listen to
  */
@@ -48,8 +48,8 @@ interface AmqpTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type AmqpTriggerV1ParamsNode = AmqpTriggerV1NodeBase & {
-	config: NodeConfig<AmqpTriggerV1Params>;
+export type AmqpTriggerV1Node = AmqpTriggerV1NodeBase & {
+	config: NodeConfig<AmqpTriggerV1Config>;
 };
 
-export type AmqpTriggerV1Node = AmqpTriggerV1ParamsNode;
+export type AmqpTriggerV1Node = AmqpTriggerV1Node;

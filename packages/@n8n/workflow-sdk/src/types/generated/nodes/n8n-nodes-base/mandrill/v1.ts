@@ -231,10 +231,6 @@ export type MandrillV1MessageSendHtmlConfig = {
 	};
 };
 
-export type MandrillV1Params =
-	| MandrillV1MessageSendTemplateConfig
-	| MandrillV1MessageSendHtmlConfig
-	;
 
 // ===========================================================================
 // Output Types

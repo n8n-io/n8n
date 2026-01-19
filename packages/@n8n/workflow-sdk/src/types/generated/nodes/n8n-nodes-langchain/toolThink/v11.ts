@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolThinkV11Params {
+export interface LcToolThinkV11Config {
 /**
  * The thinking tool's description
  * @default Use the tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning or some cache memory is needed.
@@ -33,8 +33,8 @@ interface LcToolThinkV11NodeBase {
 	isTrigger: true;
 }
 
-export type LcToolThinkV11ParamsNode = LcToolThinkV11NodeBase & {
-	config: NodeConfig<LcToolThinkV11Params>;
+export type LcToolThinkV11Node = LcToolThinkV11NodeBase & {
+	config: NodeConfig<LcToolThinkV11Config>;
 };
 
-export type LcToolThinkV11Node = LcToolThinkV11ParamsNode;
+export type LcToolThinkV11Node = LcToolThinkV11Node;

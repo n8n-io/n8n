@@ -99,14 +99,6 @@ export type TwitterV1TweetSearchConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type TwitterV1Params =
-	| TwitterV1DirectMessageCreateConfig
-	| TwitterV1TweetCreateConfig
-	| TwitterV1TweetDeleteConfig
-	| TwitterV1TweetLikeConfig
-	| TwitterV1TweetRetweetConfig
-	| TwitterV1TweetSearchConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -286,23 +286,6 @@ export type ConvertKitV1TagSubscriberDeleteConfig = {
 		email: string | Expression<string>;
 };
 
-export type ConvertKitV1Params =
-	| ConvertKitV1CustomFieldCreateConfig
-	| ConvertKitV1CustomFieldDeleteConfig
-	| ConvertKitV1CustomFieldGetAllConfig
-	| ConvertKitV1CustomFieldUpdateConfig
-	| ConvertKitV1FormAddSubscriberConfig
-	| ConvertKitV1FormGetAllConfig
-	| ConvertKitV1FormGetSubscriptionsConfig
-	| ConvertKitV1SequenceAddSubscriberConfig
-	| ConvertKitV1SequenceGetAllConfig
-	| ConvertKitV1SequenceGetSubscriptionsConfig
-	| ConvertKitV1TagCreateConfig
-	| ConvertKitV1TagGetAllConfig
-	| ConvertKitV1TagSubscriberAddConfig
-	| ConvertKitV1TagSubscriberGetAllConfig
-	| ConvertKitV1TagSubscriberDeleteConfig
-	;
 
 // ===========================================================================
 // Output Types

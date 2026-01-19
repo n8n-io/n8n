@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryRedisChatV15Params {
+export interface LcMemoryRedisChatV15Config {
 /**
  * The key to use to store session ID in the memory
  * @displayOptions.show { sessionIdType: ["customKey"] }
@@ -44,8 +44,8 @@ interface LcMemoryRedisChatV15NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryRedisChatV15ParamsNode = LcMemoryRedisChatV15NodeBase & {
-	config: NodeConfig<LcMemoryRedisChatV15Params>;
+export type LcMemoryRedisChatV15Node = LcMemoryRedisChatV15NodeBase & {
+	config: NodeConfig<LcMemoryRedisChatV15Config>;
 };
 
-export type LcMemoryRedisChatV15Node = LcMemoryRedisChatV15ParamsNode;
+export type LcMemoryRedisChatV15Node = LcMemoryRedisChatV15Node;

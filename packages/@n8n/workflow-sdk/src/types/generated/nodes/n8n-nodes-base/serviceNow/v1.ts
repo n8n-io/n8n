@@ -462,33 +462,6 @@ export type ServiceNowV1UserRoleGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type ServiceNowV1Params =
-	| ServiceNowV1AttachmentUploadConfig
-	| ServiceNowV1AttachmentDeleteConfig
-	| ServiceNowV1AttachmentGetConfig
-	| ServiceNowV1AttachmentGetAllConfig
-	| ServiceNowV1BusinessServiceGetAllConfig
-	| ServiceNowV1ConfigurationItemsGetAllConfig
-	| ServiceNowV1DepartmentGetAllConfig
-	| ServiceNowV1DictionaryGetAllConfig
-	| ServiceNowV1IncidentCreateConfig
-	| ServiceNowV1IncidentDeleteConfig
-	| ServiceNowV1IncidentGetConfig
-	| ServiceNowV1IncidentGetAllConfig
-	| ServiceNowV1IncidentUpdateConfig
-	| ServiceNowV1TableRecordCreateConfig
-	| ServiceNowV1TableRecordDeleteConfig
-	| ServiceNowV1TableRecordGetConfig
-	| ServiceNowV1TableRecordGetAllConfig
-	| ServiceNowV1TableRecordUpdateConfig
-	| ServiceNowV1UserCreateConfig
-	| ServiceNowV1UserDeleteConfig
-	| ServiceNowV1UserGetConfig
-	| ServiceNowV1UserGetAllConfig
-	| ServiceNowV1UserUpdateConfig
-	| ServiceNowV1UserGroupGetAllConfig
-	| ServiceNowV1UserRoleGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

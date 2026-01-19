@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolSearXngV1Params {
+export interface LcToolSearXngV1Config {
 	options?: Record<string, unknown>;
 }
 
@@ -34,8 +34,8 @@ interface LcToolSearXngV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcToolSearXngV1ParamsNode = LcToolSearXngV1NodeBase & {
-	config: NodeConfig<LcToolSearXngV1Params>;
+export type LcToolSearXngV1Node = LcToolSearXngV1NodeBase & {
+	config: NodeConfig<LcToolSearXngV1Config>;
 };
 
-export type LcToolSearXngV1Node = LcToolSearXngV1ParamsNode;
+export type LcToolSearXngV1Node = LcToolSearXngV1Node;

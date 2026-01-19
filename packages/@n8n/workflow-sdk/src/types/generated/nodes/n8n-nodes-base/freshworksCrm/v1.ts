@@ -529,40 +529,6 @@ export type FreshworksCrmV1TaskUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type FreshworksCrmV1Params =
-	| FreshworksCrmV1AccountCreateConfig
-	| FreshworksCrmV1AccountDeleteConfig
-	| FreshworksCrmV1AccountGetConfig
-	| FreshworksCrmV1AccountGetAllConfig
-	| FreshworksCrmV1AccountUpdateConfig
-	| FreshworksCrmV1AppointmentCreateConfig
-	| FreshworksCrmV1AppointmentDeleteConfig
-	| FreshworksCrmV1AppointmentGetConfig
-	| FreshworksCrmV1AppointmentGetAllConfig
-	| FreshworksCrmV1AppointmentUpdateConfig
-	| FreshworksCrmV1ContactCreateConfig
-	| FreshworksCrmV1ContactDeleteConfig
-	| FreshworksCrmV1ContactGetConfig
-	| FreshworksCrmV1ContactGetAllConfig
-	| FreshworksCrmV1ContactUpdateConfig
-	| FreshworksCrmV1DealCreateConfig
-	| FreshworksCrmV1DealDeleteConfig
-	| FreshworksCrmV1DealGetConfig
-	| FreshworksCrmV1DealGetAllConfig
-	| FreshworksCrmV1DealUpdateConfig
-	| FreshworksCrmV1NoteCreateConfig
-	| FreshworksCrmV1NoteDeleteConfig
-	| FreshworksCrmV1NoteUpdateConfig
-	| FreshworksCrmV1SalesActivityGetConfig
-	| FreshworksCrmV1SalesActivityGetAllConfig
-	| FreshworksCrmV1SearchQueryConfig
-	| FreshworksCrmV1SearchLookupConfig
-	| FreshworksCrmV1TaskCreateConfig
-	| FreshworksCrmV1TaskDeleteConfig
-	| FreshworksCrmV1TaskGetConfig
-	| FreshworksCrmV1TaskGetAllConfig
-	| FreshworksCrmV1TaskUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

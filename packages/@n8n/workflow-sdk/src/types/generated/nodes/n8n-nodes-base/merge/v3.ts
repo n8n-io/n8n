@@ -113,12 +113,6 @@ export type MergeV3ChooseBranchConfig = {
 		useDataOfInput?: string | Expression<string>;
 };
 
-export type MergeV3Params =
-	| MergeV3AppendConfig
-	| MergeV3CombineConfig
-	| MergeV3CombineBySqlConfig
-	| MergeV3ChooseBranchConfig
-	;
 
 // ===========================================================================
 // Credentials

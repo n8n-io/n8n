@@ -28,9 +28,6 @@ export type DeepLV1LanguageTranslateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type DeepLV1Params =
-	| DeepLV1LanguageTranslateConfig
-	;
 
 // ===========================================================================
 // Output Types

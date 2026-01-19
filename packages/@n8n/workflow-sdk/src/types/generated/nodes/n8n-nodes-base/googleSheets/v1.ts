@@ -427,18 +427,6 @@ export type GoogleSheetsV1SheetUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleSheetsV1Params =
-	| GoogleSheetsV1SpreadsheetCreateConfig
-	| GoogleSheetsV1SheetAppendConfig
-	| GoogleSheetsV1SheetClearConfig
-	| GoogleSheetsV1SheetCreateConfig
-	| GoogleSheetsV1SheetUpsertConfig
-	| GoogleSheetsV1SheetDeleteConfig
-	| GoogleSheetsV1SheetLookupConfig
-	| GoogleSheetsV1SheetReadConfig
-	| GoogleSheetsV1SheetRemoveConfig
-	| GoogleSheetsV1SheetUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

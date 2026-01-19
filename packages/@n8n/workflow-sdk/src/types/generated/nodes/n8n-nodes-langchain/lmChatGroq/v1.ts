@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatGroqV1Params {
+export interface LcLmChatGroqV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://console.groq.com/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default llama3-8b-8192
@@ -43,8 +43,8 @@ interface LcLmChatGroqV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatGroqV1ParamsNode = LcLmChatGroqV1NodeBase & {
-	config: NodeConfig<LcLmChatGroqV1Params>;
+export type LcLmChatGroqV1Node = LcLmChatGroqV1NodeBase & {
+	config: NodeConfig<LcLmChatGroqV1Config>;
 };
 
-export type LcLmChatGroqV1Node = LcLmChatGroqV1ParamsNode;
+export type LcLmChatGroqV1Node = LcLmChatGroqV1Node;

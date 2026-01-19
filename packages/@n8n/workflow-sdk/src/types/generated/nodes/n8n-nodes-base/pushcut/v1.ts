@@ -23,9 +23,6 @@ export type PushcutV1NotificationSendConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PushcutV1Params =
-	| PushcutV1NotificationSendConfig
-	;
 
 // ===========================================================================
 // Output Types

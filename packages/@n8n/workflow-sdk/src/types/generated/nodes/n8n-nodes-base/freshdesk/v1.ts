@@ -119,18 +119,6 @@ export type FreshdeskV1TicketUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type FreshdeskV1Params =
-	| FreshdeskV1ContactCreateConfig
-	| FreshdeskV1ContactDeleteConfig
-	| FreshdeskV1ContactGetConfig
-	| FreshdeskV1ContactGetAllConfig
-	| FreshdeskV1ContactUpdateConfig
-	| FreshdeskV1TicketCreateConfig
-	| FreshdeskV1TicketDeleteConfig
-	| FreshdeskV1TicketGetConfig
-	| FreshdeskV1TicketGetAllConfig
-	| FreshdeskV1TicketUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

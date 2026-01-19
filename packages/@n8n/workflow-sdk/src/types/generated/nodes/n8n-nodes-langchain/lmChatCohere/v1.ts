@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatCohereV1Params {
+export interface LcLmChatCohereV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://docs.cohere.com/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default command-a-03-2025
@@ -43,8 +43,8 @@ interface LcLmChatCohereV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatCohereV1ParamsNode = LcLmChatCohereV1NodeBase & {
-	config: NodeConfig<LcLmChatCohereV1Params>;
+export type LcLmChatCohereV1Node = LcLmChatCohereV1NodeBase & {
+	config: NodeConfig<LcLmChatCohereV1Config>;
 };
 
-export type LcLmChatCohereV1Node = LcLmChatCohereV1ParamsNode;
+export type LcLmChatCohereV1Node = LcLmChatCohereV1Node;

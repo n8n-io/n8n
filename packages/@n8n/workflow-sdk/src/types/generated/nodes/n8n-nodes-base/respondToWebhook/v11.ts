@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface RespondToWebhookV11Params {
+export interface RespondToWebhookV11Config {
 /**
  * The data that should be returned
  * @default firstIncomingItem
@@ -67,8 +67,8 @@ interface RespondToWebhookV11NodeBase {
 	credentials?: RespondToWebhookV11Credentials;
 }
 
-export type RespondToWebhookV11ParamsNode = RespondToWebhookV11NodeBase & {
-	config: NodeConfig<RespondToWebhookV11Params>;
+export type RespondToWebhookV11Node = RespondToWebhookV11NodeBase & {
+	config: NodeConfig<RespondToWebhookV11Config>;
 };
 
-export type RespondToWebhookV11Node = RespondToWebhookV11ParamsNode;
+export type RespondToWebhookV11Node = RespondToWebhookV11Node;

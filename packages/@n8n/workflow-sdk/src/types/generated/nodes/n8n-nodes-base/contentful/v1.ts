@@ -160,15 +160,6 @@ export type ContentfulV1SpaceGetConfig = {
 		source?: 'deliveryApi' | 'previewApi' | Expression<string>;
 };
 
-export type ContentfulV1Params =
-	| ContentfulV1AssetGetConfig
-	| ContentfulV1AssetGetAllConfig
-	| ContentfulV1ContentTypeGetConfig
-	| ContentfulV1EntryGetConfig
-	| ContentfulV1EntryGetAllConfig
-	| ContentfulV1LocaleGetAllConfig
-	| ContentfulV1SpaceGetConfig
-	;
 
 // ===========================================================================
 // Output Types

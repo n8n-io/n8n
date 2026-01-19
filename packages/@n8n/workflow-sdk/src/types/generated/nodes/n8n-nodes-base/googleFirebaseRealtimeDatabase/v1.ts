@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GoogleFirebaseRealtimeDatabaseV1Params {
+export interface GoogleFirebaseRealtimeDatabaseV1Config {
 /**
  * As displayed in firebase console URL. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  */
@@ -47,8 +47,8 @@ interface GoogleFirebaseRealtimeDatabaseV1NodeBase {
 	credentials?: GoogleFirebaseRealtimeDatabaseV1Credentials;
 }
 
-export type GoogleFirebaseRealtimeDatabaseV1ParamsNode = GoogleFirebaseRealtimeDatabaseV1NodeBase & {
-	config: NodeConfig<GoogleFirebaseRealtimeDatabaseV1Params>;
+export type GoogleFirebaseRealtimeDatabaseV1Node = GoogleFirebaseRealtimeDatabaseV1NodeBase & {
+	config: NodeConfig<GoogleFirebaseRealtimeDatabaseV1Config>;
 };
 
-export type GoogleFirebaseRealtimeDatabaseV1Node = GoogleFirebaseRealtimeDatabaseV1ParamsNode;
+export type GoogleFirebaseRealtimeDatabaseV1Node = GoogleFirebaseRealtimeDatabaseV1Node;

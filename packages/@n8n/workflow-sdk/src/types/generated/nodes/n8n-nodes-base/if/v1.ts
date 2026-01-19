@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface IfV1Params {
+export interface IfV1Config {
 /**
  * The type of values to compare
  * @default {}
@@ -96,8 +96,8 @@ interface IfV1NodeBase {
 	version: 1;
 }
 
-export type IfV1ParamsNode = IfV1NodeBase & {
-	config: NodeConfig<IfV1Params>;
+export type IfV1Node = IfV1NodeBase & {
+	config: NodeConfig<IfV1Config>;
 };
 
-export type IfV1Node = IfV1ParamsNode;
+export type IfV1Node = IfV1Node;

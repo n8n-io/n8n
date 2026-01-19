@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FilemakerV1Params {
+export interface FilemakerV1Config {
 	action?: 'create' | 'delete' | 'duplicate' | 'edit' | 'find' | 'records' | 'record' | 'performscript' | Expression<string>;
 /**
  * FileMaker Layout Name. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
@@ -192,8 +192,8 @@ interface FilemakerV1NodeBase {
 	credentials?: FilemakerV1Credentials;
 }
 
-export type FilemakerV1ParamsNode = FilemakerV1NodeBase & {
-	config: NodeConfig<FilemakerV1Params>;
+export type FilemakerV1Node = FilemakerV1NodeBase & {
+	config: NodeConfig<FilemakerV1Config>;
 };
 
-export type FilemakerV1Node = FilemakerV1ParamsNode;
+export type FilemakerV1Node = FilemakerV1Node;

@@ -15,7 +15,7 @@ type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string
 // Parameters
 // ===========================================================================
 
-export interface EvaluationV48Params {
+export interface EvaluationV48Config {
 	operation?: 'setInputs' | 'setOutputs' | 'setMetrics' | 'checkIfEvaluating' | Expression<string>;
 	authentication?: 'serviceAccount' | 'oAuth2' | Expression<string>;
 	inputs?: {
@@ -160,8 +160,8 @@ interface EvaluationV48NodeBase {
 	credentials?: EvaluationV48Credentials;
 }
 
-export type EvaluationV48ParamsNode = EvaluationV48NodeBase & {
-	config: NodeConfig<EvaluationV48Params>;
+export type EvaluationV48Node = EvaluationV48NodeBase & {
+	config: NodeConfig<EvaluationV48Config>;
 };
 
-export type EvaluationV48Node = EvaluationV48ParamsNode;
+export type EvaluationV48Node = EvaluationV48Node;

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LingvaNexV1Params {
+export interface LingvaNexV1Config {
 	operation?: 'translate' | Expression<string>;
 /**
  * The input text to translate
@@ -44,8 +44,8 @@ interface LingvaNexV1NodeBase {
 	credentials?: LingvaNexV1Credentials;
 }
 
-export type LingvaNexV1ParamsNode = LingvaNexV1NodeBase & {
-	config: NodeConfig<LingvaNexV1Params>;
+export type LingvaNexV1Node = LingvaNexV1NodeBase & {
+	config: NodeConfig<LingvaNexV1Config>;
 };
 
-export type LingvaNexV1Node = LingvaNexV1ParamsNode;
+export type LingvaNexV1Node = LingvaNexV1Node;

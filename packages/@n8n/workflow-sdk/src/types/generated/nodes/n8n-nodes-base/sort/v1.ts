@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface SortV1Params {
+export interface SortV1Config {
 /**
  * The type of sorting to perform
  * @default simple
@@ -70,8 +70,8 @@ interface SortV1NodeBase {
 	version: 1;
 }
 
-export type SortV1ParamsNode = SortV1NodeBase & {
-	config: NodeConfig<SortV1Params>;
+export type SortV1Node = SortV1NodeBase & {
+	config: NodeConfig<SortV1Config>;
 };
 
-export type SortV1Node = SortV1ParamsNode;
+export type SortV1Node = SortV1Node;

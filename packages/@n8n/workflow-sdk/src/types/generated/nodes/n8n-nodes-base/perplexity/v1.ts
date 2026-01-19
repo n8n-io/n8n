@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface PerplexityV1Params {
+export interface PerplexityV1Config {
 	resource?: unknown;
 	operation?: 'complete' | Expression<string>;
 /**
@@ -64,8 +64,8 @@ interface PerplexityV1NodeBase {
 	credentials?: PerplexityV1Credentials;
 }
 
-export type PerplexityV1ParamsNode = PerplexityV1NodeBase & {
-	config: NodeConfig<PerplexityV1Params>;
+export type PerplexityV1Node = PerplexityV1NodeBase & {
+	config: NodeConfig<PerplexityV1Config>;
 };
 
-export type PerplexityV1Node = PerplexityV1ParamsNode;
+export type PerplexityV1Node = PerplexityV1Node;

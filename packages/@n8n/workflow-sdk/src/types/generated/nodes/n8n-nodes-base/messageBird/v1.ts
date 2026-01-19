@@ -39,10 +39,6 @@ export type MessageBirdV1BalanceGetConfig = {
 	operation: 'get';
 };
 
-export type MessageBirdV1Params =
-	| MessageBirdV1SmsSendConfig
-	| MessageBirdV1BalanceGetConfig
-	;
 
 // ===========================================================================
 // Credentials

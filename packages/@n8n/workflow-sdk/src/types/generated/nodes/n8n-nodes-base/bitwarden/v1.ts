@@ -253,27 +253,6 @@ export type BitwardenV1MemberUpdateGroupsConfig = {
 		groupIds?: string | Expression<string>;
 };
 
-export type BitwardenV1Params =
-	| BitwardenV1CollectionDeleteConfig
-	| BitwardenV1CollectionGetConfig
-	| BitwardenV1CollectionGetAllConfig
-	| BitwardenV1CollectionUpdateConfig
-	| BitwardenV1EventGetAllConfig
-	| BitwardenV1GroupCreateConfig
-	| BitwardenV1GroupDeleteConfig
-	| BitwardenV1GroupGetConfig
-	| BitwardenV1GroupGetAllConfig
-	| BitwardenV1GroupGetMembersConfig
-	| BitwardenV1GroupUpdateConfig
-	| BitwardenV1GroupUpdateMembersConfig
-	| BitwardenV1MemberCreateConfig
-	| BitwardenV1MemberDeleteConfig
-	| BitwardenV1MemberGetConfig
-	| BitwardenV1MemberGetGroupsConfig
-	| BitwardenV1MemberGetAllConfig
-	| BitwardenV1MemberUpdateConfig
-	| BitwardenV1MemberUpdateGroupsConfig
-	;
 
 // ===========================================================================
 // Output Types

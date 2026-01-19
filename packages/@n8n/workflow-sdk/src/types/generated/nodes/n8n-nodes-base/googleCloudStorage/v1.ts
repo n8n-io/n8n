@@ -154,18 +154,6 @@ export type GoogleCloudStorageV1ObjectUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type GoogleCloudStorageV1Params =
-	| GoogleCloudStorageV1BucketCreateConfig
-	| GoogleCloudStorageV1BucketDeleteConfig
-	| GoogleCloudStorageV1BucketGetConfig
-	| GoogleCloudStorageV1BucketGetAllConfig
-	| GoogleCloudStorageV1BucketUpdateConfig
-	| GoogleCloudStorageV1ObjectCreateConfig
-	| GoogleCloudStorageV1ObjectDeleteConfig
-	| GoogleCloudStorageV1ObjectGetConfig
-	| GoogleCloudStorageV1ObjectGetAllConfig
-	| GoogleCloudStorageV1ObjectUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

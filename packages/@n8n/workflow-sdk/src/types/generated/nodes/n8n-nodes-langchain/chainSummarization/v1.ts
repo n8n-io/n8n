@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcChainSummarizationV1Params {
+export interface LcChainSummarizationV1Config {
 /**
  * The type of summarization to run
  * @default map_reduce
@@ -33,8 +33,8 @@ interface LcChainSummarizationV1NodeBase {
 	version: 1;
 }
 
-export type LcChainSummarizationV1ParamsNode = LcChainSummarizationV1NodeBase & {
-	config: NodeConfig<LcChainSummarizationV1Params>;
+export type LcChainSummarizationV1Node = LcChainSummarizationV1NodeBase & {
+	config: NodeConfig<LcChainSummarizationV1Config>;
 };
 
-export type LcChainSummarizationV1Node = LcChainSummarizationV1ParamsNode;
+export type LcChainSummarizationV1Node = LcChainSummarizationV1Node;

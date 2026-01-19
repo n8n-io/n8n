@@ -76,13 +76,6 @@ export type AwsCertificateManagerV1CertificateRenewConfig = {
 		certificateArn: string | Expression<string>;
 };
 
-export type AwsCertificateManagerV1Params =
-	| AwsCertificateManagerV1CertificateDeleteConfig
-	| AwsCertificateManagerV1CertificateGetConfig
-	| AwsCertificateManagerV1CertificateGetManyConfig
-	| AwsCertificateManagerV1CertificateGetMetadataConfig
-	| AwsCertificateManagerV1CertificateRenewConfig
-	;
 
 // ===========================================================================
 // Credentials

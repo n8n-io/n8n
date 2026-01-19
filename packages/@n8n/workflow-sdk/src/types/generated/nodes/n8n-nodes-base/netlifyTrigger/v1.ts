@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface NetlifyTriggerV1Params {
+export interface NetlifyTriggerV1Config {
 /**
  * Select the Site ID. Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;.
  */
@@ -49,8 +49,8 @@ interface NetlifyTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type NetlifyTriggerV1ParamsNode = NetlifyTriggerV1NodeBase & {
-	config: NodeConfig<NetlifyTriggerV1Params>;
+export type NetlifyTriggerV1Node = NetlifyTriggerV1NodeBase & {
+	config: NodeConfig<NetlifyTriggerV1Config>;
 };
 
-export type NetlifyTriggerV1Node = NetlifyTriggerV1ParamsNode;
+export type NetlifyTriggerV1Node = NetlifyTriggerV1Node;

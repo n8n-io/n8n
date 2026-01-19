@@ -252,21 +252,6 @@ export type AwsSesV1TemplateUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type AwsSesV1Params =
-	| AwsSesV1CustomVerificationEmailCreateConfig
-	| AwsSesV1CustomVerificationEmailDeleteConfig
-	| AwsSesV1CustomVerificationEmailGetConfig
-	| AwsSesV1CustomVerificationEmailGetAllConfig
-	| AwsSesV1CustomVerificationEmailSendConfig
-	| AwsSesV1CustomVerificationEmailUpdateConfig
-	| AwsSesV1EmailSendConfig
-	| AwsSesV1EmailSendTemplateConfig
-	| AwsSesV1TemplateCreateConfig
-	| AwsSesV1TemplateDeleteConfig
-	| AwsSesV1TemplateGetConfig
-	| AwsSesV1TemplateGetAllConfig
-	| AwsSesV1TemplateUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

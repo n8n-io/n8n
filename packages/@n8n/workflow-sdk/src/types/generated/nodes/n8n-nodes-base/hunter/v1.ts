@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface HunterV1Params {
+export interface HunterV1Config {
 /**
  * Operation to consume
  * @default domainSearch
@@ -76,8 +76,8 @@ interface HunterV1NodeBase {
 	credentials?: HunterV1Credentials;
 }
 
-export type HunterV1ParamsNode = HunterV1NodeBase & {
-	config: NodeConfig<HunterV1Params>;
+export type HunterV1Node = HunterV1NodeBase & {
+	config: NodeConfig<HunterV1Config>;
 };
 
-export type HunterV1Node = HunterV1ParamsNode;
+export type HunterV1Node = HunterV1Node;

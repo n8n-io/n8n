@@ -201,20 +201,6 @@ export type WordpressV1UserUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type WordpressV1Params =
-	| WordpressV1PostCreateConfig
-	| WordpressV1PostGetConfig
-	| WordpressV1PostGetAllConfig
-	| WordpressV1PostUpdateConfig
-	| WordpressV1PageCreateConfig
-	| WordpressV1PageGetConfig
-	| WordpressV1PageGetAllConfig
-	| WordpressV1PageUpdateConfig
-	| WordpressV1UserCreateConfig
-	| WordpressV1UserGetConfig
-	| WordpressV1UserGetAllConfig
-	| WordpressV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface CrateDbV1Params {
+export interface CrateDbV1Config {
 	operation?: 'executeQuery' | 'insert' | 'update' | Expression<string>;
 /**
  * The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.
@@ -67,8 +67,8 @@ interface CrateDbV1NodeBase {
 	credentials?: CrateDbV1Credentials;
 }
 
-export type CrateDbV1ParamsNode = CrateDbV1NodeBase & {
-	config: NodeConfig<CrateDbV1Params>;
+export type CrateDbV1Node = CrateDbV1NodeBase & {
+	config: NodeConfig<CrateDbV1Config>;
 };
 
-export type CrateDbV1Node = CrateDbV1ParamsNode;
+export type CrateDbV1Node = CrateDbV1Node;

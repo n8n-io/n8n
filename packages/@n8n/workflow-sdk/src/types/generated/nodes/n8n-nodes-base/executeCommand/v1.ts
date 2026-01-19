@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ExecuteCommandV1Params {
+export interface ExecuteCommandV1Config {
 /**
  * Whether to execute only once instead of once for each entry
  * @default true
@@ -36,8 +36,8 @@ interface ExecuteCommandV1NodeBase {
 	version: 1;
 }
 
-export type ExecuteCommandV1ParamsNode = ExecuteCommandV1NodeBase & {
-	config: NodeConfig<ExecuteCommandV1Params>;
+export type ExecuteCommandV1Node = ExecuteCommandV1NodeBase & {
+	config: NodeConfig<ExecuteCommandV1Config>;
 };
 
-export type ExecuteCommandV1Node = ExecuteCommandV1ParamsNode;
+export type ExecuteCommandV1Node = ExecuteCommandV1Node;

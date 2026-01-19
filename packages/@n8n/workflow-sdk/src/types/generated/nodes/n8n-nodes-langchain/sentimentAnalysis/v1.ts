@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcSentimentAnalysisV1Params {
+export interface LcSentimentAnalysisV1Config {
 /**
  * Use an expression to reference data in previous nodes or enter static text
  */
@@ -32,8 +32,8 @@ interface LcSentimentAnalysisV1NodeBase {
 	version: 1;
 }
 
-export type LcSentimentAnalysisV1ParamsNode = LcSentimentAnalysisV1NodeBase & {
-	config: NodeConfig<LcSentimentAnalysisV1Params>;
+export type LcSentimentAnalysisV1Node = LcSentimentAnalysisV1NodeBase & {
+	config: NodeConfig<LcSentimentAnalysisV1Config>;
 };
 
-export type LcSentimentAnalysisV1Node = LcSentimentAnalysisV1ParamsNode;
+export type LcSentimentAnalysisV1Node = LcSentimentAnalysisV1Node;

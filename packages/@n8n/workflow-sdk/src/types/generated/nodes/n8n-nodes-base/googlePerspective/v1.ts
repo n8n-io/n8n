@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GooglePerspectiveV1Params {
+export interface GooglePerspectiveV1Config {
 	operation?: 'analyzeComment' | Expression<string>;
 	text: string | Expression<string>;
 	requestedAttributesUi: {
@@ -47,8 +47,8 @@ interface GooglePerspectiveV1NodeBase {
 	credentials?: GooglePerspectiveV1Credentials;
 }
 
-export type GooglePerspectiveV1ParamsNode = GooglePerspectiveV1NodeBase & {
-	config: NodeConfig<GooglePerspectiveV1Params>;
+export type GooglePerspectiveV1Node = GooglePerspectiveV1NodeBase & {
+	config: NodeConfig<GooglePerspectiveV1Config>;
 };
 
-export type GooglePerspectiveV1Node = GooglePerspectiveV1ParamsNode;
+export type GooglePerspectiveV1Node = GooglePerspectiveV1Node;

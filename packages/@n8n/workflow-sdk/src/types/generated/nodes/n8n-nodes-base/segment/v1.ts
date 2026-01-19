@@ -474,12 +474,6 @@ export type SegmentV1TrackPageConfig = {
 	};
 };
 
-export type SegmentV1Params =
-	| SegmentV1GroupAddConfig
-	| SegmentV1IdentifyCreateConfig
-	| SegmentV1TrackEventConfig
-	| SegmentV1TrackPageConfig
-	;
 
 // ===========================================================================
 // Output Types

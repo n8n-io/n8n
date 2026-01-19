@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface GoogleDriveTriggerV1Params {
+export interface GoogleDriveTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -101,8 +101,8 @@ interface GoogleDriveTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type GoogleDriveTriggerV1ParamsNode = GoogleDriveTriggerV1NodeBase & {
-	config: NodeConfig<GoogleDriveTriggerV1Params>;
+export type GoogleDriveTriggerV1Node = GoogleDriveTriggerV1NodeBase & {
+	config: NodeConfig<GoogleDriveTriggerV1Config>;
 };
 
-export type GoogleDriveTriggerV1Node = GoogleDriveTriggerV1ParamsNode;
+export type GoogleDriveTriggerV1Node = GoogleDriveTriggerV1Node;

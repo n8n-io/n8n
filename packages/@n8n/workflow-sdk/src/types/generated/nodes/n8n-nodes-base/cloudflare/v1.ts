@@ -76,12 +76,6 @@ export type CloudflareV1ZoneCertificateUploadConfig = {
 	privateKey: string | Expression<string>;
 };
 
-export type CloudflareV1Params =
-	| CloudflareV1ZoneCertificateDeleteConfig
-	| CloudflareV1ZoneCertificateGetConfig
-	| CloudflareV1ZoneCertificateGetManyConfig
-	| CloudflareV1ZoneCertificateUploadConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -243,18 +243,6 @@ export type GoogleSheetsV3SheetUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleSheetsV3Params =
-	| GoogleSheetsV3SpreadsheetCreateConfig
-	| GoogleSheetsV3SpreadsheetDeleteSpreadsheetConfig
-	| GoogleSheetsV3SheetAppendOrUpdateConfig
-	| GoogleSheetsV3SheetAppendConfig
-	| GoogleSheetsV3SheetClearConfig
-	| GoogleSheetsV3SheetCreateConfig
-	| GoogleSheetsV3SheetRemoveConfig
-	| GoogleSheetsV3SheetDeleteConfig
-	| GoogleSheetsV3SheetReadConfig
-	| GoogleSheetsV3SheetUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

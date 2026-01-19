@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface OnfleetTriggerV1Params {
+export interface OnfleetTriggerV1Config {
 	triggerOn: 'SMSRecipientOptOut' | 'smsRecipientResponseMissed' | 'taskArrival' | 'taskAssigned' | 'taskCloned' | 'taskCompleted' | 'taskCreated' | 'taskDelayed' | 'taskDeleted' | 'taskEta' | 'taskFailed' | 'taskStarted' | 'taskUnassigned' | 'taskUpdated' | 'workerCreated' | 'workerDeleted' | 'workerDuty' | Expression<string>;
 	additionalFields?: Record<string, unknown>;
 }
@@ -35,8 +35,8 @@ interface OnfleetTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type OnfleetTriggerV1ParamsNode = OnfleetTriggerV1NodeBase & {
-	config: NodeConfig<OnfleetTriggerV1Params>;
+export type OnfleetTriggerV1Node = OnfleetTriggerV1NodeBase & {
+	config: NodeConfig<OnfleetTriggerV1Config>;
 };
 
-export type OnfleetTriggerV1Node = OnfleetTriggerV1ParamsNode;
+export type OnfleetTriggerV1Node = OnfleetTriggerV1Node;

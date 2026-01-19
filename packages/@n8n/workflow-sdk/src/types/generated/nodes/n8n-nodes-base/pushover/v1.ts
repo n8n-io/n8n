@@ -45,9 +45,6 @@ export type PushoverV1MessagePushConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type PushoverV1Params =
-	| PushoverV1MessagePushConfig
-	;
 
 // ===========================================================================
 // Output Types

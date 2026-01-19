@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ExecutionDataV1Params {
+export interface ExecutionDataV1Config {
 	operation?: 'save' | Expression<string>;
 	dataToSave?: {
 		values?: Array<{
@@ -38,8 +38,8 @@ interface ExecutionDataV1NodeBase {
 	version: 1;
 }
 
-export type ExecutionDataV1ParamsNode = ExecutionDataV1NodeBase & {
-	config: NodeConfig<ExecutionDataV1Params>;
+export type ExecutionDataV1Node = ExecutionDataV1NodeBase & {
+	config: NodeConfig<ExecutionDataV1Config>;
 };
 
-export type ExecutionDataV1Node = ExecutionDataV1ParamsNode;
+export type ExecutionDataV1Node = ExecutionDataV1Node;

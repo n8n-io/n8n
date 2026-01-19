@@ -298,22 +298,6 @@ export type ElasticSecurityV1ConnectorCreateConfig = {
 		orgId: string | Expression<string>;
 };
 
-export type ElasticSecurityV1Params =
-	| ElasticSecurityV1CaseCreateConfig
-	| ElasticSecurityV1CaseDeleteConfig
-	| ElasticSecurityV1CaseGetConfig
-	| ElasticSecurityV1CaseGetAllConfig
-	| ElasticSecurityV1CaseGetStatusConfig
-	| ElasticSecurityV1CaseUpdateConfig
-	| ElasticSecurityV1CaseCommentAddConfig
-	| ElasticSecurityV1CaseCommentGetConfig
-	| ElasticSecurityV1CaseCommentGetAllConfig
-	| ElasticSecurityV1CaseCommentRemoveConfig
-	| ElasticSecurityV1CaseCommentUpdateConfig
-	| ElasticSecurityV1CaseTagAddConfig
-	| ElasticSecurityV1CaseTagRemoveConfig
-	| ElasticSecurityV1ConnectorCreateConfig
-	;
 
 // ===========================================================================
 // Credentials

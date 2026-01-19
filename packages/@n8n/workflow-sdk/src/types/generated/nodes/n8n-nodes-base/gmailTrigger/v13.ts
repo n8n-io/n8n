@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GmailTriggerV13Params {
+export interface GmailTriggerV13Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -90,8 +90,8 @@ interface GmailTriggerV13NodeBase {
 	isTrigger: true;
 }
 
-export type GmailTriggerV13ParamsNode = GmailTriggerV13NodeBase & {
-	config: NodeConfig<GmailTriggerV13Params>;
+export type GmailTriggerV13Node = GmailTriggerV13NodeBase & {
+	config: NodeConfig<GmailTriggerV13Config>;
 };
 
-export type GmailTriggerV13Node = GmailTriggerV13ParamsNode;
+export type GmailTriggerV13Node = GmailTriggerV13Node;

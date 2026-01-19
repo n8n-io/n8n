@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryRedisChatV11Params {
+export interface LcMemoryRedisChatV11Config {
 /**
  * The key to use to store the memory
  * @default ={{ $json.sessionId }}
@@ -44,8 +44,8 @@ interface LcMemoryRedisChatV11NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryRedisChatV11ParamsNode = LcMemoryRedisChatV11NodeBase & {
-	config: NodeConfig<LcMemoryRedisChatV11Params>;
+export type LcMemoryRedisChatV11Node = LcMemoryRedisChatV11NodeBase & {
+	config: NodeConfig<LcMemoryRedisChatV11Config>;
 };
 
-export type LcMemoryRedisChatV11Node = LcMemoryRedisChatV11ParamsNode;
+export type LcMemoryRedisChatV11Node = LcMemoryRedisChatV11Node;

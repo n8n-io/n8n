@@ -260,18 +260,6 @@ export type AzureCosmosDbV1ItemUpdateConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type AzureCosmosDbV1Params =
-	| AzureCosmosDbV1ContainerCreateConfig
-	| AzureCosmosDbV1ContainerDeleteConfig
-	| AzureCosmosDbV1ContainerGetConfig
-	| AzureCosmosDbV1ContainerGetAllConfig
-	| AzureCosmosDbV1ItemCreateConfig
-	| AzureCosmosDbV1ItemDeleteConfig
-	| AzureCosmosDbV1ItemGetConfig
-	| AzureCosmosDbV1ItemGetAllConfig
-	| AzureCosmosDbV1ItemQueryConfig
-	| AzureCosmosDbV1ItemUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

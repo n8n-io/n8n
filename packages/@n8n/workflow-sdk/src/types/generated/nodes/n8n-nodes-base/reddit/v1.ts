@@ -291,21 +291,6 @@ export type RedditV1UserGetConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type RedditV1Params =
-	| RedditV1PostCreateConfig
-	| RedditV1PostDeleteConfig
-	| RedditV1PostGetConfig
-	| RedditV1PostGetAllConfig
-	| RedditV1PostSearchConfig
-	| RedditV1PostCommentCreateConfig
-	| RedditV1PostCommentGetAllConfig
-	| RedditV1PostCommentDeleteConfig
-	| RedditV1PostCommentReplyConfig
-	| RedditV1ProfileGetConfig
-	| RedditV1SubredditGetConfig
-	| RedditV1SubredditGetAllConfig
-	| RedditV1UserGetConfig
-	;
 
 // ===========================================================================
 // Output Types

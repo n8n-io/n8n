@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface SseTriggerV1Params {
+export interface SseTriggerV1Config {
 /**
  * The URL to receive the SSE from
  */
@@ -32,8 +32,8 @@ interface SseTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type SseTriggerV1ParamsNode = SseTriggerV1NodeBase & {
-	config: NodeConfig<SseTriggerV1Params>;
+export type SseTriggerV1Node = SseTriggerV1NodeBase & {
+	config: NodeConfig<SseTriggerV1Config>;
 };
 
-export type SseTriggerV1Node = SseTriggerV1ParamsNode;
+export type SseTriggerV1Node = SseTriggerV1Node;

@@ -239,23 +239,6 @@ export type GmailV1MessageLabelRemoveConfig = {
 		labelIds: string[];
 };
 
-export type GmailV1Params =
-	| GmailV1DraftCreateConfig
-	| GmailV1DraftDeleteConfig
-	| GmailV1DraftGetConfig
-	| GmailV1DraftGetAllConfig
-	| GmailV1LabelCreateConfig
-	| GmailV1LabelDeleteConfig
-	| GmailV1LabelGetConfig
-	| GmailV1LabelGetAllConfig
-	| GmailV1MessageDeleteConfig
-	| GmailV1MessageGetConfig
-	| GmailV1MessageGetAllConfig
-	| GmailV1MessageReplyConfig
-	| GmailV1MessageSendConfig
-	| GmailV1MessageLabelAddConfig
-	| GmailV1MessageLabelRemoveConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -102,18 +102,6 @@ export type MetabaseV1QuestionsResultDataConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type MetabaseV1Params =
-	| MetabaseV1AlertsGetConfig
-	| MetabaseV1AlertsGetAllConfig
-	| MetabaseV1DatabasesAddNewDatasourceConfig
-	| MetabaseV1DatabasesGetAllConfig
-	| MetabaseV1DatabasesGetFieldsConfig
-	| MetabaseV1MetricsGetConfig
-	| MetabaseV1MetricsGetAllConfig
-	| MetabaseV1QuestionsGetConfig
-	| MetabaseV1QuestionsGetAllConfig
-	| MetabaseV1QuestionsResultDataConfig
-	;
 
 // ===========================================================================
 // Output Types

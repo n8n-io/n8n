@@ -334,25 +334,6 @@ export type KoBoToolboxV1SubmissionSetValidationConfig = {
 		validationStatus: 'validation_status_approved' | 'validation_status_not_approved' | 'validation_status_on_hold' | Expression<string>;
 };
 
-export type KoBoToolboxV1Params =
-	| KoBoToolboxV1FileCreateConfig
-	| KoBoToolboxV1FileDeleteConfig
-	| KoBoToolboxV1FileGetConfig
-	| KoBoToolboxV1FileGetAllConfig
-	| KoBoToolboxV1FormGetConfig
-	| KoBoToolboxV1FormGetAllConfig
-	| KoBoToolboxV1FormRedeployConfig
-	| KoBoToolboxV1HookGetConfig
-	| KoBoToolboxV1HookGetAllConfig
-	| KoBoToolboxV1HookGetLogsConfig
-	| KoBoToolboxV1HookRetryAllConfig
-	| KoBoToolboxV1HookRetryOneConfig
-	| KoBoToolboxV1SubmissionDeleteConfig
-	| KoBoToolboxV1SubmissionGetConfig
-	| KoBoToolboxV1SubmissionGetAllConfig
-	| KoBoToolboxV1SubmissionGetValidationConfig
-	| KoBoToolboxV1SubmissionSetValidationConfig
-	;
 
 // ===========================================================================
 // Output Types

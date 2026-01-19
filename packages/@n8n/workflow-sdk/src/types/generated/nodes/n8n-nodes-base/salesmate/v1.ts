@@ -338,23 +338,6 @@ export type SalesmateV1DealUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type SalesmateV1Params =
-	| SalesmateV1ActivityCreateConfig
-	| SalesmateV1ActivityDeleteConfig
-	| SalesmateV1ActivityGetConfig
-	| SalesmateV1ActivityGetAllConfig
-	| SalesmateV1ActivityUpdateConfig
-	| SalesmateV1CompanyCreateConfig
-	| SalesmateV1CompanyDeleteConfig
-	| SalesmateV1CompanyGetConfig
-	| SalesmateV1CompanyGetAllConfig
-	| SalesmateV1CompanyUpdateConfig
-	| SalesmateV1DealCreateConfig
-	| SalesmateV1DealDeleteConfig
-	| SalesmateV1DealGetConfig
-	| SalesmateV1DealGetAllConfig
-	| SalesmateV1DealUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface RundeckV1Params {
+export interface RundeckV1Config {
 	resource?: 'job' | Expression<string>;
 	operation?: 'execute' | 'getMetadata' | Expression<string>;
 /**
@@ -54,8 +54,8 @@ interface RundeckV1NodeBase {
 	credentials?: RundeckV1Credentials;
 }
 
-export type RundeckV1ParamsNode = RundeckV1NodeBase & {
-	config: NodeConfig<RundeckV1Params>;
+export type RundeckV1Node = RundeckV1NodeBase & {
+	config: NodeConfig<RundeckV1Config>;
 };
 
-export type RundeckV1Node = RundeckV1ParamsNode;
+export type RundeckV1Node = RundeckV1Node;

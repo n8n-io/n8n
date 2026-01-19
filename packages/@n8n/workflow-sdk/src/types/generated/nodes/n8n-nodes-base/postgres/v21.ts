@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface PostgresV21Params {
+export interface PostgresV21Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'executeQuery' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -148,8 +148,8 @@ interface PostgresV21NodeBase {
 	credentials?: PostgresV21Credentials;
 }
 
-export type PostgresV21ParamsNode = PostgresV21NodeBase & {
-	config: NodeConfig<PostgresV21Params>;
+export type PostgresV21Node = PostgresV21NodeBase & {
+	config: NodeConfig<PostgresV21Config>;
 };
 
-export type PostgresV21Node = PostgresV21ParamsNode;
+export type PostgresV21Node = PostgresV21Node;

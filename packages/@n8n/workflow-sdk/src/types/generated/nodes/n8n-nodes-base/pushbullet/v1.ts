@@ -85,12 +85,6 @@ export type PushbulletV1PushUpdateConfig = {
 		dismissed: boolean | Expression<boolean>;
 };
 
-export type PushbulletV1Params =
-	| PushbulletV1PushCreateConfig
-	| PushbulletV1PushDeleteConfig
-	| PushbulletV1PushGetAllConfig
-	| PushbulletV1PushUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

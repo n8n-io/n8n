@@ -193,21 +193,6 @@ export type HomeAssistantV1TemplateCreateConfig = {
 		template: string | Expression<string>;
 };
 
-export type HomeAssistantV1Params =
-	| HomeAssistantV1CameraProxyGetScreenshotConfig
-	| HomeAssistantV1ConfigGetConfig
-	| HomeAssistantV1ConfigCheckConfig
-	| HomeAssistantV1EventCreateConfig
-	| HomeAssistantV1EventGetAllConfig
-	| HomeAssistantV1LogGetErroLogsConfig
-	| HomeAssistantV1LogGetLogbookEntriesConfig
-	| HomeAssistantV1ServiceCallConfig
-	| HomeAssistantV1ServiceGetAllConfig
-	| HomeAssistantV1StateUpsertConfig
-	| HomeAssistantV1StateGetConfig
-	| HomeAssistantV1StateGetAllConfig
-	| HomeAssistantV1TemplateCreateConfig
-	;
 
 // ===========================================================================
 // Output Types

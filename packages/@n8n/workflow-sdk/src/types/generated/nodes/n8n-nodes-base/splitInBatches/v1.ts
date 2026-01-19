@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface SplitInBatchesV1Params {
+export interface SplitInBatchesV1Config {
 /**
  * The number of items to return with each call
  * @default 10
@@ -33,8 +33,8 @@ interface SplitInBatchesV1NodeBase {
 	version: 1;
 }
 
-export type SplitInBatchesV1ParamsNode = SplitInBatchesV1NodeBase & {
-	config: NodeConfig<SplitInBatchesV1Params>;
+export type SplitInBatchesV1Node = SplitInBatchesV1NodeBase & {
+	config: NodeConfig<SplitInBatchesV1Config>;
 };
 
-export type SplitInBatchesV1Node = SplitInBatchesV1ParamsNode;
+export type SplitInBatchesV1Node = SplitInBatchesV1Node;

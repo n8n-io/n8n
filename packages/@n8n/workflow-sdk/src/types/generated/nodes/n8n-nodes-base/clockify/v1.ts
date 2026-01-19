@@ -320,33 +320,6 @@ export type ClockifyV1WorkspaceGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type ClockifyV1Params =
-	| ClockifyV1ClientCreateConfig
-	| ClockifyV1ClientDeleteConfig
-	| ClockifyV1ClientGetConfig
-	| ClockifyV1ClientGetAllConfig
-	| ClockifyV1ClientUpdateConfig
-	| ClockifyV1ProjectCreateConfig
-	| ClockifyV1ProjectDeleteConfig
-	| ClockifyV1ProjectGetConfig
-	| ClockifyV1ProjectGetAllConfig
-	| ClockifyV1ProjectUpdateConfig
-	| ClockifyV1TagCreateConfig
-	| ClockifyV1TagDeleteConfig
-	| ClockifyV1TagGetAllConfig
-	| ClockifyV1TagUpdateConfig
-	| ClockifyV1TaskCreateConfig
-	| ClockifyV1TaskDeleteConfig
-	| ClockifyV1TaskGetConfig
-	| ClockifyV1TaskGetAllConfig
-	| ClockifyV1TaskUpdateConfig
-	| ClockifyV1TimeEntryCreateConfig
-	| ClockifyV1TimeEntryDeleteConfig
-	| ClockifyV1TimeEntryGetConfig
-	| ClockifyV1TimeEntryUpdateConfig
-	| ClockifyV1UserGetAllConfig
-	| ClockifyV1WorkspaceGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

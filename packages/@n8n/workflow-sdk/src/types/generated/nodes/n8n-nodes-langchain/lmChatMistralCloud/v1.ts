@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatMistralCloudV1Params {
+export interface LcLmChatMistralCloudV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://docs.mistral.ai/platform/endpoints/"&gt;Learn more&lt;/a&gt;.
  * @default mistral-small
@@ -43,8 +43,8 @@ interface LcLmChatMistralCloudV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatMistralCloudV1ParamsNode = LcLmChatMistralCloudV1NodeBase & {
-	config: NodeConfig<LcLmChatMistralCloudV1Params>;
+export type LcLmChatMistralCloudV1Node = LcLmChatMistralCloudV1NodeBase & {
+	config: NodeConfig<LcLmChatMistralCloudV1Config>;
 };
 
-export type LcLmChatMistralCloudV1Node = LcLmChatMistralCloudV1ParamsNode;
+export type LcLmChatMistralCloudV1Node = LcLmChatMistralCloudV1Node;

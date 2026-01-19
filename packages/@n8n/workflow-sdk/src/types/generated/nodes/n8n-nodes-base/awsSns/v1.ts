@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface AwsSnsV1Params {
+export interface AwsSnsV1Config {
 	authentication?: 'iam' | 'assumeRole' | Expression<string>;
 	operation?: 'create' | 'delete' | 'publish' | Expression<string>;
 	name: string | Expression<string>;
@@ -51,8 +51,8 @@ interface AwsSnsV1NodeBase {
 	credentials?: AwsSnsV1Credentials;
 }
 
-export type AwsSnsV1ParamsNode = AwsSnsV1NodeBase & {
-	config: NodeConfig<AwsSnsV1Params>;
+export type AwsSnsV1Node = AwsSnsV1NodeBase & {
+	config: NodeConfig<AwsSnsV1Config>;
 };
 
-export type AwsSnsV1Node = AwsSnsV1ParamsNode;
+export type AwsSnsV1Node = AwsSnsV1Node;

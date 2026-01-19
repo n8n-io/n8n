@@ -74,12 +74,6 @@ export type OuraV1SummaryGetSleepConfig = {
 	filters?: Record<string, unknown>;
 };
 
-export type OuraV1Params =
-	| OuraV1ProfileGetConfig
-	| OuraV1SummaryGetActivityConfig
-	| OuraV1SummaryGetReadinessConfig
-	| OuraV1SummaryGetSleepConfig
-	;
 
 // ===========================================================================
 // Output Types

@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface StickyNoteV1Params {
+export interface StickyNoteV1Config {
 	content?: string | Expression<string>;
 	height: number | Expression<number>;
 	width: number | Expression<number>;
@@ -32,8 +32,8 @@ interface StickyNoteV1NodeBase {
 	isTrigger: true;
 }
 
-export type StickyNoteV1ParamsNode = StickyNoteV1NodeBase & {
-	config: NodeConfig<StickyNoteV1Params>;
+export type StickyNoteV1Node = StickyNoteV1NodeBase & {
+	config: NodeConfig<StickyNoteV1Config>;
 };
 
-export type StickyNoteV1Node = StickyNoteV1ParamsNode;
+export type StickyNoteV1Node = StickyNoteV1Node;

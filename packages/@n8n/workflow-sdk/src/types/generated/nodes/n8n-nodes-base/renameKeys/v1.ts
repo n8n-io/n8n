@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface RenameKeysV1Params {
+export interface RenameKeysV1Config {
 /**
  * Adds a key which should be renamed
  * @default {}
@@ -42,8 +42,8 @@ interface RenameKeysV1NodeBase {
 	version: 1;
 }
 
-export type RenameKeysV1ParamsNode = RenameKeysV1NodeBase & {
-	config: NodeConfig<RenameKeysV1Params>;
+export type RenameKeysV1Node = RenameKeysV1NodeBase & {
+	config: NodeConfig<RenameKeysV1Config>;
 };
 
-export type RenameKeysV1Node = RenameKeysV1ParamsNode;
+export type RenameKeysV1Node = RenameKeysV1Node;

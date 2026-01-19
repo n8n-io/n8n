@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcRerankerCohereV1Params {
+export interface LcRerankerCohereV1Config {
 /**
  * The model that should be used to rerank the documents. &lt;a href="https://docs.cohere.com/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default rerank-v3.5
@@ -43,8 +43,8 @@ interface LcRerankerCohereV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcRerankerCohereV1ParamsNode = LcRerankerCohereV1NodeBase & {
-	config: NodeConfig<LcRerankerCohereV1Params>;
+export type LcRerankerCohereV1Node = LcRerankerCohereV1NodeBase & {
+	config: NodeConfig<LcRerankerCohereV1Config>;
 };
 
-export type LcRerankerCohereV1Node = LcRerankerCohereV1ParamsNode;
+export type LcRerankerCohereV1Node = LcRerankerCohereV1Node;

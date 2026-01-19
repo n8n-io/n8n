@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SendInBlueTriggerV1Params {
+export interface SendInBlueTriggerV1Config {
 	type: 'inbound' | 'marketing' | 'transactional' | Expression<string>;
 	events: Array<'blocked' | 'click' | 'deferred' | 'delivered' | 'hardBounce' | 'invalid' | 'spam' | 'opened' | 'request' | 'softBounce' | 'uniqueOpened' | 'unsubscribed'>;
 }
@@ -35,8 +35,8 @@ interface SendInBlueTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type SendInBlueTriggerV1ParamsNode = SendInBlueTriggerV1NodeBase & {
-	config: NodeConfig<SendInBlueTriggerV1Params>;
+export type SendInBlueTriggerV1Node = SendInBlueTriggerV1NodeBase & {
+	config: NodeConfig<SendInBlueTriggerV1Config>;
 };
 
-export type SendInBlueTriggerV1Node = SendInBlueTriggerV1ParamsNode;
+export type SendInBlueTriggerV1Node = SendInBlueTriggerV1Node;

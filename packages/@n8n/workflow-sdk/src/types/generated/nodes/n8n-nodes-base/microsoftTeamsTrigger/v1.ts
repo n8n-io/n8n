@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface MicrosoftTeamsTriggerV1Params {
+export interface MicrosoftTeamsTriggerV1Config {
 /**
  * Select the event to trigger the workflow
  * @default newChannelMessage
@@ -77,8 +77,8 @@ interface MicrosoftTeamsTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type MicrosoftTeamsTriggerV1ParamsNode = MicrosoftTeamsTriggerV1NodeBase & {
-	config: NodeConfig<MicrosoftTeamsTriggerV1Params>;
+export type MicrosoftTeamsTriggerV1Node = MicrosoftTeamsTriggerV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsTriggerV1Config>;
 };
 
-export type MicrosoftTeamsTriggerV1Node = MicrosoftTeamsTriggerV1ParamsNode;
+export type MicrosoftTeamsTriggerV1Node = MicrosoftTeamsTriggerV1Node;

@@ -19,9 +19,6 @@ export type LineV1NotificationSendConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type LineV1Params =
-	| LineV1NotificationSendConfig
-	;
 
 // ===========================================================================
 // Output Types

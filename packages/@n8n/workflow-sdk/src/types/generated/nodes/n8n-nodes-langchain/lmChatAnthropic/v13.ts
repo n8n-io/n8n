@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatAnthropicV13Params {
+export interface LcLmChatAnthropicV13Config {
 /**
  * Additional options to add
  * @default {}
@@ -38,8 +38,8 @@ interface LcLmChatAnthropicV13NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatAnthropicV13ParamsNode = LcLmChatAnthropicV13NodeBase & {
-	config: NodeConfig<LcLmChatAnthropicV13Params>;
+export type LcLmChatAnthropicV13Node = LcLmChatAnthropicV13NodeBase & {
+	config: NodeConfig<LcLmChatAnthropicV13Config>;
 };
 
-export type LcLmChatAnthropicV13Node = LcLmChatAnthropicV13ParamsNode;
+export type LcLmChatAnthropicV13Node = LcLmChatAnthropicV13Node;

@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface EmailSendV21Params {
+export interface EmailSendV21Config {
 	resource?: unknown;
 	operation?: 'send' | 'sendAndWait' | Expression<string>;
 /**
@@ -94,8 +94,8 @@ interface EmailSendV21NodeBase {
 	credentials?: EmailSendV21Credentials;
 }
 
-export type EmailSendV21ParamsNode = EmailSendV21NodeBase & {
-	config: NodeConfig<EmailSendV21Params>;
+export type EmailSendV21Node = EmailSendV21NodeBase & {
+	config: NodeConfig<EmailSendV21Config>;
 };
 
-export type EmailSendV21Node = EmailSendV21ParamsNode;
+export type EmailSendV21Node = EmailSendV21Node;

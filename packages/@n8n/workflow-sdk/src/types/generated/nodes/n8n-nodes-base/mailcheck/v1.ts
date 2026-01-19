@@ -21,9 +21,6 @@ export type MailcheckV1EmailCheckConfig = {
 		email?: string | Expression<string>;
 };
 
-export type MailcheckV1Params =
-	| MailcheckV1EmailCheckConfig
-	;
 
 // ===========================================================================
 // Output Types

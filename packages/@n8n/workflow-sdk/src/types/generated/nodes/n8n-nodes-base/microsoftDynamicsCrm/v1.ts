@@ -63,13 +63,6 @@ export type MicrosoftDynamicsCrmV1AccountUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MicrosoftDynamicsCrmV1Params =
-	| MicrosoftDynamicsCrmV1AccountCreateConfig
-	| MicrosoftDynamicsCrmV1AccountDeleteConfig
-	| MicrosoftDynamicsCrmV1AccountGetConfig
-	| MicrosoftDynamicsCrmV1AccountGetAllConfig
-	| MicrosoftDynamicsCrmV1AccountUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

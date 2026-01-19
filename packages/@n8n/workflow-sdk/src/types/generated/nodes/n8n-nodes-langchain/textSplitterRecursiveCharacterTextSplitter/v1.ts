@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcTextSplitterRecursiveCharacterTextSplitterV1Params {
+export interface LcTextSplitterRecursiveCharacterTextSplitterV1Config {
 	chunkSize?: number | Expression<number>;
 	chunkOverlap?: number | Expression<number>;
 /**
@@ -35,8 +35,8 @@ interface LcTextSplitterRecursiveCharacterTextSplitterV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcTextSplitterRecursiveCharacterTextSplitterV1ParamsNode = LcTextSplitterRecursiveCharacterTextSplitterV1NodeBase & {
-	config: NodeConfig<LcTextSplitterRecursiveCharacterTextSplitterV1Params>;
+export type LcTextSplitterRecursiveCharacterTextSplitterV1Node = LcTextSplitterRecursiveCharacterTextSplitterV1NodeBase & {
+	config: NodeConfig<LcTextSplitterRecursiveCharacterTextSplitterV1Config>;
 };
 
-export type LcTextSplitterRecursiveCharacterTextSplitterV1Node = LcTextSplitterRecursiveCharacterTextSplitterV1ParamsNode;
+export type LcTextSplitterRecursiveCharacterTextSplitterV1Node = LcTextSplitterRecursiveCharacterTextSplitterV1Node;

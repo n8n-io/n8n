@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ExtractFromFileV11Params {
+export interface ExtractFromFileV11Config {
 	operation?: 'csv' | 'html' | 'fromIcs' | 'fromJson' | 'ods' | 'pdf' | 'rtf' | 'text' | 'xml' | 'xls' | 'xlsx' | 'binaryToPropery' | Expression<string>;
 	binaryPropertyName: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -36,8 +36,8 @@ interface ExtractFromFileV11NodeBase {
 	version: 1.1;
 }
 
-export type ExtractFromFileV11ParamsNode = ExtractFromFileV11NodeBase & {
-	config: NodeConfig<ExtractFromFileV11Params>;
+export type ExtractFromFileV11Node = ExtractFromFileV11NodeBase & {
+	config: NodeConfig<ExtractFromFileV11Config>;
 };
 
-export type ExtractFromFileV11Node = ExtractFromFileV11ParamsNode;
+export type ExtractFromFileV11Node = ExtractFromFileV11Node;

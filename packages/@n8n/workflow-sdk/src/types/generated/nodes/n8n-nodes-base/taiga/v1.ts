@@ -315,28 +315,6 @@ export type TaigaV1UserStoryUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type TaigaV1Params =
-	| TaigaV1EpicCreateConfig
-	| TaigaV1EpicDeleteConfig
-	| TaigaV1EpicGetConfig
-	| TaigaV1EpicGetAllConfig
-	| TaigaV1EpicUpdateConfig
-	| TaigaV1IssueCreateConfig
-	| TaigaV1IssueDeleteConfig
-	| TaigaV1IssueGetConfig
-	| TaigaV1IssueGetAllConfig
-	| TaigaV1IssueUpdateConfig
-	| TaigaV1TaskCreateConfig
-	| TaigaV1TaskDeleteConfig
-	| TaigaV1TaskGetConfig
-	| TaigaV1TaskGetAllConfig
-	| TaigaV1TaskUpdateConfig
-	| TaigaV1UserStoryCreateConfig
-	| TaigaV1UserStoryDeleteConfig
-	| TaigaV1UserStoryGetConfig
-	| TaigaV1UserStoryGetAllConfig
-	| TaigaV1UserStoryUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

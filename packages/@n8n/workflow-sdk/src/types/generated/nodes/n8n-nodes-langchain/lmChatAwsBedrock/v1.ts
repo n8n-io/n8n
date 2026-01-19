@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcLmChatAwsBedrockV1Params {
+export interface LcLmChatAwsBedrockV1Config {
 /**
  * The model which will generate the completion. &lt;a href="https://docs.aws.amazon.com/bedrock/latest/userguide/foundation-models.html"&gt;Learn more&lt;/a&gt;.
  * @displayOptions.hide { modelSource: ["inferenceProfile"] }
@@ -43,8 +43,8 @@ interface LcLmChatAwsBedrockV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcLmChatAwsBedrockV1ParamsNode = LcLmChatAwsBedrockV1NodeBase & {
-	config: NodeConfig<LcLmChatAwsBedrockV1Params>;
+export type LcLmChatAwsBedrockV1Node = LcLmChatAwsBedrockV1NodeBase & {
+	config: NodeConfig<LcLmChatAwsBedrockV1Config>;
 };
 
-export type LcLmChatAwsBedrockV1Node = LcLmChatAwsBedrockV1ParamsNode;
+export type LcLmChatAwsBedrockV1Node = LcLmChatAwsBedrockV1Node;

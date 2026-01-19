@@ -120,13 +120,6 @@ export type ErpNextV1DocumentUpdateConfig = {
 	};
 };
 
-export type ErpNextV1Params =
-	| ErpNextV1DocumentCreateConfig
-	| ErpNextV1DocumentDeleteConfig
-	| ErpNextV1DocumentGetConfig
-	| ErpNextV1DocumentGetAllConfig
-	| ErpNextV1DocumentUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

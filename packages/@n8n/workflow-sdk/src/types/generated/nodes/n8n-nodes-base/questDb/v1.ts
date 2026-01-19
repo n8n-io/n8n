@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface QuestDbV1Params {
+export interface QuestDbV1Config {
 	operation?: 'executeQuery' | 'insert' | Expression<string>;
 /**
  * The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.
@@ -60,8 +60,8 @@ interface QuestDbV1NodeBase {
 	credentials?: QuestDbV1Credentials;
 }
 
-export type QuestDbV1ParamsNode = QuestDbV1NodeBase & {
-	config: NodeConfig<QuestDbV1Params>;
+export type QuestDbV1Node = QuestDbV1NodeBase & {
+	config: NodeConfig<QuestDbV1Config>;
 };
 
-export type QuestDbV1Node = QuestDbV1ParamsNode;
+export type QuestDbV1Node = QuestDbV1Node;

@@ -105,16 +105,6 @@ export type MergeV1WaitConfig = {
 	mode: 'wait';
 };
 
-export type MergeV1Params =
-	| MergeV1AppendConfig
-	| MergeV1KeepKeyMatchesConfig
-	| MergeV1MergeByIndexConfig
-	| MergeV1MergeByKeyConfig
-	| MergeV1MultiplexConfig
-	| MergeV1PassThroughConfig
-	| MergeV1RemoveKeyMatchesConfig
-	| MergeV1WaitConfig
-	;
 
 // ===========================================================================
 // Credentials

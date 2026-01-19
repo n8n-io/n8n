@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcRetrieverMultiQueryV1Params {
+export interface LcRetrieverMultiQueryV1Config {
 /**
  * Additional options to add
  * @default {}
@@ -33,8 +33,8 @@ interface LcRetrieverMultiQueryV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcRetrieverMultiQueryV1ParamsNode = LcRetrieverMultiQueryV1NodeBase & {
-	config: NodeConfig<LcRetrieverMultiQueryV1Params>;
+export type LcRetrieverMultiQueryV1Node = LcRetrieverMultiQueryV1NodeBase & {
+	config: NodeConfig<LcRetrieverMultiQueryV1Config>;
 };
 
-export type LcRetrieverMultiQueryV1Node = LcRetrieverMultiQueryV1ParamsNode;
+export type LcRetrieverMultiQueryV1Node = LcRetrieverMultiQueryV1Node;

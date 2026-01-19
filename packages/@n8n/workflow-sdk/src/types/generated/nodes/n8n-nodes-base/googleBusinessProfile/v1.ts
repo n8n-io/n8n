@@ -294,17 +294,6 @@ export type GoogleBusinessProfileV1ReviewReplyConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type GoogleBusinessProfileV1Params =
-	| GoogleBusinessProfileV1PostCreateConfig
-	| GoogleBusinessProfileV1PostDeleteConfig
-	| GoogleBusinessProfileV1PostGetConfig
-	| GoogleBusinessProfileV1PostGetAllConfig
-	| GoogleBusinessProfileV1PostUpdateConfig
-	| GoogleBusinessProfileV1ReviewDeleteConfig
-	| GoogleBusinessProfileV1ReviewGetConfig
-	| GoogleBusinessProfileV1ReviewGetAllConfig
-	| GoogleBusinessProfileV1ReviewReplyConfig
-	;
 
 // ===========================================================================
 // Credentials

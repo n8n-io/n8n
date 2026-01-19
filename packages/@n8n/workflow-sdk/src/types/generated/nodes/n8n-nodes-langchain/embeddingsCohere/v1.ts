@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcEmbeddingsCohereV1Params {
+export interface LcEmbeddingsCohereV1Config {
 /**
  * The model which will generate the embeddings. &lt;a href="https://docs.cohere.com/docs/models"&gt;Learn more&lt;/a&gt;.
  * @default embed-english-v2.0
@@ -38,8 +38,8 @@ interface LcEmbeddingsCohereV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcEmbeddingsCohereV1ParamsNode = LcEmbeddingsCohereV1NodeBase & {
-	config: NodeConfig<LcEmbeddingsCohereV1Params>;
+export type LcEmbeddingsCohereV1Node = LcEmbeddingsCohereV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsCohereV1Config>;
 };
 
-export type LcEmbeddingsCohereV1Node = LcEmbeddingsCohereV1ParamsNode;
+export type LcEmbeddingsCohereV1Node = LcEmbeddingsCohereV1Node;

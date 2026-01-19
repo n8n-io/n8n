@@ -871,56 +871,6 @@ export type ActiveCampaignV1TagUpdateConfig = {
 		updateFields?: Record<string, unknown>;
 };
 
-export type ActiveCampaignV1Params =
-	| ActiveCampaignV1AccountCreateConfig
-	| ActiveCampaignV1AccountDeleteConfig
-	| ActiveCampaignV1AccountGetConfig
-	| ActiveCampaignV1AccountGetAllConfig
-	| ActiveCampaignV1AccountUpdateConfig
-	| ActiveCampaignV1AccountContactCreateConfig
-	| ActiveCampaignV1AccountContactDeleteConfig
-	| ActiveCampaignV1AccountContactUpdateConfig
-	| ActiveCampaignV1ConnectionCreateConfig
-	| ActiveCampaignV1ConnectionDeleteConfig
-	| ActiveCampaignV1ConnectionGetConfig
-	| ActiveCampaignV1ConnectionGetAllConfig
-	| ActiveCampaignV1ConnectionUpdateConfig
-	| ActiveCampaignV1ContactCreateConfig
-	| ActiveCampaignV1ContactDeleteConfig
-	| ActiveCampaignV1ContactGetConfig
-	| ActiveCampaignV1ContactGetAllConfig
-	| ActiveCampaignV1ContactUpdateConfig
-	| ActiveCampaignV1ContactListAddConfig
-	| ActiveCampaignV1ContactListRemoveConfig
-	| ActiveCampaignV1ContactTagAddConfig
-	| ActiveCampaignV1ContactTagRemoveConfig
-	| ActiveCampaignV1DealCreateConfig
-	| ActiveCampaignV1DealCreateNoteConfig
-	| ActiveCampaignV1DealDeleteConfig
-	| ActiveCampaignV1DealGetConfig
-	| ActiveCampaignV1DealGetAllConfig
-	| ActiveCampaignV1DealUpdateConfig
-	| ActiveCampaignV1DealUpdateNoteConfig
-	| ActiveCampaignV1EcommerceCustomerCreateConfig
-	| ActiveCampaignV1EcommerceCustomerDeleteConfig
-	| ActiveCampaignV1EcommerceCustomerGetConfig
-	| ActiveCampaignV1EcommerceCustomerGetAllConfig
-	| ActiveCampaignV1EcommerceCustomerUpdateConfig
-	| ActiveCampaignV1EcommerceOrderCreateConfig
-	| ActiveCampaignV1EcommerceOrderDeleteConfig
-	| ActiveCampaignV1EcommerceOrderGetConfig
-	| ActiveCampaignV1EcommerceOrderGetAllConfig
-	| ActiveCampaignV1EcommerceOrderUpdateConfig
-	| ActiveCampaignV1EcommerceOrderProductsGetAllConfig
-	| ActiveCampaignV1EcommerceOrderProductsGetByProductIdConfig
-	| ActiveCampaignV1EcommerceOrderProductsGetByOrderIdConfig
-	| ActiveCampaignV1ListGetAllConfig
-	| ActiveCampaignV1TagCreateConfig
-	| ActiveCampaignV1TagDeleteConfig
-	| ActiveCampaignV1TagGetConfig
-	| ActiveCampaignV1TagGetAllConfig
-	| ActiveCampaignV1TagUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

@@ -229,24 +229,6 @@ export type ZulipV1UserUpdateConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type ZulipV1Params =
-	| ZulipV1MessageDeleteConfig
-	| ZulipV1MessageGetConfig
-	| ZulipV1MessageSendPrivateConfig
-	| ZulipV1MessageSendStreamConfig
-	| ZulipV1MessageUpdateConfig
-	| ZulipV1MessageUpdateFileConfig
-	| ZulipV1StreamCreateConfig
-	| ZulipV1StreamDeleteConfig
-	| ZulipV1StreamGetAllConfig
-	| ZulipV1StreamGetSubscribedConfig
-	| ZulipV1StreamUpdateConfig
-	| ZulipV1UserCreateConfig
-	| ZulipV1UserDeactivateConfig
-	| ZulipV1UserGetConfig
-	| ZulipV1UserGetAllConfig
-	| ZulipV1UserUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

@@ -266,24 +266,6 @@ export type AffinityV1PersonUpdateConfig = {
 		emails?: string | Expression<string>;
 };
 
-export type AffinityV1Params =
-	| AffinityV1ListGetConfig
-	| AffinityV1ListGetAllConfig
-	| AffinityV1ListEntryCreateConfig
-	| AffinityV1ListEntryDeleteConfig
-	| AffinityV1ListEntryGetConfig
-	| AffinityV1ListEntryGetAllConfig
-	| AffinityV1OrganizationCreateConfig
-	| AffinityV1OrganizationDeleteConfig
-	| AffinityV1OrganizationGetConfig
-	| AffinityV1OrganizationGetAllConfig
-	| AffinityV1OrganizationUpdateConfig
-	| AffinityV1PersonCreateConfig
-	| AffinityV1PersonDeleteConfig
-	| AffinityV1PersonGetConfig
-	| AffinityV1PersonGetAllConfig
-	| AffinityV1PersonUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

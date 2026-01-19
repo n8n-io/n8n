@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface AffinityTriggerV1Params {
+export interface AffinityTriggerV1Config {
 /**
  * Webhook events that will be enabled for that endpoint
  * @default []
@@ -38,8 +38,8 @@ interface AffinityTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type AffinityTriggerV1ParamsNode = AffinityTriggerV1NodeBase & {
-	config: NodeConfig<AffinityTriggerV1Params>;
+export type AffinityTriggerV1Node = AffinityTriggerV1NodeBase & {
+	config: NodeConfig<AffinityTriggerV1Config>;
 };
 
-export type AffinityTriggerV1Node = AffinityTriggerV1ParamsNode;
+export type AffinityTriggerV1Node = AffinityTriggerV1Node;

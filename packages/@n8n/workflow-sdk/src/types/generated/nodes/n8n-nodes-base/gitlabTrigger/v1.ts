@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GitlabTriggerV1Params {
+export interface GitlabTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 /**
  * Owner of the repository
@@ -48,8 +48,8 @@ interface GitlabTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type GitlabTriggerV1ParamsNode = GitlabTriggerV1NodeBase & {
-	config: NodeConfig<GitlabTriggerV1Params>;
+export type GitlabTriggerV1Node = GitlabTriggerV1NodeBase & {
+	config: NodeConfig<GitlabTriggerV1Config>;
 };
 
-export type GitlabTriggerV1Node = GitlabTriggerV1ParamsNode;
+export type GitlabTriggerV1Node = GitlabTriggerV1Node;

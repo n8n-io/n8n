@@ -111,16 +111,6 @@ export type TodoistV1TaskUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type TodoistV1Params =
-	| TodoistV1TaskCloseConfig
-	| TodoistV1TaskCreateConfig
-	| TodoistV1TaskDeleteConfig
-	| TodoistV1TaskGetConfig
-	| TodoistV1TaskGetAllConfig
-	| TodoistV1TaskMoveConfig
-	| TodoistV1TaskReopenConfig
-	| TodoistV1TaskUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

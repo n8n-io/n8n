@@ -50,10 +50,6 @@ export type Sms77V1VoiceSendConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type Sms77V1Params =
-	| Sms77V1SmsSendConfig
-	| Sms77V1VoiceSendConfig
-	;
 
 // ===========================================================================
 // Output Types

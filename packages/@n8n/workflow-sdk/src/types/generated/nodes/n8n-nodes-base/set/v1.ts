@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface SetV1Params {
+export interface SetV1Config {
 /**
  * Whether only the values set on this node should be kept and all others removed
  * @default false
@@ -68,8 +68,8 @@ interface SetV1NodeBase {
 	version: 1;
 }
 
-export type SetV1ParamsNode = SetV1NodeBase & {
-	config: NodeConfig<SetV1Params>;
+export type SetV1Node = SetV1NodeBase & {
+	config: NodeConfig<SetV1Config>;
 };
 
-export type SetV1Node = SetV1ParamsNode;
+export type SetV1Node = SetV1Node;

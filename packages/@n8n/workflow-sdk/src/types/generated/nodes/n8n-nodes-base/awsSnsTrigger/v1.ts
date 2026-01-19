@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface AwsSnsTriggerV1Params {
+export interface AwsSnsTriggerV1Config {
 	authentication?: 'iam' | 'assumeRole' | Expression<string>;
 	topic: ResourceLocatorValue;
 }
@@ -39,8 +39,8 @@ interface AwsSnsTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type AwsSnsTriggerV1ParamsNode = AwsSnsTriggerV1NodeBase & {
-	config: NodeConfig<AwsSnsTriggerV1Params>;
+export type AwsSnsTriggerV1Node = AwsSnsTriggerV1NodeBase & {
+	config: NodeConfig<AwsSnsTriggerV1Config>;
 };
 
-export type AwsSnsTriggerV1Node = AwsSnsTriggerV1ParamsNode;
+export type AwsSnsTriggerV1Node = AwsSnsTriggerV1Node;

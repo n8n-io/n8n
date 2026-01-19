@@ -239,25 +239,6 @@ export type HighLevelV2CalendarGetFreeSlotsConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type HighLevelV2Params =
-	| HighLevelV2ContactCreateConfig
-	| HighLevelV2ContactDeleteConfig
-	| HighLevelV2ContactGetConfig
-	| HighLevelV2ContactGetAllConfig
-	| HighLevelV2ContactUpdateConfig
-	| HighLevelV2OpportunityCreateConfig
-	| HighLevelV2OpportunityDeleteConfig
-	| HighLevelV2OpportunityGetConfig
-	| HighLevelV2OpportunityGetAllConfig
-	| HighLevelV2OpportunityUpdateConfig
-	| HighLevelV2TaskCreateConfig
-	| HighLevelV2TaskDeleteConfig
-	| HighLevelV2TaskGetConfig
-	| HighLevelV2TaskGetAllConfig
-	| HighLevelV2TaskUpdateConfig
-	| HighLevelV2CalendarBookAppointmentConfig
-	| HighLevelV2CalendarGetFreeSlotsConfig
-	;
 
 // ===========================================================================
 // Output Types

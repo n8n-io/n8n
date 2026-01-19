@@ -11,7 +11,7 @@ import type { CredentialReference, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface WhatsAppTriggerV1Params {
+export interface WhatsAppTriggerV1Config {
 	updates: Array<'account_review_update' | 'account_update' | 'business_capability_update' | 'message_template_quality_update' | 'message_template_status_update' | 'messages' | 'phone_number_name_update' | 'phone_number_quality_update' | 'security' | 'template_category_update'>;
 	options?: Record<string, unknown>;
 }
@@ -35,8 +35,8 @@ interface WhatsAppTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type WhatsAppTriggerV1ParamsNode = WhatsAppTriggerV1NodeBase & {
-	config: NodeConfig<WhatsAppTriggerV1Params>;
+export type WhatsAppTriggerV1Node = WhatsAppTriggerV1NodeBase & {
+	config: NodeConfig<WhatsAppTriggerV1Config>;
 };
 
-export type WhatsAppTriggerV1Node = WhatsAppTriggerV1ParamsNode;
+export type WhatsAppTriggerV1Node = WhatsAppTriggerV1Node;

@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface EditImageV1Params {
+export interface EditImageV1Config {
 	operation?: 'blur' | 'border' | 'composite' | 'create' | 'crop' | 'draw' | 'information' | 'multiStep' | 'resize' | 'rotate' | 'shear' | 'text' | 'transparent' | Expression<string>;
 /**
  * Name of the binary property in which the image data can be found
@@ -393,8 +393,8 @@ interface EditImageV1NodeBase {
 	version: 1;
 }
 
-export type EditImageV1ParamsNode = EditImageV1NodeBase & {
-	config: NodeConfig<EditImageV1Params>;
+export type EditImageV1Node = EditImageV1NodeBase & {
+	config: NodeConfig<EditImageV1Config>;
 };
 
-export type EditImageV1Node = EditImageV1ParamsNode;
+export type EditImageV1Node = EditImageV1Node;

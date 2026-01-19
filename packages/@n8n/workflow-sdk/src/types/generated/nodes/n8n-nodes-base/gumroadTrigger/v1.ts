@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface GumroadTriggerV1Params {
+export interface GumroadTriggerV1Config {
 /**
  * The resource is gonna fire the event
  */
@@ -37,8 +37,8 @@ interface GumroadTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type GumroadTriggerV1ParamsNode = GumroadTriggerV1NodeBase & {
-	config: NodeConfig<GumroadTriggerV1Params>;
+export type GumroadTriggerV1Node = GumroadTriggerV1NodeBase & {
+	config: NodeConfig<GumroadTriggerV1Config>;
 };
 
-export type GumroadTriggerV1Node = GumroadTriggerV1ParamsNode;
+export type GumroadTriggerV1Node = GumroadTriggerV1Node;

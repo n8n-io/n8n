@@ -645,45 +645,6 @@ export type GithubV1WorkflowListConfig = {
 	operation: 'list';
 };
 
-export type GithubV1Params =
-	| GithubV1FileCreateConfig
-	| GithubV1FileDeleteConfig
-	| GithubV1FileEditConfig
-	| GithubV1FileGetConfig
-	| GithubV1FileListConfig
-	| GithubV1IssueCreateConfig
-	| GithubV1IssueCreateCommentConfig
-	| GithubV1IssueEditConfig
-	| GithubV1IssueGetConfig
-	| GithubV1IssueLockConfig
-	| GithubV1OrganizationGetRepositoriesConfig
-	| GithubV1ReleaseCreateConfig
-	| GithubV1ReleaseDeleteConfig
-	| GithubV1ReleaseGetConfig
-	| GithubV1ReleaseGetAllConfig
-	| GithubV1ReleaseUpdateConfig
-	| GithubV1RepositoryGetConfig
-	| GithubV1RepositoryGetIssuesConfig
-	| GithubV1RepositoryGetLicenseConfig
-	| GithubV1RepositoryGetProfileConfig
-	| GithubV1RepositoryGetPullRequestsConfig
-	| GithubV1RepositoryListPopularPathsConfig
-	| GithubV1RepositoryListReferrersConfig
-	| GithubV1ReviewCreateConfig
-	| GithubV1ReviewGetConfig
-	| GithubV1ReviewGetAllConfig
-	| GithubV1ReviewUpdateConfig
-	| GithubV1UserGetRepositoriesConfig
-	| GithubV1UserGetUserIssuesConfig
-	| GithubV1UserInviteConfig
-	| GithubV1WorkflowDisableConfig
-	| GithubV1WorkflowDispatchConfig
-	| GithubV1WorkflowDispatchAndWaitConfig
-	| GithubV1WorkflowEnableConfig
-	| GithubV1WorkflowGetConfig
-	| GithubV1WorkflowGetUsageConfig
-	| GithubV1WorkflowListConfig
-	;
 
 // ===========================================================================
 // Output Types

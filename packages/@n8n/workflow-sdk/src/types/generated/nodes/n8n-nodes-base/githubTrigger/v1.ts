@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface GithubTriggerV1Params {
+export interface GithubTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 	owner: ResourceLocatorValue;
 	repository: ResourceLocatorValue;
@@ -46,8 +46,8 @@ interface GithubTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type GithubTriggerV1ParamsNode = GithubTriggerV1NodeBase & {
-	config: NodeConfig<GithubTriggerV1Params>;
+export type GithubTriggerV1Node = GithubTriggerV1NodeBase & {
+	config: NodeConfig<GithubTriggerV1Config>;
 };
 
-export type GithubTriggerV1Node = GithubTriggerV1ParamsNode;
+export type GithubTriggerV1Node = GithubTriggerV1Node;

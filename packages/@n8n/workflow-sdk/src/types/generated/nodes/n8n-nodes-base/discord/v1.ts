@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface DiscordV1Params {
+export interface DiscordV1Config {
 	webhookUri: string | Expression<string>;
 	text?: string | Expression<string>;
 	options?: Record<string, unknown>;
@@ -30,8 +30,8 @@ interface DiscordV1NodeBase {
 	version: 1;
 }
 
-export type DiscordV1ParamsNode = DiscordV1NodeBase & {
-	config: NodeConfig<DiscordV1Params>;
+export type DiscordV1Node = DiscordV1NodeBase & {
+	config: NodeConfig<DiscordV1Config>;
 };
 
-export type DiscordV1Node = DiscordV1ParamsNode;
+export type DiscordV1Node = DiscordV1Node;

@@ -40,10 +40,6 @@ export type GoogleAdsV1CampaignGetConfig = {
 	requestOptions?: Record<string, unknown>;
 };
 
-export type GoogleAdsV1Params =
-	| GoogleAdsV1CampaignGetAllConfig
-	| GoogleAdsV1CampaignGetConfig
-	;
 
 // ===========================================================================
 // Credentials

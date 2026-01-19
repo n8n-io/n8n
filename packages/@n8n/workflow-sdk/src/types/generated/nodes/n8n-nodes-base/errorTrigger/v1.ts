@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ErrorTriggerV1Params {
+export interface ErrorTriggerV1Config {
 }
 
 // ===========================================================================
@@ -28,8 +28,8 @@ interface ErrorTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type ErrorTriggerV1ParamsNode = ErrorTriggerV1NodeBase & {
-	config: NodeConfig<ErrorTriggerV1Params>;
+export type ErrorTriggerV1Node = ErrorTriggerV1NodeBase & {
+	config: NodeConfig<ErrorTriggerV1Config>;
 };
 
-export type ErrorTriggerV1Node = ErrorTriggerV1ParamsNode;
+export type ErrorTriggerV1Node = ErrorTriggerV1Node;

@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface JwtV1Params {
+export interface JwtV1Config {
 	operation?: 'decode' | 'sign' | 'verify' | Expression<string>;
 /**
  * Whether to use JSON to build the claims
@@ -57,8 +57,8 @@ interface JwtV1NodeBase {
 	credentials?: JwtV1Credentials;
 }
 
-export type JwtV1ParamsNode = JwtV1NodeBase & {
-	config: NodeConfig<JwtV1Params>;
+export type JwtV1Node = JwtV1NodeBase & {
+	config: NodeConfig<JwtV1Config>;
 };
 
-export type JwtV1Node = JwtV1ParamsNode;
+export type JwtV1Node = JwtV1Node;

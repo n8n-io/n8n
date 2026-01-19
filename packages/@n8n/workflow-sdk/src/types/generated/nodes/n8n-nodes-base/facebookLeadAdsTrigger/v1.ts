@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface FacebookLeadAdsTriggerV1Params {
+export interface FacebookLeadAdsTriggerV1Config {
 	event: 'newLead' | Expression<string>;
 /**
  * The page linked to the form for retrieving new leads
@@ -48,8 +48,8 @@ interface FacebookLeadAdsTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type FacebookLeadAdsTriggerV1ParamsNode = FacebookLeadAdsTriggerV1NodeBase & {
-	config: NodeConfig<FacebookLeadAdsTriggerV1Params>;
+export type FacebookLeadAdsTriggerV1Node = FacebookLeadAdsTriggerV1NodeBase & {
+	config: NodeConfig<FacebookLeadAdsTriggerV1Config>;
 };
 
-export type FacebookLeadAdsTriggerV1Node = FacebookLeadAdsTriggerV1ParamsNode;
+export type FacebookLeadAdsTriggerV1Node = FacebookLeadAdsTriggerV1Node;

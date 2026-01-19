@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface ExecuteWorkflowTriggerV11Params {
+export interface ExecuteWorkflowTriggerV11Config {
 	events?: unknown;
 }
 
@@ -29,8 +29,8 @@ interface ExecuteWorkflowTriggerV11NodeBase {
 	isTrigger: true;
 }
 
-export type ExecuteWorkflowTriggerV11ParamsNode = ExecuteWorkflowTriggerV11NodeBase & {
-	config: NodeConfig<ExecuteWorkflowTriggerV11Params>;
+export type ExecuteWorkflowTriggerV11Node = ExecuteWorkflowTriggerV11NodeBase & {
+	config: NodeConfig<ExecuteWorkflowTriggerV11Config>;
 };
 
-export type ExecuteWorkflowTriggerV11Node = ExecuteWorkflowTriggerV11ParamsNode;
+export type ExecuteWorkflowTriggerV11Node = ExecuteWorkflowTriggerV11Node;

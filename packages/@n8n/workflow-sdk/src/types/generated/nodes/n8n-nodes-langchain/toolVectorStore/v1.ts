@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolVectorStoreV1Params {
+export interface LcToolVectorStoreV1Config {
 /**
  * Name of the data in vector store. This will be used to fill this tool description: Useful for when you need to answer questions about [name]. Whenever you need information about [data description], you should ALWAYS use this. Input should be a fully formed question.
  */
@@ -41,8 +41,8 @@ interface LcToolVectorStoreV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcToolVectorStoreV1ParamsNode = LcToolVectorStoreV1NodeBase & {
-	config: NodeConfig<LcToolVectorStoreV1Params>;
+export type LcToolVectorStoreV1Node = LcToolVectorStoreV1NodeBase & {
+	config: NodeConfig<LcToolVectorStoreV1Config>;
 };
 
-export type LcToolVectorStoreV1Node = LcToolVectorStoreV1ParamsNode;
+export type LcToolVectorStoreV1Node = LcToolVectorStoreV1Node;

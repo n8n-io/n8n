@@ -93,12 +93,6 @@ export type LcVectorStoreInMemoryV11RetrieveAsToolConfig = {
 		useReranker?: boolean | Expression<boolean>;
 };
 
-export type LcVectorStoreInMemoryV11Params =
-	| LcVectorStoreInMemoryV11LoadConfig
-	| LcVectorStoreInMemoryV11InsertConfig
-	| LcVectorStoreInMemoryV11RetrieveConfig
-	| LcVectorStoreInMemoryV11RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials

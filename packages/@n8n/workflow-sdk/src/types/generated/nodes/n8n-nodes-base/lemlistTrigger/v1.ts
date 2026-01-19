@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LemlistTriggerV1Params {
+export interface LemlistTriggerV1Config {
 	event: '*' | 'contacted' | 'hooked' | 'attracted' | 'warmed' | 'interested' | 'skipped' | 'notInterested' | 'emailsSent' | 'emailsOpened' | 'emailsClicked' | 'emailsReplied' | 'emailsBounced' | 'emailsSendFailed' | 'emailsFailed' | 'emailsUnsubscribed' | 'emailsInterested' | 'emailsNotInterested' | 'opportunitiesDone' | 'aircallCreated' | 'aircallEnded' | 'aircallDone' | 'aircallInterested' | 'aircallNotInterested' | 'apiDone' | 'apiInterested' | 'apiNotInterested' | 'apiFailed' | 'linkedinVisitDone' | 'linkedinVisitFailed' | 'linkedinInviteDone' | 'linkedinInviteFailed' | 'linkedinInviteAccepted' | 'linkedinReplied' | 'linkedinSent' | 'linkedinVoiceNoteDone' | 'linkedinVoiceNoteFailed' | 'linkedinInterested' | 'linkedinNotInterested' | 'linkedinSendFailed' | 'manualInterested' | 'manualNotInterested' | 'paused' | 'resumed' | 'customDomainErrors' | 'connectionIssue' | 'sendLimitReached' | 'lemwarmPaused' | Expression<string>;
 	options?: Record<string, unknown>;
 }
@@ -35,8 +35,8 @@ interface LemlistTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type LemlistTriggerV1ParamsNode = LemlistTriggerV1NodeBase & {
-	config: NodeConfig<LemlistTriggerV1Params>;
+export type LemlistTriggerV1Node = LemlistTriggerV1NodeBase & {
+	config: NodeConfig<LemlistTriggerV1Config>;
 };
 
-export type LemlistTriggerV1Node = LemlistTriggerV1ParamsNode;
+export type LemlistTriggerV1Node = LemlistTriggerV1Node;

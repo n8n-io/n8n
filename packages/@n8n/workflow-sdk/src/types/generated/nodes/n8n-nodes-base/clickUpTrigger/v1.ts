@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface ClickUpTriggerV1Params {
+export interface ClickUpTriggerV1Config {
 	authentication?: 'accessToken' | 'oAuth2' | Expression<string>;
 /**
  * Choose from the list, or specify an ID using an &lt;a href="https://docs.n8n.io/code/expressions/"&gt;expression&lt;/a&gt;
@@ -41,8 +41,8 @@ interface ClickUpTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type ClickUpTriggerV1ParamsNode = ClickUpTriggerV1NodeBase & {
-	config: NodeConfig<ClickUpTriggerV1Params>;
+export type ClickUpTriggerV1Node = ClickUpTriggerV1NodeBase & {
+	config: NodeConfig<ClickUpTriggerV1Config>;
 };
 
-export type ClickUpTriggerV1Node = ClickUpTriggerV1ParamsNode;
+export type ClickUpTriggerV1Node = ClickUpTriggerV1Node;

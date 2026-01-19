@@ -373,25 +373,6 @@ export type MicrosoftExcelV21WorksheetUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type MicrosoftExcelV21Params =
-	| MicrosoftExcelV21TableAppendConfig
-	| MicrosoftExcelV21TableConvertToRangeConfig
-	| MicrosoftExcelV21TableAddTableConfig
-	| MicrosoftExcelV21TableDeleteTableConfig
-	| MicrosoftExcelV21TableGetColumnsConfig
-	| MicrosoftExcelV21TableGetRowsConfig
-	| MicrosoftExcelV21TableLookupConfig
-	| MicrosoftExcelV21WorkbookAddWorksheetConfig
-	| MicrosoftExcelV21WorkbookDeleteWorkbookConfig
-	| MicrosoftExcelV21WorkbookGetAllConfig
-	| MicrosoftExcelV21WorksheetAppendConfig
-	| MicrosoftExcelV21WorksheetUpsertConfig
-	| MicrosoftExcelV21WorksheetClearConfig
-	| MicrosoftExcelV21WorksheetDeleteWorksheetConfig
-	| MicrosoftExcelV21WorksheetGetAllConfig
-	| MicrosoftExcelV21WorksheetReadRowsConfig
-	| MicrosoftExcelV21WorksheetUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

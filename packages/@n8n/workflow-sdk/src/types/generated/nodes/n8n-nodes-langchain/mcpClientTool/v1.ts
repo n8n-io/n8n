@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMcpClientToolV1Params {
+export interface LcMcpClientToolV1Config {
 /**
  * SSE Endpoint of your MCP server
  */
@@ -62,8 +62,8 @@ interface LcMcpClientToolV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcMcpClientToolV1ParamsNode = LcMcpClientToolV1NodeBase & {
-	config: NodeConfig<LcMcpClientToolV1Params>;
+export type LcMcpClientToolV1Node = LcMcpClientToolV1NodeBase & {
+	config: NodeConfig<LcMcpClientToolV1Config>;
 };
 
-export type LcMcpClientToolV1Node = LcMcpClientToolV1ParamsNode;
+export type LcMcpClientToolV1Node = LcMcpClientToolV1Node;

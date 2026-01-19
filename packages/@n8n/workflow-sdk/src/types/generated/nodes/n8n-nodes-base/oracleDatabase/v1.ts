@@ -14,7 +14,7 @@ type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedRes
 // Parameters
 // ===========================================================================
 
-export interface OracleDatabaseV1Params {
+export interface OracleDatabaseV1Config {
 	resource?: unknown;
 	operation?: 'deleteTable' | 'execute' | 'insert' | 'upsert' | 'select' | 'update' | Expression<string>;
 /**
@@ -112,8 +112,8 @@ interface OracleDatabaseV1NodeBase {
 	credentials?: OracleDatabaseV1Credentials;
 }
 
-export type OracleDatabaseV1ParamsNode = OracleDatabaseV1NodeBase & {
-	config: NodeConfig<OracleDatabaseV1Params>;
+export type OracleDatabaseV1Node = OracleDatabaseV1NodeBase & {
+	config: NodeConfig<OracleDatabaseV1Config>;
 };
 
-export type OracleDatabaseV1Node = OracleDatabaseV1ParamsNode;
+export type OracleDatabaseV1Node = OracleDatabaseV1Node;

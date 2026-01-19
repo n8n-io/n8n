@@ -137,18 +137,6 @@ export type ShopifyV1ProductUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type ShopifyV1Params =
-	| ShopifyV1OrderCreateConfig
-	| ShopifyV1OrderDeleteConfig
-	| ShopifyV1OrderGetConfig
-	| ShopifyV1OrderGetAllConfig
-	| ShopifyV1OrderUpdateConfig
-	| ShopifyV1ProductCreateConfig
-	| ShopifyV1ProductDeleteConfig
-	| ShopifyV1ProductGetConfig
-	| ShopifyV1ProductGetAllConfig
-	| ShopifyV1ProductUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LcMemoryMongoDbChatV1Params {
+export interface LcMemoryMongoDbChatV1Config {
 	sessionIdType?: 'fromInput' | 'customKey' | Expression<string>;
 /**
  * The key to use to store session ID in the memory
@@ -49,8 +49,8 @@ interface LcMemoryMongoDbChatV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcMemoryMongoDbChatV1ParamsNode = LcMemoryMongoDbChatV1NodeBase & {
-	config: NodeConfig<LcMemoryMongoDbChatV1Params>;
+export type LcMemoryMongoDbChatV1Node = LcMemoryMongoDbChatV1NodeBase & {
+	config: NodeConfig<LcMemoryMongoDbChatV1Config>;
 };
 
-export type LcMemoryMongoDbChatV1Node = LcMemoryMongoDbChatV1ParamsNode;
+export type LcMemoryMongoDbChatV1Node = LcMemoryMongoDbChatV1Node;

@@ -200,20 +200,6 @@ export type S3V1FolderGetAllConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type S3V1Params =
-	| S3V1BucketCreateConfig
-	| S3V1BucketDeleteConfig
-	| S3V1BucketGetAllConfig
-	| S3V1BucketSearchConfig
-	| S3V1FileCopyConfig
-	| S3V1FileDeleteConfig
-	| S3V1FileDownloadConfig
-	| S3V1FileGetAllConfig
-	| S3V1FileUploadConfig
-	| S3V1FolderCreateConfig
-	| S3V1FolderDeleteConfig
-	| S3V1FolderGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

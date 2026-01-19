@@ -32,9 +32,6 @@ export type VonageV1SmsSendConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type VonageV1Params =
-	| VonageV1SmsSendConfig
-	;
 
 // ===========================================================================
 // Output Types

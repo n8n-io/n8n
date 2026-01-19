@@ -2497,20 +2497,6 @@ export type NotionV1UserGetAllConfig = {
 		limit?: number | Expression<number>;
 };
 
-export type NotionV1Params =
-	| NotionV1BlockAppendConfig
-	| NotionV1BlockGetAllConfig
-	| NotionV1DatabaseGetConfig
-	| NotionV1DatabaseGetAllConfig
-	| NotionV1DatabasePageCreateConfig
-	| NotionV1DatabasePageGetAllConfig
-	| NotionV1DatabasePageUpdateConfig
-	| NotionV1PageCreateConfig
-	| NotionV1PageGetConfig
-	| NotionV1PageSearchConfig
-	| NotionV1UserGetConfig
-	| NotionV1UserGetAllConfig
-	;
 
 // ===========================================================================
 // Output Types

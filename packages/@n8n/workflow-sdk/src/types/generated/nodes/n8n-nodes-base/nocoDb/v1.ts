@@ -240,13 +240,6 @@ export type NocoDbV1RowUpdateConfig = {
 	};
 };
 
-export type NocoDbV1Params =
-	| NocoDbV1RowCreateConfig
-	| NocoDbV1RowDeleteConfig
-	| NocoDbV1RowGetConfig
-	| NocoDbV1RowGetAllConfig
-	| NocoDbV1RowUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

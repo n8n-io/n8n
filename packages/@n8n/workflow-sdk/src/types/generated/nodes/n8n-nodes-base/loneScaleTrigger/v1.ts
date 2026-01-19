@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface LoneScaleTriggerV1Params {
+export interface LoneScaleTriggerV1Config {
 /**
  * Select one workflow. Choose from the list
  */
@@ -37,8 +37,8 @@ interface LoneScaleTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type LoneScaleTriggerV1ParamsNode = LoneScaleTriggerV1NodeBase & {
-	config: NodeConfig<LoneScaleTriggerV1Params>;
+export type LoneScaleTriggerV1Node = LoneScaleTriggerV1NodeBase & {
+	config: NodeConfig<LoneScaleTriggerV1Config>;
 };
 
-export type LoneScaleTriggerV1Node = LoneScaleTriggerV1ParamsNode;
+export type LoneScaleTriggerV1Node = LoneScaleTriggerV1Node;

@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface SalesforceTriggerV1Params {
+export interface SalesforceTriggerV1Config {
 /**
  * Time at which polling should occur
  * @default {"item":[{"mode":"everyMinute"}]}
@@ -89,8 +89,8 @@ interface SalesforceTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type SalesforceTriggerV1ParamsNode = SalesforceTriggerV1NodeBase & {
-	config: NodeConfig<SalesforceTriggerV1Params>;
+export type SalesforceTriggerV1Node = SalesforceTriggerV1NodeBase & {
+	config: NodeConfig<SalesforceTriggerV1Config>;
 };
 
-export type SalesforceTriggerV1Node = SalesforceTriggerV1ParamsNode;
+export type SalesforceTriggerV1Node = SalesforceTriggerV1Node;

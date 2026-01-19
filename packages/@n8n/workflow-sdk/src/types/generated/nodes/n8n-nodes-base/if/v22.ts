@@ -14,7 +14,7 @@ type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: s
 // Parameters
 // ===========================================================================
 
-export interface IfV22Params {
+export interface IfV22Config {
 	conditions?: FilterValue;
 	options?: Record<string, unknown>;
 }
@@ -32,8 +32,8 @@ interface IfV22NodeBase {
 	version: 2.2;
 }
 
-export type IfV22ParamsNode = IfV22NodeBase & {
-	config: NodeConfig<IfV22Params>;
+export type IfV22Node = IfV22NodeBase & {
+	config: NodeConfig<IfV22Config>;
 };
 
-export type IfV22Node = IfV22ParamsNode;
+export type IfV22Node = IfV22Node;

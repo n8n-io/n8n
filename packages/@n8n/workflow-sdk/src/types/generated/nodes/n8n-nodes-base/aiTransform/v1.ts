@@ -11,7 +11,7 @@ import type { Expression, NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface AiTransformV1Params {
+export interface AiTransformV1Config {
 /**
  * Provide instructions on how you want to transform the data, then click 'Generate code'. Use dot notation to refer to nested fields (e.g. address.street).
  */
@@ -33,8 +33,8 @@ interface AiTransformV1NodeBase {
 	version: 1;
 }
 
-export type AiTransformV1ParamsNode = AiTransformV1NodeBase & {
-	config: NodeConfig<AiTransformV1Params>;
+export type AiTransformV1Node = AiTransformV1NodeBase & {
+	config: NodeConfig<AiTransformV1Config>;
 };
 
-export type AiTransformV1Node = AiTransformV1ParamsNode;
+export type AiTransformV1Node = AiTransformV1Node;

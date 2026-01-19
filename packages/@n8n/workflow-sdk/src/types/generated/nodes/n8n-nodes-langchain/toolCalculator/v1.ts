@@ -11,7 +11,7 @@ import type { NodeConfig } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface LcToolCalculatorV1Params {
+export interface LcToolCalculatorV1Config {
 }
 
 // ===========================================================================
@@ -28,8 +28,8 @@ interface LcToolCalculatorV1NodeBase {
 	isTrigger: true;
 }
 
-export type LcToolCalculatorV1ParamsNode = LcToolCalculatorV1NodeBase & {
-	config: NodeConfig<LcToolCalculatorV1Params>;
+export type LcToolCalculatorV1Node = LcToolCalculatorV1NodeBase & {
+	config: NodeConfig<LcToolCalculatorV1Config>;
 };
 
-export type LcToolCalculatorV1Node = LcToolCalculatorV1ParamsNode;
+export type LcToolCalculatorV1Node = LcToolCalculatorV1Node;

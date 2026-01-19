@@ -400,25 +400,6 @@ export type GoogleDriveV3DriveUpdateConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type GoogleDriveV3Params =
-	| GoogleDriveV3FileCopyConfig
-	| GoogleDriveV3FileCreateFromTextConfig
-	| GoogleDriveV3FileDeleteFileConfig
-	| GoogleDriveV3FileDownloadConfig
-	| GoogleDriveV3FileMoveConfig
-	| GoogleDriveV3FileShareConfig
-	| GoogleDriveV3FileUpdateConfig
-	| GoogleDriveV3FileUploadConfig
-	| GoogleDriveV3FileFolderSearchConfig
-	| GoogleDriveV3FolderCreateConfig
-	| GoogleDriveV3FolderDeleteFolderConfig
-	| GoogleDriveV3FolderShareConfig
-	| GoogleDriveV3DriveCreateConfig
-	| GoogleDriveV3DriveDeleteDriveConfig
-	| GoogleDriveV3DriveGetConfig
-	| GoogleDriveV3DriveListConfig
-	| GoogleDriveV3DriveUpdateConfig
-	;
 
 // ===========================================================================
 // Credentials

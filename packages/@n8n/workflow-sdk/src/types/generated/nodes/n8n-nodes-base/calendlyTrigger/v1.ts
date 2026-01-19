@@ -23,10 +23,6 @@ export type CalendlyTriggerV1ApiKeyConfig = {
 	events: Array<'invitee.created' | 'invitee.canceled'>;
 };
 
-export type CalendlyTriggerV1Params =
-	| CalendlyTriggerV1OAuth2Config
-	| CalendlyTriggerV1ApiKeyConfig
-	;
 
 // ===========================================================================
 // Credentials

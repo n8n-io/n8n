@@ -11,7 +11,7 @@ import type { Expression, CredentialReference, NodeConfig } from '../../../../ba
 // Parameters
 // ===========================================================================
 
-export interface FacebookTriggerV1Params {
+export interface FacebookTriggerV1Config {
 /**
  * Facebook APP ID
  */
@@ -48,8 +48,8 @@ interface FacebookTriggerV1NodeBase {
 	isTrigger: true;
 }
 
-export type FacebookTriggerV1ParamsNode = FacebookTriggerV1NodeBase & {
-	config: NodeConfig<FacebookTriggerV1Params>;
+export type FacebookTriggerV1Node = FacebookTriggerV1NodeBase & {
+	config: NodeConfig<FacebookTriggerV1Config>;
 };
 
-export type FacebookTriggerV1Node = FacebookTriggerV1ParamsNode;
+export type FacebookTriggerV1Node = FacebookTriggerV1Node;

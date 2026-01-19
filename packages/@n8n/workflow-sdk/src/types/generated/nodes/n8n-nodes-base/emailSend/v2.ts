@@ -12,7 +12,7 @@ import type { IDataObject } from '../../../../base';
 // Parameters
 // ===========================================================================
 
-export interface EmailSendV2Params {
+export interface EmailSendV2Config {
 	resource?: unknown;
 	operation?: 'send' | 'sendAndWait' | Expression<string>;
 /**
@@ -94,8 +94,8 @@ interface EmailSendV2NodeBase {
 	credentials?: EmailSendV2Credentials;
 }
 
-export type EmailSendV2ParamsNode = EmailSendV2NodeBase & {
-	config: NodeConfig<EmailSendV2Params>;
+export type EmailSendV2Node = EmailSendV2NodeBase & {
+	config: NodeConfig<EmailSendV2Config>;
 };
 
-export type EmailSendV2Node = EmailSendV2ParamsNode;
+export type EmailSendV2Node = EmailSendV2Node;

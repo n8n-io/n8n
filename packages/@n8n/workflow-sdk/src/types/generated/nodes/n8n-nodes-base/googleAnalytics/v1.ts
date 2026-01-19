@@ -70,10 +70,6 @@ export type GoogleAnalyticsV1UserActivitySearchConfig = {
 	additionalFields?: Record<string, unknown>;
 };
 
-export type GoogleAnalyticsV1Params =
-	| GoogleAnalyticsV1ReportGetConfig
-	| GoogleAnalyticsV1UserActivitySearchConfig
-	;
 
 // ===========================================================================
 // Credentials

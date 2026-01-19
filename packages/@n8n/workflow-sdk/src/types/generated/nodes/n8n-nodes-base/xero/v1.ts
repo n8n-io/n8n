@@ -181,16 +181,6 @@ export type XeroV1InvoiceUpdateConfig = {
 	updateFields?: Record<string, unknown>;
 };
 
-export type XeroV1Params =
-	| XeroV1ContactCreateConfig
-	| XeroV1ContactGetConfig
-	| XeroV1ContactGetAllConfig
-	| XeroV1ContactUpdateConfig
-	| XeroV1InvoiceCreateConfig
-	| XeroV1InvoiceGetConfig
-	| XeroV1InvoiceGetAllConfig
-	| XeroV1InvoiceUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

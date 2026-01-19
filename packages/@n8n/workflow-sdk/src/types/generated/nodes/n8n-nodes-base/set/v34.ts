@@ -71,10 +71,6 @@ export type SetV34RawConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type SetV34Params =
-	| SetV34ManualConfig
-	| SetV34RawConfig
-	;
 
 // ===========================================================================
 // Credentials

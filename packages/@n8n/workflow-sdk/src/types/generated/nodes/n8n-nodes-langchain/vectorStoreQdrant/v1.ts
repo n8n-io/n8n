@@ -98,12 +98,6 @@ export type LcVectorStoreQdrantV1RetrieveAsToolConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type LcVectorStoreQdrantV1Params =
-	| LcVectorStoreQdrantV1LoadConfig
-	| LcVectorStoreQdrantV1InsertConfig
-	| LcVectorStoreQdrantV1RetrieveConfig
-	| LcVectorStoreQdrantV1RetrieveAsToolConfig
-	;
 
 // ===========================================================================
 // Credentials

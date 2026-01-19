@@ -595,50 +595,6 @@ export type QuickbooksV1VendorUpdateConfig = {
 	updateFields: Record<string, unknown>;
 };
 
-export type QuickbooksV1Params =
-	| QuickbooksV1BillCreateConfig
-	| QuickbooksV1BillDeleteConfig
-	| QuickbooksV1BillGetConfig
-	| QuickbooksV1BillGetAllConfig
-	| QuickbooksV1BillUpdateConfig
-	| QuickbooksV1CustomerCreateConfig
-	| QuickbooksV1CustomerGetConfig
-	| QuickbooksV1CustomerGetAllConfig
-	| QuickbooksV1CustomerUpdateConfig
-	| QuickbooksV1EmployeeCreateConfig
-	| QuickbooksV1EmployeeGetConfig
-	| QuickbooksV1EmployeeGetAllConfig
-	| QuickbooksV1EmployeeUpdateConfig
-	| QuickbooksV1EstimateCreateConfig
-	| QuickbooksV1EstimateDeleteConfig
-	| QuickbooksV1EstimateGetConfig
-	| QuickbooksV1EstimateGetAllConfig
-	| QuickbooksV1EstimateSendConfig
-	| QuickbooksV1EstimateUpdateConfig
-	| QuickbooksV1InvoiceCreateConfig
-	| QuickbooksV1InvoiceDeleteConfig
-	| QuickbooksV1InvoiceGetConfig
-	| QuickbooksV1InvoiceGetAllConfig
-	| QuickbooksV1InvoiceSendConfig
-	| QuickbooksV1InvoiceUpdateConfig
-	| QuickbooksV1InvoiceVoidConfig
-	| QuickbooksV1ItemGetConfig
-	| QuickbooksV1ItemGetAllConfig
-	| QuickbooksV1PaymentCreateConfig
-	| QuickbooksV1PaymentDeleteConfig
-	| QuickbooksV1PaymentGetConfig
-	| QuickbooksV1PaymentGetAllConfig
-	| QuickbooksV1PaymentSendConfig
-	| QuickbooksV1PaymentUpdateConfig
-	| QuickbooksV1PaymentVoidConfig
-	| QuickbooksV1PurchaseGetConfig
-	| QuickbooksV1PurchaseGetAllConfig
-	| QuickbooksV1TransactionGetReportConfig
-	| QuickbooksV1VendorCreateConfig
-	| QuickbooksV1VendorGetConfig
-	| QuickbooksV1VendorGetAllConfig
-	| QuickbooksV1VendorUpdateConfig
-	;
 
 // ===========================================================================
 // Output Types

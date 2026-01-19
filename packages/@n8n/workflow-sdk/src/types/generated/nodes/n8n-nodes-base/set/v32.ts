@@ -115,10 +115,6 @@ export type SetV32RawConfig = {
 	options?: Record<string, unknown>;
 };
 
-export type SetV32Params =
-	| SetV32ManualConfig
-	| SetV32RawConfig
-	;
 
 // ===========================================================================
 // Credentials
