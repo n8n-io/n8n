@@ -236,7 +236,7 @@ describe('AI Builder store', () => {
 	it('should open chat window', async () => {
 		const chatPanelStore = useChatPanelStore();
 
-		await chatPanelStore.open({ mode: 'builder' });
+		chatPanelStore.open({ mode: 'builder' });
 		expect(chatPanelStore.isOpen).toBe(true);
 	});
 
@@ -1265,7 +1265,7 @@ describe('AI Builder store', () => {
 			// Mock loadSessions to prevent actual API call
 			const spy = vi.spyOn(chatAPI, 'getAiSessions').mockResolvedValueOnce({ sessions: [] });
 
-			await chatPanelStore.open({ mode: 'builder' });
+			chatPanelStore.open({ mode: 'builder' });
 
 			expect(mockGetBuilderCredits).toHaveBeenCalled();
 			expect(builderStore.creditsQuota).toBe(100);

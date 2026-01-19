@@ -10,7 +10,7 @@ import type { VIEWS } from '@/app/constants';
 export const ASK_MODE_COACHMARK_KEY = 'ask-mode-coachmark';
 
 const isBuilderEnabledView = (name: unknown): name is VIEWS =>
-	BUILDER_ENABLED_VIEWS.includes(name as VIEWS);
+	typeof name === 'string' && (BUILDER_ENABLED_VIEWS as readonly string[]).includes(name);
 
 export function useAskModeCoachmark() {
 	const chatPanelStore = useChatPanelStore();
