@@ -30,6 +30,7 @@ export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
+export { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,

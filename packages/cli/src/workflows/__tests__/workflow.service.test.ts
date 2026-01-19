@@ -40,6 +40,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishHistoryRepository
 				mock(), // workflowValidationService
 				mock(), // nodeTypes
+				mock(), // dataSource
 			);
 		});
 
