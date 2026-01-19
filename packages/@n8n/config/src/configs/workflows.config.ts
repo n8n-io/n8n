@@ -22,4 +22,8 @@ export class WorkflowsConfig {
 	/** Whether to enable workflow dependency indexing */
 	@Env('N8N_WORKFLOWS_INDEXING_ENABLED')
 	indexingEnabled: boolean = false;
+
+	/** Whether to use workflow publication service */
+	@Env('N8N_USE_WORKFLOW_PUBLICATION_SERVICE')
+	useWorkflowPublicationService: boolean = false;
 }
