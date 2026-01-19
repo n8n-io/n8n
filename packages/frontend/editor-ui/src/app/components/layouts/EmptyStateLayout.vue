@@ -93,7 +93,7 @@ const containerStyle = computed(() => ({
 				<RecommendedTemplatesSection />
 
 				<div :class="$style.orDivider">
-					<N8nText size="medium" color="text-light">
+					<N8nText size="large">
 						{{ i18n.baseText('generic.or') }}
 					</N8nText>
 				</div>
