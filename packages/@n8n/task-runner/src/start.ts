@@ -11,7 +11,7 @@ import { TaskRunnerSentry } from './task-runner-sentry';
 // after the process starts. Without this, external npm packages installed
 // in custom locations won't be found by the require() calls.
 if (process.env.NODE_PATH) {
-	// @ts-ignore
+	// @ts-expect-error - _initPaths is an internal Node.js API
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 	module.constructor._initPaths();
 }
