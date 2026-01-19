@@ -6,6 +6,16 @@ import type { HealthCheckServer } from './health-check-server';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
 import { TaskRunnerSentry } from './task-runner-sentry';
 
+// Initialize module paths from NODE_PATH environment variable.
+// This is necessary because Node.js doesn't automatically pick up NODE_PATH
+// after the process starts. Without this, external npm packages installed
+// in custom locations won't be found by the require() calls.
+if (process.env.NODE_PATH) {
+	// @ts-ignore
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+	module.constructor._initPaths();
+}
+
 let healthCheckServer: HealthCheckServer | undefined;
 let runner: JsTaskRunner | undefined;
 let isShuttingDown = false;
