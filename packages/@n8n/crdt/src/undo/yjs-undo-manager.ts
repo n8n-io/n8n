@@ -7,7 +7,7 @@ import type {
 	Unsubscribe,
 } from '../types';
 
-/** Origin symbol used for tracking local changes in transactions */
+/** Origin symbol used for undo manager to track local changes */
 export const YjsUndoManagerOrigin = Symbol('local-undo-tracked');
 
 /** Origin symbol used for remote changes that should NOT be tracked */
