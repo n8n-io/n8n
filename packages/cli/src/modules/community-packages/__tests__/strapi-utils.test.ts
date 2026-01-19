@@ -1,7 +1,7 @@
 import nock from 'nock';
 import axios from 'axios';
 
-import { paginatedRequest } from '../strapi-utils';
+import { paginatedRequest, buildStrapiUpdateQuery } from '../strapi-utils';
 
 describe('Strapi utils', () => {
 	describe('paginatedRequest', () => {
@@ -197,6 +197,300 @@ describe('Strapi utils', () => {
 			);
 
 			axiosGetSpy.mockRestore();
+		});
+
+		it('should throw error when throwOnError is true', async () => {
+			const error = new Error('API Error');
+			nock('https://strapi.test').get('/api/nodes').query(true).replyWithError(error);
+
+			await expect(
+				paginatedRequest(
+					baseUrl,
+					{ pagination: { page: 1, pageSize: 25 } },
+					{ throwOnError: true },
+				),
+			).rejects.toThrow('API Error');
+		});
+
+		it('should return empty array when throwOnError is false', async () => {
+			nock('https://strapi.test').get('/api/nodes').query(true).replyWithError('API Error');
+
+			const result = await paginatedRequest(
+				baseUrl,
+				{ pagination: { page: 1, pageSize: 25 } },
+				{ throwOnError: false },
+			);
+
+			expect(result).toEqual([]);
+		});
+
+		it('should include entry IDs when includeEntryId is true', async () => {
+			const data = [
+				{
+					id: 123,
+					attributes: { name: 'Node1', version: '1.0.0' },
+				},
+			];
+
+			nock('https://strapi.test')
+				.get('/api/nodes')
+				.query(true)
+				.reply(200, {
+					data,
+					meta: {
+						pagination: {
+							page: 1,
+							pageSize: 25,
+							pageCount: 1,
+							total: 1,
+						},
+					},
+				});
+
+			const result = await paginatedRequest(
+				baseUrl,
+				{ pagination: { page: 1, pageSize: 25 } },
+				{ includeEntryId: true },
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({ id: 123, name: 'Node1', version: '1.0.0' });
+		});
+
+		it('should exclude entry IDs when includeEntryId is false', async () => {
+			const data = [
+				{
+					id: 123,
+					attributes: { name: 'Node1', version: '1.0.0' },
+				},
+			];
+
+			nock('https://strapi.test')
+				.get('/api/nodes')
+				.query(true)
+				.reply(200, {
+					data,
+					meta: {
+						pagination: {
+							page: 1,
+							pageSize: 25,
+							pageCount: 1,
+							total: 1,
+						},
+					},
+				});
+
+			const result = await paginatedRequest(
+				baseUrl,
+				{ pagination: { page: 1, pageSize: 25 } },
+				{ includeEntryId: false },
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({ name: 'Node1', version: '1.0.0' });
+			expect(result[0]).not.toHaveProperty('id');
+		});
+
+		it('should pass filters parameter to API', async () => {
+			const data = [
+				{
+					id: 1,
+					attributes: { name: 'FilteredNode', status: 'active' },
+				},
+			];
+
+			nock('https://strapi.test')
+				.get('/api/nodes')
+				.query(true)
+				.reply(200, {
+					data,
+					meta: {
+						pagination: {
+							page: 1,
+							pageSize: 25,
+							pageCount: 1,
+							total: 1,
+						},
+					},
+				});
+
+			const result = await paginatedRequest<{ name: string; status: string }>(baseUrl, {
+				filters: { status: { $eq: 'active' } },
+				pagination: { page: 1, pageSize: 25 },
+			});
+
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('FilteredNode');
+		});
+
+		it('should pass fields parameter to API', async () => {
+			const data = [
+				{
+					id: 1,
+					attributes: { name: 'Node1' },
+				},
+			];
+
+			nock('https://strapi.test')
+				.get('/api/nodes')
+				.query(true)
+				.reply(200, {
+					data,
+					meta: {
+						pagination: {
+							page: 1,
+							pageSize: 25,
+							pageCount: 1,
+							total: 1,
+						},
+					},
+				});
+
+			const result = await paginatedRequest<{ name: string }>(baseUrl, {
+				fields: ['name', 'version'],
+				pagination: { page: 1, pageSize: 25 },
+			});
+
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('Node1');
+		});
+
+		it('should pass both filters and fields parameters together', async () => {
+			const data = [
+				{
+					id: 1,
+					attributes: { name: 'Node1', status: 'active' },
+				},
+			];
+
+			nock('https://strapi.test')
+				.get('/api/nodes')
+				.query(true)
+				.reply(200, {
+					data,
+					meta: {
+						pagination: {
+							page: 1,
+							pageSize: 25,
+							pageCount: 1,
+							total: 1,
+						},
+					},
+				});
+
+			const result = await paginatedRequest<{ name: string; status: string }>(baseUrl, {
+				filters: { status: { $eq: 'active' } },
+				fields: ['name'],
+				pagination: { page: 1, pageSize: 25 },
+			});
+
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('Node1');
+		});
+
+		it('should handle multiple options simultaneously', async () => {
+			const data = [
+				{
+					id: 456,
+					attributes: { name: 'Node1' },
+				},
+			];
+
+			nock('https://strapi.test')
+				.get('/api/nodes')
+				.query(true)
+				.reply(200, {
+					data,
+					meta: {
+						pagination: {
+							page: 1,
+							pageSize: 25,
+							pageCount: 1,
+							total: 1,
+						},
+					},
+				});
+
+			const result = await paginatedRequest(
+				baseUrl,
+				{ pagination: { page: 1, pageSize: 25 } },
+				{ throwOnError: true, includeEntryId: true },
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({ id: 456, name: 'Node1' });
+		});
+
+		it('should work when options parameter is undefined', async () => {
+			const data = [
+				{
+					id: 1,
+					attributes: { name: 'Node1' },
+				},
+			];
+
+			nock('https://strapi.test')
+				.get('/api/nodes')
+				.query(true)
+				.reply(200, {
+					data,
+					meta: {
+						pagination: {
+							page: 1,
+							pageSize: 25,
+							pageCount: 1,
+							total: 1,
+						},
+					},
+				});
+
+			const result = await paginatedRequest<{ name: string }>(
+				baseUrl,
+				{ pagination: { page: 1, pageSize: 25 } },
+				undefined,
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('Node1');
+			expect(result[0]).not.toHaveProperty('id');
+		});
+	});
+
+	describe('buildStrapiUpdateQuery', () => {
+		it('should build query with single ID', () => {
+			const result = buildStrapiUpdateQuery([1]);
+
+			expect(result).toEqual({
+				filters: {
+					id: {
+						$in: [1],
+					},
+				},
+			});
+		});
+
+		it('should build query with multiple IDs', () => {
+			const result = buildStrapiUpdateQuery([1, 2, 3]);
+
+			expect(result).toEqual({
+				filters: {
+					id: {
+						$in: [1, 2, 3],
+					},
+				},
+			});
+		});
+
+		it('should build query with empty array', () => {
+			const result = buildStrapiUpdateQuery([]);
+
+			expect(result).toEqual({
+				filters: {
+					id: {
+						$in: [],
+					},
+				},
+			});
 		});
 	});
 });

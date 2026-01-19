@@ -321,4 +321,225 @@ describe('CommunityNodeTypesService', () => {
 			expect(testerResult?.packageName).toBe('n8n-nodes-tester');
 		});
 	});
+
+	describe('detectUpdates', () => {
+		const { getCommunityNodesMetadata } = require('../community-node-types-utils');
+
+		beforeEach(() => {
+			const mockNodeTypes = [
+				{
+					name: 'node-1',
+					packageName: 'package-1',
+					npmVersion: '1.0.0',
+					updatedAt: '2024-01-01',
+				},
+				{
+					name: 'node-2',
+					packageName: 'package-2',
+					npmVersion: '2.0.0',
+					updatedAt: '2024-01-02',
+				},
+			];
+			(service as any).setCommunityNodeTypes(mockNodeTypes);
+		});
+
+		it('should detect new nodes', async () => {
+			getCommunityNodesMetadata.mockResolvedValue([
+				{ id: 1, name: 'node-1', npmVersion: '1.0.0', updatedAt: '2024-01-01' },
+				{ id: 3, name: 'node-3', npmVersion: '3.0.0', updatedAt: '2024-01-03' },
+			]);
+
+			const result = await (service as any).detectUpdates('production');
+
+			expect(result).toEqual([3]);
+			expect(loggerMock.info).toHaveBeenCalledWith(
+				expect.stringContaining('Detected update for community node type: name - node-3'),
+			);
+		});
+
+		it('should detect npm version changes', async () => {
+			getCommunityNodesMetadata.mockResolvedValue([
+				{ id: 1, name: 'node-1', npmVersion: '1.1.0', updatedAt: '2024-01-01' },
+			]);
+
+			const result = await (service as any).detectUpdates('production');
+
+			expect(result).toEqual([1]);
+			expect(loggerMock.info).toHaveBeenCalledWith(expect.stringContaining('npmVersion - 1.1.0'));
+		});
+
+		it('should detect timestamp changes', async () => {
+			getCommunityNodesMetadata.mockResolvedValue([
+				{ id: 2, name: 'node-2', npmVersion: '2.0.0', updatedAt: '2024-01-05' },
+			]);
+
+			const result = await (service as any).detectUpdates('production');
+
+			expect(result).toEqual([2]);
+			expect(loggerMock.info).toHaveBeenCalledWith(
+				expect.stringContaining('updatedAt - 2024-01-05'),
+			);
+		});
+
+		it('should return empty array when all nodes are current', async () => {
+			getCommunityNodesMetadata.mockResolvedValue([
+				{ id: 1, name: 'node-1', npmVersion: '1.0.0', updatedAt: '2024-01-01' },
+				{ id: 2, name: 'node-2', npmVersion: '2.0.0', updatedAt: '2024-01-02' },
+			]);
+
+			const result = await (service as any).detectUpdates('production');
+
+			expect(result).toEqual([]);
+			expect(loggerMock.info).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateRequired', () => {
+		const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
+
+		beforeEach(() => {
+			jest.restoreAllMocks();
+			(service as any).lastUpdateTimestamp = 0;
+		});
+
+		it('should return true when never updated', () => {
+			const result = (service as any).updateRequired();
+
+			expect(result).toBe(true);
+		});
+
+		it('should return true when update interval has passed', () => {
+			const now = 100000000;
+			const mockNow = jest.spyOn(Date, 'now').mockReturnValue(now);
+			(service as any).lastUpdateTimestamp = now - UPDATE_INTERVAL - 1000;
+
+			const result = (service as any).updateRequired();
+
+			expect(result).toBe(true);
+			mockNow.mockRestore();
+		});
+
+		it('should return false when update interval has not passed', () => {
+			const now = 10000000;
+			const mockNow = jest.spyOn(Date, 'now').mockReturnValue(now);
+			(service as any).lastUpdateTimestamp = now - UPDATE_INTERVAL + 1000;
+
+			const result = (service as any).updateRequired();
+
+			expect(result).toBe(false);
+			mockNow.mockRestore();
+		});
+	});
+
+	describe('getCommunityNodeTypes', () => {
+		beforeEach(() => {
+			communityPackagesServiceMock.getAllInstalledPackages = jest
+				.fn()
+				.mockResolvedValue([{ packageName: 'package-1' }]);
+
+			const mockNodeTypes = [
+				{ name: 'package-1.node1', packageName: 'package-1', npmVersion: '1.0.0' },
+				{ name: 'package-2.node2', packageName: 'package-2', npmVersion: '2.0.0' },
+			];
+			(service as any).setCommunityNodeTypes(mockNodeTypes);
+		});
+
+		it('should return node types with isInstalled flag', async () => {
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result).toHaveLength(2);
+			expect(result[0].isInstalled).toBe(true);
+			expect(result[1].isInstalled).toBe(false);
+		});
+
+		it('should fetch updates when interval has passed', async () => {
+			(service as any).lastUpdateTimestamp = 0;
+			const fetchSpy = jest.spyOn(service as any, 'fetchNodeTypes').mockResolvedValue(undefined);
+
+			await service.getCommunityNodeTypes();
+
+			expect(fetchSpy).toHaveBeenCalled();
+		});
+
+		it('should skip fetch when interval has not passed', async () => {
+			const now = Date.now();
+			(service as any).lastUpdateTimestamp = now;
+			const fetchSpy = jest.spyOn(service as any, 'fetchNodeTypes').mockResolvedValue(undefined);
+
+			await service.getCommunityNodeTypes();
+
+			expect(fetchSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getCommunityNodeType', () => {
+		beforeEach(() => {
+			communityPackagesServiceMock.getAllInstalledPackages = jest
+				.fn()
+				.mockResolvedValue([{ packageName: 'package-1' }]);
+
+			const mockNodeTypes = [
+				{ name: 'package-1.node1', packageName: 'package-1', npmVersion: '1.0.0' },
+			];
+			(service as any).setCommunityNodeTypes(mockNodeTypes);
+		});
+
+		it('should return node type with isInstalled flag when found', async () => {
+			const result = await service.getCommunityNodeType('package-1.node1');
+
+			expect(result).toBeDefined();
+			expect(result?.name).toBe('package-1.node1');
+			expect(result?.isInstalled).toBe(true);
+		});
+
+		it('should return null for unknown node', async () => {
+			const result = await service.getCommunityNodeType('nonexistent');
+
+			expect(result).toBeNull();
+		});
+
+		it('should determine installation status from package name', async () => {
+			const mockNodeTypes = [
+				{ name: 'package-1.node1', packageName: 'package-1', npmVersion: '1.0.0' },
+				{ name: 'package-2.node2', packageName: 'package-2', npmVersion: '2.0.0' },
+			];
+			(service as any).setCommunityNodeTypes(mockNodeTypes);
+
+			const installed = await service.getCommunityNodeType('package-1.node1');
+			const notInstalled = await service.getCommunityNodeType('package-2.node2');
+
+			expect(installed?.isInstalled).toBe(true);
+			expect(notInstalled?.isInstalled).toBe(false);
+		});
+	});
+
+	describe('createIsInstalled', () => {
+		it('should create checker function for installed packages', async () => {
+			communityPackagesServiceMock.getAllInstalledPackages = jest
+				.fn()
+				.mockResolvedValue([{ packageName: 'package-1' }, { packageName: 'package-2' }]);
+
+			const isInstalled = await (service as any).createIsInstalled();
+
+			expect(isInstalled('package-1.node')).toBe(true);
+			expect(isInstalled('package-2.node')).toBe(true);
+			expect(isInstalled('package-3.node')).toBe(false);
+		});
+
+		it('should handle empty package list', async () => {
+			communityPackagesServiceMock.getAllInstalledPackages = jest.fn().mockResolvedValue([]);
+
+			const isInstalled = await (service as any).createIsInstalled();
+
+			expect(isInstalled('package-1.node')).toBe(false);
+		});
+
+		it('should handle null package list', async () => {
+			communityPackagesServiceMock.getAllInstalledPackages = jest.fn().mockResolvedValue(null);
+
+			const isInstalled = await (service as any).createIsInstalled();
+
+			expect(isInstalled('package-1.node')).toBe(false);
+		});
+	});
 });
