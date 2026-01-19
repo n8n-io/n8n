@@ -72,7 +72,7 @@ const setupWorkflow = async () => {
 	return { savedCredential, resolver };
 };
 
-describe('Workflow Status API', () => {
+describe('Dynamic Credentials API', () => {
 	let savedCredential: CredentialsEntity;
 	let resolver: DynamicCredentialResolver;
 
@@ -87,7 +87,7 @@ describe('Workflow Status API', () => {
 		testServer.httpServer.close();
 	});
 
-	describe('GET /credentials/:id/authorize', () => {
+	describe('POST /credentials/:id/authorize', () => {
 		describe('when a static auth token is provided', () => {
 			it('should return the authorization URL for a credential', async () => {
 				const response = await testServer.authlessAgent
