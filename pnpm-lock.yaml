@@ -2934,7 +2934,7 @@ importers:
         specifier: 4.1.0
         version: 4.1.0(vue@3.5.26(typescript@5.9.2))
       wa-sqlite:
-        specifier: github:rhashimoto/wa-sqlite
+        specifier: github:rhashimoto/wa-sqlite#779219540f66cecaa159da32b3b8936697ba10a7
         version: https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7
       web-tree-sitter:
         specifier: 0.24.3
