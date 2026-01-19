@@ -114,7 +114,7 @@ describe('AI Assistant store', () => {
 	it('should open chat window', async () => {
 		const chatPanelStore = useChatPanelStore();
 
-		chatPanelStore.open({ mode: 'assistant' });
+		await chatPanelStore.open({ mode: 'assistant' });
 		expect(chatPanelStore.isOpen).toBe(true);
 	});
 

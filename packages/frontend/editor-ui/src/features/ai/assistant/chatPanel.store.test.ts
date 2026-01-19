@@ -102,7 +102,7 @@ describe('chatPanel.store', () => {
 		it('should open panel in builder mode', async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('builder');
@@ -123,7 +123,7 @@ describe('chatPanel.store', () => {
 				} as ChatUI.AssistantMessage,
 			];
 
-			chatPanelStore.open({ mode: 'assistant' });
+			await chatPanelStore.open({ mode: 'assistant' });
 
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
@@ -133,7 +133,7 @@ describe('chatPanel.store', () => {
 		it('should close panel if mode is not enabled in current view', async () => {
 			mockRoute.name = VIEWS.HOMEPAGE; // Not in BUILDER_ENABLED_VIEWS
 
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 
 			expect(chatPanelStateStore.isOpen).toBe(false);
 		});
@@ -142,7 +142,7 @@ describe('chatPanel.store', () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 			chatPanelStateStore.activeMode = 'builder';
 
-			chatPanelStore.open();
+			await chatPanelStore.open();
 
 			expect(chatPanelStateStore.activeMode).toBe('builder');
 		});
@@ -151,7 +151,7 @@ describe('chatPanel.store', () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 			builderStore.streaming = true;
 
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(builderStore.fetchBuilderCredits).not.toHaveBeenCalled();
@@ -162,7 +162,7 @@ describe('chatPanel.store', () => {
 	describe('close', () => {
 		beforeEach(async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 		});
 
 		it('should close panel immediately', () => {
@@ -219,7 +219,7 @@ describe('chatPanel.store', () => {
 
 		it('should close panel when open', async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 			expect(chatPanelStateStore.isOpen).toBe(true);
 
 			await chatPanelStore.toggle();
@@ -231,7 +231,7 @@ describe('chatPanel.store', () => {
 	describe('switchMode', () => {
 		beforeEach(async () => {
 			mockRoute.name = ASSISTANT_ENABLED_VIEWS[0]; // Supports both modes
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 		});
 
 		it('should switch from builder to assistant mode', () => {
@@ -290,7 +290,7 @@ describe('chatPanel.store', () => {
 
 		it('should update UI grid dimensions when panel is open', async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 
 			chatPanelStore.updateWidth(420);
 
@@ -353,7 +353,7 @@ describe('chatPanel.store', () => {
 		it('should set showCoachmark to true by default when opening', async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 
 			expect(chatPanelStateStore.showCoachmark).toBe(true);
 		});
@@ -361,14 +361,14 @@ describe('chatPanel.store', () => {
 		it('should allow overriding showCoachmark when opening', async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
-			chatPanelStore.open({ mode: 'builder', showCoachmark: false });
+			await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
 
 			expect(chatPanelStateStore.showCoachmark).toBe(false);
 		});
 
 		it('should set showCoachmark to false when closing', async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 			expect(chatPanelStateStore.showCoachmark).toBe(true);
 
 			chatPanelStore.close();
@@ -379,7 +379,7 @@ describe('chatPanel.store', () => {
 		it('should expose showCoachmark as computed property', async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 
 			expect(chatPanelStore.showCoachmark).toBe(true);
 		});
@@ -439,7 +439,7 @@ describe('chatPanel.store', () => {
 		it('should restore grid width when auto-reopening during streaming', async () => {
 			// Open in builder mode to set grid width
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 
 			// Simulate streaming and closing the panel (which resets grid width after timeout)
 			builderStore.streaming = true;
@@ -461,7 +461,7 @@ describe('chatPanel.store', () => {
 		it('should not reset builder chat on route change when streaming is in progress', async () => {
 			// Start with panel open in builder mode and streaming
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 			builderStore.streaming = true;
 			builderStore.resetBuilderChat.mockClear();
 
@@ -479,7 +479,7 @@ describe('chatPanel.store', () => {
 		it('should reset builder chat on route change when not streaming', async () => {
 			// Start with panel open in builder mode but not streaming
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 			builderStore.streaming = false;
 
 			// Navigate to executions view (not a builder view, triggers close)

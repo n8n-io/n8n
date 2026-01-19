@@ -45,7 +45,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	);
 
 	// Actions
-	function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
+	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
 		const mode = options?.mode;
 		const showCoachmark = options?.showCoachmark ?? true;
 
@@ -112,7 +112,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		if (chatPanelStateStore.isOpen) {
 			close();
 		} else {
-			open(options);
+			await open(options);
 		}
 	}
 
@@ -149,7 +149,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	async function openWithCredHelp(credentialType: ICredentialType) {
 		const assistantStore = useAssistantStore();
 		await assistantStore.initCredHelp(credentialType);
-		open({ mode: 'assistant' });
+		await open({ mode: 'assistant' });
 	}
 
 	/**
@@ -158,7 +158,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	async function openWithErrorHelper(context: ChatRequest.ErrorContext) {
 		const assistantStore = useAssistantStore();
 		await assistantStore.initErrorHelper(context);
-		open({ mode: 'assistant' });
+		await open({ mode: 'assistant' });
 	}
 
 	// Watch route changes and close if panel can't be shown in current view
@@ -177,7 +177,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				builderStore.streaming &&
 				isEnabledView(newRoute, BUILDER_ENABLED_VIEWS)
 			) {
-				open({ mode: 'builder' });
+				void open({ mode: 'builder' });
 				return;
 			}
 

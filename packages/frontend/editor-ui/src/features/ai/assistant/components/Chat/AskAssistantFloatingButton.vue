@@ -34,7 +34,7 @@ const onClick = async () => {
 		if (chatPanelStore.isOpen && chatPanelStore.isBuilderModeActive) {
 			chatPanelStore.close();
 		} else {
-			chatPanelStore.open({ mode: 'builder' });
+			await chatPanelStore.open({ mode: 'builder' });
 		}
 	} else {
 		// For assistant-only mode
