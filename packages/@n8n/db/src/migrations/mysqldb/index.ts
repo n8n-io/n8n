@@ -128,6 +128,7 @@ import { AddResolvableFieldsToCredentials1765459448000 } from '../common/1765459
 import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
 import { AddAgentIdForeignKeys1765886667897 } from '../common/1765886667897-AddAgentIdForeignKeys';
 import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
+import { CreateExternalSecretsProviderTable1768840933000 } from '../common/1768840933000-CreateExternalSecretsProviderTable';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
@@ -261,4 +262,5 @@ export const mysqlMigrations: Migration[] = [
 	AddIconToAgentTable1765788427674,
 	AddAgentIdForeignKeys1765886667897,
 	AddWorkflowVersionIdToExecutionData1765892199653,
+	CreateExternalSecretsProviderTable1768840933000,
 ];
