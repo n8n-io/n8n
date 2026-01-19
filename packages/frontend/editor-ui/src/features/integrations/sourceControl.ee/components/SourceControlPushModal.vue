@@ -1090,9 +1090,7 @@ onMounted(async () => {
 				class="mt-0"
 				id="source-control-push-modal-notice"
 			>
-				<N8nText bold size="medium"
-					>Changes to variables, data tables, tags, folders and projects
-				</N8nText>
+				<N8nText bold size="medium">Changes to variables, tags, folders and projects </N8nText>
 				<br />
 				<template v-for="{ title, content } in userNotices" :key="title">
 					<N8nText bold size="small"> {{ title }}</N8nText>
