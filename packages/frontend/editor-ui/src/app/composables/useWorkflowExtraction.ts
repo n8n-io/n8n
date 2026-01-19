@@ -160,21 +160,19 @@ export function useWorkflowExtraction() {
 
 		const shouldInsertReturnNode = selectionChildrenVariables.size > 0;
 
-		const startNodeConnection = startNodeTarget
-			? ({
-					[startNodeName]: {
-						main: [
-							[
-								{
-									node: startNodeTarget.name,
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-				} satisfies IConnections)
-			: {};
+		const startNodeConnection = {
+			[startNodeName]: {
+				main: [
+					[
+						{
+							node: firstNode.name,
+							type: 'main',
+							index: 0,
+						},
+					],
+				],
+			},
+		} satisfies IConnections;
 
 		const endNodeConnection =
 			endNodeTarget && shouldInsertReturnNode
