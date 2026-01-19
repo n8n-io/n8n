@@ -9,30 +9,30 @@ import { Config, Env } from '../decorators';
  */
 @Config
 export class WorkflowHistoryCompactionConfig {
-	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_MINIMUM_AGE_HOURS')
+	@Env('N8N_WORKFLOW_HISTORY_OPTIMIZING_MINIMUM_AGE_HOURS')
 	/**
 	 * The minimum time we leave workflows in the history untouched
-	 * before we start compacting them.
+	 * before we start optimizing them.
 	 *
 	 * The workflow versions we compare and compact are those with
-	 * a `createdAt` value between `compactingMinimumAgeHours - compactingTimeWindowHours`
-	 * and `compactingMinimumAgeHours`
+	 * a `createdAt` value between `optimizingMinimumAgeHours - optimizingTimeWindowHours`
+	 * and `optimizingMinimumAgeHours`
 
 	 */
-	compactingMinimumAgeHours: number = 3;
+	optimizingMinimumAgeHours: number = 3;
 
 	/**
-	 * The time window we consider when compacting versions.
+	 * The time window we consider when optimizing versions.
 	 *
-	 * The workflow versions we compare and compact are those with
-	 * a `createdAt` value between `compactingMinimumAgeHours - compactingTimeWindowHours`
-	 * and `compactingMinimumAgeHours`.
+	 * The workflow versions we compare and optimize are those with
+	 * a `createdAt` value between `optimizationMinimumAgeHours - optimizationTimeWindowHours`
+	 * and `optimizationMinimumAgeHours`.
 	 *
-	 * Compaction will happen every `compactingTimeWindowHours/2` hours to
+	 * Optimization will happen every `optimizingTimeWindowHours/2` hours to
 	 * account for small gaps and downtime.
 	 */
-	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_TIME_WINDOW_HOURS')
-	compactingTimeWindowHours: number = 2;
+	@Env('N8N_WORKFLOW_HISTORY_OPTIMIZING_TIME_WINDOW_HOURS')
+	optimizingTimeWindowHours: number = 2;
 
 	/**
 	 * The minimum time we leave workflows in the history untouched
@@ -82,11 +82,4 @@ export class WorkflowHistoryCompactionConfig {
 	 */
 	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_TRIM_ON_START_UP')
 	trimOnStartUp: boolean = false;
-
-	/**
-	 * The minimum time in milliseconds before two consecutive versions are
-	 * considered part of different sessions and should thus not be merged during compaction.
-	 */
-	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_MINIMUM_TIME_BETWEEN_SESSIONS_MS')
-	minimumTimeBetweenSessionsMs: number = 20 * 60 * 1000;
 }
