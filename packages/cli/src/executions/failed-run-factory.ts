@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 
 @Service()
-export class ExecutionDataService {
+export class FailedRunFactory {
 	generateFailedExecutionFromError(
 		mode: WorkflowExecuteMode,
 		error: ExecutionError,
