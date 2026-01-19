@@ -6,7 +6,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { TEMPLATES_URLS, VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -56,7 +55,6 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let templatesStore: ReturnType<typeof useTemplatesStore>;
-let uiStore: ReturnType<typeof useUIStore>;
 let recommendedTemplatesStore: ReturnType<typeof useRecommendedTemplatesStore>;
 let router: ReturnType<typeof vueRouter.useRouter>;
 
@@ -76,7 +74,6 @@ describe('CanvasNodeAddNodes', () => {
 		router = vueRouter.useRouter();
 		settingsStore = useSettingsStore();
 		templatesStore = useTemplatesStore();
-		uiStore = useUIStore();
 		recommendedTemplatesStore = useRecommendedTemplatesStore();
 
 		window.open = vi.fn();
