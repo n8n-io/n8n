@@ -14,7 +14,6 @@ import { CredentialsHelper } from '@/credentials-helper';
 
 import { createUser } from '../shared/db/users';
 import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
-import { CredentialsConfig } from '@n8n/config/src/configs/credentials.config';
 
 mockInstance(Telemetry);
 

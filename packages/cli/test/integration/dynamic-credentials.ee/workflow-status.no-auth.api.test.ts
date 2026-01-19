@@ -1,6 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, User } from '@n8n/db';
+import type { CredentialsEntity } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	WorkflowRepository,
