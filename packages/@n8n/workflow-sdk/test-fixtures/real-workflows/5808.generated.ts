@@ -406,7 +406,7 @@ return workflow('94ZTfrnyRHFV3xxr', 'DocAgentForTemplate', { executionOrder: 'v1
         name: 'googleDriveOAuth2Api Credential'
       }
     }, position: [-500, 440], name: 'Template List' } }))
-  .add(sticky('## Manual Template List Retrieval\n**The response returned from this API request is manually added to the system prompt.\n\n', { color: 4, position: [-560, 260], width: 260, height: 360 }))
+  .add(sticky('## Manual Template List Retrieval\n**The response returned from this API request is manually added to the system prompt.\n\n', { name: 'Sticky Note', color: 4, position: [-560, 260], width: 260, height: 360 }))
   .add(sticky('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**It is preferred for more consistent memory management. Other alternatives can also be tried.', { name: 'Sticky Note1', position: [160, 260], width: 180, height: 320 }))
   .add(sticky('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**Metadata of the template selected by the user is dynamically retrieved.', { name: 'Sticky Note2', position: [380, 260], width: 180, height: 320 }))
   .add(sticky('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**Prioritized due to free API-Key trial.', { name: 'Sticky Note3', position: [-60, 260], width: 180, height: 320 }))

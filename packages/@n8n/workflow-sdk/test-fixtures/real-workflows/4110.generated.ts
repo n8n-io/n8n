@@ -643,7 +643,7 @@ return workflow('21dF4yje1iQpP4jQ', '💥Clone a viral TikTok and auto-post it t
         parameters: [{ name: 'blotato-api-key', value: 'YOUR_API_KEY' }]
       }
     }, position: [840, 1160], name: 'PINTEREST' } }))
-  .add(sticky('# 🟫 STEP 1 — Clone a viral TikTok video', { position: [-740, -380], width: 2460, height: 300 }))
+  .add(sticky('# 🟫 STEP 1 — Clone a viral TikTok video', { name: 'Sticky Note', position: [-740, -380], width: 2460, height: 300 }))
   .add(sticky('# 🟦 STEP 2 — Suggest new content idea\n', { name: 'Sticky Note1', color: 4, position: [-740, -20], width: 1920, height: 320 }))
   .add(sticky('# 🟪 STEP 3 — Create the new video with your avatar\n\n', { name: 'Sticky Note2', position: [-740, 340], width: 1920, height: 300 }))
   .add(sticky('# 🟥 STEP 4 — Publish to 9 platforms\n', { name: 'Sticky Note3', color: 3, position: [-740, 660], width: 1920, height: 680 }))

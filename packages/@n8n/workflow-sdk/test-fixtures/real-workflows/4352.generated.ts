@@ -150,7 +150,7 @@ return workflow('vJw8YoQhdA5CXGeB', 'Social_media_post _automation_from_google_t
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [-1280, -200], name: 'Google Sheets2' } }))
-  .add(sticky('## Find Trend\n\n', { position: [-3240, -280], width: 400, height: 240 }))
+  .add(sticky('## Find Trend\n\n', { name: 'Sticky Note', position: [-3240, -280], width: 400, height: 240 }))
   .add(sticky('## High Volume Keywords\n\n', { name: 'Sticky Note1', position: [-2820, -280], width: 200, height: 240 }))
   .add(sticky('## Choosing Blog Topic\n\n\n', { name: 'Sticky Note2', position: [-2580, -280], width: 340, height: 240 }))
   .add(sticky('## Research\n\n\n', { name: 'Sticky Note3', position: [-2200, -280], width: 600, height: 240 }))

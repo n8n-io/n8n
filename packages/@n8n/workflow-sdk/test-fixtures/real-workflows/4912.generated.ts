@@ -481,5 +481,5 @@ return workflow('bCzsdWA9ELzYNPUy', 'Lead Workflow: Yelp & Trustpilot Scraping +
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [1820, -3260], name: 'Save Yelp Data to Sheet' } }))
-  .add(sticky('Make a Copy of This Google Sheet.\n\n(https://docs.google.com/spreadsheets/d/1hX0MD_BLVWuEaXwOjKtwrWsjsBzc32ZtFVjP7wVGQYI/edit?usp=drive_link)', { color: 4, position: [200, -3920], width: 340 }))
+  .add(sticky('Make a Copy of This Google Sheet.\n\n(https://docs.google.com/spreadsheets/d/1hX0MD_BLVWuEaXwOjKtwrWsjsBzc32ZtFVjP7wVGQYI/edit?usp=drive_link)', { name: 'Sticky Note', color: 4, position: [200, -3920], width: 340 }))
   .add(sticky('Optimized Workflow Summary:\nThis automation identifies high-quality leads from Yelp and Trustpilot based on a user-submitted location and business category. It uses AI to break down the area into sub-locations, scrapes business details via BrightData, checks credibility through Trustpilot reviews, and stores the best matches in Google Sheets. Finally, AI generates personalized outreach emails, which are automatically sent via Gmail — enabling fully automated lead generation and email marketing with zero manual effort.', { name: 'Sticky Note1', color: 7, position: [0, -4200], width: 880, height: 520 }))

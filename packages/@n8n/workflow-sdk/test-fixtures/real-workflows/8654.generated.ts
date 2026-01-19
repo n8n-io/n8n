@@ -1589,7 +1589,7 @@ return workflow('6BWdxf2GdoYg7sSo', 'Blog Writing', { executionOrder: 'v1' })
         ]
       }
     }, position: [2064, 1792], name: 'Final Article1' } }))
-  .add(sticky('## Good Opportunity for Human in the loop\nCreate 5 titles and have the human pick one.', { color: 3, position: [528, -144], width: 420 }))
+  .add(sticky('## Good Opportunity for Human in the loop\nCreate 5 titles and have the human pick one.', { name: 'Sticky Note', color: 3, position: [528, -144], width: 420 }))
   .add(sticky('## Get Working Title, Description, Keywords from Airtable Article Writer\n\nGet\'s this data for use in the first agent that creates the writing style, tone, target audience/persona and goal.\n\nTriggered by status field in the Article Writer table. Create Article = Write Article', { name: 'Sticky Note2', position: [-2160, 112], width: 1620, height: 480 }))
   .add(sticky('## Dynamic Writing Guidelines and Hidden Insights\nBased on real-world search results and competitor analysis, ensuring that your AI-generated articles align with user intent better than static SEO methods.\n\nUses working title, description (both from keyword categorization), and top 5 search results to generate writing style and tone, goal of the article, hidden insights from AI analysis, semantic insights and keywords. All for use throughout the workflow. ', { name: 'Sticky Note3', position: [-496, 96], width: 780, height: 600 }))
   .add(sticky('## Refine the Working Title - Set New Title in Airtable\nUses all the input and generated info to create an SEO optimized title.\n\nThe airtable record is updated.', { name: 'Sticky Note4', position: [320, 96], width: 800, height: 600 }))

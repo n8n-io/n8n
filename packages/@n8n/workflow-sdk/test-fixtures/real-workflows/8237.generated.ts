@@ -109,7 +109,7 @@ return workflow('', '')
     }, credentials: {
       telegramApi: { id: 'credential-id', name: 'telegramApi Credential' }
     }, position: [2688, 192] } }))
-  .add(sticky('## Process Telegram Request\n', { color: 7, position: [1072, 96], width: 624, height: 279 }))
+  .add(sticky('## Process Telegram Request\n', { name: 'Sticky Note', color: 7, position: [1072, 96], width: 624, height: 279 }))
   .add(sticky('\n\n\n\n\n\n\n\n\n\n\n\n1. [In OpenRouter](https://openrouter.ai/settings/keys) click **“Create API key”** and copy it.\n\n2. Open the ```OpenRouter``` node:\n   * **Select Credential → Create New**\n   * Paste into **API Key** and **Save**\n', { name: 'Sticky Note1', color: 3, position: [1584, 512], width: 294, height: 316 }))
   .add(sticky('\n\n\n\n\n\n\n\n\n\n\n\n\n\nThis node helps your agent remember the last few messages to stay on topic.', { name: 'Sticky Note15', color: 7, position: [1904, 512], width: 308, height: 260 }))
   .add(sticky('\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThis node allows your agent create and get tasks from Google Tasks\n', { name: 'Sticky Note16', color: 7, position: [2240, 512], width: 484, height: 260 }))

@@ -474,7 +474,7 @@ return workflow('FqIyXIEKFojlkN9k', 'FalAI_SeeDanceV1.0_Eng_Template', { executi
       },
       options: {}
     }, name: 'Video status' }))
-  .add(sticky('### 🟨 Zone 1: Prompt Input & Story-to-Scenes\n\n1. **When clicking \'Execute workflow**\n2. **Get Data (Google Sheets)**\n3. **Generate Full Narrative from Prompt**\n4. **Break Narrative into {{n}} Scenes**\n5. **Verify number of scene**\n', { position: [-720, -240], width: 1840, height: 240 }))
+  .add(sticky('### 🟨 Zone 1: Prompt Input & Story-to-Scenes\n\n1. **When clicking \'Execute workflow**\n2. **Get Data (Google Sheets)**\n3. **Generate Full Narrative from Prompt**\n4. **Break Narrative into {{n}} Scenes**\n5. **Verify number of scene**\n', { name: 'Sticky Note', position: [-720, -240], width: 1840, height: 240 }))
   .add(sticky('### 🟫 Zone 2: Create Scene Prompts & Generate Video\n\n1. **Split Out**\n2. **Describe Each Scene for Video**\n3. **Call Fal.ai API (Seedance)**\n4. **Loop Over Items**\n5. **Wait for the video / Get the video status / Video status**\n', { name: 'Sticky Note1', color: 2, position: [-720, 20], width: 1840, height: 240 }))
   .add(sticky('### 🟥 Zone 3: Add Audio to Video with Fal AI\n1. **Start adding audio to the video**\n2. **Loop Over Items1**\n', { name: 'Sticky Note2', color: 3, position: [-720, 280], width: 780, height: 400 }))
   .add(sticky('### 🟩 Zone 4: Merge Videos & Download Final Output\n\n1. **Aggregate videos with audio**\n2. **Start merging videos ffmpeg**\n3. **Wait for the merge to complete**\n4. **Get merged video**\n', { name: 'Sticky Note3', color: 4, position: [80, 280], width: 1040, height: 400 }))

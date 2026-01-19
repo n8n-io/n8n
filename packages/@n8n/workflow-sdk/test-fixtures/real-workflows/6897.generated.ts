@@ -212,7 +212,7 @@ return workflow('[WORKFLOW_ID_REMOVED]', 'HR CVs Filter', { executionOrder: 'v1'
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [800, 256], name: 'Save Candidate Info to Sheet' } }))
-  .add(sticky('Captures incoming CV PDFs from candidates', { color: 3, position: [-1280, 272], width: 192, height: 224 }))
+  .add(sticky('Captures incoming CV PDFs from candidates', { name: 'Sticky Note', color: 3, position: [-1280, 272], width: 192, height: 224 }))
   .add(sticky('Filters out non-PDF submissions', { name: 'Sticky Note1', color: 4, position: [-992, 272], width: 192, height: 224 }))
   .add(sticky(' Gets the file download link from Telegram', { name: 'Sticky Note2', color: 5, position: [-672, 176], width: 192, height: 208 }))
   .add(sticky('Downloads the actual PDF file', { name: 'Sticky Note3', color: 4, position: [-432, 176], width: 192, height: 208 }))

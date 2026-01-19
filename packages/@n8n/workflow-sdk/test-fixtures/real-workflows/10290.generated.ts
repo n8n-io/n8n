@@ -15,7 +15,7 @@ return workflow('', 'Track & Query expenses via Telegram (voice,text) to Google 
   .add(node({ type: 'n8n-nodes-base.telegram', version: 1.2, config: { position: [4272, 1280], name: 'Send Text to Telegram' } }))
   .add(node({ type: 'n8n-nodes-base.code', version: 2, config: { position: [3920, 704], name: 'Track API Costs' } }))
   .then(node({ type: 'n8n-nodes-base.googleSheets', version: 4.7, config: { position: [4208, 704], name: 'Log Cost to Sheet' } }))
-  .add(sticky('', { position: [1040, 400] }))
+  .add(sticky('', { name: 'Sticky Note', position: [1040, 400] }))
   .add(sticky('', { name: 'Sticky Note1', position: [1344, 400] }))
   .add(sticky('', { name: 'Sticky Note2', position: [1344, 1104] }))
   .add(sticky('', { name: 'Sticky Note3', position: [2656, 400] }))

@@ -66,6 +66,14 @@ The previous system used a **supervisor pattern** with specialized agents:
 
 Instead of iteratively building JSON, the LLM generates complete TypeScript code using the Workflow SDK. This code is then parsed into JSON for the frontend.
 
+**Key Principles:**
+
+1. **Abstract away internals**: The SDK hides n8n's internal complexity. Users don't deal with connections, connection indices, node IDs, or wire management. They simply chain nodes with `.then()` and the SDK handles the rest.
+
+2. **Code over JSON**: TypeScript code is more natural for LLMs to generate and reason about than raw JSON operations.
+
+3. **Immutability**: Every builder method returns a new instance, making the code predictable and side-effect free.
+
 ```typescript
 // LLM generates code like this:
 return workflow('my-workflow', 'My Workflow')
@@ -381,3 +389,58 @@ The One-Shot Workflow Code Agent with Workflow SDK represents a significant impr
 | Composability | Limited | First-class patterns |
 
 The SDK-based approach leverages the LLM's strength in code generation while providing deterministic parsing and validation, resulting in faster, more reliable, and more cost-effective workflow generation.
+
+## Learnings
+
+### Working with Claude Opus 4 and Claude Code
+
+**Supervisor + Sub-agent Pattern for Long-Running Tasks**
+
+Claude Opus 4 with Claude Code is powerful, but can take shortcuts on long-running tasks. A better architecture is:
+- **Supervisor agent**: Plans and coordinates work
+- **Sub-agents**: Execute specific tasks with focused context
+
+This pattern works better for sustained complex work because each sub-agent operates with fresh context and clear objectives.
+
+**AI + Human Expert Guidance**
+
+AI is capable on its own, but works significantly better with expert guidance. Having a human provide:
+- Domain expertise about n8n's node structure
+- Architectural direction for the SDK design
+- Feedback on edge cases and real-world usage
+- YOLO mode is awesome (--dangerously-skip-permissions)
+- Need to learn to speak the language of the tool. Some Claude keywords: invoke skill, create subagent... "read" leads to different results from "review"
+- git workspaces are great for running parallel agents working on the same codebase
+
+...leads to much more effective outcomes than pure AI-driven development.
+
+### Superpowers Plugin
+
+**TDD Skill is Excellent**
+
+The Superpowers TDD (Test-Driven Development) skill is highly effective:
+- Forces disciplined red-green-refactor workflow
+- Prevents skipping tests "just this once"
+- Works well for both short and long-running tasks
+- Catches bugs early through failing test verification
+
+**Brainstorming Skill Trade-offs**
+
+The brainstorming skill can be:
+- Too slow for quick decisions
+- Distracting when you already know the direction
+- Better to use Claude's normal planning mode for straightforward tasks
+
+Use brainstorming for genuinely open-ended problems, not for tasks with clear solutions.
+
+### Context Management
+
+**Reduce Confusion, Not Just Tokens**
+
+When managing context for the agent, focus on clarity over compression:
+- Split node types by version so parameters don't bleed across versions
+- Provide explicit examples rather than relying on inference
+- Be specific about what NOT to do (e.g., "don't use $env")
+- /compact often. /rewind and /fork as well.
+
+A confused agent with full context performs worse than a clear agent with focused context.

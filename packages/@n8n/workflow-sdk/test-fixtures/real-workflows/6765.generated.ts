@@ -23,7 +23,7 @@ return workflow('uALIwhmZBIsiTqvl', 'Instagram Auto Liking - Creators Hub', { ex
   .then(node({ type: 'n8n-nodes-base.phantombuster', version: 1, config: { position: [736, -1120], name: 'Launch AL Agent' } }))
   .then(node({ type: 'n8n-nodes-base.wait', version: 1.1, config: { position: [944, -1120], name: 'Wait1' } }))
   .then(node({ type: 'n8n-nodes-base.phantombuster', version: 1, config: { position: [1168, -1120], name: 'Get Response' } }))
-  .add(sticky('', { position: [-784, -1696] }))
+  .add(sticky('', { name: 'Sticky Note', position: [-784, -1696] }))
   .add(sticky('', { name: 'Sticky Note1', position: [-1728, -1280] }))
   .add(sticky('', { name: 'Sticky Note2', position: [416, -1280] }))
   .add(sticky('', { name: 'Sticky Note4', position: [-784, -2112] }))

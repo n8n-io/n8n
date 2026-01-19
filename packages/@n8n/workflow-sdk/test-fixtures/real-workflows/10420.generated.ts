@@ -98,7 +98,7 @@ return workflow('LtlVKYumh3ovfRvp', 'Loyverse Sales Report Agent', {
   .add(trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { parameters: {
       rule: { interval: [{ triggerAtHour: 8, triggerAtMinute: 15 }] }
     }, position: [-256, -176], name: 'Run Daily at 8:15AM (open to change)' } }))
-  .add(sticky('# SETUP STEP 2/4\n## 1. Make a copy of this Spreadsheet: https://docs.google.com/spreadsheets/d/1DlEUo3mQUaxn2HEp34m7VAath8L3RDuPy5zFCljSZHE/edit?usp=sharing\n## 2. Open the MASTER CONFIG node below and edit the necessary variables:', { color: 3, position: [-96, -768], width: 672, height: 448 }))
+  .add(sticky('# SETUP STEP 2/4\n## 1. Make a copy of this Spreadsheet: https://docs.google.com/spreadsheets/d/1DlEUo3mQUaxn2HEp34m7VAath8L3RDuPy5zFCljSZHE/edit?usp=sharing\n## 2. Open the MASTER CONFIG node below and edit the necessary variables:', { name: 'Sticky Note', color: 3, position: [-96, -768], width: 672, height: 448 }))
   .add(sticky('## Get Product Data from Loyverse\nNo Changes required here!', { name: 'Sticky Note1', color: 5, position: [-32, -288], width: 432, height: 352 }))
   .add(sticky('## Get Sales Data From Last Shift\nNo Changes required here! (Change the Shift Start and End in Config Node!)\n', { name: 'Sticky Note2', color: 5, position: [608, -768], width: 720, height: 336 }))
   .add(sticky('## Calculate Metrics', { name: 'Sticky Note3', color: 5, position: [1152, -288], width: 336, height: 288 }))

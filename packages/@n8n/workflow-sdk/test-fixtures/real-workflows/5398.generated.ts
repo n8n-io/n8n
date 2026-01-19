@@ -22,5 +22,5 @@ return workflow('', '')
         }, credentials: {
           openAiApi: { id: 'credential-id', name: 'openAiApi Credential' }
         }, name: 'OpenAI Chat Model' } }) }, position: [220, 0], name: 'AI Agent' } }))
-  .add(sticky('## RAG MCP Server', { color: 3, position: [320, 220], width: 280, height: 220 }))
+  .add(sticky('## RAG MCP Server', { name: 'Sticky Note', color: 3, position: [320, 220], width: 280, height: 220 }))
   .add(sticky('## Search Engine MCP Server', { name: 'Sticky Note1', color: 5, position: [620, 220], width: 360, height: 220 }))

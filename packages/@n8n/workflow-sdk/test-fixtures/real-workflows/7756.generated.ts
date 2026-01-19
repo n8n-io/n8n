@@ -763,7 +763,7 @@ return workflow('', '')
     }, credentials: {
       telegramApi: { id: 'credential-id', name: 'telegramApi Credential' }
     }, position: [1296, 1040], name: 'Typing…' } }))
-  .add(sticky('# 📘 Cal AI Alternative – Nutrition Assistant \n\nThis workflow implements a **Nutrition Assistant** that helps users log meals, track nutritional goals, and receive personalized reports.  \nThe system integrates **Telegram**, **Google Sheets**, and an **AI Agent (Gemini)** within **n8n**.\n\n✅ **With this workflow, users can:**  \n- Register easily via Telegram.  \n- Log meals with text, voice, or images.  \n- Track nutrition goals automatically.  \n- Receive daily personalized reports.  ', { position: [368, 240], width: 608, height: 336 }))
+  .add(sticky('# 📘 Cal AI Alternative – Nutrition Assistant \n\nThis workflow implements a **Nutrition Assistant** that helps users log meals, track nutritional goals, and receive personalized reports.  \nThe system integrates **Telegram**, **Google Sheets**, and an **AI Agent (Gemini)** within **n8n**.\n\n✅ **With this workflow, users can:**  \n- Register easily via Telegram.  \n- Log meals with text, voice, or images.  \n- Track nutrition goals automatically.  \n- Receive daily personalized reports.  ', { name: 'Sticky Note', position: [368, 240], width: 608, height: 336 }))
   .add(sticky('', { name: 'Sticky Note1', color: 4, position: [1008, 1024], width: 608, height: 464 }))
   .add(sticky('', { name: 'Sticky Note2', color: 5, position: [1744, 880], width: 1104, height: 720 }))
   .add(sticky('', { name: 'Sticky Note3', color: 6, position: [3024, 1008], width: 896, height: 720 }))

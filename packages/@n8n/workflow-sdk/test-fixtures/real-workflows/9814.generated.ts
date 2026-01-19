@@ -963,7 +963,7 @@ return workflow('', '')
         cachedResultName: 'email_linkedin_list'
       }
     }, position: [2256, 416], name: 'Update row(s)' } }))
-  .add(sticky('## Creative Outreach Agent - A dedicated agent designated for creativity and equipped with enriched data for a creative personalized email', { color: 4, position: [560, 352], width: 1872, height: 528 }))
+  .add(sticky('## Creative Outreach Agent - A dedicated agent designated for creativity and equipped with enriched data for a creative personalized email', { name: 'Sticky Note', color: 4, position: [560, 352], width: 1872, height: 528 }))
   .add(sticky('## Data Enrichment - Step 1; Fetch person details from local table, scrap data from multiple resources to enrich the user profile', { name: 'Sticky Note1', position: [928, -448], width: 1504, height: 768 }))
   .add(sticky('## Prerequisites\n\n- This workflow is designed to enrich outreach with up-to-date data also generate a personalized outreach emails\n\n\n- **Subscript to RapidAPI Scraper:** [HERE](https://rapidapi.com/ikemo-ikemo-default/api/cold-outreach-enrichment-scraper)\n\n- **Table headers;**\n"First_name",\n"Last_name",\n"email",\n"Title",\n"Location",\n"Company_Name",\n"Company_site",\n"Crunchbase_URL",\n"Linkedin_URL",\n"linkedin_profile_scrape",\n"linkedin_company_scrape",\n"crunchbase_company_scrape",\n"company_linkedin",\n"email_subject",\n"email_body"\n', { name: 'Sticky Note2', color: 3, position: [560, -448], width: 352, height: 768 }))
   .add(sticky('## Enrich personal LinkedIn data', { name: 'Sticky Note3', color: 6, position: [1568, -400], width: 800, height: 224 }))

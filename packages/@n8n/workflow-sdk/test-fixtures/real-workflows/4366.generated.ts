@@ -200,7 +200,7 @@ return workflow('leftLsw8mj6dIDBp', '[AOE]  Inbox & Calendar Management Agent', 
   .add(node({ type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory', version: 1.1, config: { parameters: { mode: 'load', topK: 100, prompt: 'workshop' }, subnodes: { embedding: embedding({ type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi', version: 1.2, config: { parameters: { options: {} }, credentials: {
           openAiApi: { id: 'credential-id', name: 'openAiApi Credential' }
         }, name: 'Embeddings OpenAI' } }) }, position: [2820, -760], name: 'Read- Threads History Vector Store' } }))
-  .add(sticky('## Email Sorting Agent\n', { position: [100, -860], width: 1500, height: 720 }))
+  .add(sticky('## Email Sorting Agent\n', { name: 'Sticky Note', position: [100, -860], width: 1500, height: 720 }))
   .add(sticky('## Email Access Tools', { name: 'Sticky Note1', position: [500, 660], width: 520, height: 460 }))
   .add(sticky('## Calender Access Tools', { name: 'Sticky Note2', color: 6, position: [1100, 660], width: 520, height: 460 }))
   .add(sticky('## Knowlede about past email conversations', { name: 'Sticky Note3', color: 5, position: [1700, 500], width: 520, height: 620 }))

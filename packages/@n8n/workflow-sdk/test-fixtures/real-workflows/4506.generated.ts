@@ -118,7 +118,7 @@ return workflow('', 'YTB Metadata Generator', { executionOrder: 'v1' })
       youTubeOAuth2Api: { id: 'credential-id', name: 'youTubeOAuth2Api Credential' }
     }, position: [1280, -200], name: 'Update YTB Video' } }))
   .add(sticky('## 1- Input\nEnter the ID of the YTB channel to trigger the workflow when a new video is posted', { name: 'Sticky Note3', color: 7, position: [-940, -100], width: 420, height: 340 }))
-  .add(sticky('## 2- Create DataSet\nApify scrape the last YTB video of the channel', { color: 7, position: [-500, -180], height: 480 }))
+  .add(sticky('## 2- Create DataSet\nApify scrape the last YTB video of the channel', { name: 'Sticky Note', color: 7, position: [-500, -180], height: 480 }))
   .add(sticky('## 4- Check and Generate Metadata\nVerify if Metadata are not already generated and generate them with LLM\n', { name: 'Sticky Note1', color: 7, position: [420, -280], width: 600, height: 580 }))
   .add(sticky('## 5- Output\nFormat all the data created and update YTB Video', { name: 'Sticky Note2', color: 7, position: [1040, -280], width: 460, height: 240 }))
   .add(sticky('## 3- Wait for Completion & Get DataSet\nWait until the dataset is completed in Apify and get it', { name: 'Sticky Note4', color: 7, position: [-240, -180], width: 640, height: 500 }))

@@ -251,7 +251,7 @@ return workflow('OcdRRO25OfTnrILJ', 'Blog Post : Tendencias Ecosistema', { execu
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [1080, 760], name: 'Publicaciones Wordpress Startups y Tecnología' } }))
-  .add(sticky('## Problem in node ‘Get Title, Content, and Image FileName‘\nIf this happens, is because the Json file was not created successfully before on Perplexity. IA Models still struggles with this.', { position: [-1100, 800], height: 260 }))
+  .add(sticky('## Problem in node ‘Get Title, Content, and Image FileName‘\nIf this happens, is because the Json file was not created successfully before on Perplexity. IA Models still struggles with this.', { name: 'Sticky Note', position: [-1100, 800], height: 260 }))
   .add(sticky('## ALT Images \nALT sigue siendo una de las características seo Importantes, junto al nombre del archivo de la imagen.', { name: 'Sticky Note1', position: [560, 960] }))
   .add(sticky('## Generación de Imagen con LeonardoAI\nEl proceso de generación de la imagen es asincrono, por lo que debemos preguntar si está listo cada cierto tiempo. % segundos son más que suficientes, y menos puede bloquearte el API.', { name: 'Sticky Note2', position: [-240, 980], width: 540, height: 120 }))
   .add(sticky('## Image Prompt\nLe pedimos a ChaGPT que nos ayude a generar el prompt que usaremos en LeonardoAI para la imagen. Si bien podemos ocupar OpenAI para la imagen, Leonardo es considerablemente más económico.', { name: 'Sticky Note3', position: [-800, 840], height: 200 }))

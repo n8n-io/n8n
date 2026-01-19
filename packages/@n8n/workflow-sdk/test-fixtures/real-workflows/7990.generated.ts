@@ -147,4 +147,4 @@ return workflow('', '')
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [976, 0], name: 'Append row in sheet' } }))
-  .add(sticky('## n8n Starter Session Tutorial\n\n[Watch the Tutorials](https://www.youtube.com/playlist?list=PLWYu7XaUG3XOJwOOGiX89SQ_w67vw3dq7)\n\nTutor: [Aemal Sayer](https://aemalsayer.com)', { position: [-16, -208], width: 352 }))
+  .add(sticky('## n8n Starter Session Tutorial\n\n[Watch the Tutorials](https://www.youtube.com/playlist?list=PLWYu7XaUG3XOJwOOGiX89SQ_w67vw3dq7)\n\nTutor: [Aemal Sayer](https://aemalsayer.com)', { name: 'Sticky Note', position: [-16, -208], width: 352 }))

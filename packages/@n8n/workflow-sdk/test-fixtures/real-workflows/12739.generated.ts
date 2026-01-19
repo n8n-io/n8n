@@ -268,7 +268,7 @@ return workflow('L87pnGIo6Q1Bmxwe', 'Automated Client Onboarding and Task Assign
       },
       otherOptions: {}
     }, position: [1600, 320], name: 'Notify IT Consultant' } }))
-  .add(sticky('## Webhook & Config', { color: 7, position: [80, -64], width: 672, height: 656 }))
+  .add(sticky('## Webhook & Config', { name: 'Sticky Note', color: 7, position: [80, -64], width: 672, height: 656 }))
   .add(sticky('## AI Routing ', { name: 'Sticky Note1', color: 7, position: [768, -64], width: 496, height: 656 }))
   .add(sticky('## Log & Notify', { name: 'Sticky Note2', color: 7, position: [1296, -160], width: 496, height: 656 }))
   .add(sticky('## CRM', { name: 'Sticky Note3', color: 7, position: [1808, -160], width: 656, height: 656 }))

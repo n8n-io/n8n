@@ -248,7 +248,7 @@ return workflow('', 'Veo3 Instagram Agent Workflow', { executionOrder: 'v1' })
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [2500, -20], name: 'Google Sheets1' } }))
-  .add(sticky('Chat Trigger', { position: [-300, -260], width: 300, height: 820 }))
+  .add(sticky('Chat Trigger', { name: 'Sticky Note', position: [-300, -260], width: 300, height: 820 }))
   .add(sticky('Video Prompt Agent', { name: 'Sticky Note1', color: 4, position: [20, -260], width: 300, height: 820 }))
   .add(sticky('Video Prompt Agent', { name: 'Sticky Note2', color: 5, position: [340, -260], height: 820 }))
   .add(sticky('Veo3 Get Requst Loop', { name: 'Sticky Note3', color: 6, position: [600, -260], width: 640, height: 820 }))

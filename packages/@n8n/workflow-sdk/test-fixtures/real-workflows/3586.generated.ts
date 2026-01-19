@@ -310,7 +310,7 @@ return workflow('zMtPPjJ80JJznrJP', 'AI-Powered WhatsApp Chatbot for Text, Voice
     }, credentials: {
       whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' }
     }, position: [500, 700], name: 'Incorrect format' } }))
-  .add(sticky('## Text', { position: [120, -560], width: 1340, height: 240 }))
+  .add(sticky('## Text', { name: 'Sticky Note', position: [120, -560], width: 1340, height: 240 }))
   .add(sticky('## Voice', { name: 'Sticky Note1', position: [120, -240], width: 1340, height: 240 }))
   .add(sticky('## Image', { name: 'Sticky Note2', position: [120, 80], width: 1340, height: 240 }))
   .add(sticky('## Document', { name: 'Sticky Note3', position: [120, 420], width: 1340, height: 240 }))

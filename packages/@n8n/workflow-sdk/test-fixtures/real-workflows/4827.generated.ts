@@ -630,6 +630,6 @@ return workflow('', '')
       },
       options: {}
     }, name: 'Route Document Types' }))
-  .add(sticky('Run this workflow manually to import and index Google Docs product documentation into MongoDB with vector embeddings for fast search.', { color: 5, position: [1000, -580] }))
+  .add(sticky('Run this workflow manually to import and index Google Docs product documentation into MongoDB with vector embeddings for fast search.', { name: 'Sticky Note', color: 5, position: [1000, -580] }))
   .add(sticky('This workflow listens for WhatsApp messages (text, audio, image, documents), converts them into embeddings, searches MongoDB, and uses GPT-4o-mini to provide context-aware answers with conversation memory.', { name: 'Sticky Note1', color: 4, position: [1000, 360], height: 280 }))
   .add(sticky('Search Index Example \n\n{\n  "mappings": {\n    "dynamic": false,\n    "fields": {\n      "_id": {\n        "type": "string"\n      },\n      "text": {\n        "type": "string"\n      },\n      "embedding": {\n        "type": "knnVector",\n        "dimensions": 1536,\n        "similarity": "cosine"\n      },\n      "source": {\n        "type": "string"\n      },\n      "doc_id": {\n        "type": "string"\n      }\n    }\n  }\n}\n', { name: 'Sticky Note2', position: [2220, -580], height: 540 }))

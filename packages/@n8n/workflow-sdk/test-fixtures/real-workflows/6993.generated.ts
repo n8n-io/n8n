@@ -507,7 +507,7 @@ return workflow('', '')
     }, credentials: {
       postgres: { id: 'credential-id', name: 'postgres Credential' }
     }, position: [-2448, -96], name: 'Create Table' } }))
-  .add(sticky('## Retry logic\nRetries until the extraction is ready or until the retry limit is reached', { color: 7, position: [-2096, 272], width: 848, height: 592 }))
+  .add(sticky('## Retry logic\nRetries until the extraction is ready or until the retry limit is reached', { name: 'Sticky Note', color: 7, position: [-2096, 272], width: 848, height: 592 }))
   .add(sticky('### ☝️ Bright Data MCP\nPlace your token here', { name: 'Sticky Note1', color: 3, position: [480, 352], width: 192, height: 80 }))
   .add(sticky('## Run this to create your Supabase table', { name: 'Sticky Note2', color: 4, position: [-2768, -336], width: 528, height: 432 }))
   .add(sticky('The `zoom_level` controls the radius of your search. A lower zoom means a higher radius.\n\nThe `dataset_id` refers to the [Google Maps scraper](https://brightdata.com/cp/scrapers/api/gd_m8ebnr0q2qlklc02fz/location/) from BrightData', { name: 'Sticky Note3', color: 7, position: [-2384, 224], width: 256, height: 336 }))

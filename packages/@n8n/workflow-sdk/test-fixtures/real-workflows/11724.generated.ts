@@ -241,7 +241,7 @@ return workflow('', '')
       }
     }, position: [1376, 448], name: 'Assign image URL' } }))
   .add(sticky('## How it works\nThe workflow runs every evening. It scans all news articles published that day on your website, detects any embedded videos, and selects the featured image, or a default one if none is available. It then generates a Daily Digest video using Shotstack.com and automatically uploads it to your YouTube channel as a Short. The final video displays a list of your articles, each shown with its featured image or background video.\n\n\n## Setup steps\nWe assume you are using a WordPress based news website.\n\n- Add your credentials for WordPress, Shotstack, and YouTube.\n\n- Configure the workflow by editing the Config Variables node, where you can set your main logo, corner logo, button color, title, default image URL, and sound URL.', { name: 'Sticky Note6', position: [-1408, 64], width: 560, height: 400 }))
-  .add(sticky('', { color: 4, position: [-448, 208], width: 1136, height: 256 }))
+  .add(sticky('', { name: 'Sticky Note', color: 4, position: [-448, 208], width: 1136, height: 256 }))
   .add(sticky('## Configure workflow & retrieve articles\n\nThis section sets the default variables, fetches all articles published today, and checks whether any video is present.', { name: 'Sticky Note1', position: [-448, 64], width: 1136, height: 128 }))
   .add(sticky('', { name: 'Sticky Note2', color: 4, position: [960, 208], width: 1152, height: 416 }))
   .add(sticky('## Get background image URL\n\nThis section retrieves the image URL from WordPress, or assigns the default image if none is available.', { name: 'Sticky Note3', position: [960, 64], width: 1152, height: 128 }))

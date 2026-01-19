@@ -125,7 +125,7 @@ return workflow('', '')
       }
     }, name: 'If Count>100' }))
   .add(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: { mode: 'raw', options: {}, jsonOutput: '={{ $json }}' }, position: [1600, 460], name: 'Return Error' } }))
-  .add(sticky('### Tool\n', { position: [940, 120], width: 1140, height: 560 }))
+  .add(sticky('### Tool\n', { name: 'Sticky Note', position: [940, 120], width: 1140, height: 560 }))
   .add(sticky('### Report workflow', { name: 'Sticky Note1', position: [940, 720], width: 1360, height: 480 }))
   .add(sticky('### Agent', { name: 'Sticky Note2', position: [940, -360], width: 900, height: 440 }))
   .add(sticky('### Replace webhook address', { name: 'Sticky Note4', color: 5, position: [1980, 200], height: 80 }))

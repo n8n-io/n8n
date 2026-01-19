@@ -287,7 +287,7 @@ return workflow('JdFtT41G2iqwGt1e', '🤖 AI content generation for Auto Service
       sendHeaders: true,
       headerParameters: { parameters: [{ name: 'accept', value: 'application/json' }] }
     }, position: [5200, 220], name: 'Leonardo Images' } }))
-  .add(sticky('![Source example](https://i.ibb.co/PZF4szJr/photo-2025-05-30-13-24-04.jpg#full-width)', { color: 5, position: [340, -1340], width: 5760, height: 2920 }))
+  .add(sticky('![Source example](https://i.ibb.co/PZF4szJr/photo-2025-05-30-13-24-04.jpg#full-width)', { name: 'Sticky Note', color: 5, position: [340, -1340], width: 5760, height: 2920 }))
   .add(sticky('# [made with ❤️ by N8ner 👈 click! Feel free to message me!](https://community.n8n.io/u/n8ner/badges) ![](https://i.ibb.co/2YyTWq2v/circuit.jpg#full-width#full-width)', { name: 'Sticky Note2', color: 5, position: [340, -500], width: 1260, height: 1260 }))
   .add(sticky('# Finish - Upload to Platforms![Guide](https://i.ibb.co/d41JsL8q/Screenshot-2025-05-30-122423-1.jpg#full-width#full-width)', { name: 'Sticky Note3', color: 7, position: [3960, -520], width: 520, height: 1300 }))
   .add(sticky('', { name: 'Sticky Note4', color: 7, position: [4120, 420], width: 210, height: 200 }))

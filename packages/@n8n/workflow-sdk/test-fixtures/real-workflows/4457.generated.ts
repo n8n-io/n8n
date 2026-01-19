@@ -73,7 +73,7 @@ return workflow('', '')
       chatId: '={{$json["message"]["chat"]["id"]}}',
       additionalFields: {}
     }, position: [2000, 820], name: 'Image Acknowledger' } }))
-  .add(sticky('Quick-Start Telegram Echo Bot\n\nA single-node Telegram bot that parses /help, /summary <URL>, or /img <prompt> and returns either a help menu, a 10–12-point article summary, or an “image in progress” acknowledgement.', { color: 7, position: [-580, 60], width: 400 }))
+  .add(sticky('Quick-Start Telegram Echo Bot\n\nA single-node Telegram bot that parses /help, /summary <URL>, or /img <prompt> and returns either a help menu, a 10–12-point article summary, or an “image in progress” acknowledgement.', { name: 'Sticky Note', color: 7, position: [-580, 60], width: 400 }))
   .add(sticky('Listener\n\nWatches for any new message from Telegram and kicks the flow off.', { name: 'Sticky Note1', color: 7, position: [-440, 420] }))
   .add(sticky('Command Router\n\nChecks if the message starts with /help, /summary, or /img, and sends it down the right path.', { name: 'Sticky Note2', color: 7, position: [-80, 780] }))
   .add(sticky('Help Responder\n\nWhen it sees /help, replies with a simple list of commands and how to use them.', { name: 'Sticky Note3', color: 7, position: [440, 20] }))

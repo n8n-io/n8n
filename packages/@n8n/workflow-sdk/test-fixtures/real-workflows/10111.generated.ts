@@ -133,7 +133,7 @@ return workflow('uOMGyPBvAP5ytb64', 'AI-Powered Invoice Reminder & Payment Track
       fromEmail: 'user@example.com'
     }, credentials: { smtp: { id: 'credential-id', name: 'smtp Credential' } }, position: [480, 576], name: 'Send Payment Confirmation' } }))
   .add(sticky('Starts the workflow automatically each morning.', { name: 'Sticky Note1', position: [-32, -416], width: 192, height: 288 }))
-  .add(sticky('Decides when and how to send reminders.\n', { position: [640, -416], width: 192, height: 288 }))
+  .add(sticky('Decides when and how to send reminders.\n', { name: 'Sticky Note', position: [640, -416], width: 192, height: 288 }))
   .add(sticky('Keeps only overdue invoices.\n', { name: 'Sticky Note2', position: [416, -416], width: 192, height: 288 }))
   .add(sticky('Gets unpaid invoices from the database.\n', { name: 'Sticky Note3', position: [192, -416], width: 192, height: 288 }))
   .add(sticky('Creates a personalized AI prompt for each client.\n', { name: 'Sticky Note4', position: [864, -416], width: 192, height: 288 }))

@@ -420,7 +420,7 @@ return workflow('', '')
       discordOAuth2Api: { id: 'credential-id', name: 'discordOAuth2Api Credential' }
     }, position: [900, 2160], name: 'Discord - reply1' } }))
   .add(sticky('## account1@gmail.com\n', { name: 'Sticky Note2', color: 4, position: [-300, 1480], width: 460, height: 280 }))
-  .add(sticky('## account2@gmail.com\n\n', { color: 6, position: [-300, 1780], width: 460, height: 280 }))
+  .add(sticky('## account2@gmail.com\n\n', { name: 'Sticky Note', color: 6, position: [-300, 1780], width: 460, height: 280 }))
   .add(sticky('## account4@gmail.com\n\n', { name: 'Sticky Note1', color: 5, position: [-300, 2340], width: 460, height: 240 }))
   .add(sticky('## account3@gmail.com\n\n', { name: 'Sticky Note3', color: 3, position: [-300, 2080], width: 460, height: 240 }))
   .add(sticky('## Update spam list', { name: 'Sticky Note4', color: 7, position: [280, 2080], width: 1060, height: 500 }))

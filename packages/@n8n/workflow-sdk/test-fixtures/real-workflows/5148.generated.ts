@@ -40,5 +40,5 @@ return workflow('L9nteAq0NLYqIGxH', 'RAG Pipeline', { executionOrder: 'v1' })
         }, subnodes: { embedding: embedding({ type: '@n8n/n8n-nodes-langchain.embeddingsOllama', version: 1, config: { parameters: { model: 'mxbai-embed-large:latest' }, credentials: {
           ollamaApi: { id: 'credential-id', name: 'ollamaApi Credential' }
         }, name: 'Embeddings Ollama1' } }) }, name: 'Qdrant Vector Store1' } })] }, position: [1220, -20], name: 'AI Agent' } }))
-  .add(sticky('## Data Ingestion\n**Add data to the semantic database', { color: 3, position: [-140, -100], width: 840, height: 700 }))
+  .add(sticky('## Data Ingestion\n**Add data to the semantic database', { name: 'Sticky Note', color: 3, position: [-140, -100], width: 840, height: 700 }))
   .add(sticky('## RAG Chatbot\n**Chat with your data', { name: 'Sticky Note1', color: 4, position: [740, -100], width: 1200, height: 700 }))

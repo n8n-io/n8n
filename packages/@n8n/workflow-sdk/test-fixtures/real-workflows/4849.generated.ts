@@ -429,5 +429,5 @@ return workflow('5mGRqFpu73QguZPC', 'ocr Telegram - SAP', { executionOrder: 'v1'
     }, credentials: {
       telegramApi: { id: 'credential-id', name: 'telegramApi Credential' }
     }, position: [2900, -100], name: '¿Upload to SAP?' } }))
-  .add(sticky('## Waiting for an answer on telegram', { position: [-140, 460], width: 3720, height: 560 }))
+  .add(sticky('## Waiting for an answer on telegram', { name: 'Sticky Note', position: [-140, 460], width: 3720, height: 560 }))
   .add(sticky('## Send data and OCR with LlamaIndex\n', { name: 'Sticky Note1', color: 7, position: [-120, -180], width: 3280, height: 540 }))

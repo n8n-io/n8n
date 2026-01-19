@@ -797,6 +797,6 @@ return workflow('IyhsZQh7TFAGsDqL', 'Automate WhatsApp bookings with an AI assis
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [460, 580], name: 'Mark SMS as Sent in Sheet' } }))
-  .add(sticky('# 🟩 STEP 3 — Send SMS Reminder Before Appointment\n\n', { color: 4, position: [-500, 480], width: 1620, height: 280 }))
+  .add(sticky('# 🟩 STEP 3 — Send SMS Reminder Before Appointment\n\n', { name: 'Sticky Note', color: 4, position: [-500, 480], width: 1620, height: 280 }))
   .add(sticky('# 🟫 STEP 1 — Qualify User and Suggest Appointment', { name: 'Sticky Note1', position: [-500, -540], width: 1620, height: 460 }))
   .add(sticky('# 🟥 STEP 2 — Book Appointment Automatically\n\n', { name: 'Sticky Note3', color: 3, position: [-500, -60], width: 1620, height: 520 }))

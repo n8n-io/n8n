@@ -99,7 +99,7 @@ return workflow('WczQxQgtvjjk1HC1', 'LinkedIn Profile Enrichment With Error Hand
       nocoDbApiToken: { id: 'credential-id', name: 'nocoDbApiToken Credential' }
     }, position: [1860, 620], name: 'Update Guest - Error Status' } }))
   .add(trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { parameters: { rule: { interval: [{}] } }, position: [160, 280] } }))
-  .add(sticky('## Data enrichment flow', { color: 4, position: [1540, -220], width: 580, height: 320 }))
+  .add(sticky('## Data enrichment flow', { name: 'Sticky Note', color: 4, position: [1540, -220], width: 580, height: 320 }))
   .add(sticky('## Remove 404 linkedin URL', { name: 'Sticky Note1', position: [1540, 140], width: 580, height: 320 }))
   .add(sticky('## Apify error/timeout', { name: 'Sticky Note2', color: 3, position: [1540, 500], width: 580, height: 320 }))
   .add(sticky('## Get LinkedIn URL', { name: 'Sticky Note3', color: 5, position: [320, 120], width: 220, height: 240 }))

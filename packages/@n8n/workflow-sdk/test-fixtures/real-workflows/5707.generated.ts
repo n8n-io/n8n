@@ -74,7 +74,7 @@ return workflow('CWailec0QgZyOq0o', 'Create Structured Ebooks in Minutes with Go
     }, credentials: {
       googleDocsOAuth2Api: { id: 'credential-id', name: 'googleDocsOAuth2Api Credential' }
     }, position: [1540, 20], name: 'Update Google Docs' } }))
-  .add(sticky('## Step 1\n\nSet the input field with the "Title"', { position: [200, -320] }))
+  .add(sticky('## Step 1\n\nSet the input field with the "Title"', { name: 'Sticky Note', position: [200, -320] }))
   .add(sticky('## Step 2\n\nSet the Google Gemini Credentials as part of the LLM data extraction', { name: 'Sticky Note1', position: [460, -320] }))
   .add(sticky('## Ebook creation with Google Gemini\n\nEbook creation with Google Gemini. Export the clean data to Google Document.', { name: 'Sticky Note2', color: 6, position: [-360, -400], width: 540, height: 240 }))
   .add(sticky('## Step 3\n\nSet the Google Document Credentials for the data export', { name: 'Sticky Note3', position: [720, -320] }))

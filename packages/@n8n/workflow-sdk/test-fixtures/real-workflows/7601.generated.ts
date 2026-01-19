@@ -171,7 +171,7 @@ return workflow('', '')
         ]
       }
     }, position: [-3248, 3216], name: 'Edit Fields1' } }))
-  .add(sticky('##  Prepare Data\nPlease insert:\n1. Instagram Account ID\n2. Google drive Links from the Posts zu upload\n3. Add Instagram Content (The Text to Post)', { position: [-4592, 2928], height: 496 }))
+  .add(sticky('##  Prepare Data\nPlease insert:\n1. Instagram Account ID\n2. Google drive Links from the Posts zu upload\n3. Add Instagram Content (The Text to Post)', { name: 'Sticky Note', position: [-4592, 2928], height: 496 }))
   .add(sticky('## Add Cloudinary Account\n', { name: 'Sticky Note1', position: [-3760, 3056], height: 256 }))
   .add(sticky('## Add Gdrive Account', { name: 'Sticky Note2', position: [-4096, 3056], height: 256 }))
   .add(sticky('## Add Telegram Bot ID\n', { name: 'Sticky Note3', position: [-3024, 2736], height: 256 }))

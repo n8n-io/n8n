@@ -646,7 +646,7 @@ return workflow('QIkMJhue2s5le6jM', 'Reranks #1', { executionOrder: 'v1' })
   .add(node({ type: '@n8n/n8n-nodes-langchain.rerankerCohere', version: 1, config: { parameters: { modelName: 'rerank-multilingual-v3.0' }, credentials: {
       cohereApi: { id: 'credential-id', name: 'cohereApi Credential' }
     }, position: [3020, 1660], name: 'Reranker Cohere1' } }))
-  .add(sticky('# Company Knowledge Base\n', { color: 5, position: [3420, 260], width: 1100, height: 620 }))
+  .add(sticky('# Company Knowledge Base\n', { name: 'Sticky Note', color: 5, position: [3420, 260], width: 1100, height: 620 }))
   .add(sticky('# Scrapping and data Cleaning\n', { name: 'Sticky Note1', color: 7, position: [2020, 80], width: 1360, height: 520 }))
   .add(sticky('# Potential Leads Knowledge Base\n', { name: 'Sticky Note2', color: 5, position: [3420, 940], width: 1100, height: 600 }))
   .add(sticky('# Respond as a chatbot', { name: 'Sticky Note3', position: [2020, 640], width: 1360, height: 560 }))

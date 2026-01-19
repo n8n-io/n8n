@@ -353,7 +353,7 @@ return workflow('E6zaQoe1afHzQBOb', 'VOC Data into Blogs', { executionOrder: 'v1
         ]
       }
     }, position: [2560, -320], name: 'Edit Fields' } }))
-  .add(sticky('# Send data', { color: 3, position: [-80, -80], width: 460, height: 280 }))
+  .add(sticky('# Send data', { name: 'Sticky Note', color: 3, position: [-80, -80], width: 460, height: 280 }))
   .add(sticky('# Article factory', { name: 'Sticky Note1', position: [2100, -440], width: 600, height: 1280 }))
   .add(sticky('# Enhancer', { name: 'Sticky Note2', position: [1060, -80], width: 780, height: 440 }))
   .add(sticky('# Data cleaner', { name: 'Sticky Note3', color: 3, position: [400, -80], width: 400, height: 280 }))

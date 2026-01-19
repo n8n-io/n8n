@@ -7,7 +7,7 @@ return workflow('WEsO2dwjCaN6NwQT', 'Compile top social-media trends to spreadsh
   .then(node({ type: 'n8n-nodes-base.code', version: 2, config: { position: [608, 192], name: 'Prepare Excel' } }))
   .then(node({ type: 'n8n-nodes-base.spreadsheetFile', version: 2, config: { position: [832, 192], name: 'Create Excel' } }))
   .then(node({ type: 'n8n-nodes-base.microsoftSharePoint', version: 1, config: { position: [1040, 192], name: 'Microsoft SharePoint' } }))
-  .add(sticky('', { position: [-832, -208] }))
+  .add(sticky('', { name: 'Sticky Note', position: [-832, -208] }))
   .add(sticky('', { name: 'Sticky Note1', position: [112, -336] }))
   .add(sticky('', { name: 'Sticky Note2', position: [720, -112] }))
   .add(sticky('', { name: 'Sticky Note3', position: [720, 384] }))

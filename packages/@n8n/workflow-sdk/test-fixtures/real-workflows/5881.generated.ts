@@ -67,4 +67,4 @@ return workflow('OQuVjQzqswmDM86W', 'WhatsApp Chatbot – Restaurant Info Assist
     }, credentials: {
       whatsAppApi: { id: 'credential-id', name: 'whatsAppApi Credential' }
     }, position: [856, -340], name: 'Send Booking Confirmation to Customer' } }))
-  .add(sticky('## This workflow powers a WhatsApp chatbot that answers customer questions about restaurant timing, menu, booking, services, and offers.\n\n## It uses a chat model (LLM) to understand queries and respond clearly via WhatsApp.\n\n', { position: [-220, -620], width: 1000 }))
+  .add(sticky('## This workflow powers a WhatsApp chatbot that answers customer questions about restaurant timing, menu, booking, services, and offers.\n\n## It uses a chat model (LLM) to understand queries and respond clearly via WhatsApp.\n\n', { name: 'Sticky Note', position: [-220, -620], width: 1000 }))

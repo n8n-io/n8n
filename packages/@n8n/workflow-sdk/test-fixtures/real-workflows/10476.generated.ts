@@ -279,7 +279,7 @@ return workflow('', '')
       language: 'python',
       pythonCode: 'def extract_service_name(message):\n    # Split by spaces\n    parts = message.split()\n    # Take the first part (service name)\n    if parts:\n        return parts[0]\n    else:\n        return \'\'\n\n# Example usage:\nincoming_message = _input.first().json.message.text\nservice_name = extract_service_name(incoming_message)\nreturn {\n    "service_name": service_name\n}'
     }, position: [400, -368], name: 'Extract the Service Name' } }))
-  .add(sticky('## Incoming Webhook\n\nuse a webhook from tools like Uptime Kuma', { position: [-400, -1008], height: 384 }))
+  .add(sticky('## Incoming Webhook\n\nuse a webhook from tools like Uptime Kuma', { name: 'Sticky Note', position: [-400, -1008], height: 384 }))
   .add(sticky('## User Interaction\n\nAllow users to triggers events directly from Telegram', { name: 'Sticky Note1', position: [-400, -448], width: 352, height: 304 }))
   .add(sticky('## Issue Analyzer\nAutomatically analyse the log file for a docker container and provide feedback to the user', { name: 'Sticky Note2', position: [384, -496], width: 1488, height: 320 }))
   .add(sticky('## Docker Restart Service\nAutomatically restart a given docker container', { name: 'Sticky Note3', position: [368, -112], width: 1488, height: 352 }))

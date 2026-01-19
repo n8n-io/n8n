@@ -58,17 +58,18 @@ function debugLog(context: string, message: string, data?: Record<string, unknow
 }
 
 /**
- * Read the SDK types/base.ts source file for the prompt.
- * Resolves the path relative to the workflow-sdk package.
+ * Read the SDK API reference file for the prompt.
+ * Uses sdk-api.ts which contains only what the LLM needs to generate workflow code.
+ * Internal implementation details (WorkflowJSON, IConnections, etc.) are excluded.
  */
 function readSdkSourceFile(): string {
-	debugLog('INIT', 'Reading SDK source file...');
+	debugLog('INIT', 'Reading SDK API reference file...');
 	// Resolve path to workflow-sdk package
 	const workflowSdkPath = dirname(require.resolve('@n8n/workflow-sdk/package.json'));
-	const baseTsPath = join(workflowSdkPath, 'src', 'types', 'base.ts');
-	debugLog('INIT', 'SDK source file path', { workflowSdkPath, baseTsPath });
-	const content = readFileSync(baseTsPath, 'utf-8');
-	debugLog('INIT', 'SDK source file loaded', { contentLength: content.length });
+	const sdkApiPath = join(workflowSdkPath, 'src', 'types', 'sdk-api.ts');
+	debugLog('INIT', 'SDK API file path', { workflowSdkPath, sdkApiPath });
+	const content = readFileSync(sdkApiPath, 'utf-8');
+	debugLog('INIT', 'SDK API file loaded', { contentLength: content.length });
 	return content;
 }
 

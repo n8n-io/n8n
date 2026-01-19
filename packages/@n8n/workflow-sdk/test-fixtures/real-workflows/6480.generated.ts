@@ -189,7 +189,7 @@ return workflow('0eQvHzKKVrYZMyyZ', 'Invoice Workflow', { executionOrder: 'v1' }
       additionalFields: {}
     }, position: [1700, 0] } }))
   .then(node({ type: 'n8n-nodes-base.noOp', version: 1, config: { position: [1880, 0], name: 'No Operation, do nothing' } }))
-  .add(sticky('Upload Invoice Doc Trigger', { position: [-140, -200], width: 320, height: 680 }))
+  .add(sticky('Upload Invoice Doc Trigger', { name: 'Sticky Note', position: [-140, -200], width: 320, height: 680 }))
   .add(sticky('Extract Invoice Doc', { name: 'Sticky Note1', color: 6, position: [200, -200], width: 480, height: 680 }))
   .add(sticky('Extract Information & Log', { name: 'Sticky Note2', color: 5, position: [700, -200], width: 540, height: 680 }))
   .add(sticky('Telegram Notification', { name: 'Sticky Note3', color: 3, position: [1260, -200], width: 380, height: 680 }))

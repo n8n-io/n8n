@@ -360,6 +360,6 @@ return workflow('iicQhN2T4dTs1xcU', '💥 Convert YouTube videos to viral Shorts
     }, credentials: {
       telegramApi: { id: 'credential-id', name: 'telegramApi Credential' }
     }, position: [560, 420], name: 'Send Publication Summary to Telegram' } }))
-  .add(sticky('# ✅ Step 1 — Convert YouTube Video to Shorts\n', { position: [-840, -200], width: 2300, height: 500 }))
+  .add(sticky('# ✅ Step 1 — Convert YouTube Video to Shorts\n', { name: 'Sticky Note', position: [-840, -200], width: 2300, height: 500 }))
   .add(sticky('# ✅ Step 2 — Schedule Shorts for Publication\n', { name: 'Sticky Note1', color: 3, position: [-840, 340], width: 1080, height: 760 }))
   .add(sticky('# ✅ Step 3 — Publish Shorts to Social Media with Blotato\n', { name: 'Sticky Note2', color: 5, position: [280, 340], width: 1180, height: 760 }))

@@ -461,4 +461,4 @@ return workflow('Njfc4Qsoi6p35Bfj', '3D Product Video', { executionOrder: 'v1' }
     }, credentials: {
       gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' }
     }, position: [2660, 180], name: 'Send E-Mail Notification' } }))
-  .add(sticky('## 3D Product Video\n\nSample Google Sheet\n- https://docs.google.com/spreadsheets/d/18k1Gq2X2J3_cbwJ9XyJoysVuhIpWhgc1cmlTKBnB3Yw/edit?gid=0#gid=0', { position: [-1080, -160], width: 880, height: 140 }))
+  .add(sticky('## 3D Product Video\n\nSample Google Sheet\n- https://docs.google.com/spreadsheets/d/18k1Gq2X2J3_cbwJ9XyJoysVuhIpWhgc1cmlTKBnB3Yw/edit?gid=0#gid=0', { name: 'Sticky Note', position: [-1080, -160], width: 880, height: 140 }))

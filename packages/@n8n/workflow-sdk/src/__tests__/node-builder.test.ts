@@ -241,15 +241,21 @@ describe('Node Builder', () => {
 			expect(s.config.position).toEqual([100, 100]);
 		});
 
-		it('should use default name for multiple stickies and have unique IDs', () => {
+		it('should generate unique default names for multiple stickies', () => {
 			const s1 = sticky('## Note 1');
 			const s2 = sticky('## Note 2');
 			const s3 = sticky('## Note 3');
 
-			// All stickies use the same default name (matching n8n behavior)
-			expect(s1.name).toBe('Sticky Note');
-			expect(s2.name).toBe('Sticky Note');
-			expect(s3.name).toBe('Sticky Note');
+			// Each sticky gets a unique name (based on first 8 chars of UUID)
+			// to prevent them from overwriting each other in the workflow Map
+			expect(s1.name).toMatch(/^Sticky Note [a-f0-9]{8}$/);
+			expect(s2.name).toMatch(/^Sticky Note [a-f0-9]{8}$/);
+			expect(s3.name).toMatch(/^Sticky Note [a-f0-9]{8}$/);
+
+			// Names should be different
+			expect(s1.name).not.toBe(s2.name);
+			expect(s2.name).not.toBe(s3.name);
+			expect(s1.name).not.toBe(s3.name);
 
 			// Each sticky should have a unique ID
 			expect(s1.id).not.toBe(s2.id);

@@ -911,7 +911,7 @@ return workflow('mGgSDkJTDBI4mq1J', 'Categorize Keywords', { executionOrder: 'v1
     }, credentials: {
       airtableTokenApi: { id: 'credential-id', name: 'airtableTokenApi Credential' }
     }, position: [2160, 640], name: 'Categories Content Ideas Table' } }))
-  .add(sticky('## Gets KWs from Master List and Categorizes\nCategorizes keywords as Quick Wins, Authority Builders, Emerging Topics, and Unknown.', { position: [48, 224], width: 520, height: 540 }))
+  .add(sticky('## Gets KWs from Master List and Categorizes\nCategorizes keywords as Quick Wins, Authority Builders, Emerging Topics, and Unknown.', { name: 'Sticky Note', position: [48, 224], width: 520, height: 540 }))
   .add(sticky('## Send All Categorized Keywords to Airtable\n', { name: 'Sticky Note1', position: [848, 144], width: 520, height: 260 }))
   .add(sticky('## Creates Title and Description for each categorized keyword.\nSends to Airtable', { name: 'Sticky Note2', position: [640, 448], width: 1720, height: 460 }))
   .add(sticky('## Clusters KWs from Master KW All Variations List\nCreates clusters based on semantic similarity and search intent.', { name: 'Sticky Note4', position: [32, 1072], width: 800, height: 520 }))

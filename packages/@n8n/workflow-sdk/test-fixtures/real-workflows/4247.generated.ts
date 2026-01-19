@@ -592,7 +592,7 @@ return workflow('', '')
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [2460, 280], name: 'Update Results' } }))
-  .add(sticky('## Reading Invoice\'s PDF File Locally', { color: 7, position: [-240, 320], width: 620, height: 280 }))
+  .add(sticky('## Reading Invoice\'s PDF File Locally', { name: 'Sticky Note', color: 7, position: [-240, 320], width: 620, height: 280 }))
   .add(sticky('## Extracting Details From Invoice PDF', { name: 'Sticky Note1', color: 7, position: [400, 320], width: 380, height: 280 }))
   .add(sticky('## Processing Output', { name: 'Sticky Note2', color: 7, position: [800, 320], height: 220 }))
   .add(sticky('## Fallback On Error', { name: 'Sticky Note3', color: 7, position: [1280, 460], width: 220, height: 220 }))

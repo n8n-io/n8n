@@ -84,7 +84,7 @@ return workflow('SIDZ9gnOf5yEftvX', 'chat', { executionOrder: 'v1' })
         }, credentials: {
           openAiApi: { id: 'credential-id', name: 'openAiApi Credential' }
         }, name: 'OpenAI Chat Model1' } }) }, position: [-584, -20], name: 'AI Agent' } }))
-  .add(sticky('## Chat with thing\n\nThis n8n template lets you build a smart AI chat assistant that can handle text, images, and PDFs — using OpenAI\'s GPT-4o multimodal model. It supports dynamic conversations and file analysis, making it great for AI-driven support bots, personal assistants, or embedded chat widgets.', { position: [-1520, -740], width: 340, height: 480 }))
+  .add(sticky('## Chat with thing\n\nThis n8n template lets you build a smart AI chat assistant that can handle text, images, and PDFs — using OpenAI\'s GPT-4o multimodal model. It supports dynamic conversations and file analysis, making it great for AI-driven support bots, personal assistants, or embedded chat widgets.', { name: 'Sticky Note', position: [-1520, -740], width: 340, height: 480 }))
   .add(sticky('This route runs when an image/file/pdf is attached. It saves what it sees in the chatmem', { name: 'Sticky Note1', position: [-1100, -740] }))
   .add(sticky('Use this node to set the conversation', { name: 'Sticky Note2', position: [-360, -640] }))
   .add(sticky('This runs after the upload, it retrieves the initial content from the memory\n', { name: 'Sticky Note3', position: [-960, -160] }))

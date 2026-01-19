@@ -213,6 +213,6 @@ return workflow('IwtOfHq5pZQNDAF0', 'Complete RAG from PDF with Mistral OCR', { 
     }, position: [2180, 140], name: 'Set summary' } }))
   .add(sticky('# STEP 1\n\n## Create Qdrant Collection\nChange:\n- QDRANTURL\n- COLLECTION', { name: 'Sticky Note3', color: 6, position: [-280, -820], width: 880, height: 220 }))
   .add(sticky('# STEP 2\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n## Documents vectorization with Qdrant and Google Drive\nChange:\n- QDRANTURL\n- COLLECTION', { name: 'Sticky Note4', color: 4, position: [-540, -400], width: 620, height: 520 }))
-  .add(sticky('## STEP 3\nIf you want a "light" and faster rag with the main contents replace the "Set page" node with "Summarization Chain"', { position: [1760, 20], width: 600, height: 680 }))
+  .add(sticky('## STEP 3\nIf you want a "light" and faster rag with the main contents replace the "Set page" node with "Summarization Chain"', { name: 'Sticky Note', position: [1760, 20], width: 600, height: 680 }))
   .add(sticky('## STEP 4\nTest the RAG', { name: 'Sticky Note1', color: 2, position: [320, 960], width: 500, height: 120 }))
   .add(sticky('## Complete RAG system from PDF Documents with Mistral OCR, Qdrant and Gemini AI\n\nThis workflow is designed to process PDF documents using Mistral\'s OCR capabilities, store the extracted text in a Qdrant vector database, and enable Retrieval-Augmented Generation (RAG) for answering questions. ', { name: 'Sticky Note2', position: [-540, -1080], width: 1140, height: 140 }))

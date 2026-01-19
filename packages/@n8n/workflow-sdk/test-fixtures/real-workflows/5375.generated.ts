@@ -375,5 +375,5 @@ return workflow('qS9W7d2IVCxZZKaN', '选题捕手模板', { executionOrder: 'v1'
       httpHeaderAuth: { id: 'credential-id', name: 'httpHeaderAuth Credential' }
     }, position: [-2580, 1120], name: 'twitterapi抓取x推文' } }))
   .add(sticky('## X Third-party scraping tools\nX API is relatively easy to configure and suitable for quick start-up, but they offer limited free quotas. Here are three third-party scraping tools. Please refer to the official documentation for configuration instructions.', { name: 'Sticky Note1', color: 6, position: [-2980, 840], width: 260, height: 240 }))
-  .add(sticky('## llm node\nJust change it to your usual one.', { color: 6, position: [-2040, 700], width: 220, height: 140 }))
+  .add(sticky('## llm node\nJust change it to your usual one.', { name: 'Sticky Note', color: 6, position: [-2040, 700], width: 220, height: 140 }))
   .add(sticky('## URL configuration settings\n\nFeishu Group Chat - Settings - Create a new robot to obtain the webhook, then fill it in.', { name: 'Sticky Note2', color: 6, position: [380, 220] }))

@@ -426,7 +426,7 @@ return workflow('eEVvcTInAYIB2SLi', 'Copycat SEO article (public version)', {
     }, credentials: {
       slackOAuth2Api: { id: 'credential-id', name: 'slackOAuth2Api Credential' }
     }, position: [1560, 440], name: 'Send error' } }))
-  .add(sticky('## Content production ', { color: 7, position: [1340, -400], width: 420, height: 560 }))
+  .add(sticky('## Content production ', { name: 'Sticky Note', color: 7, position: [1340, -400], width: 420, height: 560 }))
   .add(sticky('## Content publishing', { name: 'Sticky Note1', color: 7, position: [1800, 40], width: 500, height: 580 }))
   .add(sticky('## Human check', { name: 'Sticky Note2', color: 7, position: [1460, 180], width: 300, height: 440 }))
   .add(sticky('## SEO quality vatidation ', { name: 'Sticky Note3', color: 7, position: [920, -400], width: 400, height: 280 }))

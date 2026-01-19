@@ -85,4 +85,4 @@ return workflow('vMvm0kfL6V7u4bPO', 'Client Responder IG/TG', { executionOrder: 
       respondWith: 'text',
       responseBody: '={{ $json.text }}'
     }, position: [1140, 0], name: 'Send Response' } }))
-  .add(sticky('Workflow Node Descriptions:\nReceive Request: "📥 Incoming customer message"\nParse Request AI: "🤖 Extract brand/model/size from text"\nExtract Data: "📊 Process JSON output"\nProduct Database: "📋 Load all products from inventory"\nFilter Products: "🔍 Find matching items only"\nAI Manager: "💬 Generate friendly response"\nSend Response: "📤 Deliver result to customer"', { color: 3, position: [-700, -340], width: 2060, height: 860 }))
+  .add(sticky('Workflow Node Descriptions:\nReceive Request: "📥 Incoming customer message"\nParse Request AI: "🤖 Extract brand/model/size from text"\nExtract Data: "📊 Process JSON output"\nProduct Database: "📋 Load all products from inventory"\nFilter Products: "🔍 Find matching items only"\nAI Manager: "💬 Generate friendly response"\nSend Response: "📤 Deliver result to customer"', { name: 'Sticky Note', color: 3, position: [-700, -340], width: 2060, height: 860 }))

@@ -1368,7 +1368,7 @@ return workflow('', '')
     }, credentials: {
       telegramApi: { id: 'credential-id', name: 'telegramApi Credential' }
     }, position: [784, 1152], name: 'Typing…' } }))
-  .add(sticky('', { color: 3, position: [528, 2048], width: 1728, height: 1872 }))
+  .add(sticky('', { name: 'Sticky Note', color: 3, position: [528, 2048], width: 1728, height: 1872 }))
   .add(sticky('', { name: 'Sticky Note1', color: 6, position: [3504, 576], width: 960, height: 496 }))
   .add(sticky('', { name: 'Sticky Note2', color: 7, position: [528, 400], width: 576, height: 240 }))
   .add(sticky('', { name: 'Sticky Note3', color: 4, position: [528, 656], width: 1360, height: 208 }))

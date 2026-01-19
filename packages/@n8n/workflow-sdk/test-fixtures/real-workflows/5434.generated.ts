@@ -127,7 +127,7 @@ return workflow('51mGQheuAtcpMIni', 'TikTok Influencer Scraper (URL Input) via B
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [-1160, -585] } }))
-  .add(sticky('📝 Trigger – Start on TikTok profile form submit\n', { color: 2, position: [-2520, -660], width: 180, height: 240 }))
+  .add(sticky('📝 Trigger – Start on TikTok profile form submit\n', { name: 'Sticky Note', color: 2, position: [-2520, -660], width: 180, height: 240 }))
   .add(sticky('📤 Trigger API – Send TikTok profile to scrape', { name: 'Sticky Note1', color: 3, position: [-2320, -660], width: 200, height: 260 }))
   .add(sticky('⏳ Check Status – Is profile data ready?\n', { name: 'Sticky Note2', color: 4, position: [-2100, -660], width: 200, height: 260 }))
   .add(sticky('⏱️ Wait – Pause before retrying Bright Data\n', { name: 'Sticky Note3', color: 5, position: [-1860, -660], width: 200, height: 240 }))

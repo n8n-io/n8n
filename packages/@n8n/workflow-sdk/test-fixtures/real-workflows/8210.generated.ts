@@ -526,7 +526,7 @@ return workflow('MGxb1ugenLCp7pGW', 'AI content summarization from URLs, text, a
       respondWith: 'text',
       responseBody: '={{ $json.content }}'
     }, position: [1056, 2800], name: 'Return PDF Summary' } }))
-  .add(sticky('# Summarize a PDF file', { color: 5, position: [-1824, 2800], width: 400, height: 96 }))
+  .add(sticky('# Summarize a PDF file', { name: 'Sticky Note', color: 5, position: [-1824, 2800], width: 400, height: 96 }))
   .add(sticky('# Summarize text', { name: 'Sticky Note1', color: 5, position: [-1824, 2224], width: 384, height: 80 }))
   .add(sticky('# Summarize URL', { name: 'Sticky Note2', color: 5, position: [-1808, 1680], width: 384, height: 80 }))
   .add(sticky('# Summarize All in One', { name: 'Sticky Note3', color: 5, position: [-1824, 1024], width: 400, height: 80 }))

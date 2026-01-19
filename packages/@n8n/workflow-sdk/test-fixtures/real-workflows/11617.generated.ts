@@ -70,7 +70,7 @@ return workflow('CuCtsuECkQ1SRUFe', 'YouTube Shorts VEO Automation', { execution
   // Disconnected: Download a video1
   .add(node({ type: '@n8n/n8n-nodes-langchain.googleGemini', version: 1, config: { position: [4880, 2176], name: 'Download a video1' } }))
   .add(sticky('', { name: 'Sticky Note5', position: [2192, 1344] }))
-  .add(sticky('', { position: [2560, 2112] }))
+  .add(sticky('', { name: 'Sticky Note', position: [2560, 2112] }))
   .add(sticky('', { name: 'Sticky Note6', position: [112, 1648] }))
   .add(sticky('', { name: 'Sticky Note10', position: [1392, 1216] }))
   .add(sticky('', { name: 'Sticky Note11', position: [3488, 1968] }))

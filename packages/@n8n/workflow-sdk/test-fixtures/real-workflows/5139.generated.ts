@@ -212,7 +212,7 @@ return workflow('REDACTED_WORKFLOW_ID', 'insta Reel publish', {
     }, position: [640, -32] } }))
   .then(node({ type: 'n8n-nodes-base.readWriteFile', version: 1, config: { parameters: { options: {}, fileSelector: '/tmp/video.mp4' }, position: [800, -32], name: 'Read/Write Files from Disk1' } }))
   .then(node({ type: 'n8n-nodes-base.respondToWebhook', version: 1.4, config: { parameters: { options: {}, respondWith: 'binary' }, position: [976, -32], name: 'Respond to Webhook' } }))
-  .add(sticky('## wait 20 seconds then trigger the insta posting workflow', { color: 5, position: [-976, -384], width: 400, height: 720 }))
+  .add(sticky('## wait 20 seconds then trigger the insta posting workflow', { name: 'Sticky Note', color: 5, position: [-976, -384], width: 400, height: 720 }))
   .add(sticky('## Random file mover\n**For every 100 minutes this path of workflow will select and move a single video file from the G-drive fil named: Random video mover**', { name: 'Sticky Note1', position: [-1408, -800], width: 420, height: 1140 }))
   .add(sticky('## manual upload trigger\n\n**it will trigger the workflow whenever the video file as upload manually on the folder', { name: 'Sticky Note2', color: 3, position: [-976, -800], width: 400, height: 420 }))
   .add(sticky('## insta uploader', { name: 'Sticky Note4', color: 4, position: [-560, -800], width: 1880, height: 1140 }))

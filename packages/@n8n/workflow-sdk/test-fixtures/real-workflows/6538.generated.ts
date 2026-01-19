@@ -258,7 +258,7 @@ return workflow('', '')
     }, credentials: {
       telegramApi: { id: 'credential-id', name: 'telegramApi Credential' }
     }, position: [-20, 960], name: 'Response' } }))
-  .add(sticky('# Upload New File into Knowledge Base\n\n', { color: 4, position: [500, 560], width: 820, height: 80 }))
+  .add(sticky('# Upload New File into Knowledge Base\n\n', { name: 'Sticky Note', color: 4, position: [500, 560], width: 820, height: 80 }))
   .add(sticky('## Fix Formatting\n', { name: 'Sticky Note4', color: 5, position: [800, 680], height: 260 }))
   .add(sticky('## Extract File Text\n\n', { name: 'Sticky Note5', color: 5, position: [1060, 680], width: 420, height: 260 }))
   .add(sticky('## Update Vector Database\n\n', { name: 'Sticky Note6', color: 5, position: [1500, 680], width: 560, height: 580 }))

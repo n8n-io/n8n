@@ -278,7 +278,7 @@ return workflow('dXrHZjJdzpNh79lJ', 'Intelligent AI Digest for Security, Privacy
     }, credentials: {
       gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' }
     }, position: [-140, 4280], name: 'Privacy Send Final Digest Email' } }))
-  .add(sticky('## 📬 Daily Security Newsletter', { position: [-2460, 3380], width: 2600, height: 580 }))
+  .add(sticky('## 📬 Daily Security Newsletter', { name: 'Sticky Note', position: [-2460, 3380], width: 2600, height: 580 }))
   .add(sticky('## 📬 Daily Privacy Newsletter', { name: 'Sticky Note1', color: 4, position: [-2460, 4020], width: 2600, height: 580 }))
   .add(sticky('## 📬 Daily Compliance Newsletter', { name: 'Sticky Note2', color: 6, position: [-2460, 4660], width: 2600, height: 580 }))
   .add(sticky('### Update your email address or distribution list (DL) below\n⬇️', { name: 'Sticky Note3', color: 7, position: [-120, 3480], height: 100 }))

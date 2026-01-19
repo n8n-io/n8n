@@ -335,7 +335,7 @@ return workflow('x4DcB7sVAeVmIrMD', 'Invoice-Parser-Lite', { executionOrder: 'v1
         name: 'googleDriveOAuth2Api Credential'
       }
     }, position: [320, 260], name: 'On new file in Google Drive' } }))
-  .add(sticky('### Modify Folder source', { color: 4, position: [820, 460], width: 220, height: 80 }))
+  .add(sticky('### Modify Folder source', { name: 'Sticky Note', color: 4, position: [820, 460], width: 220, height: 80 }))
   .add(sticky('### File Ids\nYou can view the files using Id from the first column. replace the <Id> below\nhttps://drive.google.com/file/d/<Id>/view', { name: 'Sticky Note1', position: [3560, 260], width: 320, height: 100 }))
   .add(sticky('### Set interval for checking drive folder and pull new files', { name: 'Sticky Note2', color: 4, position: [260, 480], width: 220, height: 80 }))
   .add(sticky('### Select Sheet\n  \nAdd column headers in the sheet to which you save data on row one to specify which fields you are interested in extracting. ', { name: 'Sticky Note3', color: 4, position: [580, -380], width: 300, height: 140 }))

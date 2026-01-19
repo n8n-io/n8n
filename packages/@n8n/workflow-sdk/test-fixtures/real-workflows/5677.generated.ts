@@ -66,7 +66,7 @@ return workflow('qgOiQsPSKD08eiB3', 'Extract Structured Data from HackerNews, Ex
     }, credentials: {
       googleDocsOAuth2Api: { id: 'credential-id', name: 'googleDocsOAuth2Api Credential' }
     }, position: [1500, 20], name: 'Update Google Docs' } }))
-  .add(sticky('## Step 1\n\nSet the input field with the "Count", how many record needs to be feteched.', { position: [200, -320] }))
+  .add(sticky('## Step 1\n\nSet the input field with the "Count", how many record needs to be feteched.', { name: 'Sticky Note', position: [200, -320] }))
   .add(sticky('## Step 2\n\nSet the Google Gemini Credentials as part of the human readable data extraction', { name: 'Sticky Note1', position: [460, -320] }))
   .add(sticky('## Extract Structured Data from Hacker News, Export to Google Docs with Google Gemini\n\nHacker news data extraction with Google Gemini. Export the clean data to Google Document.', { name: 'Sticky Note2', color: 6, position: [-360, -400], width: 540, height: 240 }))
   .add(sticky('## Step 3\n\nSet the Google Document Credentials for the Hacker News data export', { name: 'Sticky Note3', position: [720, -320] }))

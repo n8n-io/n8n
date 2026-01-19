@@ -334,7 +334,9 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 
 	constructor(content: string, stickyConfig: StickyNoteConfig = {}) {
 		this.id = uuid();
-		this.name = stickyConfig.name ?? 'Sticky Note';
+		// Use a unique default name to prevent multiple stickies from overwriting each other
+		// when added to a workflow (Map uses name as key)
+		this.name = stickyConfig.name ?? `Sticky Note ${this.id.slice(0, 8)}`;
 
 		// If nodes are provided, calculate bounding box to wrap around them
 		const boundingBox = stickyConfig.nodes ? calculateNodesBoundingBox(stickyConfig.nodes) : null;

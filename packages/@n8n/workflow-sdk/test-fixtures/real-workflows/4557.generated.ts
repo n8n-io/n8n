@@ -175,4 +175,4 @@ return workflow('MKPGGcZ4kNS2VaAd', 'Auto Gmail Labeling (Powered by OpenAI)', {
   .add(node({ type: 'n8n-nodes-base.gmail', version: 2.1, config: { parameters: { resource: 'label', returnAll: true }, credentials: {
       gmailOAuth2: { id: 'credential-id', name: 'gmailOAuth2 Credential' }
     }, position: [120, -600], name: 'List All Gmail Labels' } }))
-  .add(sticky('## Auto Gmail Labeling (Powered by OpenAI)', { position: [-2440, -960], width: 3820, height: 740 }))
+  .add(sticky('## Auto Gmail Labeling (Powered by OpenAI)', { name: 'Sticky Note', position: [-2440, -960], width: 3820, height: 740 }))

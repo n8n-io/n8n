@@ -262,7 +262,7 @@ return workflow('', '')
       options: {},
       jsonOutput: '={\n  "company_url": "{{ $json.results.first().searchResult.url }}"\n}\n'
     }, position: [1200, 500], name: 'Set Company URL1' } }))
-  .add(sticky('## Get Person Profile data from LinkedIn\n- Apify => Google search for "{{ First Name }} {{ Last Name }} {{ Company }} site:linkedin.com"\n- Does a RegEx to filter people pages (assumes the first result is correct - won\'t work for John Smith @ Walmart)\n- Apify => Fetch matched LinkedIn Person URL', { color: 6, position: [380, -240], width: 840, height: 400 }))
+  .add(sticky('## Get Person Profile data from LinkedIn\n- Apify => Google search for "{{ First Name }} {{ Last Name }} {{ Company }} site:linkedin.com"\n- Does a RegEx to filter people pages (assumes the first result is correct - won\'t work for John Smith @ Walmart)\n- Apify => Fetch matched LinkedIn Person URL', { name: 'Sticky Note', color: 6, position: [380, -240], width: 840, height: 400 }))
   .add(sticky('## Get Company Profile data from LinkedIn\n- Apify => Google search for {{ Company }} site:linkedin.com\n- Does a RegEx to filter company pages (assumes the first result is correct)\n- Apify => Fetch matched LinkedIn Company URL', { name: 'Sticky Note1', color: 6, position: [380, 200], width: 1300, height: 520 }))
   .add(sticky('## Write + Send the email\n- SET YOUR DATA HERE\n- LLM drafts your email\n- Send the enail from your Gmail account', { name: 'Sticky Note2', color: 6, position: [380, 760], width: 720, height: 460 }))
   .add(sticky('## Set your data\nSet data about your company here so that the bot will customize your offer based on your lead.', { name: 'Sticky Note3', position: [160, 880], width: 190, height: 220 }))

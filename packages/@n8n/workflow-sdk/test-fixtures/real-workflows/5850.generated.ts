@@ -505,7 +505,7 @@ return workflow('', '')
           }
         }, name: 'Search files and folders in Google Drive' } })] }, position: [2420, 220], name: 'Google Drive MCP' } }))
   .add(sticky('## Google Calendar MCP tools', { name: 'Sticky Note4', color: 5, position: [920, 120], width: 620, height: 440 }))
-  .add(sticky('## Google Mail MCP tools', { color: 5, position: [2900, 120], width: 900, height: 900 }))
+  .add(sticky('## Google Mail MCP tools', { name: 'Sticky Note', color: 5, position: [2900, 120], width: 900, height: 900 }))
   .add(sticky('## Linkedin MCP tools', { name: 'Sticky Note1', color: 5, position: [920, 580], width: 620, height: 440 }))
   .add(sticky('## Twitter MCP', { name: 'Sticky Note2', color: 5, position: [1580, 580], width: 620, height: 440 }))
   .add(sticky('## utility tools', { name: 'Sticky Note3', color: 5, position: [1580, 120], width: 620, height: 440 }))

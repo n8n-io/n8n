@@ -204,7 +204,7 @@ return workflow('', '')
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [-220, 660], name: 'Google Sheets3' } }))
-  .add(sticky('# Research Prospect\n- LinkedIn \n- Perplexity Web Research', { color: 6, position: [280, 0], width: 1520, height: 360 }))
+  .add(sticky('# Research Prospect\n- LinkedIn \n- Perplexity Web Research', { name: 'Sticky Note', color: 6, position: [280, 0], width: 1520, height: 360 }))
   .add(sticky('# Analysis\n- Summary \n- Pain Points + Solutions\n', { name: 'Sticky Note1', color: 6, position: [320, 420], width: 780, height: 360 }))
   .add(sticky('# Create Report\n', { name: 'Sticky Note2', color: 6, position: [1140, 420], width: 300, height: 360 }))
   .add(sticky('# Email Report\n', { name: 'Sticky Note3', color: 5, position: [1460, 420], width: 300, height: 360 }))

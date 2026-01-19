@@ -452,6 +452,6 @@ return workflow('eFkkWqS5KdrxZ43P', 'Automate video creation with Veo3 and auto-
         name: 'googleSheetsOAuth2Api Credential'
       }
     }, position: [640, 1920] } }))
-  .add(sticky('# ✅ STEP 1 — Generate Script & Prompt with AI', { position: [340, 480], width: 1200, height: 500 }))
+  .add(sticky('# ✅ STEP 1 — Generate Script & Prompt with AI', { name: 'Sticky Note', position: [340, 480], width: 1200, height: 500 }))
   .add(sticky('# ✅ STEP 2 — Create Video Using Veo3\n\n', { name: 'Sticky Note1', color: 3, position: [340, 1020], width: 1200, height: 280 }))
   .add(sticky('# ✅ STEP 3 — Publish Video to Social Media\n', { name: 'Sticky Note2', color: 4, position: [340, 1340], width: 1200, height: 760 }))

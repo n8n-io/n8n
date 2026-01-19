@@ -413,7 +413,7 @@ return workflow('CfdF2XtXC68iJ6Hr', '✨🤖Automated AI Powered Social Media Co
   .then(node({ type: 'n8n-nodes-base.code', version: 2, config: { parameters: {
       jsCode: '$input.first().binary.data = $input.first().binary.Upload_Image__optional_\ndelete $input.first().binary.Upload_Image__optional_\nreturn $input.first()'
     }, position: [-620, 120], name: 'Rename Binary File' } }))
-  .add(sticky('# 🧑‍🦱 User Input for Social Media Posts \n💡 Unpin default data to get started', { color: 4, position: [-300, -900], width: 360, height: 360 }))
+  .add(sticky('# 🧑‍🦱 User Input for Social Media Posts \n💡 Unpin default data to get started', { name: 'Sticky Note', color: 4, position: [-300, -900], width: 360, height: 360 }))
   .add(sticky('# 🛠️ Social Media Content Factory\n- LinkedIn\n- Instagram\n- Facebook\n- X\n- TikTok\n- Threads\n- YouTube Shorts\n', { name: 'Sticky Note1', color: 6, position: [100, -940], width: 640, height: 600 }))
   .add(sticky('# 👍 Approve Content Before Proceeding', { name: 'Sticky Note2', color: 4, position: [1840, -700], width: 400, height: 360 }))
   .add(sticky('# ✉️ Prepare & Format Approval Email', { name: 'Sticky Note5', color: 5, position: [1300, -900], width: 500, height: 560 }))

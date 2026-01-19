@@ -32,7 +32,7 @@ return workflow('ieuaDljDSKnZW1CR', 'Social media cross posting', { executionOrd
   .add(trigger({ type: '@n8n/n8n-nodes-langchain.chatTrigger', version: 1.1, config: { position: [-1320, 840], name: 'When chat message received' } }))
   .add(trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { position: [-1320, 440] } }))
   .add(node({ type: 'n8n-nodes-base.googleDocs', version: 2, config: { position: [560, 2460] } }))
-  .add(sticky('', { position: [-940, 300] }))
+  .add(sticky('', { name: 'Sticky Note', position: [-940, 300] }))
   .add(sticky('', { name: 'Sticky Note1', position: [1880, 300] }))
   .add(sticky('', { name: 'Sticky Note7', position: [-40, 1860] }))
   .add(sticky('', { name: 'Sticky Note11', position: [5020, 320] }))

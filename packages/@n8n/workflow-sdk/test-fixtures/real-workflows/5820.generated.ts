@@ -157,7 +157,7 @@ return workflow('', 'AI Gmail: Prioritize What You Should Read')
       options: { fallbackOutput: 'extra' }
     } }))
   .then(node({ type: 'n8n-nodes-base.gmail', version: 2.1, config: { parameters: { messageId: '={{ $json.id }}', operation: 'markAsRead' }, position: [432, -64], name: 'Mark email as read' } }))
-  .add(sticky('### 💡 Schedule Trigger\nThis runs every hour. You can change the interval here depending on how often you want your Gmail to be processed.', { color: 5, position: [-1320, -144], width: 208, height: 304 }))
+  .add(sticky('### 💡 Schedule Trigger\nThis runs every hour. You can change the interval here depending on how often you want your Gmail to be processed.', { name: 'Sticky Note', color: 5, position: [-1320, -144], width: 208, height: 304 }))
   .add(sticky('### ⚠️ Setup Required\n- Connect your Gmail account using OAuth2. \n- Add your OpenAI API Key under “API Credentials”.\n- Create these labels in your Gmail: Action, Informational, Spam and Receipt', { name: 'Sticky Note1', position: [-1312, 256], width: 304, height: 224 }))
   .add(sticky('### 💡 Customize Classification Logic\nYou can change the prompt to match your context. For example, tell the AI to detect more labels like `Meeting`, `Newsletter`, etc.', { name: 'Sticky Note2', color: 5, position: [-640, -160], width: 432, height: 320 }))
   .add(sticky('### 💡 Add More Labels\nWant to detect  `Meeting`, `Newsletter`, etc?\nAdd more conditions here and route them to different Gmail actions.', { name: 'Sticky Note3', color: 5, position: [-200, -160], height: 352 }))

@@ -153,5 +153,5 @@ return workflow('Tq4g5UK8c3GZ8tm7', 'Ade_Technical_Analyst', { executionOrder: '
         ]
       }
     }, position: [640, 900], name: 'response' } }))
-  .add(sticky('## AI Agent\n', { color: 4, position: [-40, 40], width: 820, height: 520 }))
+  .add(sticky('## AI Agent\n', { name: 'Sticky Note', color: 4, position: [-40, 40], width: 820, height: 520 }))
   .add(sticky('## Ade\'s Technical Analyst Workflow\n', { name: 'Sticky Note1', color: 3, position: [-740, 820], width: 1580, height: 240 }))

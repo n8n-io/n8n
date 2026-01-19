@@ -124,7 +124,7 @@ return workflow('dLrtZMRZzusZDlpa', 'GoogleVertex_template', { executionOrder: '
         name: 'googleDriveOAuth2Api Credential'
       }
     }, position: [980, 0] } }))
-  .add(sticky('### Setting GCP\n- PROJECT_ID\n- MODEL_VERSION\n- LOCATION\n- IMAGE_COUNT\n- API_ENDPOINT', { position: [-140, -160], height: 320 }))
+  .add(sticky('### Setting GCP\n- PROJECT_ID\n- MODEL_VERSION\n- LOCATION\n- IMAGE_COUNT\n- API_ENDPOINT', { name: 'Sticky Note', position: [-140, -160], height: 320 }))
   .add(sticky('## Veo3\n1. Sends the prompt to the Veo3 using Vertex AI’s predictLongRunning endpoint.\n2. Waits for the video rendering to complete.\n3. Fetches the final result', { name: 'Sticky Note1', color: 4, position: [120, -160], width: 580, height: 320 }))
   .add(sticky('### Convert to Video file\n\nBase64 Input Field:\n```response.videos[0].bytesBase64Encoded```', { name: 'Sticky Note2', color: 5, position: [720, -160], width: 200, height: 320 }))
   .add(sticky('### Upload Video to Google Drive', { name: 'Sticky Note3', color: 6, position: [940, -160], width: 180, height: 320 }))

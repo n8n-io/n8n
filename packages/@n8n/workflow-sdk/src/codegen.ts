@@ -887,8 +887,9 @@ function generateStickyCall(nodeJson: NodeJSON): string {
 	const content = (nodeJson.parameters?.content as string) ?? '';
 	const options: string[] = [];
 
-	// Name (if different from default 'Sticky Note')
-	if (nodeJson.name && nodeJson.name !== 'Sticky Note') {
+	// Always include name to preserve it across roundtrips
+	// (sticky notes now generate unique default names like "Sticky Note abc12345")
+	if (nodeJson.name) {
 		options.push(`name: '${escapeString(nodeJson.name)}'`);
 	}
 	if (nodeJson.parameters?.color !== undefined) {

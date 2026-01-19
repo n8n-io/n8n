@@ -117,7 +117,7 @@ return workflow('WrK2POhl0j01MouD', 'Apify_lead_generation', { executionOrder: '
       sendBody: true,
       specifyBody: 'json'
     }, position: [0, 60], name: 'Get Results (Apify)1' } }))
-  .add(sticky('## Business Lead Generation with Apify Web Scraping and Google Sheets Storage\n- Use this tool for larger amount of leads (over 100)', { color: 7, position: [-700, 240], width: 1560, height: 480 }))
+  .add(sticky('## Business Lead Generation with Apify Web Scraping and Google Sheets Storage\n- Use this tool for larger amount of leads (over 100)', { name: 'Sticky Note', color: 7, position: [-700, 240], width: 1560, height: 480 }))
   .add(sticky('## Start the Apify Web Scraper Tool', { name: 'Sticky Note1', position: [-640, 380], width: 460, height: 260 }))
   .add(sticky('## Get Results from Apify ', { name: 'Sticky Note2', color: 4, position: [-160, 380], width: 440, height: 260 }))
   .add(sticky('## Small amount lead generation\n**Use for a smaller amount of lead Scraping**\n- Apify HTTP request', { name: 'Sticky Note3', color: 6, position: [-140, -60], width: 400, height: 280 }))

@@ -64,7 +64,7 @@ return workflow('', '')
         name: 'googleDriveOAuth2Api Credential'
       }
     }, position: [820, -400], name: 'Save to Google Drive' } }))
-  .add(sticky('## | INPUT: Intake Form', { position: [-260, -520], height: 340 }))
+  .add(sticky('## | INPUT: Intake Form', { name: 'Sticky Note', position: [-260, -520], height: 340 }))
   .add(sticky('## | Step 1: Generate Image', { name: 'Sticky Note1', color: 4, position: [20, -520], width: 720, height: 340 }))
   .add(sticky('## | Step 2: Upload to Google Drive', { name: 'Sticky Note2', color: 5, position: [780, -520], height: 340 }))
   .add(sticky('## 🚀 Setup Requirements\n\nTo get started with this workflow, follow these steps:\n\n1. **🔑 Configure Credentials**: Set up your API credentials for OpenAI and Google Drive\n2. **💳 Add OpoenAI Credit**: Make sure to add credit to your OpenAI account, verify your organization (required for generating images)\n3. **📊 Connect Google Drive**: Authenticate your Google Drive account\n4. **⚙️ (Optional) Customize Prompts**: Adjust the prompts within the workflow to better suit your specific needs\n\n**Note: Each image generation will cost you about $0.17**', { name: 'Sticky Note3', color: 7, position: [-260, -140], width: 1280, height: 380 }))

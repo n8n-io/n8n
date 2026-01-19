@@ -12,7 +12,7 @@ return workflow('39xV6u2Xhx3NHIYt', '{Template} kaizenCrypto', { executionOrder:
   .add(node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { position: [400, 400], name: '1 day' } }))
   .add(node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { position: [512, 704], name: 'News' } }))
   .then(node({ type: 'n8n-nodes-base.code', version: 2, config: { position: [768, 704], name: 'Filtering News' } }))
-  .add(sticky('', { position: [368, -256] }))
+  .add(sticky('', { name: 'Sticky Note', position: [368, -256] }))
   .add(sticky('', { name: 'Sticky Note1', position: [368, 656] }))
   .add(sticky('', { name: 'Sticky Note2', position: [1024, 656] }))
   .add(sticky('', { name: 'Sticky Note3', position: [2000, 192] }))

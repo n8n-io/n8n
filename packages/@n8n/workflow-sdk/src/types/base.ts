@@ -1,205 +1,171 @@
 /**
+ * Workflow SDK Types
+ *
+ * This file re-exports public API types from sdk-api.ts and defines
+ * internal implementation types not exposed to the LLM.
+ */
+
+// =============================================================================
+// Re-export primitive types from sdk-api.ts (types that are truly identical)
+// =============================================================================
+
+export type {
+	// Data types
+	IDataObject,
+	// Credentials
+	CredentialReference,
+	NewCredentialValue,
+	// Placeholder
+	PlaceholderValue,
+	// Error handling
+	OnError,
+	// Merge mode (simple union)
+	MergeMode,
+} from './sdk-api';
+
+// Import for internal use
+import type {
+	IDataObject,
+	CredentialReference,
+	NewCredentialValue,
+	PlaceholderValue,
+	OnError,
+	MergeMode,
+} from './sdk-api';
+
+// =============================================================================
+// Workflow Settings (with extensibility)
+// =============================================================================
+
+/**
+ * Workflow-level settings configuration
+ */
+export interface WorkflowSettings {
+	timezone?: string;
+	errorWorkflow?: string;
+	saveDataErrorExecution?: 'all' | 'none';
+	saveDataSuccessExecution?: 'all' | 'none';
+	saveManualExecutions?: boolean;
+	saveExecutionProgress?: boolean;
+	executionTimeout?: number;
+	executionOrder?: 'v0' | 'v1';
+	callerPolicy?: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
+	callerIds?: string;
+	/** Allow additional settings fields */
+	[key: string]: unknown;
+}
+
+// =============================================================================
+// Internal: n8n-workflow type duplicates
+// =============================================================================
+
+/**
  * Generic value type for data objects
  * Duplicate of n8n-workflow GenericValue
  */
 export type GenericValue = string | object | number | boolean | undefined | null;
 
 /**
- * Generic data object with string keys
- * Duplicate of n8n-workflow IDataObject
- */
-export interface IDataObject {
-	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
-}
-
-/**
  * Single connection target in n8n workflow
  * Duplicate of n8n-workflow IConnection
  */
 export interface IConnection {
-	/** The node the connection is to */
 	node: string;
-	/** The type of the input on destination node (e.g., "main", "ai_tool") */
 	type: string;
-	/** The output/input-index of destination node */
 	index: number;
 }
 
 /**
  * Array of connections for each output index
- * Duplicate of n8n-workflow NodeInputConnections
  */
 export type NodeInputConnections = Array<IConnection[] | null>;
 
 /**
  * Node connections organized by input type
- * Duplicate of n8n-workflow INodeConnections
  */
 export interface INodeConnections {
-	/** Input name -> connections */
 	[key: string]: NodeInputConnections;
 }
 
 /**
  * All connections in a workflow, organized by source node
- * Duplicate of n8n-workflow IConnections
  */
 export interface IConnections {
-	/** Node name -> node connections */
 	[key: string]: INodeConnections;
 }
 
 // =============================================================================
-// SDK Types
+// Internal: Serialization types
 // =============================================================================
 
 /**
- * Workflow settings configuration
+ * Node JSON representation (for serialization)
  */
-export interface WorkflowSettings {
-	/** Timezone for the workflow (e.g., 'America/New_York') */
-	timezone?: string;
-	/** ID of the error handling workflow */
-	errorWorkflow?: string;
-	/** When to save data from error executions */
-	saveDataErrorExecution?: 'all' | 'none';
-	/** When to save data from successful executions */
-	saveDataSuccessExecution?: 'all' | 'none';
-	/** Whether to save manual execution data */
-	saveManualExecutions?: boolean;
-	/** Whether to save execution progress */
-	saveExecutionProgress?: boolean;
-	/** Execution timeout in seconds */
-	executionTimeout?: number;
-	/** Execution order version */
-	executionOrder?: 'v0' | 'v1';
-	/** Who can call this workflow */
-	callerPolicy?: 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
-	/** Comma-separated list of caller workflow IDs */
-	callerIds?: string;
-	/** Allow additional settings fields */
-	[key: string]: unknown;
-}
-
-/**
- * Reference to stored credentials
- */
-export interface CredentialReference {
-	/** Display name of the credential */
-	name: string;
-	/** Unique ID of the credential */
+export interface NodeJSON {
 	id: string;
-}
-
-/**
- * Error handling behavior for nodes
- */
-export type OnError = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
-
-/**
- * Subnode configuration for AI nodes.
- * Uses typed subnode instances for type safety.
- */
-export interface SubnodeConfig {
-	/** Language model subnode(s) (ai_languageModel connection type) - array for modelSelector, single for most nodes */
-	model?: LanguageModelInstance | LanguageModelInstance[];
-	/** Memory subnode (ai_memory connection type) */
-	memory?: MemoryInstance;
-	/** Tool subnodes (ai_tool connection type) */
-	tools?: ToolInstance[];
-	/** Output parser subnode (ai_outputParser connection type) */
-	outputParser?: OutputParserInstance;
-	/** Embedding subnode(s) (ai_embedding connection type) */
-	embedding?: EmbeddingInstance | EmbeddingInstance[];
-	/** Vector store subnode (ai_vectorStore connection type) */
-	vectorStore?: VectorStoreInstance;
-	/** Retriever subnode (ai_retriever connection type) */
-	retriever?: RetrieverInstance;
-	/** Document loader subnode(s) (ai_document connection type) */
-	documentLoader?: DocumentLoaderInstance | DocumentLoaderInstance[];
-	/** Text splitter subnode (ai_textSplitter connection type) */
-	textSplitter?: TextSplitterInstance;
-}
-
-/**
- * Configuration options for creating a node
- */
-export interface NodeConfig<TParams = IDataObject> {
-	/** Node-specific parameters */
-	parameters?: TParams;
-	/** Credential references keyed by credential type. Use newCredential() for new credentials. */
-	credentials?: Record<string, CredentialReference | NewCredentialValue>;
-	/** Custom node name (auto-generated if omitted) */
-	name?: string;
-	/** Canvas position [x, y] */
-	position?: [number, number];
-	/** Whether the node is disabled */
+	name: string;
+	type: string;
+	typeVersion: number;
+	position: [number, number];
+	parameters?: IDataObject;
+	credentials?: Record<string, { id?: string; name: string }>;
 	disabled?: boolean;
-	/** Documentation notes for the node */
 	notes?: string;
-	/** Whether to show notes on the canvas */
 	notesInFlow?: boolean;
-	/** Execute only once (not per item) */
 	executeOnce?: boolean;
-	/** Retry on failure */
 	retryOnFail?: boolean;
-	/** Always output data even if empty */
 	alwaysOutputData?: boolean;
-	/** Error handling behavior */
 	onError?: OnError;
-	/** Pinned output data for testing */
-	pinData?: IDataObject[];
-	/** Subnodes for AI agent nodes (model, memory, tools, outputParser) */
-	subnodes?: SubnodeConfig;
 }
 
 /**
- * Configuration for sticky notes
+ * n8n workflow JSON format
  */
-export interface StickyNoteConfig {
-	/** Color index (1-7) */
-	color?: number;
-	/** Canvas position [x, y] */
-	position?: [number, number];
-	/** Width in pixels */
-	width?: number;
-	/** Height in pixels */
-	height?: number;
-	/** Custom name for the sticky note */
-	name?: string;
-	/** Nodes to wrap (auto-positions sticky note around them) */
-	nodes?: NodeInstance<string, string, unknown>[];
+export interface WorkflowJSON {
+	id?: string;
+	name: string;
+	nodes: NodeJSON[];
+	connections: IConnections;
+	settings?: WorkflowSettings;
+	pinData?: Record<string, IDataObject[]>;
+	meta?: {
+		templateId?: string;
+		instanceId?: string;
+	};
+}
+
+// =============================================================================
+// Internal: Graph representation
+// =============================================================================
+
+/**
+ * Connection target in workflow connections
+ */
+export interface ConnectionTarget {
+	node: string;
+	type: string;
+	index: number;
 }
 
 /**
- * Expression context providing access to n8n runtime data
+ * Internal graph node representation for workflow builder
  */
-export interface ExpressionContext {
-	/** Current item's JSON data */
-	json: IDataObject;
-	/** Current item's binary data */
-	binary: BinaryContext;
-	/** Input data access */
-	input: InputContext;
-	/** Environment variables */
-	env: IDataObject;
-	/** Workflow variables */
-	vars: IDataObject;
-	/** External secrets */
-	secrets: IDataObject;
-	/** Current DateTime */
-	now: Date;
-	/** Start of today */
-	today: Date;
-	/** Current item index */
-	itemIndex: number;
-	/** Current run index */
-	runIndex: number;
-	/** Execution context */
-	execution: ExecutionContext;
-	/** Workflow metadata */
-	workflow: WorkflowContext;
+export interface GraphNode {
+	instance: NodeInstance<string, string, unknown>;
+	connections: Map<string, Map<number, ConnectionTarget[]>>;
 }
+
+/**
+ * Declared connection from a node to a target
+ */
+export interface DeclaredConnection {
+	target: NodeInstance<string, string, unknown>;
+	outputIndex: number;
+}
+
+// =============================================================================
+// Internal: Expression context types (full versions)
+// =============================================================================
 
 /**
  * Binary data field properties
@@ -213,14 +179,11 @@ export interface BinaryField {
 }
 
 /**
- * Binary data context - provides access to binary data fields
- * Access fields via bracket notation: binary[fieldName]
- * Get all field names via keys() method
+ * Binary data context
  */
 export type BinaryContext = {
 	[fieldName: string]: BinaryField | (() => string[]);
 } & {
-	/** Get keys of all binary fields */
 	keys(): string[];
 };
 
@@ -228,11 +191,8 @@ export type BinaryContext = {
  * Input data context
  */
 export interface InputContext {
-	/** Get first input item */
 	first(): IDataObject;
-	/** Get all input items */
 	all(): IDataObject[];
-	/** Current input item */
 	item: IDataObject;
 }
 
@@ -240,11 +200,8 @@ export interface InputContext {
  * Execution context
  */
 export interface ExecutionContext {
-	/** Execution ID */
 	id: string;
-	/** Execution mode */
 	mode: 'test' | 'production';
-	/** Resume URL for wait nodes */
 	resumeUrl?: string;
 }
 
@@ -252,12 +209,27 @@ export interface ExecutionContext {
  * Workflow metadata context
  */
 export interface WorkflowContext {
-	/** Workflow ID */
 	id?: string;
-	/** Workflow name */
 	name?: string;
-	/** Whether workflow is active */
 	active: boolean;
+}
+
+/**
+ * Expression context providing access to n8n runtime data
+ */
+export interface ExpressionContext {
+	json: IDataObject;
+	binary: BinaryContext;
+	input: InputContext;
+	env: IDataObject;
+	vars: IDataObject;
+	secrets: IDataObject;
+	now: Date;
+	today: Date;
+	itemIndex: number;
+	runIndex: number;
+	execution: ExecutionContext;
+	workflow: WorkflowContext;
 }
 
 /**
@@ -265,40 +237,107 @@ export interface WorkflowContext {
  */
 export type Expression<T> = ($: ExpressionContext) => T;
 
+// =============================================================================
+// Node configuration (full version with all options)
+// =============================================================================
+
 /**
- * Declared connection from a node to a target
+ * Configuration options for creating a node
  */
-export interface DeclaredConnection {
-	/** Target node instance */
-	target: NodeInstance<string, string, unknown>;
-	/** Output index to connect from (default: 0) */
-	outputIndex: number;
+export interface NodeConfig<TParams = IDataObject> {
+	parameters?: TParams;
+	credentials?: Record<string, CredentialReference | NewCredentialValue>;
+	name?: string;
+	position?: [number, number];
+	disabled?: boolean;
+	notes?: string;
+	notesInFlow?: boolean;
+	executeOnce?: boolean;
+	retryOnFail?: boolean;
+	alwaysOutputData?: boolean;
+	onError?: OnError;
+	pinData?: IDataObject[];
+	subnodes?: SubnodeConfig;
 }
 
 /**
- * NodeChain represents a chain of connected nodes created via .then().
- * It contains all nodes from head to tail and their connections.
- *
- * NodeChain proxies NodeInstance properties to the tail node,
- * so it can be used anywhere a NodeInstance is expected.
+ * Configuration for sticky notes (with nodes for wrapping)
+ */
+export interface StickyNoteConfig {
+	color?: number;
+	position?: [number, number];
+	width?: number;
+	height?: number;
+	name?: string;
+	nodes?: NodeInstance<string, string, unknown>[];
+}
+
+// =============================================================================
+// Subnode configuration
+// =============================================================================
+
+/**
+ * Subnode configuration for AI nodes
+ */
+export interface SubnodeConfig {
+	model?: LanguageModelInstance | LanguageModelInstance[];
+	memory?: MemoryInstance;
+	tools?: ToolInstance[];
+	outputParser?: OutputParserInstance;
+	embedding?: EmbeddingInstance | EmbeddingInstance[];
+	vectorStore?: VectorStoreInstance;
+	retriever?: RetrieverInstance;
+	documentLoader?: DocumentLoaderInstance | DocumentLoaderInstance[];
+	textSplitter?: TextSplitterInstance;
+}
+
+// =============================================================================
+// Node instances (full version with implementation details)
+// =============================================================================
+
+/**
+ * Node instance representing a configured node in the workflow
+ */
+export interface NodeInstance<TType extends string, TVersion extends string, TOutput = unknown> {
+	readonly type: TType;
+	readonly version: TVersion;
+	readonly config: NodeConfig;
+	readonly id: string;
+	readonly name: string;
+	readonly _outputType?: TOutput;
+
+	update(config: Partial<NodeConfig>): NodeInstance<TType, TVersion, TOutput>;
+
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T,
+		outputIndex?: number,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
+
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this;
+
+	getConnections(): DeclaredConnection[];
+}
+
+/**
+ * Trigger node instance
+ */
+export interface TriggerInstance<TType extends string, TVersion extends string, TOutput = unknown>
+	extends NodeInstance<TType, TVersion, TOutput> {
+	readonly isTrigger: true;
+}
+
+/**
+ * NodeChain with implementation details
  */
 export interface NodeChain<
 	THead extends NodeInstance<string, string, unknown> = NodeInstance<string, string, unknown>,
 	TTail extends NodeInstance<string, string, unknown> = NodeInstance<string, string, unknown>,
 > extends NodeInstance<TTail['type'], TTail['version'], TTail['_outputType']> {
-	/** Marker identifying this as a NodeChain */
 	readonly _isChain: true;
-	/** The first node in the chain */
 	readonly head: THead;
-	/** The last node in the chain (where further .then() calls connect from) */
 	readonly tail: TTail;
-	/** All nodes in the chain, in order from head to tail */
 	readonly allNodes: NodeInstance<string, string, unknown>[];
 
-	/**
-	 * Continue the chain by connecting the tail to another node.
-	 * Returns a new chain containing all nodes.
-	 */
 	then<T extends NodeInstance<string, string, unknown>>(
 		target: T,
 		outputIndex?: number,
@@ -322,69 +361,8 @@ export function isNodeChain(
 	);
 }
 
-/**
- * Node instance representing a configured node in the workflow
- */
-export interface NodeInstance<TType extends string, TVersion extends string, TOutput = unknown> {
-	/** Node type (e.g., 'n8n-nodes-base.httpRequest') */
-	readonly type: TType;
-	/** Node version (e.g., 'v4.2') */
-	readonly version: TVersion;
-	/** Resolved node configuration */
-	readonly config: NodeConfig;
-	/** Internal unique ID */
-	readonly id: string;
-	/** Node name */
-	readonly name: string;
-	/** Output type marker (for type inference) */
-	readonly _outputType?: TOutput;
-
-	/**
-	 * Update node configuration
-	 */
-	update(config: Partial<NodeConfig>): NodeInstance<TType, TVersion, TOutput>;
-
-	/**
-	 * Declare a connection from this node to another node.
-	 * Can be called multiple times for fan-out patterns.
-	 * @param target - The target node to connect to
-	 * @param outputIndex - The output index to connect from (default: 0)
-	 * @returns A NodeChain containing this node and the target (for chaining)
-	 */
-	then<T extends NodeInstance<string, string, unknown>>(
-		target: T,
-		outputIndex?: number,
-	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
-
-	/**
-	 * Connect this node's error output to an error handler node.
-	 * Only valid when the node has `onError: 'continueErrorOutput'` set.
-	 * The error output index is automatically calculated based on node type:
-	 * - Regular nodes: index 1 (after main output 0)
-	 * - IF nodes: index 2 (after true=0, false=1)
-	 * - Switch nodes: index = numberOfCases (after all case outputs)
-	 * @param handler - The error handler node to connect to
-	 * @returns This node (for chaining with .then())
-	 */
-	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this;
-
-	/**
-	 * Get all declared connections from this node
-	 */
-	getConnections(): DeclaredConnection[];
-}
-
-/**
- * Trigger node instance
- */
-export interface TriggerInstance<TType extends string, TVersion extends string, TOutput = unknown>
-	extends NodeInstance<TType, TVersion, TOutput> {
-	/** Marker indicating this is a trigger node */
-	readonly isTrigger: true;
-}
-
 // =============================================================================
-// Subnode Instance Types (for AI/LangChain nodes)
+// Subnode instance types (with category markers)
 // =============================================================================
 
 /**
@@ -396,197 +374,163 @@ export interface SubnodeInstance<
 	TOutput,
 	TSubnodeType extends string,
 > extends NodeInstance<TType, TVersion, TOutput> {
-	/** Marker indicating the subnode category */
 	readonly _subnodeType: TSubnodeType;
 }
 
-/**
- * Language model subnode instance (ai_languageModel)
- */
 export interface LanguageModelInstance<
 	TType extends string = string,
 	TVersion extends string = string,
 	TOutput = unknown,
 > extends SubnodeInstance<TType, TVersion, TOutput, 'ai_languageModel'> {}
 
-/**
- * Memory subnode instance (ai_memory)
- */
 export interface MemoryInstance<
 	TType extends string = string,
 	TVersion extends string = string,
 	TOutput = unknown,
 > extends SubnodeInstance<TType, TVersion, TOutput, 'ai_memory'> {}
 
-/**
- * Tool subnode instance (ai_tool)
- */
 export interface ToolInstance<
 	TType extends string = string,
 	TVersion extends string = string,
 	TOutput = unknown,
 > extends SubnodeInstance<TType, TVersion, TOutput, 'ai_tool'> {}
 
-/**
- * Output parser subnode instance (ai_outputParser)
- */
 export interface OutputParserInstance<
 	TType extends string = string,
 	TVersion extends string = string,
 	TOutput = unknown,
 > extends SubnodeInstance<TType, TVersion, TOutput, 'ai_outputParser'> {}
 
-/**
- * Embedding subnode instance (ai_embedding)
- */
 export interface EmbeddingInstance<
 	TType extends string = string,
 	TVersion extends string = string,
 	TOutput = unknown,
 > extends SubnodeInstance<TType, TVersion, TOutput, 'ai_embedding'> {}
 
-/**
- * Vector store subnode instance (ai_vectorStore)
- */
 export interface VectorStoreInstance<
 	TType extends string = string,
 	TVersion extends string = string,
 	TOutput = unknown,
 > extends SubnodeInstance<TType, TVersion, TOutput, 'ai_vectorStore'> {}
 
-/**
- * Retriever subnode instance (ai_retriever)
- */
 export interface RetrieverInstance<
 	TType extends string = string,
 	TVersion extends string = string,
 	TOutput = unknown,
 > extends SubnodeInstance<TType, TVersion, TOutput, 'ai_retriever'> {}
 
-/**
- * Document loader subnode instance (ai_document)
- */
 export interface DocumentLoaderInstance<
 	TType extends string = string,
 	TVersion extends string = string,
 	TOutput = unknown,
 > extends SubnodeInstance<TType, TVersion, TOutput, 'ai_document'> {}
 
-/**
- * Text splitter subnode instance (ai_textSplitter)
- */
 export interface TextSplitterInstance<
 	TType extends string = string,
 	TVersion extends string = string,
 	TOutput = unknown,
 > extends SubnodeInstance<TType, TVersion, TOutput, 'ai_textSplitter'> {}
 
-/**
- * Merge composite representing parallel branches merging into one node
- */
-export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
-	/** The merge node */
-	readonly mergeNode: NodeInstance<'n8n-nodes-base.merge', string, unknown>;
-	/** Branches feeding into the merge */
-	readonly branches: TBranches;
-	/** Merge mode */
-	readonly mode: MergeMode;
-}
-
-/**
- * Merge mode options
- */
-export type MergeMode = 'append' | 'combine' | 'multiplex' | 'chooseBranch';
+// =============================================================================
+// Composite types
+// =============================================================================
 
 /**
  * Merge configuration
  */
 export interface MergeConfig {
-	/** Merge mode */
 	mode?: MergeMode;
-	/** Additional merge node parameters */
 	parameters?: IDataObject;
-	/** Node version (defaults to 3) */
 	version?: number | string;
-	/** Custom node name */
 	name?: string;
-	/** Node ID (auto-generated if omitted) */
 	id?: string;
 }
 
 /**
- * IF branch composite - represents IF node with true/false branches
- * branches[0] = true branch (output 0)
- * branches[1] = false branch (output 1)
+ * Merge composite representing parallel branches merging into one node
+ */
+export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
+	readonly mergeNode: NodeInstance<'n8n-nodes-base.merge', string, unknown>;
+	readonly branches: TBranches;
+	readonly mode: MergeMode;
+}
+
+/**
+ * Configuration for IF branch
+ */
+export interface IfBranchConfig extends NodeConfig {
+	version?: number | string;
+	id?: string;
+}
+
+/**
+ * IF branch composite
  */
 export interface IfBranchComposite {
-	/** The IF node */
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
-	/** True branch (output 0) */
 	readonly trueBranch: NodeInstance<string, string, unknown>;
-	/** False branch (output 1) */
 	readonly falseBranch: NodeInstance<string, string, unknown>;
 }
 
 /**
- * Switch case composite - represents Switch node with case outputs
- * cases[i] connects to output i
- * Fallback is just another case at the end of the array
+ * Configuration for Switch case
+ */
+export interface SwitchCaseConfig extends NodeConfig {
+	version?: number | string;
+	id?: string;
+}
+
+/**
+ * Switch case composite
  */
 export interface SwitchCaseComposite {
-	/** The Switch node */
 	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
-	/** Case nodes - cases[i] connects to output i */
 	readonly cases: NodeInstance<string, string, unknown>[];
 }
 
+// =============================================================================
+// Split in batches
+// =============================================================================
+
 /**
- * Split in batches builder for loop constructs
+ * Configuration for Split in Batches
  */
+export interface SplitInBatchesConfig extends NodeConfig {
+	version?: number | string;
+	id?: string;
+}
+
 export interface SplitInBatchesBuilder<TOutput = unknown> {
-	/** The split in batches node instance */
 	readonly sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
-	/** Chain from output 0 (all items processed) */
 	done(): SplitInBatchesDoneChain<TOutput>;
-	/** Chain from output 1 (current batch) */
 	each(): SplitInBatchesEachChain<TOutput>;
 }
 
-/**
- * Chain after .done() for finalization
- */
 export interface SplitInBatchesDoneChain<_TOutput> {
 	then<N extends NodeInstance<string, string, unknown>>(
 		node: N,
 	): SplitInBatchesDoneChain<N extends NodeInstance<string, string, infer O> ? O : unknown>;
-	/** Chain to .each() from the done chain */
 	each(): SplitInBatchesEachChain<unknown>;
 }
 
-/**
- * Chain after .each() for batch processing
- */
 export interface SplitInBatchesEachChain<TOutput> {
 	then<N extends NodeInstance<string, string, unknown>>(
 		node: N,
 	): SplitInBatchesEachChain<N extends NodeInstance<string, string, infer O> ? O : unknown>;
-	/** Connect back to the split in batches node and return the builder */
 	loop(): SplitInBatchesBuilder<TOutput>;
 }
+
+// =============================================================================
+// Workflow builder
+// =============================================================================
 
 /**
  * Workflow builder for constructing workflows with a fluent API
  */
 export interface WorkflowBuilder {
-	/** Workflow ID */
 	readonly id: string;
-	/** Workflow name */
 	readonly name: string;
 
-	/**
-	 * Add a node or chain of nodes to the workflow.
-	 * When adding a NodeChain, all nodes in the chain are added and connections are preserved.
-	 */
 	add<
 		N extends
 			| NodeInstance<string, string, unknown>
@@ -594,49 +538,18 @@ export interface WorkflowBuilder {
 			| NodeChain,
 	>(node: N): WorkflowBuilder;
 
-	/**
-	 * Chain a node after the current node
-	 */
 	then<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
-
-	/**
-	 * Chain a merge composite (fans out to branches, then merges)
-	 */
 	then<M extends MergeComposite>(merge: M): WorkflowBuilder;
-
-	/**
-	 * Chain an IF branch composite (conditional branching)
-	 */
 	then(ifBranch: IfBranchComposite): WorkflowBuilder;
-
-	/**
-	 * Chain a switch case composite (multi-way branching)
-	 */
 	then(switchCase: SwitchCaseComposite): WorkflowBuilder;
-
-	/**
-	 * Chain a split in batches builder (batch processing with loop)
-	 */
 	then<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;
 
-	/**
-	 * Update workflow settings
-	 */
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 
-	/**
-	 * Get a node by name
-	 */
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined;
 
-	/**
-	 * Export to n8n JSON format
-	 */
 	toJSON(): WorkflowJSON;
 
-	/**
-	 * Serialize to JSON string
-	 */
 	toString(): string;
 }
 
@@ -644,91 +557,82 @@ export interface WorkflowBuilder {
  * Static workflow builder methods
  */
 export interface WorkflowBuilderStatic {
-	/**
-	 * Create a new workflow
-	 */
 	(id: string, name: string, settings?: WorkflowSettings): WorkflowBuilder;
-
-	/**
-	 * Import from n8n JSON format
-	 */
 	fromJSON(json: WorkflowJSON): WorkflowBuilder;
 }
 
+// =============================================================================
+// Factory function types
+// =============================================================================
+
 /**
- * Node JSON representation (for serialization)
+ * Input shape for node factory function
  */
-export interface NodeJSON {
-	id: string;
-	name: string;
-	type: string;
-	typeVersion: number;
-	position: [number, number];
-	parameters?: IDataObject;
-	credentials?: Record<string, { id?: string; name: string }>;
-	disabled?: boolean;
-	notes?: string;
-	notesInFlow?: boolean;
-	executeOnce?: boolean;
-	retryOnFail?: boolean;
-	alwaysOutputData?: boolean;
-	onError?: OnError;
+export interface NodeInput<
+	TType extends string = string,
+	TVersion extends number = number,
+	TParams = unknown,
+> {
+	type: TType;
+	version: TVersion;
+	config: NodeConfig<TParams>;
 }
 
 /**
- * Connection target in workflow connections
+ * Input shape for trigger factory function
  */
-export interface ConnectionTarget {
-	/** Target node name */
-	node: string;
-	/** Connection type (main, ai_tool, ai_memory, ai_languageModel, etc.) */
-	type: string;
-	/** Input index on the target node */
-	index: number;
+export interface TriggerInput<
+	TType extends string = string,
+	TVersion extends number = number,
+	TParams = unknown,
+> {
+	type: TType;
+	version: TVersion;
+	config: NodeConfig<TParams>;
 }
 
-/**
- * Internal graph node representation for workflow builder
- */
-export interface GraphNode {
-	instance: NodeInstance<string, string, unknown>;
-	// connectionType -> outputIndex -> targets
-	connections: Map<string, Map<number, ConnectionTarget[]>>;
-}
+export type WorkflowFn = WorkflowBuilderStatic;
 
-/**
- * n8n workflow JSON format
- */
-export interface WorkflowJSON {
-	id?: string;
-	name: string;
-	nodes: NodeJSON[];
-	connections: IConnections;
-	settings?: WorkflowSettings;
-	pinData?: Record<string, IDataObject[]>;
-	meta?: {
-		templateId?: string;
-		instanceId?: string;
-	};
-}
+export type NodeFn = <TNode extends NodeInput>(
+	input: TNode,
+) => NodeInstance<TNode['type'], `${TNode['version']}`, unknown>;
 
-/**
- * Placeholder marker for template parameters
- */
-export interface PlaceholderValue {
-	readonly __placeholder: true;
-	readonly hint: string;
-}
+export type TriggerFn = <TTrigger extends TriggerInput>(
+	input: TTrigger,
+) => TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown>;
 
-/**
- * Marker for new credentials that need to be created
- * Serializes to { id: 'NEW_ID', name: '...' } to signal the frontend
- * that a new credential needs to be created with the given name.
- */
-export interface NewCredentialValue {
-	readonly __newCredential: true;
-	readonly name: string;
-}
+export type StickyFn = (
+	content: string,
+	config?: StickyNoteConfig,
+) => NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>;
+
+export type PlaceholderFn = (hint: string) => PlaceholderValue;
+
+export type NewCredentialFn = (name: string) => NewCredentialValue;
+
+export type MergeFn = <TBranches extends NodeInstance<string, string, unknown>[]>(
+	branches: TBranches,
+	config?: MergeConfig,
+) => MergeComposite<TBranches>;
+
+export type IfBranchFn = (
+	branches: [
+		NodeInstance<string, string, unknown> | null,
+		NodeInstance<string, string, unknown> | null,
+	],
+	config?: IfBranchConfig,
+) => IfBranchComposite;
+
+export type SwitchCaseFn = (
+	cases: NodeInstance<string, string, unknown>[],
+	config?: SwitchCaseConfig,
+) => SwitchCaseComposite;
+
+export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder<unknown>;
+
+// =============================================================================
+// Code helper types
+// =============================================================================
 
 /**
  * Code node execution context for runOnceForAllItems
@@ -781,285 +685,10 @@ export interface CodeResult<T> {
 	_outputType?: T;
 }
 
-// =============================================================================
-// Factory Function Types
-// =============================================================================
-
-/**
- * Creates a workflow builder
- *
- * @example
- * ```typescript
- * const wf = workflow('my-id', 'My Workflow', { timezone: 'UTC' })
- *   .add(trigger(...))
- *   .then(node(...));
- *
- * // Import existing workflow
- * const imported = workflow.fromJSON(existingJson);
- * ```
- */
-export type WorkflowFn = WorkflowBuilderStatic;
-
-/**
- * Input shape for node factory function (object signature)
- * Matches the generated node type structure (e.g., LcAgentV31Node)
- */
-export interface NodeInput<
-	TType extends string = string,
-	TVersion extends number = number,
-	TParams = unknown,
-> {
-	/** Node type (e.g., 'n8n-nodes-base.httpRequest') */
-	type: TType;
-	/** Node version (e.g., 4.2) */
-	version: TVersion;
-	/** Node configuration */
-	config: NodeConfig<TParams>;
-}
-
-/**
- * Input shape for trigger factory function (object signature)
- */
-export interface TriggerInput<
-	TType extends string = string,
-	TVersion extends number = number,
-	TParams = unknown,
-> {
-	/** Trigger type (e.g., 'n8n-nodes-base.scheduleTrigger') */
-	type: TType;
-	/** Trigger version (e.g., 1.1) */
-	version: TVersion;
-	/** Trigger configuration */
-	config: NodeConfig<TParams>;
-}
-
-/**
- * Creates a node instance
- *
- * For type-safe usage, use with generated node types from './types/generated'.
- * The AllNodeTypes union provides autocomplete for all known node types.
- *
- * @example
- * ```typescript
- * import { node, trigger } from '@n8n/workflow-sdk';
- * import type { AllNodeTypes, LcAgentV31Node } from '@n8n/workflow-sdk';
- *
- * // Type-safe with AllNodeTypes constraint
- * const agent = node({
- *   type: '@n8n/n8n-nodes-langchain.agent',
- *   version: 3.1,
- *   config: { parameters: { promptType: 'auto', text: 'Hello' } }
- * } satisfies AllNodeTypes);
- *
- * // Or with specific node type
- * const agent = node({
- *   type: '@n8n/n8n-nodes-langchain.agent',
- *   version: 3.1,
- *   config: { parameters: { promptType: 'auto', text: 'Hello' } }
- * } satisfies LcAgentV31Node);
- *
- * // Generic usage (no type checking on parameters)
- * const httpNode = node({
- *   type: 'n8n-nodes-base.httpRequest',
- *   version: 4.2,
- *   config: { parameters: { url: 'https://api.example.com' } }
- * });
- * ```
- */
-export type NodeFn = <TNode extends NodeInput>(
-	input: TNode,
-) => NodeInstance<TNode['type'], `${TNode['version']}`, unknown>;
-
-/**
- * Creates a trigger node instance
- *
- * @example
- * ```typescript
- * const schedule = trigger({
- *   type: 'n8n-nodes-base.scheduleTrigger',
- *   version: 1.1,
- *   config: { parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } } }
- * });
- * ```
- */
-export type TriggerFn = <TTrigger extends TriggerInput>(
-	input: TTrigger,
-) => TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown>;
-
-/**
- * Creates a sticky note for workflow documentation
- *
- * @example
- * ```typescript
- * const note = sticky('## API Integration', { color: 4, position: [80, -176] });
- * ```
- */
-export type StickyFn = (
-	content: string,
-	config?: StickyNoteConfig,
-) => NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>;
-
-/**
- * Creates a placeholder value for template parameters
- *
- * @example
- * ```typescript
- * const slackNode = node('n8n-nodes-base.slack', 'v2.2', {
- *   parameters: { channel: placeholder('Enter Channel') }
- * });
- * ```
- */
-export type PlaceholderFn = (hint: string) => PlaceholderValue;
-
-/**
- * Creates a new credential marker for credentials that need to be created
- *
- * @example
- * ```typescript
- * const httpNode = node('n8n-nodes-base.httpRequest', 'v4.3', {
- *   parameters: { url: 'https://api.example.com' },
- *   credentials: { httpBasicAuth: newCredential('My API Auth') }
- * });
- * ```
- */
-export type NewCredentialFn = (name: string) => NewCredentialValue;
-
-/**
- * Creates a merge composite for parallel branch execution
- *
- * @example
- * ```typescript
- * workflow('id', 'Test')
- *   .add(trigger(...))
- *   .then(merge([api1, api2, api3], { mode: 'combine' }))
- *   .then(processResults);
- * ```
- */
-export type MergeFn = <TBranches extends NodeInstance<string, string, unknown>[]>(
-	branches: TBranches,
-	config?: MergeConfig,
-) => MergeComposite<TBranches>;
-
-/**
- * Configuration for IF branch
- */
-export interface IfBranchConfig extends NodeConfig {
-	/** Node version (defaults to 2.3) */
-	version?: number | string;
-	/** Node ID (auto-generated if omitted) */
-	id?: string;
-}
-
-/**
- * Creates an IF branching composite for conditional execution
- *
- * @example
- * ```typescript
- * workflow('id', 'Test')
- *   .add(trigger)
- *   .then(ifBranch([truePath, falsePath], {
- *     name: 'Check Value',
- *     parameters: { conditions: { conditions: [...] } },
- *   }))
- *   .toJSON();
- * ```
- */
-export type IfBranchFn = (
-	branches: [
-		NodeInstance<string, string, unknown> | null,
-		NodeInstance<string, string, unknown> | null,
-	],
-	config?: IfBranchConfig,
-) => IfBranchComposite;
-
-/**
- * Configuration for Switch case
- */
-export interface SwitchCaseConfig extends NodeConfig {
-	/** Node version (defaults to 3.4) */
-	version?: number | string;
-	/** Node ID (auto-generated if omitted) */
-	id?: string;
-}
-
-/**
- * Creates a Switch case composite for multi-way branching
- *
- * @example
- * ```typescript
- * workflow('id', 'Test')
- *   .add(trigger)
- *   .then(switchCase([case0, case1, case2, fallback], {
- *     name: 'Route by Type',
- *     parameters: { mode: 'rules', rules: { ... } },
- *   }))
- *   .toJSON();
- * ```
- */
-export type SwitchCaseFn = (
-	cases: NodeInstance<string, string, unknown>[],
-	config?: SwitchCaseConfig,
-) => SwitchCaseComposite;
-
-/**
- * Configuration for Split in Batches
- */
-export interface SplitInBatchesConfig extends NodeConfig {
-	/** Node version (defaults to 3) */
-	version?: number | string;
-	/** Node ID (auto-generated if omitted) */
-	id?: string;
-}
-
-/**
- * Creates a split in batches builder for processing items in chunks
- *
- * @example
- * ```typescript
- * workflow('id', 'Test')
- *   .add(trigger(...))
- *   .then(
- *     splitInBatches({ parameters: { batchSize: 10 } })
- *       .done().then(finalizeNode)
- *       .each().then(processNode).loop()
- *   );
- * ```
- */
-export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder<unknown>;
-
-/**
- * Creates a code helper for executing once with access to all items
- *
- * @example
- * ```typescript
- * node('n8n-nodes-base.code', 'v2', {
- *   parameters: {
- *     ...runOnceForAllItems<{ sum: number }>((ctx) => {
- *       const total = ctx.$input.all().reduce((acc, i) => acc + i.json.value, 0);
- *       return [{ json: { sum: total } }];
- *     })
- *   }
- * });
- * ```
- */
 export type RunOnceForAllItemsFn = <T = unknown>(
 	fn: (ctx: AllItemsContext) => Array<{ json: T }>,
 ) => CodeResult<T>;
 
-/**
- * Creates a code helper for executing once per item
- *
- * @example
- * ```typescript
- * node('n8n-nodes-base.code', 'v2', {
- *   parameters: {
- *     ...runOnceForEachItem<{ doubled: number }>((ctx) => {
- *       return { json: { doubled: ctx.$input.item.json.value * 2 } };
- *     })
- *   }
- * });
- * ```
- */
 export type RunOnceForEachItemFn = <T = unknown>(
 	fn: (ctx: EachItemContext) => { json: T } | null,
 ) => CodeResult<T>;

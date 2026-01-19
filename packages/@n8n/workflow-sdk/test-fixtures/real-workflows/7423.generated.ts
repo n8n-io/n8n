@@ -353,7 +353,7 @@ return workflow('c8SrVtTq7YyxoLlO', 'AI Lead Machine Agent', { executionOrder: '
         cachedResultName: 'n8n Test'
       }
     }, position: [1248, 864], name: 'Append or update row in sheet' } }))
-  .add(sticky('# Business Data', { color: 3, width: 752, height: 336 }))
+  .add(sticky('# Business Data', { name: 'Sticky Note', color: 3, width: 752, height: 336 }))
   .add(sticky('# Getting the Email Address', { name: 'Sticky Note1', color: 4, position: [-192, 368], width: 1136, height: 368 }))
   .add(sticky('# Email Send', { name: 'Sticky Note2', color: 5, position: [-656, 768], width: 2096, height: 448 }))
   .add(sticky('## Start here: Step-by Step Youtube Tutorial :star:\n\n[![I Built an Auto Lead Finder AI Agent](https://img.youtube.com/vi/3UwutV1x3mA/sddefault.jpg)](https://youtu.be/3UwutV1x3mA?si=FtH1dNr5dtnOFedD)', { name: 'Sticky Note3', position: [1712, -16], width: 480, height: 464 }))

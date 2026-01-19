@@ -676,6 +676,291 @@ return workflow('test-id', 'AI Agent')
 		});
 	});
 
+	describe('parses multiple sticky notes', () => {
+		it('should parse workflow code with multiple sticky notes', () => {
+			// This code has 4 sticky notes added via .add()
+			const code = `
+// Create all nodes first
+const startTrigger = trigger({
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1,
+  config: {
+    name: 'Start Research',
+    position: [112, 400]
+  }
+});
+
+const setTopic = node({
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {
+    name: 'Set Research Topic',
+    parameters: {
+      mode: 'manual',
+      duplicateItem: false,
+      assignments: {},
+      options: {}
+    },
+    position: [336, 400]
+  }
+});
+
+// Research Agent and its subnodes
+const researchModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'GPT-4.1-mini Model',
+    parameters: {
+      model: 'gpt-4.1-mini',
+      options: {
+        maxTokens: 4000,
+        temperature: 0.3
+      }
+    },
+    credentials: {
+      openAiApi: newCredential('OpenAI API')
+    },
+    position: [576, 624]
+  }
+});
+
+const webSearchTool = tool({
+  type: '@n8n/n8n-nodes-langchain.toolCode',
+  version: 1.3,
+  config: {
+    name: 'Web Search Simulator',
+    parameters: {
+      description: 'Simulates web search to find information about a topic.',
+      language: 'javaScript',
+      jsCode: 'return JSON.stringify([]);'
+    },
+    position: [704, 624]
+  }
+});
+
+const researchAgent = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Research Agent',
+    parameters: {
+      text: '={{ $json.chatInput }}',
+      options: {}
+    },
+    subnodes: {
+      model: researchModel,
+      tools: [webSearchTool]
+    },
+    position: [560, 400]
+  }
+});
+
+// Fact-Checking Agent
+const factCheckModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'GPT-4.1-mini Fact Checker',
+    parameters: {
+      model: 'gpt-4.1-mini',
+      options: { maxTokens: 3000, temperature: 0.1 }
+    },
+    credentials: {
+      openAiApi: newCredential('OpenAI API')
+    },
+    position: [992, 624]
+  }
+});
+
+const factCheckAgent = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Fact-Checking Agent',
+    parameters: {
+      text: '={{ $json.chatInput }}',
+      options: {}
+    },
+    subnodes: {
+      model: factCheckModel
+    },
+    position: [912, 400]
+  }
+});
+
+// Writing Agent
+const writerModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'GPT-4.1-mini Writer',
+    parameters: {
+      model: 'gpt-4.1-mini',
+      options: { maxTokens: 2500, temperature: 0.7 }
+    },
+    credentials: {
+      openAiApi: newCredential('OpenAI API')
+    },
+    position: [1344, 624]
+  }
+});
+
+const writingAgent = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Writing Agent',
+    parameters: {
+      text: '={{ $json.chatInput }}',
+      options: {}
+    },
+    subnodes: {
+      model: writerModel
+    },
+    position: [1264, 400]
+  }
+});
+
+// Editing Agent
+const editorModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'GPT-4.1-mini Editor',
+    parameters: {
+      model: 'gpt-4.1-mini',
+      options: { maxTokens: 3000, temperature: 0.4 }
+    },
+    credentials: {
+      openAiApi: newCredential('OpenAI API')
+    },
+    position: [1696, 624]
+  }
+});
+
+const editingAgent = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Editing & Formatting Agent',
+    parameters: {
+      text: '={{ $json.chatInput }}',
+      options: {}
+    },
+    subnodes: {
+      model: editorModel
+    },
+    position: [1616, 400]
+  }
+});
+
+// Create sticky notes for each agent
+const researchSticky = sticky(
+  '## Research Agent\\n\\n**Purpose:** Conducts initial research on the given topic',
+  {
+    nodes: [researchAgent, researchModel, webSearchTool],
+    color: 5
+  }
+);
+
+const factCheckSticky = sticky(
+  '## Fact-Checking Agent\\n\\n**Purpose:** Verifies accuracy and credibility',
+  {
+    nodes: [factCheckAgent, factCheckModel],
+    color: 6
+  }
+);
+
+const writingSticky = sticky(
+  '## Writing Agent\\n\\n**Purpose:** Transforms verified research into well-written content',
+  {
+    nodes: [writingAgent, writerModel],
+    color: 4
+  }
+);
+
+const editingSticky = sticky(
+  '## Editing & Formatting Agent\\n\\n**Purpose:** Polishes content and formats as HTML',
+  {
+    nodes: [editingAgent, editorModel],
+    color: 2
+  }
+);
+
+// Build the workflow
+return workflow('test-multi-sticky', 'Multi-Agent Research Workflow')
+  .add(startTrigger)
+  .then(setTopic)
+  .then(researchAgent)
+  .then(factCheckAgent)
+  .then(writingAgent)
+  .then(editingAgent)
+  .add(researchSticky)
+  .add(factCheckSticky)
+  .add(writingSticky)
+  .add(editingSticky);
+`;
+
+			const parsedJson = parseWorkflowCode(code);
+
+			// Verify we have all 4 sticky notes
+			const stickyNotes = parsedJson.nodes.filter((n) => n.type === 'n8n-nodes-base.stickyNote');
+			expect(stickyNotes).toHaveLength(4);
+
+			// Verify each sticky content exists
+			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Research Agent'))).toBe(true);
+			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Fact-Checking Agent'))).toBe(
+				true,
+			);
+			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Writing Agent'))).toBe(true);
+			expect(
+				stickyNotes.some((s) => s.parameters?.content?.includes('Editing & Formatting Agent')),
+			).toBe(true);
+
+			// Verify each sticky has a color set
+			expect(stickyNotes.every((s) => s.parameters?.color !== undefined)).toBe(true);
+		});
+
+		it('should parse simple workflow code with multiple sticky notes without nodes option', () => {
+			// Simpler test case without the nodes option
+			const code = `
+const startTrigger = trigger({
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1,
+  config: { name: 'Start', position: [100, 300] }
+});
+
+const sticky1 = sticky('## Section 1\\n\\nFirst section', { color: 1, position: [50, 100] });
+const sticky2 = sticky('## Section 2\\n\\nSecond section', { color: 2, position: [300, 100] });
+const sticky3 = sticky('## Section 3\\n\\nThird section', { color: 3, position: [550, 100] });
+
+return workflow('test-simple-multi-sticky', 'Simple Multi-Sticky Workflow')
+  .add(startTrigger)
+  .add(sticky1)
+  .add(sticky2)
+  .add(sticky3);
+`;
+
+			const parsedJson = parseWorkflowCode(code);
+
+			// Verify we have all 3 sticky notes
+			const stickyNotes = parsedJson.nodes.filter((n) => n.type === 'n8n-nodes-base.stickyNote');
+			expect(stickyNotes).toHaveLength(3);
+
+			// Verify content
+			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Section 1'))).toBe(true);
+			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Section 2'))).toBe(true);
+			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Section 3'))).toBe(true);
+
+			// Verify colors are distinct
+			const colors = stickyNotes.map((s) => s.parameters?.color);
+			expect(colors).toContain(1);
+			expect(colors).toContain(2);
+			expect(colors).toContain(3);
+		});
+	});
+
 	describe('parses Code node jsCode with template literals', () => {
 		it('should parse Code node with properly escaped template literals', () => {
 			// When template literals are properly escaped with \$, they should work

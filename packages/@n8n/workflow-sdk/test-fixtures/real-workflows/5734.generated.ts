@@ -68,6 +68,6 @@ return workflow('pDhufDfHS9qRgtLf', 'Simple RAG', { executionOrder: 'v1' })
   .add(node({ type: '@n8n/n8n-nodes-langchain.rerankerCohere', version: 1, config: { credentials: {
       cohereApi: { id: 'credential-id', name: 'cohereApi Credential' }
     }, position: [1740, 480] } }))
-  .add(sticky('## Insert Data to Pinecone', { position: [-60, -80], width: 880, height: 680 }))
+  .add(sticky('## Insert Data to Pinecone', { name: 'Sticky Note', position: [-60, -80], width: 880, height: 680 }))
   .add(sticky('## Chat AI Agent', { name: 'Sticky Note1', color: 5, position: [1100, -80], width: 860, height: 680 }))
   .add(sticky('## Embedding Model', { name: 'Sticky Note2', color: 4, position: [840, 300], height: 300 }))
