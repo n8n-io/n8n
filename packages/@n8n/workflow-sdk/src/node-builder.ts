@@ -315,7 +315,8 @@ export function placeholder(hint: string): PlaceholderValue {
 
 /**
  * New credential implementation
- * Serializes to { id: 'NEW_ID', name: '...' } format
+ * Currently serializes to undefined (not yet implemented).
+ * Will be implemented to create actual credentials later.
  */
 class NewCredentialImpl implements NewCredentialValue {
 	readonly __newCredential: true = true;
@@ -325,8 +326,9 @@ class NewCredentialImpl implements NewCredentialValue {
 		this.name = name;
 	}
 
-	toJSON(): { id: string; name: string } {
-		return { id: 'NEW_ID', name: this.name };
+	toJSON(): undefined {
+		// TODO: Implement credential creation
+		return undefined;
 	}
 }
 
@@ -334,10 +336,10 @@ class NewCredentialImpl implements NewCredentialValue {
  * Create a new credential marker for credentials that need to be created
  *
  * Use this when a workflow needs a credential that doesn't exist yet.
- * The frontend will prompt the user to create the credential.
+ * Currently serializes to undefined (not yet implemented).
  *
  * @param name - Display name for the credential (e.g., 'My Slack Bot')
- * @returns A credential marker that serializes to { id: 'NEW_ID', name: '...' }
+ * @returns A credential marker (currently serializes to undefined)
  *
  * @example
  * ```typescript
@@ -345,7 +347,8 @@ class NewCredentialImpl implements NewCredentialValue {
  *   parameters: { channel: '#general' },
  *   credentials: { slackApi: newCredential('My Slack Bot') }
  * });
- * // Serializes credentials as: { slackApi: { id: 'NEW_ID', name: 'My Slack Bot' } }
+ * // Currently: credential is omitted from JSON output
+ * // TODO: Will create actual credentials when implemented
  * ```
  */
 export function newCredential(name: string): NewCredentialValue {

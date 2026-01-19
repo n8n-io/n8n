@@ -84,19 +84,43 @@ function readDoubleQuotedString(code: string, start: number): [string, number] {
 /**
  * Read a template literal from code starting at position `start`.
  * Returns the content and the new position after the closing backtick.
+ *
+ * IMPORTANT: This also escapes template expressions inside nested template literals.
+ * When we encounter \` (escaped backtick indicating start of a nested template literal),
+ * all ${...} patterns until the next \` should be escaped to \${...} to prevent
+ * them from being evaluated at parse time.
+ *
+ * Example:
+ *   jsCode: `const msg = \`Hello ${name}\`;`
+ * Should become:
+ *   jsCode: `const msg = \`Hello \${name}\`;`
  */
 function readTemplateLiteral(code: string, start: number): [string, number] {
 	let result = '`';
 	let i = start + 1;
 	let depth = 0;
+	let inNestedTemplateLiteral = false; // Track if we're inside a nested template literal
+
 	while (i < code.length) {
+		// Handle escape sequences
 		if (code[i] === '\\' && i + 1 < code.length) {
+			// Check if this is an escaped backtick - toggles nested template literal mode
+			if (code[i + 1] === '`') {
+				inNestedTemplateLiteral = !inNestedTemplateLiteral;
+			}
 			result += code[i] + code[i + 1];
 			i += 2;
 		} else if (code[i] === '$' && i + 1 < code.length && code[i + 1] === '{') {
-			result += '${';
+			// Template expression found
+			if (inNestedTemplateLiteral && depth === 0) {
+				// We're inside a nested template literal - escape this expression
+				// so it becomes a literal string instead of being evaluated
+				result += '\\${';
+			} else {
+				result += '${';
+				depth++;
+			}
 			i += 2;
-			depth++;
 		} else if (code[i] === '}' && depth > 0) {
 			result += '}';
 			i++;
@@ -234,6 +258,7 @@ import {
 	node as nodeFn,
 	trigger as triggerFn,
 	sticky as stickyFn,
+	placeholder as placeholderFn,
 	newCredential as newCredentialFn,
 } from './node-builder';
 import {
@@ -278,6 +303,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 			'node',
 			'trigger',
 			'sticky',
+			'placeholder',
 			'newCredential',
 			'languageModel',
 			'memory',
@@ -310,6 +336,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		nodeFn,
 		triggerFn,
 		stickyFn,
+		placeholderFn,
 		newCredentialFn,
 		languageModelFn,
 		memoryFn,

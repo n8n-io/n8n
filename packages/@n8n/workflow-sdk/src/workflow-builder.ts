@@ -212,7 +212,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				type: instance.type,
 				typeVersion: parseVersion(instance.version),
 				position,
-				parameters: instance.config.parameters,
+				// Serialize parameters to convert placeholder() markers to strings
+				parameters: instance.config.parameters
+					? JSON.parse(JSON.stringify(instance.config.parameters))
+					: undefined,
 			};
 
 			// Add optional properties
