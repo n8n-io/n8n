@@ -140,11 +140,17 @@ const containerStyle = computed(() => ({
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as vars;
+
 .emptyStateLayout {
 	display: flex;
 	flex-direction: column;
 	padding: var(--spacing--4xl) var(--spacing--2xl) 0;
 	max-width: var(--content-container--width);
+
+	@media (max-width: vars.$breakpoint-lg) {
+		padding: var(--spacing--xl) var(--spacing--xs) 0;
+	}
 
 	&.noTemplatesContent {
 		padding-top: var(--spacing--3xl);
@@ -210,6 +216,6 @@ const containerStyle = computed(() => ({
 	display: flex;
 	justify-content: center;
 	gap: var(--spacing--xs);
-	margin-top: var(--spacing--lg);
+	margin: var(--spacing--lg) 0;
 }
 </style>
