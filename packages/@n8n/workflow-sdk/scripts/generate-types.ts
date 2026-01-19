@@ -1480,6 +1480,7 @@ export function generateSingleVersionTypeFile(
 	lines.push('');
 
 	// Generate individual node types pairing each config with its output (if available)
+	// Using explicit named types for LLM clarity and self-documentation
 	const individualNodeTypes: string[] = [];
 
 	for (const configInfo of unionResult.configTypes) {
@@ -1496,7 +1497,6 @@ export function generateSingleVersionTypeFile(
 
 		lines.push(`export type ${finalTypeName} = ${baseTypeName} & {`);
 		lines.push(`\tconfig: NodeConfig<${configInfo.typeName}>;`);
-		// Only add output field if we have a schema for it
 		if (outputTypeName) {
 			lines.push(`\toutput?: ${outputTypeName};`);
 		}
@@ -1514,21 +1514,13 @@ export function generateSingleVersionTypeFile(
 		// Multiple node types - create union
 		lines.push(`export type ${nodeTypeName} =`);
 		for (let i = 0; i < individualNodeTypes.length; i++) {
-			const linePrefix = i === 0 ? '\t| ' : '\t| ';
-			lines.push(`${linePrefix}${individualNodeTypes[i]}`);
+			lines.push(`\t| ${individualNodeTypes[i]}`);
 		}
 		lines.push('\t;');
 	} else {
-		// No config types (shouldn't happen, but handle gracefully)
-		const credType = credTypeName ?? 'Record<string, never>';
-		lines.push(`export type ${nodeTypeName} = {`);
-		lines.push(`\ttype: '${node.name}';`);
-		lines.push(`\tversion: ${specificVersion};`);
-		lines.push(`\tconfig: NodeConfig<${nodeName}${versionSuffix}Params>;`);
-		lines.push(`\tcredentials?: ${credType};`);
-		if (isTrigger) {
-			lines.push('\tisTrigger: true;');
-		}
+		// No config types - shouldn't happen, but handle gracefully
+		lines.push(`export type ${nodeTypeName} = ${baseTypeName} & {`);
+		lines.push(`\tconfig: NodeConfig<Record<string, unknown>>;`);
 		lines.push('};');
 	}
 
@@ -1541,10 +1533,7 @@ export function generateSingleVersionTypeFile(
  * @param node A sample node description (used for display name and name)
  * @param versions Array of individual version numbers to include
  */
-export function generateVersionIndexFile(
-	node: NodeTypeDescription,
-	versions: number[],
-): string {
+export function generateVersionIndexFile(node: NodeTypeDescription, versions: number[]): string {
 	const prefix = getPackagePrefix(node.name);
 	const typeName = prefix + toPascalCase(getNodeBaseName(node.name));
 
