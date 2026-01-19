@@ -445,6 +445,10 @@ A confused agent with full context performs worse than a clear agent with focuse
 [ ] Run evaluations.
 [ ] Rewrite best practice. Current ones are too specific for this implementation.
 [ ] Add type support for $fromAI. Maybe its own helper functions.
+[ ] Support/improve/test expr(). Add examples to prompt.
+[ ] Add just spacing when adding stickies? Adjust position they are added.
+[ ] Better clarify how output data maps to expressions in types and referenced
+[ ] AI still generates position unnecessarily. we should remove this and generate these seperately. 
 
 ## Summary
 

@@ -136,47 +136,64 @@ export interface SubnodeConfig {
 export interface LanguageModelInstance<
 	TType extends string = string,
 	TVersion extends string = string,
-> extends NodeInstance<TType, TVersion> {}
+	TOutput = unknown,
+> extends NodeInstance<TType, TVersion, TOutput> {}
 
 /** Memory subnode (ai_memory) */
-export interface MemoryInstance<TType extends string = string, TVersion extends string = string>
-	extends NodeInstance<TType, TVersion> {}
+export interface MemoryInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends NodeInstance<TType, TVersion, TOutput> {}
 
 /** Tool subnode (ai_tool) */
-export interface ToolInstance<TType extends string = string, TVersion extends string = string>
-	extends NodeInstance<TType, TVersion> {}
+export interface ToolInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends NodeInstance<TType, TVersion, TOutput> {}
 
 /** Output parser subnode (ai_outputParser) */
 export interface OutputParserInstance<
 	TType extends string = string,
 	TVersion extends string = string,
-> extends NodeInstance<TType, TVersion> {}
+	TOutput = unknown,
+> extends NodeInstance<TType, TVersion, TOutput> {}
 
 /** Embedding subnode (ai_embedding) */
-export interface EmbeddingInstance<TType extends string = string, TVersion extends string = string>
-	extends NodeInstance<TType, TVersion> {}
+export interface EmbeddingInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends NodeInstance<TType, TVersion, TOutput> {}
 
 /** Vector store subnode (ai_vectorStore) */
 export interface VectorStoreInstance<
 	TType extends string = string,
 	TVersion extends string = string,
-> extends NodeInstance<TType, TVersion> {}
+	TOutput = unknown,
+> extends NodeInstance<TType, TVersion, TOutput> {}
 
 /** Retriever subnode (ai_retriever) */
-export interface RetrieverInstance<TType extends string = string, TVersion extends string = string>
-	extends NodeInstance<TType, TVersion> {}
+export interface RetrieverInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends NodeInstance<TType, TVersion, TOutput> {}
 
 /** Document loader subnode (ai_document) */
 export interface DocumentLoaderInstance<
 	TType extends string = string,
 	TVersion extends string = string,
-> extends NodeInstance<TType, TVersion> {}
+	TOutput = unknown,
+> extends NodeInstance<TType, TVersion, TOutput> {}
 
 /** Text splitter subnode (ai_textSplitter) */
 export interface TextSplitterInstance<
 	TType extends string = string,
 	TVersion extends string = string,
-> extends NodeInstance<TType, TVersion> {}
+	TOutput = unknown,
+> extends NodeInstance<TType, TVersion, TOutput> {}
 
 // =============================================================================
 // Node Configuration
@@ -186,7 +203,7 @@ export interface TextSplitterInstance<
  * Configuration for creating a node.
  * Only 'parameters' is typically needed - other options are for advanced use.
  */
-export interface NodeConfig<TParams = IDataObject> {
+export interface NodeConfig<TParams = IDataObject, TOutput = IDataObject> {
 	/** Node-specific parameters - the main configuration */
 	parameters?: TParams;
 	/** Credentials keyed by type. Use newCredential() for new ones. */
@@ -209,8 +226,8 @@ export interface NodeConfig<TParams = IDataObject> {
 	alwaysOutputData?: boolean;
 	/** Error handling behavior */
 	onError?: OnError;
-	/** Pinned output data for testing */
-	pinData?: IDataObject[];
+	/** Pinned output data for testing - typed based on node's TOutput */
+	pinData?: TOutput[];
 	/** Subnodes for AI nodes (model, memory, tools, etc.) */
 	subnodes?: SubnodeConfig;
 }
@@ -239,13 +256,19 @@ export interface StickyNoteConfig {
  * A configured node instance.
  * Chain nodes together using .then() to connect them.
  */
-export interface NodeInstance<TType extends string = string, TVersion extends string = string> {
+export interface NodeInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> {
 	/** Node type (e.g., 'n8n-nodes-base.httpRequest') */
 	readonly type: TType;
 	/** Node version */
 	readonly version: TVersion;
 	/** Node name */
 	readonly name: string;
+	/** Marker property for output type inference */
+	readonly _outputType?: TOutput;
 
 	/**
 	 * Connect this node to another node.
@@ -256,10 +279,10 @@ export interface NodeInstance<TType extends string = string, TVersion extends st
 	 *   .then(node({ ... }))  // Connect trigger to first node
 	 *   .then(node({ ... })); // Connect first node to second
 	 */
-	then<T extends NodeInstance<string, string>>(
+	then<T extends NodeInstance<string, string, unknown>>(
 		target: T,
 		outputIndex?: number,
-	): NodeChain<NodeInstance<TType, TVersion>, T>;
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
 
 	/**
 	 * Connect this node's error output to an error handler.
@@ -271,15 +294,18 @@ export interface NodeInstance<TType extends string = string, TVersion extends st
 	 *   config: { onError: 'continueErrorOutput' }
 	 * }).onError(errorHandlerNode);
 	 */
-	onError<T extends NodeInstance<string, string>>(handler: T): this;
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this;
 }
 
 /**
  * A trigger node instance.
  * Every workflow needs at least one trigger.
  */
-export interface TriggerInstance<TType extends string = string, TVersion extends string = string>
-	extends NodeInstance<TType, TVersion> {
+export interface TriggerInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends NodeInstance<TType, TVersion, TOutput> {
 	readonly isTrigger: true;
 }
 
@@ -289,9 +315,9 @@ export interface TriggerInstance<TType extends string = string, TVersion extends
  * Can be added to a workflow with .add().
  */
 export interface NodeChain<
-	THead extends NodeInstance<string, string> = NodeInstance,
-	TTail extends NodeInstance<string, string> = NodeInstance,
-> extends NodeInstance<TTail['type'], TTail['version']> {
+	THead extends NodeInstance<string, string, unknown> = NodeInstance,
+	TTail extends NodeInstance<string, string, unknown> = NodeInstance,
+> extends NodeInstance<TTail['type'], TTail['version'], unknown> {
 	/** The first node in the chain */
 	readonly head: THead;
 	/** The last node in the chain */
@@ -300,7 +326,7 @@ export interface NodeChain<
 	/**
 	 * Continue the chain by connecting to another node.
 	 */
-	then<T extends NodeInstance<string, string>>(
+	then<T extends NodeInstance<string, string, unknown>>(
 		target: T,
 		outputIndex?: number,
 	): NodeChain<THead, T>;
@@ -334,7 +360,7 @@ export interface MergeConfig {
  * Created by merge([branch1, branch2, ...]).
  */
 export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
-	readonly mergeNode: NodeInstance<'n8n-nodes-base.merge', string>;
+	readonly mergeNode: NodeInstance<'n8n-nodes-base.merge', string, unknown>;
 	readonly branches: TBranches;
 	readonly mode: MergeMode;
 }
@@ -352,9 +378,9 @@ export interface IfBranchConfig extends NodeConfig {
  * Created by ifBranch([trueNode, falseNode], config).
  */
 export interface IfBranchComposite {
-	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string>;
-	readonly trueBranch: NodeInstance<string, string>;
-	readonly falseBranch: NodeInstance<string, string>;
+	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
+	readonly trueBranch: NodeInstance<string, string, unknown>;
+	readonly falseBranch: NodeInstance<string, string, unknown>;
 }
 
 /**
@@ -370,8 +396,8 @@ export interface SwitchCaseConfig extends NodeConfig {
  * Created by switchCase([case0, case1, case2, fallback], config).
  */
 export interface SwitchCaseComposite {
-	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string>;
-	readonly cases: NodeInstance<string, string>[];
+	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+	readonly cases: NodeInstance<string, string, unknown>[];
 }
 
 // =============================================================================
@@ -397,7 +423,7 @@ export interface SplitInBatchesConfig extends NodeConfig {
  */
 export interface SplitInBatchesBuilder {
 	/** The split in batches node instance */
-	readonly sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string>;
+	readonly sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
 	/** Chain from output 0 (all items processed) */
 	done(): SplitInBatchesDoneChain;
 	/** Chain from output 1 (current batch) */
@@ -405,12 +431,12 @@ export interface SplitInBatchesBuilder {
 }
 
 export interface SplitInBatchesDoneChain {
-	then<N extends NodeInstance<string, string>>(node: N): SplitInBatchesDoneChain;
+	then<N extends NodeInstance<string, string, unknown>>(node: N): SplitInBatchesDoneChain;
 	each(): SplitInBatchesEachChain;
 }
 
 export interface SplitInBatchesEachChain {
-	then<N extends NodeInstance<string, string>>(node: N): SplitInBatchesEachChain;
+	then<N extends NodeInstance<string, string, unknown>>(node: N): SplitInBatchesEachChain;
 	/** Connect back to split in batches and return the builder */
 	loop(): SplitInBatchesBuilder;
 }
@@ -437,12 +463,17 @@ export interface WorkflowBuilder {
 	 * Add a node, trigger, or chain to the workflow.
 	 * When adding a chain, all nodes and connections are preserved.
 	 */
-	add<N extends NodeInstance | TriggerInstance | NodeChain>(node: N): WorkflowBuilder;
+	add<
+		N extends
+			| NodeInstance<string, string, unknown>
+			| TriggerInstance<string, string, unknown>
+			| NodeChain,
+	>(node: N): WorkflowBuilder;
 
 	/**
 	 * Chain a node after the last added node.
 	 */
-	then<N extends NodeInstance<string, string>>(node: N): WorkflowBuilder;
+	then<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
 
 	/**
 	 * Chain a merge composite (parallel branches merging)
@@ -531,7 +562,7 @@ export type WorkflowFn = (id: string, name: string, settings?: WorkflowSettings)
  */
 export type NodeFn = <TNode extends NodeInput>(
 	input: TNode,
-) => NodeInstance<TNode['type'], `${TNode['version']}`>;
+) => NodeInstance<TNode['type'], `${TNode['version']}`, unknown>;
 
 /**
  * trigger(input) - Creates a trigger node instance
@@ -545,7 +576,7 @@ export type NodeFn = <TNode extends NodeInput>(
  */
 export type TriggerFn = <TTrigger extends TriggerInput>(
 	input: TTrigger,
-) => TriggerInstance<TTrigger['type'], `${TTrigger['version']}`>;
+) => TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown>;
 
 /**
  * sticky(content, config?) - Creates a sticky note
@@ -559,7 +590,7 @@ export type TriggerFn = <TTrigger extends TriggerInput>(
 export type StickyFn = (
 	content: string,
 	config?: StickyNoteConfig,
-) => NodeInstance<'n8n-nodes-base.stickyNote', 'v1'>;
+) => NodeInstance<'n8n-nodes-base.stickyNote', 'v1', unknown>;
 
 /**
  * placeholder(hint) - Creates a placeholder for user input
@@ -695,47 +726,65 @@ export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatches
  *   }
  * });
  */
-export type LanguageModelFn = <T extends NodeInput>(input: T) => LanguageModelInstance;
+export type LanguageModelFn = <T extends NodeInput>(
+	input: T,
+) => LanguageModelInstance<T['type'], `${T['version']}`, unknown>;
 
 /**
  * memory(input) - Creates a memory subnode
  */
-export type MemoryFn = <T extends NodeInput>(input: T) => MemoryInstance;
+export type MemoryFn = <T extends NodeInput>(
+	input: T,
+) => MemoryInstance<T['type'], `${T['version']}`, unknown>;
 
 /**
  * tool(input) - Creates a tool subnode
  */
-export type ToolFn = <T extends NodeInput>(input: T) => ToolInstance;
+export type ToolFn = <T extends NodeInput>(
+	input: T,
+) => ToolInstance<T['type'], `${T['version']}`, unknown>;
 
 /**
  * outputParser(input) - Creates an output parser subnode
  */
-export type OutputParserFn = <T extends NodeInput>(input: T) => OutputParserInstance;
+export type OutputParserFn = <T extends NodeInput>(
+	input: T,
+) => OutputParserInstance<T['type'], `${T['version']}`, unknown>;
 
 /**
  * embedding(input) - Creates an embedding subnode
  */
-export type EmbeddingFn = <T extends NodeInput>(input: T) => EmbeddingInstance;
+export type EmbeddingFn = <T extends NodeInput>(
+	input: T,
+) => EmbeddingInstance<T['type'], `${T['version']}`, unknown>;
 
 /**
  * vectorStore(input) - Creates a vector store subnode
  */
-export type VectorStoreFn = <T extends NodeInput>(input: T) => VectorStoreInstance;
+export type VectorStoreFn = <T extends NodeInput>(
+	input: T,
+) => VectorStoreInstance<T['type'], `${T['version']}`, unknown>;
 
 /**
  * retriever(input) - Creates a retriever subnode
  */
-export type RetrieverFn = <T extends NodeInput>(input: T) => RetrieverInstance;
+export type RetrieverFn = <T extends NodeInput>(
+	input: T,
+) => RetrieverInstance<T['type'], `${T['version']}`, unknown>;
 
 /**
  * documentLoader(input) - Creates a document loader subnode
  */
-export type DocumentLoaderFn = <T extends NodeInput>(input: T) => DocumentLoaderInstance;
+export type DocumentLoaderFn = <T extends NodeInput>(
+	input: T,
+) => DocumentLoaderInstance<T['type'], `${T['version']}`, unknown>;
 
 /**
  * textSplitter(input) - Creates a text splitter subnode
  */
-export type TextSplitterFn = <T extends NodeInput>(input: T) => TextSplitterInstance;
+export type TextSplitterFn = <T extends NodeInput>(
+	input: T,
+) => TextSplitterInstance<T['type'], `${T['version']}`, unknown>;
 
 // =============================================================================
 // Code Node Helpers (for n8n-nodes-base.code)
@@ -743,14 +792,16 @@ export type TextSplitterFn = <T extends NodeInput>(input: T) => TextSplitterInst
 
 /**
  * Context for runOnceForAllItems - access to all input items
+ * TInput allows typing based on upstream node's output type
  */
-export interface AllItemsContext {
+export interface AllItemsContext<TInput = IDataObject> {
 	$input: {
-		all(): IDataObject[];
-		first(): IDataObject;
-		last(): IDataObject;
-		itemMatching(index: number): IDataObject;
+		all(): TInput[];
+		first(): TInput;
+		last(): TInput;
+		itemMatching(index: number): TInput;
 	};
+	$json: TInput;
 	$env: IDataObject;
 	$vars: IDataObject;
 	$secrets: IDataObject;
@@ -759,16 +810,22 @@ export interface AllItemsContext {
 	$runIndex: number;
 	$execution: { id: string; mode: 'test' | 'production' };
 	$workflow: { id?: string; name?: string; active: boolean };
-	/** Access output of a specific node by name */
+	/**
+	 * Access output of a specific node by name.
+	 * Returns the node's output data with shape defined by its Output type.
+	 * Example: $('Fetch User').json.email
+	 */
 	(nodeName: string): { json: IDataObject };
 	$jmespath: (data: unknown, expr: string) => unknown;
 }
 
 /**
  * Context for runOnceForEachItem - access to current item
+ * TInput allows typing based on upstream node's output type
  */
-export interface EachItemContext {
-	$input: { item: IDataObject };
+export interface EachItemContext<TInput = IDataObject> {
+	$input: { item: TInput };
+	$json: TInput;
 	$itemIndex: number;
 	$env: IDataObject;
 	$vars: IDataObject;
@@ -778,7 +835,11 @@ export interface EachItemContext {
 	$runIndex: number;
 	$execution: { id: string; mode: 'test' | 'production' };
 	$workflow: { id?: string; name?: string; active: boolean };
-	/** Access output of a specific node by name */
+	/**
+	 * Access output of a specific node by name.
+	 * Returns the node's output data with shape defined by its Output type.
+	 * Example: $('Fetch User').json.email
+	 */
 	(nodeName: string): { json: IDataObject };
 	$jmespath: (data: unknown, expr: string) => unknown;
 }
@@ -825,15 +886,115 @@ export type RunOnceForEachItemFn = <T = unknown>(
 ) => { mode: 'runOnceForEachItem'; jsCode: string };
 
 // =============================================================================
+// Node Output Types and Expressions
+// =============================================================================
+
+/**
+ * ## Understanding Node Output Types
+ *
+ * Every node produces output data with a specific shape. The generated types
+ * include Output types that describe exactly what fields are available.
+ *
+ * ### Output Type Naming Convention
+ *
+ * Output types follow this pattern: `{Node}V{Version}{Resource}{Operation}Output`
+ *
+ * Examples:
+ * - `AsanaV1TaskGetOutput` - Asana node v1, task resource, get operation
+ * - `SlackV24MessagePostOutput` - Slack node v2.4, message resource, post operation
+ * - `GithubV1IssueCreateOutput` - GitHub node v1, issue resource, create operation
+ *
+ * ### Using Output Types in Expressions
+ *
+ * **$json** - Access the previous node's output directly:
+ * ```typescript
+ * // After Asana "Get Task" node (see AsanaV1TaskGetOutput for available fields):
+ * taskId: '={{ $json.gid }}'
+ * taskName: '={{ $json.name }}'
+ * assigneeName: '={{ $json.assignee?.name }}'
+ * isCompleted: '={{ $json.completed }}'
+ * ```
+ *
+ * **$('NodeName')** - Reference any upstream node by its name:
+ * ```typescript
+ * // Reference "Get Task" node from anywhere downstream:
+ * taskId: "={{ $('Get Task').item.json.gid }}"
+ * taskName: "={{ $('Get Task').item.json.name }}"
+ * ```
+ *
+ * ### Example: AsanaV1TaskGetOutput
+ *
+ * When using Asana node with resource='task', operation='get', the output has:
+ * ```typescript
+ * {
+ *   gid?: string;              // $json.gid - Task ID
+ *   name?: string;             // $json.name - Task name
+ *   notes?: string;            // $json.notes - Task description
+ *   completed?: boolean;       // $json.completed - Completion status
+ *   assignee?: {               // $json.assignee - Assigned user
+ *     gid?: string;            // $json.assignee.gid
+ *     name?: string;           // $json.assignee.name
+ *   };
+ *   permalink_url?: string;    // $json.permalink_url - Link to task
+ *   workspace?: {              // $json.workspace - Workspace info
+ *     gid?: string;
+ *     name?: string;
+ *   };
+ *   // ... more fields in the full type
+ * }
+ * ```
+ *
+ * ### How to Find Output Types
+ *
+ * 1. Call get_nodes(["n8n-nodes-base.asana"]) to see all operations
+ * 2. Look for the Output type section in the response
+ * 3. The type name tells you the exact fields: AsanaV1TaskGetOutput
+ * 4. Use those field names in $json expressions
+ *
+ * ### Common Output Patterns
+ *
+ * **HTTP Request**: Returns response body - shape depends on the API called
+ * **Triggers**: Webhook triggers have $json.body, $json.headers, $json.query
+ * **Service nodes**: Output depends on resource/operation (check *Output types)
+ *
+ * ### Pin Data for Testing
+ *
+ * Output types define the shape for pinData. Use them to create test data:
+ * ```typescript
+ * config: {
+ *   pinData: [{ gid: '123', name: 'Test Task', completed: false }]
+ * }
+ * ```
+ */
+
+// =============================================================================
 // Expression Helper
 // =============================================================================
 
 /**
  * Context available in n8n expressions (inside {{ }})
+ *
+ * IMPORTANT: The shape of `json` depends on which node ran before.
+ * Check the Output types from get_nodes to know what fields are available.
+ *
+ * Example: After Asana "Get Task", json contains { gid, name, assignee, ... }
+ * Example: After HTTP Request, json contains the API response body
+ *
+ * TJson allows typing based on upstream node's output type
  */
-export interface ExpressionContext {
-	/** Current item's JSON data */
-	json: IDataObject;
+export interface ExpressionContext<TJson = IDataObject> {
+	/**
+	 * Current item's JSON data from the previous node.
+	 *
+	 * IMPORTANT: The actual fields depend on the previous node's Output type.
+	 * Look up the *Output type (e.g., AsanaV1TaskGetOutput) to see available fields.
+	 *
+	 * Example - after Asana "Get Task" node, $json has AsanaV1TaskGetOutput shape:
+	 *   $json.gid, $json.name, $json.assignee?.name, $json.completed, etc.
+	 *
+	 * Example - after HTTP Request node, $json has the API response body shape.
+	 */
+	json: TJson;
 	/** Current item's binary data */
 	binary: {
 		[fieldName: string]: {
@@ -843,8 +1004,8 @@ export interface ExpressionContext {
 			fileSize?: string;
 		};
 	};
-	/** Input data access */
-	input: { first(): IDataObject; all(): IDataObject[]; item: IDataObject };
+	/** Input data access - typed based on upstream node's output */
+	input: { first(): TJson; all(): TJson[]; item: TJson };
 	/** Environment variables */
 	env: IDataObject;
 	/** Workflow variables */
