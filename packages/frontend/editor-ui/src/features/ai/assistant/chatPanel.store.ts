@@ -6,11 +6,7 @@ import { useRoute } from 'vue-router';
 import { ASK_AI_SLIDE_OUT_DURATION_MS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import type { VIEWS } from '@/app/constants';
 import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
-import {
-	useChatPanelStateStore,
-	type ChatPanelMode,
-	type ChatPanelOpenSource,
-} from './chatPanelState.store';
+import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.store';
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -49,14 +45,14 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	);
 
 	// Actions
-	async function open(options?: { mode?: ChatPanelMode; source?: ChatPanelOpenSource }) {
+	function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
 		const mode = options?.mode;
-		const source = options?.source ?? 'ask_button';
+		const showCoachmark = options?.showCoachmark ?? true;
 
 		if (mode) {
 			chatPanelStateStore.activeMode = mode;
 		}
-		chatPanelStateStore.openSource = source;
+		chatPanelStateStore.showCoachmark = showCoachmark;
 
 		// Check if the mode is enabled in the current view
 		const enabledViews =
@@ -95,7 +91,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 	function close() {
 		chatPanelStateStore.isOpen = false;
-		chatPanelStateStore.openSource = null;
+		chatPanelStateStore.showCoachmark = false;
 		// Wait for slide animation to finish before updating grid width and resetting
 		setTimeout(() => {
 			uiStore.appGridDimensions = {
@@ -116,7 +112,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		if (chatPanelStateStore.isOpen) {
 			close();
 		} else {
-			await open(options);
+			open(options);
 		}
 	}
 
@@ -133,6 +129,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 		// Switch the mode without re-initialization
 		chatPanelStateStore.activeMode = mode;
+		chatPanelStateStore.showCoachmark = false;
 	}
 
 	function updateWidth(newWidth: number) {
@@ -152,7 +149,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	async function openWithCredHelp(credentialType: ICredentialType) {
 		const assistantStore = useAssistantStore();
 		await assistantStore.initCredHelp(credentialType);
-		await open({ mode: 'assistant', source: 'helper' });
+		open({ mode: 'assistant' });
 	}
 
 	/**
@@ -161,7 +158,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	async function openWithErrorHelper(context: ChatRequest.ErrorContext) {
 		const assistantStore = useAssistantStore();
 		await assistantStore.initErrorHelper(context);
-		await open({ mode: 'assistant', source: 'helper' });
+		open({ mode: 'assistant' });
 	}
 
 	// Watch route changes and close if panel can't be shown in current view
@@ -180,7 +177,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 				builderStore.streaming &&
 				isEnabledView(newRoute, BUILDER_ENABLED_VIEWS)
 			) {
-				void open({ mode: 'builder' });
+				open({ mode: 'builder' });
 				return;
 			}
 
@@ -206,7 +203,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		isOpen: computed(() => chatPanelStateStore.isOpen),
 		width: computed(() => chatPanelStateStore.width),
 		activeMode: computed(() => chatPanelStateStore.activeMode),
-		openSource: computed(() => chatPanelStateStore.openSource),
+		showCoachmark: computed(() => chatPanelStateStore.showCoachmark),
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,

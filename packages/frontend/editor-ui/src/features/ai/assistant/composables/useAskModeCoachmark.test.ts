@@ -63,7 +63,7 @@ describe('useAskModeCoachmark', () => {
 		it('should return true when all conditions are met', () => {
 			chatPanelStateStore.isOpen = true;
 			chatPanelStateStore.activeMode = 'assistant';
-			chatPanelStateStore.openSource = 'ask_button';
+			chatPanelStateStore.showCoachmark = true;
 
 			const { shouldShowCoachmark } = useAskModeCoachmark();
 
@@ -73,7 +73,7 @@ describe('useAskModeCoachmark', () => {
 		it('should return false when panel is closed', () => {
 			chatPanelStateStore.isOpen = false;
 			chatPanelStateStore.activeMode = 'assistant';
-			chatPanelStateStore.openSource = 'ask_button';
+			chatPanelStateStore.showCoachmark = true;
 
 			const { shouldShowCoachmark } = useAskModeCoachmark();
 
@@ -83,17 +83,17 @@ describe('useAskModeCoachmark', () => {
 		it('should return false when in Build mode', () => {
 			chatPanelStateStore.isOpen = true;
 			chatPanelStateStore.activeMode = 'builder';
-			chatPanelStateStore.openSource = 'ask_button';
+			chatPanelStateStore.showCoachmark = true;
 
 			const { shouldShowCoachmark } = useAskModeCoachmark();
 
 			expect(shouldShowCoachmark.value).toBe(false);
 		});
 
-		it('should return false when opened via helper', () => {
+		it('should return false when showCoachmark is false (e.g. via switcher)', () => {
 			chatPanelStateStore.isOpen = true;
 			chatPanelStateStore.activeMode = 'assistant';
-			chatPanelStateStore.openSource = 'helper';
+			chatPanelStateStore.showCoachmark = false;
 
 			const { shouldShowCoachmark } = useAskModeCoachmark();
 
@@ -103,7 +103,7 @@ describe('useAskModeCoachmark', () => {
 		it('should return false when coachmark was already dismissed', () => {
 			chatPanelStateStore.isOpen = true;
 			chatPanelStateStore.activeMode = 'assistant';
-			chatPanelStateStore.openSource = 'ask_button';
+			chatPanelStateStore.showCoachmark = true;
 			mockIsCalloutDismissed.mockReturnValue(true);
 
 			const { shouldShowCoachmark } = useAskModeCoachmark();
@@ -115,7 +115,7 @@ describe('useAskModeCoachmark', () => {
 		it('should return false when toggle modes not available', () => {
 			chatPanelStateStore.isOpen = true;
 			chatPanelStateStore.activeMode = 'assistant';
-			chatPanelStateStore.openSource = 'ask_button';
+			chatPanelStateStore.showCoachmark = true;
 			builderStore.isAIBuilderEnabled = false;
 
 			const { shouldShowCoachmark } = useAskModeCoachmark();

@@ -3,7 +3,6 @@ import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 
 export type ChatPanelMode = 'assistant' | 'builder';
-export type ChatPanelOpenSource = 'ask_button' | 'helper' | null;
 
 export const DEFAULT_CHAT_WIDTH = 400;
 
@@ -16,12 +15,12 @@ export const useChatPanelStateStore = defineStore(STORES.CHAT_PANEL_STATE, () =>
 	const isOpen = ref(false);
 	const width = ref(DEFAULT_CHAT_WIDTH);
 	const activeMode = ref<ChatPanelMode>('builder');
-	const openSource = ref<ChatPanelOpenSource>(null);
+	const showCoachmark = ref(false);
 
 	return {
 		isOpen,
 		width,
 		activeMode,
-		openSource,
+		showCoachmark,
 	};
 });

@@ -242,6 +242,14 @@ describe('chatPanel.store', () => {
 			expect(chatPanelStore.isBuilderModeActive).toBe(false);
 		});
 
+		it('should set showCoachmark to false when switching modes', () => {
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
+
+			chatPanelStore.switchMode('assistant');
+
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
+		});
+
 		it('should switch from assistant to builder mode', () => {
 			chatPanelStateStore.activeMode = 'assistant';
 
@@ -341,66 +349,39 @@ describe('chatPanel.store', () => {
 		});
 	});
 
-	describe('openSource tracking', () => {
-		it('should set openSource to ask_button by default when opening', async () => {
+	describe('showCoachmark tracking', () => {
+		it('should set showCoachmark to true by default when opening', async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
 			await chatPanelStore.open({ mode: 'builder' });
 
-			expect(chatPanelStateStore.openSource).toBe('ask_button');
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
 		});
 
-		it('should set openSource to helper when opening with credential help', async () => {
-			mockRoute.name = ASSISTANT_ENABLED_VIEWS[0];
-			const credType = {
-				name: 'googleSheetsOAuth2Api',
-				displayName: 'Google Sheets OAuth2 API',
-				properties: [],
-			};
+		it('should allow overriding showCoachmark when opening', async () => {
+			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
-			await chatPanelStore.openWithCredHelp(credType);
+			await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
 
-			expect(chatPanelStateStore.openSource).toBe('helper');
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
 		});
 
-		it('should set openSource to helper when opening with error helper', async () => {
-			mockRoute.name = ASSISTANT_ENABLED_VIEWS[0];
-			const errorContext: ChatRequest.ErrorContext = {
-				error: {
-					name: 'TestError',
-					message: 'test error',
-				},
-				node: {
-					id: 'node-1',
-					name: 'Test Node',
-					type: 'n8n-nodes-base.test',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-			};
-
-			await chatPanelStore.openWithErrorHelper(errorContext);
-
-			expect(chatPanelStateStore.openSource).toBe('helper');
-		});
-
-		it('should clear openSource when closing', async () => {
+		it('should set showCoachmark to false when closing', async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 			await chatPanelStore.open({ mode: 'builder' });
-			expect(chatPanelStateStore.openSource).toBe('ask_button');
+			expect(chatPanelStateStore.showCoachmark).toBe(true);
 
 			chatPanelStore.close();
 
-			expect(chatPanelStateStore.openSource).toBe(null);
+			expect(chatPanelStateStore.showCoachmark).toBe(false);
 		});
 
-		it('should expose openSource as computed property', async () => {
+		it('should expose showCoachmark as computed property', async () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
 			await chatPanelStore.open({ mode: 'builder' });
 
-			expect(chatPanelStore.openSource).toBe('ask_button');
+			expect(chatPanelStore.showCoachmark).toBe(true);
 		});
 	});
 

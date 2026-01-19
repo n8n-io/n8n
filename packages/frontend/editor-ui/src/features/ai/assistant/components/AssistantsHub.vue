@@ -54,9 +54,9 @@ async function toggleAssistantMode() {
 	} else {
 		// Opening from closed state - use full open logic
 		if (switchingToBuild) {
-			await chatPanelStore.open({ mode: 'builder' });
+			chatPanelStore.open({ mode: 'builder' });
 		} else {
-			await chatPanelStore.open({ mode: 'assistant' });
+			chatPanelStore.open({ mode: 'assistant' });
 		}
 	}
 }

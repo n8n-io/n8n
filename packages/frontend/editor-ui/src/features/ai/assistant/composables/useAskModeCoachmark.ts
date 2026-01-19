@@ -32,14 +32,14 @@ export function useAskModeCoachmark() {
 
 	// Show coachmark when:
 	// - Panel is open in Ask mode
-	// - Not opened via error/credential helpers
+	// - showCoachmark flag is true (false when switching via switcher)
 	// - User hasn't dismissed it yet
 	// - Toggle is visible (both modes available)
 	const shouldShowCoachmark = computed(() => {
 		return Boolean(
 			chatPanelStore.isOpen &&
 				!isBuildMode.value &&
-				chatPanelStore.openSource !== 'helper' &&
+				chatPanelStore.showCoachmark &&
 				canToggleModes.value &&
 				!isCalloutDismissed(ASK_MODE_COACHMARK_KEY),
 		);
