@@ -78,6 +78,26 @@ export class SourceControlService {
 		await this.refreshServiceState();
 	}
 
+	/**
+	 * Detects SSH host key verification errors.
+	 * Note: simple-git doesn't provide structured error codes for SSH failures,
+	 * so we must match against standardized SSH error message strings.
+	 * These messages are stable across OpenSSH implementations.
+	 *
+	 * @see https://github.com/openssh/openssh-portable/blob/master/sshconnect.c
+	 * - "Host key verification failed" - returned when host key check fails
+	 * - "REMOTE HOST IDENTIFICATION HAS CHANGED" - from warn_changed_key()
+	 * - "Offending key" - shown alongside changed host warnings
+	 */
+	private isHostKeyVerificationError(error: Error): boolean {
+		const message = error.message.toLowerCase();
+		return (
+			message.includes('host key verification failed') ||
+			message.includes('host identification has changed') ||
+			message.includes('offending key')
+		);
+	}
+
 	private async refreshServiceState(): Promise<void> {
 		this.gitService.resetService();
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
@@ -171,6 +191,9 @@ export class SourceControlService {
 				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
 
+			// Clear known_hosts to allow fresh host key verification on reconnect
+			await this.sourceControlPreferencesService.resetKnownHosts();
+
 			this.gitService.resetService();
 
 			return this.sourceControlPreferencesService.sourceControlPreferences;
@@ -192,6 +215,11 @@ export class SourceControlService {
 			if ((error as Error).message.includes('Warning: Permanently added')) {
 				this.logger.debug('Added repository host to the list of known hosts. Retrying...');
 				getBranchesResult = await this.getBranches();
+			} else if (this.isHostKeyVerificationError(error as Error)) {
+				throw new UserError(
+					"SSH host key verification failed. The remote server's key may have changed. " +
+						'If this is expected (e.g., server migration), disconnect and reconnect from Source Control settings to reset the known hosts.',
+				);
 			} else {
 				throw error;
 			}
