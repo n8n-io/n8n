@@ -2,70 +2,24 @@
 import { computed } from 'vue';
 import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { getResourcePermissions } from '@n8n/permissions';
-import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
-import type { IUser } from 'n8n-workflow';
 
 const emit = defineEmits<{
 	'click:add': [];
 }>();
 
 const i18n = useI18n();
-const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
-const sourceControlStore = useSourceControlStore();
-const recommendedTemplatesStore = useRecommendedTemplatesStore();
 const bannersStore = useBannersStore();
 
-const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const personalProject = computed(() => projectsStore.personalProject);
-const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-
-const projectPermissions = computed(() => {
-	return getResourcePermissions(
-		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
-	);
-});
-
-const canCreateWorkflow = computed(
-	() => !readOnlyEnv.value && projectPermissions.value.workflow.create,
-);
-
-const emptyListDescription = computed(() => {
-	if (readOnlyEnv.value) {
-		return i18n.baseText('workflows.empty.description.readOnlyEnv');
-	} else if (!projectPermissions.value.workflow.create) {
-		return i18n.baseText('workflows.empty.description.noPermission');
-	} else {
-		return i18n.baseText('workflows.empty.description');
-	}
-});
-
-const showRecommendedTemplatesInline = computed(() => {
-	return (
-		recommendedTemplatesStore.isFeatureEnabled() &&
-		!readOnlyEnv.value &&
-		projectPermissions.value.workflow.create
-	);
-});
-
-const emptyStateHeading = computed(() => {
-	if (showRecommendedTemplatesInline.value) {
-		return i18n.baseText('workflows.empty.heading', {
-			interpolate: { name: currentUser.value.firstName ?? '' },
-		});
-	} else {
-		return i18n.baseText('workflows.empty.headingWithIcon', {
-			interpolate: { name: currentUser.value.firstName ?? '' },
-		});
-	}
-});
+const {
+	showRecommendedTemplatesInline,
+	emptyStateHeading,
+	emptyStateDescription,
+	canCreateWorkflow,
+} = useWorkflowsEmptyState();
 
 const addWorkflow = () => {
 	emit('click:add');
@@ -113,7 +67,7 @@ const containerStyle = computed(() => ({
 			</div>
 			<div v-else :class="$style.noTemplatesContent">
 				<N8nText tag="p" size="large" color="text-base">
-					{{ emptyListDescription }}
+					{{ emptyStateDescription }}
 				</N8nText>
 				<N8nCard
 					v-if="canCreateWorkflow && !showRecommendedTemplatesInline"

@@ -38,7 +38,7 @@ import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
-import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
+import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import type {
 	BaseFilters,
 	FolderResource,
@@ -137,11 +137,17 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
-const recommendedTemplatesStore = useRecommendedTemplatesStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
+const {
+	showRecommendedTemplatesInline,
+	emptyStateHeading: emptyListHeading,
+	emptyStateDescription: emptyListDescription,
+	readOnlyEnv,
+	projectPermissions,
+} = useWorkflowsEmptyState();
 
 // We render component in a loading state until initialization is done
 // This will prevent any additional workflow fetches while initializing
@@ -229,8 +235,6 @@ const mainBreadcrumbsActions = computed(
 		),
 );
 
-const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const isShareable = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
@@ -370,21 +374,6 @@ const statusFilterOptions = computed(() => [
 	},
 ]);
 
-const projectPermissions = computed(() => {
-	return getResourcePermissions(
-		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
-	);
-});
-
-const showRecommendedTemplatesInline = computed(() => {
-	return (
-		recommendedTemplatesStore.isFeatureEnabled() &&
-		!readOnlyEnv.value &&
-		projectPermissions.value.workflow.create &&
-		workflowsAndFolders.value.length === 0
-	);
-});
-
 const showReadyToRunWorkflowsCallout = computed(() => {
 	const isEnabled = readyToRunWorkflowsStore.isFeatureEnabled;
 	const isDismissed = readyToRunWorkflowsStore.isCalloutDismissed;
@@ -397,36 +386,6 @@ const showReadyToRunWorkflowsCallout = computed(() => {
 		(projectPages.isOverviewSubPage ||
 			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
 	);
-});
-
-const emptyListDescription = computed(() => {
-	if (readOnlyEnv.value) {
-		return i18n.baseText('workflows.empty.description.readOnlyEnv');
-	} else if (!projectPermissions.value.workflow.create) {
-		return i18n.baseText('workflows.empty.description.noPermission');
-	} else {
-		return i18n.baseText('workflows.empty.description');
-	}
-});
-
-const emptyListHeading = computed(() => {
-	const firstName = currentUser.value.firstName;
-
-	if (showRecommendedTemplatesInline.value) {
-		if (firstName) {
-			return i18n.baseText('workflows.empty.heading', {
-				interpolate: { name: firstName },
-			});
-		}
-		return i18n.baseText('workflows.empty.heading.userNotSetup');
-	} else {
-		if (firstName) {
-			return i18n.baseText('workflows.empty.headingWithIcon', {
-				interpolate: { name: firstName },
-			});
-		}
-		return i18n.baseText('workflows.empty.headingWithIcon.userNotSetup');
-	}
 });
 
 const hasFilters = computed(() => {
