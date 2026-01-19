@@ -1,5 +1,6 @@
 import { renderComponent } from '@/__tests__/render';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { mockedStore } from '@/__tests__/utils';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
@@ -53,6 +54,18 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 	}),
 }));
 
+// Use a mutable reference so the mock always returns the current workflowState
+const workflowStateRef: { current: WorkflowState | undefined } = { current: undefined };
+
+vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/composables/useNodeHelpers')>();
+	return {
+		...actual,
+		useNodeHelpers: (opts = {}) =>
+			actual.useNodeHelpers({ ...opts, workflowState: workflowStateRef.current }),
+	};
+});
+
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
 
@@ -98,6 +111,7 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowState = useWorkflowState();
+		workflowStateRef.current = workflowState;
 		workflowState.setWorkflowExecutionData(null);
 
 		logsStore = mockedStore(useLogsStore);
@@ -126,8 +140,9 @@ describe('LogsPanel', () => {
 		aiChatExecutionResponse = deepCopy(aiChatExecutionResponseTemplate);
 	});
 
-	afterEach(() => {
-		vi.clearAllMocks();
+	afterEach(async () => {
+		await flushPromises();
+		await vi.runOnlyPendingTimersAsync();
 	});
 
 	it('should render collapsed panel by default', async () => {
