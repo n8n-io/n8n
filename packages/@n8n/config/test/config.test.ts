@@ -101,7 +101,6 @@ describe('GlobalConfig', () => {
 			},
 			tablePrefix: '',
 			type: 'sqlite',
-			isLegacySqlite: false,
 			pingIntervalSeconds: 2,
 		} as DatabaseConfig,
 		credentials: {
@@ -138,6 +137,7 @@ describe('GlobalConfig', () => {
 					'user-invited': '',
 					'password-reset-requested': '',
 					'workflow-deactivated': '',
+					'workflow-failure': '',
 					'workflow-shared': '',
 					'project-shared': '',
 				},
@@ -416,7 +416,9 @@ describe('GlobalConfig', () => {
 			batchSize: 100,
 			compactingMinimumAgeHours: 3,
 			compactingTimeWindowHours: 2,
-			compactOnStartUp: false,
+			trimmingMinimumAgeDays: 7,
+			trimmingTimeWindowDays: 2,
+			trimOnStartUp: false,
 			minimumTimeBetweenSessionsMs: 20 * 60 * 1000,
 		},
 	};
