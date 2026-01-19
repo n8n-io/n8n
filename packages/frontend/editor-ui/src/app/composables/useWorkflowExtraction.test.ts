@@ -6,7 +6,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
-import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type { IConnections } from 'n8n-workflow';
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
@@ -118,8 +118,8 @@ describe('useWorkflowExtraction', () => {
 			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve({} as any));
 
 			// Mock node type descriptions
-			vi.spyOn(nodeTypesStore, 'getNodeType').mockReturnValue({
-				name: 'n8n-nodes-base.code',
+			nodeTypesStore.getNodeType = vi.fn((type: string) => ({
+				name: type,
 				version: 1,
 				group: [],
 				inputs: ['main'],
@@ -128,7 +128,7 @@ describe('useWorkflowExtraction', () => {
 				description: 'Run custom code',
 				defaults: {},
 				properties: [],
-			} as unknown as INodeTypeDescription);
+			}));
 
 			const { tryExtractNodesIntoSubworkflow } = useWorkflowExtraction();
 
@@ -197,8 +197,8 @@ describe('useWorkflowExtraction', () => {
 			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve({} as any));
 
 			// Mock node type descriptions
-			vi.spyOn(nodeTypesStore, 'getNodeType').mockReturnValue({
-				name: 'n8n-nodes-base.code',
+			nodeTypesStore.getNodeType = vi.fn((type: string) => ({
+				name: type,
 				version: 1,
 				group: [],
 				inputs: ['main'],
@@ -207,7 +207,7 @@ describe('useWorkflowExtraction', () => {
 				description: 'Run custom code',
 				defaults: {},
 				properties: [],
-			} as unknown as INodeTypeDescription);
+			}));
 
 			const { tryExtractNodesIntoSubworkflow } = useWorkflowExtraction();
 			const result = tryExtractNodesIntoSubworkflow(['node-1', 'node-2']);
@@ -284,8 +284,8 @@ describe('useWorkflowExtraction', () => {
 
 			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve({} as any));
 
-			vi.spyOn(nodeTypesStore, 'getNodeType').mockReturnValue({
-				name: 'n8n-nodes-base.code',
+			nodeTypesStore.getNodeType = vi.fn((type: string) => ({
+				name: type,
 				version: 1,
 				group: [],
 				inputs: ['main'],
@@ -294,7 +294,7 @@ describe('useWorkflowExtraction', () => {
 				description: 'Run custom code',
 				defaults: {},
 				properties: [],
-			} as unknown as INodeTypeDescription);
+			}));
 
 			const { tryExtractNodesIntoSubworkflow } = useWorkflowExtraction();
 			tryExtractNodesIntoSubworkflow(['node-1', 'node-2', 'node-3']);
