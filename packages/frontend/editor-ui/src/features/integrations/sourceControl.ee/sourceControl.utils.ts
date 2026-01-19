@@ -155,10 +155,20 @@ const pullMessage = ({
 		(folders?.length ?? 0) +
 		(project?.length ?? 0);
 
+	// Plural-only resources (variables, tags, folders, projects) always use plural labels.
+	// Force plural verb when any of these are present, even if totalCount is 1.
+	const hasPluralOnlyResources = !!(
+		variables?.length ||
+		tags?.length ||
+		folders?.length ||
+		project?.length
+	);
+	const verbCount = hasPluralOnlyResources ? Math.max(totalCount, 2) : totalCount;
+
 	return [
 		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
 		i18n.baseText('settings.sourceControl.pull.success.description', {
-			adjustToNumber: totalCount,
+			adjustToNumber: verbCount,
 		}),
 	].join(' ');
 };

@@ -175,5 +175,76 @@ describe('source control utils', () => {
 				}),
 			);
 		});
+
+		it('should use plural verb when only plural-only resources are pulled', async () => {
+			const toast = { showToast: vi.fn() } as unknown as ReturnType<typeof useToast>;
+			const router = {
+				push: vi.fn(),
+				resolve: vi.fn().mockReturnValue({ href: '/test' }),
+			} as unknown as Router;
+
+			// Test with only 1 tag (plural-only resource)
+			await notifyUserAboutPullWorkFolderOutcome(
+				[
+					{
+						id: 'mappings',
+						name: 'tags',
+						type: 'tags',
+						status: 'modified',
+						location: 'remote',
+						conflict: false,
+						file: '/tags.json',
+						updatedAt: '2024-12-16T12:53:12.155Z',
+					},
+				],
+				toast,
+				router,
+			);
+
+			expect(toast.showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Tags were pulled',
+				}),
+			);
+		});
+
+		it('should use plural verb when only variables are pulled', async () => {
+			const toast = { showToast: vi.fn() } as unknown as ReturnType<typeof useToast>;
+			const router = {
+				push: vi.fn(),
+				resolve: vi.fn().mockReturnValue({ href: '/test' }),
+			} as unknown as Router;
+
+			// Test with only variables (plural-only resource)
+			await notifyUserAboutPullWorkFolderOutcome(
+				[
+					{
+						id: 'variables',
+						name: 'variables',
+						type: 'variables',
+						status: 'modified',
+						location: 'remote',
+						conflict: false,
+						file: '/variable_stubs.json',
+						updatedAt: '2025-01-09T13:12:24.588Z',
+					},
+				],
+				toast,
+				router,
+			);
+
+			expect(toast.showToast).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					title: 'Finish setting up your new variables to use in workflows',
+				}),
+			);
+			expect(toast.showToast).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					message: 'Variables were pulled',
+				}),
+			);
+		});
 	});
 });
