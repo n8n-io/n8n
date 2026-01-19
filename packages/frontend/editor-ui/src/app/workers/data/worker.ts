@@ -173,7 +173,7 @@ async function query(sql: string): Promise<QueryResult> {
 /**
  * Execute a SQL query with bound parameters
  */
-async function queryWithParams(sql: string, params: unknown[]): Promise<QueryResult> {
+async function queryWithParams(sql: string, params: unknown[] = []): Promise<QueryResult> {
 	return await queryWithParamsOp(state, sql, params);
 }
 

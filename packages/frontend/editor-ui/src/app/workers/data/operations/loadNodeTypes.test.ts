@@ -10,9 +10,25 @@ vi.mock('@n8n/rest-api-client/api/nodeTypes', () => ({
 	getNodeTypesByIdentifier: vi.fn(),
 }));
 
+const { execWithParamsMock, queryMock } = vi.hoisted(() => ({
+	execWithParamsMock: vi.fn(),
+	queryMock: vi.fn(),
+}));
+
 vi.mock('./query', () => ({
-	exec: vi.fn(),
-	query: vi.fn(),
+	execWithParams: execWithParamsMock,
+	query: queryMock,
+	withTrx: async <T>(_state: unknown, fn: () => Promise<T>): Promise<T> => {
+		await execWithParamsMock(_state, 'BEGIN TRANSACTION', []);
+		try {
+			const result = await fn();
+			await execWithParamsMock(_state, 'COMMIT', []);
+			return result;
+		} catch (error) {
+			await execWithParamsMock(_state, 'ROLLBACK', []);
+			throw error;
+		}
+	},
 }));
 
 import {
@@ -20,7 +36,7 @@ import {
 	getNodeTypeVersions,
 	getNodeTypesByIdentifier,
 } from '@n8n/rest-api-client/api/nodeTypes';
-import { exec, query } from './query';
+import { execWithParams, query } from './query';
 
 describe('Data Worker loadNodeTypes Operations', () => {
 	let consoleSpy: {
@@ -88,7 +104,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 
 				vi.mocked(query).mockResolvedValueOnce(createQueryResult([[0]]));
 				vi.mocked(getNodeTypes).mockResolvedValueOnce(mockNodeTypes);
-				vi.mocked(exec).mockResolvedValue(undefined);
+				vi.mocked(execWithParams).mockResolvedValue(undefined);
 
 				await loadNodeTypes(state, 'http://localhost:5678');
 
@@ -101,12 +117,12 @@ describe('Data Worker loadNodeTypes Operations', () => {
 
 				vi.mocked(query).mockResolvedValueOnce(createQueryResult([[0]]));
 				vi.mocked(getNodeTypes).mockResolvedValueOnce(mockNodeTypes);
-				vi.mocked(exec).mockResolvedValue(undefined);
+				vi.mocked(execWithParams).mockResolvedValue(undefined);
 
 				await loadNodeTypes(state, 'http://localhost:5678');
 
-				expect(exec).toHaveBeenCalledWith(state, 'BEGIN TRANSACTION');
-				expect(exec).toHaveBeenCalledWith(state, 'COMMIT');
+				expect(execWithParams).toHaveBeenCalledWith(state, 'BEGIN TRANSACTION', []);
+				expect(execWithParams).toHaveBeenCalledWith(state, 'COMMIT', []);
 			});
 
 			it('should rollback transaction on error during initial load', async () => {
@@ -115,7 +131,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 
 				vi.mocked(query).mockResolvedValueOnce(createQueryResult([[0]]));
 				vi.mocked(getNodeTypes).mockResolvedValueOnce(mockNodeTypes);
-				vi.mocked(exec)
+				vi.mocked(execWithParams)
 					.mockResolvedValueOnce(undefined) // BEGIN TRANSACTION
 					.mockRejectedValueOnce(new Error('Insert failed')); // INSERT
 
@@ -123,7 +139,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 					'Insert failed',
 				);
 
-				expect(exec).toHaveBeenCalledWith(state, 'ROLLBACK');
+				expect(execWithParams).toHaveBeenCalledWith(state, 'ROLLBACK', []);
 			});
 
 			it('should handle node types with array versions', async () => {
@@ -134,26 +150,29 @@ describe('Data Worker loadNodeTypes Operations', () => {
 
 				vi.mocked(query).mockResolvedValueOnce(createQueryResult([[0]]));
 				vi.mocked(getNodeTypes).mockResolvedValueOnce(mockNodeTypes);
-				vi.mocked(exec).mockResolvedValue(undefined);
+				vi.mocked(execWithParams).mockResolvedValue(undefined);
 
 				await loadNodeTypes(state, 'http://localhost:5678');
 
-				// Should insert for each version
-				expect(exec).toHaveBeenCalledWith(
+				// Should insert for each version with parameterized queries
+				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					expect.stringContaining("'n8n-nodes-base.multiVersion@1'"),
+					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
+					['n8n-nodes-base.multiVersion@1', expect.any(String), 'now'],
 				);
-				expect(exec).toHaveBeenCalledWith(
+				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					expect.stringContaining("'n8n-nodes-base.multiVersion@2'"),
+					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
+					['n8n-nodes-base.multiVersion@2', expect.any(String), 'now'],
 				);
-				expect(exec).toHaveBeenCalledWith(
+				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					expect.stringContaining("'n8n-nodes-base.multiVersion@3'"),
+					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
+					['n8n-nodes-base.multiVersion@3', expect.any(String), 'now'],
 				);
 			});
 
-			it('should escape single quotes in node type data', async () => {
+			it('should handle single quotes in node type data via parameterized queries', async () => {
 				const state = createMockState();
 				const mockNodeTypes = [
 					createMockNodeType({
@@ -165,12 +184,16 @@ describe('Data Worker loadNodeTypes Operations', () => {
 
 				vi.mocked(query).mockResolvedValueOnce(createQueryResult([[0]]));
 				vi.mocked(getNodeTypes).mockResolvedValueOnce(mockNodeTypes);
-				vi.mocked(exec).mockResolvedValue(undefined);
+				vi.mocked(execWithParams).mockResolvedValue(undefined);
 
 				await loadNodeTypes(state, 'http://localhost:5678');
 
-				// Check that single quotes are escaped
-				expect(exec).toHaveBeenCalledWith(state, expect.stringContaining("It''s a test node"));
+				// With parameterized queries, single quotes are handled by the database driver
+				expect(execWithParams).toHaveBeenCalledWith(
+					state,
+					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
+					['n8n-nodes-base.test@1', expect.stringContaining("It's a test node"), 'now'],
+				);
 			});
 		});
 
@@ -182,7 +205,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 					.mockResolvedValueOnce(createQueryResult([[5]])) // COUNT returns 5
 					.mockResolvedValueOnce(createQueryResult([['node1@1'], ['node2@1']])); // existing IDs
 				vi.mocked(getNodeTypeVersions).mockResolvedValueOnce(['node1@1', 'node2@1']);
-				vi.mocked(exec).mockResolvedValue(undefined);
+				vi.mocked(execWithParams).mockResolvedValue(undefined);
 
 				await loadNodeTypes(state, 'http://localhost:5678');
 
@@ -196,11 +219,13 @@ describe('Data Worker loadNodeTypes Operations', () => {
 					.mockResolvedValueOnce(createQueryResult([[2]])) // COUNT returns 2
 					.mockResolvedValueOnce(createQueryResult([['node1@1'], ['node2@1']])); // existing IDs
 				vi.mocked(getNodeTypeVersions).mockResolvedValueOnce(['node1@1']); // node2@1 removed
-				vi.mocked(exec).mockResolvedValue(undefined);
+				vi.mocked(execWithParams).mockResolvedValue(undefined);
 
 				await loadNodeTypes(state, 'http://localhost:5678');
 
-				expect(exec).toHaveBeenCalledWith(state, "DELETE FROM nodeTypes WHERE id = 'node2@1'");
+				expect(execWithParams).toHaveBeenCalledWith(state, 'DELETE FROM nodeTypes WHERE id = ?', [
+					'node2@1',
+				]);
 			});
 
 			it('should fetch and insert added node types', async () => {
@@ -215,7 +240,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 					'n8n-nodes-base.newNode@1',
 				]);
 				vi.mocked(getNodeTypesByIdentifier).mockResolvedValueOnce([newNodeType]);
-				vi.mocked(exec).mockResolvedValue(undefined);
+				vi.mocked(execWithParams).mockResolvedValue(undefined);
 
 				await loadNodeTypes(state, 'http://localhost:5678');
 
@@ -236,7 +261,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 				await loadNodeTypes(state, 'http://localhost:5678');
 
 				// Should not start a transaction if no changes
-				expect(exec).not.toHaveBeenCalledWith(state, 'BEGIN TRANSACTION');
+				expect(execWithParams).not.toHaveBeenCalledWith(state, 'BEGIN TRANSACTION', []);
 			});
 
 			it('should rollback transaction on error during incremental sync', async () => {
@@ -247,11 +272,11 @@ describe('Data Worker loadNodeTypes Operations', () => {
 					.mockResolvedValueOnce(createQueryResult([['node1@1']])); // existing IDs
 				vi.mocked(getNodeTypeVersions).mockResolvedValueOnce(['node1@1', 'newNode@1']);
 				vi.mocked(getNodeTypesByIdentifier).mockRejectedValueOnce(new Error('Fetch failed'));
-				vi.mocked(exec).mockResolvedValue(undefined);
+				vi.mocked(execWithParams).mockResolvedValue(undefined);
 
 				await expect(loadNodeTypes(state, 'http://localhost:5678')).rejects.toThrow('Fetch failed');
 
-				expect(exec).toHaveBeenCalledWith(state, 'ROLLBACK');
+				expect(execWithParams).toHaveBeenCalledWith(state, 'ROLLBACK', []);
 			});
 
 			it('should strip trailing slash from baseUrl when creating REST API context', async () => {
@@ -266,7 +291,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 					'n8n-nodes-base.newNode@1',
 				]);
 				vi.mocked(getNodeTypesByIdentifier).mockResolvedValueOnce([newNodeType]);
-				vi.mocked(exec).mockResolvedValue(undefined);
+				vi.mocked(execWithParams).mockResolvedValue(undefined);
 
 				await loadNodeTypes(state, 'http://localhost:5678/');
 
@@ -282,7 +307,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 
 			vi.mocked(query).mockResolvedValueOnce(createQueryResult([[0]]));
 			vi.mocked(getNodeTypes).mockResolvedValueOnce([]);
-			vi.mocked(exec).mockResolvedValue(undefined);
+			vi.mocked(execWithParams).mockResolvedValue(undefined);
 
 			await loadNodeTypes(state, 'http://localhost:5678');
 

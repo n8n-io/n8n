@@ -16,13 +16,20 @@ import {
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import type { DataWorkerState } from '../types';
-import { exec, query } from './query';
+import { execWithParams, query, withTrx } from './query';
 
 /**
  * Generate a unique ID for a node type version
  */
 function getNodeTypeId(name: string, version: number): string {
 	return `${name}@${version}`;
+}
+
+/**
+ * Convert a database row to a node type description
+ */
+function rowToNodeType(data: string): INodeTypeDescription {
+	return jsonParse<INodeTypeDescription>(data);
 }
 
 /**
@@ -47,6 +54,35 @@ function createRestApiContext(baseUrl: string) {
 		baseUrl: baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl,
 		pushRef: '',
 	};
+}
+
+/**
+ * Upsert a node type into the database
+ *
+ * @param state - The data worker state
+ * @param id - The unique identifier for the node type (name@version)
+ * @param nodeType - The node type description to store
+ */
+async function upsertNodeType(
+	state: DataWorkerState,
+	id: string,
+	nodeType: INodeTypeDescription,
+): Promise<void> {
+	await execWithParams(
+		state,
+		'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
+		[id, JSON.stringify(nodeType), 'now'],
+	);
+}
+
+/**
+ * Delete a node type from the database
+ *
+ * @param state - The data worker state
+ * @param id - The unique identifier for the node type (name@version)
+ */
+async function deleteNodeType(state: DataWorkerState, id: string): Promise<void> {
+	await execWithParams(state, 'DELETE FROM nodeTypes WHERE id = ?', [id]);
 }
 
 /**
@@ -76,26 +112,16 @@ export async function loadNodeTypes(state: DataWorkerState, baseUrl: string): Pr
 		console.log(`[DataWorker] Fetched ${nodeTypes.length} node types from server`);
 
 		// Use a transaction for better performance
-		await exec(state, 'BEGIN TRANSACTION');
-
-		try {
+		await withTrx(state, async () => {
 			for (const nodeType of nodeTypes) {
 				const versions = getNodeTypeVersionsFromDescription(nodeType);
 				for (const version of versions) {
 					const id = getNodeTypeId(nodeType.name, version);
-					await exec(
-						state,
-						`INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES ('${id}', '${JSON.stringify(nodeType).replace(/'/g, "''")}', datetime('now'))`,
-					);
+					await upsertNodeType(state, id, nodeType);
 				}
 			}
-
-			await exec(state, 'COMMIT');
-			console.log('[DataWorker] Initial load complete');
-		} catch (error) {
-			await exec(state, 'ROLLBACK');
-			throw error;
-		}
+		});
+		console.log('[DataWorker] Initial load complete');
 	} else {
 		// Incremental sync: check for changes
 		console.log('[DataWorker] Performing incremental sync...');
@@ -121,12 +147,10 @@ export async function loadNodeTypes(state: DataWorkerState, baseUrl: string): Pr
 
 		// Apply changes in a transaction
 		if (addedVersions.length > 0 || removedVersions.length > 0) {
-			await exec(state, 'BEGIN TRANSACTION');
-
-			try {
+			await withTrx(state, async () => {
 				// Remove deleted node types
 				for (const id of removedVersions) {
-					await exec(state, `DELETE FROM nodeTypes WHERE id = '${id}'`);
+					await deleteNodeType(state, id);
 				}
 
 				// Fetch only the missing node types using the new endpoint
@@ -147,21 +171,13 @@ export async function loadNodeTypes(state: DataWorkerState, baseUrl: string): Pr
 							const id = getNodeTypeId(nodeType.name, version);
 							// Only insert if this is one of the added versions we requested
 							if (addedVersions.includes(id)) {
-								await exec(
-									state,
-									`INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES ('${id}', '${JSON.stringify(nodeType).replace(/'/g, "''")}', datetime('now'))`,
-								);
+								await upsertNodeType(state, id, nodeType);
 							}
 						}
 					}
 				}
-
-				await exec(state, 'COMMIT');
-				console.log('[DataWorker] Incremental sync complete');
-			} catch (error) {
-				await exec(state, 'ROLLBACK');
-				throw error;
-			}
+			});
+			console.log('[DataWorker] Incremental sync complete');
 		} else {
 			console.log('[DataWorker] No changes detected');
 		}
@@ -188,8 +204,7 @@ export async function getNodeType(
 		return null;
 	}
 
-	const data = result.rows[0][0] as string;
-	return jsonParse<INodeTypeDescription>(data);
+	return rowToNodeType(result.rows[0][0] as string);
 }
 
 /**
@@ -201,5 +216,5 @@ export async function getNodeType(
 export async function getAllNodeTypes(state: DataWorkerState): Promise<INodeTypeDescription[]> {
 	const result = await query(state, 'SELECT data FROM nodeTypes');
 
-	return result.rows.map((row) => jsonParse<INodeTypeDescription>(row[0] as string));
+	return result.rows.map((row) => rowToNodeType(row[0] as string));
 }
