@@ -879,7 +879,7 @@ const onAddButtonClick = () => {
 }
 
 .sectionHeader {
-	margin-bottom: 0;
+	margin-bottom: var(--spacing--xs);
 }
 
 .controls {
