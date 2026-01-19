@@ -118,7 +118,7 @@ export class Code implements INodeType {
 				: 'javaScript';
 
 		const isJsLang = language === 'javaScript';
-		const isPyLang = language === 'python' || language === 'pythonNative';
+		const isPyLang = language === 'python' || language === 'pythonNative'; // keep legacy `python` for backwards compatibility
 		const runnersConfig = Container.get(TaskRunnersConfig);
 		const isJsRunner = runnersConfig.enabled;
 
