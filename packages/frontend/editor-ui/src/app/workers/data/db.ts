@@ -16,23 +16,12 @@ export interface DatabaseSchema {
 
 /**
  * Database schema definition
+ *
+ * Currently only includes nodeTypes table. Additional tables (executions,
+ * credentials, workflows) will be added when they are needed.
  */
 export const databaseSchema: DatabaseSchema = {
 	tables: {
-		executions: {
-			name: 'executions',
-			schema: `
-				CREATE TABLE IF NOT EXISTS executions (
-					id TEXT PRIMARY KEY,
-					workflow_id TEXT NOT NULL,
-					data TEXT NOT NULL,
-					workflow TEXT NOT NULL,
-					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-				);
-				CREATE INDEX IF NOT EXISTS idx_executions_workflow_id ON executions(workflow_id);
-				CREATE INDEX IF NOT EXISTS idx_executions_created_at ON executions(created_at);
-			`,
-		},
 		nodeTypes: {
 			name: 'nodeTypes',
 			schema: `
@@ -41,27 +30,6 @@ export const databaseSchema: DatabaseSchema = {
 					data TEXT NOT NULL,
 					updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 				);
-			`,
-		},
-		credentials: {
-			name: 'credentials',
-			schema: `
-				CREATE TABLE IF NOT EXISTS credentials (
-					id TEXT PRIMARY KEY,
-					data TEXT NOT NULL,
-					updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-				);
-			`,
-		},
-		workflows: {
-			name: 'workflows',
-			schema: `
-				CREATE TABLE IF NOT EXISTS workflows (
-					id TEXT PRIMARY KEY,
-					data TEXT NOT NULL,
-					updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-				);
-				CREATE INDEX IF NOT EXISTS idx_workflows_updated_at ON workflows(updated_at);
 			`,
 		},
 	},

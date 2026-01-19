@@ -87,27 +87,7 @@ export interface QueryResult {
 /**
  * Database table row types
  */
-export interface ExecutionRow {
-	id: string;
-	workflow_id: string;
-	data: string;
-	workflow: string;
-	created_at: string;
-}
-
 export interface NodeTypeRow {
-	id: string;
-	data: string;
-	updated_at: string;
-}
-
-export interface CredentialRow {
-	id: string;
-	data: string;
-	updated_at: string;
-}
-
-export interface WorkflowRow {
 	id: string;
 	data: string;
 	updated_at: string;
