@@ -134,9 +134,10 @@ describe('Coordinator Query Operations', () => {
 			expect(state.initialized).toBe(true);
 		});
 
-		it('should return immediately if already initialized', async () => {
+		it('should return existing promise if initialization already completed', async () => {
 			const state = createStateWithActiveTab();
 			state.initialized = true;
+			state.initPromise = Promise.resolve();
 			const worker = state.tabs.get('active-tab')?.dataWorker;
 
 			await initialize(state);
@@ -160,12 +161,13 @@ describe('Coordinator Query Operations', () => {
 			expect(initializeWorkerFn).toHaveBeenCalledTimes(1);
 		});
 
-		it('should reset initPromise after initialization completes', async () => {
+		it('should keep initPromise after successful initialization', async () => {
 			const state = createStateWithActiveTab();
 
 			await initialize(state);
 
-			expect(state.initPromise).toBeNull();
+			expect(state.initPromise).not.toBeNull();
+			expect(state.initPromise).toBeInstanceOf(Promise);
 		});
 
 		it('should reset initPromise even if initialization fails', async () => {

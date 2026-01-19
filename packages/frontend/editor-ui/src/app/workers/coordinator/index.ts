@@ -66,19 +66,38 @@ export async function registerTab(): Promise<string> {
 }
 
 /**
+ * Unregister the current tab and reset state
+ */
+function unregisterCurrentTab(): void {
+	if (tabState.tabId) {
+		coordinator.unregisterTab(tabState.tabId).catch(console.error);
+		tabState.isRegistered = false;
+		tabState.tabId = null;
+	}
+}
+
+/**
  * Set up cleanup handlers for when the page unloads
  */
 function setupCleanupHandlers(): void {
-	window.addEventListener('beforeunload', () => {
-		if (tabState.tabId) {
-			coordinator.unregisterTab(tabState.tabId).catch(console.error);
+	window.addEventListener('beforeunload', unregisterCurrentTab);
+
+	// Also use pagehide for mobile browsers
+	window.addEventListener('pagehide', unregisterCurrentTab);
+
+	// Re-register when page is restored from bfcache
+	window.addEventListener('pageshow', (event) => {
+		if (event.persisted && !tabState.isRegistered) {
+			console.log('[Coordinator] Page restored from bfcache, re-registering...');
+			registerTab().catch(console.error);
 		}
 	});
 
-	// Also use pagehide for mobile browsers
-	window.addEventListener('pagehide', () => {
-		if (tabState.tabId) {
-			coordinator.unregisterTab(tabState.tabId).catch(console.error);
+	// Re-register when page becomes visible again (e.g., on mobile after switching apps)
+	document.addEventListener('visibilitychange', () => {
+		if (document.visibilityState === 'visible' && !tabState.isRegistered) {
+			console.log('[Coordinator] Page became visible, re-registering...');
+			registerTab().catch(console.error);
 		}
 	});
 }

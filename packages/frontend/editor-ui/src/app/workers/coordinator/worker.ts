@@ -83,7 +83,7 @@ const coordinatorApi = {
 	/**
 	 * Execute a SQL query with parameters (routes to active tab's worker)
 	 */
-	async queryWithParams(sql: string, params: unknown[]) {
+	async queryWithParams(sql: string, params: unknown[] = []) {
 		return await queryWithParamsOp(state, sql, params);
 	},
 

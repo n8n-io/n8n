@@ -27,19 +27,17 @@ export async function ensureInitialized(
 /**
  * Initialize the database (routes to active tab's worker)
  *
+ * Keeps initPromise around after successful initialization so subsequent
+ * calls return the same resolved promise. Clears it on failure to allow retry.
+ *
  * @param state - The coordinator state
  */
 export async function initialize(state: CoordinatorState): Promise<void> {
 	console.log('[Coordinator] Initialize requested');
 
-	// Prevent concurrent initialization
+	// Return existing promise if initialization is in progress or complete
 	if (state.initPromise) {
 		return await state.initPromise;
-	}
-
-	if (state.initialized) {
-		console.log('[Coordinator] Already initialized');
-		return;
 	}
 
 	state.initPromise = (async () => {
@@ -55,8 +53,10 @@ export async function initialize(state: CoordinatorState): Promise<void> {
 
 	try {
 		await state.initPromise;
-	} finally {
+	} catch (error) {
+		// Clear promise on failure to allow retry
 		state.initPromise = null;
+		throw error;
 	}
 }
 
@@ -106,7 +106,7 @@ export async function query(state: CoordinatorState, sql: string): Promise<Query
 export async function queryWithParams(
 	state: CoordinatorState,
 	sql: string,
-	params: unknown[],
+	params: unknown[] = [],
 ): Promise<QueryResult> {
 	await ensureInitialized(state, async () => await initialize(state));
 
