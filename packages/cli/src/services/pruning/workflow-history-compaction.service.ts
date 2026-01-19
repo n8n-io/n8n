@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowHistoryCompactionConfig } from '@n8n/config';
+import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
@@ -48,6 +48,7 @@ export class WorkflowHistoryCompactionService {
 
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dbConnection: DbConnection,
@@ -88,10 +89,18 @@ export class WorkflowHistoryCompactionService {
 	}
 
 	private scheduleTrimming() {
-		// This needs to account for leader changes and in particular the same instance
-		// being re-elected leader.
-		// If the instance is restarted at 3am server time after trimming has occurred we
-		// will rerun immediately, but there is no way to avoid this without persisting data
+		if (
+			this.globalConfig.workflowHistory.pruneTime !== -1 &&
+			this.globalConfig.workflowHistory.pruneTime * Time.hours.toMilliseconds <
+				this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds
+		) {
+			this.logger.info('Skipping workflow history trimming as pruneAge < trimmingMinimumAge');
+			return;
+		}
+
+		// This is written this way as it needs to account for leader changes and in particular
+		// the same instance being re-elected leader, so just starting a 1 day interval is unlikely
+		// to ever trigger in queue mode/multi-main
 		const trimOnceADay = async () => {
 			if (new Date().getHours() === 3) {
 				await this.trimLongRunningHistories();

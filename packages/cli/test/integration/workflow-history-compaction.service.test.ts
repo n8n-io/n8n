@@ -60,6 +60,7 @@ describe('compacting cycle', () => {
 
 		compactionService = new WorkflowHistoryCompactionService(
 			Container.get(GlobalConfig).workflowHistoryCompaction,
+			Container.get(GlobalConfig),
 			mockLogger(),
 			instanceSettings,
 			Container.get(DbConnection),
@@ -193,6 +194,7 @@ describe('compacting cycle', () => {
 				batchSize: 5,
 				optimizingMinimumAgeHours: 24,
 			},
+			Container.get(GlobalConfig),
 			mockLogger(),
 			instanceSettings,
 			Container.get(DbConnection),
