@@ -147,6 +147,21 @@ function formatFeedbackForExport(result: ExampleResult): object {
 		status: result.status,
 		durationMs: result.durationMs,
 		score: result.score,
+		// Token usage and cost
+		...(result.tokenUsage && {
+			tokenUsage: {
+				inputTokens: result.tokenUsage.inputTokens,
+				outputTokens: result.tokenUsage.outputTokens,
+				...(result.tokenUsage.cacheReadInputTokens !== undefined && {
+					cacheReadInputTokens: result.tokenUsage.cacheReadInputTokens,
+				}),
+				...(result.tokenUsage.cacheCreationInputTokens !== undefined && {
+					cacheCreationInputTokens: result.tokenUsage.cacheCreationInputTokens,
+				}),
+			},
+		}),
+		...(result.costUsd !== undefined && { costUsd: result.costUsd }),
+		...(result.model && { model: result.model }),
 		evaluators: Object.entries(byEvaluator).map(([name, items]) => ({
 			name,
 			feedback: items.map((f) => ({
@@ -201,6 +216,12 @@ function formatSummaryForExport(summary: RunSummary, results: ExampleResult[]): 
 		passRate: summary.totalExamples > 0 ? summary.passed / summary.totalExamples : 0,
 		averageScore: summary.averageScore,
 		totalDurationMs: summary.totalDurationMs,
+		// Token usage and cost aggregates
+		...(summary.totalInputTokens !== undefined && { totalInputTokens: summary.totalInputTokens }),
+		...(summary.totalOutputTokens !== undefined && {
+			totalOutputTokens: summary.totalOutputTokens,
+		}),
+		...(summary.totalCostUsd !== undefined && { totalCostUsd: summary.totalCostUsd }),
 		evaluatorAverages,
 		results: resultsSorted.map((r) => ({
 			index: r.index,
@@ -208,6 +229,12 @@ function formatSummaryForExport(summary: RunSummary, results: ExampleResult[]): 
 			status: r.status,
 			score: r.score,
 			durationMs: r.durationMs,
+			...(r.tokenUsage && {
+				inputTokens: r.tokenUsage.inputTokens,
+				outputTokens: r.tokenUsage.outputTokens,
+			}),
+			...(r.costUsd !== undefined && { costUsd: r.costUsd }),
+			...(r.model && { model: r.model }),
 			...(r.error ? { error: r.error } : {}),
 		})),
 	};

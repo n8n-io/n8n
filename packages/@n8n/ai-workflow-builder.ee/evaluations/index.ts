@@ -12,7 +12,7 @@
  */
 
 // Core runner
-export { runEvaluation } from './harness/runner';
+export { runEvaluation, type GenerateWorkflowFn } from './harness/runner';
 
 // Types
 export type {
@@ -27,7 +27,19 @@ export type {
 	RunSummary,
 	EvaluationLifecycle,
 	LangsmithOptions,
+	TokenUsage,
+	GenerationResult,
 } from './harness/harness-types';
+
+// Model pricing utilities
+export {
+	calculateCost,
+	getModelPricing,
+	aggregateTokenUsage,
+	MODEL_PRICING,
+	DEFAULT_PRICING,
+	type ModelPricing,
+} from './harness/model-pricing';
 
 // Lifecycle
 export {

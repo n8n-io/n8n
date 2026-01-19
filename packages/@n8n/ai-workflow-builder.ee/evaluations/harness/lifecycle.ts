@@ -7,6 +7,7 @@ import type {
 	Feedback,
 	ExampleResult,
 	RunSummary,
+	TokenUsage,
 } from './harness-types.js';
 import type { EvalLogger } from './logger.js';
 import { groupByEvaluator, selectScoringItems, calculateFiniteAverage } from './score-calculator';
@@ -41,6 +42,29 @@ function formatScore(score: number): string {
  */
 function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * Format cost in USD.
+ */
+function formatCost(usd: number): string {
+	if (usd < 0.01) {
+		return `$${usd.toFixed(4)}`;
+	}
+	return `$${usd.toFixed(2)}`;
+}
+
+/**
+ * Format token count with k/M suffix.
+ */
+function formatTokens(count: number): string {
+	if (count >= 1_000_000) {
+		return `${(count / 1_000_000).toFixed(2)}M`;
+	}
+	if (count >= 1_000) {
+		return `${(count / 1_000).toFixed(1)}k`;
+	}
+	return String(count);
 }
 
 /**
@@ -397,6 +421,26 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 			logger.info(`  Pass rate: ${formatScore(passRate)}`);
 			logger.info(`  Average score: ${formatScore(summary.averageScore)}`);
 			logger.info(`  Total time: ${formatDuration(summary.totalDurationMs)}`);
+
+			// Display token usage and cost if available
+			if (
+				summary.totalInputTokens !== undefined ||
+				summary.totalOutputTokens !== undefined ||
+				summary.totalCostUsd !== undefined
+			) {
+				const tokenParts: string[] = [];
+				if (summary.totalInputTokens !== undefined) {
+					tokenParts.push(`input: ${formatTokens(summary.totalInputTokens)}`);
+				}
+				if (summary.totalOutputTokens !== undefined) {
+					tokenParts.push(`output: ${formatTokens(summary.totalOutputTokens)}`);
+				}
+				if (summary.totalCostUsd !== undefined) {
+					tokenParts.push(`cost: ${formatCost(summary.totalCostUsd)}`);
+				}
+				logger.info(`  Tokens: ${tokenParts.join(' | ')}`);
+			}
+
 			logger.info(pc.bold('═══════════════════════════════════════════════\n'));
 		},
 	};
@@ -445,9 +489,13 @@ export function mergeLifecycles(
 			}
 		},
 
-		onWorkflowGenerated(workflow: SimpleWorkflow, durationMs: number): void {
+		onWorkflowGenerated(
+			workflow: SimpleWorkflow,
+			durationMs: number,
+			usage?: { tokenUsage?: TokenUsage; costUsd?: number; model?: string },
+		): void {
 			for (const lc of validLifecycles) {
-				lc.onWorkflowGenerated?.(workflow, durationMs);
+				lc.onWorkflowGenerated?.(workflow, durationMs, usage);
 			}
 		},
 

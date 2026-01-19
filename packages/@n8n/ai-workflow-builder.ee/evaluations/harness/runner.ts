@@ -22,14 +22,39 @@ import type {
 	EvaluationLifecycle,
 	LangsmithExampleFilters,
 	LlmCallLimiter,
+	GenerationResult,
+	TokenUsage,
 } from './harness-types.js';
 import type { EvalLogger } from './logger';
+import { calculateCost } from './model-pricing';
 import { createArtifactSaver, type ArtifactSaver } from './output';
 import { calculateWeightedScore } from './score-calculator';
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
 import { extractMessageContent } from '../langsmith/types';
 
 const DEFAULT_PASS_THRESHOLD = 0.7;
+
+/**
+ * Type for the generateWorkflow function that can return either a simple workflow
+ * or a full generation result with usage metadata.
+ */
+export type GenerateWorkflowFn = (
+	prompt: string,
+	callbacks?: Callbacks,
+) => Promise<SimpleWorkflow | GenerationResult>;
+
+/**
+ * Normalize generation output to always have GenerationResult shape.
+ * Supports both legacy SimpleWorkflow returns and new GenerationResult format.
+ */
+function normalizeGenerationResult(output: SimpleWorkflow | GenerationResult): GenerationResult {
+	// Check if output has the GenerationResult shape (has 'workflow' property)
+	if ('workflow' in output && isSimpleWorkflow(output.workflow)) {
+		return output;
+	}
+	// Legacy SimpleWorkflow return - wrap it
+	return { workflow: output };
+}
 
 /**
  * Run evaluators in parallel for a single workflow.
@@ -348,7 +373,7 @@ async function runLocalExample(args: {
 	index: number;
 	total: number;
 	testCase: TestCase;
-	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
+	generateWorkflow: GenerateWorkflowFn;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
 	passThreshold: number;
@@ -375,7 +400,7 @@ async function runLocalExample(args: {
 	try {
 		// Generate workflow
 		const genStartTime = Date.now();
-		const workflow = await runWithOptionalLimiter(async () => {
+		const genOutput = await runWithOptionalLimiter(async () => {
 			return await withTimeout({
 				promise: generateWorkflow(testCase.prompt),
 				timeoutMs,
@@ -383,7 +408,19 @@ async function runLocalExample(args: {
 			});
 		}, globalContext?.llmCallLimiter);
 		const genDurationMs = Date.now() - genStartTime;
-		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
+
+		// Normalize to GenerationResult format
+		const genResult = normalizeGenerationResult(genOutput);
+		const { workflow, tokenUsage, costUsd, model } = genResult;
+
+		// Calculate cost if we have token usage but no cost
+		const finalCostUsd = costUsd ?? (tokenUsage ? calculateCost(tokenUsage, model) : undefined);
+
+		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs, {
+			tokenUsage,
+			costUsd: finalCostUsd,
+			model,
+		});
 
 		const context = buildContext({
 			prompt: testCase.prompt,
@@ -415,6 +452,9 @@ async function runLocalExample(args: {
 			generationDurationMs: genDurationMs,
 			evaluationDurationMs: evalDurationMs,
 			workflow,
+			...(tokenUsage && { tokenUsage }),
+			...(finalCostUsd !== undefined && { costUsd: finalCostUsd }),
+			...(model && { model }),
 		};
 
 		artifactSaver?.saveExample(result);
@@ -461,7 +501,7 @@ function createArtifactSaverIfRequested(args: {
 
 async function runLocalDataset(params: {
 	testCases: TestCase[];
-	generateWorkflow: (prompt: string) => Promise<SimpleWorkflow>;
+	generateWorkflow: GenerateWorkflowFn;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
 	passThreshold: number;
@@ -510,6 +550,21 @@ function buildRunSummary(results: ExampleResult[]): RunSummary {
 		results.length > 0 ? results.reduce((sum, r) => sum + r.score, 0) / results.length : 0;
 	const totalDurationMs = results.reduce((sum, r) => sum + r.durationMs, 0);
 
+	// Aggregate token usage and cost
+	let totalInputTokens: number | undefined;
+	let totalOutputTokens: number | undefined;
+	let totalCostUsd: number | undefined;
+
+	for (const result of results) {
+		if (result.tokenUsage) {
+			totalInputTokens = (totalInputTokens ?? 0) + result.tokenUsage.inputTokens;
+			totalOutputTokens = (totalOutputTokens ?? 0) + result.tokenUsage.outputTokens;
+		}
+		if (result.costUsd !== undefined) {
+			totalCostUsd = (totalCostUsd ?? 0) + result.costUsd;
+		}
+	}
+
 	return {
 		totalExamples: results.length,
 		passed,
@@ -517,6 +572,9 @@ function buildRunSummary(results: ExampleResult[]): RunSummary {
 		errors,
 		averageScore,
 		totalDurationMs,
+		...(totalInputTokens !== undefined && { totalInputTokens }),
+		...(totalOutputTokens !== undefined && { totalOutputTokens }),
+		...(totalCostUsd !== undefined && { totalCostUsd }),
 	};
 }
 
@@ -576,6 +634,9 @@ interface LangsmithTargetOutput {
 	workflow: SimpleWorkflow;
 	prompt: string;
 	feedback: Feedback[];
+	tokenUsage?: TokenUsage;
+	costUsd?: number;
+	model?: string;
 }
 
 /**
@@ -784,21 +845,24 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	const traceableGenerateWorkflow = traceable(
 		async (args: {
 			prompt: string;
-			genFn: (prompt: string, callbacks?: Callbacks) => Promise<SimpleWorkflow>;
+			genFn: GenerateWorkflowFn;
 			limiter?: LlmCallLimiter;
 			genTimeoutMs?: number;
-		}): Promise<SimpleWorkflow> => {
+		}): Promise<GenerationResult> => {
 			// Get callbacks inside traceable where context is correct
 			// Returns undefined if not in a traceable context (e.g., unit tests)
 			const callbacks = await getTracingCallbacks();
 
-			return await runWithOptionalLimiter(async () => {
+			const output = await runWithOptionalLimiter(async () => {
 				return await withTimeout({
 					promise: args.genFn(args.prompt, callbacks),
 					timeoutMs: args.genTimeoutMs,
 					label: 'workflow_generation',
 				});
 			}, args.limiter);
+
+			// Normalize to GenerationResult format
+			return normalizeGenerationResult(output);
 		},
 		{
 			name: 'workflow_generation',
@@ -818,6 +882,9 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		errors: 0,
 		scoreSum: 0,
 		durationSumMs: 0,
+		totalInputTokens: 0,
+		totalOutputTokens: 0,
+		totalCostUsd: 0,
 	};
 	const target = async (inputs: LangsmithDatasetInput): Promise<LangsmithTargetOutput> => {
 		targetCallCount++;
@@ -831,14 +898,23 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		const genStart = Date.now();
 
 		try {
-			const workflow = await traceableGenerateWorkflow({
+			const genResult = await traceableGenerateWorkflow({
 				prompt,
 				genFn: generateWorkflow,
 				limiter: effectiveGlobalContext.llmCallLimiter,
 				genTimeoutMs: timeoutMs,
 			});
 			const genDurationMs = Date.now() - genStart;
-			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
+			const { workflow, tokenUsage, costUsd, model } = genResult;
+
+			// Calculate cost if we have token usage but no cost
+			const finalCostUsd = costUsd ?? (tokenUsage ? calculateCost(tokenUsage, model) : undefined);
+
+			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs, {
+				tokenUsage,
+				costUsd: finalCostUsd,
+				model,
+			});
 
 			const extracted = extractContextFromLangsmithInputs({
 				...asRecord(datasetContext),
@@ -871,6 +947,15 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			stats.scoreSum += score;
 			stats.durationSumMs += totalDurationMs;
 
+			// Track token usage and cost
+			if (tokenUsage) {
+				stats.totalInputTokens += tokenUsage.inputTokens;
+				stats.totalOutputTokens += tokenUsage.outputTokens;
+			}
+			if (finalCostUsd !== undefined) {
+				stats.totalCostUsd += finalCostUsd;
+			}
+
 			if (status === 'pass') stats.passed++;
 			else if (status === 'fail') stats.failed++;
 			else stats.errors++;
@@ -885,6 +970,9 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				generationDurationMs: genDurationMs,
 				evaluationDurationMs: evalDurationMs,
 				workflow,
+				...(tokenUsage && { tokenUsage }),
+				...(finalCostUsd !== undefined && { costUsd: finalCostUsd }),
+				...(model && { model }),
 			};
 
 			artifactSaver?.saveExample(result);
@@ -895,6 +983,9 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				workflow,
 				prompt,
 				feedback,
+				...(tokenUsage && { tokenUsage }),
+				...(finalCostUsd !== undefined && { costUsd: finalCostUsd }),
+				...(model && { model }),
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -979,6 +1070,9 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		errors: stats.errors,
 		averageScore: stats.total > 0 ? stats.scoreSum / stats.total : 0,
 		totalDurationMs: stats.durationSumMs,
+		...(stats.totalInputTokens > 0 && { totalInputTokens: stats.totalInputTokens }),
+		...(stats.totalOutputTokens > 0 && { totalOutputTokens: stats.totalOutputTokens }),
+		...(stats.totalCostUsd > 0 && { totalCostUsd: stats.totalCostUsd }),
 	};
 
 	if (artifactSaver && capturedResults) {

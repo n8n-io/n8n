@@ -4,6 +4,16 @@ import type pLimit from 'p-limit';
 import type { EvalLogger } from './logger.js';
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
 
+/**
+ * Token usage information from LLM calls.
+ */
+export interface TokenUsage {
+	inputTokens: number;
+	outputTokens: number;
+	cacheReadInputTokens?: number;
+	cacheCreationInputTokens?: number;
+}
+
 export type LlmCallLimiter = ReturnType<typeof pLimit>;
 
 /**
@@ -180,6 +190,12 @@ export interface ExampleResult {
 	evaluationDurationMs?: number;
 	workflow?: SimpleWorkflow;
 	error?: string;
+	/** Token usage from workflow generation LLM calls. */
+	tokenUsage?: TokenUsage;
+	/** Estimated cost in USD for the workflow generation. */
+	costUsd?: number;
+	/** Model identifier used for generation. */
+	model?: string;
 }
 
 /**
@@ -193,6 +209,22 @@ export interface RunSummary {
 	averageScore: number;
 	totalDurationMs: number;
 	evaluatorAverages?: Record<string, number>;
+	/** Total input tokens consumed across all examples. */
+	totalInputTokens?: number;
+	/** Total output tokens generated across all examples. */
+	totalOutputTokens?: number;
+	/** Total estimated cost in USD for the run. */
+	totalCostUsd?: number;
+}
+
+/**
+ * Generation result including workflow and optional usage metadata.
+ */
+export interface GenerationResult {
+	workflow: SimpleWorkflow;
+	tokenUsage?: TokenUsage;
+	costUsd?: number;
+	model?: string;
 }
 
 /**
@@ -201,7 +233,11 @@ export interface RunSummary {
 export interface EvaluationLifecycle {
 	onStart(config: RunConfig): void;
 	onExampleStart(index: number, total: number, prompt: string): void;
-	onWorkflowGenerated(workflow: SimpleWorkflow, durationMs: number): void;
+	onWorkflowGenerated(
+		workflow: SimpleWorkflow,
+		durationMs: number,
+		usage?: { tokenUsage?: TokenUsage; costUsd?: number; model?: string },
+	): void;
 	onEvaluatorComplete(name: string, feedback: Feedback[]): void;
 	onEvaluatorError(name: string, error: Error): void;
 	onExampleComplete(index: number, result: ExampleResult): void;
